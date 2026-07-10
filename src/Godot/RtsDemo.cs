@@ -13,12 +13,17 @@ public partial class RtsDemo : Node2D
         "res://data/demo_navigation_map.tres";
     private const string DemoGameplayProfilesResourcePath =
         "res://data/demo_gameplay_profiles.tres";
+    private const string DemoClearanceBakeResourcePath =
+        "res://data/demo_clearance_bake.tres";
 
     [Export]
     public RtsNavigationMapResource? NavigationMapAsset { get; set; }
 
     [Export]
     public RtsGameplayProfilesResource? GameplayProfilesAsset { get; set; }
+
+    [Export]
+    public RtsClearanceBakeResource? ClearanceBakeAsset { get; set; }
     private readonly HashSet<int> _selectedUnits = new();
     private StaticWorld? _world;
     private GodotPathProvider? _pathProvider;
@@ -41,6 +46,7 @@ public partial class RtsDemo : Node2D
     private int _nextDemoBuildingClass;
     private NavigationMapSnapshot? _navigationSnapshot;
     private GameplayProfileCatalogSnapshot? _gameplayProfiles;
+    private ClearanceBakeSnapshot? _clearanceBake;
 
     public override async void _Ready()
     {
@@ -90,16 +96,35 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-clearance-bake"))
+        {
+            if (!TryLoadNavigationSnapshot())
+            {
+                GetTree().Quit(1);
+                return;
+            }
+
+            GenerateDemoClearanceBake();
+            return;
+        }
+
+        if (userArguments.Contains("--validate-clearance-bake"))
+        {
+            var valid = TryLoadNavigationSnapshot() && TryLoadClearanceBake();
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--self-test"))
         {
-            if (!TryLoadNavigationSnapshot() || !TryLoadGameplayProfiles())
+            if (!TryLoadRuntimeData())
             {
                 GetTree().Quit(1);
                 return;
             }
 
             var result = SimulationSelfTest.Run(
-                _navigationSnapshot, _gameplayProfiles);
+                _navigationSnapshot, _gameplayProfiles, _clearanceBake);
             GD.Print($"RTS_SELF_TEST {(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -108,7 +133,7 @@ public partial class RtsDemo : Node2D
         var visualTestId = ReadArgument(userArguments, "--visual-test");
         if (visualTestId is not null)
         {
-            if (!TryLoadNavigationSnapshot() || !TryLoadGameplayProfiles())
+            if (!TryLoadRuntimeData())
             {
                 GetTree().Quit(1);
                 return;
@@ -118,8 +143,8 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        if (!TryLoadNavigationSnapshot() || _navigationSnapshot is null ||
-            !TryLoadGameplayProfiles() || _gameplayProfiles is null)
+        if (!TryLoadRuntimeData() || _navigationSnapshot is null ||
+            _gameplayProfiles is null || _clearanceBake is null)
         {
             GetTree().Quit(1);
             return;
@@ -131,14 +156,15 @@ public partial class RtsDemo : Node2D
         _pathProvider = new GodotPathProvider(this, _world, navigationRadius: 8f);
         _simulationPathProvider = new ValidatingFallbackPathProvider(
             _pathProvider,
-            new GridPathProvider(_world),
+            new GridPathProvider(_world, staticBake: _clearanceBake),
             _world);
         _simulation = new RtsSimulation(
             _world,
             _simulationPathProvider,
             capacity: 256,
             groupRoutePlanner: _routePlanner,
-            chokeController: _chokeController);
+            chokeController: _chokeController,
+            clearanceBake: _clearanceBake);
         CreateHud();
         SpawnDemoUnits();
 
@@ -737,8 +763,8 @@ public partial class RtsDemo : Node2D
     {
         try
         {
-            _visualTest = VisualTestCatalog.Create(
-                caseId, _navigationSnapshot, _gameplayProfiles);
+        _visualTest = VisualTestCatalog.Create(
+            caseId, _navigationSnapshot, _gameplayProfiles, _clearanceBake);
         }
         catch (ArgumentException exception)
         {
@@ -754,7 +780,9 @@ public partial class RtsDemo : Node2D
         GetNodeOrNull<ClearancePreview2D>("ClearancePreview")?.SetRuntimeSnapshots(
             _navigationSnapshot,
             _gameplayProfiles,
-            caseId == "clearance-editor-preview");
+            caseId is "clearance-editor-preview" or
+                "clearance-bake-resource-runtime",
+            _clearanceBake);
         _selectedUnits.Clear();
         foreach (var unit in _visualTest.RenderUnitIndices)
         {
@@ -825,6 +853,11 @@ public partial class RtsDemo : Node2D
         return false;
     }
 
+    private bool TryLoadRuntimeData() =>
+        TryLoadNavigationSnapshot() &&
+        TryLoadGameplayProfiles() &&
+        TryLoadClearanceBake();
+
     private bool TryLoadGameplayProfiles()
     {
         if (_gameplayProfiles is not null)
@@ -864,15 +897,60 @@ public partial class RtsDemo : Node2D
         return false;
     }
 
+    private bool TryLoadClearanceBake()
+    {
+        if (_clearanceBake is not null)
+        {
+            return true;
+        }
+
+        if (_navigationSnapshot is null)
+        {
+            GD.PushError("Navigation snapshot must load before clearance bake.");
+            return false;
+        }
+
+        var resourcePath = ClearanceBakeAsset?.ResourcePath ??
+                           DemoClearanceBakeResourcePath;
+        var converted = ClearanceBakeAsset is not null
+            ? ClearanceBakeResourceConverter.TryConvert(
+                ClearanceBakeAsset,
+                _navigationSnapshot.StableHash,
+                out var snapshot,
+                out var validation)
+            : ClearanceBakeResourceConverter.TryLoadSnapshot(
+                DemoClearanceBakeResourcePath,
+                _navigationSnapshot.StableHash,
+                out snapshot,
+                out validation);
+        if (converted && snapshot is not null)
+        {
+            _clearanceBake = snapshot;
+            GD.Print(
+                $"RTS_CLEARANCE_BAKE PASS path={resourcePath} " +
+                $"format={snapshot.FormatVersion} hash={snapshot.StableHashText} " +
+                $"source={snapshot.SourceNavigationHashText} " +
+                $"grid={snapshot.Columns}x{snapshot.Rows} " +
+                $"chunks={snapshot.ChunkColumns}x{snapshot.ChunkRows}");
+            return true;
+        }
+
+        foreach (var issue in validation.Issues)
+        {
+            GD.PushError(
+                $"RTS_CLEARANCE_BAKE FAIL code={issue.Code} " +
+                $"layer={issue.LayerIndex} message={issue.Message}");
+        }
+
+        return false;
+    }
+
     private void GenerateDemoNavigationResource()
     {
         var snapshot = DemoMapDefinition.CreateSnapshot();
         var resource = NavigationMapResourceConverter.FromSnapshot(snapshot);
-        var directory = ProjectSettings.GlobalizePath("res://data");
-        var directoryError = DirAccess.MakeDirRecursiveAbsolute(directory);
-        if (directoryError is not (Error.Ok or Error.AlreadyExists))
+        if (!EnsureDataDirectory())
         {
-            GD.PushError($"Unable to create navigation data directory: {directoryError}");
             GetTree().Quit(1);
             return;
         }
@@ -882,6 +960,46 @@ public partial class RtsDemo : Node2D
             $"RTS_NAVIGATION_RESOURCE_GENERATE error={saveError} " +
             $"path={DemoNavigationResourcePath} hash={snapshot.StableHashText}");
         GetTree().Quit(saveError == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateDemoClearanceBake()
+    {
+        if (_navigationSnapshot is null)
+        {
+            GD.PushError("Navigation snapshot must load before clearance bake generation.");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var snapshot = ClearanceBakeSnapshot.Build(_navigationSnapshot);
+        var resource = ClearanceBakeResourceConverter.FromSnapshot(snapshot);
+        if (!EnsureDataDirectory())
+        {
+            GetTree().Quit(1);
+            return;
+        }
+
+        var saveError = ResourceSaver.Save(
+            resource, DemoClearanceBakeResourcePath);
+        GD.Print(
+            $"RTS_CLEARANCE_BAKE_GENERATE error={saveError} " +
+            $"path={DemoClearanceBakeResourcePath} " +
+            $"hash={snapshot.StableHashText} " +
+            $"bytes={snapshot.CanonicalBytes.Length}");
+        GetTree().Quit(saveError == Error.Ok ? 0 : 1);
+    }
+
+    private static bool EnsureDataDirectory()
+    {
+        var directory = ProjectSettings.GlobalizePath("res://data");
+        var error = DirAccess.MakeDirRecursiveAbsolute(directory);
+        if (error is Error.Ok or Error.AlreadyExists)
+        {
+            return true;
+        }
+
+        GD.PushError($"Unable to create navigation data directory: {error}");
+        return false;
     }
 
     private void SpawnDemoUnits()
@@ -927,7 +1045,8 @@ public partial class RtsDemo : Node2D
             _simulationPathProvider,
             capacity: 256,
             groupRoutePlanner: _routePlanner,
-            chokeController: _chokeController);
+            chokeController: _chokeController,
+            clearanceBake: _clearanceBake);
         _selectedUnits.Clear();
         SpawnDemoUnits();
         _commandMarkerTime = 0f;

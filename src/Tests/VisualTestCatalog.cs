@@ -29,6 +29,7 @@ public static class VisualTestCatalog
         "building-connectivity-guard",
         "building-size-navigation",
         "gameplay-profile-resource-runtime",
+        "clearance-bake-resource-runtime",
         "clearance-editor-preview",
         "shared-target-reservations",
         "stop-command",
@@ -55,7 +56,8 @@ public static class VisualTestCatalog
     public static VisualTestSession Create(
         string caseId,
         NavigationMapSnapshot? navigationMap = null,
-        GameplayProfileCatalogSnapshot? gameplayProfiles = null) => caseId switch
+        GameplayProfileCatalogSnapshot? gameplayProfiles = null,
+        ClearanceBakeSnapshot? clearanceBake = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "open-field" => CreateOpenField(),
@@ -76,8 +78,12 @@ public static class VisualTestCatalog
         "building-size-navigation" => CreateBuildingSizeNavigation(),
         "gameplay-profile-resource-runtime" =>
             CreateGameplayProfileResourceRuntime(gameplayProfiles),
+        "clearance-bake-resource-runtime" =>
+            CreateClearanceBakeResourceRuntime(
+                navigationMap, gameplayProfiles, clearanceBake),
         "clearance-editor-preview" =>
-            CreateClearanceEditorPreview(navigationMap, gameplayProfiles),
+            CreateClearanceEditorPreview(
+                navigationMap, gameplayProfiles, clearanceBake),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -668,11 +674,14 @@ public static class VisualTestCatalog
 
     private static VisualTestSession CreateClearanceEditorPreview(
         NavigationMapSnapshot? navigation,
-        GameplayProfileCatalogSnapshot? profiles)
+        GameplayProfileCatalogSnapshot? profiles,
+        ClearanceBakeSnapshot? clearanceBake)
     {
         navigation ??= DemoMapDefinition.CreateSnapshot();
         profiles ??= DemoGameplayProfiles.CreateSnapshot();
-        var preview = ClearancePreviewSnapshot.Create(navigation, profiles);
+        clearanceBake ??= ClearanceBakeSnapshot.Build(navigation);
+        var preview = ClearancePreviewSnapshot.Create(
+            navigation, profiles, clearanceBake);
         var rig = MovementTestRig.CreateChokeMap(8, navigation);
         return new VisualTestSession(
             "clearance-editor-preview",
@@ -696,6 +705,57 @@ public static class VisualTestCatalog
                     $"portals={preview.Portals.Length}, " +
                     $"buildings={preview.Buildings.Length}, " +
                     $"largeEdges={allDemoEdgesSupportLarge}");
+            });
+    }
+
+    private static VisualTestSession CreateClearanceBakeResourceRuntime(
+        NavigationMapSnapshot? navigation,
+        GameplayProfileCatalogSnapshot? profiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigation ??= DemoMapDefinition.CreateSnapshot();
+        profiles ??= DemoGameplayProfiles.CreateSnapshot();
+        clearanceBake ??= ClearanceBakeSnapshot.Build(navigation);
+        var preview = ClearancePreviewSnapshot.Create(
+            navigation, profiles, clearanceBake);
+        var rig = MovementTestRig.CreateChokeMap(8, navigation);
+        return new VisualTestSession(
+            "clearance-bake-resource-runtime",
+            "Versioned clearance bake drives static connectivity preview",
+            600,
+            rig,
+            [],
+            _ =>
+            {
+                var componentsMatch = true;
+                var usesBake = true;
+                for (var classIndex = 0; classIndex < 3; classIndex++)
+                {
+                    componentsMatch &=
+                        preview.Classes[classIndex].ConnectedComponents ==
+                        clearanceBake.Layer((MovementClass)classIndex)
+                            .ComponentCount;
+                    usesBake &= preview.Classes[classIndex].ConnectivitySource ==
+                                NavigationConnectivitySource.StaticBake;
+                }
+
+                var valid = clearanceBake.FormatVersion ==
+                                ClearanceBakeSnapshot.CurrentFormatVersion &&
+                            clearanceBake.SourceNavigationHash ==
+                                navigation.StableHash &&
+                            clearanceBake.Layers.Length == 3 &&
+                            preview.BakeChunks.Length ==
+                                clearanceBake.ChunkCount &&
+                            componentsMatch && usesBake;
+                return new ScenarioResult(
+                    valid,
+                    $"format={clearanceBake.FormatVersion}, " +
+                    $"hash={clearanceBake.StableHashText}, " +
+                    $"grid={clearanceBake.Columns}x{clearanceBake.Rows}, " +
+                    $"chunks={clearanceBake.ChunkColumns}x{clearanceBake.ChunkRows}, " +
+                    $"previewChunks={preview.BakeChunks.Length}, " +
+                    $"layers={clearanceBake.Layers.Length}, " +
+                    $"components={componentsMatch}, baked={usesBake}");
             });
     }
 

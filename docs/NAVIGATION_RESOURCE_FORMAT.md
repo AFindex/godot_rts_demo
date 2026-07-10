@@ -134,4 +134,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 没有格式迁移器；非版本 1 数据会明确拒绝。
 - 运行中不热重载资源，需要重新启动场景。
 
-下一阶段将加入 Clearance 与 Movement Class；自动 Baker 和编辑器几何预览留在后续 S9 工具阶段。
+Clearance 与 Movement Class、静态 Bake 和编辑器几何/Connectivity 预览已经完成。导航几何修改后需运行 `generate_demo_clearance_bake.ps1`；加载时通过源导航哈希拒绝过期 Bake。后续 S9 继续做 chunk 增量更新与 Portal/Sector 交互编辑。

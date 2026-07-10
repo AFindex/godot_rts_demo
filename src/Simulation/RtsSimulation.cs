@@ -44,7 +44,8 @@ public sealed class RtsSimulation
         IPathProvider pathProvider,
         int capacity = 512,
         IGroupRoutePlanner? groupRoutePlanner = null,
-        ChokeController? chokeController = null)
+        ChokeController? chokeController = null,
+        ClearanceBakeSnapshot? clearanceBake = null)
     {
         World = world;
         _pathProvider = pathProvider;
@@ -55,7 +56,8 @@ public sealed class RtsSimulation
         _localRematcher = new DestinationLocalRematcher(world);
         _overflowResolver = new DestinationOverflowResolver(world);
         _yieldResolver = new DestinationYieldResolver(world);
-        _buildingConnectivityGuard = new BuildingConnectivityGuard(world);
+        _buildingConnectivityGuard = new BuildingConnectivityGuard(
+            world, staticBake: clearanceBake);
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;

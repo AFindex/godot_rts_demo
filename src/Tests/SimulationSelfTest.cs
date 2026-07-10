@@ -8,7 +8,8 @@ public static class SimulationSelfTest
 {
     public static SelfTestResult Run(
         NavigationMapSnapshot? navigationMap = null,
-        GameplayProfileCatalogSnapshot? gameplayProfiles = null)
+        GameplayProfileCatalogSnapshot? gameplayProfiles = null,
+        ClearanceBakeSnapshot? clearanceBake = null)
     {
         try
         {
@@ -16,9 +17,12 @@ public static class SimulationSelfTest
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
             var connectivityResult = NavigationConnectivitySelfTest.Run();
+            var bakeResult = ClearanceBakeSelfTest.Run(
+                navigationMap, clearanceBake);
             var passed = dataResult.Passed && profileResult.Passed &&
-                         previewResult.Passed && connectivityResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 4)
+                         previewResult.Passed && connectivityResult.Passed &&
+                         bakeResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 5)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -28,12 +32,14 @@ public static class SimulationSelfTest
                 $"({previewResult.Summary})",
                 $"navigation-connectivity=" +
                 $"{(connectivityResult.Passed ? "PASS" : "FAIL")}" +
-                $"({connectivityResult.Summary})"
+                $"({connectivityResult.Summary})",
+                $"clearance-bake={(bakeResult.Passed ? "PASS" : "FAIL")}" +
+                $"({bakeResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {
                 var session = VisualTestCatalog.Create(
-                    caseId, navigationMap, gameplayProfiles);
+                    caseId, navigationMap, gameplayProfiles, clearanceBake);
                 while (session.Rig.Tick < session.DurationTicks)
                 {
                     session.Step();

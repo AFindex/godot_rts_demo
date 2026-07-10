@@ -1,0 +1,95 @@
+# Clearance Bake 数据格式
+
+更新日期：2026-07-11
+
+## 目标
+
+把只依赖静态导航几何的 Small、Medium、Large 可走位图和连通分量提前烘焙，避免主场景启动、编辑器预览和首次静态 Grid 查询各自重复全图 flood fill。Bake 是导航 Resource 的派生资产，不是第二份可编辑地图真值。
+
+## 数据流
+
+```text
+RtsNavigationMapResource
+  → NavigationMapSnapshot（稳定哈希）
+  → ClearanceBakeSnapshot.Build
+  → 规范二进制 + FNV-1a 稳定哈希
+  → RtsClearanceBakeResource（Base64 载荷）
+  → GridPathProvider / BuildingConnectivityGuard / ClearancePreviewSnapshot
+```
+
+导航几何发生变化后必须重新生成 Bake。加载时会比较 `SourceNavigationHash`；过期资产返回 `SourceNavigationMismatch`，主 Demo 不会静默使用错误数据。
+
+## 格式 1
+
+规范载荷按小端序写入：
+
+```text
+magic
+format version
+source navigation hash
+world bounds
+cell size
+columns / rows
+chunk size in cells
+layer count
+for Small, Medium, Large:
+  movement class
+  navigation radius
+  packed walkable bits
+  dense component ID per cell
+```
+
+当前 Demo：
+
+- Cell：16px。
+- Grid：77×40，共 3,080 cells。
+- Chunk：16×16 cells。
+- Chunk 网格：5×3，共 15 chunks。
+- 层：Small 6px、Medium 8px、Large 12px。
+- 规范载荷：38,215 字节。
+- 源导航哈希：`B8441F9F1544B950`。
+- Bake 哈希：`A1BCA2BD6C885350`。
+
+Resource 同时保存格式、源哈希、Bake 哈希、Cell/Chunk 尺寸、行列数和载荷字节数。Converter 会逐项与载荷核对，避免 Inspector 元数据和实际数据漂移。
+
+## Chunk API
+
+`ClearanceBakeSnapshot.Chunk(id)` 返回稳定 chunk ID、cell 范围和世界包围盒。`FindIntersectingChunks(area)` 把动态 footprint 或局部编辑区域映射为受影响 chunk ID 列表。
+
+当前 chunk 信息用于编辑器显示和后续增量更新边界；本阶段没有伪装成已经完成的增量 flood fill。动态占用 revision 大于 0 时：
+
+- 静态 Bake 不再作为最终拓扑。
+- `GridPathProvider` 与 `BuildingConnectivityGuard` 回退到统一 `NavigationConnectivityAnalyzer`。
+- 正确性保持不变，只是动态修改后的第一次查询仍会重建全图。
+
+下一阶段会以 `FindIntersectingChunks` 为入口，只重采样受 footprint 及导航半径影响的 chunks，并在边界 component graph 上修复全局连通关系。
+
+## 稳定错误码
+
+- `3001`：不支持的格式版本。
+- `3002`：Magic Header 错误。
+- `3003`：源导航哈希非法。
+- `3101`：Grid/Chunk 布局非法。
+- `3201`～`3205`：层数量、等级、半径、载荷或 component ID 非法。
+- `3301`：存在尾随载荷。
+- `3401`～`3404`：Resource 缺失、Base64/元数据非法、源导航不匹配或声明哈希不匹配。
+
+截断载荷会稳定返回 `InvalidLayerPayload`。相同导航输入重复生成 byte-identical 载荷与相同 Bake 哈希。
+
+## 命令
+
+```powershell
+.\tools\generate_demo_clearance_bake.ps1
+.\tools\validate_clearance_bake.ps1
+```
+
+Generator 覆盖 `data/demo_clearance_bake.tres`。Validator 独立加载 Navigation 与 Bake Resource，完成二进制解析、元数据、源哈希和 Bake 哈希检查。
+
+## 验收
+
+- 纯 C# 重复烘焙和序列化往返结果一致。
+- 三层 node/component 数据完整。
+- 截断载荷被拒绝。
+- 静态 Bake 路径与动态 revision 回退路径均能查询成功。
+- 局部区域稳定映射到合法 chunk ID。
+- Godot 黑盒场景确认正式 Resource 使用 `StaticBake`，三层分量一致，并在录像显示 15 个 chunk。

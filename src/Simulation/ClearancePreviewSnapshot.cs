@@ -9,7 +9,8 @@ public readonly record struct ClearanceClassPreview(
     int TraversablePortalEdges,
     int ConnectedComponents,
     int WalkableCells,
-    int LargestComponentCells);
+    int LargestComponentCells,
+    NavigationConnectivitySource ConnectivitySource);
 
 public readonly record struct PortalClearancePreview(
     int EdgeIndex,
@@ -40,6 +41,7 @@ public sealed class ClearancePreviewSnapshot
         SimRect[] obstacles,
         ClearanceClassPreview[] classes,
         NavigationConnectivitySnapshot[] connectivity,
+        ClearanceBakeChunk[] bakeChunks,
         PortalClearancePreview[] portals,
         BuildingClearancePreview[] buildings)
     {
@@ -47,6 +49,7 @@ public sealed class ClearancePreviewSnapshot
         Obstacles = obstacles;
         Classes = classes;
         Connectivity = connectivity;
+        BakeChunks = bakeChunks;
         Portals = portals;
         Buildings = buildings;
     }
@@ -55,12 +58,14 @@ public sealed class ClearancePreviewSnapshot
     public SimRect[] Obstacles { get; }
     public ClearanceClassPreview[] Classes { get; }
     public NavigationConnectivitySnapshot[] Connectivity { get; }
+    public ClearanceBakeChunk[] BakeChunks { get; }
     public PortalClearancePreview[] Portals { get; }
     public BuildingClearancePreview[] Buildings { get; }
 
     public static ClearancePreviewSnapshot Create(
         NavigationMapSnapshot navigation,
-        GameplayProfileCatalogSnapshot profiles)
+        GameplayProfileCatalogSnapshot profiles,
+        ClearanceBakeSnapshot? clearanceBake = null)
     {
         var classes = new ClearanceClassPreview[3];
         var connectivity = new NavigationConnectivitySnapshot[3];
@@ -80,7 +85,14 @@ public sealed class ClearancePreviewSnapshot
                 }
             }
 
-            var topology = analyzer.Analyze(clearance.NavigationRadius);
+            var topology = clearanceBake is not null &&
+                           clearanceBake.SourceNavigationHash ==
+                           navigation.StableHash &&
+                           MathF.Abs(
+                               clearanceBake.Layer(movementClass).NavigationRadius -
+                               clearance.NavigationRadius) <= 0.0001f
+                ? clearanceBake.CreateConnectivitySnapshot(movementClass)
+                : analyzer.Analyze(clearance.NavigationRadius);
             connectivity[classIndex] = topology;
             var walkableCells = 0;
             var largestComponentCells = 0;
@@ -102,7 +114,8 @@ public sealed class ClearancePreviewSnapshot
                 traversable,
                 topology.ComponentCount,
                 walkableCells,
-                largestComponentCells);
+                largestComponentCells,
+                topology.Source);
         }
 
         var portalEdges = navigation.PortalEdges;
@@ -135,11 +148,23 @@ public sealed class ClearancePreviewSnapshot
                     profile.MinimumPassageClass).RequiredWidth);
         }
 
+        var bakeChunks = Array.Empty<ClearanceBakeChunk>();
+        if (clearanceBake is not null &&
+            clearanceBake.SourceNavigationHash == navigation.StableHash)
+        {
+            bakeChunks = new ClearanceBakeChunk[clearanceBake.ChunkCount];
+            for (var chunk = 0; chunk < bakeChunks.Length; chunk++)
+            {
+                bakeChunks[chunk] = clearanceBake.Chunk(chunk);
+            }
+        }
+
         return new ClearancePreviewSnapshot(
             navigation.WorldBounds,
             navigation.Obstacles.ToArray(),
             classes,
             connectivity,
+            bakeChunks,
             portals,
             buildings);
     }

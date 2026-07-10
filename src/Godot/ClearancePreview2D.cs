@@ -18,9 +18,11 @@ public partial class ClearancePreview2D : Node2D
 
     private NavigationMapSnapshot? _runtimeNavigation;
     private GameplayProfileCatalogSnapshot? _runtimeProfiles;
+    private ClearanceBakeSnapshot? _runtimeClearanceBake;
     private ClearancePreviewSnapshot? _cachedPreview;
     private ulong _cachedNavigationHash;
     private ulong _cachedProfilesHash;
+    private ulong _cachedBakeHash;
     private double _redrawTimer;
 
     [Export]
@@ -33,7 +35,13 @@ public partial class ClearancePreview2D : Node2D
     public RtsGameplayProfilesResource? GameplayProfilesAsset { get; set; }
 
     [Export]
+    public RtsClearanceBakeResource? ClearanceBakeAsset { get; set; }
+
+    [Export]
     public bool DrawConnectivity { get; set; } = true;
+
+    [Export]
+    public bool DrawBakeChunks { get; set; } = true;
 
     [Export]
     public MovementClass ConnectivityClass { get; set; } = MovementClass.Large;
@@ -64,10 +72,12 @@ public partial class ClearancePreview2D : Node2D
     public void SetRuntimeSnapshots(
         NavigationMapSnapshot? navigation,
         GameplayProfileCatalogSnapshot? profiles,
-        bool enabled)
+        bool enabled,
+        ClearanceBakeSnapshot? clearanceBake = null)
     {
         _runtimeNavigation = navigation;
         _runtimeProfiles = profiles;
+        _runtimeClearanceBake = clearanceBake;
         _cachedPreview = null;
         RuntimePreviewEnabled = enabled;
         QueueRedraw();
@@ -85,6 +95,11 @@ public partial class ClearancePreview2D : Node2D
         if (DrawConnectivity)
         {
             DrawConnectivityCells(preview.Connectivity[(int)ConnectivityClass]);
+        }
+
+        if (DrawBakeChunks)
+        {
+            DrawChunkGrid(preview.BakeChunks);
         }
 
         for (var obstacleIndex = 0;
@@ -124,6 +139,7 @@ public partial class ClearancePreview2D : Node2D
     {
         var navigation = _runtimeNavigation;
         var profiles = _runtimeProfiles;
+        var clearanceBake = _runtimeClearanceBake;
         if (navigation is null && NavigationMapAsset is not null)
         {
             NavigationMapResourceConverter.TryConvert(
@@ -136,6 +152,16 @@ public partial class ClearancePreview2D : Node2D
                 GameplayProfilesAsset, out profiles, out _);
         }
 
+        if (clearanceBake is null && navigation is not null &&
+            ClearanceBakeAsset is not null)
+        {
+            ClearanceBakeResourceConverter.TryConvert(
+                ClearanceBakeAsset,
+                navigation.StableHash,
+                out clearanceBake,
+                out _);
+        }
+
         if (navigation is null || profiles is null)
         {
             preview = null!;
@@ -144,16 +170,19 @@ public partial class ClearancePreview2D : Node2D
 
         if (_cachedPreview is not null &&
             _cachedNavigationHash == navigation.StableHash &&
-            _cachedProfilesHash == profiles.StableHash)
+            _cachedProfilesHash == profiles.StableHash &&
+            _cachedBakeHash == (clearanceBake?.StableHash ?? 0UL))
         {
             preview = _cachedPreview;
             return true;
         }
 
-        preview = ClearancePreviewSnapshot.Create(navigation, profiles);
+        preview = ClearancePreviewSnapshot.Create(
+            navigation, profiles, clearanceBake);
         _cachedPreview = preview;
         _cachedNavigationHash = navigation.StableHash;
         _cachedProfilesHash = profiles.StableHash;
+        _cachedBakeHash = clearanceBake?.StableHash ?? 0UL;
         return true;
     }
 
@@ -172,6 +201,21 @@ public partial class ClearancePreview2D : Node2D
                 ToRect(connectivity.CellBounds(node)),
                 baseColor with { A = 0.055f },
                 true);
+        }
+    }
+
+    private void DrawChunkGrid(ReadOnlySpan<ClearanceBakeChunk> chunks)
+    {
+        var color = new Color(0.35f, 0.85f, 1f, 0.28f);
+        for (var index = 0; index < chunks.Length; index++)
+        {
+            var chunk = chunks[index];
+            var rect = ToRect(chunk.WorldBounds);
+            DrawRect(rect, color, false, 1f);
+            DrawLabel(
+                rect.Position + new Vector2(4f, 15f),
+                $"C{chunk.Id}",
+                color with { A = 0.75f });
         }
     }
 
@@ -202,7 +246,8 @@ public partial class ClearancePreview2D : Node2D
                 position + new Vector2(0f, index * 20f),
                 $"{value.Class}: r{value.NavigationRadius:0} " +
                 $"width>={value.RequiredWidth:0} edges={value.TraversablePortalEdges} " +
-                $"components={value.ConnectedComponents}",
+                $"components={value.ConnectedComponents} " +
+                $"source={value.ConnectivitySource}",
                 color);
         }
     }

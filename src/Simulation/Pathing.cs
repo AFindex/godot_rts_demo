@@ -90,13 +90,18 @@ public sealed class GridPathProvider : IPathProvider
 {
     private readonly StaticWorld _world;
     private readonly NavigationConnectivityAnalyzer _connectivityAnalyzer;
+    private readonly ClearanceBakeSnapshot? _staticBake;
     private readonly NavigationConnectivitySnapshot?[] _snapshots =
         new NavigationConnectivitySnapshot?[3];
 
-    public GridPathProvider(StaticWorld world, float cellSize = 20f)
+    public GridPathProvider(
+        StaticWorld world,
+        float cellSize = 16f,
+        ClearanceBakeSnapshot? staticBake = null)
     {
         _world = world;
         _connectivityAnalyzer = new NavigationConnectivityAnalyzer(world, cellSize);
+        _staticBake = staticBake;
     }
 
     public bool IsReady => true;
@@ -288,7 +293,13 @@ public sealed class GridPathProvider : IPathProvider
             return snapshot;
         }
 
-        snapshot = _connectivityAnalyzer.Analyze(clearance.NavigationRadius);
+        snapshot = _staticBake is not null &&
+                   _staticBake.IsCompatible(
+                       _world,
+                       _connectivityAnalyzer.CellSize,
+                       clearance.NavigationRadius)
+            ? _staticBake.CreateConnectivitySnapshot(clearance.Class)
+            : _connectivityAnalyzer.Analyze(clearance.NavigationRadius);
         _snapshots[classIndex] = snapshot;
         return snapshot;
     }

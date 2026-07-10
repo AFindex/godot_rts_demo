@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
+完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -28,6 +28,7 @@
 - 建筑业务放置会按指定 Movement Class 比较放置前后连通分量，拒绝切断已有全局通路并返回 `DisconnectsNavigation`。
 - 单位半径/速度/加速度和建筑尺寸/放置规则来自 Godot Gameplay Profile Resource，启动时转换为带稳定哈希的纯 C# 快照。
 - `Main.tscn` 内置 `[Tool]` 多尺寸净空预览：同时显示三档障碍膨胀轮廓、Portal 宽度/可通行等级和四档建筑 footprint。
+- Clearance Bake 将三档 walkable 位图、component ID 和 16×16-cell chunk 布局保存为带源导航哈希的版本化 Resource；静态运行时直接复用，动态 revision 安全回退分析。
 - 车道偏移会写入每单位路径点，避免出口处被共享中心 waypoint 回拉。
 - 目标槽位分配、空间哈希、候选速度 Steering、TTC、避让侧记忆和三轮碰撞推挤。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
@@ -77,7 +78,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 1.76ms、7.16ms 和 10.67ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 1.73ms、4.70ms 和 9.40ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
 
 ## 导航数据资产
 
@@ -97,6 +98,15 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 生成命令会覆盖示例 `.tres`，用于重置 Demo 数据；日常地图编辑应直接在 Godot Inspector 中修改独立 Resource。当前示例资产的格式版本为 1，稳定哈希为 `B8441F9F1544B950`。
 
+导航几何修改后重新生成并验证 Clearance Bake：
+
+```powershell
+.\tools\generate_demo_clearance_bake.ps1
+.\tools\validate_clearance_bake.ps1
+```
+
+当前 Bake 格式版本为 1，源导航哈希 `B8441F9F1544B950`，Bake 哈希 `A1BCA2BD6C885350`，规范载荷 38,215 字节。
+
 ## 录制测试录像
 
 一次录制全部单项测试：
@@ -111,7 +121,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 39 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Small/Large Portal 分流、动态窄缝、四档建筑、局部与全局放置结果、多尺寸建筑群绕行和编辑器连通分量预览。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
+当前包含 40 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、Small/Large Portal 分流、动态窄缝、四档建筑、局部与全局放置结果、多尺寸建筑群绕行和编辑器 Bake/chunk 预览。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -126,4 +136,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay Resource → 纯 C# 快照链路已有可运行版本。Clearance 的运行时、局部/全局放置保护、Profile 数据资产和编辑器多尺寸 Connectivity Preview 已完成；下一步是 Resource 热重载、地图 Baker 和 Portal/Sector 交互编辑。战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay/Bake Resource → 纯 C# 快照链路已有可运行版本。Clearance 的运行时、局部/全局放置保护、静态 Bake 与编辑器 chunk Preview 已完成；下一步是 chunk 增量 Connectivity、Resource 热重载和 Portal/Sector 交互编辑。战斗、联机和确定性回放暂未实现。

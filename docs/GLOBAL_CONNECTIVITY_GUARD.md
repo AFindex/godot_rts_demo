@@ -51,7 +51,7 @@ StaticWorld
 - 候选分析只在低频建筑放置时运行，不进入 60Hz 单位模拟 Tick。
 - 正常寻路继续复用按 revision 缓存的 Snapshot，没有新增每 Tick 分配。
 
-当前 1000 单位基准为平均 8.64ms、P95 10.67ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
+静态 revision 的基线可以直接来自 Clearance Bake；动态 revision 则回退 Analyzer。当前 1000 单位基准为平均 7.90ms、P95 9.40ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
 
 ## 验收与录像
 
@@ -63,7 +63,7 @@ StaticWorld
 
 - 这是全局采样 Grid 连通性，不是精确多边形布尔运算；正确性粒度由 cell size 决定。
 - 当前保护的是“已有可走区域不被进一步切开”，还没有出生点、资源区或基地出口等具名关键锚点策略。
-- 没有增量 flood fill；大型地图应在后续 Baker/chunk 阶段生成分块数据并只更新受影响区域。
+- Bake 已提供 16×16-cell chunk 描述和区域到 chunk 的映射，但动态 revision 尚未实现增量 flood fill。
 - 尚未把 Portal/Sector 图与 Grid 分量做双向一致性诊断。
 
-下一阶段优先做离线 Occupancy/Clearance Baker 和 chunk 数据格式，使编辑器、运行时和 Connectivity Guard 可以加载预烘焙结果，而不是在大地图上重复全图采样。
+下一阶段使用现有 `FindIntersectingChunks` 只重采样受影响 chunks，并维护跨 chunk 的 component 边界图；在此之前动态 revision 继续安全回退全图分析。

@@ -1,0 +1,69 @@
+﻿{
+    "created_at":  "2026-07-11T01:08:49.8362375+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "clearance-bake-resource-runtime",
+                            "clearance-editor-preview"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed",
+                            "clearance-portal-choice",
+                            "clearance-dynamic-gap",
+                            "building-footprint-sizes",
+                            "building-placement-rules",
+                            "building-connectivity-guard",
+                            "building-size-navigation",
+                            "gameplay-profile-resource-runtime",
+                            "clearance-bake-resource-runtime",
+                            "clearance-editor-preview",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "navigation-resource-runtime",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "clearance-bake-resource-runtime",
+                      "file":  "clearance-bake-resource-runtime.avi",
+                      "log":  "clearance-bake-resource-runtime.log",
+                      "bytes":  29301032,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-bake-resource-runtime: ticks=600, format=1, hash=A1BCA2BD6C885350, grid=77x40, chunks=5x3, previewChunks=15, layers=3, components=True, baked=True"
+                  },
+                  {
+                      "id":  "clearance-editor-preview",
+                      "file":  "clearance-editor-preview.avi",
+                      "log":  "clearance-editor-preview.log",
+                      "bytes":  29283394,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, components=1/1/1, portals=5, buildings=4, largeEdges=True"
+                  }
+              ]
+}

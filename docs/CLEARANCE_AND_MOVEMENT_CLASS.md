@@ -43,6 +43,8 @@ physical radius
 
 `IPathProvider.FindPath` 现在每次请求显式携带导航半径。`GridPathProvider` 为 Small、Medium、Large 各维护一份按 `NavigationRevision` 失效的 walkable/component 缓存，避免混合半径请求反复重建全图。
 
+静态 revision 0 优先从 `ClearanceBakeSnapshot` 加载三档拓扑；出现动态建筑后回退统一 Analyzer。Grid cell 已统一为 16px，与动态占用和 Bake 对齐。
+
 ### Portal
 
 Portal Edge 继续保存实际可通行宽度。只有 `edge.Width >= navigationRadius * 2 + 2` 时该等级单位才能使用该边；窄边被过滤后，A* 可以选择更长但更宽的替代路线。
@@ -119,6 +121,7 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 - 每条 Portal Edge 显示实际宽度和 `SML` 可通行标记，例如 `SM-` 表示 Large 被过滤。
 - 图例显示三档导航半径、最小要求宽度、可通行边数和全局分量数。
 - 当前选择的 Movement Class 使用低透明度分量着色；拓扑与 GridPathProvider 共用 `NavigationConnectivityAnalyzer`。
+- 有有效 Bake 时显示 `source=StaticBake` 和 16×16-cell chunk 边界；没有或动态失效时明确使用运行时分析。
 - 底部同时显示 32×32、64×48、112×80、160×120 四档建筑 footprint 和要求净空外框。
 - 编辑器中每 0.5 秒重建预览，Resource 数值修改后不需要启动游戏即可检查。
 - 普通运行时默认不绘制；只有 `clearance-editor-preview` 自动测试显式启用，避免污染正式表现。
@@ -129,16 +132,16 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 | 单位数 | 平均 Tick | P95 | 分配/Tick |
 |---:|---:|---:|---:|
-| 256 | 1.21ms | 1.76ms | 27B |
-| 512 | 4.93ms | 7.16ms | 182B |
-| 1000 | 8.64ms | 10.67ms | 461B |
+| 256 | 1.27ms | 1.73ms | 27B |
+| 512 | 3.75ms | 4.70ms | 182B |
+| 1000 | 7.90ms | 9.40ms | 461B |
 
 ## 8. 后续层
 
 当前完成的是运行时尺寸语义与路径一致性第一层，后续按顺序推进：
 
-1. Gameplay Profile Resource 格式迁移、差异诊断和热重载。
-2. Occupancy/Clearance Baker 与按 chunk 增量更新 Connectivity Snapshot。
+1. 按 chunk 增量更新动态 Connectivity Snapshot 和边界 component graph。
+2. Gameplay Profile/Bake Resource 格式迁移、差异诊断和热重载。
 3. Editor 中的 Portal/Choke 交互编辑、局部非法窄口定位和放置前后差异面板。
 4. Ground、Hover、Air 等移动层，以及地形软代价和标签。
 5. 非矩形/旋转 footprint 与局部 NavMesh chunk 更新。

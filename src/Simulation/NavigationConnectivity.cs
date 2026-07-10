@@ -7,6 +7,12 @@ public readonly record struct NavigationComponentSummary(
     int CellCount,
     SimRect Bounds);
 
+public enum NavigationConnectivitySource : byte
+{
+    RuntimeAnalysis,
+    StaticBake
+}
+
 /// <summary>
 /// Immutable-by-contract sampled navigation topology for one clearance radius.
 /// Pathfinding, placement validation and editor diagnostics share this shape.
@@ -24,6 +30,7 @@ public sealed class NavigationConnectivitySnapshot
         int rows,
         float navigationRadius,
         int worldRevision,
+        NavigationConnectivitySource source,
         bool[] walkable,
         int[] componentIds,
         NavigationComponentSummary[] components)
@@ -34,6 +41,7 @@ public sealed class NavigationConnectivitySnapshot
         Rows = rows;
         NavigationRadius = navigationRadius;
         WorldRevision = worldRevision;
+        Source = source;
         _walkable = walkable;
         _componentIds = componentIds;
         _components = components;
@@ -46,6 +54,7 @@ public sealed class NavigationConnectivitySnapshot
     public int NodeCount => _walkable.Length;
     public float NavigationRadius { get; }
     public int WorldRevision { get; }
+    public NavigationConnectivitySource Source { get; }
     public int ComponentCount => _components.Length;
     public ReadOnlySpan<NavigationComponentSummary> Components => _components;
 
@@ -212,6 +221,7 @@ public sealed class NavigationConnectivityAnalyzer
             _rows,
             navigationRadius,
             _world.NavigationRevision,
+            NavigationConnectivitySource.RuntimeAnalysis,
             walkable,
             componentIds,
             components);
@@ -330,15 +340,18 @@ public sealed class BuildingConnectivityGuard
 {
     private readonly StaticWorld _world;
     private readonly NavigationConnectivityAnalyzer _analyzer;
+    private readonly ClearanceBakeSnapshot? _staticBake;
     private readonly NavigationConnectivitySnapshot?[] _baselineByClass =
         new NavigationConnectivitySnapshot?[3];
 
     public BuildingConnectivityGuard(
         StaticWorld world,
-        float cellSize = 16f)
+        float cellSize = 16f,
+        ClearanceBakeSnapshot? staticBake = null)
     {
         _world = world;
         _analyzer = new NavigationConnectivityAnalyzer(world, cellSize);
+        _staticBake = staticBake;
     }
 
     public ConnectivityPreservationReport Evaluate(
@@ -353,7 +366,13 @@ public sealed class BuildingConnectivityGuard
             MathF.Abs(
                 baseline.NavigationRadius - clearance.NavigationRadius) > 0.0001f)
         {
-            baseline = _analyzer.Analyze(clearance.NavigationRadius);
+            baseline = _staticBake is not null &&
+                       _staticBake.IsCompatible(
+                           _world,
+                           _analyzer.CellSize,
+                           clearance.NavigationRadius)
+                ? _staticBake.CreateConnectivitySnapshot(movementClass)
+                : _analyzer.Analyze(clearance.NavigationRadius);
             _baselineByClass[classIndex] = baseline;
         }
 

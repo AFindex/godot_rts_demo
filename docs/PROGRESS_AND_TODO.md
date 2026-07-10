@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 39 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
+- 40 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
 - 测试可以自动录制 AVI，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512 和 1000 单位。
 
 当前规模：
 
-- 46 个 C# 源文件。
-- 约 10,725 行 C#。
-- 39 个黑盒场景。
-- 覆盖 39 个逻辑场景的规范测试录像。
-- Release 1000 单位 P95：约 10.67ms。
+- 51 个 C# 源文件。
+- 约 11,994 行 C#。
+- 40 个黑盒场景。
+- 覆盖 40 个逻辑场景的规范测试录像。
+- Release 1000 单位 P95：约 9.40ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -31,14 +31,14 @@
 |---|---|---|---|
 | S0 工程骨架 | 原型完成 | Godot 工程、纯 C# 模拟、固定 Tick、Godot 桥 | 独立 Runtime/Core/Editor 程序集边界 |
 | S1 单位移动 | 完成 | Move、Stop、Hold、加速度、速度积分、到达、UnitMovementProfile Resource | 转向模板、Ground/Hover/Air 移动层 |
-| S2 静态导航 | 原型完成 | Godot NavMesh、路径预算、命令版本隔离、Grid fallback | 路径缓存、后台查询、NavMesh chunk |
+| S2 静态导航 | 原型完成 | Godot NavMesh、路径预算、命令版本隔离、Grid fallback、静态 Clearance Bake | 后台查询、NavMesh chunk、动态增量 Connectivity |
 | S3 群体抵达 | Demo 完成 | 唯一槽位、Hungarian 分配、跨命令预留、两单位换槽、局部多单位重匹配、进入方向秩序、主动 Yielding、唯一 Overflow | 生产级 SlotDepth 场、完整碰撞优先级、编队形状保持 |
 | S4 局部群体运动 | 原型完成 | SpatialHash、TTC、候选速度、避让侧记忆 | 更低成本的候选评估、复杂优先级、移动类型交互 |
 | S5 碰撞与约束 | 运行时闭环完成 | 圆碰撞、动态占用、三档净空、四档建筑、Profile Resource、局部净空与全局 Connectivity Guard | 具名关键锚点、多移动层、非矩形 footprint |
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | 未开始 | 无 | AttackMove、攻击槽位、追击、leash、恢复原路线 |
-| S9 编辑器与数据烘焙 | Connectivity 预览完成 | Navigation 与 Gameplay Resource、稳定哈希、CLI 工具、三档净空/Portal/建筑/全局分量 `[Tool]` Preview | 自动 Baker、几何拖拽、热重载和放置差异面板 |
+| S9 编辑器与数据烘焙 | Bake 闭环完成 | Navigation/Gameplay/Bake Resource、稳定哈希、CLI Generator/Validator、三档分量与 chunk `[Tool]` Preview | 增量 Baker、几何拖拽、热重载和放置差异面板 |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
 
 ## 3. 已完成的运行时闭环
@@ -143,7 +143,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 39 个场景覆盖：
+当前 40 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -160,6 +160,7 @@
 - 建筑封闭唯一全局通道时返回 `DisconnectsNavigation`，安全放置后 8/8 单位继续通过。
 - 24 单位绕行四种尺寸建筑组成的错位障碍场。
 - Godot Gameplay Profile Resource 转纯 C# 快照并驱动 3 种单位和 4 种建筑。
+- Godot Clearance Bake Resource 解析版本化三层拓扑，核对源哈希并驱动静态 Connectivity 与 chunk 预览。
 - Godot 编辑器净空预览同时输出 3 档尺寸、5 条 Portal 和 4 档建筑，并由纯 C# 快照驱动。
 - 跨命令共享目标槽位。
 - Stop 与 Hold。
@@ -192,7 +193,7 @@ Observe unit / traffic / recovery / performance
 - 每个场景独立启动 Godot Movie Maker。
 - 每段录像保存 AVI、Godot 日志和 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 39 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 40 个逻辑场景的规范录像。
 - AVI 使用 Git LFS。
 
 注意：当前规范录像来自多个功能里程碑批次，并非全部在同一个 commit 上重新录制。发布正式版本前应执行一次全量重新录制，生成单一时间戳目录。
@@ -203,9 +204,9 @@ Observe unit / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|
-| 256 | 1.21ms | 1.76ms | 4ms | 27B |
-| 512 | 4.93ms | 7.16ms | 12.5ms | 182B |
-| 1000 | 8.64ms | 10.67ms | 16.67ms | 461B |
+| 256 | 1.27ms | 1.73ms | 4ms | 27B |
+| 512 | 3.75ms | 4.70ms | 12.5ms | 182B |
+| 1000 | 7.90ms | 9.40ms | 16.67ms | 461B |
 
 当前热点排序：
 
@@ -242,11 +243,12 @@ TODO：
 
 ### 5.3 地图数据管线仍缺自动烘焙和交互编辑
 
-主 Demo 已从 `data/demo_navigation_map.tres` 加载地图，经过验证后转成纯 C# 快照。`DemoMapDefinition` 只作为不依赖 Godot 的测试夹具和示例资产重建源，不再参与主 Demo 启动。`Main.tscn` 的 `[Tool]` 预览通过正式 Resource 显示三档障碍膨胀轮廓、Portal 宽度/等级、四档建筑 footprint 和所选 Movement Class 的全局连通分量；绘制只消费纯 C# 分析快照。
+主 Demo 已从 `data/demo_navigation_map.tres` 加载地图，并要求加载源哈希匹配的 `data/demo_clearance_bake.tres`。Bake 保存三档 walkable 位图、component ID、16px cell 和 16×16-cell chunk；静态 Grid、放置基线和编辑器预览直接复用，动态 revision 安全回退 Analyzer。`DemoMapDefinition` 只作为纯 C# 测试夹具和示例资产重建源。
 
 TODO：
 
 - 从 NavMesh/场景几何自动提取 Sector 和 Portal。
+- 受影响 chunk 增量重采样和跨 chunk component 边界图。
 - EditorPlugin 中的 Portal/Choke 拖拽与连线。
 - 孤岛列表和放置前后 connectivity 差异面板。
 - 格式版本迁移器。
@@ -316,6 +318,8 @@ TODO：
 
 - Navigation 与 Gameplay Profile Resource 转纯 C# 快照。
 - 稳定格式验证、规范字节、哈希、Validator 和 Generator。
+- Clearance Bake 格式 1、38,215 字节规范载荷、源导航哈希和独立 Generator/Validator。
+- 三档静态 topology 的 Bake 复用、动态 revision 回退和 5×3 chunk 描述。
 - Small/Medium/Large 障碍净空轮廓、Portal 资格和四档建筑 footprint 的场景内 `[Tool]` 预览。
 - 与 GridPathProvider 共用的三档全局 Connectivity Snapshot 和分量着色。
 - 建筑放置前后分量比较与稳定 `DisconnectsNavigation` 业务结果。
@@ -323,8 +327,8 @@ TODO：
 
 TODO：
 
-- Gameplay Profile Resource 热重载与格式迁移。
-- Occupancy/Clearance Baker。
+- Gameplay Profile/Bake Resource 热重载与格式迁移。
+- Chunk 增量 Occupancy/Clearance 更新。
 - Sector/Portal Authoring Tool。
 - 具名关键锚点策略、孤岛列表和放置前后差异面板。
 
@@ -369,7 +373,7 @@ TODO：
 - 同一输入生成 byte-identical 规范数据和稳定哈希。
 - 有独立验证脚本、生成脚本、黑盒场景和录像。
 
-留在后续 S9：自动 Baker、编辑器几何工具、Preview 和格式迁移。
+后续 S9 继续做增量 Baker、编辑器几何工具和格式迁移；静态 Bake/Preview 闭环已经完成。
 
 ### A2：终点协作收敛 V2（当前 Demo 完成）
 
@@ -402,7 +406,7 @@ TODO：
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（10.67ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（9.40ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
@@ -423,8 +427,11 @@ TODO：
 - 统一 `NavigationConnectivityAnalyzer`，由 Grid 寻路、业务放置和编辑器预览共同复用。
 - 放置封闭原有分量时返回 `DisconnectsNavigation`；安全建筑仍能放置。
 - 全局连通保护黑盒场景、通用录像诊断区域和 20 秒规范录像。
+- 版本化 Clearance Bake Resource、稳定源哈希/Bake 哈希和 byte-identical 序列化。
+- 静态 Grid/放置/Preview 复用 Bake；动态 revision 自动回退 Analyzer。
+- 16×16-cell chunk API、区域影响查询、5×3 编辑器 chunk 预览和规范录像。
 
-下一层：Gameplay Profile 热重载、Occupancy/Clearance Baker、chunk 增量 Connectivity，以及 Portal/Sector 交互编辑。
+下一层：chunk 增量 Connectivity 与边界 component graph、Resource 热重载，以及 Portal/Sector 交互编辑。
 
 ### 下一步 D：AttackMove 最小闭环
 
