@@ -14,13 +14,17 @@ public static class SimulationSelfTest
         {
             var dataResult = NavigationMapSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
-            var passed = dataResult.Passed && profileResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 2)
+            var previewResult = ClearancePreviewSelfTest.Run();
+            var passed = dataResult.Passed && profileResult.Passed &&
+                         previewResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 3)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
                 $"gameplay-profiles={(profileResult.Passed ? "PASS" : "FAIL")}" +
-                $"({profileResult.Summary})"
+                $"({profileResult.Summary})",
+                $"clearance-preview={(previewResult.Passed ? "PASS" : "FAIL")}" +
+                $"({previewResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

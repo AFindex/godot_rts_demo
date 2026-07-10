@@ -1,0 +1,197 @@
+using Godot;
+using RtsDemo.GodotRuntime.Resources;
+using RtsDemo.Simulation;
+
+namespace RtsDemo.GodotRuntime;
+
+[Tool]
+public partial class ClearancePreview2D : Node2D
+{
+    private static readonly Color SmallColor = new("58d68d");
+    private static readonly Color MediumColor = new("f4d03f");
+    private static readonly Color LargeColor = new("ec7063");
+
+    private NavigationMapSnapshot? _runtimeNavigation;
+    private GameplayProfileCatalogSnapshot? _runtimeProfiles;
+    private double _redrawTimer;
+
+    [Export]
+    public bool Enabled { get; set; } = true;
+
+    [Export]
+    public RtsNavigationMapResource? NavigationMapAsset { get; set; }
+
+    [Export]
+    public RtsGameplayProfilesResource? GameplayProfilesAsset { get; set; }
+
+    public bool RuntimePreviewEnabled { get; private set; }
+
+    public override void _Ready()
+    {
+        SetProcess(true);
+        QueueRedraw();
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!Engine.IsEditorHint())
+        {
+            return;
+        }
+
+        _redrawTimer += delta;
+        if (_redrawTimer >= 0.5)
+        {
+            _redrawTimer = 0.0;
+            QueueRedraw();
+        }
+    }
+
+    public void SetRuntimeSnapshots(
+        NavigationMapSnapshot? navigation,
+        GameplayProfileCatalogSnapshot? profiles,
+        bool enabled)
+    {
+        _runtimeNavigation = navigation;
+        _runtimeProfiles = profiles;
+        RuntimePreviewEnabled = enabled;
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        if (!Enabled || (!Engine.IsEditorHint() && !RuntimePreviewEnabled) ||
+            !TryCreatePreview(out var preview))
+        {
+            return;
+        }
+
+        DrawRect(ToRect(preview.WorldBounds), new Color("6c7a89"), false, 2f);
+        for (var obstacleIndex = 0;
+             obstacleIndex < preview.Obstacles.Length;
+             obstacleIndex++)
+        {
+            var obstacle = preview.Obstacles[obstacleIndex];
+            DrawRect(ToRect(obstacle), new Color(0.2f, 0.23f, 0.27f, 0.72f), true);
+            DrawClearanceOutline(obstacle, MovementClass.Large, LargeColor);
+            DrawClearanceOutline(obstacle, MovementClass.Medium, MediumColor);
+            DrawClearanceOutline(obstacle, MovementClass.Small, SmallColor);
+        }
+
+        for (var edgeIndex = 0; edgeIndex < preview.Portals.Length; edgeIndex++)
+        {
+            var edge = preview.Portals[edgeIndex];
+            var color = edge.LargeTraversable
+                ? new Color("5dade2")
+                : edge.MediumTraversable
+                    ? MediumColor
+                    : edge.SmallTraversable
+                        ? SmallColor
+                        : LargeColor;
+            DrawLine(ToGodot(edge.From), ToGodot(edge.To), color, 3f);
+            var center = ToGodot((edge.From + edge.To) * 0.5f);
+            DrawLabel(
+                center + new Vector2(0f, -8f),
+                $"{edge.Width:0}px {edge.ClassLabel}",
+                color);
+        }
+
+        DrawLegend(preview);
+        DrawBuildingPalette(preview);
+    }
+
+    private bool TryCreatePreview(out ClearancePreviewSnapshot preview)
+    {
+        var navigation = _runtimeNavigation;
+        var profiles = _runtimeProfiles;
+        if (navigation is null && NavigationMapAsset is not null)
+        {
+            NavigationMapResourceConverter.TryConvert(
+                NavigationMapAsset, out navigation, out _);
+        }
+
+        if (profiles is null && GameplayProfilesAsset is not null)
+        {
+            GameplayProfileResourceConverter.TryConvert(
+                GameplayProfilesAsset, out profiles, out _);
+        }
+
+        if (navigation is null || profiles is null)
+        {
+            preview = null!;
+            return false;
+        }
+
+        preview = ClearancePreviewSnapshot.Create(navigation, profiles);
+        return true;
+    }
+
+    private void DrawClearanceOutline(
+        SimRect obstacle,
+        MovementClass movementClass,
+        Color color)
+    {
+        var radius = MovementClearance.ForClass(movementClass).NavigationRadius;
+        DrawRect(ToRect(obstacle.Expanded(radius)), color with { A = 0.62f }, false, 1.5f);
+    }
+
+    private void DrawLegend(ClearancePreviewSnapshot preview)
+    {
+        // Keep the runtime review recording clear of the demo HUD. In the editor this
+        // also leaves the world-boundary and portal labels unobstructed.
+        var position = ToGodot(preview.WorldBounds.Min) + new Vector2(12f, 82f);
+        for (var index = 0; index < preview.Classes.Length; index++)
+        {
+            var value = preview.Classes[index];
+            var color = value.Class switch
+            {
+                MovementClass.Small => SmallColor,
+                MovementClass.Medium => MediumColor,
+                _ => LargeColor
+            };
+            DrawLabel(
+                position + new Vector2(0f, index * 20f),
+                $"{value.Class}: r{value.NavigationRadius:0} " +
+                $"width>={value.RequiredWidth:0} edges={value.TraversablePortalEdges}",
+                color);
+        }
+    }
+
+    private void DrawBuildingPalette(ClearancePreviewSnapshot preview)
+    {
+        var bounds = preview.WorldBounds;
+        var basePosition = new System.Numerics.Vector2(
+            bounds.Min.X + 90f,
+            bounds.Max.Y - 65f);
+        for (var index = 0; index < preview.Buildings.Length; index++)
+        {
+            var building = preview.Buildings[index];
+            var center = basePosition + new System.Numerics.Vector2(index * 245f, 0f);
+            var halfSize = building.Size * 0.5f;
+            var footprint = new SimRect(center - halfSize, center + halfSize);
+            var clearance = footprint.Expanded(building.RequiredPassageWidth * 0.5f);
+            DrawRect(ToRect(clearance), new Color(0.35f, 0.75f, 1f, 0.42f), false, 1f);
+            DrawRect(ToRect(footprint), new Color(0.12f, 0.45f, 0.7f, 0.55f), true);
+            DrawLabel(
+                ToGodot(center) + new Vector2(-halfSize.X, -halfSize.Y - 7f),
+                $"{building.Name} {building.Size.X:0}x{building.Size.Y:0}",
+                new Color("bde7ff"));
+        }
+    }
+
+    private void DrawLabel(Vector2 position, string text, Color color) =>
+        DrawString(
+            ThemeDB.FallbackFont,
+            position,
+            text,
+            HorizontalAlignment.Left,
+            -1f,
+            13,
+            color);
+
+    private static Rect2 ToRect(SimRect rect) =>
+        new(ToGodot(rect.Min), ToGodot(rect.Max - rect.Min));
+
+    private static Vector2 ToGodot(System.Numerics.Vector2 value) =>
+        new(value.X, value.Y);
+}

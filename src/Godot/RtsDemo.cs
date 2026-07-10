@@ -720,6 +720,10 @@ public partial class RtsDemo : Node2D
         _simulation = _visualTest.Simulation;
         _routePlanner = _visualTest.RoutePlanner;
         _chokeController = _visualTest.ChokeController;
+        GetNodeOrNull<ClearancePreview2D>("ClearancePreview")?.SetRuntimeSnapshots(
+            _navigationSnapshot,
+            _gameplayProfiles,
+            caseId == "clearance-editor-preview");
         _selectedUnits.Clear();
         foreach (var unit in _visualTest.RenderUnitIndices)
         {

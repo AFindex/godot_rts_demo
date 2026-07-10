@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)。
+完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -26,6 +26,7 @@
 - Small/Medium/Large 使用 6/8/12px 导航净空档位；Grid、Portal、Godot 路径复验和动态建筑共享同一尺寸语义。
 - 建筑提供 32×32、64×48、112×80、160×120 四档 footprint；业务放置检查重叠、单位占用与局部假窄缝并返回稳定结果码。
 - 单位半径/速度/加速度和建筑尺寸/放置规则来自 Godot Gameplay Profile Resource，启动时转换为带稳定哈希的纯 C# 快照。
+- `Main.tscn` 内置 `[Tool]` 多尺寸净空预览：同时显示三档障碍膨胀轮廓、Portal 宽度/可通行等级和四档建筑 footprint。
 - 车道偏移会写入每单位路径点，避免出口处被共享中心 waypoint 回拉。
 - 目标槽位分配、空间哈希、候选速度 Steering、TTC、避让侧记忆和三轮碰撞推挤。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
@@ -75,7 +76,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 1.55ms、5.81ms 和 9.52ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 2.16ms、5.48ms 和 10.43ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
 
 ## 导航数据资产
 
@@ -109,7 +110,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 37 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Small/Large Portal 分流、动态窄缝、四档建筑、业务放置结果和多尺寸建筑群绕行。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
+当前包含 38 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Small/Large Portal 分流、动态窄缝、四档建筑、业务放置结果、多尺寸建筑群绕行和编辑器净空预览。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -124,4 +125,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay Resource → 纯 C# 快照链路已有可运行版本。Clearance 的运行时、业务放置和 Profile 数据资产已完成，下一步是编辑器多尺寸 Preview、热重载和跨 Sector connectivity。战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay Resource → 纯 C# 快照链路已有可运行版本。Clearance 的运行时、业务放置、Profile 数据资产和编辑器多尺寸 Preview 基线已完成；下一步是 Resource 热重载、全局 connectivity 验证和地图 Baker。战斗、联机和确定性回放暂未实现。

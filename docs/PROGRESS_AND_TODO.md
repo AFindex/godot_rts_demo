@@ -1,6 +1,6 @@
 # Godot RTS 移动系统：进度回顾与剩余 TODO
 
-更新日期：2026-07-10
+更新日期：2026-07-11
 
 这份文档是当前唯一的实施状态入口。它对照最初的 S0～S10 技术路线，区分已经形成可运行闭环的部分、只有原型的部分和尚未开始的部分。
 
@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 37 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
+- 38 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
 - 测试可以自动录制 AVI，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512 和 1000 单位。
 
 当前规模：
 
-- 40 个 C# 源文件。
-- 约 9,751 行 C#。
-- 37 个黑盒场景。
-- 覆盖 37 个逻辑场景的规范测试录像。
-- Release 1000 单位 P95：约 9.52ms。
+- 44 个 C# 源文件。
+- 约 10,168 行 C#。
+- 38 个黑盒场景。
+- 覆盖 38 个逻辑场景的规范测试录像。
+- Release 1000 单位 P95：约 10.43ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -38,7 +38,7 @@
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | 未开始 | 无 | AttackMove、攻击槽位、追击、leash、恢复原路线 |
-| S9 编辑器与数据烘焙 | 基础完成 | Navigation 与 Gameplay Resource、纯 C# snapshot、稳定哈希、CLI Validator/Generator | 自动 Baker、几何拖拽、热重载和多尺寸 Preview |
+| S9 编辑器与数据烘焙 | 预览基线完成 | Navigation 与 Gameplay Resource、纯 C# snapshot、稳定哈希、CLI Validator/Generator、三档净空/Portal/四档建筑 `[Tool]` Preview | 自动 Baker、几何拖拽、热重载和全局 connectivity 可视化 |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
 
 ## 3. 已完成的运行时闭环
@@ -143,7 +143,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 37 个场景覆盖：
+当前 38 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -159,6 +159,7 @@
 - 建筑放置边界、静态/动态重叠、单位占用、假窄缝和贴墙封闭规则。
 - 24 单位绕行四种尺寸建筑组成的错位障碍场。
 - Godot Gameplay Profile Resource 转纯 C# 快照并驱动 3 种单位和 4 种建筑。
+- Godot 编辑器净空预览同时输出 3 档尺寸、5 条 Portal 和 4 档建筑，并由纯 C# 快照驱动。
 - 跨命令共享目标槽位。
 - Stop 与 Hold。
 - 混合单位半径和越界目标。
@@ -190,7 +191,7 @@ Observe unit / traffic / recovery / performance
 - 每个场景独立启动 Godot Movie Maker。
 - 每段录像保存 AVI、Godot 日志和 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 37 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 38 个逻辑场景的规范录像。
 - AVI 使用 Git LFS。
 
 注意：当前规范录像来自多个功能里程碑批次，并非全部在同一个 commit 上重新录制。发布正式版本前应执行一次全量重新录制，生成单一时间戳目录。
@@ -201,9 +202,9 @@ Observe unit / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|
-| 256 | 1.19ms | 1.55ms | 4ms | 27B |
-| 512 | 4.44ms | 5.81ms | 12.5ms | 182B |
-| 1000 | 7.97ms | 9.52ms | 16.67ms | 461B |
+| 256 | 1.48ms | 2.16ms | 4ms | 27B |
+| 512 | 4.43ms | 5.48ms | 12.5ms | 182B |
+| 1000 | 8.65ms | 10.43ms | 16.67ms | 461B |
 
 当前热点排序：
 
@@ -238,15 +239,15 @@ TODO：
 - 跨相邻 Tick 的重复恢复请求合并。
 - 显式 GroupRoute revision 与已通过 waypoint 游标。
 
-### 5.3 地图数据管线仍缺自动烘焙和预览
+### 5.3 地图数据管线仍缺自动烘焙和交互编辑
 
-主 Demo 已从 `data/demo_navigation_map.tres` 加载地图，经过验证后转成纯 C# 快照。`DemoMapDefinition` 只作为不依赖 Godot 的测试夹具和示例资产重建源，不再参与主 Demo 启动。
+主 Demo 已从 `data/demo_navigation_map.tres` 加载地图，经过验证后转成纯 C# 快照。`DemoMapDefinition` 只作为不依赖 Godot 的测试夹具和示例资产重建源，不再参与主 Demo 启动。`Main.tscn` 现已挂载 `[Tool]` 预览节点，通过正式 Navigation/Gameplay Resource 显示三档障碍膨胀轮廓、Portal 宽度/等级和四档建筑 footprint；业务数据由纯 C# `ClearancePreviewSnapshot` 提供。
 
 TODO：
 
 - 从 NavMesh/场景几何自动提取 Sector 和 Portal。
 - EditorPlugin 中的 Portal/Choke 拖拽与连线。
-- Small、Medium、Large 多尺寸连通性预览。
+- 全局连通分量、孤岛和放置后 connectivity 差异预览。
 - 格式版本迁移器。
 - Resource 热重载和差异诊断。
 
@@ -267,7 +268,7 @@ TODO：
 
 TODO：
 
-  - 编辑器多尺寸连通性预览和 Gameplay Profile 热重载。
+- Gameplay Profile 热重载与差异诊断。
 - 地面、悬浮、空中等移动层。
 - 地形软代价和不可通行标签。
 
@@ -310,13 +311,19 @@ TODO：
 
 ### 6.3 S9 编辑器和数据管线
 
+已完成：
+
+- Navigation 与 Gameplay Profile Resource 转纯 C# 快照。
+- 稳定格式验证、规范字节、哈希、Validator 和 Generator。
+- Small/Medium/Large 障碍净空轮廓、Portal 资格和四档建筑 footprint 的场景内 `[Tool]` 预览。
+- 与预览实现解耦的纯 C# 自测、Godot 黑盒用例和自动录像。
+
 TODO：
 
 - Gameplay Profile Resource 热重载与格式迁移。
 - Occupancy/Clearance Baker。
 - Sector/Portal Authoring Tool。
-- Connectivity Validator。
-- 多单位尺寸导航预览。
+- Connectivity Validator 与全局连通分量着色。
 
 ### 6.4 确定性、回放和联机
 
@@ -392,7 +399,7 @@ TODO：
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（9.52ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（10.43ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
@@ -408,8 +415,10 @@ TODO：
 - Small/Medium/Large/Huge 四档建筑 footprint。
 - 业务放置前检查边界、重叠、单位占用和局部假窄缝，并返回稳定结果码。
 - 多尺寸建筑群的实际绕行闭环。
+- 编辑器中三档障碍净空轮廓、Portal 宽度/资格和四档建筑 footprint 预览。
+- 纯 C# 预览快照、自测、Godot 黑盒验收和 10 秒规范录像。
 
-下一层：编辑器多尺寸 Preview、Gameplay Profile 热重载，以及跨 Sector 的全局 connectivity 策略。
+下一层：Gameplay Profile 热重载、跨 Sector 的全局 connectivity 策略和 Occupancy/Clearance Baker。
 
 ### 下一步 D：AttackMove 最小闭环
 

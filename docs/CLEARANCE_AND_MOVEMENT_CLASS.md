@@ -1,6 +1,6 @@
 # Clearance 与 Movement Class
 
-更新日期：2026-07-10
+更新日期：2026-07-11
 
 ## 1. 当前目标
 
@@ -105,20 +105,33 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 四种尺寸建筑形成错位障碍场，24 个单位全部绕行到达，0 重叠、0 不可达，动态 revision 为 4。
 
-## 6. 当前性能
+## 6. 编辑器多尺寸预览
+
+`Main.tscn` 中的 `ClearancePreview2D` 是一个 `[Tool]` 节点，直接读取 Navigation 与 Gameplay Profile Resource，并先转换成纯 C# `ClearancePreviewSnapshot`：
+
+- Small/Medium/Large 分别以绿、黄、红显示静态障碍膨胀轮廓。
+- 每条 Portal Edge 显示实际宽度和 `SML` 可通行标记，例如 `SM-` 表示 Large 被过滤。
+- 图例显示三档导航半径、最小要求宽度和可通行边数。
+- 底部同时显示 32×32、64×48、112×80、160×120 四档建筑 footprint 和要求净空外框。
+- 编辑器中每 0.5 秒重建预览，Resource 数值修改后不需要启动游戏即可检查。
+- 普通运行时默认不绘制；只有 `clearance-editor-preview` 自动测试显式启用，避免污染正式表现。
+
+纯预览快照不依赖 Godot Node，也被 `ClearancePreviewSelfTest` 复用。测试只断言输入资产对应的业务输出，不读取绘制节点内部状态：22px Edge 必须显示 `SM-`，96px Edge 必须显示 `SML`。详见 `CLEARANCE_EDITOR_PREVIEW.md`。
+
+## 7. 当前性能
 
 | 单位数 | 平均 Tick | P95 | 分配/Tick |
 |---:|---:|---:|---:|
-| 256 | 1.19ms | 1.55ms | 27B |
-| 512 | 4.44ms | 5.81ms | 182B |
-| 1000 | 7.97ms | 9.52ms | 461B |
+| 256 | 1.48ms | 2.16ms | 27B |
+| 512 | 4.43ms | 5.48ms | 182B |
+| 1000 | 8.65ms | 10.43ms | 461B |
 
-## 7. 后续层
+## 8. 后续层
 
 当前完成的是运行时尺寸语义与路径一致性第一层，后续按顺序推进：
 
-1. Editor 中的 Small/Medium/Large 连通性预览、建筑 footprint 和非法窄口提示。
-2. 跨 Sector 的全局 connectivity 保持策略；当前放置检查负责局部假通道、重叠和占用。
-3. Gameplay Profile Resource 格式迁移和热重载。
+1. 跨 Sector 的全局 connectivity 保持策略；当前放置检查负责局部假通道、重叠和占用。
+2. Gameplay Profile Resource 格式迁移、差异诊断和热重载。
+3. Editor 中的 Portal/Choke 交互编辑、局部非法窄口定位和全局连通分量着色。
 4. Ground、Hover、Air 等移动层，以及地形软代价和标签。
 5. 非矩形/旋转 footprint 与局部 NavMesh chunk 更新。

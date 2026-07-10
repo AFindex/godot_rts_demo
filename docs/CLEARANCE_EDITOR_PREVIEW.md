@@ -1,0 +1,58 @@
+# Godot 编辑器多尺寸净空预览
+
+更新日期：2026-07-11
+
+## 目标
+
+在不运行完整 RTS 模拟的情况下，从同一份 Navigation 与 Gameplay Profile Resource 直接检查 Small、Medium、Large 三档单位能否通过 Portal，以及不同尺寸建筑对可通行空间的实际要求。预览只消费正式数据，不维护第二套编辑器专用净空规则。
+
+## 数据流
+
+```text
+RtsNavigationMapResource + RtsGameplayProfilesResource
+  → 已有 Resource Converter
+  → NavigationMapSnapshot + GameplayProfileCatalogSnapshot
+  → ClearancePreviewSnapshot（纯 C#）
+  → ClearancePreview2D（Godot [Tool] 绘制）
+```
+
+`ClearancePreviewSnapshot` 是渲染、纯 C# 自测和 Godot 黑盒录像之间的稳定边界。它只输出世界边界、障碍、三档净空摘要、Portal 可通行矩阵和建筑尺寸，不暴露 Grid、A* 或运行时单位状态。
+
+## 画面语义
+
+- 绿色：Small，导航半径 6px，要求宽度 14px。
+- 黄色：Medium，导航半径 8px，要求宽度 18px。
+- 红色：Large，导航半径 12px，要求宽度 26px。
+- 蓝色 Portal：Large 也能通过；否则按可通过的最高等级着色。
+- Portal 标签由实际宽度和三位等级组成，例如 `22px SM-`、`96px SML`。
+- 灰色实心矩形是静态障碍；外侧三圈分别是按三档导航半径膨胀后的禁入边界。
+- 底部建筑面板同时显示 Pylon、Barracks、Factory、CommandCenter 的 footprint，以及配置要求宽度形成的外框。
+
+## Godot 接入
+
+`Main.tscn` 挂载 `ClearancePreview2D`，Inspector 中引用：
+
+- `NavigationMapAsset = data/demo_navigation_map.tres`
+- `GameplayProfilesAsset = data/demo_gameplay_profiles.tres`
+- `Enabled = true`
+
+节点使用 `[Tool]`，在编辑器场景视图中每 0.5 秒刷新一次。普通游戏运行时不显示它；测试用例通过 `SetRuntimeSnapshots` 只为 `clearance-editor-preview` 开启相同绘制路径，因此录像验证的不是另一份测试专用实现。
+
+## 验收
+
+纯 C# 自测验证：
+
+- 输出正好 3 个移动等级和 4 个建筑等级。
+- 22px Portal 的结果为 `SM-`。
+- 96px Portal 的结果为 `SML`。
+
+Godot 黑盒场景验证正式 Demo Resource 能生成 3 档、5 条 Portal 和 4 档建筑预览，并自动录制 1280×720、30 FPS、10 秒 AVI。场景通过 VisualTestCatalog 公开的稳定用例入口启动，不访问 `ClearancePreview2D` 的私有绘制细节。
+
+## 当前边界
+
+- 这是场景内 `[Tool]` 预览基线，还没有独立 EditorPlugin Dock、点击选择或拖拽 Portal。
+- 当前显示局部 Edge 尺寸资格，不计算每个等级的全局连通分量或孤岛。
+- 障碍与建筑均按轴对齐矩形显示；尚不支持旋转和非矩形 footprint。
+- Resource 改动可定时刷新画面，但运行中的模拟尚未实现差异热重载。
+
+下一步应基于同一 `ClearancePreviewSnapshot` 增加全局 connectivity 结果，而不是在绘制节点里重新实现路径算法；随后再做 Resource 热重载和 Portal/Choke 交互编辑。

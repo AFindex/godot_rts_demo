@@ -74,4 +74,4 @@
 
 ## 6. 后续
 
-下一层是 EditorPlugin 多尺寸 Preview：在编辑器中显示每种单位净空、建筑 footprint、局部假窄缝以及 Small/Medium/Large 连通性差异。之后再加入资源格式迁移和热重载。
+场景内 `[Tool]` 多尺寸 Preview 基线已经完成：编辑器可显示每种单位净空、Portal 宽度资格和四档建筑 footprint。下一层是在该预览快照上加入全局 connectivity/非法窄口诊断，再实现资源格式迁移、差异诊断和热重载。

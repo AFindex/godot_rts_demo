@@ -28,6 +28,7 @@ public static class VisualTestCatalog
         "building-placement-rules",
         "building-size-navigation",
         "gameplay-profile-resource-runtime",
+        "clearance-editor-preview",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -73,6 +74,8 @@ public static class VisualTestCatalog
         "building-size-navigation" => CreateBuildingSizeNavigation(),
         "gameplay-profile-resource-runtime" =>
             CreateGameplayProfileResourceRuntime(gameplayProfiles),
+        "clearance-editor-preview" =>
+            CreateClearanceEditorPreview(navigationMap, gameplayProfiles),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -617,6 +620,37 @@ public static class VisualTestCatalog
                     $"format={profiles.FormatVersion}, hash={profiles.StableHashText}, " +
                     $"radii={radiiMatch}, buildings={buildingsAccepted}, " +
                     arrival.Summary);
+            });
+    }
+
+    private static VisualTestSession CreateClearanceEditorPreview(
+        NavigationMapSnapshot? navigation,
+        GameplayProfileCatalogSnapshot? profiles)
+    {
+        navigation ??= DemoMapDefinition.CreateSnapshot();
+        profiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var preview = ClearancePreviewSnapshot.Create(navigation, profiles);
+        var rig = MovementTestRig.CreateChokeMap(8, navigation);
+        return new VisualTestSession(
+            "clearance-editor-preview",
+            "Editor clearance overlay for classes, portals and buildings",
+            600,
+            rig,
+            [],
+            _ =>
+            {
+                var allDemoEdgesSupportLarge = preview.Portals.All(
+                    portal => portal.LargeTraversable);
+                var valid = preview.Classes.Length == 3 &&
+                            preview.Portals.Length == navigation.PortalEdges.Length &&
+                            preview.Buildings.Length == profiles.BuildingProfiles.Length &&
+                            allDemoEdgesSupportLarge;
+                return new ScenarioResult(
+                    valid,
+                    $"classes={preview.Classes.Length}, " +
+                    $"portals={preview.Portals.Length}, " +
+                    $"buildings={preview.Buildings.Length}, " +
+                    $"largeEdges={allDemoEdgesSupportLarge}");
             });
     }
 
