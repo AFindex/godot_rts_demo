@@ -115,9 +115,8 @@ public partial class RtsDemo : Node2D
         _pathProvider = new GodotPathProvider(this, _world, navigationRadius: 8f);
         _simulationPathProvider = new ValidatingFallbackPathProvider(
             _pathProvider,
-            new GridPathProvider(_world, radius: 8f),
-            _world,
-            radius: 8f);
+            new GridPathProvider(_world),
+            _world);
         _simulation = new RtsSimulation(
             _world,
             _simulationPathProvider,

@@ -22,6 +22,8 @@ public static class VisualTestCatalog
         "destination-outer-ring",
         "destination-overtake",
         "destination-corner-mixed",
+        "clearance-portal-choice",
+        "clearance-dynamic-gap",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -59,6 +61,8 @@ public static class VisualTestCatalog
         "destination-outer-ring" => CreateDestinationOuterRing(),
         "destination-overtake" => CreateDestinationOvertake(),
         "destination-corner-mixed" => CreateDestinationCornerMixed(),
+        "clearance-portal-choice" => CreateClearancePortalChoice(),
+        "clearance-dynamic-gap" => CreateClearanceDynamicGap(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -303,7 +307,7 @@ public static class VisualTestCatalog
             for (var column = 0; column < 10; column++)
             {
                 var index = row * 10 + column;
-                var radius = (row + column) % 3 switch
+                var radius = ((row + column) % 3) switch
                 {
                     0 => 5.5f,
                     1 => 7.5f,
@@ -334,6 +338,82 @@ public static class VisualTestCatalog
                     $"overflow={diagnostics.DestinationOverflowAssignments}, " +
                     arrival.Summary);
             });
+    }
+
+    private static VisualTestSession CreateClearancePortalChoice()
+    {
+        var rig = MovementTestRig.CreateClearanceChoiceMap(16);
+        var small = rig.Spawn(new Vector2(100f, 330f), radius: 5.5f);
+        var large = rig.Spawn(new Vector2(100f, 390f), radius: 10f);
+        var units = new[] { small, large };
+        var smallUsedNarrow = false;
+        var largeUsedWide = false;
+        rig.Move([small], new Vector2(1100f, 330f));
+        rig.Move([large], new Vector2(1100f, 390f));
+
+        var session = new VisualTestSession(
+            "clearance-portal-choice",
+            "Small unit uses narrow portal while large unit takes wide route",
+            1200,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, units, 2, 12f, 1f, 0, 0);
+                return new ScenarioResult(
+                    arrival.Passed && smallUsedNarrow && largeUsedWide,
+                    $"smallNarrow={smallUsedNarrow}, largeWide={largeUsedWide}, " +
+                    arrival.Summary);
+            });
+        foreach (var tick in new long[] { 150, 210, 270 })
+        {
+            session.At(tick, "Observe clearance-specific portal routes", runtime =>
+            {
+                smallUsedNarrow |= runtime.Observe(small).Position.Y < 285f;
+                largeUsedWide |= runtime.Observe(large).Position.Y > 485f;
+            });
+        }
+
+        return session;
+    }
+
+    private static VisualTestSession CreateClearanceDynamicGap()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 16);
+        var small = rig.Spawn(new Vector2(100f, 350f), radius: 5.5f);
+        var large = rig.Spawn(new Vector2(100f, 450f), radius: 10f);
+        var units = new[] { small, large };
+        rig.PlaceBuilding(new Vector2(600f, 169f), new Vector2(200f, 338f));
+        rig.PlaceBuilding(new Vector2(600f, 531f), new Vector2(200f, 338f));
+        rig.Move([small], new Vector2(1100f, 350f));
+
+        var session = new VisualTestSession(
+            "clearance-dynamic-gap",
+            "Dynamic 24px gap accepts small unit and rejects large unit",
+            1800,
+            rig,
+            units,
+            runtime =>
+            {
+                var smallSnapshot = runtime.Observe(small);
+                var largeSnapshot = runtime.Observe(large);
+                var recovery = runtime.ObserveRecovery([large]);
+                var smallArrived =
+                    Vector2.Distance(smallSnapshot.Position, smallSnapshot.AssignedTarget) <= 12f;
+                var largeRejected =
+                    recovery.MaximumStage == TestRecoveryStage.Unreachable &&
+                    largeSnapshot.Position.X < 480f;
+                return new ScenarioResult(
+                    smallArrived && largeRejected && runtime.IsInsideWorld(small) &&
+                    runtime.IsInsideWorld(large),
+                    $"smallArrived={smallArrived}, largeRejected={largeRejected}, " +
+                    $"largeStage={recovery.MaximumStage}, " +
+                    $"largeX={largeSnapshot.Position.X:0.0}");
+            });
+        return session.At(
+            600,
+            "Large unit attempts the same dynamic gap",
+            runtime => runtime.Move([large], new Vector2(1100f, 350f)));
     }
 
     private static VisualTestSession CreateStopCommand()
@@ -406,7 +486,7 @@ public static class VisualTestCatalog
             for (var column = 0; column < 6; column++)
             {
                 var index = row * 6 + column;
-                var radius = (row + column) % 3 switch
+                var radius = ((row + column) % 3) switch
                 {
                     0 => 5.5f,
                     1 => 7.5f,

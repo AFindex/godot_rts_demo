@@ -43,6 +43,8 @@ public sealed class UnitStore
         SlotTargets = new Vector2[capacity];
         MoveGoals = new Vector2[capacity];
         Radii = new float[capacity];
+        MovementClasses = new MovementClass[capacity];
+        NavigationRadii = new float[capacity];
         MaxSpeeds = new float[capacity];
         Accelerations = new float[capacity];
         Modes = new UnitMoveMode[capacity];
@@ -97,6 +99,8 @@ public sealed class UnitStore
     public Vector2[] SlotTargets { get; }
     public Vector2[] MoveGoals { get; }
     public float[] Radii { get; }
+    public MovementClass[] MovementClasses { get; }
+    public float[] NavigationRadii { get; }
     public float[] MaxSpeeds { get; }
     public float[] Accelerations { get; }
     public UnitMoveMode[] Modes { get; }
@@ -152,7 +156,10 @@ public sealed class UnitStore
         MoveGoals[index] = position;
         DestinationYieldReturnTargets[index] = position;
         DestinationYieldPoints[index] = position;
+        var clearance = MovementClearance.FromPhysicalRadius(radius);
         Radii[index] = radius;
+        MovementClasses[index] = clearance.Class;
+        NavigationRadii[index] = clearance.NavigationRadius;
         MaxSpeeds[index] = maxSpeed;
         Accelerations[index] = acceleration;
         Modes[index] = UnitMoveMode.Idle;

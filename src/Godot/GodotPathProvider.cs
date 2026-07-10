@@ -75,7 +75,10 @@ public sealed class GodotPathProvider : IPathProvider, IDisposable
         return IsReady;
     }
 
-    public NVector2[] FindPath(NVector2 start, NVector2 goal)
+    public NVector2[] FindPath(
+        NVector2 start,
+        NVector2 goal,
+        float navigationRadius)
     {
         if (!IsReady)
         {

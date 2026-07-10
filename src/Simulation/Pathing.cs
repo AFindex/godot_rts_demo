@@ -5,7 +5,7 @@ namespace RtsDemo.Simulation;
 public interface IPathProvider
 {
     bool IsReady { get; }
-    Vector2[] FindPath(Vector2 start, Vector2 goal);
+    Vector2[] FindPath(Vector2 start, Vector2 goal, float navigationRadius);
 }
 
 public sealed class UnitPath
@@ -28,7 +28,10 @@ public sealed class StraightLinePathProvider : IPathProvider
 {
     public bool IsReady => true;
 
-    public Vector2[] FindPath(Vector2 start, Vector2 goal) => [start, goal];
+    public Vector2[] FindPath(
+        Vector2 start,
+        Vector2 goal,
+        float navigationRadius) => [start, goal];
 }
 
 public sealed class ValidatingFallbackPathProvider : IPathProvider
@@ -36,34 +39,34 @@ public sealed class ValidatingFallbackPathProvider : IPathProvider
     private readonly IPathProvider _primary;
     private readonly IPathProvider _fallback;
     private readonly StaticWorld _world;
-    private readonly float _radius;
 
     public ValidatingFallbackPathProvider(
         IPathProvider primary,
         IPathProvider fallback,
-        StaticWorld world,
-        float radius)
+        StaticWorld world)
     {
         _primary = primary;
         _fallback = fallback;
         _world = world;
-        _radius = radius;
     }
 
     public bool IsReady => _primary.IsReady && _fallback.IsReady;
 
-    public Vector2[] FindPath(Vector2 start, Vector2 goal)
+    public Vector2[] FindPath(
+        Vector2 start,
+        Vector2 goal,
+        float navigationRadius)
     {
-        var primaryPath = _primary.FindPath(start, goal);
-        if (PathIsFree(primaryPath))
+        var primaryPath = _primary.FindPath(start, goal, navigationRadius);
+        if (PathIsFree(primaryPath, navigationRadius))
         {
             return primaryPath;
         }
 
-        return _fallback.FindPath(start, goal);
+        return _fallback.FindPath(start, goal, navigationRadius);
     }
 
-    private bool PathIsFree(ReadOnlySpan<Vector2> path)
+    private bool PathIsFree(ReadOnlySpan<Vector2> path, float navigationRadius)
     {
         if (path.Length < 2)
         {
@@ -72,7 +75,8 @@ public sealed class ValidatingFallbackPathProvider : IPathProvider
 
         for (var index = 1; index < path.Length; index++)
         {
-            if (!_world.IsSegmentFree(path[index - 1], path[index], _radius))
+            if (!_world.IsSegmentFree(
+                    path[index - 1], path[index], navigationRadius))
             {
                 return false;
             }
@@ -91,18 +95,15 @@ public sealed class GridPathProvider : IPathProvider
     ];
 
     private readonly StaticWorld _world;
-    private readonly float _radius;
     private readonly float _cellSize;
     private readonly int _columns;
     private readonly int _rows;
-    private bool[] _walkable = [];
-    private int[] _components = [];
-    private int _cachedRevision = -1;
+    private readonly ClearanceGridSnapshot[] _snapshots =
+        [new(), new(), new()];
 
-    public GridPathProvider(StaticWorld world, float radius, float cellSize = 20f)
+    public GridPathProvider(StaticWorld world, float cellSize = 20f)
     {
         _world = world;
-        _radius = radius;
         _cellSize = cellSize;
         _columns = Math.Max(1, (int)MathF.Ceiling(world.Bounds.Width / cellSize));
         _rows = Math.Max(1, (int)MathF.Ceiling(world.Bounds.Height / cellSize));
@@ -110,18 +111,24 @@ public sealed class GridPathProvider : IPathProvider
 
     public bool IsReady => true;
 
-    public Vector2[] FindPath(Vector2 start, Vector2 goal)
+    public Vector2[] FindPath(
+        Vector2 start,
+        Vector2 goal,
+        float navigationRadius)
     {
-        if (_world.IsSegmentFree(start, goal, _radius))
+        var clearance = MovementClearance.FromPhysicalRadius(navigationRadius);
+        navigationRadius = clearance.NavigationRadius;
+        if (_world.IsSegmentFree(start, goal, navigationRadius))
         {
             return [start, goal];
         }
 
-        EnsureGridSnapshot();
-        var startNode = FindNearestFreeNode(start);
-        var goalNode = FindNearestFreeNode(goal);
+        var snapshot = _snapshots[(int)clearance.Class];
+        EnsureGridSnapshot(snapshot, navigationRadius);
+        var startNode = FindNearestFreeNode(start, snapshot);
+        var goalNode = FindNearestFreeNode(goal, snapshot);
         if (startNode < 0 || goalNode < 0 ||
-            _components[startNode] != _components[goalNode])
+            snapshot.Components[startNode] != snapshot.Components[goalNode])
         {
             return [];
         }
@@ -145,7 +152,8 @@ public sealed class GridPathProvider : IPathProvider
 
             if (current == goalNode)
             {
-                return BuildPath(start, goal, goalNode, parents);
+                return BuildPath(
+                    start, goal, goalNode, parents, snapshot, navigationRadius);
             }
 
             closed[current] = true;
@@ -162,14 +170,14 @@ public sealed class GridPathProvider : IPathProvider
                 }
 
                 var neighbor = row * _columns + column;
-                if (closed[neighbor] || !IsNodeFree(neighbor))
+                if (closed[neighbor] || !IsNodeFree(snapshot, neighbor))
                 {
                     continue;
                 }
 
                 if (offset.Column != 0 && offset.Row != 0 &&
-                    (!IsNodeFree(currentRow * _columns + column) ||
-                     !IsNodeFree(row * _columns + currentColumn)))
+                    (!IsNodeFree(snapshot, currentRow * _columns + column) ||
+                     !IsNodeFree(snapshot, row * _columns + currentColumn)))
                 {
                     continue;
                 }
@@ -190,7 +198,13 @@ public sealed class GridPathProvider : IPathProvider
         return [];
     }
 
-    private Vector2[] BuildPath(Vector2 start, Vector2 goal, int goalNode, int[] parents)
+    private Vector2[] BuildPath(
+        Vector2 start,
+        Vector2 goal,
+        int goalNode,
+        int[] parents,
+        ClearanceGridSnapshot snapshot,
+        float navigationRadius)
     {
         var reversed = new List<Vector2>(32) { goal };
         for (var node = goalNode; node >= 0; node = parents[node])
@@ -206,7 +220,8 @@ public sealed class GridPathProvider : IPathProvider
         {
             var next = reversed.Count - 1;
             while (next > anchor + 1 &&
-                   !_world.IsSegmentFree(reversed[anchor], reversed[next], _radius))
+                   !_world.IsSegmentFree(
+                       reversed[anchor], reversed[next], navigationRadius))
             {
                 next--;
             }
@@ -218,7 +233,9 @@ public sealed class GridPathProvider : IPathProvider
         return simplified.ToArray();
     }
 
-    private int FindNearestFreeNode(Vector2 point)
+    private int FindNearestFreeNode(
+        Vector2 point,
+        ClearanceGridSnapshot snapshot)
     {
         var baseColumn = Math.Clamp(
             (int)MathF.Floor((point.X - _world.Bounds.Min.X) / _cellSize),
@@ -242,7 +259,7 @@ public sealed class GridPathProvider : IPathProvider
                     }
 
                     var node = row * _columns + column;
-                    if (IsNodeFree(node))
+                    if (IsNodeFree(snapshot, node))
                     {
                         return node;
                     }
@@ -253,30 +270,35 @@ public sealed class GridPathProvider : IPathProvider
         return -1;
     }
 
-    private bool IsNodeFree(int node) => _walkable[node];
+    private static bool IsNodeFree(ClearanceGridSnapshot snapshot, int node) =>
+        snapshot.Walkable[node];
 
-    private void EnsureGridSnapshot()
+    private void EnsureGridSnapshot(
+        ClearanceGridSnapshot snapshot,
+        float navigationRadius)
     {
-        if (_cachedRevision == _world.NavigationRevision &&
-            _walkable.Length == _columns * _rows)
+        if (snapshot.CachedRevision == _world.NavigationRevision &&
+            MathF.Abs(snapshot.NavigationRadius - navigationRadius) <= 0.0001f &&
+            snapshot.Walkable.Length == _columns * _rows)
         {
             return;
         }
 
         var nodeCount = _columns * _rows;
-        _walkable = new bool[nodeCount];
-        _components = new int[nodeCount];
-        Array.Fill(_components, -1);
+        snapshot.Walkable = new bool[nodeCount];
+        snapshot.Components = new int[nodeCount];
+        Array.Fill(snapshot.Components, -1);
         for (var node = 0; node < nodeCount; node++)
         {
-            _walkable[node] = _world.IsDiscFree(NodeCenter(node), _radius);
+            snapshot.Walkable[node] =
+                _world.IsDiscFree(NodeCenter(node), navigationRadius);
         }
 
         var queue = new int[nodeCount];
         var component = 0;
         for (var seed = 0; seed < nodeCount; seed++)
         {
-            if (!_walkable[seed] || _components[seed] >= 0)
+            if (!snapshot.Walkable[seed] || snapshot.Components[seed] >= 0)
             {
                 continue;
             }
@@ -284,7 +306,7 @@ public sealed class GridPathProvider : IPathProvider
             var read = 0;
             var write = 0;
             queue[write++] = seed;
-            _components[seed] = component;
+            snapshot.Components[seed] = component;
             while (read < write)
             {
                 var current = queue[read++];
@@ -301,19 +323,20 @@ public sealed class GridPathProvider : IPathProvider
                     }
 
                     var neighbor = row * _columns + column;
-                    if (!_walkable[neighbor] || _components[neighbor] >= 0)
+                    if (!snapshot.Walkable[neighbor] ||
+                        snapshot.Components[neighbor] >= 0)
                     {
                         continue;
                     }
 
                     if (offset.Column != 0 && offset.Row != 0 &&
-                        (!_walkable[currentRow * _columns + column] ||
-                         !_walkable[row * _columns + currentColumn]))
+                        (!snapshot.Walkable[currentRow * _columns + column] ||
+                         !snapshot.Walkable[row * _columns + currentColumn]))
                     {
                         continue;
                     }
 
-                    _components[neighbor] = component;
+                    snapshot.Components[neighbor] = component;
                     queue[write++] = neighbor;
                 }
             }
@@ -321,7 +344,8 @@ public sealed class GridPathProvider : IPathProvider
             component++;
         }
 
-        _cachedRevision = _world.NavigationRevision;
+        snapshot.CachedRevision = _world.NavigationRevision;
+        snapshot.NavigationRadius = navigationRadius;
     }
 
     private Vector2 NodeCenter(int node)
@@ -342,5 +366,13 @@ public sealed class GridPathProvider : IPathProvider
         var deltaRow = Math.Abs(fromRow - toRow);
         var diagonal = Math.Min(deltaColumn, deltaRow);
         return diagonal * 1.41421356f + Math.Abs(deltaColumn - deltaRow);
+    }
+
+    private sealed class ClearanceGridSnapshot
+    {
+        public bool[] Walkable = [];
+        public int[] Components = [];
+        public int CachedRevision = -1;
+        public float NavigationRadius;
     }
 }

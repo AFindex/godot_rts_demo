@@ -123,7 +123,7 @@ public sealed class MovementTestRig
         var world = new StaticWorld(new SimRect(Vector2.Zero, size));
         return new MovementTestRig(
             world,
-            new RtsSimulation(world, new GridPathProvider(world, 8f), capacity),
+            new RtsSimulation(world, new GridPathProvider(world), capacity),
             null,
             null,
             null);
@@ -139,7 +139,7 @@ public sealed class MovementTestRig
         var chokeController = navigationMap.CreateChokeController();
         var simulation = new RtsSimulation(
             world,
-            new GridPathProvider(world, 8f),
+            new GridPathProvider(world),
             capacity,
             routePlanner,
             chokeController);
@@ -149,6 +149,50 @@ public sealed class MovementTestRig
             routePlanner,
             chokeController,
             navigationMap);
+    }
+
+    public static MovementTestRig CreateClearanceChoiceMap(int capacity)
+    {
+        PortalNode[] portals =
+        [
+            new(0, new Vector2(450f, 220f), "Narrow west"),
+            new(1, new Vector2(750f, 220f), "Narrow east"),
+            new(2, new Vector2(450f, 550f), "Wide west"),
+            new(3, new Vector2(750f, 550f), "Wide east")
+        ];
+        PortalEdge[] edges =
+        [
+            new(0, 1, 22f),
+            new(2, 3, 96f)
+        ];
+        var created = NavigationMapSnapshot.TryCreate(
+            NavigationMapSnapshot.CurrentFormatVersion,
+            new SimRect(Vector2.Zero, new Vector2(1200f, 700f)),
+            [new SimRect(new Vector2(500f, 250f), new Vector2(700f, 450f))],
+            portals,
+            edges,
+            [],
+            out var snapshot,
+            out var validation);
+        if (!created || snapshot is null)
+        {
+            throw new InvalidOperationException(
+                $"Clearance test map is invalid: {validation.FirstError}.");
+        }
+
+        var world = snapshot.CreateWorld();
+        var routePlanner = snapshot.CreateRoutePlanner(world);
+        var simulation = new RtsSimulation(
+            world,
+            new GridPathProvider(world),
+            capacity,
+            routePlanner);
+        return new MovementTestRig(
+            world,
+            simulation,
+            routePlanner,
+            null,
+            snapshot);
     }
 
     public TestUnitId Spawn(

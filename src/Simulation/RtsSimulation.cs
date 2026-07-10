@@ -109,16 +109,20 @@ public sealed class RtsSimulation
         var assignments = _slotAllocator.Allocate(Units, unitIndices, target);
         var centroid = Vector2.Zero;
         var maximumRadius = 0f;
+        var maximumNavigationRadius = 0f;
         for (var i = 0; i < unitIndices.Length; i++)
         {
             var unit = unitIndices[i];
             centroid += Units.Positions[unit];
             maximumRadius = MathF.Max(maximumRadius, Units.Radii[unit]);
+            maximumNavigationRadius = MathF.Max(
+                maximumNavigationRadius, Units.NavigationRadii[unit]);
         }
 
         centroid /= unitIndices.Length;
         var groupGoal = World.Bounds.Inset(maximumRadius + 2f).Clamp(target);
-        LastIssuedGroupRoute = PlanGroupRoute(centroid, groupGoal, maximumRadius);
+        LastIssuedGroupRoute = PlanGroupRoute(
+            centroid, groupGoal, maximumNavigationRadius);
         var movementGroupId = NextMovementGroupId();
         if (unitIndices.Length > 1 && LastIssuedGroupRoute.Waypoints.Length > 0)
         {
@@ -342,6 +346,7 @@ public sealed class RtsSimulation
         var result = new List<Vector2>(12) { start };
         var current = start;
         var route = Units.RouteWaypoints[unit];
+        var navigationRadius = Units.NavigationRadii[unit];
 
         for (var waypointIndex = 0; waypointIndex <= route.Length; waypointIndex++)
         {
@@ -349,18 +354,19 @@ public sealed class RtsSimulation
                 ? ResolveUnitRouteWaypoint(unit, route[waypointIndex])
                 : finalGoal;
             Vector2[] segment;
-            if (World.IsSegmentFree(current, segmentGoal, Units.Radii[unit]))
+            if (World.IsSegmentFree(current, segmentGoal, navigationRadius))
             {
                 segment = [current, segmentGoal];
             }
             else
             {
-                segment = _pathProvider.FindPath(current, segmentGoal);
+                segment = _pathProvider.FindPath(
+                    current, segmentGoal, navigationRadius);
             }
 
             if (segment.Length == 0 ||
                 Vector2.DistanceSquared(segment[^1], segmentGoal) > 24f * 24f ||
-                !PathIsNavigable(segment, Units.Radii[unit]))
+                !PathIsNavigable(segment, navigationRadius))
             {
                 return [];
             }
@@ -450,17 +456,19 @@ public sealed class RtsSimulation
     private void ReplanInvalidatedGroup(int[] group)
     {
         var centroid = Vector2.Zero;
-        var maximumRadius = 0f;
+        var maximumNavigationRadius = 0f;
         for (var index = 0; index < group.Length; index++)
         {
             var unit = group[index];
             centroid += Units.Positions[unit];
-            maximumRadius = MathF.Max(maximumRadius, Units.Radii[unit]);
+            maximumNavigationRadius = MathF.Max(
+                maximumNavigationRadius, Units.NavigationRadii[unit]);
         }
 
         centroid /= group.Length;
         var groupGoal = Units.MoveGoals[group[0]];
-        var route = PlanGroupRoute(centroid, groupGoal, maximumRadius);
+        var route = PlanGroupRoute(
+            centroid, groupGoal, maximumNavigationRadius);
         if (group.Length > 1 && route.Waypoints.Length > 0)
         {
             Metrics.SharedRouteAssignments += group.Length;
@@ -487,7 +495,7 @@ public sealed class RtsSimulation
 
     private bool RemainingPathIntersects(int unit, SimRect footprint)
     {
-        var expanded = footprint.Expanded(Units.Radii[unit]);
+        var expanded = footprint.Expanded(Units.NavigationRadii[unit]);
         var path = Units.Paths[unit];
         var previous = Units.Positions[unit];
         if (path is not null)
@@ -530,7 +538,7 @@ public sealed class RtsSimulation
         var route = sharedRoute ?? PlanGroupRoute(
             Units.Positions[unit],
             Units.SlotTargets[unit],
-            Units.Radii[unit]);
+            Units.NavigationRadii[unit]);
         Units.RouteWaypoints[unit] = route.Waypoints;
         if (assignChoke && _chokeController is not null)
         {

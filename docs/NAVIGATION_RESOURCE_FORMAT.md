@@ -41,7 +41,7 @@ NavigationMapSnapshot（纯 C#）
 ### NavigationPortalEdgeResource
 
 - `FromPortal`、`ToPortal`：节点 ID。
-- `Width`：可通行宽度。
+- `Width`：实际可通行宽度；运行时要求 `Width >= navigation radius * 2 + 2px`，不同 Movement Class 可选择不同 Edge。
 - `ChokeId`：`-1` 表示普通连接，否则引用 Choke。
 
 ### NavigationChokeResource

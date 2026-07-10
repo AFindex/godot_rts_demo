@@ -1,0 +1,62 @@
+﻿{
+    "created_at":  "2026-07-10T22:44:57.4536648+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "clearance-portal-choice",
+                            "clearance-dynamic-gap"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed",
+                            "clearance-portal-choice",
+                            "clearance-dynamic-gap",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "navigation-resource-runtime",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "clearance-portal-choice",
+                      "file":  "clearance-portal-choice.avi",
+                      "log":  "clearance-portal-choice.log",
+                      "bytes":  33483964,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-portal-choice: ticks=1200, smallNarrow=True, largeWide=True, arrived=2/2, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.4"
+                  },
+                  {
+                      "id":  "clearance-dynamic-gap",
+                      "file":  "clearance-dynamic-gap.avi",
+                      "log":  "clearance-dynamic-gap.log",
+                      "bytes":  50040140,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-dynamic-gap: ticks=1800, smallArrived=True, largeRejected=True, largeStage=Unreachable, largeX=100.0"
+                  }
+              ]
+}
