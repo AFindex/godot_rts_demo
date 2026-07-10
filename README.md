@@ -1,5 +1,7 @@
 # Godot 4.7 .NET RTS movement demo
 
+完整实施状态、已完成能力、已知限制和后续顺序见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。
+
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
 当前包含：
