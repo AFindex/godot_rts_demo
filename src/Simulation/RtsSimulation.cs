@@ -12,6 +12,8 @@ public sealed class RtsSimulation
     private const int DestinationReflowIntervalTicks = 12;
     private const int DestinationReflowCooldownTicks = 90;
     private const int MaximumDestinationSwapsPerPass = 12;
+    private const int DestinationLocalRematchIntervalTicks = 60;
+    private const int DestinationLocalRematchCooldownTicks = 180;
     private const int DestinationOverflowIntervalTicks = 30;
     private const int MaximumDestinationOverflowsPerPass = 2;
     private const int DestinationYieldIntervalTicks = 30;
@@ -26,6 +28,7 @@ public sealed class RtsSimulation
     private readonly SpatialHash _spatialHash;
     private readonly DestinationSlotAllocator _slotAllocator;
     private readonly DestinationSlotReflow _slotReflow;
+    private readonly DestinationLocalRematcher _localRematcher;
     private readonly DestinationOverflowResolver _overflowResolver;
     private readonly DestinationYieldResolver _yieldResolver;
     private readonly SteeringSolver _steeringSolver;
@@ -48,6 +51,7 @@ public sealed class RtsSimulation
         _spatialHash = new SpatialHash(40f);
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
+        _localRematcher = new DestinationLocalRematcher(world);
         _overflowResolver = new DestinationOverflowResolver(world);
         _yieldResolver = new DestinationYieldResolver(world);
         _steeringSolver = new SteeringSolver(world, _spatialHash);
@@ -272,6 +276,7 @@ public sealed class RtsSimulation
         phaseStart = Stopwatch.GetTimestamp();
         UpdateProgress(delta);
         _overflowResolver.UpdateStallTracking(Units);
+        UpdateDestinationLocalRematch();
         UpdateDestinationReflow();
         UpdateDestinationYielding();
         UpdateDestinationOverflow();
@@ -961,6 +966,46 @@ public sealed class RtsSimulation
             QueueDestinationRetarget(secondUnit, preserveTerminalHistory: true);
             Metrics.DestinationSlotSwaps++;
         }
+    }
+
+    private void UpdateDestinationLocalRematch()
+    {
+        if (Metrics.Tick % DestinationLocalRematchIntervalTicks != 0)
+        {
+            return;
+        }
+
+        Span<int> rematchedUnits =
+            stackalloc int[DestinationLocalRematcher.MaximumUnits];
+        Span<Vector2> rematchedTargets =
+            stackalloc Vector2[DestinationLocalRematcher.MaximumUnits];
+        if (!_localRematcher.TryBuildPlan(
+                Units,
+                Metrics.Tick,
+                rematchedUnits,
+                rematchedTargets,
+                out var rematchedCount))
+        {
+            return;
+        }
+
+        var nextEligibleTick =
+            Metrics.Tick + DestinationLocalRematchCooldownTicks;
+        for (var index = 0; index < rematchedCount; index++)
+        {
+            var unit = rematchedUnits[index];
+            Units.SlotTargets[unit] = rematchedTargets[index];
+            Units.SlotReflowCooldownTicks[unit] = nextEligibleTick;
+        }
+
+        for (var index = 0; index < rematchedCount; index++)
+        {
+            QueueDestinationRetarget(
+                rematchedUnits[index], preserveTerminalHistory: true);
+        }
+
+        Metrics.DestinationLocalRematches++;
+        Metrics.DestinationLocalRematchedUnits += rematchedCount;
     }
 
     private void UpdateDestinationOverflow()

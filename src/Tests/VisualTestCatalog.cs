@@ -20,6 +20,8 @@ public static class VisualTestCatalog
         "rapid-reissue",
         "destination-convergence",
         "destination-outer-ring",
+        "destination-overtake",
+        "destination-corner-mixed",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -55,6 +57,8 @@ public static class VisualTestCatalog
         "rapid-reissue" => CreateRapidReissue(),
         "destination-convergence" => CreateDestinationConvergence(),
         "destination-outer-ring" => CreateDestinationOuterRing(),
+        "destination-overtake" => CreateDestinationOvertake(),
+        "destination-corner-mixed" => CreateDestinationCornerMixed(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -190,6 +194,8 @@ public static class VisualTestCatalog
                     $"movers={moverArrivals}/{movers.Length}, " +
                     $"released={blockerArrivals}/{blockers.Length}, " +
                     $"slotSwaps={diagnostics.DestinationSlotSwaps}, " +
+                    $"localRematch={diagnostics.DestinationLocalRematches}/" +
+                    $"{diagnostics.DestinationLocalRematchedUnits}, " +
                     $"yield={diagnostics.DestinationYieldEvents}, " +
                     $"activeYield={diagnostics.ActiveDestinationYields}, " +
                     $"overflow={diagnostics.DestinationOverflowAssignments}, " +
@@ -233,6 +239,8 @@ public static class VisualTestCatalog
                     arrival.Passed && bothLayersConverged,
                     $"outer={outerArrivals}/{outer.Length}, " +
                     $"inner={innerArrivals}/{inner.Length}, " +
+                    $"localRematch={diagnostics.DestinationLocalRematches}/" +
+                    $"{diagnostics.DestinationLocalRematchedUnits}, " +
                     $"yield={diagnostics.DestinationYieldEvents}, " +
                     $"activeYield={diagnostics.ActiveDestinationYields}, " +
                     $"overflow={diagnostics.DestinationOverflowAssignments}, " +
@@ -244,6 +252,88 @@ public static class VisualTestCatalog
             720,
             "Release units with inner reservations after outer ring settles",
             runtime => runtime.Move(inner, target));
+    }
+
+    private static VisualTestSession CreateDestinationOvertake()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 112);
+        var units = new TestUnitId[80];
+        for (var row = 0; row < 8; row++)
+        {
+            for (var column = 0; column < 10; column++)
+            {
+                var index = row * 10 + column;
+                var maximumSpeed = column < 5 ? 152f : 104f;
+                units[index] = rig.Spawn(
+                    new Vector2(65f + column * 18f, 125f + row * 18f),
+                    7.5f,
+                    maximumSpeed,
+                    720f);
+            }
+        }
+
+        rig.Move(units, new Vector2(990f, 370f));
+        return new VisualTestSession(
+            "destination-overtake",
+            "Fast rear units overtake before destination convergence",
+            2100,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, units, 77, 20f, 3f, 0, 0);
+                var diagnostics = runtime.ObserveMovementDiagnostics();
+                return new ScenarioResult(
+                    arrival.Passed,
+                    $"slotSwaps={diagnostics.DestinationSlotSwaps}, " +
+                    $"localRematch={diagnostics.DestinationLocalRematches}/" +
+                    $"{diagnostics.DestinationLocalRematchedUnits}, " +
+                    $"yield={diagnostics.DestinationYieldEvents}, " +
+                    $"overflow={diagnostics.DestinationOverflowAssignments}, " +
+                    arrival.Summary);
+            });
+    }
+
+    private static VisualTestSession CreateDestinationCornerMixed()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 112);
+        var units = new TestUnitId[80];
+        for (var row = 0; row < 8; row++)
+        {
+            for (var column = 0; column < 10; column++)
+            {
+                var index = row * 10 + column;
+                var radius = (row + column) % 3 switch
+                {
+                    0 => 5.5f,
+                    1 => 7.5f,
+                    _ => 10f
+                };
+                units[index] = rig.Spawn(
+                    new Vector2(70f + column * 24f, 390f + row * 24f),
+                    radius);
+            }
+        }
+
+        rig.Move(units, new Vector2(1165f, 55f));
+        return new VisualTestSession(
+            "destination-corner-mixed",
+            "Mixed radii converge at a clamped corner destination",
+            2400,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, units, 77, 22f, 3.5f, 0, 0);
+                var diagnostics = runtime.ObserveMovementDiagnostics();
+                return new ScenarioResult(
+                    arrival.Passed,
+                    $"localRematch={diagnostics.DestinationLocalRematches}/" +
+                    $"{diagnostics.DestinationLocalRematchedUnits}, " +
+                    $"yield={diagnostics.DestinationYieldEvents}, " +
+                    $"overflow={diagnostics.DestinationOverflowAssignments}, " +
+                    arrival.Summary);
+            });
     }
 
     private static VisualTestSession CreateStopCommand()

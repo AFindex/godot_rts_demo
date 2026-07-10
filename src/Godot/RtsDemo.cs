@@ -653,6 +653,7 @@ public partial class RtsDemo : Node2D
             $"route {_simulation.LastIssuedGroupRoute.Waypoints.Length}  " +
             $"route plans {metrics.GroupRoutePlans} shared {metrics.SharedRouteAssignments}  " +
             $"slot swaps {metrics.DestinationSlotSwaps}  " +
+            $"local rematch {metrics.DestinationLocalRematches}/{metrics.DestinationLocalRematchedUnits}  " +
             $"overflow {metrics.DestinationOverflowAssignments}  " +
             $"stall {metrics.MaximumDestinationStallTicks}  " +
             $"near {metrics.MaximumDestinationNearTicks}  " +

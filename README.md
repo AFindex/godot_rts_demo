@@ -14,6 +14,7 @@
 - 群组只规划一次高层路线，每个单位再查询分段 NavMesh 路径。
 - 动态路径失效按移动命令分组，同组受影响单位共享一次新的高层路线。
 - 32 人以上编队在终点区域进行安全槽位交换，解除绕行和超越后的局部平衡。
+- 大编队可对最多 24 个局部单位执行有预算的原子重匹配，并用进入方向秩序支持三单位以上循环换槽。
 - 终点 V2 独立跟踪短期停滞和目标区总驻留时间；已就位阻挡者可临时让路、等待、返回，所有有限恢复失败后再分配唯一 Overflow 槽位。
 - 狭口 `Approaching / Traversing / Exiting` 状态机、稳定横向排序和多车道分配。
 - 双向狭口方向租约、入口 admission、批次容量、排空切换和防饥饿等待。
@@ -71,7 +72,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 1.36ms、4.51ms 和 8.84ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 1.57ms、4.69ms 和 10.19ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
 
 ## 导航数据资产
 
@@ -105,7 +106,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 29 个黑盒业务场景：单单位移动、开放场编队、密集编队、对向人流、垂直交叉流、移动命令替换、快速连续改令、受干扰后的终点收敛、外圈先就位后内部预留释放、跨命令共享目标、Stop、Hold、混合半径、越界目标、动态建筑局部失效、途中放置绕行、完全封路后移除恢复、动态 Portal 改道、大编队活动 Portal 失效与共享改道、Godot Resource 到纯 C# 运行时快照、单向狭口、平衡双向狭口、非对称双向流量、连续波次、Hold 堵口恢复、临时包围恢复、不可达重试上限和 192 单位压力场景。
+当前包含 31 个黑盒业务场景：单单位移动、开放场编队、密集编队、对向人流、垂直交叉流、移动命令替换、快速连续改令、受干扰后的终点收敛、外圈先就位后内部预留释放、速度超车后的局部重匹配、角落混合半径收敛、跨命令共享目标、Stop、Hold、混合半径、越界目标、动态建筑局部失效、途中放置绕行、完全封路后移除恢复、动态 Portal 改道、大编队活动 Portal 失效与共享改道、Godot Resource 到纯 C# 运行时快照、单向狭口、平衡双向狭口、非对称双向流量、连续波次、Hold 堵口恢复、临时包围恢复、不可达重试上限和 192 单位压力场景。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -120,4 +121,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、跨命令槽位、终点局部换槽、外圈封闭后的主动 Yielding 与 Overflow fallback、动态失效后的群组路线共享、有限卡死恢复，以及 Godot Resource → 纯 C# 导航快照链路已有可运行版本。当前继续完成终点 V2 的局部多单位重新匹配、SlotDepth 和边界场景；之后进入 Clearance 与 Movement Class。自动 Portal/Sector Baker、战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、跨命令槽位、终点两单位换槽与局部多单位重匹配、主动 Yielding 与 Overflow fallback、动态失效后的群组路线共享、有限卡死恢复，以及 Godot Resource → 纯 C# 导航快照链路已有可运行版本。终点协作收敛 A2 已按当前 Demo 范围完成，下一阶段进入 Clearance 与 Movement Class。完整碰撞优先级与生产级 SlotDepth 留给实际玩法驱动；自动 Portal/Sector Baker、战斗、联机和确定性回放暂未实现。

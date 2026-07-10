@@ -19,6 +19,8 @@ public sealed class SimulationMetrics
     public long GroupRoutePlans { get; internal set; }
     public long SharedRouteAssignments { get; internal set; }
     public long DestinationSlotSwaps { get; internal set; }
+    public long DestinationLocalRematches { get; internal set; }
+    public long DestinationLocalRematchedUnits { get; internal set; }
     public long DestinationOverflowAssignments { get; internal set; }
     public int MaximumDestinationStallTicks { get; internal set; }
     public int MaximumDestinationNearTicks { get; internal set; }

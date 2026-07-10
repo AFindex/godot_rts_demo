@@ -1,0 +1,78 @@
+﻿{
+    "created_at":  "2026-07-10T22:16:46.1879650+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "navigation-resource-runtime",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "destination-convergence",
+                      "file":  "destination-convergence.avi",
+                      "log":  "destination-convergence.log",
+                      "bytes":  66646924,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS destination-convergence: ticks=1800, movers=64/64, released=16/16, slotSwaps=18, localRematch=0/0, yield=4, activeYield=0, overflow=5, converged=True, arrived=80/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=5.7"
+                  },
+                  {
+                      "id":  "destination-outer-ring",
+                      "file":  "destination-outer-ring.avi",
+                      "log":  "destination-outer-ring.log",
+                      "bytes":  100803690,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS destination-outer-ring: ticks=2700, outer=48/48, inner=32/32, localRematch=0/0, yield=8, activeYield=0, overflow=31, maxStall=0, maxNear=690, layersConverged=True, arrived=80/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=7.2"
+                  },
+                  {
+                      "id":  "destination-overtake",
+                      "file":  "destination-overtake.avi",
+                      "log":  "destination-overtake.log",
+                      "bytes":  79419458,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS destination-overtake: ticks=2100, slotSwaps=75, localRematch=1/10, yield=11, overflow=22, arrived=80/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=7.7"
+                  },
+                  {
+                      "id":  "destination-corner-mixed",
+                      "file":  "destination-corner-mixed.avi",
+                      "log":  "destination-corner-mixed.log",
+                      "bytes":  83973740,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS destination-corner-mixed: ticks=2400, localRematch=0/0, yield=0, overflow=0, arrived=80/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.5"
+                  }
+              ]
+}
