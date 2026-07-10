@@ -64,6 +64,15 @@ public partial class RtsDemo : Node2D
                     $"max={result.MaximumTickMilliseconds:0.000}ms " +
                     $"alloc={result.AverageAllocatedBytes / 1024.0:0.0}KB/tick");
             }
+            foreach (var result in benchmark.CombatCases)
+            {
+                GD.Print(
+                    $"RTS_COMBAT_BENCHMARK units={result.Units} " +
+                    $"avg={result.AverageTickMilliseconds:0.000}ms " +
+                    $"p95={result.P95TickMilliseconds:0.000}ms " +
+                    $"max={result.MaximumTickMilliseconds:0.000}ms " +
+                    $"alloc={result.AverageAllocatedBytes / 1024.0:0.0}KB/tick");
+            }
 
             GD.Print($"RTS_BENCHMARK_JSON {JsonSerializer.Serialize(benchmark)}");
             GetTree().Quit(benchmark.Passed ? 0 : 1);

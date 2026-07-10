@@ -13,10 +13,17 @@ public readonly record struct TestCombatProfile(
     float AcquisitionRange = 155f,
     float AttackCooldownSeconds = 0.72f,
     float AttackWindupSeconds = 0.18f,
-    float LeashDistance = 260f)
+    float LeashDistance = 260f,
+    TestCombatPositioning Positioning = TestCombatPositioning.Ranged)
 {
     public static TestCombatProfile Standard => new(
         45f, 8f, 34f, 155f, 0.72f, 0.18f, 260f);
+}
+
+public enum TestCombatPositioning : byte
+{
+    Melee,
+    Ranged
 }
 
 public enum TestCombatState : byte
@@ -35,7 +42,9 @@ public readonly record struct TestCombatSnapshot(
     float Health,
     float MaximumHealth,
     TestUnitId? Target,
-    TestCombatState State);
+    TestCombatState State,
+    bool HasAttackPosition,
+    Vector2 AttackPosition);
 
 public enum TestBuildingFootprintClass : byte
 {
@@ -104,6 +113,7 @@ public readonly record struct TestRecoverySnapshot(
 
 public readonly record struct TestPerformanceSnapshot(
     double TotalMilliseconds,
+    double CombatMilliseconds,
     double PathMilliseconds,
     double PreferredVelocityMilliseconds,
     double ChokeMilliseconds,
@@ -303,7 +313,8 @@ public sealed class MovementTestRig
             resolvedProfile.AcquisitionRange,
             resolvedProfile.AttackCooldownSeconds,
             resolvedProfile.AttackWindupSeconds,
-            resolvedProfile.LeashDistance);
+            resolvedProfile.LeashDistance,
+            (CombatPositioningKind)resolvedProfile.Positioning);
         return new TestUnitId(_simulation.AddUnit(
             position, team, backendProfile, radius, maximumSpeed, acceleration));
     }
@@ -444,6 +455,7 @@ public sealed class MovementTestRig
         var metrics = _simulation.Metrics;
         return new TestPerformanceSnapshot(
             metrics.TotalMilliseconds,
+            metrics.CombatMilliseconds,
             metrics.PathMilliseconds,
             metrics.PreferredVelocityMilliseconds,
             metrics.ChokeMilliseconds,
@@ -508,7 +520,9 @@ public sealed class MovementTestRig
             target >= 0 ? new TestUnitId(target) : null,
             !_simulation.Units.Alive[index]
                 ? TestCombatState.Dead
-                : (TestCombatState)_simulation.Combat.Phases[index]);
+                : (TestCombatState)_simulation.Combat.Phases[index],
+            _simulation.Combat.HasAttackSlots[index],
+            _simulation.Combat.AttackSlotTargets[index]);
     }
 
     public TestUnitSnapshot[] Observe(IReadOnlyList<TestUnitId> units)

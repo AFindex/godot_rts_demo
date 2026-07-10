@@ -63,7 +63,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
-        _combatSystem = new CombatSystem(Units, Combat, this);
+        _combatSystem = new CombatSystem(Units, Combat, this, world);
     }
 
     public StaticWorld World { get; }
@@ -347,9 +347,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.RecoveryEvents = 0;
         _pendingNavigationInvalidations = 0;
 
-        _combatSystem.Update(delta, Metrics.Tick);
-
         var phaseStart = Stopwatch.GetTimestamp();
+        _combatSystem.Update(delta, Metrics.Tick);
+        Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
+
+        phaseStart = Stopwatch.GetTimestamp();
         ProcessPathRequests();
         Metrics.PathMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -1448,6 +1450,26 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
 
         SetCombatDestination(unit, target);
+    }
+
+    void ICombatMovementDriver.FinishEngagement(int unit, UnitCommandIntent intent)
+    {
+        Units.CommandVersions[unit]++;
+        Units.Paths[unit] = null;
+        Units.RouteWaypoints[unit] = [];
+        Units.PathPending[unit] = false;
+        Units.Modes[unit] = intent == UnitCommandIntent.Hold
+            ? UnitMoveMode.Hold
+            : UnitMoveMode.Idle;
+        Units.SlotTargets[unit] = Units.Positions[unit];
+        Units.MoveGoals[unit] = Units.Positions[unit];
+        Units.PreferredVelocities[unit] = Vector2.Zero;
+        Units.ActiveChokeIds[unit] = -1;
+        Units.ChokePhases[unit] = ChokePhase.None;
+        Units.ChokeAdmitted[unit] = false;
+        Units.MovementGroupIds[unit] = 0;
+        Units.MovementGroupSizes[unit] = 0;
+        Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
     }
 
     void ICombatMovementDriver.Kill(int unit)

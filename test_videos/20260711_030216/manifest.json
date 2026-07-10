@@ -1,0 +1,131 @@
+﻿{
+    "created_at":  "2026-07-11T03:03:27.4824317+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "attack-move-engage-resume",
+                            "attack-move-leash-resume",
+                            "attack-move-command-isolation",
+                            "attack-move-cancel",
+                            "combat-melee-slots",
+                            "combat-ranged-ring",
+                            "combat-stop-hold-acquire",
+                            "combat-multi-retarget"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "attack-move-engage-resume",
+                            "attack-move-leash-resume",
+                            "attack-move-command-isolation",
+                            "attack-move-cancel",
+                            "combat-melee-slots",
+                            "combat-ranged-ring",
+                            "combat-stop-hold-acquire",
+                            "combat-multi-retarget",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed",
+                            "clearance-portal-choice",
+                            "clearance-dynamic-gap",
+                            "building-footprint-sizes",
+                            "building-placement-rules",
+                            "building-connectivity-guard",
+                            "building-size-navigation",
+                            "gameplay-profile-resource-runtime",
+                            "clearance-bake-resource-runtime",
+                            "clearance-editor-preview",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "navigation-resource-runtime",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "attack-move-engage-resume",
+                      "file":  "attack-move-engage-resume.avi",
+                      "log":  "attack-move-engage-resume.log",
+                      "bytes":  22069838,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-engage-resume: ticks=840, defender_alive=False, attacker_x=1051.5, state=Searching"
+                  },
+                  {
+                      "id":  "attack-move-leash-resume",
+                      "file":  "attack-move-leash-resume.avi",
+                      "log":  "attack-move-leash-resume.log",
+                      "bytes":  20678280,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-leash-resume: ticks=780, target_alive=True, attacker_x=1056.7"
+                  },
+                  {
+                      "id":  "attack-move-command-isolation",
+                      "file":  "attack-move-command-isolation.avi",
+                      "log":  "attack-move-command-isolation.log",
+                      "bytes":  21015322,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-command-isolation: ticks=780, move_enemy_alive=True, attack_enemy_alive=False, move_x=1056.6, attack_x=1018.2"
+                  },
+                  {
+                      "id":  "attack-move-cancel",
+                      "file":  "attack-move-cancel.avi",
+                      "log":  "attack-move-cancel.log",
+                      "bytes":  9298186,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-cancel: ticks=300, stop=Holding/Attacking, hold=Holding/Searching, x=285.5/266.0, targets=TestUnitId { Value = 2 }/"
+                  },
+                  {
+                      "id":  "combat-melee-slots",
+                      "file":  "combat-melee-slots.avi",
+                      "log":  "combat-melee-slots.log",
+                      "bytes":  25041656,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS combat-melee-slots: ticks=900, attacking=8/8, slots=8, unique=True, radiusBand=True, maxSlotError=8.9"
+                  },
+                  {
+                      "id":  "combat-ranged-ring",
+                      "file":  "combat-ranged-ring.avi",
+                      "log":  "combat-ranged-ring.log",
+                      "bytes":  18711220,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS combat-ranged-ring: ticks=660, attacking=10/10, slots=10, unique=True, radiusBand=True, maxSlotError=9.0"
+                  },
+                  {
+                      "id":  "combat-stop-hold-acquire",
+                      "file":  "combat-stop-hold-acquire.avi",
+                      "log":  "combat-stop-hold-acquire.log",
+                      "bytes":  11108830,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS combat-stop-hold-acquire: ticks=360, stop_x=181.7/Attacking, hold_delta=0.0, near_hp=444, far_hp=500"
+                  },
+                  {
+                      "id":  "combat-multi-retarget",
+                      "file":  "combat-multi-retarget.avi",
+                      "log":  "combat-multi-retarget.log",
+                      "bytes":  25383376,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS combat-multi-retarget: ticks=900, defeated=4/4, resumed=8/8"
+                  }
+              ]
+}

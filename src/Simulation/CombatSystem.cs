@@ -7,6 +7,7 @@ public interface ICombatMovementDriver
     void Chase(int unit, Vector2 target);
     void StopForAttack(int unit);
     void ResumeAttackMove(int unit, Vector2 target);
+    void FinishEngagement(int unit, UnitCommandIntent intent);
     void Kill(int unit);
 }
 
@@ -23,12 +24,18 @@ public sealed class CombatSystem
     private readonly UnitStore _units;
     private readonly CombatStore _combat;
     private readonly ICombatMovementDriver _movement;
+    private readonly CombatEngagementSlotAllocator _slots;
 
-    public CombatSystem(UnitStore units, CombatStore combat, ICombatMovementDriver movement)
+    public CombatSystem(
+        UnitStore units,
+        CombatStore combat,
+        ICombatMovementDriver movement,
+        StaticWorld world)
     {
         _units = units;
         _combat = combat;
         _movement = movement;
+        _slots = new CombatEngagementSlotAllocator(units, combat, world);
     }
 
     public void Update(float delta, long tick)
@@ -45,7 +52,9 @@ public sealed class CombatSystem
             _combat.ChaseRepathRemaining[unit] = MathF.Max(
                 0f, _combat.ChaseRepathRemaining[unit] - delta);
 
-            if (_combat.CommandIntents[unit] != UnitCommandIntent.AttackMove)
+            var intent = _combat.CommandIntents[unit];
+            if (intent is not (UnitCommandIntent.AttackMove or
+                UnitCommandIntent.Stop or UnitCommandIntent.Hold))
             {
                 continue;
             }
@@ -69,7 +78,8 @@ public sealed class CombatSystem
                 continue;
             }
 
-            if (Vector2.DistanceSquared(
+            if (intent != UnitCommandIntent.Hold &&
+                Vector2.DistanceSquared(
                     _units.Positions[target], _combat.EngagementOrigins[unit]) >
                 _combat.LeashDistances[unit] * _combat.LeashDistances[unit])
             {
@@ -86,10 +96,16 @@ public sealed class CombatSystem
 
             var distance = Vector2.Distance(
                 _units.Positions[unit], _units.Positions[target]);
-            var range = _combat.AttackRanges[unit] + _units.Radii[target];
-            if (distance <= range)
+            var range = _combat.AttackRanges[unit] +
+                        _units.Radii[unit] + _units.Radii[target];
+            if (distance <= range &&
+                (intent == UnitCommandIntent.Hold || _slots.IsReady(unit)))
             {
                 UpdateAttack(unit, target, delta);
+            }
+            else if (intent == UnitCommandIntent.Hold)
+            {
+                Disengage(unit);
             }
             else
             {
@@ -104,14 +120,18 @@ public sealed class CombatSystem
         _combat.EngagementOrigins[unit] = _units.Positions[unit];
         _combat.Phases[unit] = CombatPhase.Chasing;
         _combat.ChaseRepathRemaining[unit] = 0f;
-        UpdateChase(unit, target);
+        if (_combat.CommandIntents[unit] != UnitCommandIntent.Hold)
+        {
+            _slots.Assign(unit, target);
+            UpdateChase(unit, target);
+        }
     }
 
     private void UpdateChase(int unit, int target)
     {
         _combat.Phases[unit] = CombatPhase.Chasing;
         _combat.WindupRemaining[unit] = 0f;
-        var targetPosition = _units.Positions[target];
+        var targetPosition = _slots.ResolveChaseTarget(unit, target);
         var targetStayedLocal = Vector2.DistanceSquared(
             targetPosition, _combat.LastChaseTargets[unit]) <=
             ChaseRetargetDistance * ChaseRetargetDistance;
@@ -175,23 +195,33 @@ public sealed class CombatSystem
         _combat.CommandIntents[target] = UnitCommandIntent.None;
         _combat.Phases[target] = CombatPhase.None;
         _combat.TargetUnits[target] = -1;
+        _slots.Release(target);
         _movement.Kill(target);
     }
 
     private void Disengage(int unit)
     {
+        var intent = _combat.CommandIntents[unit];
         _combat.TargetUnits[unit] = -1;
         _combat.Phases[unit] = CombatPhase.Searching;
         _combat.WindupRemaining[unit] = 0f;
         _combat.ChaseRepathRemaining[unit] = 0f;
-        _movement.ResumeAttackMove(unit, _combat.AttackMoveGoals[unit]);
+        _slots.Release(unit);
+        if (intent == UnitCommandIntent.AttackMove)
+        {
+            _movement.ResumeAttackMove(unit, _combat.AttackMoveGoals[unit]);
+        }
+        else
+        {
+            _movement.FinishEngagement(unit, intent);
+        }
     }
 
     private int FindNearestTarget(int unit)
     {
         var best = -1;
-        var bestDistanceSquared =
-            _combat.AcquisitionRanges[unit] * _combat.AcquisitionRanges[unit];
+        var bestDistanceSquared = float.PositiveInfinity;
+        var intent = _combat.CommandIntents[unit];
         for (var candidate = 0; candidate < _units.Count; candidate++)
         {
             if (!IsValidTarget(unit, candidate))
@@ -201,6 +231,14 @@ public sealed class CombatSystem
 
             var distanceSquared = Vector2.DistanceSquared(
                 _units.Positions[unit], _units.Positions[candidate]);
+            var acquisitionRange = intent == UnitCommandIntent.Hold
+                ? _combat.AttackRanges[unit] +
+                  _units.Radii[unit] + _units.Radii[candidate]
+                : _combat.AcquisitionRanges[unit];
+            if (distanceSquared > acquisitionRange * acquisitionRange)
+            {
+                continue;
+            }
             if (distanceSquared < bestDistanceSquared ||
                 (distanceSquared == bestDistanceSquared && candidate < best))
             {

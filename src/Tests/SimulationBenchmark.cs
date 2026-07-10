@@ -12,6 +12,7 @@ public sealed record BenchmarkCaseResult(
     double P95TickMilliseconds,
     double MaximumTickMilliseconds,
     double AverageAllocatedBytes,
+    double AverageCombatMilliseconds,
     double AveragePathMilliseconds,
     double AverageSteeringMilliseconds,
     double AverageCollisionMilliseconds,
@@ -20,7 +21,8 @@ public sealed record BenchmarkCaseResult(
 public sealed record BenchmarkSuiteResult(
     string CreatedAtUtc,
     bool Passed,
-    BenchmarkCaseResult[] Cases);
+    BenchmarkCaseResult[] Cases,
+    BenchmarkCaseResult[] CombatCases);
 
 public static class SimulationBenchmark
 {
@@ -35,10 +37,17 @@ public static class SimulationBenchmark
             RunCase(512),
             RunCase(1000)
         ];
+        BenchmarkCaseResult[] combatCases =
+        [
+            RunCombatCase(128, 4.0),
+            RunCombatCase(256, 8.0)
+        ];
         return new BenchmarkSuiteResult(
             DateTime.UtcNow.ToString("O"),
-            cases.All(result => result.Passed),
-            cases);
+            cases.All(result => result.Passed) &&
+            combatCases.All(result => result.Passed),
+            cases,
+            combatCases);
     }
 
     private static BenchmarkCaseResult RunCase(int unitCount)
@@ -73,6 +82,75 @@ public static class SimulationBenchmark
             rig.Move(group, target);
         }
 
+        var p95Budget = unitCount switch
+        {
+            <= 256 => 4.0,
+            <= 512 => 12.5,
+            _ => 16.67
+        };
+        return Measure(rig, units, p95Budget);
+    }
+
+    private static BenchmarkCaseResult RunCombatCase(
+        int unitCount,
+        double p95BudgetMilliseconds)
+    {
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1600f, 1000f), unitCount + 16);
+        var profile = new TestCombatProfile(
+            MaximumHealth: 1000f,
+            AttackDamage: 0f,
+            AttackRange: 70f,
+            AcquisitionRange: 600f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 800f,
+            Positioning: TestCombatPositioning.Ranged);
+        var half = unitCount / 2;
+        var left = new TestUnitId[half];
+        var right = new TestUnitId[unitCount - half];
+        const int columns = 16;
+        const float spacing = 17f;
+        for (var index = 0; index < left.Length; index++)
+        {
+            left[index] = rig.SpawnCombat(
+                new Vector2(
+                    100f + index % columns * spacing,
+                    220f + index / columns * spacing),
+                team: 1,
+                profile,
+                radius: 6f,
+                maximumSpeed: 120f,
+                acceleration: 680f);
+        }
+        for (var index = 0; index < right.Length; index++)
+        {
+            right[index] = rig.SpawnCombat(
+                new Vector2(
+                    1230f + index % columns * spacing,
+                    220f + index / columns * spacing),
+                team: 2,
+                profile,
+                radius: 6f,
+                maximumSpeed: 120f,
+                acceleration: 680f);
+        }
+
+        rig.AttackMove(left, new Vector2(1350f, 500f));
+        rig.AttackMove(right, new Vector2(250f, 500f));
+        return Measure(
+            rig,
+            left.Concat(right).ToArray(),
+            p95BudgetMilliseconds,
+            allocationBudget: 8192);
+    }
+
+    private static BenchmarkCaseResult Measure(
+        MovementTestRig rig,
+        TestUnitId[] units,
+        double p95Budget,
+        long allocationBudget = 1024)
+    {
         for (var tick = 0; tick < WarmupTicks; tick++)
         {
             rig.Step();
@@ -85,6 +163,7 @@ public static class SimulationBenchmark
         var tickTimes = new double[MeasuredTicks];
         var allocatedBytes = 0d;
         var path = 0d;
+        var combat = 0d;
         var steering = 0d;
         var collision = 0d;
         var other = 0d;
@@ -94,6 +173,7 @@ public static class SimulationBenchmark
             var performance = rig.ObservePerformance();
             tickTimes[tick] = performance.TotalMilliseconds;
             allocatedBytes += performance.AllocatedBytes;
+            combat += performance.CombatMilliseconds;
             path += performance.PathMilliseconds;
             steering += performance.SteeringMilliseconds;
             collision += performance.CollisionMilliseconds;
@@ -117,15 +197,8 @@ public static class SimulationBenchmark
             sorted.Length - 1);
         var p95 = sorted[p95Index];
         var averageAllocation = allocatedBytes / MeasuredTicks;
-        var p95Budget = unitCount switch
-        {
-            <= 256 => 4.0,
-            <= 512 => 12.5,
-            _ => 16.67
-        };
-        const long allocationBudget = 1024;
         return new BenchmarkCaseResult(
-            unitCount,
+            units.Length,
             MeasuredTicks,
             finite && inside && p95 <= p95Budget &&
             averageAllocation <= allocationBudget,
@@ -135,6 +208,7 @@ public static class SimulationBenchmark
             p95,
             sorted[^1],
             averageAllocation,
+            combat / MeasuredTicks,
             path / MeasuredTicks,
             steering / MeasuredTicks,
             collision / MeasuredTicks,

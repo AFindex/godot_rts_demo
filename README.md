@@ -32,6 +32,8 @@
 - 车道偏移会写入每单位路径点，避免出口处被共享中心 waypoint 回拉。
 - 目标槽位分配、空间哈希、候选速度 Steering、TTC、避让侧记忆和三轮碰撞推挤。
 - 纯 C# AttackMove 状态机：错峰选敌、追击重寻路、前摇/冷却/伤害、leash、死亡清理和恢复原路线。
+- 近战单位使用唯一接触槽并沿目标外圈分段就位；远程单位使用射程内唯一攻击环，交叉后可做严格降误差的局部换槽。
+- Stop 会在局部索敌并追击，Hold 只攻击射程内目标且不离开原位置。
 - 战斗状态与移动路径分离；死亡保持稳定 unit ID，但从寻路邻居、碰撞、选择和建筑占用中移除。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
 
@@ -72,16 +74,17 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\run_benchmarks.ps1
 ```
 
-基准使用独立纯 C# `net9.0` Release 入口，直接复用 Simulation 源文件，避免 Godot 编辑器加载 Debug 程序集。预热 240 Tick 后测量 360 Tick，覆盖 256、512 和 1000 单位，并保存 JSON 到 `benchmark_results/`。
+基准使用独立纯 C# `net9.0` Release 入口，直接复用 Simulation 源文件，避免 Godot 编辑器加载 Debug 程序集。预热 240 Tick 后测量 360 Tick，覆盖 256、512、1000 单位移动，以及双方持续 AttackMove 的 128/256 总单位场景，并保存 JSON 到 `benchmark_results/`。
 
 当前性能门槛：
 
 - 256 单位：P95 不超过 4ms。
 - 512 单位：P95 不超过 12.5ms。
 - 1000 单位：P95 不超过 16.67ms。
-- 所有规模：当前线程分配不超过 1KB/Tick。
+- 非战斗移动：当前线程分配不超过 1KB/Tick。
+- 活跃战斗 128/256 总单位：P95 不超过 4/8ms，分配不超过 8KB/Tick。
 
-当前机器的 Release 基线约为 1.44ms、6.27ms 和 9.24ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 移动基线约为 1.50ms、4.95ms 和 9.17ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.88/3.99ms P95，战斗阶段平均耗时约 0.54/1.42ms。
 
 ## 导航数据资产
 
@@ -124,7 +127,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 44 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、Small/Large Portal 分流、动态窄缝、四档建筑、局部与全局放置结果、多尺寸建筑群绕行、编辑器 Bake/chunk 预览，以及 AttackMove 接敌/脱战/命令隔离。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
+当前包含 48 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、Small/Large Portal 分流、动态窄缝、四档建筑、局部与全局放置结果、多尺寸建筑群绕行、编辑器 Bake/chunk 预览，以及 AttackMove、近战槽、远程攻击环、Stop/Hold 索敌和多人重选敌。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -139,4 +142,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay/Bake Resource → 纯 C# 快照链路已有可运行版本。AttackMove 的远程抽象最小闭环已经完成；下一层战斗内容是近战包围槽、远程攻击环、索敌策略与更接近 SC2 的 Stop/Hold 自动攻击语义。联机和确定性回放暂未实现。
+动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay/Bake Resource → 纯 C# 快照链路已有可运行版本。AttackMove、近战/远程占位、Stop/Hold 索敌和多人重选敌已经形成当前 Demo 的战斗移动闭环。下一阶段转向 Shift 队列、Control Group、SmartCommand 和确定性命令日志；弹道、动画和复杂伤害继续后置。

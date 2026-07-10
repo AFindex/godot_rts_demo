@@ -16,6 +16,10 @@ public static class VisualTestCatalog
         "attack-move-leash-resume",
         "attack-move-command-isolation",
         "attack-move-cancel",
+        "combat-melee-slots",
+        "combat-ranged-ring",
+        "combat-stop-hold-acquire",
+        "combat-multi-retarget",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -68,6 +72,10 @@ public static class VisualTestCatalog
         "attack-move-leash-resume" => CreateAttackMoveLeashResume(),
         "attack-move-command-isolation" => CreateAttackMoveCommandIsolation(),
         "attack-move-cancel" => CreateAttackMoveCancel(),
+        "combat-melee-slots" => CreateCombatMeleeSlots(),
+        "combat-ranged-ring" => CreateCombatRangedRing(),
+        "combat-stop-hold-acquire" => CreateCombatStopHoldAcquire(),
+        "combat-multi-retarget" => CreateCombatMultiRetarget(),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
         "opposing-streams" => CreateOpposingStreams(),
@@ -136,7 +144,7 @@ public static class VisualTestCatalog
         return new VisualTestSession(
             "attack-move-engage-resume",
             "AttackMove acquires, kills, then resumes route",
-            720,
+            840,
             rig,
             visible,
             runtime =>
@@ -255,23 +263,251 @@ public static class VisualTestCatalog
                 var heldUnit = runtime.Observe(held);
                 var stoppedCombat = runtime.ObserveCombat(stopped);
                 var heldCombat = runtime.ObserveCombat(held);
-                var passed = stoppedUnit.State == TestUnitState.Idle &&
+                var stoppedCancelledRoute = stoppedUnit.Position.X < 700f;
+                var heldCancelledRoute = heldUnit.Position.X < 400f;
+                var passed = stoppedCancelledRoute && heldCancelledRoute &&
                              heldUnit.State == TestUnitState.Holding &&
-                             stoppedUnit.Velocity.LengthSquared() < 0.25f &&
                              heldUnit.Velocity.LengthSquared() < 0.25f &&
-                             stoppedCombat.Target is null && heldCombat.Target is null &&
+                             heldCombat.Target is null &&
                              runtime.ObserveCombat(upperEnemy).Alive &&
                              runtime.ObserveCombat(lowerEnemy).Alive;
                 return new ScenarioResult(
                     passed,
                     $"stop={stoppedUnit.State}/{stoppedCombat.State}, " +
                     $"hold={heldUnit.State}/{heldCombat.State}, " +
+                    $"x={stoppedUnit.Position.X:F1}/{heldUnit.Position.X:F1}, " +
                     $"targets={stoppedCombat.Target}/{heldCombat.Target}");
             })
             .At(90, "Stop cancels upper engagement", runtime =>
                 runtime.Stop([stopped]))
             .At(90, "Hold cancels lower engagement", runtime =>
                 runtime.Hold([held]));
+    }
+
+    private static VisualTestSession CreateCombatMeleeSlots()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 16);
+        var melee = new TestCombatProfile(
+            MaximumHealth: 80f,
+            AttackDamage: 1f,
+            AttackRange: 8f,
+            AcquisitionRange: 240f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0.15f,
+            LeashDistance: 420f,
+            Positioning: TestCombatPositioning.Melee);
+        var durable = new TestCombatProfile(
+            MaximumHealth: 5000f,
+            AttackDamage: 0f,
+            AttackRange: 2f,
+            AcquisitionRange: 80f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 100f,
+            Positioning: TestCombatPositioning.Melee);
+        var attackers = new TestUnitId[8];
+        for (var index = 0; index < attackers.Length; index++)
+        {
+            attackers[index] = rig.SpawnCombat(
+                new Vector2(180f + index % 4 * 20f, 270f + index / 4 * 80f),
+                team: 1, melee);
+        }
+        var target = rig.SpawnCombat(
+            new Vector2(600f, 350f), team: 2, durable, radius: 24f);
+        var visible = attackers.Append(target).ToArray();
+        rig.AttackMove(attackers, new Vector2(1040f, 350f));
+        return new VisualTestSession(
+            "combat-melee-slots",
+            "Melee attackers reserve unique contact slots",
+            900,
+            rig,
+            visible,
+            runtime => EvaluateAttackPositions(runtime, attackers, target, 7, 29f, 40f));
+    }
+
+    private static VisualTestSession CreateCombatRangedRing()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 20);
+        var ranged = new TestCombatProfile(
+            MaximumHealth: 60f,
+            AttackDamage: 1f,
+            AttackRange: 120f,
+            AcquisitionRange: 280f,
+            AttackCooldownSeconds: 0.8f,
+            AttackWindupSeconds: 0.12f,
+            LeashDistance: 480f,
+            Positioning: TestCombatPositioning.Ranged);
+        var durable = new TestCombatProfile(
+            MaximumHealth: 5000f,
+            AttackDamage: 0f,
+            AttackRange: 2f,
+            AcquisitionRange: 80f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 100f,
+            Positioning: TestCombatPositioning.Melee);
+        var attackers = new TestUnitId[10];
+        for (var index = 0; index < attackers.Length; index++)
+        {
+            attackers[index] = rig.SpawnCombat(
+                new Vector2(150f + index % 5 * 20f, 220f + index / 5 * 180f),
+                team: 1, ranged);
+        }
+        var target = rig.SpawnCombat(new Vector2(620f, 350f), team: 2, durable);
+        var visible = attackers.Append(target).ToArray();
+        rig.AttackMove(attackers, new Vector2(1050f, 350f));
+        return new VisualTestSession(
+            "combat-ranged-ring",
+            "Ranged attackers reserve a stable firing ring",
+            660,
+            rig,
+            visible,
+            runtime => EvaluateAttackPositions(runtime, attackers, target, 8, 80f, 118f));
+    }
+
+    private static VisualTestSession CreateCombatStopHoldAcquire()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(900f, 600f), 12);
+        var durable = new TestCombatProfile(
+            MaximumHealth: 500f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 80f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 120f);
+        var stopped = rig.SpawnCombat(new Vector2(100f, 180f), team: 1);
+        var held = rig.SpawnCombat(new Vector2(100f, 420f), team: 1);
+        var stopEnemy = rig.SpawnCombat(new Vector2(230f, 180f), team: 2, durable);
+        var nearHoldEnemy = rig.SpawnCombat(new Vector2(140f, 420f), team: 2, durable);
+        var farHoldEnemy = rig.SpawnCombat(new Vector2(310f, 500f), team: 2, durable);
+        TestUnitId[] visible = [stopped, held, stopEnemy, nearHoldEnemy, farHoldEnemy];
+        rig.Stop([stopped]);
+        rig.Hold([held]);
+        return new VisualTestSession(
+            "combat-stop-hold-acquire",
+            "Stop pursues local targets; Hold attacks in range without chasing",
+            360,
+            rig,
+            visible,
+            runtime =>
+            {
+                var stopUnit = runtime.Observe(stopped);
+                var holdUnit = runtime.Observe(held);
+                var stopCombat = runtime.ObserveCombat(stopped);
+                var holdCombat = runtime.ObserveCombat(held);
+                var nearHealth = runtime.ObserveCombat(nearHoldEnemy).Health;
+                var farHealth = runtime.ObserveCombat(farHoldEnemy).Health;
+                var passed = stopUnit.Position.X > 140f &&
+                             stopCombat.State is TestCombatState.Chasing or TestCombatState.Attacking &&
+                             Vector2.Distance(holdUnit.Position, new Vector2(100f, 420f)) < 2f &&
+                             holdCombat.State == TestCombatState.Attacking &&
+                             nearHealth < 500f && farHealth >= 499.9f;
+                return new ScenarioResult(
+                    passed,
+                    $"stop_x={stopUnit.Position.X:F1}/{stopCombat.State}, " +
+                    $"hold_delta={Vector2.Distance(holdUnit.Position, new Vector2(100f, 420f)):F1}, " +
+                    $"near_hp={nearHealth:F0}, far_hp={farHealth:F0}");
+            });
+    }
+
+    private static VisualTestSession CreateCombatMultiRetarget()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 20);
+        var attackerProfile = new TestCombatProfile(
+            MaximumHealth: 80f,
+            AttackDamage: 12f,
+            AttackRange: 36f,
+            AcquisitionRange: 210f,
+            AttackCooldownSeconds: 0.48f,
+            AttackWindupSeconds: 0.1f,
+            LeashDistance: 360f);
+        var defenderProfile = new TestCombatProfile(
+            MaximumHealth: 60f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 80f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 100f);
+        var attackers = new TestUnitId[8];
+        for (var index = 0; index < attackers.Length; index++)
+        {
+            attackers[index] = rig.SpawnCombat(
+                new Vector2(100f + index % 4 * 20f, 280f + index / 4 * 70f),
+                team: 1, attackerProfile);
+        }
+        var defenders = new TestUnitId[4];
+        for (var index = 0; index < defenders.Length; index++)
+        {
+            defenders[index] = rig.SpawnCombat(
+                new Vector2(390f + index * 145f, 310f + (index & 1) * 80f),
+                team: 2, defenderProfile);
+        }
+        var visible = attackers.Concat(defenders).ToArray();
+        rig.AttackMove(attackers, new Vector2(1080f, 350f));
+        return new VisualTestSession(
+            "combat-multi-retarget",
+            "Multiple attackers retarget through an enemy line then resume",
+            900,
+            rig,
+            visible,
+            runtime =>
+            {
+                var dead = defenders.Count(unit => !runtime.ObserveCombat(unit).Alive);
+                var resumed = attackers.Count(unit => runtime.Observe(unit).Position.X >= 930f);
+                return new ScenarioResult(
+                    dead == defenders.Length && resumed >= 6,
+                    $"defeated={dead}/{defenders.Length}, resumed={resumed}/{attackers.Length}");
+            });
+    }
+
+    private static ScenarioResult EvaluateAttackPositions(
+        MovementTestRig runtime,
+        IReadOnlyList<TestUnitId> attackers,
+        TestUnitId target,
+        int minimumAttacking,
+        float minimumRadius,
+        float maximumRadius)
+    {
+        var targetPosition = runtime.Observe(target).Position;
+        var attacking = 0;
+        var positioned = new List<Vector2>();
+        var maximumSlotError = 0f;
+        foreach (var attacker in attackers)
+        {
+            var combat = runtime.ObserveCombat(attacker);
+            if (combat.State == TestCombatState.Attacking)
+            {
+                attacking++;
+            }
+            if (combat.HasAttackPosition)
+            {
+                positioned.Add(combat.AttackPosition);
+                maximumSlotError = MathF.Max(
+                    maximumSlotError,
+                    Vector2.Distance(runtime.Observe(attacker).Position, combat.AttackPosition));
+            }
+        }
+
+        var unique = true;
+        var radiusInBand = true;
+        for (var first = 0; first < positioned.Count; first++)
+        {
+            var radius = Vector2.Distance(positioned[first], targetPosition);
+            radiusInBand &= radius >= minimumRadius && radius <= maximumRadius;
+            for (var second = first + 1; second < positioned.Count; second++)
+            {
+                unique &= Vector2.Distance(positioned[first], positioned[second]) >= 14f;
+            }
+        }
+
+        var passed = attacking >= minimumAttacking &&
+                     positioned.Count >= minimumAttacking && unique && radiusInBand;
+        return new ScenarioResult(
+            passed,
+            $"attacking={attacking}/{attackers.Count}, slots={positioned.Count}, " +
+            $"unique={unique}, radiusBand={radiusInBand}, maxSlotError={maximumSlotError:F1}");
     }
 
     private static VisualTestSession CreateOpenField()

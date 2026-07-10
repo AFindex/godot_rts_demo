@@ -27,6 +27,7 @@ public sealed class SimulationMetrics
     public long DestinationYieldEvents { get; internal set; }
     public int ActiveDestinationYields { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
+    public double CombatMilliseconds { get; internal set; }
     public double PathMilliseconds { get; internal set; }
     public double PreferredVelocityMilliseconds { get; internal set; }
     public double ChokeMilliseconds { get; internal set; }

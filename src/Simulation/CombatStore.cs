@@ -19,6 +19,12 @@ public enum CombatPhase : byte
     Attacking
 }
 
+public enum CombatPositioningKind : byte
+{
+    Melee,
+    Ranged
+}
+
 public readonly record struct CombatProfileSnapshot(
     float MaximumHealth,
     float AttackDamage,
@@ -26,7 +32,8 @@ public readonly record struct CombatProfileSnapshot(
     float AcquisitionRange,
     float AttackCooldownSeconds,
     float AttackWindupSeconds,
-    float LeashDistance)
+    float LeashDistance,
+    CombatPositioningKind Positioning = CombatPositioningKind.Ranged)
 {
     public static CombatProfileSnapshot Standard => new(
         MaximumHealth: 45f,
@@ -46,7 +53,8 @@ public readonly record struct CombatProfileSnapshot(
             !float.IsFinite(AttackCooldownSeconds) || AttackCooldownSeconds <= 0f ||
             !float.IsFinite(AttackWindupSeconds) || AttackWindupSeconds < 0f ||
             AttackWindupSeconds > AttackCooldownSeconds ||
-            !float.IsFinite(LeashDistance) || LeashDistance < AcquisitionRange)
+            !float.IsFinite(LeashDistance) || LeashDistance < AcquisitionRange ||
+            !Enum.IsDefined(Positioning))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(CombatProfileSnapshot),
@@ -72,12 +80,17 @@ public sealed class CombatStore
         AttackCooldownDurations = new float[capacity];
         AttackWindupDurations = new float[capacity];
         LeashDistances = new float[capacity];
+        PositioningKinds = new CombatPositioningKind[capacity];
         CommandIntents = new UnitCommandIntent[capacity];
         Phases = new CombatPhase[capacity];
         TargetUnits = new int[capacity];
         AttackMoveGoals = new Vector2[capacity];
         EngagementOrigins = new Vector2[capacity];
         LastChaseTargets = new Vector2[capacity];
+        AttackSlotTargets = new Vector2[capacity];
+        AttackSlotAngles = new float[capacity];
+        AttackSlotRadii = new float[capacity];
+        HasAttackSlots = new bool[capacity];
         CooldownRemaining = new float[capacity];
         WindupRemaining = new float[capacity];
         ChaseRepathRemaining = new float[capacity];
@@ -93,12 +106,17 @@ public sealed class CombatStore
     public float[] AttackCooldownDurations { get; }
     public float[] AttackWindupDurations { get; }
     public float[] LeashDistances { get; }
+    public CombatPositioningKind[] PositioningKinds { get; }
     public UnitCommandIntent[] CommandIntents { get; }
     public CombatPhase[] Phases { get; }
     public int[] TargetUnits { get; }
     public Vector2[] AttackMoveGoals { get; }
     public Vector2[] EngagementOrigins { get; }
     public Vector2[] LastChaseTargets { get; }
+    public Vector2[] AttackSlotTargets { get; }
+    public float[] AttackSlotAngles { get; }
+    public float[] AttackSlotRadii { get; }
+    public bool[] HasAttackSlots { get; }
     public float[] CooldownRemaining { get; }
     public float[] WindupRemaining { get; }
     public float[] ChaseRepathRemaining { get; }
@@ -115,21 +133,25 @@ public sealed class CombatStore
         AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
         AttackWindupDurations[unit] = profile.AttackWindupSeconds;
         LeashDistances[unit] = profile.LeashDistance;
+        PositioningKinds[unit] = profile.Positioning;
         CommandIntents[unit] = UnitCommandIntent.None;
         Phases[unit] = CombatPhase.None;
         TargetUnits[unit] = -1;
         AttackMoveGoals[unit] = position;
         EngagementOrigins[unit] = position;
         LastChaseTargets[unit] = position;
+        AttackSlotTargets[unit] = position;
     }
 
     public void SetCommand(int unit, UnitCommandIntent intent, Vector2 goal)
     {
         CommandIntents[unit] = intent;
-        Phases[unit] = intent == UnitCommandIntent.AttackMove
+        Phases[unit] = intent is UnitCommandIntent.AttackMove or
+            UnitCommandIntent.Stop or UnitCommandIntent.Hold
             ? CombatPhase.Searching
             : CombatPhase.None;
         TargetUnits[unit] = -1;
+        HasAttackSlots[unit] = false;
         WindupRemaining[unit] = 0f;
         ChaseRepathRemaining[unit] = 0f;
         if (intent == UnitCommandIntent.AttackMove)
