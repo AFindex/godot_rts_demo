@@ -54,7 +54,8 @@ public sealed class CombatSystem
 
             var intent = _combat.CommandIntents[unit];
             if (intent is not (UnitCommandIntent.AttackMove or
-                UnitCommandIntent.Stop or UnitCommandIntent.Hold))
+                UnitCommandIntent.AttackTarget or UnitCommandIntent.Stop or
+                UnitCommandIntent.Hold))
             {
                 continue;
             }
@@ -65,6 +66,11 @@ public sealed class CombatSystem
                 if (target >= 0)
                 {
                     Disengage(unit);
+                }
+
+                if (intent == UnitCommandIntent.AttackTarget)
+                {
+                    continue;
                 }
 
                 if ((tick + unit) % AcquisitionTickStride == 0)
@@ -78,7 +84,7 @@ public sealed class CombatSystem
                 continue;
             }
 
-            if (intent != UnitCommandIntent.Hold &&
+            if (intent is not (UnitCommandIntent.Hold or UnitCommandIntent.AttackTarget) &&
                 Vector2.DistanceSquared(
                     _units.Positions[target], _combat.EngagementOrigins[unit]) >
                 _combat.LeashDistances[unit] * _combat.LeashDistances[unit])

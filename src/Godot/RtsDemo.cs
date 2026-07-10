@@ -9,6 +9,7 @@ namespace RtsDemo.GodotRuntime;
 
 public partial class RtsDemo : Node2D
 {
+    private const int PlayerTeam = 1;
     private const string DemoNavigationResourcePath =
         "res://data/demo_navigation_map.tres";
     private const string DemoGameplayProfilesResourcePath =
@@ -41,6 +42,7 @@ public partial class RtsDemo : Node2D
     private Vector2 _commandMarker;
     private float _commandMarkerTime;
     private bool _commandMarkerAttackMove;
+    private bool _commandMarkerQueued;
     private int _visualTestFinishFrames = -1;
     private int _visualTestExitCode;
     private readonly Stack<DynamicFootprintId> _demoBuildings = new();
@@ -48,6 +50,8 @@ public partial class RtsDemo : Node2D
     private NavigationMapSnapshot? _navigationSnapshot;
     private GameplayProfileCatalogSnapshot? _gameplayProfiles;
     private ClearanceBakeSnapshot? _clearanceBake;
+    private ControlGroupManager? _controlGroups;
+    private int[] _controlGroupRecallBuffer = [];
 
     public override async void _Ready()
     {
@@ -175,6 +179,7 @@ public partial class RtsDemo : Node2D
             groupRoutePlanner: _routePlanner,
             chokeController: _chokeController,
             clearanceBake: _clearanceBake);
+        InitializeOperationState();
         CreateHud();
         SpawnDemoUnits();
 
@@ -271,7 +276,7 @@ public partial class RtsDemo : Node2D
 
         if (inputEvent is InputEventKey key && key.Pressed && !key.Echo)
         {
-            HandleKey(key.Keycode);
+            HandleKey(key);
         }
     }
 
@@ -327,6 +332,17 @@ public partial class RtsDemo : Node2D
                 ? new Color(1f, 0.3f, 0.24f, alpha)
                 : new Color(0.25f, 1f, 0.45f, alpha);
             DrawArc(_commandMarker, 12f, 0f, MathF.Tau, 24, markerColor, 2f);
+            if (_commandMarkerQueued)
+            {
+                DrawArc(
+                    _commandMarker,
+                    17f,
+                    0f,
+                    MathF.Tau,
+                    24,
+                    markerColor with { A = alpha * 0.7f },
+                    1.5f);
+            }
             DrawLine(_commandMarker - new Vector2(6f, 0f),
                 _commandMarker + new Vector2(6f, 0f), markerColor, 2f);
             DrawLine(_commandMarker - new Vector2(0f, 6f),
@@ -390,45 +406,59 @@ public partial class RtsDemo : Node2D
         else if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed &&
                  _selectedUnits.Count > 0 && _navigationReady)
         {
-            var selected = _selectedUnits.OrderBy(index => index).ToArray();
+            var selected = SelectedLivingUnits();
+            if (selected.Length == 0)
+            {
+                return;
+            }
             _commandMarkerAttackMove = Input.IsKeyPressed(Key.A);
-            if (_commandMarkerAttackMove)
-            {
-                _simulation.IssueAttackMove(
-                    selected, GodotPathProvider.ToNumerics(mouse.Position));
-            }
-            else
-            {
-                _simulation.IssueMove(
-                    selected, GodotPathProvider.ToNumerics(mouse.Position));
-            }
+            _commandMarkerQueued = Input.IsKeyPressed(Key.Shift);
+            var target = ResolveSmartCommandTarget(
+                selected[0], GodotPathProvider.ToNumerics(mouse.Position));
+            _simulation.IssueSmartCommand(
+                selected,
+                target,
+                _commandMarkerAttackMove,
+                queued: _commandMarkerQueued);
+            _commandMarkerAttackMove |= target.Kind == SmartCommandTargetKind.EnemyUnit;
             _commandMarker = mouse.Position;
             _commandMarkerTime = 0.65f;
             QueueRedraw();
         }
     }
 
-    private void HandleKey(Key key)
+    private void HandleKey(InputEventKey keyEvent)
     {
         if (_simulation is null)
         {
             return;
         }
 
-        switch (key)
+        if (TryReadControlGroup(keyEvent, out var group))
+        {
+            HandleControlGroup(group, keyEvent.CtrlPressed, keyEvent.ShiftPressed);
+            QueueRedraw();
+            return;
+        }
+
+        switch (keyEvent.Keycode)
         {
             case Key.Space:
                 _selectedUnits.Clear();
                 for (var unit = 0; unit < _simulation.Units.Count; unit++)
                 {
-                    _selectedUnits.Add(unit);
+                    if (_simulation.Units.Alive[unit] &&
+                        _simulation.Combat.Teams[unit] == PlayerTeam)
+                    {
+                        _selectedUnits.Add(unit);
+                    }
                 }
                 break;
             case Key.S:
-                _simulation.Stop(_selectedUnits.OrderBy(index => index).ToArray());
+                _simulation.Stop(SelectedLivingUnits());
                 break;
             case Key.H:
-                _simulation.Hold(_selectedUnits.OrderBy(index => index).ToArray());
+                _simulation.Hold(SelectedLivingUnits());
                 break;
             case Key.D:
                 _showDebug = !_showDebug;
@@ -445,6 +475,119 @@ public partial class RtsDemo : Node2D
         }
 
         QueueRedraw();
+    }
+
+    private void InitializeOperationState()
+    {
+        if (_simulation is null)
+        {
+            return;
+        }
+        _controlGroups = new ControlGroupManager(_simulation.Units.Capacity);
+        _controlGroupRecallBuffer = new int[_simulation.Units.Capacity];
+    }
+
+    private void HandleControlGroup(int group, bool assign, bool add)
+    {
+        if (_simulation is null || _controlGroups is null)
+        {
+            return;
+        }
+
+        var selected = SelectedLivingUnits();
+        if (assign)
+        {
+            _controlGroups.Assign(group, selected);
+            return;
+        }
+        if (add)
+        {
+            _controlGroups.Add(group, selected);
+            return;
+        }
+
+        var count = _controlGroups.Recall(
+            group,
+            _simulation.Units.Alive,
+            _controlGroupRecallBuffer);
+        _selectedUnits.Clear();
+        for (var index = 0; index < count; index++)
+        {
+            var unit = _controlGroupRecallBuffer[index];
+            if (_simulation.Combat.Teams[unit] == PlayerTeam)
+            {
+                _selectedUnits.Add(unit);
+            }
+        }
+    }
+
+    private static bool TryReadControlGroup(
+        InputEventKey keyEvent,
+        out int group)
+    {
+        var code = keyEvent.Unicode != 0
+            ? keyEvent.Unicode
+            : (long)keyEvent.Keycode;
+        if (code >= '0' && code <= '9')
+        {
+            group = (int)(code - '0');
+            return true;
+        }
+        group = -1;
+        return false;
+    }
+
+    private int[] SelectedLivingUnits()
+    {
+        if (_simulation is null)
+        {
+            return [];
+        }
+        return _selectedUnits
+            .Where(unit =>
+                _simulation.Units.Alive[unit] &&
+                _simulation.Combat.Teams[unit] == PlayerTeam)
+            .OrderBy(unit => unit)
+            .ToArray();
+    }
+
+    private SmartCommandTarget ResolveSmartCommandTarget(
+        int selectedUnit,
+        NVector2 position)
+    {
+        if (_simulation is null)
+        {
+            return new SmartCommandTarget(SmartCommandTargetKind.Ground, position);
+        }
+
+        var best = -1;
+        var bestDistanceSquared = 18f * 18f;
+        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        {
+            if (!_simulation.Units.Alive[unit])
+            {
+                continue;
+            }
+            var distanceSquared = NVector2.DistanceSquared(
+                position, _simulation.Units.Positions[unit]);
+            var hitRadius = _simulation.Units.Radii[unit] + 5f;
+            if (distanceSquared <= hitRadius * hitRadius &&
+                distanceSquared < bestDistanceSquared)
+            {
+                best = unit;
+                bestDistanceSquared = distanceSquared;
+            }
+        }
+
+        if (best < 0)
+        {
+            return new SmartCommandTarget(SmartCommandTargetKind.Ground, position);
+        }
+        var kind = _simulation.Combat.Teams[selectedUnit] ==
+                   _simulation.Combat.Teams[best]
+            ? SmartCommandTargetKind.FriendlyUnit
+            : SmartCommandTargetKind.EnemyUnit;
+        return new SmartCommandTarget(kind, _simulation.Units.Positions[best], best);
     }
 
     private void SelectInRect(Rect2 rect, bool additive)
@@ -466,7 +609,8 @@ public partial class RtsDemo : Node2D
             var bestDistance = 15f * 15f;
             for (var unit = 0; unit < _simulation.Units.Count; unit++)
             {
-                if (!_simulation.Units.Alive[unit])
+                if (!_simulation.Units.Alive[unit] ||
+                    _simulation.Combat.Teams[unit] != PlayerTeam)
                 {
                     continue;
                 }
@@ -489,7 +633,8 @@ public partial class RtsDemo : Node2D
 
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
-            if (!_simulation.Units.Alive[unit])
+            if (!_simulation.Units.Alive[unit] ||
+                _simulation.Combat.Teams[unit] != PlayerTeam)
             {
                 continue;
             }
@@ -790,7 +935,8 @@ public partial class RtsDemo : Node2D
         _hud.Text =
             $"{title}  |  units {livingUnits}/{_simulation.Units.Count}  " +
             $"selected {_selectedUnits.Count}  moving {metrics.MovingUnits}  " +
-            $"arrived {metrics.ArrivedUnits}  engaged {engagedUnits}  choke {chokeUnits}  " +
+            $"arrived {metrics.ArrivedUnits}  queued {metrics.PendingUnitOrders}  " +
+            $"engaged {engagedUnits}  choke {chokeUnits}  " +
             $"route {_simulation.LastIssuedGroupRoute.Waypoints.Length}  " +
             $"route plans {metrics.GroupRoutePlans} shared {metrics.SharedRouteAssignments}  " +
             $"slot swaps {metrics.DestinationSlotSwaps}  " +
@@ -809,7 +955,8 @@ public partial class RtsDemo : Node2D
             $"collision {metrics.CollisionMilliseconds:0.00}  " +
             $"alloc {metrics.AllocatedBytes / 1024.0:0.0}KB\n" +
             $"{trafficText}\n" +
-            "LMB drag/select  RMB move  A+RMB attack-move  Space select all  S stop  H hold  " +
+            "LMB select  RMB smart  Shift+RMB queue  A+RMB attack-move  " +
+            "Ctrl+# assign  Shift+# add  # recall  Space all  S stop  H hold  " +
             "B place building  X remove building  D debug  R reset";
     }
 
@@ -1120,6 +1267,7 @@ public partial class RtsDemo : Node2D
             groupRoutePlanner: _routePlanner,
             chokeController: _chokeController,
             clearanceBake: _clearanceBake);
+        InitializeOperationState();
         _selectedUnits.Clear();
         SpawnDemoUnits();
         _commandMarkerTime = 0f;

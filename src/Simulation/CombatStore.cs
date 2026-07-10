@@ -7,6 +7,7 @@ public enum UnitCommandIntent : byte
     None,
     Move,
     AttackMove,
+    AttackTarget,
     Stop,
     Hold
 }
@@ -143,14 +144,21 @@ public sealed class CombatStore
         AttackSlotTargets[unit] = position;
     }
 
-    public void SetCommand(int unit, UnitCommandIntent intent, Vector2 goal)
+    public void SetCommand(
+        int unit,
+        UnitCommandIntent intent,
+        Vector2 goal,
+        int targetUnit = -1)
     {
         CommandIntents[unit] = intent;
         Phases[unit] = intent is UnitCommandIntent.AttackMove or
+            UnitCommandIntent.AttackTarget or
             UnitCommandIntent.Stop or UnitCommandIntent.Hold
             ? CombatPhase.Searching
             : CombatPhase.None;
-        TargetUnits[unit] = -1;
+        TargetUnits[unit] = intent == UnitCommandIntent.AttackTarget
+            ? targetUnit
+            : -1;
         HasAttackSlots[unit] = false;
         WindupRemaining[unit] = 0f;
         ChaseRepathRemaining[unit] = 0f;

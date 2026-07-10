@@ -26,6 +26,9 @@ public sealed class SimulationMetrics
     public int MaximumDestinationNearTicks { get; internal set; }
     public long DestinationYieldEvents { get; internal set; }
     public int ActiveDestinationYields { get; internal set; }
+    public int PendingUnitOrders { get; internal set; }
+    public long CompletedQueuedOrders { get; internal set; }
+    public int QueueOverflowEvents { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
     public double CombatMilliseconds { get; internal set; }
     public double PathMilliseconds { get; internal set; }
@@ -36,5 +39,6 @@ public sealed class SimulationMetrics
     public double IntegrateMilliseconds { get; internal set; }
     public double CollisionMilliseconds { get; internal set; }
     public double RecoveryMilliseconds { get; internal set; }
+    public double CommandMilliseconds { get; internal set; }
     public long AllocatedBytes { get; internal set; }
 }

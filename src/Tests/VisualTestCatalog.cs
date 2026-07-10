@@ -20,6 +20,11 @@ public static class VisualTestCatalog
         "combat-ranged-ring",
         "combat-stop-hold-acquire",
         "combat-multi-retarget",
+        "queued-waypoints",
+        "queued-command-replace",
+        "queued-capacity-limit",
+        "control-group-recall",
+        "smart-command-sequence",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -76,6 +81,11 @@ public static class VisualTestCatalog
         "combat-ranged-ring" => CreateCombatRangedRing(),
         "combat-stop-hold-acquire" => CreateCombatStopHoldAcquire(),
         "combat-multi-retarget" => CreateCombatMultiRetarget(),
+        "queued-waypoints" => CreateQueuedWaypoints(),
+        "queued-command-replace" => CreateQueuedCommandReplace(),
+        "queued-capacity-limit" => CreateQueuedCapacityLimit(),
+        "control-group-recall" => CreateControlGroupRecall(),
+        "smart-command-sequence" => CreateSmartCommandSequence(),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
         "opposing-streams" => CreateOpposingStreams(),
@@ -508,6 +518,180 @@ public static class VisualTestCatalog
             passed,
             $"attacking={attacking}/{attackers.Count}, slots={positioned.Count}, " +
             $"unique={unique}, radiusBand={radiusInBand}, maxSlotError={maximumSlotError:F1}");
+    }
+
+    private static VisualTestSession CreateQueuedWaypoints()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 8);
+        var unit = rig.Spawn(new Vector2(100f, 100f));
+        rig.Move([unit], new Vector2(420f, 100f));
+        rig.Move([unit], new Vector2(420f, 430f), queued: true);
+        rig.Move([unit], new Vector2(930f, 430f), queued: true);
+        return new VisualTestSession(
+            "queued-waypoints",
+            "Per-unit Shift queue executes three waypoints in order",
+            780,
+            rig,
+            [unit],
+            runtime =>
+            {
+                var snapshot = runtime.Observe(unit);
+                var orders = runtime.ObserveOrders(unit);
+                var passed = Vector2.Distance(
+                                 snapshot.Position, snapshot.AssignedTarget) < 8f &&
+                             orders.PendingOrders == 0 &&
+                             orders.CompletedQueuedOrders == 2 &&
+                             orders.QueueOverflows == 0;
+                return new ScenarioResult(
+                    passed,
+                    $"position={snapshot.Position.X:F1},{snapshot.Position.Y:F1}, " +
+                    $"active={orders.ActiveOrder}, pending={orders.PendingOrders}, " +
+                    $"completed={orders.CompletedQueuedOrders}");
+            });
+    }
+
+    private static VisualTestSession CreateQueuedCommandReplace()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 8);
+        var unit = rig.Spawn(new Vector2(100f, 100f));
+        rig.Move([unit], new Vector2(1050f, 100f));
+        rig.Move([unit], new Vector2(1050f, 600f), queued: true);
+        rig.Move([unit], new Vector2(200f, 600f), queued: true);
+        return new VisualTestSession(
+            "queued-command-replace",
+            "Non-queued command replaces the complete Shift queue",
+            600,
+            rig,
+            [unit],
+            runtime =>
+            {
+                var snapshot = runtime.Observe(unit);
+                var orders = runtime.ObserveOrders(unit);
+                var passed = Vector2.Distance(
+                                 snapshot.Position, new Vector2(230f, 520f)) < 8f &&
+                             orders.PendingOrders == 0 &&
+                             orders.CompletedQueuedOrders == 0;
+                return new ScenarioResult(
+                    passed,
+                    $"position={snapshot.Position.X:F1},{snapshot.Position.Y:F1}, " +
+                    $"pending={orders.PendingOrders}, completed={orders.CompletedQueuedOrders}");
+            })
+            .At(90, "Immediate command clears queued waypoints", runtime =>
+                runtime.Move([unit], new Vector2(230f, 520f)));
+    }
+
+    private static VisualTestSession CreateQueuedCapacityLimit()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 4);
+        var unit = rig.Spawn(
+            new Vector2(80f, 350f), maximumSpeed: 60f, acceleration: 360f);
+        rig.Move([unit], new Vector2(1120f, 350f));
+        for (var index = 0; index < rig.MaximumQueuedOrders + 2; index++)
+        {
+            var target = new Vector2(
+                900f + index % 4 * 40f,
+                160f + index / 4 * 90f);
+            rig.Move([unit], target, queued: true);
+        }
+        return new VisualTestSession(
+            "queued-capacity-limit",
+            "Per-unit command queue has a bounded overflow policy",
+            120,
+            rig,
+            [unit],
+            runtime =>
+            {
+                var orders = runtime.ObserveOrders(unit);
+                return new ScenarioResult(
+                    orders.PendingOrders == runtime.MaximumQueuedOrders &&
+                    orders.QueueOverflows == 2,
+                    $"pending={orders.PendingOrders}/" +
+                    $"{runtime.MaximumQueuedOrders}, " +
+                    $"overflows={orders.QueueOverflows}");
+            });
+    }
+
+    private static VisualTestSession CreateControlGroupRecall()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 12);
+        var first = rig.SpawnGrid(new Vector2(100f, 180f), 2, 2, 22f);
+        var added = rig.SpawnGrid(new Vector2(100f, 300f), 1, 2, 22f);
+        rig.AssignControlGroup(1, first);
+        rig.AddToControlGroup(1, added);
+        var recalled = rig.RecallControlGroup(1);
+        rig.Move(recalled, new Vector2(920f, 350f));
+        var visible = first.Concat(added).ToArray();
+        return new VisualTestSession(
+            "control-group-recall",
+            "Ctrl assign, Shift add, and recall a control group",
+            720,
+            rig,
+            visible,
+            runtime =>
+            {
+                var current = runtime.RecallControlGroup(1);
+                var arrived = current.Count(unit =>
+                    Vector2.Distance(
+                        runtime.Observe(unit).Position,
+                        runtime.Observe(unit).AssignedTarget) < 8f);
+                return new ScenarioResult(
+                    current.Length == 6 && arrived == 6,
+                    $"members={current.Length}, arrived={arrived}/6");
+            });
+    }
+
+    private static VisualTestSession CreateSmartCommandSequence()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 8);
+        var attackerProfile = new TestCombatProfile(
+            MaximumHealth: 80f,
+            AttackDamage: 30f,
+            AttackRange: 40f,
+            AcquisitionRange: 180f,
+            AttackCooldownSeconds: 0.4f,
+            AttackWindupSeconds: 0.08f,
+            LeashDistance: 300f);
+        var weakTarget = new TestCombatProfile(
+            MaximumHealth: 30f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 80f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 100f);
+        var attacker = rig.SpawnCombat(
+            new Vector2(100f, 350f), team: 1, attackerProfile);
+        var friendly = rig.SpawnCombat(
+            new Vector2(330f, 220f), team: 1, attackerProfile);
+        var enemy = rig.SpawnCombat(
+            new Vector2(570f, 350f), team: 2, weakTarget);
+        rig.SmartCommandUnit([attacker], friendly);
+        rig.SmartCommandUnit([attacker], enemy, queued: true);
+        rig.SmartCommandGround(
+            [attacker], new Vector2(1020f, 500f), queued: true);
+        return new VisualTestSession(
+            "smart-command-sequence",
+            "SmartCommand resolves friendly position, enemy attack, then ground move",
+            900,
+            rig,
+            [attacker, friendly, enemy],
+            runtime =>
+            {
+                var attackerSnapshot = runtime.Observe(attacker);
+                var enemySnapshot = runtime.ObserveCombat(enemy);
+                var orders = runtime.ObserveOrders(attacker);
+                var passed = !enemySnapshot.Alive &&
+                             Vector2.Distance(
+                                 attackerSnapshot.Position,
+                                 new Vector2(1020f, 500f)) < 10f &&
+                             orders.PendingOrders == 0 &&
+                             orders.CompletedQueuedOrders == 2;
+                return new ScenarioResult(
+                    passed,
+                    $"enemy_alive={enemySnapshot.Alive}, " +
+                    $"position={attackerSnapshot.Position.X:F1},{attackerSnapshot.Position.Y:F1}, " +
+                    $"completed={orders.CompletedQueuedOrders}");
+            });
     }
 
     private static VisualTestSession CreateOpenField()

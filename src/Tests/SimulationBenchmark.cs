@@ -181,7 +181,8 @@ public static class SimulationBenchmark
                      performance.ChokeMilliseconds +
                      performance.SpatialHashMilliseconds +
                      performance.IntegrateMilliseconds +
-                     performance.RecoveryMilliseconds;
+                     performance.RecoveryMilliseconds +
+                     performance.CommandMilliseconds;
         }
 
         var observations = rig.Observe(units);

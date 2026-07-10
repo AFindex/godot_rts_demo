@@ -37,8 +37,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly ChokeController? _chokeController;
     private readonly CombatSystem _combatSystem;
     private readonly int[] _collisionNeighbors = new int[64];
+    private readonly int[] _orderReadyUnits;
+    private readonly UnitOrder[] _orderReadyOrders;
+    private readonly bool[] _orderReadyProcessed;
+    private readonly int[] _orderDispatchUnits;
     private int _pendingNavigationInvalidations;
     private int _nextMovementGroupId = 1;
+    private int _nextOrderSequenceId = 1;
 
     public RtsSimulation(
         StaticWorld world,
@@ -52,6 +57,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _pathProvider = pathProvider;
         Units = new UnitStore(capacity);
         Combat = new CombatStore(capacity);
+        CommandQueues = new UnitCommandQueueStore(capacity);
+        _orderReadyUnits = new int[capacity];
+        _orderReadyOrders = new UnitOrder[capacity];
+        _orderReadyProcessed = new bool[capacity];
+        _orderDispatchUnits = new int[capacity];
         _spatialHash = new SpatialHash(40f);
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
@@ -69,6 +79,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public StaticWorld World { get; }
     public UnitStore Units { get; }
     public CombatStore Combat { get; }
+    public UnitCommandQueueStore CommandQueues { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -170,7 +181,54 @@ public sealed class RtsSimulation : ICombatMovementDriver
             movementProfile.MaximumSpeed,
             movementProfile.Acceleration);
 
-    public void IssueMove(ReadOnlySpan<int> unitIndices, Vector2 target)
+    public void IssueMove(
+        ReadOnlySpan<int> unitIndices,
+        Vector2 target,
+        bool queued = false) =>
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(UnitOrderKind.Move, target),
+            queued);
+
+    public void IssueAttackMove(
+        ReadOnlySpan<int> unitIndices,
+        Vector2 target,
+        bool queued = false) =>
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(UnitOrderKind.AttackMove, target),
+            queued);
+
+    public void IssueAttackTarget(
+        ReadOnlySpan<int> unitIndices,
+        int targetUnit,
+        bool queued = false)
+    {
+        ValidateUnitIndex(targetUnit);
+        ValidateLivingUnit(targetUnit);
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(
+                UnitOrderKind.AttackTarget,
+                Units.Positions[targetUnit],
+                targetUnit),
+            queued);
+    }
+
+    public void IssueSmartCommand(
+        ReadOnlySpan<int> unitIndices,
+        SmartCommandTarget target,
+        bool attackMoveModifier,
+        bool queued = false) =>
+        IssueOrder(
+            unitIndices,
+            SmartCommandResolver.Resolve(target, attackMoveModifier),
+            queued);
+
+    private void ExecuteMoveOrder(
+        ReadOnlySpan<int> unitIndices,
+        Vector2 target,
+        UnitCommandIntent intent)
     {
         if (unitIndices.IsEmpty)
         {
@@ -217,7 +275,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             var unit = unitIndices[i];
             ValidateUnitIndex(unit);
             ValidateLivingUnit(unit);
-            Combat.SetCommand(unit, UnitCommandIntent.Move, groupGoal);
+            Combat.SetCommand(unit, intent, groupGoal);
             Units.CommandVersions[unit]++;
             Units.SlotTargets[unit] = assignments[unit];
             Units.MoveGoals[unit] = groupGoal;
@@ -256,17 +314,19 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
-    public void IssueAttackMove(ReadOnlySpan<int> unitIndices, Vector2 target)
-    {
-        IssueMove(unitIndices, target);
-        for (var index = 0; index < unitIndices.Length; index++)
-        {
-            var unit = unitIndices[index];
-            Combat.SetCommand(unit, UnitCommandIntent.AttackMove, Units.MoveGoals[unit]);
-        }
-    }
+    public void Stop(ReadOnlySpan<int> unitIndices) =>
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(UnitOrderKind.Stop, Vector2.Zero),
+            queued: false);
 
-    public void Stop(ReadOnlySpan<int> unitIndices)
+    public void Hold(ReadOnlySpan<int> unitIndices) =>
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(UnitOrderKind.Hold, Vector2.Zero),
+            queued: false);
+
+    private void ExecuteStop(ReadOnlySpan<int> unitIndices)
     {
         for (var i = 0; i < unitIndices.Length; i++)
         {
@@ -312,9 +372,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
-    public void Hold(ReadOnlySpan<int> unitIndices)
+    private void ExecuteHold(ReadOnlySpan<int> unitIndices)
     {
-        Stop(unitIndices);
+        ExecuteStop(unitIndices);
         for (var i = 0; i < unitIndices.Length; i++)
         {
             var unit = unitIndices[i];
@@ -324,6 +384,124 @@ public sealed class RtsSimulation : ICombatMovementDriver
             }
             Units.Modes[unit] = UnitMoveMode.Hold;
             Combat.SetCommand(unit, UnitCommandIntent.Hold, Units.Positions[unit]);
+        }
+    }
+
+    private void IssueOrder(
+        ReadOnlySpan<int> unitIndices,
+        UnitOrder order,
+        bool queued)
+    {
+        if (unitIndices.IsEmpty)
+        {
+            return;
+        }
+        if (order.Kind == UnitOrderKind.None)
+        {
+            throw new ArgumentOutOfRangeException(nameof(order));
+        }
+
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            ValidateUnitIndex(unitIndices[index]);
+            ValidateLivingUnit(unitIndices[index]);
+        }
+
+        order = order with { SequenceId = NextOrderSequenceId() };
+        if (!queued || order.Kind is UnitOrderKind.Stop or UnitOrderKind.Hold)
+        {
+            for (var index = 0; index < unitIndices.Length; index++)
+            {
+                CommandQueues.ClearPending(unitIndices[index]);
+            }
+            ExecuteOrderGroup(unitIndices, order, wasQueued: false);
+            return;
+        }
+
+        var immediateCount = 0;
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            if (CommandQueues.PendingCounts[unit] == 0 &&
+                IsActiveOrderComplete(unit))
+            {
+                _orderDispatchUnits[immediateCount++] = unit;
+            }
+            else
+            {
+                CommandQueues.TryEnqueue(unit, order);
+            }
+        }
+
+        if (immediateCount > 0)
+        {
+            ExecuteOrderGroup(
+                _orderDispatchUnits.AsSpan(0, immediateCount),
+                order,
+                wasQueued: true);
+        }
+    }
+
+    private void ExecuteOrderGroup(
+        ReadOnlySpan<int> unitIndices,
+        UnitOrder order,
+        bool wasQueued)
+    {
+        switch (order.Kind)
+        {
+            case UnitOrderKind.Move:
+                ExecuteMoveOrder(unitIndices, order.TargetPosition, UnitCommandIntent.Move);
+                break;
+            case UnitOrderKind.AttackMove:
+                ExecuteMoveOrder(
+                    unitIndices,
+                    order.TargetPosition,
+                    UnitCommandIntent.AttackMove);
+                break;
+            case UnitOrderKind.AttackTarget:
+                ExecuteAttackTarget(unitIndices, order.TargetUnit);
+                break;
+            case UnitOrderKind.Stop:
+                ExecuteStop(unitIndices);
+                break;
+            case UnitOrderKind.Hold:
+                ExecuteHold(unitIndices);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(order));
+        }
+
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            if (Units.Alive[unit])
+            {
+                CommandQueues.Begin(unit, order, wasQueued);
+            }
+        }
+    }
+
+    private void ExecuteAttackTarget(ReadOnlySpan<int> unitIndices, int targetUnit)
+    {
+        ExecuteStop(unitIndices);
+        if ((uint)targetUnit >= (uint)Units.Count || !Units.Alive[targetUnit])
+        {
+            return;
+        }
+
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            if (Combat.Teams[unit] == Combat.Teams[targetUnit])
+            {
+                throw new InvalidOperationException(
+                    $"Unit {targetUnit} is friendly to attacker {unit}.");
+            }
+            Combat.SetCommand(
+                unit,
+                UnitCommandIntent.AttackTarget,
+                Units.Positions[targetUnit],
+                targetUnit);
         }
     }
 
@@ -390,6 +568,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
         UpdateDestinationOverflow();
         UpdateMetrics();
         Metrics.RecoveryMilliseconds = ElapsedMilliseconds(phaseStart);
+
+        phaseStart = Stopwatch.GetTimestamp();
+        AdvanceQueuedOrders();
+        Metrics.CommandMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
         Metrics.AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
     }
@@ -1357,8 +1539,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.MaximumDestinationStallTicks = 0;
         Metrics.MaximumDestinationNearTicks = 0;
         Metrics.ActiveDestinationYields = 0;
+        Metrics.PendingUnitOrders = 0;
+        Metrics.CompletedQueuedOrders = 0;
+        Metrics.QueueOverflowEvents = 0;
         for (var unit = 0; unit < Units.Count; unit++)
         {
+            Metrics.PendingUnitOrders += CommandQueues.PendingCounts[unit];
+            Metrics.CompletedQueuedOrders += CommandQueues.CompletedQueuedOrders[unit];
+            Metrics.QueueOverflowEvents += CommandQueues.QueueOverflowCounts[unit];
             if (!Units.Alive[unit])
             {
                 continue;
@@ -1409,6 +1597,89 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             throw new InvalidOperationException($"Unit {unit} is dead.");
         }
+    }
+
+    private void AdvanceQueuedOrders()
+    {
+        var readyCount = 0;
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] || !IsActiveOrderComplete(unit))
+            {
+                continue;
+            }
+
+            if (CommandQueues.ActiveOrdersWereQueued[unit])
+            {
+                CommandQueues.CompletedQueuedOrders[unit]++;
+                CommandQueues.ActiveOrdersWereQueued[unit] = false;
+            }
+
+            if (CommandQueues.TryDequeue(unit, out var order))
+            {
+                _orderReadyUnits[readyCount] = unit;
+                _orderReadyOrders[readyCount] = order;
+                _orderReadyProcessed[readyCount] = false;
+                readyCount++;
+            }
+        }
+
+        for (var first = 0; first < readyCount; first++)
+        {
+            if (_orderReadyProcessed[first])
+            {
+                continue;
+            }
+
+            var order = _orderReadyOrders[first];
+            var dispatchCount = 0;
+            for (var candidate = first; candidate < readyCount; candidate++)
+            {
+                if (_orderReadyProcessed[candidate] ||
+                    _orderReadyOrders[candidate] != order)
+                {
+                    continue;
+                }
+
+                _orderReadyProcessed[candidate] = true;
+                _orderDispatchUnits[dispatchCount++] = _orderReadyUnits[candidate];
+            }
+
+            ExecuteOrderGroup(
+                _orderDispatchUnits.AsSpan(0, dispatchCount),
+                order,
+                wasQueued: true);
+        }
+    }
+
+    private bool IsActiveOrderComplete(int unit)
+    {
+        if (!CommandQueues.HasActiveOrders[unit])
+        {
+            return true;
+        }
+
+        return CommandQueues.ActiveKinds[unit] switch
+        {
+            UnitOrderKind.Move => Units.Modes[unit] == UnitMoveMode.Arrived,
+            UnitOrderKind.AttackMove =>
+                Units.Modes[unit] == UnitMoveMode.Arrived &&
+                Combat.TargetUnits[unit] < 0,
+            UnitOrderKind.AttackTarget =>
+                (uint)CommandQueues.ActiveTargetUnits[unit] >= (uint)Units.Count ||
+                !Units.Alive[CommandQueues.ActiveTargetUnits[unit]],
+            UnitOrderKind.Stop or UnitOrderKind.Hold => true,
+            _ => true
+        };
+    }
+
+    private int NextOrderSequenceId()
+    {
+        if (_nextOrderSequenceId == int.MaxValue)
+        {
+            _nextOrderSequenceId = 1;
+        }
+        return _nextOrderSequenceId++;
     }
 
     void ICombatMovementDriver.Chase(int unit, Vector2 target)
@@ -1488,6 +1759,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.MovementGroupIds[unit] = 0;
         Units.MovementGroupSizes[unit] = 0;
         Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+        CommandQueues.ClearPending(unit);
+        CommandQueues.HasActiveOrders[unit] = false;
     }
 
     private void SetCombatDestination(int unit, Vector2 target)

@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 48 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore 或 CombatStore 内部状态。
+- 53 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore 或队列内部数组。
 - 测试可以自动录制 AVI，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
-- 54 个 C# 源文件。
-- 约 12,186 行 C#（按仓库源码统计）。
-- 48 个黑盒场景。
-- 覆盖 48 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 9.17ms。
+- 55 个 C# 源文件。
+- 约 13,080 行 C#（按仓库源码统计）。
+- 53 个黑盒场景。
+- 覆盖 53 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 10.12ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -38,6 +38,7 @@
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | Demo 闭环完成 | AttackMove、近战接触槽、远程攻击环、外圈 staging、Stop/Hold 索敌、多人重选敌、死亡/leash/路线恢复 | 后置的弹道、移动射击、动画事件、复杂目标权重和推挤优先级 |
+| 操作层 | 第一层完成 | 每单位 Shift 队列、Control Group、SmartCommand、锁定攻击、命令反馈 | 命令日志/回放后再做双击选择、镜头定位、相机和 Minimap |
 | S9 编辑器与数据烘焙 | Bake 闭环完成 | Navigation/Gameplay/Bake Resource、稳定哈希、CLI Generator/Validator、三档分量与 chunk `[Tool]` Preview | 增量 Baker、几何拖拽、热重载和放置差异面板 |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
 
@@ -154,11 +155,22 @@
 - 多人目标死亡后稳定重选敌，清空敌人后恢复各自原 AttackMove 路线。
 - 详细边界见 `docs/ATTACK_MOVE.md`。
 
+### 3.9 操作层第一阶段
+
+- 每单位固定 16 条待执行命令，不使用组级共享队列。
+- 非 Shift 命令立即替换并清空队列；Stop/Hold 当前是终止命令。
+- 同序列且同 Tick 到期的单位重新批量发令，继续复用群组槽位和共享路线。
+- 队列满时拒绝新增并记录 overflow，不覆盖旧命令。
+- Ctrl+数字覆盖 Control Group，Shift+数字添加，数字召回并过滤死亡单位。
+- SmartCommand：地面/友军位置为 Move，敌军为 AttackTarget，A 修饰为 AttackMove。
+- Godot 中 Shift 队列使用双圈反馈；普通命令使用单圈反馈。
+- 详细边界见 `docs/OPERATION_LAYER.md`。
+
 ## 4. 测试、录像和性能
 
 ### 4.1 已有黑盒场景
 
-当前 48 个场景覆盖：
+当前 53 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -191,13 +203,15 @@
 - 192 单位压力场景。
 - AttackMove 接敌击杀后恢复原路线、leash 脱战恢复、Move/AttackMove 隔离和 Stop/Hold 取消。
 - 8/8 近战唯一接触槽、10/10 远程攻击环、Stop/Hold 自动索敌语义，以及 8 对 4 连续重选敌。
+- 三段 Shift 路点、即时替换、16 条队列上限、Control Group 覆盖/添加/召回和 SmartCommand 连续语义。
 
 黑盒场景只使用以下稳定业务动作：
 
 ```text
 Spawn
 SpawnCombat
-Move / AttackMove / Stop / Hold
+Move / AttackMove / AttackTarget / SmartCommand / Stop / Hold
+Assign / Add / Recall ControlGroup
 PlaceBuilding / RemoveBuilding
 Step
 Observe unit / combat / traffic / recovery / performance
@@ -211,7 +225,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每个场景独立启动 Godot Movie Maker。
 - 每段录像保存 AVI、Godot 日志和 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 48 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 53 个逻辑场景的规范录像。
 - AVI 使用 Git LFS。
 
 注意：当前规范录像来自多个功能里程碑批次，并非全部在同一个 commit 上重新录制。发布正式版本前应执行一次全量重新录制，生成单一时间戳目录。
@@ -222,16 +236,16 @@ Observe unit / combat / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|
-| 256 | 1.09ms | 1.50ms | 4ms | 27B |
-| 512 | 3.95ms | 4.95ms | 12.5ms | 182B |
-| 1000 | 7.47ms | 9.17ms | 16.67ms | 461B |
+| 256 | 1.01ms | 1.32ms | 4ms | 27B |
+| 512 | 3.91ms | 4.85ms | 12.5ms | 182B |
+| 1000 | 8.03ms | 10.12ms | 16.67ms | 461B |
 
 双方持续 AttackMove 的活跃战斗门槛：
 
 | 总单位数 | 平均 Tick | P95 | 战斗阶段平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|
-| 128 | 1.43ms | 1.88ms | 0.54ms | 4ms | 2.3KB |
-| 256 | 3.19ms | 3.99ms | 1.42ms | 8ms | 4.0KB |
+| 128 | 1.38ms | 1.93ms | 0.49ms | 4ms | 2.3KB |
+| 256 | 3.69ms | 4.83ms | 1.77ms | 8ms | 4.0KB |
 
 活跃追击会持续生成短路径，因此单独使用 8KB/Tick 分配门槛；非战斗移动仍保持 1KB/Tick 门槛。
 
@@ -330,17 +344,23 @@ TODO：
 
 ### 6.2 操作层
 
-TODO：
+已完成：
 
-- Shift 命令队列。
-- Control Group。
+- 每单位 Shift 命令队列、16 条硬上限和 overflow 诊断。
+- Control Group 覆盖、添加、召回和死亡过滤。
+- SmartCommandResolver 的地面、友军、敌军与 A 修饰语义。
+- AttackTarget 与现有追击/占位/攻击系统接通。
+- 单圈/双圈命令反馈和 HUD 队列计数。
+- 五个业务黑盒场景、录像和全量回归。
+
+后续 TODO：
+
 - 双击选择同类单位。
 - 选择优先级和 SelectionFilter。
-- SmartCommandResolver。
-- 地面、敌军、友军、资源和建筑右键语义。
+- 资源和建筑右键语义。
 - 相机边缘滚动、缩放和快速定位。
 - Minimap 命令。
-- 命令反馈、光标和落点动画。
+- 编组双击镜头定位、Alt 移出/窃取编组。
 
 ### 6.3 S9 编辑器和数据管线
 
@@ -478,9 +498,14 @@ TODO：
 - 48/48 全量黑盒场景通过，八段当前战斗录像保存。
 - 战斗移动到此收口，不继续扩张伤害与表现系统。
 
-### 下一步 E：操作层和确定性
+### 下一步 E：操作层第一阶段（已完成）
 
-先完成 Shift 队列、Control Group 和 SmartCommand，再加入命令日志、回放和状态 Hash。联机方案应建立在可重复回放之后。
+- Shift 队列、Control Group、SmartCommand 和 AttackTarget 已闭环。
+- 53/53 黑盒场景通过，五段操作层录像保存。
+
+### 下一步 E2：确定性命令日志与回放
+
+加入版本化命令日志、固定 Tick 回放、周期状态 Hash 和首次分歧 Tick。联机方案必须建立在相同输入可重复执行之后。
 
 ## 8. 可以并行但不能提前耦合的优化
 

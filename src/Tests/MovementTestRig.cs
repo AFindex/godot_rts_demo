@@ -6,6 +6,22 @@ namespace RtsDemo.Tests;
 public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
 
+public enum TestOrderKind : byte
+{
+    None,
+    Move,
+    AttackMove,
+    AttackTarget,
+    Stop,
+    Hold
+}
+
+public readonly record struct TestOrderSnapshot(
+    TestOrderKind ActiveOrder,
+    int PendingOrders,
+    int CompletedQueuedOrders,
+    int QueueOverflows);
+
 public readonly record struct TestCombatProfile(
     float MaximumHealth = 45f,
     float AttackDamage = 8f,
@@ -122,6 +138,7 @@ public readonly record struct TestPerformanceSnapshot(
     double IntegrateMilliseconds,
     double CollisionMilliseconds,
     double RecoveryMilliseconds,
+    double CommandMilliseconds,
     long AllocatedBytes);
 
 public readonly record struct TestMovementDiagnostics(
@@ -163,6 +180,7 @@ public sealed class MovementTestRig
     private readonly PortalGraphRoutePlanner? _routePlanner;
     private readonly ChokeController? _chokeController;
     private readonly NavigationMapSnapshot? _navigationMap;
+    private readonly ControlGroupManager _controlGroups;
 
     private MovementTestRig(
         StaticWorld world,
@@ -176,9 +194,11 @@ public sealed class MovementTestRig
         _routePlanner = routePlanner;
         _chokeController = chokeController;
         _navigationMap = navigationMap;
+        _controlGroups = new ControlGroupManager(simulation.Units.Capacity);
     }
 
     public long Tick => _simulation.Metrics.Tick;
+    public int MaximumQueuedOrders => UnitCommandQueueStore.MaximumPendingOrders;
     public int UnitCount => _simulation.Units.Count;
     public Vector2 WorldMinimum => _world.Bounds.Min;
     public Vector2 WorldMaximum => _world.Bounds.Max;
@@ -344,17 +364,85 @@ public sealed class MovementTestRig
         return result;
     }
 
-    public void Move(IReadOnlyList<TestUnitId> units, Vector2 target) =>
-        _simulation.IssueMove(ToBackendIndices(units), target);
+    public void Move(
+        IReadOnlyList<TestUnitId> units,
+        Vector2 target,
+        bool queued = false) =>
+        _simulation.IssueMove(ToBackendIndices(units), target, queued);
 
-    public void AttackMove(IReadOnlyList<TestUnitId> units, Vector2 target) =>
-        _simulation.IssueAttackMove(ToBackendIndices(units), target);
+    public void AttackMove(
+        IReadOnlyList<TestUnitId> units,
+        Vector2 target,
+        bool queued = false) =>
+        _simulation.IssueAttackMove(ToBackendIndices(units), target, queued);
+
+    public void AttackTarget(
+        IReadOnlyList<TestUnitId> units,
+        TestUnitId target,
+        bool queued = false) =>
+        _simulation.IssueAttackTarget(
+            ToBackendIndices(units), target.Value, queued);
+
+    public void SmartCommandGround(
+        IReadOnlyList<TestUnitId> units,
+        Vector2 target,
+        bool attackMoveModifier = false,
+        bool queued = false) =>
+        _simulation.IssueSmartCommand(
+            ToBackendIndices(units),
+            new SmartCommandTarget(SmartCommandTargetKind.Ground, target),
+            attackMoveModifier,
+            queued);
+
+    public void SmartCommandUnit(
+        IReadOnlyList<TestUnitId> units,
+        TestUnitId target,
+        bool queued = false)
+    {
+        if (units.Count == 0)
+        {
+            return;
+        }
+        var selected = ToBackendIndices(units);
+        var targetIndex = target.Value;
+        var kind = _simulation.Combat.Teams[selected[0]] ==
+                   _simulation.Combat.Teams[targetIndex]
+            ? SmartCommandTargetKind.FriendlyUnit
+            : SmartCommandTargetKind.EnemyUnit;
+        _simulation.IssueSmartCommand(
+            selected,
+            new SmartCommandTarget(
+                kind,
+                _simulation.Units.Positions[targetIndex],
+                targetIndex),
+            attackMoveModifier: false,
+            queued);
+    }
 
     public void Stop(IReadOnlyList<TestUnitId> units) =>
         _simulation.Stop(ToBackendIndices(units));
 
     public void Hold(IReadOnlyList<TestUnitId> units) =>
         _simulation.Hold(ToBackendIndices(units));
+
+    public void AssignControlGroup(int group, IReadOnlyList<TestUnitId> units) =>
+        _controlGroups.Assign(group, ToBackendIndices(units));
+
+    public void AddToControlGroup(int group, IReadOnlyList<TestUnitId> units) =>
+        _controlGroups.Add(group, ToBackendIndices(units));
+
+    public TestUnitId[] RecallControlGroup(int group)
+    {
+        var backend = new int[_simulation.Units.Count];
+        var count = _controlGroups.Recall(
+            group, _simulation.Units.Alive, backend);
+        var result = new TestUnitId[count];
+        for (var index = 0; index < count; index++)
+        {
+            result[index] = new TestUnitId(backend[index]);
+        }
+        return result;
+    }
 
     public TestBuildingId PlaceBuilding(Vector2 center, Vector2 size)
     {
@@ -464,6 +552,7 @@ public sealed class MovementTestRig
             metrics.IntegrateMilliseconds,
             metrics.CollisionMilliseconds,
             metrics.RecoveryMilliseconds,
+            metrics.CommandMilliseconds,
             metrics.AllocatedBytes);
     }
 
@@ -523,6 +612,20 @@ public sealed class MovementTestRig
                 : (TestCombatState)_simulation.Combat.Phases[index],
             _simulation.Combat.HasAttackSlots[index],
             _simulation.Combat.AttackSlotTargets[index]);
+    }
+
+    public TestOrderSnapshot ObserveOrders(TestUnitId unit)
+    {
+        var index = unit.Value;
+        if ((uint)index >= (uint)_simulation.Units.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        }
+        return new TestOrderSnapshot(
+            (TestOrderKind)_simulation.CommandQueues.ActiveKinds[index],
+            _simulation.CommandQueues.PendingCounts[index],
+            _simulation.CommandQueues.CompletedQueuedOrders[index],
+            _simulation.CommandQueues.QueueOverflowCounts[index]);
     }
 
     public TestUnitSnapshot[] Observe(IReadOnlyList<TestUnitId> units)

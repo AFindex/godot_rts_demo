@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。战斗移动见 [AttackMove 最小闭环](docs/ATTACK_MOVE.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
+完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。战斗移动见 [AttackMove 与战斗占位](docs/ATTACK_MOVE.md)，操作层见 [命令队列、编组与 SmartCommand](docs/OPERATION_LAYER.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -34,6 +34,9 @@
 - 纯 C# AttackMove 状态机：错峰选敌、追击重寻路、前摇/冷却/伤害、leash、死亡清理和恢复原路线。
 - 近战单位使用唯一接触槽并沿目标外圈分段就位；远程单位使用射程内唯一攻击环，交叉后可做严格降误差的局部换槽。
 - Stop 会在局部索敌并追击，Hold 只攻击射程内目标且不离开原位置。
+- 每单位固定 16 条 Shift 命令队列；同序列、同 Tick 到期的单位重新批量进入群组寻路。
+- Ctrl+数字覆盖 Control Group、Shift+数字添加、数字键召回；死亡单位自动从召回结果中过滤。
+- SmartCommand 将地面/友军位置解析为 Move、敌军解析为锁定攻击，A 修饰解析为 AttackMove。
 - 战斗状态与移动路径分离；死亡保持稳定 unit ID，但从寻路邻居、碰撞、选择和建筑占用中移除。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
 
@@ -48,8 +51,12 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64.exe `
 
 ```text
 左键/框选：选择单位
-右键：移动到目标区域
+右键：SmartCommand（地面/友军位置移动，敌军锁定攻击）
 A + 右键：AttackMove 到目标区域
+Shift + 右键：追加 SmartCommand 到每单位命令队列
+Ctrl + 数字：覆盖对应 Control Group
+Shift + 数字：添加到对应 Control Group
+数字：召回 Control Group
 Space：全选
 S：Stop
 H：Hold Position
@@ -84,7 +91,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 非战斗移动：当前线程分配不超过 1KB/Tick。
 - 活跃战斗 128/256 总单位：P95 不超过 4/8ms，分配不超过 8KB/Tick。
 
-当前机器的 Release 移动基线约为 1.50ms、4.95ms 和 9.17ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.88/3.99ms P95，战斗阶段平均耗时约 0.54/1.42ms。
+当前机器的 Release 移动基线约为 1.32ms、4.85ms 和 10.12ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.93/4.83ms P95。
 
 ## 导航数据资产
 
@@ -127,7 +134,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 48 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、Small/Large Portal 分流、动态窄缝、四档建筑、局部与全局放置结果、多尺寸建筑群绕行、编辑器 Bake/chunk 预览，以及 AttackMove、近战槽、远程攻击环、Stop/Hold 索敌和多人重选敌。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
+当前包含 53 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位，以及 Shift 队列、队列替换/上限、Control Group 和 SmartCommand。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -142,4 +149,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay/Bake Resource → 纯 C# 快照链路已有可运行版本。AttackMove、近战/远程占位、Stop/Hold 索敌和多人重选敌已经形成当前 Demo 的战斗移动闭环。下一阶段转向 Shift 队列、Control Group、SmartCommand 和确定性命令日志；弹道、动画和复杂伤害继续后置。
+移动、动态地图、战斗移动和第一层操作语义已经形成可运行闭环。下一阶段转向命令日志、状态 Hash、固定 Tick 回放和重复执行一致性；双击同类选择、编组双击镜头定位、相机与 Minimap 输入在回放骨架之后继续。
