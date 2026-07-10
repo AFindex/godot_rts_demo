@@ -64,6 +64,10 @@ public sealed class UnitStore
         MovementGroupIds = new int[capacity];
         MovementGroupSizes = new int[capacity];
         SlotReflowCooldownTicks = new long[capacity];
+        DestinationBestDistances = new float[capacity];
+        DestinationStallTicks = new int[capacity];
+        DestinationNearTicks = new int[capacity];
+        DestinationOverflowed = new bool[capacity];
         Array.Fill(ActiveChokeIds, -1);
     }
 
@@ -106,6 +110,10 @@ public sealed class UnitStore
     public int[] MovementGroupIds { get; }
     public int[] MovementGroupSizes { get; }
     public long[] SlotReflowCooldownTicks { get; }
+    public float[] DestinationBestDistances { get; }
+    public int[] DestinationStallTicks { get; }
+    public int[] DestinationNearTicks { get; }
+    public bool[] DestinationOverflowed { get; }
 
     public int Add(Vector2 position, float radius, float maxSpeed, float acceleration)
     {

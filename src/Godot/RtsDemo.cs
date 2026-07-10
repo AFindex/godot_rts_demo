@@ -653,6 +653,9 @@ public partial class RtsDemo : Node2D
             $"route {_simulation.LastIssuedGroupRoute.Waypoints.Length}  " +
             $"route plans {metrics.GroupRoutePlans} shared {metrics.SharedRouteAssignments}  " +
             $"slot swaps {metrics.DestinationSlotSwaps}  " +
+            $"overflow {metrics.DestinationOverflowAssignments}  " +
+            $"stall {metrics.MaximumDestinationStallTicks}  " +
+            $"near {metrics.MaximumDestinationNearTicks}  " +
             $"path queue {metrics.PendingPathRequests}  nav r{metrics.NavigationRevision}  " +
             $"buildings {_world?.DynamicOccupancy.Count ?? 0}  " +
             $"invalidated {metrics.NavigationInvalidations}  " +

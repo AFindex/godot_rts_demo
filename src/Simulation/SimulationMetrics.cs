@@ -19,6 +19,9 @@ public sealed class SimulationMetrics
     public long GroupRoutePlans { get; internal set; }
     public long SharedRouteAssignments { get; internal set; }
     public long DestinationSlotSwaps { get; internal set; }
+    public long DestinationOverflowAssignments { get; internal set; }
+    public int MaximumDestinationStallTicks { get; internal set; }
+    public int MaximumDestinationNearTicks { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
     public double PathMilliseconds { get; internal set; }
     public double PreferredVelocityMilliseconds { get; internal set; }

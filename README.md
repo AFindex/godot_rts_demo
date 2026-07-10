@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态、已完成能力、已知限制和后续顺序见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产结构和编辑流程见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)。
+完整实施状态、已完成能力、已知限制和后续顺序见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产结构和编辑流程见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，终点 V2 见 [终点协作收敛](docs/DESTINATION_CONVERGENCE_V2.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -14,6 +14,7 @@
 - 群组只规划一次高层路线，每个单位再查询分段 NavMesh 路径。
 - 动态路径失效按移动命令分组，同组受影响单位共享一次新的高层路线。
 - 32 人以上编队在终点区域进行安全槽位交换，解除绕行和超越后的局部平衡。
+- 终点 V2 独立跟踪短期停滞和目标区总驻留时间；外圈封闭时为内部单位分配唯一 Overflow 槽位。
 - 狭口 `Approaching / Traversing / Exiting` 状态机、稳定横向排序和多车道分配。
 - 双向狭口方向租约、入口 admission、批次容量、排空切换和防饥饿等待。
 - Hold 单位堵塞狭口检测；堵塞期间双端关闭，释放后安全恢复。
@@ -70,7 +71,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 2.01ms、6.53ms 和 11.02ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 1.37ms、4.07ms 和 7.64ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
 
 ## 导航数据资产
 
@@ -104,7 +105,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 28 个黑盒业务场景：单单位移动、开放场编队、密集编队、对向人流、垂直交叉流、移动命令替换、快速连续改令、受干扰后的终点收敛、跨命令共享目标、Stop、Hold、混合半径、越界目标、动态建筑局部失效、途中放置绕行、完全封路后移除恢复、动态 Portal 改道、大编队活动 Portal 失效与共享改道、Godot Resource 到纯 C# 运行时快照、单向狭口、平衡双向狭口、非对称双向流量、连续波次、Hold 堵口恢复、临时包围恢复、不可达重试上限和 192 单位压力场景。
+当前包含 29 个黑盒业务场景：单单位移动、开放场编队、密集编队、对向人流、垂直交叉流、移动命令替换、快速连续改令、受干扰后的终点收敛、外圈先就位后内部预留释放、跨命令共享目标、Stop、Hold、混合半径、越界目标、动态建筑局部失效、途中放置绕行、完全封路后移除恢复、动态 Portal 改道、大编队活动 Portal 失效与共享改道、Godot Resource 到纯 C# 运行时快照、单向狭口、平衡双向狭口、非对称双向流量、连续波次、Hold 堵口恢复、临时包围恢复、不可达重试上限和 192 单位压力场景。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -119,4 +120,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、跨命令槽位、终点局部换槽、动态失效后的群组路线共享、有限卡死恢复，以及 Godot Resource → 纯 C# 导航快照链路已有可运行版本。下一阶段是 Clearance 与 Movement Class，使 Small、Medium、Large 单位在 Grid、Portal 和 NavMesh 上得到一致的可通行结论。自动 Portal/Sector Baker 和编辑器几何预览仍未实现；战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、跨命令槽位、终点局部换槽、外圈封闭后的 Overflow fallback、动态失效后的群组路线共享、有限卡死恢复，以及 Godot Resource → 纯 C# 导航快照链路已有可运行版本。当前继续完成终点 V2 的局部多单位重新匹配和主动 Yielding；之后进入 Clearance 与 Movement Class。自动 Portal/Sector Baker、战斗、联机和确定性回放暂未实现。

@@ -12,12 +12,15 @@ public sealed class RtsSimulation
     private const int DestinationReflowIntervalTicks = 12;
     private const int DestinationReflowCooldownTicks = 90;
     private const int MaximumDestinationSwapsPerPass = 12;
+    private const int DestinationOverflowIntervalTicks = 30;
+    private const int MaximumDestinationOverflowsPerPass = 2;
 
     private readonly IPathProvider _pathProvider;
     private readonly Queue<PathRequest> _pathRequests = new();
     private readonly SpatialHash _spatialHash;
     private readonly DestinationSlotAllocator _slotAllocator;
     private readonly DestinationSlotReflow _slotReflow;
+    private readonly DestinationOverflowResolver _overflowResolver;
     private readonly SteeringSolver _steeringSolver;
     private readonly IGroupRoutePlanner? _groupRoutePlanner;
     private readonly ChokeController? _chokeController;
@@ -38,6 +41,7 @@ public sealed class RtsSimulation
         _spatialHash = new SpatialHash(40f);
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
+        _overflowResolver = new DestinationOverflowResolver(world);
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
@@ -125,6 +129,11 @@ public sealed class RtsSimulation
             Units.MovementGroupIds[unit] = movementGroupId;
             Units.MovementGroupSizes[unit] = unitIndices.Length;
             Units.SlotReflowCooldownTicks[unit] = 0;
+            Units.DestinationBestDistances[unit] = Vector2.Distance(
+                Units.Positions[unit], assignments[unit]);
+            Units.DestinationStallTicks[unit] = 0;
+            Units.DestinationNearTicks[unit] = 0;
+            Units.DestinationOverflowed[unit] = false;
             Units.Paths[unit] = null;
             Units.RouteWaypoints[unit] = LastIssuedGroupRoute.Waypoints;
             Units.PathPending[unit] = true;
@@ -161,6 +170,10 @@ public sealed class RtsSimulation
             Units.MovementGroupIds[unit] = 0;
             Units.MovementGroupSizes[unit] = 0;
             Units.SlotReflowCooldownTicks[unit] = 0;
+            Units.DestinationBestDistances[unit] = 0f;
+            Units.DestinationStallTicks[unit] = 0;
+            Units.DestinationNearTicks[unit] = 0;
+            Units.DestinationOverflowed[unit] = false;
             Units.ActiveChokeIds[unit] = -1;
             Units.ChokeDirections[unit] = 0;
             Units.ChokePhases[unit] = ChokePhase.None;
@@ -236,7 +249,9 @@ public sealed class RtsSimulation
 
         phaseStart = Stopwatch.GetTimestamp();
         UpdateProgress(delta);
+        _overflowResolver.UpdateStallTracking(Units);
         UpdateDestinationReflow();
+        UpdateDestinationOverflow();
         UpdateMetrics();
         Metrics.RecoveryMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
@@ -919,13 +934,41 @@ public sealed class RtsSimulation
             var nextEligibleTick = Metrics.Tick + DestinationReflowCooldownTicks;
             Units.SlotReflowCooldownTicks[firstUnit] = nextEligibleTick;
             Units.SlotReflowCooldownTicks[secondUnit] = nextEligibleTick;
-            QueueDestinationRetarget(firstUnit);
-            QueueDestinationRetarget(secondUnit);
+            QueueDestinationRetarget(firstUnit, preserveTerminalHistory: true);
+            QueueDestinationRetarget(secondUnit, preserveTerminalHistory: true);
             Metrics.DestinationSlotSwaps++;
         }
     }
 
-    private void QueueDestinationRetarget(int unit)
+    private void UpdateDestinationOverflow()
+    {
+        if (Metrics.Tick % DestinationOverflowIntervalTicks != 0)
+        {
+            return;
+        }
+
+        for (var assignment = 0;
+             assignment < MaximumDestinationOverflowsPerPass;
+             assignment++)
+        {
+            if (!_overflowResolver.TryFindOverflowAssignment(
+                    Units,
+                    out var unit,
+                    out var overflowTarget))
+            {
+                break;
+            }
+
+            Units.SlotTargets[unit] = overflowTarget;
+            Units.DestinationOverflowed[unit] = true;
+            QueueDestinationRetarget(unit);
+            Metrics.DestinationOverflowAssignments++;
+        }
+    }
+
+    private void QueueDestinationRetarget(
+        int unit,
+        bool preserveTerminalHistory = false)
     {
         Units.CommandVersions[unit]++;
         Units.Paths[unit] = null;
@@ -940,6 +983,12 @@ public sealed class RtsSimulation
         Units.ProgressTimers[unit] = 0f;
         Units.ProgressBestDistances[unit] = Vector2.Distance(
             Units.Positions[unit], Units.SlotTargets[unit]);
+        Units.DestinationBestDistances[unit] = Units.ProgressBestDistances[unit];
+        Units.DestinationStallTicks[unit] = 0;
+        if (!preserveTerminalHistory)
+        {
+            Units.DestinationNearTicks[unit] = 0;
+        }
         Units.RepathCooldowns[unit] = 0f;
         _pathRequests.Enqueue(new PathRequest(unit, Units.CommandVersions[unit]));
     }
@@ -967,8 +1016,16 @@ public sealed class RtsSimulation
         Metrics.ArrivedUnits = 0;
         Metrics.WaitingForPathUnits = 0;
         Metrics.UnreachableUnits = 0;
+        Metrics.MaximumDestinationStallTicks = 0;
+        Metrics.MaximumDestinationNearTicks = 0;
         for (var unit = 0; unit < Units.Count; unit++)
         {
+            Metrics.MaximumDestinationStallTicks = Math.Max(
+                Metrics.MaximumDestinationStallTicks,
+                Units.DestinationStallTicks[unit]);
+            Metrics.MaximumDestinationNearTicks = Math.Max(
+                Metrics.MaximumDestinationNearTicks,
+                Units.DestinationNearTicks[unit]);
             switch (Units.Modes[unit])
             {
                 case UnitMoveMode.Moving:

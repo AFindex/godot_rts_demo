@@ -51,7 +51,10 @@ public readonly record struct TestPerformanceSnapshot(
 public readonly record struct TestMovementDiagnostics(
     long GroupRoutePlans,
     long SharedRouteAssignments,
-    long DestinationSlotSwaps);
+    long DestinationSlotSwaps,
+    long DestinationOverflowAssignments,
+    int MaximumDestinationStallTicks,
+    int MaximumDestinationNearTicks);
 
 public enum TestUnitState : byte
 {
@@ -273,7 +276,10 @@ public sealed class MovementTestRig
         return new TestMovementDiagnostics(
             metrics.GroupRoutePlans,
             metrics.SharedRouteAssignments,
-            metrics.DestinationSlotSwaps);
+            metrics.DestinationSlotSwaps,
+            metrics.DestinationOverflowAssignments,
+            metrics.MaximumDestinationStallTicks,
+            metrics.MaximumDestinationNearTicks);
     }
 
     public void Step() => _simulation.Tick(1f / 60f);

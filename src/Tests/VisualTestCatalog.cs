@@ -19,6 +19,7 @@ public static class VisualTestCatalog
         "command-replace",
         "rapid-reissue",
         "destination-convergence",
+        "destination-outer-ring",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -53,6 +54,7 @@ public static class VisualTestCatalog
         "command-replace" => CreateCommandReplace(),
         "rapid-reissue" => CreateRapidReissue(),
         "destination-convergence" => CreateDestinationConvergence(),
+        "destination-outer-ring" => CreateDestinationOuterRing(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -188,12 +190,56 @@ public static class VisualTestCatalog
                     $"movers={moverArrivals}/{movers.Length}, " +
                     $"released={blockerArrivals}/{blockers.Length}, " +
                     $"slotSwaps={diagnostics.DestinationSlotSwaps}, " +
+                    $"overflow={diagnostics.DestinationOverflowAssignments}, " +
                     $"converged={converged}, {arrival.Summary}");
             });
         session.At(300, "Freeze units inside the moving formation", runtime =>
             runtime.Hold(blockers));
         return session.At(510, "Release blockers toward a separate target", runtime =>
             runtime.Move(blockers, new Vector2(930f, 590f)));
+    }
+
+    private static VisualTestSession CreateDestinationOuterRing()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 112);
+        var all = rig.SpawnGrid(new Vector2(65f, 125f), 8, 10, 18f);
+        var target = new Vector2(980f, 360f);
+        rig.Move(all, target);
+
+        var byDepth = rig.Observe(all)
+            .OrderByDescending(unit => Vector2.DistanceSquared(unit.AssignedTarget, target))
+            .ThenBy(unit => unit.Id.Value)
+            .ToArray();
+        var outer = byDepth.Take(48).Select(unit => unit.Id).ToArray();
+        var inner = byDepth.Skip(48).Select(unit => unit.Id).ToArray();
+        rig.Stop(inner);
+
+        var session = new VisualTestSession(
+            "destination-outer-ring",
+            "Inner reservations approach after the outer ring settles",
+            2400,
+            rig,
+            all,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, all, 78, 18f, 3f, 0, 0);
+                var outerArrivals = CountArrivals(runtime, outer, 18f);
+                var innerArrivals = CountArrivals(runtime, inner, 18f);
+                var diagnostics = runtime.ObserveMovementDiagnostics();
+                var bothLayersConverged = outerArrivals >= 47 && innerArrivals >= 31;
+                return new ScenarioResult(
+                    arrival.Passed && bothLayersConverged,
+                    $"outer={outerArrivals}/{outer.Length}, " +
+                    $"inner={innerArrivals}/{inner.Length}, " +
+                    $"overflow={diagnostics.DestinationOverflowAssignments}, " +
+                    $"maxStall={diagnostics.MaximumDestinationStallTicks}, " +
+                    $"maxNear={diagnostics.MaximumDestinationNearTicks}, " +
+                    $"layersConverged={bothLayersConverged}, {arrival.Summary}");
+            });
+        return session.At(
+            720,
+            "Release units with inner reservations after outer ring settles",
+            runtime => runtime.Move(inner, target));
     }
 
     private static VisualTestSession CreateStopCommand()
