@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态、已完成能力、已知限制和后续顺序见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。
+完整实施状态、已完成能力、已知限制和后续顺序见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产结构和编辑流程见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -9,6 +9,8 @@
 - 60 Hz 固定 Tick、SoA 单位数据和命令版本隔离。
 - 运行时烘焙 Godot 2D NavMesh，静态障碍路径查询按 Tick 限流。
 - Portal 高层图 A*：起终点接入最近可见 Portal，再沿已标注拓扑选路。
+- Godot Resource 表达世界边界、障碍、Portal、Edge 和 Choke，启动时转换为纯 C# 不可变快照。
+- 导航数据具有格式版本、固定错误码、规范字节和稳定哈希；非法资产会拒绝启动。
 - 群组只规划一次高层路线，每个单位再查询分段 NavMesh 路径。
 - 动态路径失效按移动命令分组，同组受影响单位共享一次新的高层路线。
 - 32 人以上编队在终点区域进行安全槽位交换，解除绕行和超越后的局部平衡。
@@ -68,7 +70,25 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 1.43ms、5.70ms 和 11.96ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 2.01ms、6.53ms 和 11.02ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+
+## 导航数据资产
+
+主场景通过 Inspector 引用 `data/demo_navigation_map.tres`。该 Resource 可以直接编辑障碍、Portal、Edge 和 Choke，运行时不会把 Godot 对象传进模拟层。
+
+验证当前资产：
+
+```powershell
+.\tools\validate_navigation_resource.ps1
+```
+
+从纯 C# Demo 夹具重新生成示例资产：
+
+```powershell
+.\tools\generate_demo_navigation_resource.ps1
+```
+
+生成命令会覆盖示例 `.tres`，用于重置 Demo 数据；日常地图编辑应直接在 Godot Inspector 中修改独立 Resource。当前示例资产的格式版本为 1，稳定哈希为 `B8441F9F1544B950`。
 
 ## 录制测试录像
 
@@ -84,7 +104,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 27 个黑盒业务场景：单单位移动、开放场编队、密集编队、对向人流、垂直交叉流、移动命令替换、快速连续改令、受干扰后的终点收敛、跨命令共享目标、Stop、Hold、混合半径、越界目标、动态建筑局部失效、途中放置绕行、完全封路后移除恢复、动态 Portal 改道、大编队活动 Portal 失效与共享改道、单向狭口、平衡双向狭口、非对称双向流量、连续波次、Hold 堵口恢复、临时包围恢复、不可达重试上限和 192 单位压力场景。
+当前包含 28 个黑盒业务场景：单单位移动、开放场编队、密集编队、对向人流、垂直交叉流、移动命令替换、快速连续改令、受干扰后的终点收敛、跨命令共享目标、Stop、Hold、混合半径、越界目标、动态建筑局部失效、途中放置绕行、完全封路后移除恢复、动态 Portal 改道、大编队活动 Portal 失效与共享改道、Godot Resource 到纯 C# 运行时快照、单向狭口、平衡双向狭口、非对称双向流量、连续波次、Hold 堵口恢复、临时包围恢复、不可达重试上限和 192 单位压力场景。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -99,4 +119,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、跨命令槽位、终点局部换槽、动态失效后的群组路线共享和有限卡死恢复已有可运行版本。下一阶段是把 `DemoMapDefinition` 中手写的障碍、Portal、Edge 与 Choke 迁移到带版本和验证的纯 C# 运行时数据格式，再接 Godot Resource 与烘焙入口。战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、跨命令槽位、终点局部换槽、动态失效后的群组路线共享、有限卡死恢复，以及 Godot Resource → 纯 C# 导航快照链路已有可运行版本。下一阶段是 Clearance 与 Movement Class，使 Small、Medium、Large 单位在 Grid、Portal 和 NavMesh 上得到一致的可通行结论。自动 Portal/Sector Baker 和编辑器几何预览仍未实现；战斗、联机和确定性回放暂未实现。

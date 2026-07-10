@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource path="res://src/Godot/RtsDemo.cs" type="Script" id="1"]
+[ext_resource path="res://data/demo_navigation_map.tres" type="Resource" id="2"]
 
 [node name="RtsDemo" type="Node2D"]
 script = ExtResource("1")
+NavigationMapAsset = ExtResource("2")

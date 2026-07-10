@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 27 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
+- 28 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
 - 测试可以自动录制 AVI，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512 和 1000 单位。
 
 当前规模：
 
-- 21 个 C# 源文件。
-- 约 6,015 行 C#。
-- 27 个黑盒场景。
-- 覆盖 27 个逻辑场景的规范测试录像。
-- Release 1000 单位 P95：约 11.96ms。
+- 29 个 C# 源文件。
+- 约 6,999 行 C#。
+- 28 个黑盒场景。
+- 覆盖 28 个逻辑场景的规范测试录像。
+- Release 1000 单位 P95：约 11.02ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -38,7 +38,7 @@
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | 未开始 | 无 | AttackMove、攻击槽位、追击、leash、恢复原路线 |
-| S9 编辑器与数据烘焙 | 未开始 | 当前运行时数据结构可作为输入 | Resource、Baker、Validator、Preview、格式版本 |
+| S9 编辑器与数据烘焙 | 基础完成 | Godot Resource、纯 C# snapshot、格式版本、固定错误码、稳定哈希、CLI Validator/Generator | 自动 Baker、几何拖拽、连线和多尺寸 Preview |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
 
 ## 3. 已完成的运行时闭环
@@ -118,11 +118,23 @@
 - 稳定移动 2.5 秒后恢复阶段归零。
 - 路径查询明确失败时不会无限循环。
 
+### 3.7 导航数据资产
+
+- `RtsNavigationMapResource` 表达世界边界、静态障碍、Portal、Edge 和 Choke。
+- `Main.tscn` 通过 Inspector 导出属性绑定导航资产。
+- 启动时转换为不依赖 Godot 的 `NavigationMapSnapshot`，模拟层不持有 Resource。
+- 格式版本当前为 1；不支持的版本明确拒绝。
+- Portal、Edge、Choke 和障碍使用固定数值错误码验证。
+- 相同输入生成 byte-identical 的 388 字节规范数据。
+- 当前 Demo 稳定哈希为 `B8441F9F1544B950`。
+- 提供命令行 Validator 和 Demo Resource Generator。
+- 主 Demo 不再从 `DemoMapDefinition` 创建运行时地图；该类只保留为纯 C# 测试与示例资源重建夹具。
+
 ## 4. 测试、录像和性能
 
 ### 4.1 已有黑盒场景
 
-当前 27 个场景覆盖：
+当前 28 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -134,6 +146,7 @@
 - 混合单位半径和越界目标。
 - 动态建筑局部失效、绕行、移除恢复和 Portal 改道。
 - 48 单位活动 Portal 完整失效后的群组共享改道。
+- Godot Resource 转纯 C# 快照后驱动 Portal 和 Choke 运行时。
 - 正向和反向单向狭口。
 - 平衡双向流、非对称双向流和错峰波次。
 - Hold 堵口与释放。
@@ -159,7 +172,7 @@ Observe unit / traffic / recovery / performance
 - 每个场景独立启动 Godot Movie Maker。
 - 每段录像保存 AVI、Godot 日志和 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 27 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 28 个逻辑场景的规范录像。
 - AVI 使用 Git LFS。
 
 注意：当前规范录像来自多个功能里程碑批次，并非全部在同一个 commit 上重新录制。发布正式版本前应执行一次全量重新录制，生成单一时间戳目录。
@@ -170,9 +183,9 @@ Observe unit / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|
-| 256 | 1.07ms | 1.43ms | 4ms | 27B |
-| 512 | 4.20ms | 5.70ms | 12.5ms | 182B |
-| 1000 | 9.06ms | 11.96ms | 16.67ms | 461B |
+| 256 | 1.25ms | 2.01ms | 4ms | 27B |
+| 512 | 4.65ms | 6.53ms | 12.5ms | 182B |
+| 1000 | 8.82ms | 11.02ms | 16.67ms | 461B |
 
 当前热点排序：
 
@@ -208,18 +221,17 @@ TODO：
 - 跨相邻 Tick 的重复恢复请求合并。
 - 显式 GroupRoute revision 与已通过 waypoint 游标。
 
-### 5.3 地图数据仍然手写
+### 5.3 地图数据管线仍缺自动烘焙和预览
 
-当前 DemoMapDefinition 手工声明障碍、Portal、Edge 和 Choke。
+主 Demo 已从 `data/demo_navigation_map.tres` 加载地图，经过验证后转成纯 C# 快照。`DemoMapDefinition` 只作为不依赖 Godot 的测试夹具和示例资产重建源，不再参与主 Demo 启动。
 
 TODO：
 
-- Runtime 数据格式与版本。
-- Godot Resource 编辑入口。
-- Resource 转不可变纯 C# snapshot。
-- 确定性 Hash。
-- 非法连接和宽度验证。
-- 导航预览。
+- 从 NavMesh/场景几何自动提取 Sector 和 Portal。
+- EditorPlugin 中的 Portal/Choke 拖拽与连线。
+- Small、Medium、Large 多尺寸连通性预览。
+- 格式版本迁移器。
+- Resource 热重载和差异诊断。
 
 ### 5.4 动态导航仍是混合方案
 
@@ -285,15 +297,13 @@ TODO：
 
 TODO：
 
-- MapNavigationConfig Resource。
 - UnitMovementProfile Resource。
 - BuildingFootprint Resource。
 - Occupancy/Clearance Baker。
 - Sector/Portal Authoring Tool。
 - Connectivity Validator。
 - 多单位尺寸导航预览。
-- Byte-identical 烘焙测试。
-- 稳定错误码。
+- 格式迁移器。
 
 ### 6.4 确定性、回放和联机
 
@@ -325,18 +335,20 @@ TODO：
 - 动态绕障后的终点专用恢复还未独立于通用卡死恢复。
 - 共享的是 waypoint 数组，尚未形成带游标和 revision 的完整 corridor 对象。
 
-### 下一步 B：运行时导航数据格式和 Godot Resource（当前优先级）
+### 下一步 B：运行时导航数据格式和 Godot Resource（核心完成）
 
-原因：继续增加地图与 Choke 前，需要停止在 DemoMapDefinition 中硬编码。
-
-验收：
+已完成：
 
 - Resource 可以表达当前 Demo 地图全部数据。
-- 启动时转换为不依赖 Godot 的不可变 snapshot。
-- 错误 Portal、Choke 和 footprint 得到稳定错误。
-- 同一输入生成 byte-identical 数据。
+- `Main.tscn` 可以在 Inspector 中替换地图 Resource。
+- 启动时转换为不依赖 Godot 的不可变快照。
+- 错误 Portal、Edge、Choke 和 obstacle 得到固定数值错误码。
+- 同一输入生成 byte-identical 规范数据和稳定哈希。
+- 有独立验证脚本、生成脚本、黑盒场景和录像。
 
-### 下一步 C：Clearance 与 Movement Class
+留在后续 S9：自动 Baker、编辑器几何工具、Preview 和格式迁移。
+
+### 下一步 C：Clearance 与 Movement Class（当前优先级）
 
 验收：
 

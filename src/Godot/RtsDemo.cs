@@ -1,6 +1,7 @@
 using Godot;
 using RtsDemo.Simulation;
 using RtsDemo.Tests;
+using RtsDemo.GodotRuntime.Resources;
 using System.Text.Json;
 using NVector2 = System.Numerics.Vector2;
 
@@ -8,6 +9,11 @@ namespace RtsDemo.GodotRuntime;
 
 public partial class RtsDemo : Node2D
 {
+    private const string DemoNavigationResourcePath =
+        "res://data/demo_navigation_map.tres";
+
+    [Export]
+    public RtsNavigationMapResource? NavigationMapAsset { get; set; }
     private readonly HashSet<int> _selectedUnits = new();
     private StaticWorld? _world;
     private GodotPathProvider? _pathProvider;
@@ -27,6 +33,7 @@ public partial class RtsDemo : Node2D
     private int _visualTestFinishFrames = -1;
     private int _visualTestExitCode;
     private readonly Stack<DynamicFootprintId> _demoBuildings = new();
+    private NavigationMapSnapshot? _navigationSnapshot;
 
     public override async void _Ready()
     {
@@ -56,9 +63,28 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-navigation-resource"))
+        {
+            GenerateDemoNavigationResource();
+            return;
+        }
+
+        if (userArguments.Contains("--validate-navigation-resource"))
+        {
+            var valid = TryLoadNavigationSnapshot();
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--self-test"))
         {
-            var result = SimulationSelfTest.Run();
+            if (!TryLoadNavigationSnapshot())
+            {
+                GetTree().Quit(1);
+                return;
+            }
+
+            var result = SimulationSelfTest.Run(_navigationSnapshot);
             GD.Print($"RTS_SELF_TEST {(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -67,13 +93,25 @@ public partial class RtsDemo : Node2D
         var visualTestId = ReadArgument(userArguments, "--visual-test");
         if (visualTestId is not null)
         {
+            if (!TryLoadNavigationSnapshot())
+            {
+                GetTree().Quit(1);
+                return;
+            }
+
             StartVisualTest(visualTestId);
             return;
         }
 
-        _world = DemoMapDefinition.CreateWorld();
-        _routePlanner = DemoMapDefinition.CreateRoutePlanner(_world);
-        _chokeController = DemoMapDefinition.CreateChokeController();
+        if (!TryLoadNavigationSnapshot() || _navigationSnapshot is null)
+        {
+            GetTree().Quit(1);
+            return;
+        }
+
+        _world = _navigationSnapshot.CreateWorld();
+        _routePlanner = _navigationSnapshot.CreateRoutePlanner(_world);
+        _chokeController = _navigationSnapshot.CreateChokeController();
         _pathProvider = new GodotPathProvider(this, _world, navigationRadius: 8f);
         _simulationPathProvider = new ValidatingFallbackPathProvider(
             _pathProvider,
@@ -619,6 +657,7 @@ public partial class RtsDemo : Node2D
             $"buildings {_world?.DynamicOccupancy.Count ?? 0}  " +
             $"invalidated {metrics.NavigationInvalidations}  " +
             $"recovery {metrics.RecoveryEvents}  unreachable {metrics.UnreachableUnits}\n" +
+            $"map {ActiveNavigationLabel()}  " +
             $"tick {metrics.TotalMilliseconds:0.00}ms  path {metrics.PathMilliseconds:0.00}  " +
             $"steer {metrics.SteeringMilliseconds:0.00}  " +
             $"collision {metrics.CollisionMilliseconds:0.00}  " +
@@ -628,11 +667,26 @@ public partial class RtsDemo : Node2D
             "B place building  X remove building  D debug  R reset";
     }
 
+    private string ActiveNavigationLabel()
+    {
+        if (_visualTest is not null)
+        {
+            return _visualTest.Rig.NavigationDataHash == 0UL
+                ? "procedural"
+                : $"f{_visualTest.Rig.NavigationFormatVersion} " +
+                  _visualTest.Rig.NavigationDataHash.ToString("X16");
+        }
+
+        return _navigationSnapshot is null
+            ? "none"
+            : $"f{_navigationSnapshot.FormatVersion} {_navigationSnapshot.StableHashText}";
+    }
+
     private void StartVisualTest(string caseId)
     {
         try
         {
-            _visualTest = VisualTestCatalog.Create(caseId);
+            _visualTest = VisualTestCatalog.Create(caseId, _navigationSnapshot);
         }
         catch (ArgumentException exception)
         {
@@ -677,6 +731,62 @@ public partial class RtsDemo : Node2D
         }
 
         return null;
+    }
+
+    private bool TryLoadNavigationSnapshot()
+    {
+        if (_navigationSnapshot is not null)
+        {
+            return true;
+        }
+
+        var resourcePath = NavigationMapAsset?.ResourcePath ?? DemoNavigationResourcePath;
+        var converted = NavigationMapAsset is not null
+            ? NavigationMapResourceConverter.TryConvert(
+                NavigationMapAsset,
+                out var snapshot,
+                out var validation)
+            : NavigationMapResourceConverter.TryLoadSnapshot(
+                DemoNavigationResourcePath,
+                out snapshot,
+                out validation);
+        if (converted && snapshot is not null)
+        {
+            _navigationSnapshot = snapshot;
+            GD.Print(
+                $"RTS_NAVIGATION_RESOURCE PASS path={resourcePath} " +
+                $"format={snapshot.FormatVersion} hash={snapshot.StableHashText}");
+            return true;
+        }
+
+        foreach (var issue in validation.Issues)
+        {
+            GD.PushError(
+                $"RTS_NAVIGATION_RESOURCE FAIL code={issue.Code} " +
+                $"index={issue.ElementIndex} message={issue.Message}");
+        }
+
+        return false;
+    }
+
+    private void GenerateDemoNavigationResource()
+    {
+        var snapshot = DemoMapDefinition.CreateSnapshot();
+        var resource = NavigationMapResourceConverter.FromSnapshot(snapshot);
+        var directory = ProjectSettings.GlobalizePath("res://data");
+        var directoryError = DirAccess.MakeDirRecursiveAbsolute(directory);
+        if (directoryError is not (Error.Ok or Error.AlreadyExists))
+        {
+            GD.PushError($"Unable to create navigation data directory: {directoryError}");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var saveError = ResourceSaver.Save(resource, DemoNavigationResourcePath);
+        GD.Print(
+            $"RTS_NAVIGATION_RESOURCE_GENERATE error={saveError} " +
+            $"path={DemoNavigationResourcePath} hash={snapshot.StableHashText}");
+        GetTree().Quit(saveError == Error.Ok ? 0 : 1);
     }
 
     private void SpawnDemoUnits()

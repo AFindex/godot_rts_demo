@@ -79,17 +79,20 @@ public sealed class MovementTestRig
     private readonly RtsSimulation _simulation;
     private readonly PortalGraphRoutePlanner? _routePlanner;
     private readonly ChokeController? _chokeController;
+    private readonly NavigationMapSnapshot? _navigationMap;
 
     private MovementTestRig(
         StaticWorld world,
         RtsSimulation simulation,
         PortalGraphRoutePlanner? routePlanner,
-        ChokeController? chokeController)
+        ChokeController? chokeController,
+        NavigationMapSnapshot? navigationMap)
     {
         _world = world;
         _simulation = simulation;
         _routePlanner = routePlanner;
         _chokeController = chokeController;
+        _navigationMap = navigationMap;
     }
 
     public long Tick => _simulation.Metrics.Tick;
@@ -98,6 +101,8 @@ public sealed class MovementTestRig
     public Vector2 WorldMaximum => _world.Bounds.Max;
     public int NavigationRevision => _world.NavigationRevision;
     public int BuildingCount => _world.DynamicOccupancy.Count;
+    public int NavigationFormatVersion => _navigationMap?.FormatVersion ?? 0;
+    public ulong NavigationDataHash => _navigationMap?.StableHash ?? 0UL;
     public int LastNavigationInvalidations =>
         _simulation.Metrics.NavigationInvalidations;
 
@@ -113,21 +118,30 @@ public sealed class MovementTestRig
             world,
             new RtsSimulation(world, new GridPathProvider(world, 8f), capacity),
             null,
+            null,
             null);
     }
 
-    public static MovementTestRig CreateChokeMap(int capacity)
+    public static MovementTestRig CreateChokeMap(
+        int capacity,
+        NavigationMapSnapshot? navigationMap = null)
     {
-        var world = DemoMapDefinition.CreateWorld();
-        var routePlanner = DemoMapDefinition.CreateRoutePlanner(world);
-        var chokeController = DemoMapDefinition.CreateChokeController();
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        var world = navigationMap.CreateWorld();
+        var routePlanner = navigationMap.CreateRoutePlanner(world);
+        var chokeController = navigationMap.CreateChokeController();
         var simulation = new RtsSimulation(
             world,
             new GridPathProvider(world, 8f),
             capacity,
             routePlanner,
             chokeController);
-        return new MovementTestRig(world, simulation, routePlanner, chokeController);
+        return new MovementTestRig(
+            world,
+            simulation,
+            routePlanner,
+            chokeController,
+            navigationMap);
     }
 
     public TestUnitId Spawn(

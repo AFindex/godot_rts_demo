@@ -1,4 +1,5 @@
 using System.Numerics;
+using RtsDemo.Simulation;
 
 namespace RtsDemo.Tests;
 
@@ -28,6 +29,7 @@ public static class VisualTestCatalog
         "dynamic-building-remove",
         "dynamic-portal-reroute",
         "dynamic-group-reroute",
+        "navigation-resource-runtime",
         "portal-choke",
         "reverse-choke",
         "bidirectional-choke-balanced",
@@ -39,7 +41,9 @@ public static class VisualTestCatalog
         "large-group-192"
     ];
 
-    public static VisualTestSession Create(string caseId) => caseId switch
+    public static VisualTestSession Create(
+        string caseId,
+        NavigationMapSnapshot? navigationMap = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "open-field" => CreateOpenField(),
@@ -59,6 +63,7 @@ public static class VisualTestCatalog
         "dynamic-building-remove" => CreateDynamicBuildingRemove(),
         "dynamic-portal-reroute" => CreateDynamicPortalReroute(),
         "dynamic-group-reroute" => CreateDynamicGroupReroute(),
+        "navigation-resource-runtime" => CreateNavigationResourceRuntime(navigationMap),
         "portal-choke" => CreatePortalChoke(reverse: false),
         "reverse-choke" => CreatePortalChoke(reverse: true),
         "bidirectional-choke-balanced" => CreateBidirectionalChokeBalanced(),
@@ -454,6 +459,33 @@ public static class VisualTestCatalog
             241,
             "Observe group route invalidation",
             runtime => observedInvalidations = runtime.LastNavigationInvalidations);
+    }
+
+    private static VisualTestSession CreateNavigationResourceRuntime(
+        NavigationMapSnapshot? navigationMap)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        var rig = MovementTestRig.CreateChokeMap(64, navigationMap);
+        var units = rig.SpawnGrid(new Vector2(120f, 225f), 4, 6, 19f);
+        rig.Move(units, new Vector2(1110f, 350f));
+        return new VisualTestSession(
+            "navigation-resource-runtime",
+            "Runtime navigation snapshot loaded from Godot Resource",
+            1500,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, units, 19, 18f, 3f, 0, 0);
+                var dataValid = runtime.NavigationFormatVersion ==
+                                NavigationMapSnapshot.CurrentFormatVersion &&
+                                runtime.NavigationDataHash != 0UL;
+                return new ScenarioResult(
+                    arrival.Passed && dataValid,
+                    $"format={runtime.NavigationFormatVersion}, " +
+                    $"hash={runtime.NavigationDataHash:X16}, dataValid={dataValid}, " +
+                    arrival.Summary);
+            });
     }
 
     private static VisualTestSession CreateLargeGroup()

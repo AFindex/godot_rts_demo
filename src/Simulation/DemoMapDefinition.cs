@@ -4,13 +4,11 @@ namespace RtsDemo.Simulation;
 
 public static class DemoMapDefinition
 {
-    public static StaticWorld CreateWorld() => new(
-        new SimRect(new Vector2(24f, 70f), new Vector2(1256f, 696f)),
-        new SimRect(new Vector2(545f, 100f), new Vector2(715f, 292f)),
-        new SimRect(new Vector2(545f, 414f), new Vector2(715f, 642f)),
-        new SimRect(new Vector2(870f, 250f), new Vector2(970f, 450f)));
+    private static readonly NavigationMapSnapshot Snapshot = BuildSnapshot();
 
-    public static PortalGraphRoutePlanner CreateRoutePlanner(StaticWorld world)
+    public static NavigationMapSnapshot CreateSnapshot() => Snapshot;
+
+    private static NavigationMapSnapshot BuildSnapshot()
     {
         PortalNode[] nodes =
         [
@@ -31,14 +29,43 @@ public static class DemoMapDefinition
             new(4, 5, 180f)
         ];
 
-        return new PortalGraphRoutePlanner(world, nodes, edges);
+        ChokeDefinition[] chokes =
+        [
+            new(
+                0,
+                new Vector2(520f, 353f),
+                new Vector2(740f, 353f),
+                Width: 112f,
+                ApproachDistance: 155f)
+        ];
+
+        var created = NavigationMapSnapshot.TryCreate(
+            NavigationMapSnapshot.CurrentFormatVersion,
+            new SimRect(new Vector2(24f, 70f), new Vector2(1256f, 696f)),
+            [
+                new SimRect(new Vector2(545f, 100f), new Vector2(715f, 292f)),
+                new SimRect(new Vector2(545f, 414f), new Vector2(715f, 642f)),
+                new SimRect(new Vector2(870f, 250f), new Vector2(970f, 450f))
+            ],
+            nodes,
+            edges,
+            chokes,
+            out var snapshot,
+            out var validation);
+        if (!created || snapshot is null)
+        {
+            throw new InvalidOperationException(
+                $"Built-in demo navigation data is invalid: {validation.FirstError}.");
+        }
+
+        return snapshot;
     }
 
-    public static ChokeController CreateChokeController() => new(
-        new ChokeDefinition(
-            0,
-            new Vector2(520f, 353f),
-            new Vector2(740f, 353f),
-            Width: 112f,
-            ApproachDistance: 155f));
+    public static StaticWorld CreateWorld() => CreateSnapshot().CreateWorld();
+
+    public static PortalGraphRoutePlanner CreateRoutePlanner(StaticWorld world) =>
+        CreateSnapshot().CreateRoutePlanner(world);
+
+    public static ChokeController CreateChokeController() =>
+        CreateSnapshot().CreateChokeController();
 }
