@@ -95,6 +95,10 @@ public static class BuildingPlacementValidator
 
         for (var unit = 0; unit < units.Count; unit++)
         {
+            if (!units.Alive[unit])
+            {
+                continue;
+            }
             if (footprint.Expanded(units.Radii[unit] + rules.UnitPadding)
                 .Contains(units.Positions[unit]))
             {

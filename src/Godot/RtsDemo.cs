@@ -40,6 +40,7 @@ public partial class RtsDemo : Node2D
     private Vector2 _dragCurrent;
     private Vector2 _commandMarker;
     private float _commandMarkerTime;
+    private bool _commandMarkerAttackMove;
     private int _visualTestFinishFrames = -1;
     private int _visualTestExitCode;
     private readonly Stack<DynamicFootprintId> _demoBuildings = new();
@@ -313,7 +314,9 @@ public partial class RtsDemo : Node2D
         if (_commandMarkerTime > 0f)
         {
             var alpha = Math.Clamp(_commandMarkerTime * 2f, 0f, 1f);
-            var markerColor = new Color(0.25f, 1f, 0.45f, alpha);
+            var markerColor = _commandMarkerAttackMove
+                ? new Color(1f, 0.3f, 0.24f, alpha)
+                : new Color(0.25f, 1f, 0.45f, alpha);
             DrawArc(_commandMarker, 12f, 0f, MathF.Tau, 24, markerColor, 2f);
             DrawLine(_commandMarker - new Vector2(6f, 0f),
                 _commandMarker + new Vector2(6f, 0f), markerColor, 2f);
@@ -379,7 +382,17 @@ public partial class RtsDemo : Node2D
                  _selectedUnits.Count > 0 && _navigationReady)
         {
             var selected = _selectedUnits.OrderBy(index => index).ToArray();
-            _simulation.IssueMove(selected, GodotPathProvider.ToNumerics(mouse.Position));
+            _commandMarkerAttackMove = Input.IsKeyPressed(Key.A);
+            if (_commandMarkerAttackMove)
+            {
+                _simulation.IssueAttackMove(
+                    selected, GodotPathProvider.ToNumerics(mouse.Position));
+            }
+            else
+            {
+                _simulation.IssueMove(
+                    selected, GodotPathProvider.ToNumerics(mouse.Position));
+            }
             _commandMarker = mouse.Position;
             _commandMarkerTime = 0.65f;
             QueueRedraw();
@@ -444,6 +457,10 @@ public partial class RtsDemo : Node2D
             var bestDistance = 15f * 15f;
             for (var unit = 0; unit < _simulation.Units.Count; unit++)
             {
+                if (!_simulation.Units.Alive[unit])
+                {
+                    continue;
+                }
                 var position = GodotPathProvider.ToGodot(_simulation.Units.Positions[unit]);
                 var distance = position.DistanceSquaredTo(click);
                 if (distance < bestDistance)
@@ -463,6 +480,10 @@ public partial class RtsDemo : Node2D
 
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
+            if (!_simulation.Units.Alive[unit])
+            {
+                continue;
+            }
             var position = GodotPathProvider.ToGodot(_simulation.Units.Positions[unit]);
             if (rect.HasPoint(position))
             {
@@ -480,6 +501,10 @@ public partial class RtsDemo : Node2D
 
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
+            if (!_simulation.Units.Alive[unit])
+            {
+                continue;
+            }
             var position = GodotPathProvider.ToGodot(_simulation.Units.Positions[unit]);
             var radius = _simulation.Units.Radii[unit];
             var mode = _simulation.Units.Modes[unit];
@@ -494,6 +519,16 @@ public partial class RtsDemo : Node2D
             {
                 color = new Color("d95763");
             }
+            if (_simulation.Combat.Teams[unit] != 0)
+            {
+                color = _simulation.Combat.Teams[unit] == 1
+                    ? new Color("4da3ff")
+                    : new Color("f05b64");
+                if (_simulation.Combat.Phases[unit] == CombatPhase.Attacking)
+                {
+                    color = color.Lightened(0.25f);
+                }
+            }
             color = _simulation.Units.ChokePhases[unit] == ChokePhase.Approaching &&
                     !_simulation.Units.ChokeAdmitted[unit]
                 ? new Color("ff5f87")
@@ -506,6 +541,21 @@ public partial class RtsDemo : Node2D
             };
 
             DrawCircle(position, radius, color);
+            if (_simulation.Combat.Teams[unit] != 0)
+            {
+                var healthRatio = Math.Clamp(
+                    _simulation.Combat.Health[unit] /
+                    _simulation.Combat.MaximumHealth[unit], 0f, 1f);
+                var barStart = position + new Vector2(-radius, -radius - 5f);
+                DrawLine(
+                    barStart,
+                    barStart + new Vector2(radius * 2f, 0f),
+                    new Color("252a34"), 2f);
+                DrawLine(
+                    barStart,
+                    barStart + new Vector2(radius * 2f * healthRatio, 0f),
+                    new Color("72e06a"), 2f);
+            }
             var velocity = _simulation.Units.Velocities[unit];
             if (velocity.LengthSquared() > 2f)
             {
@@ -688,8 +738,18 @@ public partial class RtsDemo : Node2D
 
         var metrics = _simulation.Metrics;
         var chokeUnits = 0;
+        var livingUnits = 0;
+        var engagedUnits = 0;
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
+            if (_simulation.Units.Alive[unit])
+            {
+                livingUnits++;
+            }
+            if (_simulation.Combat.Phases[unit] is CombatPhase.Chasing or CombatPhase.Attacking)
+            {
+                engagedUnits++;
+            }
             if (_simulation.Units.ChokePhases[unit] != ChokePhase.None)
             {
                 chokeUnits++;
@@ -719,9 +779,9 @@ public partial class RtsDemo : Node2D
         }
 
         _hud.Text =
-            $"{title}  |  units {_simulation.Units.Count}  " +
+            $"{title}  |  units {livingUnits}/{_simulation.Units.Count}  " +
             $"selected {_selectedUnits.Count}  moving {metrics.MovingUnits}  " +
-            $"arrived {metrics.ArrivedUnits}  choke {chokeUnits}  " +
+            $"arrived {metrics.ArrivedUnits}  engaged {engagedUnits}  choke {chokeUnits}  " +
             $"route {_simulation.LastIssuedGroupRoute.Waypoints.Length}  " +
             $"route plans {metrics.GroupRoutePlans} shared {metrics.SharedRouteAssignments}  " +
             $"slot swaps {metrics.DestinationSlotSwaps}  " +
@@ -740,7 +800,7 @@ public partial class RtsDemo : Node2D
             $"collision {metrics.CollisionMilliseconds:0.00}  " +
             $"alloc {metrics.AllocatedBytes / 1024.0:0.0}KB\n" +
             $"{trafficText}\n" +
-            "LMB drag/select  RMB move  Space select all  S stop  H hold  " +
+            "LMB drag/select  RMB move  A+RMB attack-move  Space select all  S stop  H hold  " +
             "B place building  X remove building  D debug  R reset";
     }
 
@@ -1016,7 +1076,9 @@ public partial class RtsDemo : Node2D
                 var unit = _simulation.AddUnit(
                     new NVector2(105f + column * 20f, 160f + row * 20f),
                     _gameplayProfiles.Unit((row + column) %
-                                           _gameplayProfiles.UnitProfiles.Length));
+                                           _gameplayProfiles.UnitProfiles.Length),
+                    team: 1,
+                    CombatProfileSnapshot.Standard);
                 _selectedUnits.Add(unit);
             }
         }
@@ -1028,7 +1090,9 @@ public partial class RtsDemo : Node2D
                 _simulation.AddUnit(
                     new NVector2(1030f + column * 20f, 510f + row * 20f),
                     _gameplayProfiles.Unit((row + column) %
-                                           _gameplayProfiles.UnitProfiles.Length));
+                                           _gameplayProfiles.UnitProfiles.Length),
+                    team: 2,
+                    CombatProfileSnapshot.Standard);
             }
         }
     }

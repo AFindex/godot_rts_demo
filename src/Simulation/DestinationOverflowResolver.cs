@@ -29,6 +29,10 @@ public sealed class DestinationOverflowResolver
     {
         for (var unit = 0; unit < units.Count; unit++)
         {
+            if (!units.Alive[unit])
+            {
+                continue;
+            }
             var distance = Vector2.Distance(
                 units.Positions[unit], units.SlotTargets[unit]);
             if (units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
@@ -96,6 +100,10 @@ public sealed class DestinationOverflowResolver
     {
         for (var candidateUnit = 0; candidateUnit < units.Count; candidateUnit++)
         {
+            if (!units.Alive[candidateUnit])
+            {
+                continue;
+            }
             var hardTimeout = units.DestinationNearTicks[candidateUnit] >=
                               MaximumNearGoalTicks;
             if ((units.DestinationStallTicks[candidateUnit] < MinimumStallTicks &&
@@ -128,9 +136,10 @@ public sealed class DestinationOverflowResolver
         var largestRadius = units.Radii[unit];
         for (var candidate = 0; candidate < units.Count; candidate++)
         {
-            if (units.MovementGroupIds[candidate] == groupId ||
+            if (units.Alive[candidate] &&
+                (units.MovementGroupIds[candidate] == groupId ||
                 (units.MovementGroupIds[candidate] > 0 &&
-                 Vector2.DistanceSquared(units.MoveGoals[candidate], groupGoal) <= 2f * 2f))
+                 Vector2.DistanceSquared(units.MoveGoals[candidate], groupGoal) <= 2f * 2f)))
             {
                 largestRadius = MathF.Max(largestRadius, units.Radii[candidate]);
             }
@@ -140,7 +149,8 @@ public sealed class DestinationOverflowResolver
         var goalPopulation = 0;
         for (var candidate = 0; candidate < units.Count; candidate++)
         {
-            if (units.MovementGroupIds[candidate] > 0 &&
+            if (units.Alive[candidate] &&
+                units.MovementGroupIds[candidate] > 0 &&
                 Vector2.DistanceSquared(units.MoveGoals[candidate], groupGoal) <= 2f * 2f)
             {
                 goalPopulation++;
@@ -191,7 +201,7 @@ public sealed class DestinationOverflowResolver
     {
         for (var other = 0; other < units.Count; other++)
         {
-            if (other == unit)
+            if (other == unit || !units.Alive[other])
             {
                 continue;
             }
@@ -239,7 +249,7 @@ public sealed class DestinationOverflowResolver
         var nearbyBlockers = 0;
         for (var other = 0; other < units.Count; other++)
         {
-            if (other == unit ||
+            if (other == unit || !units.Alive[other] ||
                 !IsSettledBlocker(units, other))
             {
                 continue;

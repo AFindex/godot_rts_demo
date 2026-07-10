@@ -36,6 +36,7 @@ public sealed class UnitStore
     {
         Capacity = capacity;
         Positions = new Vector2[capacity];
+        Alive = new bool[capacity];
         PreviousPositions = new Vector2[capacity];
         Velocities = new Vector2[capacity];
         PreferredVelocities = new Vector2[capacity];
@@ -92,6 +93,7 @@ public sealed class UnitStore
     public int Count { get; private set; }
     public int Capacity { get; }
     public Vector2[] Positions { get; }
+    public bool[] Alive { get; }
     public Vector2[] PreviousPositions { get; }
     public Vector2[] Velocities { get; }
     public Vector2[] PreferredVelocities { get; }
@@ -150,6 +152,7 @@ public sealed class UnitStore
         }
 
         var index = Count++;
+        Alive[index] = true;
         Positions[index] = position;
         PreviousPositions[index] = position;
         SlotTargets[index] = position;

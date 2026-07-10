@@ -6,6 +6,37 @@ namespace RtsDemo.Tests;
 public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
 
+public readonly record struct TestCombatProfile(
+    float MaximumHealth = 45f,
+    float AttackDamage = 8f,
+    float AttackRange = 34f,
+    float AcquisitionRange = 155f,
+    float AttackCooldownSeconds = 0.72f,
+    float AttackWindupSeconds = 0.18f,
+    float LeashDistance = 260f)
+{
+    public static TestCombatProfile Standard => new(
+        45f, 8f, 34f, 155f, 0.72f, 0.18f, 260f);
+}
+
+public enum TestCombatState : byte
+{
+    None,
+    Searching,
+    Chasing,
+    Attacking,
+    Dead
+}
+
+public readonly record struct TestCombatSnapshot(
+    TestUnitId Id,
+    int Team,
+    bool Alive,
+    float Health,
+    float MaximumHealth,
+    TestUnitId? Target,
+    TestCombatState State);
+
 public enum TestBuildingFootprintClass : byte
 {
     Small,
@@ -256,6 +287,27 @@ public sealed class MovementTestRig
         UnitMovementProfileSnapshot profile) =>
         new(_simulation.AddUnit(position, profile));
 
+    public TestUnitId SpawnCombat(
+        Vector2 position,
+        int team,
+        TestCombatProfile? profile = null,
+        float radius = 7.5f,
+        float maximumSpeed = 128f,
+        float acceleration = 720f)
+    {
+        var resolvedProfile = profile ?? TestCombatProfile.Standard;
+        var backendProfile = new CombatProfileSnapshot(
+            resolvedProfile.MaximumHealth,
+            resolvedProfile.AttackDamage,
+            resolvedProfile.AttackRange,
+            resolvedProfile.AcquisitionRange,
+            resolvedProfile.AttackCooldownSeconds,
+            resolvedProfile.AttackWindupSeconds,
+            resolvedProfile.LeashDistance);
+        return new TestUnitId(_simulation.AddUnit(
+            position, team, backendProfile, radius, maximumSpeed, acceleration));
+    }
+
     public TestUnitId[] SpawnGrid(
         Vector2 origin,
         int rows,
@@ -283,6 +335,9 @@ public sealed class MovementTestRig
 
     public void Move(IReadOnlyList<TestUnitId> units, Vector2 target) =>
         _simulation.IssueMove(ToBackendIndices(units), target);
+
+    public void AttackMove(IReadOnlyList<TestUnitId> units, Vector2 target) =>
+        _simulation.IssueAttackMove(ToBackendIndices(units), target);
 
     public void Stop(IReadOnlyList<TestUnitId> units) =>
         _simulation.Stop(ToBackendIndices(units));
@@ -433,6 +488,27 @@ public sealed class MovementTestRig
             _simulation.Units.SlotTargets[index],
             _simulation.Units.Radii[index],
             ToTestState(_simulation.Units.Modes[index]));
+    }
+
+    public TestCombatSnapshot ObserveCombat(TestUnitId unit)
+    {
+        var index = unit.Value;
+        if ((uint)index >= (uint)_simulation.Units.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        }
+
+        var target = _simulation.Combat.TargetUnits[index];
+        return new TestCombatSnapshot(
+            unit,
+            _simulation.Combat.Teams[index],
+            _simulation.Units.Alive[index],
+            _simulation.Combat.Health[index],
+            _simulation.Combat.MaximumHealth[index],
+            target >= 0 ? new TestUnitId(target) : null,
+            !_simulation.Units.Alive[index]
+                ? TestCombatState.Dead
+                : (TestCombatState)_simulation.Combat.Phases[index]);
     }
 
     public TestUnitSnapshot[] Observe(IReadOnlyList<TestUnitId> units)

@@ -100,6 +100,10 @@ public sealed class DestinationSlotAllocator
     {
         for (var unit = 0; unit < units.Count; unit++)
         {
+            if (!units.Alive[unit])
+            {
+                continue;
+            }
             var isSelected = false;
             for (var selectedIndex = 0; selectedIndex < selectedUnits.Length; selectedIndex++)
             {

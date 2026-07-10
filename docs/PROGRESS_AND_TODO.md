@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 40 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
+- 44 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore 或 CombatStore 内部状态。
 - 测试可以自动录制 AVI，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512 和 1000 单位。
 
 当前规模：
 
-- 51 个 C# 源文件。
-- 约 11,994 行 C#。
-- 40 个黑盒场景。
-- 覆盖 40 个逻辑场景的规范测试录像。
-- Release 1000 单位 P95：约 9.40ms。
+- 53 个 C# 源文件。
+- 约 11,474 行 C#（按仓库源码统计）。
+- 44 个黑盒场景。
+- 覆盖 44 个逻辑场景的规范测试录像。
+- Release 1000 单位 P95：约 9.24ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -37,7 +37,7 @@
 | S5 碰撞与约束 | 运行时闭环完成 | 圆碰撞、动态占用、三档净空、四档建筑、Profile Resource、局部净空与全局 Connectivity Guard | 具名关键锚点、多移动层、非矩形 footprint |
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
-| S8 战斗移动 | 未开始 | 无 | AttackMove、攻击槽位、追击、leash、恢复原路线 |
+| S8 战斗移动 | 最小闭环完成 | AttackMove、错峰索敌、追击、前摇/冷却/伤害、死亡、leash、恢复原路线、命令隔离 | 近战包围槽、远程攻击环、Stop/Hold 自动攻击、弹道与高级目标策略 |
 | S9 编辑器与数据烘焙 | Bake 闭环完成 | Navigation/Gameplay/Bake Resource、稳定哈希、CLI Generator/Validator、三档分量与 chunk `[Tool]` Preview | 增量 Baker、几何拖拽、热重载和放置差异面板 |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
 
@@ -139,11 +139,22 @@
 - 提供命令行 Validator 和 Demo Resource Generator。
 - 主 Demo 不再从 `DemoMapDefinition` 创建运行时地图；该类只保留为纯 C# 测试与示例资源重建夹具。
 
+### 3.8 AttackMove 战斗移动
+
+- `CombatStore` 与移动 SoA 分离，追击路径不会覆盖原 AttackMove 终点。
+- 6 Tick 错峰最近目标扫描，相同距离按稳定 unit ID 决定。
+- 目标移动时有预算地更新追击路径；静止目标不重复寻路。
+- 进入射程后停止、执行攻击前摇、命中、冷却与生命扣减。
+- 目标死亡或越过 leash 后清理交战状态并恢复原路线。
+- 死亡单位保持稳定 ID，但退出 SpatialHash、Steering、积分、碰撞、选择和建筑占用。
+- Move 不索敌；Stop/Hold 明确取消 AttackMove 目标和恢复意图。
+- 详细边界见 `docs/ATTACK_MOVE.md`。
+
 ## 4. 测试、录像和性能
 
 ### 4.1 已有黑盒场景
 
-当前 40 个场景覆盖：
+当前 44 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -174,15 +185,17 @@
 - 临时包围恢复。
 - 永久不可达重试上限。
 - 192 单位压力场景。
+- AttackMove 接敌击杀后恢复原路线、leash 脱战恢复、Move/AttackMove 隔离和 Stop/Hold 取消。
 
 黑盒场景只使用以下稳定业务动作：
 
 ```text
 Spawn
-Move / Stop / Hold
+SpawnCombat
+Move / AttackMove / Stop / Hold
 PlaceBuilding / RemoveBuilding
 Step
-Observe unit / traffic / recovery / performance
+Observe unit / combat / traffic / recovery / performance
 ```
 
 底层实现更换时，优先只修改 MovementTestRig 适配器。
@@ -193,7 +206,7 @@ Observe unit / traffic / recovery / performance
 - 每个场景独立启动 Godot Movie Maker。
 - 每段录像保存 AVI、Godot 日志和 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 40 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 44 个逻辑场景的规范录像。
 - AVI 使用 Git LFS。
 
 注意：当前规范录像来自多个功能里程碑批次，并非全部在同一个 commit 上重新录制。发布正式版本前应执行一次全量重新录制，生成单一时间戳目录。
@@ -204,9 +217,9 @@ Observe unit / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|
-| 256 | 1.27ms | 1.73ms | 4ms | 27B |
-| 512 | 3.75ms | 4.70ms | 12.5ms | 182B |
-| 1000 | 7.90ms | 9.40ms | 16.67ms | 461B |
+| 256 | 1.09ms | 1.44ms | 4ms | 27B |
+| 512 | 4.67ms | 6.27ms | 12.5ms | 182B |
+| 1000 | 7.89ms | 9.24ms | 16.67ms | 461B |
 
 当前热点排序：
 
@@ -283,20 +296,25 @@ TODO：
 - DestinationSlotAllocator 使用 Hungarian，超大单次命令为 O(n³)。
 - 1000 单位基准通过，但 Steering 仍占主要时间。
 
-## 6. 尚未开始的大模块
+## 6. 未完成的大模块
 
 ### 6.1 S8 战斗移动
 
-TODO：
+已完成：
 
 - AttackMove 命令与路线恢复。
-- 近战包围槽位。
-- 远程攻击环。
-- 追击、leash 和脱战。
-- 目标死亡后的重新选敌。
-- 攻击前摇期间的运动约束。
-- 移动射击。
-- 友军避让与敌军阻挡规则。
+- 最近敌人错峰索敌、追击、leash 和脱战。
+- 攻击前摇、冷却、即时伤害、目标死亡和移动约束。
+- Move/AttackMove 隔离，Stop/Hold 显式取消交战。
+- 稳定 unit ID 死亡清理和四个业务黑盒场景/录像。
+
+下一层有限 TODO：
+
+- 近战包围槽位和远程攻击环。
+- Stop 原地索敌、Hold 射程内攻击但不追击。
+- 目标死亡后的多人稳定重新选敌。
+
+后置，不阻塞下一层：弹道、移动射击、复杂仇恨权重、友军/敌军推挤优先级和动画事件。
 
 ### 6.2 操作层
 
@@ -433,13 +451,16 @@ TODO：
 
 下一层：chunk 增量 Connectivity 与边界 component graph、Resource 热重载，以及 Portal/Sector 交互编辑。
 
-### 下一步 D：AttackMove 最小闭环
+### 下一步 D：AttackMove 最小闭环（已完成）
 
-验收：
+- 接敌、追击、攻击、目标死亡、leash 与恢复原路线已经闭环。
+- Stop、Hold、Move、AttackMove 当前语义互不污染。
+- 四个业务黑盒测试和规范录像全部通过。
+- 攻击槽拆为下一层近战唯一槽和远程攻击环，不在最小闭环中用临时代码假实现。
 
-- 移动、接敌、占据攻击槽、目标死亡、恢复原路线完整闭环。
-- Stop、Hold、Move、AttackMove 语义不互相污染。
-- 有对应黑盒测试和录像。
+### 下一步 D2：战斗占位与索敌语义
+
+只实现近战唯一攻击槽、远程攻击环、Stop 原地索敌、Hold 不追击，以及目标死亡后的多人稳定重新选敌。验收后转向操作层，不继续扩张伤害和表现系统。
 
 ### 下一步 E：操作层和确定性
 

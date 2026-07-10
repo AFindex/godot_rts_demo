@@ -47,7 +47,7 @@ public sealed class DestinationLocalRematcher
         Span<int> candidates = stackalloc int[MaximumUnits];
         for (var anchor = 0; anchor < units.Count; anchor++)
         {
-            if (!IsAnchor(units, anchor, tick))
+            if (!units.Alive[anchor] || !IsAnchor(units, anchor, tick))
             {
                 continue;
             }
@@ -90,7 +90,8 @@ public sealed class DestinationLocalRematcher
             var bestScore = float.PositiveInfinity;
             for (var unit = 0; unit < units.Count; unit++)
             {
-                if (units.MovementGroupIds[unit] != groupId ||
+                if (!units.Alive[unit] ||
+                    units.MovementGroupIds[unit] != groupId ||
                     Contains(candidates[..count], unit) ||
                     !IsCandidate(units, unit, tick) ||
                     (units.Modes[unit] == UnitMoveMode.Arrived &&
@@ -362,7 +363,8 @@ public sealed class DestinationLocalRematcher
         var moving = 0;
         for (var unit = 0; unit < units.Count; unit++)
         {
-            if (units.MovementGroupIds[unit] == groupId &&
+            if (units.Alive[unit] &&
+                units.MovementGroupIds[unit] == groupId &&
                 units.Modes[unit] == UnitMoveMode.Moving &&
                 !units.DestinationOverflowed[unit] &&
                 units.DestinationYieldPhases[unit] == DestinationYieldPhase.None &&

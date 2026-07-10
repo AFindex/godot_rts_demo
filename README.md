@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
+完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。战斗移动见 [AttackMove 最小闭环](docs/ATTACK_MOVE.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -31,6 +31,8 @@
 - Clearance Bake 将三档 walkable 位图、component ID 和 16×16-cell chunk 布局保存为带源导航哈希的版本化 Resource；静态运行时直接复用，动态 revision 安全回退分析。
 - 车道偏移会写入每单位路径点，避免出口处被共享中心 waypoint 回拉。
 - 目标槽位分配、空间哈希、候选速度 Steering、TTC、避让侧记忆和三轮碰撞推挤。
+- 纯 C# AttackMove 状态机：错峰选敌、追击重寻路、前摇/冷却/伤害、leash、死亡清理和恢复原路线。
+- 战斗状态与移动路径分离；死亡保持稳定 unit ID，但从寻路邻居、碰撞、选择和建筑占用中移除。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
 
 ## 运行
@@ -45,6 +47,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64.exe `
 ```text
 左键/框选：选择单位
 右键：移动到目标区域
+A + 右键：AttackMove 到目标区域
 Space：全选
 S：Stop
 H：Hold Position
@@ -78,7 +81,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 1.73ms、4.70ms 和 9.40ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 1.44ms、6.27ms 和 9.24ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
 
 ## 导航数据资产
 
@@ -121,7 +124,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 40 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、Small/Large Portal 分流、动态窄缝、四档建筑、局部与全局放置结果、多尺寸建筑群绕行和编辑器 Bake/chunk 预览。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
+当前包含 44 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、Small/Large Portal 分流、动态窄缝、四档建筑、局部与全局放置结果、多尺寸建筑群绕行、编辑器 Bake/chunk 预览，以及 AttackMove 接敌/脱战/命令隔离。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -136,4 +139,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay/Bake Resource → 纯 C# 快照链路已有可运行版本。Clearance 的运行时、局部/全局放置保护、静态 Bake 与编辑器 chunk Preview 已完成；下一步是 chunk 增量 Connectivity、Resource 热重载和 Portal/Sector 交互编辑。战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、终点协作收敛、动态失效共享改道，以及 Navigation/Gameplay/Bake Resource → 纯 C# 快照链路已有可运行版本。AttackMove 的远程抽象最小闭环已经完成；下一层战斗内容是近战包围槽、远程攻击环、索敌策略与更接近 SC2 的 Stop/Hold 自动攻击语义。联机和确定性回放暂未实现。

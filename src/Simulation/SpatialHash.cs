@@ -26,6 +26,10 @@ public sealed class SpatialHash
 
         for (var i = 0; i < units.Count; i++)
         {
+            if (!units.Alive[i])
+            {
+                continue;
+            }
             var (x, y) = Cell(units.Positions[i]);
             var key = Key(x, y);
             if (!_buckets.TryGetValue(key, out var bucket))

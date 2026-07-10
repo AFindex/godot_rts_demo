@@ -24,6 +24,11 @@ public sealed class SteeringSolver
     {
         for (var unit = 0; unit < units.Count; unit++)
         {
+            if (!units.Alive[unit])
+            {
+                units.NextVelocities[unit] = Vector2.Zero;
+                continue;
+            }
             if (units.Modes[unit] is not UnitMoveMode.Moving)
             {
                 units.NextVelocities[unit] = MoveTowards(

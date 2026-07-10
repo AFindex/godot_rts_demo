@@ -1,0 +1,91 @@
+﻿{
+    "created_at":  "2026-07-11T02:22:45.1900794+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "attack-move-engage-resume",
+                            "attack-move-leash-resume",
+                            "attack-move-command-isolation",
+                            "attack-move-cancel"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "attack-move-engage-resume",
+                            "attack-move-leash-resume",
+                            "attack-move-command-isolation",
+                            "attack-move-cancel",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed",
+                            "clearance-portal-choice",
+                            "clearance-dynamic-gap",
+                            "building-footprint-sizes",
+                            "building-placement-rules",
+                            "building-connectivity-guard",
+                            "building-size-navigation",
+                            "gameplay-profile-resource-runtime",
+                            "clearance-bake-resource-runtime",
+                            "clearance-editor-preview",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "navigation-resource-runtime",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "attack-move-engage-resume",
+                      "file":  "attack-move-engage-resume.avi",
+                      "log":  "attack-move-engage-resume.log",
+                      "bytes":  18577554,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-engage-resume: ticks=720, defender_alive=False, attacker_x=982.4, state=Searching"
+                  },
+                  {
+                      "id":  "attack-move-leash-resume",
+                      "file":  "attack-move-leash-resume.avi",
+                      "log":  "attack-move-leash-resume.log",
+                      "bytes":  20273436,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-leash-resume: ticks=780, target_alive=True, attacker_x=1056.6"
+                  },
+                  {
+                      "id":  "attack-move-command-isolation",
+                      "file":  "attack-move-command-isolation.avi",
+                      "log":  "attack-move-command-isolation.log",
+                      "bytes":  20561308,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-command-isolation: ticks=780, move_enemy_alive=True, attack_enemy_alive=False, move_x=1056.6, attack_x=1048.8"
+                  },
+                  {
+                      "id":  "attack-move-cancel",
+                      "file":  "attack-move-cancel.avi",
+                      "log":  "attack-move-cancel.log",
+                      "bytes":  9148982,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-cancel: ticks=300, stop=Idle/None, hold=Holding/None, targets=/"
+                  }
+              ]
+}

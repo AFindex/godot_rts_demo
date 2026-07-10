@@ -30,7 +30,8 @@ public sealed class DestinationYieldResolver
     {
         for (var candidate = 0; candidate < units.Count; candidate++)
         {
-            if (units.Modes[candidate] != UnitMoveMode.Moving ||
+            if (!units.Alive[candidate] ||
+                units.Modes[candidate] != UnitMoveMode.Moving ||
                 units.PathPending[candidate] ||
                 units.MovementGroupSizes[candidate] < MinimumGroupSize ||
                 units.DestinationOverflowed[candidate] ||
@@ -74,7 +75,7 @@ public sealed class DestinationYieldResolver
         var bestScore = float.PositiveInfinity;
         for (var other = 0; other < units.Count; other++)
         {
-            if (other == blockedUnit ||
+            if (other == blockedUnit || !units.Alive[other] ||
                 !IsSettledBlocker(units, other) ||
                 units.DestinationOverflowed[other] ||
                 units.DestinationYieldPhases[other] != DestinationYieldPhase.None ||
@@ -186,7 +187,7 @@ public sealed class DestinationYieldResolver
     {
         for (var other = 0; other < units.Count; other++)
         {
-            if (other == blockerUnit)
+            if (other == blockerUnit || !units.Alive[other])
             {
                 continue;
             }

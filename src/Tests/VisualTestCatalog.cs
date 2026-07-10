@@ -12,6 +12,10 @@ public static class VisualTestCatalog
     public static readonly string[] CaseIds =
     [
         "single-unit",
+        "attack-move-engage-resume",
+        "attack-move-leash-resume",
+        "attack-move-command-isolation",
+        "attack-move-cancel",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -60,6 +64,10 @@ public static class VisualTestCatalog
         ClearanceBakeSnapshot? clearanceBake = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
+        "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
+        "attack-move-leash-resume" => CreateAttackMoveLeashResume(),
+        "attack-move-command-isolation" => CreateAttackMoveCommandIsolation(),
+        "attack-move-cancel" => CreateAttackMoveCancel(),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
         "opposing-streams" => CreateOpposingStreams(),
@@ -116,6 +124,154 @@ public static class VisualTestCatalog
         rig.Move(units, new Vector2(900f, 500f));
         return ArrivalScenario(
             "single-unit", "Single unit direct move", 480, rig, units, 1, 8f);
+    }
+
+    private static VisualTestSession CreateAttackMoveEngageResume()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 8);
+        var attacker = rig.SpawnCombat(new Vector2(100f, 350f), team: 1);
+        var defender = rig.SpawnCombat(new Vector2(510f, 255f), team: 2);
+        TestUnitId[] visible = [attacker, defender];
+        rig.AttackMove([attacker], new Vector2(1060f, 350f));
+        return new VisualTestSession(
+            "attack-move-engage-resume",
+            "AttackMove acquires, kills, then resumes route",
+            720,
+            rig,
+            visible,
+            runtime =>
+            {
+                var attack = runtime.Observe(attacker);
+                var attackerCombat = runtime.ObserveCombat(attacker);
+                var defenderCombat = runtime.ObserveCombat(defender);
+                var passed = attackerCombat.Alive && !defenderCombat.Alive &&
+                             attack.Position.X >= 970f;
+                return new ScenarioResult(
+                    passed,
+                    $"defender_alive={defenderCombat.Alive}, " +
+                    $"attacker_x={attack.Position.X:F1}, state={attackerCombat.State}");
+            });
+    }
+
+    private static VisualTestSession CreateAttackMoveLeashResume()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 8);
+        var attacker = rig.SpawnCombat(new Vector2(100f, 350f), team: 1);
+        var durableTarget = new TestCombatProfile(
+            MaximumHealth: 500f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 100f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 180f);
+        var defender = rig.SpawnCombat(
+            new Vector2(360f, 255f), team: 2, durableTarget,
+            maximumSpeed: 220f, acceleration: 900f);
+        TestUnitId[] visible = [attacker, defender];
+        rig.AttackMove([attacker], new Vector2(1060f, 350f));
+        return new VisualTestSession(
+            "attack-move-leash-resume",
+            "AttackMove abandons target beyond leash and resumes",
+            780,
+            rig,
+            visible,
+            runtime =>
+            {
+                var attack = runtime.Observe(attacker);
+                var defenderCombat = runtime.ObserveCombat(defender);
+                var passed = defenderCombat.Alive && attack.Position.X >= 970f;
+                return new ScenarioResult(
+                    passed,
+                    $"target_alive={defenderCombat.Alive}, attacker_x={attack.Position.X:F1}");
+            })
+            .At(105, "Target retreats beyond leash", runtime =>
+                runtime.Move([defender], new Vector2(1060f, 650f)));
+    }
+
+    private static VisualTestSession CreateAttackMoveCommandIsolation()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 12);
+        var mover = rig.SpawnCombat(new Vector2(90f, 190f), team: 1);
+        var attackMover = rig.SpawnCombat(new Vector2(90f, 500f), team: 1);
+        var moveLaneEnemy = rig.SpawnCombat(new Vector2(500f, 120f), team: 2);
+        var attackLaneEnemy = rig.SpawnCombat(new Vector2(500f, 430f), team: 2);
+        TestUnitId[] visible = [mover, attackMover, moveLaneEnemy, attackLaneEnemy];
+        rig.Move([mover], new Vector2(1060f, 190f));
+        rig.AttackMove([attackMover], new Vector2(1060f, 500f));
+        return new VisualTestSession(
+            "attack-move-command-isolation",
+            "Move ignores enemies while AttackMove engages",
+            780,
+            rig,
+            visible,
+            runtime =>
+            {
+                var moverSnapshot = runtime.Observe(mover);
+                var attackSnapshot = runtime.Observe(attackMover);
+                var ignoredEnemy = runtime.ObserveCombat(moveLaneEnemy);
+                var engagedEnemy = runtime.ObserveCombat(attackLaneEnemy);
+                var passed = ignoredEnemy.Alive && !engagedEnemy.Alive &&
+                             moverSnapshot.Position.X >= 970f &&
+                             attackSnapshot.Position.X >= 970f;
+                return new ScenarioResult(
+                    passed,
+                    $"move_enemy_alive={ignoredEnemy.Alive}, " +
+                    $"attack_enemy_alive={engagedEnemy.Alive}, " +
+                    $"move_x={moverSnapshot.Position.X:F1}, " +
+                    $"attack_x={attackSnapshot.Position.X:F1}");
+            });
+    }
+
+    private static VisualTestSession CreateAttackMoveCancel()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(900f, 600f), 12);
+        var durable = new TestCombatProfile(
+            MaximumHealth: 500f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 100f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 180f);
+        var stopped = rig.SpawnCombat(new Vector2(90f, 180f), team: 1);
+        var held = rig.SpawnCombat(new Vector2(90f, 420f), team: 1);
+        var upperEnemy = rig.SpawnCombat(
+            new Vector2(330f, 120f), team: 2, durable);
+        var lowerEnemy = rig.SpawnCombat(
+            new Vector2(330f, 360f), team: 2, durable);
+        TestUnitId[] visible = [stopped, held, upperEnemy, lowerEnemy];
+        rig.AttackMove([stopped], new Vector2(810f, 180f));
+        rig.AttackMove([held], new Vector2(810f, 420f));
+        return new VisualTestSession(
+            "attack-move-cancel",
+            "Stop and Hold cancel AttackMove engagement and resume intent",
+            300,
+            rig,
+            visible,
+            runtime =>
+            {
+                var stoppedUnit = runtime.Observe(stopped);
+                var heldUnit = runtime.Observe(held);
+                var stoppedCombat = runtime.ObserveCombat(stopped);
+                var heldCombat = runtime.ObserveCombat(held);
+                var passed = stoppedUnit.State == TestUnitState.Idle &&
+                             heldUnit.State == TestUnitState.Holding &&
+                             stoppedUnit.Velocity.LengthSquared() < 0.25f &&
+                             heldUnit.Velocity.LengthSquared() < 0.25f &&
+                             stoppedCombat.Target is null && heldCombat.Target is null &&
+                             runtime.ObserveCombat(upperEnemy).Alive &&
+                             runtime.ObserveCombat(lowerEnemy).Alive;
+                return new ScenarioResult(
+                    passed,
+                    $"stop={stoppedUnit.State}/{stoppedCombat.State}, " +
+                    $"hold={heldUnit.State}/{heldCombat.State}, " +
+                    $"targets={stoppedCombat.Target}/{heldCombat.Target}");
+            })
+            .At(90, "Stop cancels upper engagement", runtime =>
+                runtime.Stop([stopped]))
+            .At(90, "Hold cancels lower engagement", runtime =>
+                runtime.Hold([held]));
     }
 
     private static VisualTestSession CreateOpenField()

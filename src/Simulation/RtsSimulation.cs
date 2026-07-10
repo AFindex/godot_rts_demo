@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace RtsDemo.Simulation;
 
-public sealed class RtsSimulation
+public sealed class RtsSimulation : ICombatMovementDriver
 {
     private const float WaypointRadius = 13f;
     private const float ArrivalSlowRadius = 58f;
@@ -35,6 +35,7 @@ public sealed class RtsSimulation
     private readonly SteeringSolver _steeringSolver;
     private readonly IGroupRoutePlanner? _groupRoutePlanner;
     private readonly ChokeController? _chokeController;
+    private readonly CombatSystem _combatSystem;
     private readonly int[] _collisionNeighbors = new int[64];
     private int _pendingNavigationInvalidations;
     private int _nextMovementGroupId = 1;
@@ -50,6 +51,7 @@ public sealed class RtsSimulation
         World = world;
         _pathProvider = pathProvider;
         Units = new UnitStore(capacity);
+        Combat = new CombatStore(capacity);
         _spatialHash = new SpatialHash(40f);
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
@@ -61,10 +63,12 @@ public sealed class RtsSimulation
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
+        _combatSystem = new CombatSystem(Units, Combat, this);
     }
 
     public StaticWorld World { get; }
     public UnitStore Units { get; }
+    public CombatStore Combat { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -129,7 +133,20 @@ public sealed class RtsSimulation
         float radius = 7.5f,
         float maxSpeed = 128f,
         float acceleration = 720f) =>
-        Units.Add(position, radius, maxSpeed, acceleration);
+        AddUnit(position, 0, CombatProfileSnapshot.Standard, radius, maxSpeed, acceleration);
+
+    public int AddUnit(
+        Vector2 position,
+        int team,
+        CombatProfileSnapshot combatProfile,
+        float radius = 7.5f,
+        float maxSpeed = 128f,
+        float acceleration = 720f)
+    {
+        var unit = Units.Add(position, radius, maxSpeed, acceleration);
+        Combat.Register(unit, team, position, combatProfile);
+        return unit;
+    }
 
     public int AddUnit(
         Vector2 position,
@@ -140,11 +157,30 @@ public sealed class RtsSimulation
             profile.MaximumSpeed,
             profile.Acceleration);
 
+    public int AddUnit(
+        Vector2 position,
+        UnitMovementProfileSnapshot movementProfile,
+        int team,
+        CombatProfileSnapshot combatProfile) =>
+        AddUnit(
+            position,
+            team,
+            combatProfile,
+            movementProfile.PhysicalRadius,
+            movementProfile.MaximumSpeed,
+            movementProfile.Acceleration);
+
     public void IssueMove(ReadOnlySpan<int> unitIndices, Vector2 target)
     {
         if (unitIndices.IsEmpty)
         {
             return;
+        }
+
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            ValidateUnitIndex(unitIndices[index]);
+            ValidateLivingUnit(unitIndices[index]);
         }
 
         var assignments = _slotAllocator.Allocate(Units, unitIndices, target);
@@ -180,6 +216,8 @@ public sealed class RtsSimulation
         {
             var unit = unitIndices[i];
             ValidateUnitIndex(unit);
+            ValidateLivingUnit(unit);
+            Combat.SetCommand(unit, UnitCommandIntent.Move, groupGoal);
             Units.CommandVersions[unit]++;
             Units.SlotTargets[unit] = assignments[unit];
             Units.MoveGoals[unit] = groupGoal;
@@ -218,12 +256,27 @@ public sealed class RtsSimulation
         }
     }
 
+    public void IssueAttackMove(ReadOnlySpan<int> unitIndices, Vector2 target)
+    {
+        IssueMove(unitIndices, target);
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            Combat.SetCommand(unit, UnitCommandIntent.AttackMove, Units.MoveGoals[unit]);
+        }
+    }
+
     public void Stop(ReadOnlySpan<int> unitIndices)
     {
         for (var i = 0; i < unitIndices.Length; i++)
         {
             var unit = unitIndices[i];
             ValidateUnitIndex(unit);
+            if (!Units.Alive[unit])
+            {
+                continue;
+            }
+            Combat.SetCommand(unit, UnitCommandIntent.Stop, Units.Positions[unit]);
             Units.CommandVersions[unit]++;
             Units.Paths[unit] = null;
             Units.RouteWaypoints[unit] = [];
@@ -264,7 +317,13 @@ public sealed class RtsSimulation
         Stop(unitIndices);
         for (var i = 0; i < unitIndices.Length; i++)
         {
-            Units.Modes[unitIndices[i]] = UnitMoveMode.Hold;
+            var unit = unitIndices[i];
+            if (!Units.Alive[unit])
+            {
+                continue;
+            }
+            Units.Modes[unit] = UnitMoveMode.Hold;
+            Combat.SetCommand(unit, UnitCommandIntent.Hold, Units.Positions[unit]);
         }
     }
 
@@ -287,6 +346,8 @@ public sealed class RtsSimulation
         Metrics.NavigationInvalidations = _pendingNavigationInvalidations;
         Metrics.RecoveryEvents = 0;
         _pendingNavigationInvalidations = 0;
+
+        _combatSystem.Update(delta, Metrics.Tick);
 
         var phaseStart = Stopwatch.GetTimestamp();
         ProcessPathRequests();
@@ -343,7 +404,8 @@ public sealed class RtsSimulation
         {
             var request = _pathRequests.Dequeue();
             var unit = request.UnitIndex;
-            if (request.CommandVersion != Units.CommandVersions[unit] ||
+            if (!Units.Alive[unit] ||
+                request.CommandVersion != Units.CommandVersions[unit] ||
                 !Units.PathPending[unit])
             {
                 continue;
@@ -735,6 +797,10 @@ public sealed class RtsSimulation
         for (var unit = 0; unit < Units.Count; unit++)
         {
             Units.PreferredVelocities[unit] = Vector2.Zero;
+            if (!Units.Alive[unit])
+            {
+                continue;
+            }
             if (Units.Modes[unit] == UnitMoveMode.Arrived &&
                 Vector2.DistanceSquared(Units.Positions[unit], Units.SlotTargets[unit]) >
                 8f * 8f)
@@ -811,6 +877,12 @@ public sealed class RtsSimulation
         for (var unit = 0; unit < Units.Count; unit++)
         {
             Units.PreviousPositions[unit] = Units.Positions[unit];
+            if (!Units.Alive[unit])
+            {
+                Units.Velocities[unit] = Vector2.Zero;
+                Units.NextVelocities[unit] = Vector2.Zero;
+                continue;
+            }
             Units.Velocities[unit] = Units.NextVelocities[unit];
             var proposed = Units.Positions[unit] + Units.Velocities[unit] * delta;
             Units.Positions[unit] = World.ConstrainDisc(
@@ -829,6 +901,10 @@ public sealed class RtsSimulation
 
             for (var unit = 0; unit < Units.Count; unit++)
             {
+                if (!Units.Alive[unit])
+                {
+                    continue;
+                }
                 var neighborCount = _spatialHash.Query(
                     Units.Positions[unit],
                     Units.Radii[unit] * 4f + 8f,
@@ -877,6 +953,10 @@ public sealed class RtsSimulation
 
             for (var unit = 0; unit < Units.Count; unit++)
             {
+                if (!Units.Alive[unit])
+                {
+                    continue;
+                }
                 var previous = Units.Positions[unit];
                 Units.Positions[unit] = World.ConstrainDisc(
                     previous,
@@ -890,6 +970,10 @@ public sealed class RtsSimulation
     {
         for (var unit = 0; unit < Units.Count; unit++)
         {
+            if (!Units.Alive[unit])
+            {
+                continue;
+            }
             Units.RepathCooldowns[unit] = MathF.Max(0f, Units.RepathCooldowns[unit] - delta);
             if (Units.Modes[unit] != UnitMoveMode.Moving)
             {
@@ -1273,6 +1357,10 @@ public sealed class RtsSimulation
         Metrics.ActiveDestinationYields = 0;
         for (var unit = 0; unit < Units.Count; unit++)
         {
+            if (!Units.Alive[unit])
+            {
+                continue;
+            }
             Metrics.MaximumDestinationStallTicks = Math.Max(
                 Metrics.MaximumDestinationStallTicks,
                 Units.DestinationStallTicks[unit]);
@@ -1311,6 +1399,85 @@ public sealed class RtsSimulation
         {
             throw new ArgumentOutOfRangeException(nameof(unit));
         }
+    }
+
+    private void ValidateLivingUnit(int unit)
+    {
+        if (!Units.Alive[unit])
+        {
+            throw new InvalidOperationException($"Unit {unit} is dead.");
+        }
+    }
+
+    void ICombatMovementDriver.Chase(int unit, Vector2 target)
+    {
+        SetCombatDestination(unit, target);
+    }
+
+    void ICombatMovementDriver.StopForAttack(int unit)
+    {
+        if (Units.Modes[unit] == UnitMoveMode.Hold && !Units.PathPending[unit])
+        {
+            return;
+        }
+
+        Units.CommandVersions[unit]++;
+        Units.Paths[unit] = null;
+        Units.PathPending[unit] = false;
+        Units.Modes[unit] = UnitMoveMode.Hold;
+        Units.PreferredVelocities[unit] = Vector2.Zero;
+        Units.ActiveChokeIds[unit] = -1;
+        Units.ChokePhases[unit] = ChokePhase.None;
+        Units.ChokeAdmitted[unit] = false;
+    }
+
+    void ICombatMovementDriver.ResumeAttackMove(int unit, Vector2 target)
+    {
+        if (!Units.Alive[unit])
+        {
+            return;
+        }
+
+        if (Vector2.DistanceSquared(Units.Positions[unit], target) <=
+            ArrivalStopRadius * ArrivalStopRadius)
+        {
+            Units.Modes[unit] = UnitMoveMode.Arrived;
+            Units.SlotTargets[unit] = target;
+            Units.MoveGoals[unit] = target;
+            return;
+        }
+
+        SetCombatDestination(unit, target);
+    }
+
+    void ICombatMovementDriver.Kill(int unit)
+    {
+        Units.CommandVersions[unit]++;
+        Units.Paths[unit] = null;
+        Units.RouteWaypoints[unit] = [];
+        Units.PathPending[unit] = false;
+        Units.Modes[unit] = UnitMoveMode.Idle;
+        Units.PreferredVelocities[unit] = Vector2.Zero;
+        Units.Velocities[unit] = Vector2.Zero;
+        Units.NextVelocities[unit] = Vector2.Zero;
+        Units.ActiveChokeIds[unit] = -1;
+        Units.ChokePhases[unit] = ChokePhase.None;
+        Units.ChokeAdmitted[unit] = false;
+        Units.MovementGroupIds[unit] = 0;
+        Units.MovementGroupSizes[unit] = 0;
+        Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+    }
+
+    private void SetCombatDestination(int unit, Vector2 target)
+    {
+        var clamped = World.Bounds.Inset(Units.Radii[unit] + 2f).Clamp(target);
+        Units.SlotTargets[unit] = clamped;
+        Units.MoveGoals[unit] = clamped;
+        Units.MovementGroupIds[unit] = 0;
+        Units.MovementGroupSizes[unit] = 1;
+        Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+        Units.DestinationOverflowed[unit] = false;
+        QueueNavigationReplan(unit, countInvalidation: false);
     }
 
     private static float InversePushMass(UnitMoveMode mode) => mode switch
