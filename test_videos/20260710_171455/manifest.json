@@ -1,0 +1,59 @@
+﻿{
+    "created_at":  "2026-07-10T17:17:35.6065135+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "bidirectional-choke-balanced",
+                      "file":  "bidirectional-choke-balanced.avi",
+                      "log":  "bidirectional-choke-balanced.log",
+                      "bytes":  100049052,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-balanced: ticks=2700, positive=14/16, negative=14/16, both=True, conflicts=0, maxWait=333, trafficSafe=True, arrived=28/32, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                  },
+                  {
+                      "id":  "bidirectional-choke-asymmetric",
+                      "file":  "bidirectional-choke-asymmetric.avi",
+                      "log":  "bidirectional-choke-asymmetric.log",
+                      "bytes":  125095880,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-asymmetric: ticks=3300, positive=7/8, negative=27/32, both=True, conflicts=0, maxWait=356, trafficSafe=True, arrived=34/40, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                  },
+                  {
+                      "id":  "bidirectional-choke-waves",
+                      "file":  "bidirectional-choke-waves.avi",
+                      "log":  "bidirectional-choke-waves.log",
+                      "bytes":  149611762,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-waves: ticks=3900, positive=24/24, negative=22/24, both=True, conflicts=0, maxWait=346, trafficSafe=True, arrived=46/48, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                  }
+              ]
+}

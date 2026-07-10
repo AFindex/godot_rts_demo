@@ -1,0 +1,38 @@
+﻿{
+    "created_at":  "2026-07-10T16:55:04.0023333+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "dynamic-local-invalidation"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "portal-choke",
+                            "reverse-choke",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "dynamic-local-invalidation",
+                      "file":  "dynamic-local-invalidation.avi",
+                      "log":  "dynamic-local-invalidation.log",
+                      "bytes":  35871308,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-local-invalidation: ticks=1200, arrived=31/32, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, invalidated=16/32, local=True"
+                  }
+              ]
+}

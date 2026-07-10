@@ -1,0 +1,63 @@
+﻿{
+    "created_at":  "2026-07-10T19:12:18.3422566+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "shared-target-reservations",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "shared-target-reservations",
+                      "file":  "shared-target-reservations.avi",
+                      "log":  "shared-target-reservations.log",
+                      "bytes":  37943342,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS shared-target-reservations: ticks=1320, targetClearance=4.00, unique=True, arrived=32/32, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=6.1"
+                  },
+                  {
+                      "id":  "temporary-blocker-recovery",
+                      "file":  "temporary-blocker-recovery.avi",
+                      "log":  "temporary-blocker-recovery.log",
+                      "bytes":  23758950,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS temporary-blocker-recovery: ticks=960, events=2, unreachable=0, stage=Normal, recovered=True, arrived=1/1, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.4"
+                  },
+                  {
+                      "id":  "unreachable-recovery-limit",
+                      "file":  "unreachable-recovery-limit.avi",
+                      "log":  "unreachable-recovery-limit.log",
+                      "bytes":  19267092,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS unreachable-recovery-limit: ticks=720, idle=4/4, events=4, unreachable=4, pending=0, bounded=True"
+                  }
+              ]
+}

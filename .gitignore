@@ -1,0 +1,13 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+/godot_run.log
+/rts_demo_capture.png
+**/bin/
+**/obj/
+/benchmark_results/*.json
+!/benchmark_results/latest.json
+/test_videos/20260710_161621/
+/test_videos/20260710_161652/
+/test_videos/20260710_161725/
+/test_videos/20260710_163641/

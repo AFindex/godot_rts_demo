@@ -1,0 +1,42 @@
+﻿{
+    "created_at":  "2026-07-10T17:20:09.2075644+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "hold-blocked-choke"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "hold-blocked-choke",
+                      "file":  "hold-blocked-choke.avi",
+                      "log":  "hold-blocked-choke.log",
+                      "bytes":  108387120,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS hold-blocked-choke: ticks=3000, positive=11/12, negative=11/12, blockedTicks=600, conflicts=0, safe=True, arrived=22/24, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                  }
+              ]
+}

@@ -1,0 +1,6 @@
+Godot Engine v4.7.stable.mono.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 595.95 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 2060 SUPER
+
+Movie Maker mode enabled, recording movie in 1280×720 @ 30 FPS...
+RTS_VISUAL_TEST_START hold-blocked-choke: ticks=3000, units=25
+RTS_VISUAL_TEST_PASS hold-blocked-choke: ticks=3000, positive=11/12, negative=11/12, blockedTicks=600, conflicts=0, safe=True, arrived=22/24, overlap=0.00, finite=True, inside=True, revision=0, buildings=0

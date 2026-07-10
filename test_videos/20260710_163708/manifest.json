@@ -1,0 +1,136 @@
+﻿{
+    "created_at":  "2026-07-10T16:41:16.7395024+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_case":  "all",
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "portal-choke",
+                            "reverse-choke",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "single-unit",
+                      "file":  "single-unit.avi",
+                      "log":  "single-unit.log",
+                      "bytes":  10157102,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS single-unit: ticks=480, arrived=1/1, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "open-field",
+                      "file":  "open-field.avi",
+                      "log":  "open-field.log",
+                      "bytes":  28209708,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS open-field: ticks=960, arrived=47/48, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "dense-formation",
+                      "file":  "dense-formation.avi",
+                      "log":  "dense-formation.log",
+                      "bytes":  35723114,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS dense-formation: ticks=1080, arrived=76/80, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "opposing-streams",
+                      "file":  "opposing-streams.avi",
+                      "log":  "opposing-streams.log",
+                      "bytes":  34720312,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS opposing-streams: ticks=1200, arrived=44/48, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "crossing-streams",
+                      "file":  "crossing-streams.avi",
+                      "log":  "crossing-streams.log",
+                      "bytes":  24491894,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS crossing-streams: ticks=900, arrived=32/32, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "command-replace",
+                      "file":  "command-replace.avi",
+                      "log":  "command-replace.log",
+                      "bytes":  20547622,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS command-replace: ticks=780, arrived=19/20, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "rapid-reissue",
+                      "file":  "rapid-reissue.avi",
+                      "log":  "rapid-reissue.log",
+                      "bytes":  26128680,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS rapid-reissue: ticks=960, arrived=24/24, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "stop-command",
+                      "file":  "stop-command.avi",
+                      "log":  "stop-command.log",
+                      "bytes":  10781568,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS stop-command: ticks=420, state=16/16, settled=16/16, stopRadius=16/16, overlap=0.00"
+                  },
+                  {
+                      "id":  "hold-command",
+                      "file":  "hold-command.avi",
+                      "log":  "hold-command.log",
+                      "bytes":  11043322,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS hold-command: ticks=420, state=16/16, settled=16/16, stopRadius=16/16, overlap=0.00"
+                  },
+                  {
+                      "id":  "mixed-radii",
+                      "file":  "mixed-radii.avi",
+                      "log":  "mixed-radii.log",
+                      "bytes":  26462240,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS mixed-radii: ticks=1020, arrived=30/30, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "boundary-target",
+                      "file":  "boundary-target.avi",
+                      "log":  "boundary-target.log",
+                      "bytes":  26041528,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS boundary-target: ticks=960, arrived=20/20, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "portal-choke",
+                      "file":  "portal-choke.avi",
+                      "log":  "portal-choke.log",
+                      "bytes":  48462258,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS portal-choke: ticks=1500, arrived=20/24, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "reverse-choke",
+                      "file":  "reverse-choke.avi",
+                      "log":  "reverse-choke.log",
+                      "bytes":  47937700,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS reverse-choke: ticks=1500, arrived=23/24, overlap=0.00, finite=True, inside=True"
+                  },
+                  {
+                      "id":  "large-group-192",
+                      "file":  "large-group-192.avi",
+                      "log":  "large-group-192.log",
+                      "bytes":  63664674,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS large-group-192: ticks=1500, arrived=182/192, overlap=0.15, finite=True, inside=True"
+                  }
+              ]
+}

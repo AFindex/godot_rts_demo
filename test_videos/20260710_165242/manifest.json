@@ -1,0 +1,55 @@
+﻿{
+    "created_at":  "2026-07-10T16:53:50.1040306+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "portal-choke",
+                            "reverse-choke",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "dynamic-building-detour",
+                      "file":  "dynamic-building-detour.avi",
+                      "log":  "dynamic-building-detour.log",
+                      "bytes":  34415178,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-building-detour: ticks=1200, arrived=19/20, overlap=0.00, finite=True, inside=True, revision=1, buildings=1"
+                  },
+                  {
+                      "id":  "dynamic-building-remove",
+                      "file":  "dynamic-building-remove.avi",
+                      "log":  "dynamic-building-remove.log",
+                      "bytes":  33523456,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-building-remove: ticks=1200, arrived=20/20, overlap=0.00, finite=True, inside=True, revision=2, buildings=0"
+                  },
+                  {
+                      "id":  "dynamic-portal-reroute",
+                      "file":  "dynamic-portal-reroute.avi",
+                      "log":  "dynamic-portal-reroute.log",
+                      "bytes":  62020228,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-portal-reroute: ticks=1800, arrived=22/24, overlap=0.00, finite=True, inside=True, revision=1, buildings=1"
+                  }
+              ]
+}
