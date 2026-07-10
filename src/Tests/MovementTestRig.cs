@@ -29,7 +29,8 @@ public enum TestBuildingPlacementCode : byte
     StaticObstacleOverlap,
     DynamicFootprintOverlap,
     UnitOverlap,
-    InsufficientClearance
+    InsufficientClearance,
+    DisconnectsNavigation
 }
 
 public readonly record struct TestBuildingPlacementResult(
@@ -227,6 +228,20 @@ public sealed class MovementTestRig
             routePlanner,
             null,
             snapshot);
+    }
+
+    public static MovementTestRig CreateConnectivityGuardMap(int capacity)
+    {
+        var world = new StaticWorld(
+            new SimRect(Vector2.Zero, new Vector2(800f, 500f)),
+            new SimRect(new Vector2(344f, 0f), new Vector2(456f, 210f)),
+            new SimRect(new Vector2(344f, 290f), new Vector2(456f, 500f)));
+        return new MovementTestRig(
+            world,
+            new RtsSimulation(world, new GridPathProvider(world), capacity),
+            null,
+            null,
+            null);
     }
 
     public TestUnitId Spawn(
@@ -459,9 +474,22 @@ public sealed class MovementTestRig
 
 public readonly record struct ScenarioResult(bool Passed, string Summary);
 
+public enum TestDiagnosticKind : byte
+{
+    Info,
+    Accepted,
+    Rejected
+}
+
+public readonly record struct TestDiagnosticArea(
+    SimRect Bounds,
+    string Label,
+    TestDiagnosticKind Kind);
+
 public sealed class VisualTestSession
 {
     private readonly SortedDictionary<long, List<ScheduledAction>> _actions = new();
+    private readonly List<TestDiagnosticArea> _diagnosticAreas = [];
     private readonly Func<MovementTestRig, ScenarioResult> _evaluate;
 
     public VisualTestSession(
@@ -492,6 +520,16 @@ public sealed class VisualTestSession
     internal PortalGraphRoutePlanner? RoutePlanner => Rig.RenderRoutePlanner;
     internal ChokeController? ChokeController => Rig.RenderChokeController;
     internal int[] RenderUnitIndices => Rig.ToBackendIndices(VisibleUnits);
+    internal IReadOnlyList<TestDiagnosticArea> DiagnosticAreas => _diagnosticAreas;
+
+    public VisualTestSession Highlight(
+        SimRect bounds,
+        string label,
+        TestDiagnosticKind kind = TestDiagnosticKind.Info)
+    {
+        _diagnosticAreas.Add(new TestDiagnosticArea(bounds, label, kind));
+        return this;
+    }
 
     public VisualTestSession At(
         long tick,

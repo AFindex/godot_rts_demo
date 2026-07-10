@@ -26,6 +26,7 @@ public static class VisualTestCatalog
         "clearance-dynamic-gap",
         "building-footprint-sizes",
         "building-placement-rules",
+        "building-connectivity-guard",
         "building-size-navigation",
         "gameplay-profile-resource-runtime",
         "clearance-editor-preview",
@@ -71,6 +72,7 @@ public static class VisualTestCatalog
         "clearance-dynamic-gap" => CreateClearanceDynamicGap(),
         "building-footprint-sizes" => CreateBuildingFootprintSizes(),
         "building-placement-rules" => CreateBuildingPlacementRules(),
+        "building-connectivity-guard" => CreateBuildingConnectivityGuard(),
         "building-size-navigation" => CreateBuildingSizeNavigation(),
         "gameplay-profile-resource-runtime" =>
             CreateGameplayProfileResourceRuntime(gameplayProfiles),
@@ -568,6 +570,47 @@ public static class VisualTestCatalog
             });
     }
 
+    private static VisualTestSession CreateBuildingConnectivityGuard()
+    {
+        var rig = MovementTestRig.CreateConnectivityGuardMap(24);
+        var rejected = rig.TryPlaceBuilding(
+            new Vector2(400f, 250f),
+            TestBuildingFootprintClass.Large,
+            TestMovementClass.Large);
+        var accepted = rig.TryPlaceBuilding(
+            new Vector2(650f, 100f),
+            TestBuildingFootprintClass.Small,
+            TestMovementClass.Large);
+        var units = rig.SpawnGrid(
+            new Vector2(100f, 225f), 2, 4, 18f, 7.5f);
+        rig.Move(units, new Vector2(680f, 250f));
+        return new VisualTestSession(
+            "building-connectivity-guard",
+            "Placement preserves the only global navigation corridor",
+            1200,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(
+                    runtime, units, units.Length, 14f, 1f, 1, 1);
+                var policyCorrect =
+                    rejected.Code ==
+                        TestBuildingPlacementCode.DisconnectsNavigation &&
+                    accepted.Succeeded;
+                return new ScenarioResult(
+                    policyCorrect && arrival.Passed,
+                    $"blocking={rejected.Code}, safe={accepted.Code}, " +
+                    arrival.Summary);
+            })
+            .Highlight(
+                new SimRect(
+                    new Vector2(344f, 210f),
+                    new Vector2(456f, 290f)),
+                "REJECT: disconnects Large navigation",
+                TestDiagnosticKind.Rejected);
+    }
+
     private static VisualTestSession CreateGameplayProfileResourceRuntime(
         GameplayProfileCatalogSnapshot? profiles)
     {
@@ -642,12 +685,14 @@ public static class VisualTestCatalog
                 var allDemoEdgesSupportLarge = preview.Portals.All(
                     portal => portal.LargeTraversable);
                 var valid = preview.Classes.Length == 3 &&
+                            preview.Connectivity.Length == 3 &&
                             preview.Portals.Length == navigation.PortalEdges.Length &&
                             preview.Buildings.Length == profiles.BuildingProfiles.Length &&
                             allDemoEdgesSupportLarge;
                 return new ScenarioResult(
                     valid,
                     $"classes={preview.Classes.Length}, " +
+                    $"components={string.Join('/', preview.Classes.Select(value => value.ConnectedComponents))}, " +
                     $"portals={preview.Portals.Length}, " +
                     $"buildings={preview.Buildings.Length}, " +
                     $"largeEdges={allDemoEdgesSupportLarge}");

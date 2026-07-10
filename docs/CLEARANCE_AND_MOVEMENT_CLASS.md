@@ -72,7 +72,9 @@ Portal Edge 继续保存实际可通行宽度。只有 `edge.Width >= navigation
 
 业务放置会在写入动态占用前检查：有限且为正的 footprint、世界边界、静态障碍重叠、已有动态建筑重叠、单位占用，以及与世界边界/静态障碍/动态建筑之间是否留下小于指定 Movement Class 的假通道。0 宽贴墙或贴建筑表示明确封闭，允许放置；只有 `0 < gap < required width` 才拒绝。
 
-稳定结果码包括 `InvalidFootprint`、`OutsideWorld`、`StaticObstacleOverlap`、`DynamicFootprintOverlap`、`UnitOverlap` 和 `InsufficientClearance`。
+稳定结果码包括 `InvalidFootprint`、`OutsideWorld`、`StaticObstacleOverlap`、`DynamicFootprintOverlap`、`UnitOverlap`、`InsufficientClearance` 和 `DisconnectsNavigation`。
+
+局部检查通过后，`BuildingConnectivityGuard` 会按建筑声明的 `MinimumPassageClass` 比较放置前后的采样连通分量。只要候选 footprint 把原本同一分量中的剩余可走区域切成两块或更多，就拒绝放置。地图脚本仍可使用强制 `PlaceBuilding`，业务放置也可通过 `PreserveConnectivity=false` 显式关闭该策略。
 
 ## 5. 黑盒验收
 
@@ -105,13 +107,18 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 四种尺寸建筑形成错位障碍场，24 个单位全部绕行到达，0 重叠、0 不可达，动态 revision 为 4。
 
+### `building-connectivity-guard`
+
+两段静态墙只留下一个 112×80px 缺口。相同尺寸的候选建筑与上下墙贴合，局部规则认为 0 宽是明确封闭，但全局比较发现 Large 的单一分量会被切成两个，因此返回 `DisconnectsNavigation`。另一处安全建筑正常放置，8/8 单位继续穿过缺口。
+
 ## 6. 编辑器多尺寸预览
 
 `Main.tscn` 中的 `ClearancePreview2D` 是一个 `[Tool]` 节点，直接读取 Navigation 与 Gameplay Profile Resource，并先转换成纯 C# `ClearancePreviewSnapshot`：
 
 - Small/Medium/Large 分别以绿、黄、红显示静态障碍膨胀轮廓。
 - 每条 Portal Edge 显示实际宽度和 `SML` 可通行标记，例如 `SM-` 表示 Large 被过滤。
-- 图例显示三档导航半径、最小要求宽度和可通行边数。
+- 图例显示三档导航半径、最小要求宽度、可通行边数和全局分量数。
+- 当前选择的 Movement Class 使用低透明度分量着色；拓扑与 GridPathProvider 共用 `NavigationConnectivityAnalyzer`。
 - 底部同时显示 32×32、64×48、112×80、160×120 四档建筑 footprint 和要求净空外框。
 - 编辑器中每 0.5 秒重建预览，Resource 数值修改后不需要启动游戏即可检查。
 - 普通运行时默认不绘制；只有 `clearance-editor-preview` 自动测试显式启用，避免污染正式表现。
@@ -122,16 +129,16 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 | 单位数 | 平均 Tick | P95 | 分配/Tick |
 |---:|---:|---:|---:|
-| 256 | 1.48ms | 2.16ms | 27B |
-| 512 | 4.43ms | 5.48ms | 182B |
-| 1000 | 8.65ms | 10.43ms | 461B |
+| 256 | 1.21ms | 1.76ms | 27B |
+| 512 | 4.93ms | 7.16ms | 182B |
+| 1000 | 8.64ms | 10.67ms | 461B |
 
 ## 8. 后续层
 
 当前完成的是运行时尺寸语义与路径一致性第一层，后续按顺序推进：
 
-1. 跨 Sector 的全局 connectivity 保持策略；当前放置检查负责局部假通道、重叠和占用。
-2. Gameplay Profile Resource 格式迁移、差异诊断和热重载。
-3. Editor 中的 Portal/Choke 交互编辑、局部非法窄口定位和全局连通分量着色。
+1. Gameplay Profile Resource 格式迁移、差异诊断和热重载。
+2. Occupancy/Clearance Baker 与按 chunk 增量更新 Connectivity Snapshot。
+3. Editor 中的 Portal/Choke 交互编辑、局部非法窄口定位和放置前后差异面板。
 4. Ground、Hover、Air 等移动层，以及地形软代价和标签。
 5. 非矩形/旋转 footprint 与局部 NavMesh chunk 更新。

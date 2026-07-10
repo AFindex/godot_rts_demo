@@ -266,6 +266,8 @@ public partial class RtsDemo : Node2D
             DrawRect(rect, new Color("ff9b5e"), filled: false, width: 2f);
         }
 
+        DrawVisualTestDiagnostics();
+
         if (_showDebug)
         {
             DrawPortalGraph();
@@ -291,6 +293,35 @@ public partial class RtsDemo : Node2D
                 _commandMarker + new Vector2(6f, 0f), markerColor, 2f);
             DrawLine(_commandMarker - new Vector2(0f, 6f),
                 _commandMarker + new Vector2(0f, 6f), markerColor, 2f);
+        }
+    }
+
+    private void DrawVisualTestDiagnostics()
+    {
+        if (_visualTest is null)
+        {
+            return;
+        }
+
+        foreach (var area in _visualTest.DiagnosticAreas)
+        {
+            var color = area.Kind switch
+            {
+                TestDiagnosticKind.Accepted => new Color("58d68d"),
+                TestDiagnosticKind.Rejected => new Color("ff5f6d"),
+                _ => new Color("5dade2")
+            };
+            var rect = ToRect2(area.Bounds);
+            DrawRect(rect, color with { A = 0.18f }, filled: true);
+            DrawRect(rect, color, filled: false, width: 3f);
+            DrawString(
+                ThemeDB.FallbackFont,
+                rect.Position + new Vector2(0f, -8f),
+                area.Label,
+                HorizontalAlignment.Left,
+                -1f,
+                13,
+                color);
         }
     }
 

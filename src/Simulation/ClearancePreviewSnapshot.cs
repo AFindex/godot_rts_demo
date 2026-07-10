@@ -6,7 +6,10 @@ public readonly record struct ClearanceClassPreview(
     MovementClass Class,
     float NavigationRadius,
     float RequiredWidth,
-    int TraversablePortalEdges);
+    int TraversablePortalEdges,
+    int ConnectedComponents,
+    int WalkableCells,
+    int LargestComponentCells);
 
 public readonly record struct PortalClearancePreview(
     int EdgeIndex,
@@ -36,12 +39,14 @@ public sealed class ClearancePreviewSnapshot
         SimRect worldBounds,
         SimRect[] obstacles,
         ClearanceClassPreview[] classes,
+        NavigationConnectivitySnapshot[] connectivity,
         PortalClearancePreview[] portals,
         BuildingClearancePreview[] buildings)
     {
         WorldBounds = worldBounds;
         Obstacles = obstacles;
         Classes = classes;
+        Connectivity = connectivity;
         Portals = portals;
         Buildings = buildings;
     }
@@ -49,6 +54,7 @@ public sealed class ClearancePreviewSnapshot
     public SimRect WorldBounds { get; }
     public SimRect[] Obstacles { get; }
     public ClearanceClassPreview[] Classes { get; }
+    public NavigationConnectivitySnapshot[] Connectivity { get; }
     public PortalClearancePreview[] Portals { get; }
     public BuildingClearancePreview[] Buildings { get; }
 
@@ -57,6 +63,9 @@ public sealed class ClearancePreviewSnapshot
         GameplayProfileCatalogSnapshot profiles)
     {
         var classes = new ClearanceClassPreview[3];
+        var connectivity = new NavigationConnectivitySnapshot[3];
+        var analyzer = new NavigationConnectivityAnalyzer(
+            navigation.CreateWorld());
         for (var classIndex = 0; classIndex < classes.Length; classIndex++)
         {
             var movementClass = (MovementClass)classIndex;
@@ -71,11 +80,29 @@ public sealed class ClearancePreviewSnapshot
                 }
             }
 
+            var topology = analyzer.Analyze(clearance.NavigationRadius);
+            connectivity[classIndex] = topology;
+            var walkableCells = 0;
+            var largestComponentCells = 0;
+            var components = topology.Components;
+            for (var componentIndex = 0;
+                 componentIndex < components.Length;
+                 componentIndex++)
+            {
+                walkableCells += components[componentIndex].CellCount;
+                largestComponentCells = Math.Max(
+                    largestComponentCells,
+                    components[componentIndex].CellCount);
+            }
+
             classes[classIndex] = new ClearanceClassPreview(
                 movementClass,
                 clearance.NavigationRadius,
                 clearance.RequiredWidth,
-                traversable);
+                traversable,
+                topology.ComponentCount,
+                walkableCells,
+                largestComponentCells);
         }
 
         var portalEdges = navigation.PortalEdges;
@@ -112,6 +139,7 @@ public sealed class ClearancePreviewSnapshot
             navigation.WorldBounds,
             navigation.Obstacles.ToArray(),
             classes,
+            connectivity,
             portals,
             buildings);
     }

@@ -27,7 +27,8 @@ public readonly record struct BuildingFootprintProfile(
 
 public readonly record struct BuildingPlacementRules(
     MovementClass MinimumPassageClass,
-    float UnitPadding = 2f);
+    float UnitPadding = 2f,
+    bool PreserveConnectivity = true);
 
 public enum BuildingPlacementCode : byte
 {
@@ -37,7 +38,8 @@ public enum BuildingPlacementCode : byte
     StaticObstacleOverlap,
     DynamicFootprintOverlap,
     UnitOverlap,
-    InsufficientClearance
+    InsufficientClearance,
+    DisconnectsNavigation
 }
 
 public readonly record struct BuildingPlacementResult(
@@ -54,7 +56,8 @@ public static class BuildingPlacementValidator
         StaticWorld world,
         UnitStore units,
         SimRect footprint,
-        BuildingPlacementRules rules)
+        BuildingPlacementRules rules,
+        BuildingConnectivityGuard? connectivityGuard = null)
     {
         if (!IsFinite(footprint.Min) || !IsFinite(footprint.Max) ||
             footprint.Width <= 0f || footprint.Height <= 0f ||
@@ -122,6 +125,18 @@ public static class BuildingPlacementValidator
                 return Failure(
                     BuildingPlacementCode.InsufficientClearance,
                     dynamicFootprints[index].Id.Value);
+            }
+        }
+
+        if (rules.PreserveConnectivity && connectivityGuard is not null)
+        {
+            var connectivity = connectivityGuard.Evaluate(
+                footprint, rules.MinimumPassageClass);
+            if (!connectivity.Preserved)
+            {
+                return Failure(
+                    BuildingPlacementCode.DisconnectsNavigation,
+                    connectivity.FirstSplitComponentId);
             }
         }
 

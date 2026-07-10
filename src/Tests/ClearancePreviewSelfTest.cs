@@ -31,14 +31,20 @@ public static class ClearancePreviewSelfTest
         var narrow = preview.Portals[0];
         var wide = preview.Portals[1];
         var passed = preview.Classes.Length == 3 &&
+                     preview.Connectivity.Length == 3 &&
                      preview.Buildings.Length == 4 &&
+                     preview.Classes.All(value =>
+                         value.ConnectedComponents > 0 &&
+                         value.WalkableCells >= value.LargestComponentCells) &&
                      narrow.SmallTraversable && narrow.MediumTraversable &&
                      !narrow.LargeTraversable && narrow.ClassLabel == "SM-" &&
                      wide.SmallTraversable && wide.MediumTraversable &&
                      wide.LargeTraversable && wide.ClassLabel == "SML";
         return new SelfTestResult(
             passed,
-            $"classes={preview.Classes.Length}, buildings={preview.Buildings.Length}, " +
+            $"classes={preview.Classes.Length}, " +
+            $"components={string.Join('/', preview.Classes.Select(value => value.ConnectedComponents))}, " +
+            $"buildings={preview.Buildings.Length}, " +
             $"narrow={narrow.ClassLabel}, wide={wide.ClassLabel}");
     }
 }

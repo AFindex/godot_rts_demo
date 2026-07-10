@@ -1,0 +1,68 @@
+﻿{
+    "created_at":  "2026-07-11T00:29:58.1478963+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "building-connectivity-guard",
+                            "clearance-editor-preview"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed",
+                            "clearance-portal-choice",
+                            "clearance-dynamic-gap",
+                            "building-footprint-sizes",
+                            "building-placement-rules",
+                            "building-connectivity-guard",
+                            "building-size-navigation",
+                            "gameplay-profile-resource-runtime",
+                            "clearance-editor-preview",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "navigation-resource-runtime",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "building-connectivity-guard",
+                      "file":  "building-connectivity-guard.avi",
+                      "log":  "building-connectivity-guard.log",
+                      "bytes":  41227728,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS building-connectivity-guard: ticks=1200, blocking=DisconnectsNavigation, safe=Success, arrived=8/8, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, moving=0, unreachable=0, maxDistance=3.5"
+                  },
+                  {
+                      "id":  "clearance-editor-preview",
+                      "file":  "clearance-editor-preview.avi",
+                      "log":  "clearance-editor-preview.log",
+                      "bytes":  26017794,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, components=1/1/1, portals=5, buildings=4, largeEdges=True"
+                  }
+              ]
+}

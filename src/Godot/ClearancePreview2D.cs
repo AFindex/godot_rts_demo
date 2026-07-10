@@ -10,9 +10,17 @@ public partial class ClearancePreview2D : Node2D
     private static readonly Color SmallColor = new("58d68d");
     private static readonly Color MediumColor = new("f4d03f");
     private static readonly Color LargeColor = new("ec7063");
+    private static readonly Color[] ComponentColors =
+    [
+        new("3498db"), new("9b59b6"), new("1abc9c"),
+        new("e67e22"), new("f1c40f"), new("e74c3c")
+    ];
 
     private NavigationMapSnapshot? _runtimeNavigation;
     private GameplayProfileCatalogSnapshot? _runtimeProfiles;
+    private ClearancePreviewSnapshot? _cachedPreview;
+    private ulong _cachedNavigationHash;
+    private ulong _cachedProfilesHash;
     private double _redrawTimer;
 
     [Export]
@@ -23,6 +31,12 @@ public partial class ClearancePreview2D : Node2D
 
     [Export]
     public RtsGameplayProfilesResource? GameplayProfilesAsset { get; set; }
+
+    [Export]
+    public bool DrawConnectivity { get; set; } = true;
+
+    [Export]
+    public MovementClass ConnectivityClass { get; set; } = MovementClass.Large;
 
     public bool RuntimePreviewEnabled { get; private set; }
 
@@ -54,6 +68,7 @@ public partial class ClearancePreview2D : Node2D
     {
         _runtimeNavigation = navigation;
         _runtimeProfiles = profiles;
+        _cachedPreview = null;
         RuntimePreviewEnabled = enabled;
         QueueRedraw();
     }
@@ -67,6 +82,11 @@ public partial class ClearancePreview2D : Node2D
         }
 
         DrawRect(ToRect(preview.WorldBounds), new Color("6c7a89"), false, 2f);
+        if (DrawConnectivity)
+        {
+            DrawConnectivityCells(preview.Connectivity[(int)ConnectivityClass]);
+        }
+
         for (var obstacleIndex = 0;
              obstacleIndex < preview.Obstacles.Length;
              obstacleIndex++)
@@ -122,8 +142,37 @@ public partial class ClearancePreview2D : Node2D
             return false;
         }
 
+        if (_cachedPreview is not null &&
+            _cachedNavigationHash == navigation.StableHash &&
+            _cachedProfilesHash == profiles.StableHash)
+        {
+            preview = _cachedPreview;
+            return true;
+        }
+
         preview = ClearancePreviewSnapshot.Create(navigation, profiles);
+        _cachedPreview = preview;
+        _cachedNavigationHash = navigation.StableHash;
+        _cachedProfilesHash = profiles.StableHash;
         return true;
+    }
+
+    private void DrawConnectivityCells(NavigationConnectivitySnapshot connectivity)
+    {
+        for (var node = 0; node < connectivity.NodeCount; node++)
+        {
+            if (!connectivity.IsWalkable(node))
+            {
+                continue;
+            }
+
+            var component = connectivity.ComponentAt(node);
+            var baseColor = ComponentColors[component % ComponentColors.Length];
+            DrawRect(
+                ToRect(connectivity.CellBounds(node)),
+                baseColor with { A = 0.055f },
+                true);
+        }
     }
 
     private void DrawClearanceOutline(
@@ -152,7 +201,8 @@ public partial class ClearancePreview2D : Node2D
             DrawLabel(
                 position + new Vector2(0f, index * 20f),
                 $"{value.Class}: r{value.NavigationRadius:0} " +
-                $"width>={value.RequiredWidth:0} edges={value.TraversablePortalEdges}",
+                $"width>={value.RequiredWidth:0} edges={value.TraversablePortalEdges} " +
+                $"components={value.ConnectedComponents}",
                 color);
         }
     }

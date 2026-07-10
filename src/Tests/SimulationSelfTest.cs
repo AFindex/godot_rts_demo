@@ -15,16 +15,20 @@ public static class SimulationSelfTest
             var dataResult = NavigationMapSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
+            var connectivityResult = NavigationConnectivitySelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
-                         previewResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 3)
+                         previewResult.Passed && connectivityResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 4)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
                 $"gameplay-profiles={(profileResult.Passed ? "PASS" : "FAIL")}" +
                 $"({profileResult.Summary})",
                 $"clearance-preview={(previewResult.Passed ? "PASS" : "FAIL")}" +
-                $"({previewResult.Summary})"
+                $"({previewResult.Summary})",
+                $"navigation-connectivity=" +
+                $"{(connectivityResult.Passed ? "PASS" : "FAIL")}" +
+                $"({connectivityResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

@@ -88,25 +88,15 @@ public sealed class ValidatingFallbackPathProvider : IPathProvider
 
 public sealed class GridPathProvider : IPathProvider
 {
-    private static readonly (int Column, int Row)[] NeighborOffsets =
-    [
-        (1, 0), (0, 1), (-1, 0), (0, -1),
-        (1, 1), (-1, 1), (-1, -1), (1, -1)
-    ];
-
     private readonly StaticWorld _world;
-    private readonly float _cellSize;
-    private readonly int _columns;
-    private readonly int _rows;
-    private readonly ClearanceGridSnapshot[] _snapshots =
-        [new(), new(), new()];
+    private readonly NavigationConnectivityAnalyzer _connectivityAnalyzer;
+    private readonly NavigationConnectivitySnapshot?[] _snapshots =
+        new NavigationConnectivitySnapshot?[3];
 
     public GridPathProvider(StaticWorld world, float cellSize = 20f)
     {
         _world = world;
-        _cellSize = cellSize;
-        _columns = Math.Max(1, (int)MathF.Ceiling(world.Bounds.Width / cellSize));
-        _rows = Math.Max(1, (int)MathF.Ceiling(world.Bounds.Height / cellSize));
+        _connectivityAnalyzer = new NavigationConnectivityAnalyzer(world, cellSize);
     }
 
     public bool IsReady => true;
@@ -123,17 +113,16 @@ public sealed class GridPathProvider : IPathProvider
             return [start, goal];
         }
 
-        var snapshot = _snapshots[(int)clearance.Class];
-        EnsureGridSnapshot(snapshot, navigationRadius);
+        var snapshot = GetConnectivitySnapshot(clearance);
         var startNode = FindNearestFreeNode(start, snapshot);
         var goalNode = FindNearestFreeNode(goal, snapshot);
         if (startNode < 0 || goalNode < 0 ||
-            snapshot.Components[startNode] != snapshot.Components[goalNode])
+            snapshot.ComponentAt(startNode) != snapshot.ComponentAt(goalNode))
         {
             return [];
         }
 
-        var nodeCount = _columns * _rows;
+        var nodeCount = snapshot.NodeCount;
         var costs = new float[nodeCount];
         var parents = new int[nodeCount];
         var closed = new bool[nodeCount];
@@ -142,7 +131,9 @@ public sealed class GridPathProvider : IPathProvider
         costs[startNode] = 0f;
 
         var open = new PriorityQueue<int, (float Score, int Node)>();
-        open.Enqueue(startNode, (Heuristic(startNode, goalNode), startNode));
+        open.Enqueue(
+            startNode,
+            (Heuristic(startNode, goalNode, snapshot.Columns), startNode));
         while (open.TryDequeue(out var current, out _))
         {
             if (closed[current])
@@ -157,27 +148,31 @@ public sealed class GridPathProvider : IPathProvider
             }
 
             closed[current] = true;
-            var currentColumn = current % _columns;
-            var currentRow = current / _columns;
-            for (var offsetIndex = 0; offsetIndex < NeighborOffsets.Length; offsetIndex++)
+            var currentColumn = current % snapshot.Columns;
+            var currentRow = current / snapshot.Columns;
+            var offsets = NavigationConnectivityAnalyzer.NeighborOffsets;
+            for (var offsetIndex = 0; offsetIndex < offsets.Length; offsetIndex++)
             {
-                var offset = NeighborOffsets[offsetIndex];
+                var offset = offsets[offsetIndex];
                 var column = currentColumn + offset.Column;
                 var row = currentRow + offset.Row;
-                if ((uint)column >= (uint)_columns || (uint)row >= (uint)_rows)
+                if ((uint)column >= (uint)snapshot.Columns ||
+                    (uint)row >= (uint)snapshot.Rows)
                 {
                     continue;
                 }
 
-                var neighbor = row * _columns + column;
+                var neighbor = row * snapshot.Columns + column;
                 if (closed[neighbor] || !IsNodeFree(snapshot, neighbor))
                 {
                     continue;
                 }
 
                 if (offset.Column != 0 && offset.Row != 0 &&
-                    (!IsNodeFree(snapshot, currentRow * _columns + column) ||
-                     !IsNodeFree(snapshot, row * _columns + currentColumn)))
+                    (!IsNodeFree(
+                         snapshot, currentRow * snapshot.Columns + column) ||
+                     !IsNodeFree(
+                         snapshot, row * snapshot.Columns + currentColumn)))
                 {
                     continue;
                 }
@@ -191,7 +186,10 @@ public sealed class GridPathProvider : IPathProvider
 
                 costs[neighbor] = candidate;
                 parents[neighbor] = current;
-                open.Enqueue(neighbor, (candidate + Heuristic(neighbor, goalNode), neighbor));
+                open.Enqueue(
+                    neighbor,
+                    (candidate + Heuristic(
+                        neighbor, goalNode, snapshot.Columns), neighbor));
             }
         }
 
@@ -203,13 +201,13 @@ public sealed class GridPathProvider : IPathProvider
         Vector2 goal,
         int goalNode,
         int[] parents,
-        ClearanceGridSnapshot snapshot,
+        NavigationConnectivitySnapshot snapshot,
         float navigationRadius)
     {
         var reversed = new List<Vector2>(32) { goal };
         for (var node = goalNode; node >= 0; node = parents[node])
         {
-            reversed.Add(NodeCenter(node));
+            reversed.Add(snapshot.CellCenter(node));
         }
 
         reversed.Add(start);
@@ -235,30 +233,33 @@ public sealed class GridPathProvider : IPathProvider
 
     private int FindNearestFreeNode(
         Vector2 point,
-        ClearanceGridSnapshot snapshot)
+        NavigationConnectivitySnapshot snapshot)
     {
         var baseColumn = Math.Clamp(
-            (int)MathF.Floor((point.X - _world.Bounds.Min.X) / _cellSize),
+            (int)MathF.Floor(
+                (point.X - snapshot.WorldBounds.Min.X) / snapshot.CellSize),
             0,
-            _columns - 1);
+            snapshot.Columns - 1);
         var baseRow = Math.Clamp(
-            (int)MathF.Floor((point.Y - _world.Bounds.Min.Y) / _cellSize),
+            (int)MathF.Floor(
+                (point.Y - snapshot.WorldBounds.Min.Y) / snapshot.CellSize),
             0,
-            _rows - 1);
+            snapshot.Rows - 1);
         for (var ring = 0; ring <= 4; ring++)
         {
             for (var row = baseRow - ring; row <= baseRow + ring; row++)
             {
                 for (var column = baseColumn - ring; column <= baseColumn + ring; column++)
                 {
-                    if ((uint)column >= (uint)_columns || (uint)row >= (uint)_rows ||
+                    if ((uint)column >= (uint)snapshot.Columns ||
+                        (uint)row >= (uint)snapshot.Rows ||
                         (ring > 0 && Math.Abs(column - baseColumn) < ring &&
                          Math.Abs(row - baseRow) < ring))
                     {
                         continue;
                     }
 
-                    var node = row * _columns + column;
+                    var node = row * snapshot.Columns + column;
                     if (IsNodeFree(snapshot, node))
                     {
                         return node;
@@ -270,109 +271,38 @@ public sealed class GridPathProvider : IPathProvider
         return -1;
     }
 
-    private static bool IsNodeFree(ClearanceGridSnapshot snapshot, int node) =>
-        snapshot.Walkable[node];
+    private static bool IsNodeFree(
+        NavigationConnectivitySnapshot snapshot,
+        int node) => snapshot.IsWalkable(node);
 
-    private void EnsureGridSnapshot(
-        ClearanceGridSnapshot snapshot,
-        float navigationRadius)
+    private NavigationConnectivitySnapshot GetConnectivitySnapshot(
+        MovementClearanceProfile clearance)
     {
-        if (snapshot.CachedRevision == _world.NavigationRevision &&
-            MathF.Abs(snapshot.NavigationRadius - navigationRadius) <= 0.0001f &&
-            snapshot.Walkable.Length == _columns * _rows)
+        var classIndex = (int)clearance.Class;
+        var snapshot = _snapshots[classIndex];
+        if (snapshot is not null &&
+            snapshot.WorldRevision == _world.NavigationRevision &&
+            MathF.Abs(
+                snapshot.NavigationRadius - clearance.NavigationRadius) <= 0.0001f)
         {
-            return;
+            return snapshot;
         }
 
-        var nodeCount = _columns * _rows;
-        snapshot.Walkable = new bool[nodeCount];
-        snapshot.Components = new int[nodeCount];
-        Array.Fill(snapshot.Components, -1);
-        for (var node = 0; node < nodeCount; node++)
-        {
-            snapshot.Walkable[node] =
-                _world.IsDiscFree(NodeCenter(node), navigationRadius);
-        }
-
-        var queue = new int[nodeCount];
-        var component = 0;
-        for (var seed = 0; seed < nodeCount; seed++)
-        {
-            if (!snapshot.Walkable[seed] || snapshot.Components[seed] >= 0)
-            {
-                continue;
-            }
-
-            var read = 0;
-            var write = 0;
-            queue[write++] = seed;
-            snapshot.Components[seed] = component;
-            while (read < write)
-            {
-                var current = queue[read++];
-                var currentColumn = current % _columns;
-                var currentRow = current / _columns;
-                for (var offsetIndex = 0; offsetIndex < NeighborOffsets.Length; offsetIndex++)
-                {
-                    var offset = NeighborOffsets[offsetIndex];
-                    var column = currentColumn + offset.Column;
-                    var row = currentRow + offset.Row;
-                    if ((uint)column >= (uint)_columns || (uint)row >= (uint)_rows)
-                    {
-                        continue;
-                    }
-
-                    var neighbor = row * _columns + column;
-                    if (!snapshot.Walkable[neighbor] ||
-                        snapshot.Components[neighbor] >= 0)
-                    {
-                        continue;
-                    }
-
-                    if (offset.Column != 0 && offset.Row != 0 &&
-                        (!snapshot.Walkable[currentRow * _columns + column] ||
-                         !snapshot.Walkable[row * _columns + currentColumn]))
-                    {
-                        continue;
-                    }
-
-                    snapshot.Components[neighbor] = component;
-                    queue[write++] = neighbor;
-                }
-            }
-
-            component++;
-        }
-
-        snapshot.CachedRevision = _world.NavigationRevision;
-        snapshot.NavigationRadius = navigationRadius;
+        snapshot = _connectivityAnalyzer.Analyze(clearance.NavigationRadius);
+        _snapshots[classIndex] = snapshot;
+        return snapshot;
     }
 
-    private Vector2 NodeCenter(int node)
+    private static float Heuristic(int from, int to, int columns)
     {
-        var column = node % _columns;
-        var row = node / _columns;
-        return _world.Bounds.Min +
-               new Vector2((column + 0.5f) * _cellSize, (row + 0.5f) * _cellSize);
-    }
-
-    private float Heuristic(int from, int to)
-    {
-        var fromColumn = from % _columns;
-        var fromRow = from / _columns;
-        var toColumn = to % _columns;
-        var toRow = to / _columns;
+        var fromColumn = from % columns;
+        var fromRow = from / columns;
+        var toColumn = to % columns;
+        var toRow = to / columns;
         var deltaColumn = Math.Abs(fromColumn - toColumn);
         var deltaRow = Math.Abs(fromRow - toRow);
         var diagonal = Math.Min(deltaColumn, deltaRow);
         return diagonal * 1.41421356f + Math.Abs(deltaColumn - deltaRow);
     }
 
-    private sealed class ClearanceGridSnapshot
-    {
-        public bool[] Walkable = [];
-        public int[] Components = [];
-        public int CachedRevision = -1;
-        public float NavigationRadius;
-    }
 }

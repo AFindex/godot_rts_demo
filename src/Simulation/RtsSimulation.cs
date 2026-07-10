@@ -31,6 +31,7 @@ public sealed class RtsSimulation
     private readonly DestinationLocalRematcher _localRematcher;
     private readonly DestinationOverflowResolver _overflowResolver;
     private readonly DestinationYieldResolver _yieldResolver;
+    private readonly BuildingConnectivityGuard _buildingConnectivityGuard;
     private readonly SteeringSolver _steeringSolver;
     private readonly IGroupRoutePlanner? _groupRoutePlanner;
     private readonly ChokeController? _chokeController;
@@ -54,6 +55,7 @@ public sealed class RtsSimulation
         _localRematcher = new DestinationLocalRematcher(world);
         _overflowResolver = new DestinationOverflowResolver(world);
         _yieldResolver = new DestinationYieldResolver(world);
+        _buildingConnectivityGuard = new BuildingConnectivityGuard(world);
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
@@ -79,7 +81,7 @@ public sealed class RtsSimulation
         BuildingPlacementRules rules)
     {
         var validation = BuildingPlacementValidator.Validate(
-            World, Units, footprint, rules);
+            World, Units, footprint, rules, _buildingConnectivityGuard);
         if (!validation.Succeeded)
         {
             return validation;
