@@ -22,6 +22,8 @@ public sealed class SimulationMetrics
     public long DestinationOverflowAssignments { get; internal set; }
     public int MaximumDestinationStallTicks { get; internal set; }
     public int MaximumDestinationNearTicks { get; internal set; }
+    public long DestinationYieldEvents { get; internal set; }
+    public int ActiveDestinationYields { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
     public double PathMilliseconds { get; internal set; }
     public double PreferredVelocityMilliseconds { get; internal set; }

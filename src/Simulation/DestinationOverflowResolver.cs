@@ -11,7 +11,7 @@ public sealed class DestinationOverflowResolver
 {
     private const int MinimumGroupSize = 32;
     private const int MinimumStallTicks = 150;
-    private const int MaximumNearGoalTicks = 600;
+    private const int MaximumNearGoalTicks = 900;
     private const float MinimumTrackedDistance = 9f;
     private const float MaximumTrackedDistance = 180f;
     private const float MaximumTrackedExitDistance = 260f;
@@ -31,6 +31,14 @@ public sealed class DestinationOverflowResolver
         {
             var distance = Vector2.Distance(
                 units.Positions[unit], units.SlotTargets[unit]);
+            if (units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
+            {
+                units.DestinationStallTicks[unit] = 0;
+                units.DestinationNearTicks[unit] = 0;
+                units.DestinationBestDistances[unit] = distance;
+                continue;
+            }
+
             if (units.Modes[unit] == UnitMoveMode.Arrived &&
                 units.MovementGroupIds[unit] > 0 &&
                 units.MovementGroupSizes[unit] >= MinimumGroupSize &&
@@ -93,6 +101,7 @@ public sealed class DestinationOverflowResolver
             if ((units.DestinationStallTicks[candidateUnit] < MinimumStallTicks &&
                  !hardTimeout) ||
                 units.DestinationOverflowed[candidateUnit] ||
+                units.DestinationYieldPhases[candidateUnit] != DestinationYieldPhase.None ||
                 units.Modes[candidateUnit] != UnitMoveMode.Moving ||
                 (!hardTimeout && !IsBlockedBySettledGroup(units, candidateUnit)) ||
                 !TryFindOverflowTarget(units, candidateUnit, out overflowTarget))
@@ -193,6 +202,21 @@ public sealed class DestinationOverflowResolver
                     minimumDistanceSquared ||
                 Vector2.DistanceSquared(candidate, units.Positions[other]) <
                     minimumDistanceSquared)
+            {
+                return true;
+            }
+
+            if (units.DestinationYieldPhases[other] != DestinationYieldPhase.None &&
+                Vector2.DistanceSquared(
+                    candidate, units.DestinationYieldReturnTargets[other]) <
+                minimumDistanceSquared)
+            {
+                return true;
+            }
+
+            if (units.DestinationYieldPhases[other] != DestinationYieldPhase.None &&
+                Vector2.DistanceSquared(candidate, units.DestinationYieldPoints[other]) <
+                minimumDistanceSquared)
             {
                 return true;
             }

@@ -121,6 +121,21 @@ public sealed class DestinationSlotAllocator
             {
                 return true;
             }
+
+            if (units.DestinationYieldPhases[unit] != DestinationYieldPhase.None &&
+                Vector2.DistanceSquared(
+                    candidate, units.DestinationYieldReturnTargets[unit]) <
+                minimumDistance * minimumDistance)
+            {
+                return true;
+            }
+
+            if (units.DestinationYieldPhases[unit] != DestinationYieldPhase.None &&
+                Vector2.DistanceSquared(candidate, units.DestinationYieldPoints[unit]) <
+                minimumDistance * minimumDistance)
+            {
+                return true;
+            }
         }
 
         return false;

@@ -14,7 +14,7 @@
 - 群组只规划一次高层路线，每个单位再查询分段 NavMesh 路径。
 - 动态路径失效按移动命令分组，同组受影响单位共享一次新的高层路线。
 - 32 人以上编队在终点区域进行安全槽位交换，解除绕行和超越后的局部平衡。
-- 终点 V2 独立跟踪短期停滞和目标区总驻留时间；外圈封闭时为内部单位分配唯一 Overflow 槽位。
+- 终点 V2 独立跟踪短期停滞和目标区总驻留时间；已就位阻挡者可临时让路、等待、返回，所有有限恢复失败后再分配唯一 Overflow 槽位。
 - 狭口 `Approaching / Traversing / Exiting` 状态机、稳定横向排序和多车道分配。
 - 双向狭口方向租约、入口 admission、批次容量、排空切换和防饥饿等待。
 - Hold 单位堵塞狭口检测；堵塞期间双端关闭，释放后安全恢复。
@@ -71,7 +71,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 1.37ms、4.07ms 和 7.64ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 1.36ms、4.51ms 和 8.84ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
 
 ## 导航数据资产
 
@@ -120,4 +120,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、跨命令槽位、终点局部换槽、外圈封闭后的 Overflow fallback、动态失效后的群组路线共享、有限卡死恢复，以及 Godot Resource → 纯 C# 导航快照链路已有可运行版本。当前继续完成终点 V2 的局部多单位重新匹配和主动 Yielding；之后进入 Clearance 与 Movement Class。自动 Portal/Sector Baker、战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、跨命令槽位、终点局部换槽、外圈封闭后的主动 Yielding 与 Overflow fallback、动态失效后的群组路线共享、有限卡死恢复，以及 Godot Resource → 纯 C# 导航快照链路已有可运行版本。当前继续完成终点 V2 的局部多单位重新匹配、SlotDepth 和边界场景；之后进入 Clearance 与 Movement Class。自动 Portal/Sector Baker、战斗、联机和确定性回放暂未实现。

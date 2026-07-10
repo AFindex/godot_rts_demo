@@ -190,6 +190,8 @@ public static class VisualTestCatalog
                     $"movers={moverArrivals}/{movers.Length}, " +
                     $"released={blockerArrivals}/{blockers.Length}, " +
                     $"slotSwaps={diagnostics.DestinationSlotSwaps}, " +
+                    $"yield={diagnostics.DestinationYieldEvents}, " +
+                    $"activeYield={diagnostics.ActiveDestinationYields}, " +
                     $"overflow={diagnostics.DestinationOverflowAssignments}, " +
                     $"converged={converged}, {arrival.Summary}");
             });
@@ -217,7 +219,7 @@ public static class VisualTestCatalog
         var session = new VisualTestSession(
             "destination-outer-ring",
             "Inner reservations approach after the outer ring settles",
-            2400,
+            2700,
             rig,
             all,
             runtime =>
@@ -231,6 +233,8 @@ public static class VisualTestCatalog
                     arrival.Passed && bothLayersConverged,
                     $"outer={outerArrivals}/{outer.Length}, " +
                     $"inner={innerArrivals}/{inner.Length}, " +
+                    $"yield={diagnostics.DestinationYieldEvents}, " +
+                    $"activeYield={diagnostics.ActiveDestinationYields}, " +
                     $"overflow={diagnostics.DestinationOverflowAssignments}, " +
                     $"maxStall={diagnostics.MaximumDestinationStallTicks}, " +
                     $"maxNear={diagnostics.MaximumDestinationNearTicks}, " +

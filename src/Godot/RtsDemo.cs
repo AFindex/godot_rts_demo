@@ -656,6 +656,7 @@ public partial class RtsDemo : Node2D
             $"overflow {metrics.DestinationOverflowAssignments}  " +
             $"stall {metrics.MaximumDestinationStallTicks}  " +
             $"near {metrics.MaximumDestinationNearTicks}  " +
+            $"yield {metrics.DestinationYieldEvents}/{metrics.ActiveDestinationYields}  " +
             $"path queue {metrics.PendingPathRequests}  nav r{metrics.NavigationRevision}  " +
             $"buildings {_world?.DynamicOccupancy.Count ?? 0}  " +
             $"invalidated {metrics.NavigationInvalidations}  " +

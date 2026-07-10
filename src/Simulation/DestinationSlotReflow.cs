@@ -97,6 +97,7 @@ public sealed class DestinationSlotReflow
         if (units.MovementGroupIds[unit] <= 0 ||
             units.MovementGroupSizes[unit] < MinimumGroupSize ||
             units.DestinationOverflowed[unit] ||
+            units.DestinationYieldPhases[unit] != DestinationYieldPhase.None ||
             units.SlotReflowCooldownTicks[unit] > tick ||
             units.Modes[unit] is not (UnitMoveMode.Moving or UnitMoveMode.Arrived))
         {

@@ -22,6 +22,14 @@ public enum RecoveryStage : byte
     Unreachable
 }
 
+public enum DestinationYieldPhase : byte
+{
+    None,
+    MovingAside,
+    Waiting,
+    Returning
+}
+
 public sealed class UnitStore
 {
     public UnitStore(int capacity)
@@ -68,7 +76,15 @@ public sealed class UnitStore
         DestinationStallTicks = new int[capacity];
         DestinationNearTicks = new int[capacity];
         DestinationOverflowed = new bool[capacity];
+        DestinationYieldPhases = new DestinationYieldPhase[capacity];
+        DestinationYieldReturnTargets = new Vector2[capacity];
+        DestinationYieldPoints = new Vector2[capacity];
+        DestinationYieldForUnits = new int[capacity];
+        DestinationYieldForCommandVersions = new int[capacity];
+        DestinationYieldDeadlines = new long[capacity];
+        DestinationYieldCooldownTicks = new long[capacity];
         Array.Fill(ActiveChokeIds, -1);
+        Array.Fill(DestinationYieldForUnits, -1);
     }
 
     public int Count { get; private set; }
@@ -114,6 +130,13 @@ public sealed class UnitStore
     public int[] DestinationStallTicks { get; }
     public int[] DestinationNearTicks { get; }
     public bool[] DestinationOverflowed { get; }
+    public DestinationYieldPhase[] DestinationYieldPhases { get; }
+    public Vector2[] DestinationYieldReturnTargets { get; }
+    public Vector2[] DestinationYieldPoints { get; }
+    public int[] DestinationYieldForUnits { get; }
+    public int[] DestinationYieldForCommandVersions { get; }
+    public long[] DestinationYieldDeadlines { get; }
+    public long[] DestinationYieldCooldownTicks { get; }
 
     public int Add(Vector2 position, float radius, float maxSpeed, float acceleration)
     {
@@ -127,6 +150,8 @@ public sealed class UnitStore
         PreviousPositions[index] = position;
         SlotTargets[index] = position;
         MoveGoals[index] = position;
+        DestinationYieldReturnTargets[index] = position;
+        DestinationYieldPoints[index] = position;
         Radii[index] = radius;
         MaxSpeeds[index] = maxSpeed;
         Accelerations[index] = acceleration;

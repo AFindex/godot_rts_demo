@@ -14,6 +14,12 @@ public sealed class RtsSimulation
     private const int MaximumDestinationSwapsPerPass = 12;
     private const int DestinationOverflowIntervalTicks = 30;
     private const int MaximumDestinationOverflowsPerPass = 2;
+    private const int DestinationYieldIntervalTicks = 30;
+    private const int MaximumDestinationYieldStartsPerPass = 2;
+    private const int MaximumActiveDestinationYields = 4;
+    private const int DestinationYieldDeadlineTicks = 360;
+    private const int DestinationYieldReturnDeadlineTicks = 180;
+    private const int DestinationYieldCooldownTicks = 600;
 
     private readonly IPathProvider _pathProvider;
     private readonly Queue<PathRequest> _pathRequests = new();
@@ -21,6 +27,7 @@ public sealed class RtsSimulation
     private readonly DestinationSlotAllocator _slotAllocator;
     private readonly DestinationSlotReflow _slotReflow;
     private readonly DestinationOverflowResolver _overflowResolver;
+    private readonly DestinationYieldResolver _yieldResolver;
     private readonly SteeringSolver _steeringSolver;
     private readonly IGroupRoutePlanner? _groupRoutePlanner;
     private readonly ChokeController? _chokeController;
@@ -42,6 +49,7 @@ public sealed class RtsSimulation
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
         _overflowResolver = new DestinationOverflowResolver(world);
+        _yieldResolver = new DestinationYieldResolver(world);
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
@@ -134,6 +142,13 @@ public sealed class RtsSimulation
             Units.DestinationStallTicks[unit] = 0;
             Units.DestinationNearTicks[unit] = 0;
             Units.DestinationOverflowed[unit] = false;
+            Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+            Units.DestinationYieldReturnTargets[unit] = assignments[unit];
+            Units.DestinationYieldPoints[unit] = assignments[unit];
+            Units.DestinationYieldForUnits[unit] = -1;
+            Units.DestinationYieldForCommandVersions[unit] = 0;
+            Units.DestinationYieldDeadlines[unit] = 0;
+            Units.DestinationYieldCooldownTicks[unit] = 0;
             Units.Paths[unit] = null;
             Units.RouteWaypoints[unit] = LastIssuedGroupRoute.Waypoints;
             Units.PathPending[unit] = true;
@@ -174,6 +189,13 @@ public sealed class RtsSimulation
             Units.DestinationStallTicks[unit] = 0;
             Units.DestinationNearTicks[unit] = 0;
             Units.DestinationOverflowed[unit] = false;
+            Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+            Units.DestinationYieldReturnTargets[unit] = Units.Positions[unit];
+            Units.DestinationYieldPoints[unit] = Units.Positions[unit];
+            Units.DestinationYieldForUnits[unit] = -1;
+            Units.DestinationYieldForCommandVersions[unit] = 0;
+            Units.DestinationYieldDeadlines[unit] = 0;
+            Units.DestinationYieldCooldownTicks[unit] = 0;
             Units.ActiveChokeIds[unit] = -1;
             Units.ChokeDirections[unit] = 0;
             Units.ChokePhases[unit] = ChokePhase.None;
@@ -251,6 +273,7 @@ public sealed class RtsSimulation
         UpdateProgress(delta);
         _overflowResolver.UpdateStallTracking(Units);
         UpdateDestinationReflow();
+        UpdateDestinationYielding();
         UpdateDestinationOverflow();
         UpdateMetrics();
         Metrics.RecoveryMilliseconds = ElapsedMilliseconds(phaseStart);
@@ -966,6 +989,141 @@ public sealed class RtsSimulation
         }
     }
 
+    private void UpdateDestinationYielding()
+    {
+        var activeYields = 0;
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            var phase = Units.DestinationYieldPhases[unit];
+            if (phase == DestinationYieldPhase.None)
+            {
+                continue;
+            }
+
+            activeYields++;
+            switch (phase)
+            {
+                case DestinationYieldPhase.MovingAside:
+                    if (Units.Modes[unit] == UnitMoveMode.Arrived ||
+                        Vector2.DistanceSquared(
+                            Units.Positions[unit], Units.SlotTargets[unit]) <= 5f * 5f)
+                    {
+                        Units.DestinationYieldPhases[unit] = DestinationYieldPhase.Waiting;
+                    }
+                    else if (Metrics.Tick >= Units.DestinationYieldDeadlines[unit])
+                    {
+                        BeginDestinationYieldReturn(unit);
+                    }
+                    break;
+                case DestinationYieldPhase.Waiting:
+                    if (DestinationYieldTargetCleared(unit) ||
+                        Metrics.Tick >= Units.DestinationYieldDeadlines[unit])
+                    {
+                        BeginDestinationYieldReturn(unit);
+                    }
+                    break;
+                case DestinationYieldPhase.Returning:
+                    if (Units.Modes[unit] == UnitMoveMode.Arrived ||
+                        Vector2.DistanceSquared(
+                            Units.Positions[unit], Units.SlotTargets[unit]) <= 5f * 5f)
+                    {
+                        ClearDestinationYield(unit);
+                        activeYields--;
+                    }
+                    else if (Metrics.Tick >= Units.DestinationYieldDeadlines[unit])
+                    {
+                        ConvertDestinationYieldToOverflow(unit);
+                        activeYields--;
+                    }
+                    break;
+            }
+        }
+
+        if (Metrics.Tick % DestinationYieldIntervalTicks != 0)
+        {
+            return;
+        }
+
+        for (var start = 0;
+             start < MaximumDestinationYieldStartsPerPass &&
+             activeYields < MaximumActiveDestinationYields;
+             start++)
+        {
+            if (!_yieldResolver.TryFindYield(
+                    Units,
+                    Metrics.Tick,
+                    out var blockedUnit,
+                    out var blockerUnit,
+                    out var yieldPoint))
+            {
+                break;
+            }
+
+            Units.DestinationYieldReturnTargets[blockerUnit] =
+                Units.SlotTargets[blockerUnit];
+            Units.DestinationYieldForUnits[blockerUnit] = blockedUnit;
+            Units.DestinationYieldForCommandVersions[blockerUnit] =
+                Units.CommandVersions[blockedUnit];
+            Units.DestinationYieldDeadlines[blockerUnit] =
+                Metrics.Tick + DestinationYieldDeadlineTicks;
+            Units.DestinationYieldPoints[blockerUnit] = yieldPoint;
+            Units.DestinationYieldPhases[blockerUnit] =
+                DestinationYieldPhase.MovingAside;
+            Units.SlotTargets[blockerUnit] = yieldPoint;
+            QueueDestinationRetarget(blockerUnit);
+            Metrics.DestinationYieldEvents++;
+            activeYields++;
+        }
+    }
+
+    private bool DestinationYieldTargetCleared(int yieldingUnit)
+    {
+        var targetUnit = Units.DestinationYieldForUnits[yieldingUnit];
+        if ((uint)targetUnit >= (uint)Units.Count ||
+            Units.CommandVersions[targetUnit] !=
+            Units.DestinationYieldForCommandVersions[yieldingUnit] ||
+            Units.DestinationOverflowed[targetUnit])
+        {
+            return true;
+        }
+
+        return Units.Modes[targetUnit] == UnitMoveMode.Arrived ||
+               Vector2.DistanceSquared(
+                   Units.Positions[targetUnit], Units.SlotTargets[targetUnit]) <=
+               18f * 18f;
+    }
+
+    private void BeginDestinationYieldReturn(int unit)
+    {
+        Units.SlotTargets[unit] = Units.DestinationYieldReturnTargets[unit];
+        Units.DestinationYieldPhases[unit] = DestinationYieldPhase.Returning;
+        Units.DestinationYieldDeadlines[unit] =
+            Metrics.Tick + DestinationYieldReturnDeadlineTicks;
+        QueueDestinationRetarget(unit);
+    }
+
+    private void ConvertDestinationYieldToOverflow(int unit)
+    {
+        var overflowTarget = Units.DestinationYieldPoints[unit];
+        ClearDestinationYield(unit);
+        Units.SlotTargets[unit] = overflowTarget;
+        Units.DestinationOverflowed[unit] = true;
+        QueueDestinationRetarget(unit);
+        Metrics.DestinationOverflowAssignments++;
+    }
+
+    private void ClearDestinationYield(int unit)
+    {
+        Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+        Units.DestinationYieldReturnTargets[unit] = Units.SlotTargets[unit];
+        Units.DestinationYieldPoints[unit] = Units.SlotTargets[unit];
+        Units.DestinationYieldForUnits[unit] = -1;
+        Units.DestinationYieldForCommandVersions[unit] = 0;
+        Units.DestinationYieldDeadlines[unit] = 0;
+        Units.DestinationYieldCooldownTicks[unit] =
+            Metrics.Tick + DestinationYieldCooldownTicks;
+    }
+
     private void QueueDestinationRetarget(
         int unit,
         bool preserveTerminalHistory = false)
@@ -1018,6 +1176,7 @@ public sealed class RtsSimulation
         Metrics.UnreachableUnits = 0;
         Metrics.MaximumDestinationStallTicks = 0;
         Metrics.MaximumDestinationNearTicks = 0;
+        Metrics.ActiveDestinationYields = 0;
         for (var unit = 0; unit < Units.Count; unit++)
         {
             Metrics.MaximumDestinationStallTicks = Math.Max(
@@ -1026,6 +1185,10 @@ public sealed class RtsSimulation
             Metrics.MaximumDestinationNearTicks = Math.Max(
                 Metrics.MaximumDestinationNearTicks,
                 Units.DestinationNearTicks[unit]);
+            if (Units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
+            {
+                Metrics.ActiveDestinationYields++;
+            }
             switch (Units.Modes[unit])
             {
                 case UnitMoveMode.Moving:
