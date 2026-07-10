@@ -17,6 +17,7 @@ public static class VisualTestCatalog
         "crossing-streams",
         "command-replace",
         "rapid-reissue",
+        "destination-convergence",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -26,6 +27,7 @@ public static class VisualTestCatalog
         "dynamic-building-detour",
         "dynamic-building-remove",
         "dynamic-portal-reroute",
+        "dynamic-group-reroute",
         "portal-choke",
         "reverse-choke",
         "bidirectional-choke-balanced",
@@ -46,6 +48,7 @@ public static class VisualTestCatalog
         "crossing-streams" => CreateCrossingStreams(),
         "command-replace" => CreateCommandReplace(),
         "rapid-reissue" => CreateRapidReissue(),
+        "destination-convergence" => CreateDestinationConvergence(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -55,6 +58,7 @@ public static class VisualTestCatalog
         "dynamic-building-detour" => CreateDynamicBuildingDetour(),
         "dynamic-building-remove" => CreateDynamicBuildingRemove(),
         "dynamic-portal-reroute" => CreateDynamicPortalReroute(),
+        "dynamic-group-reroute" => CreateDynamicGroupReroute(),
         "portal-choke" => CreatePortalChoke(reverse: false),
         "reverse-choke" => CreatePortalChoke(reverse: true),
         "bidirectional-choke-balanced" => CreateBidirectionalChokeBalanced(),
@@ -151,6 +155,40 @@ public static class VisualTestCatalog
             runtime.Move(units, new Vector2(250f, 120f)));
         return session.At(180, "Final command", runtime =>
             runtime.Move(units, new Vector2(1040f, 560f)));
+    }
+
+    private static VisualTestSession CreateDestinationConvergence()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 112);
+        var all = rig.SpawnGrid(new Vector2(65f, 125f), 8, 10, 18f);
+        var blockers = all.Where((_, index) => index % 5 == 0).ToArray();
+        var movers = all.Where((_, index) => index % 5 != 0).ToArray();
+        rig.Move(all, new Vector2(980f, 360f));
+
+        var session = new VisualTestSession(
+            "destination-convergence",
+            "Destination convergence after temporary formation blockers",
+            1800,
+            rig,
+            all,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, all, 75, 18f, 3f, 0, 0);
+                var moverArrivals = CountArrivals(runtime, movers, 18f);
+                var blockerArrivals = CountArrivals(runtime, blockers, 18f);
+                var diagnostics = runtime.ObserveMovementDiagnostics();
+                var converged = moverArrivals >= 59 && blockerArrivals >= 15;
+                return new ScenarioResult(
+                    arrival.Passed && converged,
+                    $"movers={moverArrivals}/{movers.Length}, " +
+                    $"released={blockerArrivals}/{blockers.Length}, " +
+                    $"slotSwaps={diagnostics.DestinationSlotSwaps}, " +
+                    $"converged={converged}, {arrival.Summary}");
+            });
+        session.At(300, "Freeze units inside the moving formation", runtime =>
+            runtime.Hold(blockers));
+        return session.At(510, "Release blockers toward a separate target", runtime =>
+            runtime.Move(blockers, new Vector2(930f, 590f)));
     }
 
     private static VisualTestSession CreateStopCommand()
@@ -379,6 +417,43 @@ public static class VisualTestCatalog
             runtime => runtime.PlaceBuilding(
                 new Vector2(920f, 220f),
                 new Vector2(90f, 110f)));
+    }
+
+    private static VisualTestSession CreateDynamicGroupReroute()
+    {
+        var rig = MovementTestRig.CreateChokeMap(96);
+        var units = rig.SpawnGrid(new Vector2(75f, 175f), 6, 8, 18.5f);
+        rig.Move(units, new Vector2(1110f, 350f));
+        var observedInvalidations = 0;
+        var session = new VisualTestSession(
+            "dynamic-group-reroute",
+            "Large formation reroutes after its active portal closes",
+            3000,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, units, 40, 22f, 3f, 1, 1);
+                var diagnostics = runtime.ObserveMovementDiagnostics();
+                var activeRouteWasInvalidated = observedInvalidations == units.Length;
+                return new ScenarioResult(
+                    arrival.Passed && activeRouteWasInvalidated,
+                    $"routePlans={diagnostics.GroupRoutePlans}, " +
+                    $"sharedAssignments={diagnostics.SharedRouteAssignments}, " +
+                    $"invalidated={observedInvalidations}, " +
+                    $"activeRouteClosed={activeRouteWasInvalidated}, " +
+                    arrival.Summary);
+            });
+        session.At(
+            240,
+            "Close the active lower portal",
+            runtime => runtime.PlaceBuilding(
+                new Vector2(920f, 475f),
+                new Vector2(90f, 110f)));
+        return session.At(
+            241,
+            "Observe group route invalidation",
+            runtime => observedInvalidations = runtime.LastNavigationInvalidations);
     }
 
     private static VisualTestSession CreateLargeGroup()

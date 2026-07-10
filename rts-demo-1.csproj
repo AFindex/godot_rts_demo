@@ -9,4 +9,8 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="benchmarks\**\*.cs" />
+  </ItemGroup>
 </Project>

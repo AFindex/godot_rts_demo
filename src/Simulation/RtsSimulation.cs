@@ -9,16 +9,21 @@ public sealed class RtsSimulation
     private const float ArrivalSlowRadius = 58f;
     private const float ArrivalStopRadius = 3.5f;
     private const int CollisionIterations = 3;
+    private const int DestinationReflowIntervalTicks = 12;
+    private const int DestinationReflowCooldownTicks = 90;
+    private const int MaximumDestinationSwapsPerPass = 12;
 
     private readonly IPathProvider _pathProvider;
     private readonly Queue<PathRequest> _pathRequests = new();
     private readonly SpatialHash _spatialHash;
     private readonly DestinationSlotAllocator _slotAllocator;
+    private readonly DestinationSlotReflow _slotReflow;
     private readonly SteeringSolver _steeringSolver;
     private readonly IGroupRoutePlanner? _groupRoutePlanner;
     private readonly ChokeController? _chokeController;
     private readonly int[] _collisionNeighbors = new int[64];
     private int _pendingNavigationInvalidations;
+    private int _nextMovementGroupId = 1;
 
     public RtsSimulation(
         StaticWorld world,
@@ -32,6 +37,7 @@ public sealed class RtsSimulation
         Units = new UnitStore(capacity);
         _spatialHash = new SpatialHash(40f);
         _slotAllocator = new DestinationSlotAllocator(world);
+        _slotReflow = new DestinationSlotReflow(world);
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
@@ -96,10 +102,12 @@ public sealed class RtsSimulation
 
         centroid /= unitIndices.Length;
         var groupGoal = World.Bounds.Inset(maximumRadius + 2f).Clamp(target);
-        LastIssuedGroupRoute = _groupRoutePlanner?.Plan(
-            centroid,
-            groupGoal,
-            maximumRadius) ?? GroupRoutePlan.Empty;
+        LastIssuedGroupRoute = PlanGroupRoute(centroid, groupGoal, maximumRadius);
+        var movementGroupId = NextMovementGroupId();
+        if (unitIndices.Length > 1 && LastIssuedGroupRoute.Waypoints.Length > 0)
+        {
+            Metrics.SharedRouteAssignments += unitIndices.Length;
+        }
         _chokeController?.AssignForMove(
             Units,
             unitIndices,
@@ -113,6 +121,10 @@ public sealed class RtsSimulation
             ValidateUnitIndex(unit);
             Units.CommandVersions[unit]++;
             Units.SlotTargets[unit] = assignments[unit];
+            Units.MoveGoals[unit] = groupGoal;
+            Units.MovementGroupIds[unit] = movementGroupId;
+            Units.MovementGroupSizes[unit] = unitIndices.Length;
+            Units.SlotReflowCooldownTicks[unit] = 0;
             Units.Paths[unit] = null;
             Units.RouteWaypoints[unit] = LastIssuedGroupRoute.Waypoints;
             Units.PathPending[unit] = true;
@@ -145,6 +157,10 @@ public sealed class RtsSimulation
             Units.PathPending[unit] = false;
             Units.Modes[unit] = UnitMoveMode.Idle;
             Units.SlotTargets[unit] = Units.Positions[unit];
+            Units.MoveGoals[unit] = Units.Positions[unit];
+            Units.MovementGroupIds[unit] = 0;
+            Units.MovementGroupSizes[unit] = 0;
+            Units.SlotReflowCooldownTicks[unit] = 0;
             Units.ActiveChokeIds[unit] = -1;
             Units.ChokeDirections[unit] = 0;
             Units.ChokePhases[unit] = ChokePhase.None;
@@ -220,6 +236,7 @@ public sealed class RtsSimulation
 
         phaseStart = Stopwatch.GetTimestamp();
         UpdateProgress(delta);
+        UpdateDestinationReflow();
         UpdateMetrics();
         Metrics.RecoveryMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
@@ -334,6 +351,7 @@ public sealed class RtsSimulation
 
     private void InvalidatePathsIntersecting(SimRect footprint)
     {
+        var affectedUnits = new List<int>();
         for (var unit = 0; unit < Units.Count; unit++)
         {
             if (Units.Modes[unit] is UnitMoveMode.Idle or UnitMoveMode.Hold or UnitMoveMode.Arrived ||
@@ -342,7 +360,85 @@ public sealed class RtsSimulation
                 continue;
             }
 
-            QueueNavigationReplan(unit);
+            affectedUnits.Add(unit);
+        }
+
+        if (affectedUnits.Count == 0)
+        {
+            return;
+        }
+
+        _pendingNavigationInvalidations += affectedUnits.Count;
+        ReplanInvalidatedGroups(affectedUnits);
+    }
+
+    private void ReplanInvalidatedGroups(List<int> affectedUnits)
+    {
+        var processed = new bool[affectedUnits.Count];
+        for (var affectedIndex = 0; affectedIndex < affectedUnits.Count; affectedIndex++)
+        {
+            if (processed[affectedIndex])
+            {
+                continue;
+            }
+
+            var firstUnit = affectedUnits[affectedIndex];
+            var movementGroupId = Units.MovementGroupIds[firstUnit];
+            var group = new List<int>();
+            for (var candidateIndex = affectedIndex;
+                 candidateIndex < affectedUnits.Count;
+                 candidateIndex++)
+            {
+                var candidate = affectedUnits[candidateIndex];
+                var sameGroup = movementGroupId > 0
+                    ? Units.MovementGroupIds[candidate] == movementGroupId
+                    : candidate == firstUnit;
+                if (!processed[candidateIndex] && sameGroup)
+                {
+                    processed[candidateIndex] = true;
+                    group.Add(candidate);
+                }
+            }
+
+            ReplanInvalidatedGroup(group.ToArray());
+        }
+    }
+
+    private void ReplanInvalidatedGroup(int[] group)
+    {
+        var centroid = Vector2.Zero;
+        var maximumRadius = 0f;
+        for (var index = 0; index < group.Length; index++)
+        {
+            var unit = group[index];
+            centroid += Units.Positions[unit];
+            maximumRadius = MathF.Max(maximumRadius, Units.Radii[unit]);
+        }
+
+        centroid /= group.Length;
+        var groupGoal = Units.MoveGoals[group[0]];
+        var route = PlanGroupRoute(centroid, groupGoal, maximumRadius);
+        if (group.Length > 1 && route.Waypoints.Length > 0)
+        {
+            Metrics.SharedRouteAssignments += group.Length;
+        }
+
+        _chokeController?.AssignForMove(
+            Units,
+            group,
+            centroid,
+            groupGoal,
+            route.ChokeIds);
+        for (var index = 0; index < group.Length; index++)
+        {
+            var unit = group[index];
+            Units.RouteWaypoints[unit] = route.Waypoints;
+            QueueNavigationReplan(
+                unit,
+                resetRecovery: true,
+                countInvalidation: false,
+                sharedRoute: route,
+                assignChoke: false);
         }
     }
 
@@ -383,15 +479,17 @@ public sealed class RtsSimulation
     private void QueueNavigationReplan(
         int unit,
         bool resetRecovery = true,
-        bool countInvalidation = true)
+        bool countInvalidation = true,
+        GroupRoutePlan? sharedRoute = null,
+        bool assignChoke = true)
     {
         Units.CommandVersions[unit]++;
-        var route = _groupRoutePlanner?.Plan(
+        var route = sharedRoute ?? PlanGroupRoute(
             Units.Positions[unit],
             Units.SlotTargets[unit],
-            Units.Radii[unit]) ?? GroupRoutePlan.Empty;
+            Units.Radii[unit]);
         Units.RouteWaypoints[unit] = route.Waypoints;
-        if (_chokeController is not null)
+        if (assignChoke && _chokeController is not null)
         {
             int[] singleUnit = [unit];
             _chokeController.AssignForMove(
@@ -422,6 +520,30 @@ public sealed class RtsSimulation
         {
             _pendingNavigationInvalidations++;
         }
+    }
+
+    private GroupRoutePlan PlanGroupRoute(
+        Vector2 start,
+        Vector2 goal,
+        float agentRadius)
+    {
+        if (_groupRoutePlanner is null)
+        {
+            return GroupRoutePlan.Empty;
+        }
+
+        Metrics.GroupRoutePlans++;
+        return _groupRoutePlanner.Plan(start, goal, agentRadius);
+    }
+
+    private int NextMovementGroupId()
+    {
+        if (_nextMovementGroupId == int.MaxValue)
+        {
+            _nextMovementGroupId = 1;
+        }
+
+        return _nextMovementGroupId++;
     }
 
     private void QueueLocalRepath(int unit, bool clearHighLevelRoute)
@@ -772,6 +894,54 @@ public sealed class RtsSimulation
                     break;
             }
         }
+    }
+
+    private void UpdateDestinationReflow()
+    {
+        if (Metrics.Tick % DestinationReflowIntervalTicks != 0)
+        {
+            return;
+        }
+
+        for (var swap = 0; swap < MaximumDestinationSwapsPerPass; swap++)
+        {
+            if (!_slotReflow.TryFindSwap(
+                    Units,
+                    Metrics.Tick,
+                    out var firstUnit,
+                    out var secondUnit))
+            {
+                break;
+            }
+
+            (Units.SlotTargets[firstUnit], Units.SlotTargets[secondUnit]) =
+                (Units.SlotTargets[secondUnit], Units.SlotTargets[firstUnit]);
+            var nextEligibleTick = Metrics.Tick + DestinationReflowCooldownTicks;
+            Units.SlotReflowCooldownTicks[firstUnit] = nextEligibleTick;
+            Units.SlotReflowCooldownTicks[secondUnit] = nextEligibleTick;
+            QueueDestinationRetarget(firstUnit);
+            QueueDestinationRetarget(secondUnit);
+            Metrics.DestinationSlotSwaps++;
+        }
+    }
+
+    private void QueueDestinationRetarget(int unit)
+    {
+        Units.CommandVersions[unit]++;
+        Units.Paths[unit] = null;
+        Units.RouteWaypoints[unit] = [];
+        Units.PathPending[unit] = true;
+        Units.Modes[unit] = UnitMoveMode.WaitingForPath;
+        Units.ActiveChokeIds[unit] = -1;
+        Units.ChokeDirections[unit] = 0;
+        Units.ChokePhases[unit] = ChokePhase.None;
+        Units.ChokeAdmitted[unit] = false;
+        Units.ProgressOrigins[unit] = Units.Positions[unit];
+        Units.ProgressTimers[unit] = 0f;
+        Units.ProgressBestDistances[unit] = Vector2.Distance(
+            Units.Positions[unit], Units.SlotTargets[unit]);
+        Units.RepathCooldowns[unit] = 0f;
+        _pathRequests.Enqueue(new PathRequest(unit, Units.CommandVersions[unit]));
     }
 
     private float RemainingPathDistance(int unit, UnitPath? path)

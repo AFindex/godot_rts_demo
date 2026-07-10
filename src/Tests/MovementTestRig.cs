@@ -48,6 +48,11 @@ public readonly record struct TestPerformanceSnapshot(
     double RecoveryMilliseconds,
     long AllocatedBytes);
 
+public readonly record struct TestMovementDiagnostics(
+    long GroupRoutePlans,
+    long SharedRouteAssignments,
+    long DestinationSlotSwaps);
+
 public enum TestUnitState : byte
 {
     Idle,
@@ -246,6 +251,15 @@ public sealed class MovementTestRig
             metrics.CollisionMilliseconds,
             metrics.RecoveryMilliseconds,
             metrics.AllocatedBytes);
+    }
+
+    public TestMovementDiagnostics ObserveMovementDiagnostics()
+    {
+        var metrics = _simulation.Metrics;
+        return new TestMovementDiagnostics(
+            metrics.GroupRoutePlans,
+            metrics.SharedRouteAssignments,
+            metrics.DestinationSlotSwaps);
     }
 
     public void Step() => _simulation.Tick(1f / 60f);

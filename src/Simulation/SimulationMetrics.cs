@@ -16,6 +16,9 @@ public sealed class SimulationMetrics
     public int NavigationInvalidations { get; internal set; }
     public int RecoveryEvents { get; internal set; }
     public int UnreachableUnits { get; internal set; }
+    public long GroupRoutePlans { get; internal set; }
+    public long SharedRouteAssignments { get; internal set; }
+    public long DestinationSlotSwaps { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
     public double PathMilliseconds { get; internal set; }
     public double PreferredVelocityMilliseconds { get; internal set; }

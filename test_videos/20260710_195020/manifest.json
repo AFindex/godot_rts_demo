@@ -1,0 +1,56 @@
+﻿{
+    "created_at":  "2026-07-10T19:51:30.3307485+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "destination-convergence",
+                            "dynamic-group-reroute"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "destination-convergence",
+                      "file":  "destination-convergence.avi",
+                      "log":  "destination-convergence.log",
+                      "bytes":  69131166,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS destination-convergence: ticks=1800, movers=59/64, released=16/16, slotSwaps=27, converged=True, arrived=75/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=5, unreachable=0, maxDistance=89.8"
+                  },
+                  {
+                      "id":  "dynamic-group-reroute",
+                      "file":  "dynamic-group-reroute.avi",
+                      "log":  "dynamic-group-reroute.log",
+                      "bytes":  122139628,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-group-reroute: ticks=3000, routePlans=8, sharedAssignments=96, invalidated=48, activeRouteClosed=True, arrived=40/48, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, moving=8, unreachable=0, maxDistance=94.5"
+                  }
+              ]
+}

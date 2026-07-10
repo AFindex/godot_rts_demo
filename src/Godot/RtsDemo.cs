@@ -613,6 +613,8 @@ public partial class RtsDemo : Node2D
             $"selected {_selectedUnits.Count}  moving {metrics.MovingUnits}  " +
             $"arrived {metrics.ArrivedUnits}  choke {chokeUnits}  " +
             $"route {_simulation.LastIssuedGroupRoute.Waypoints.Length}  " +
+            $"route plans {metrics.GroupRoutePlans} shared {metrics.SharedRouteAssignments}  " +
+            $"slot swaps {metrics.DestinationSlotSwaps}  " +
             $"path queue {metrics.PendingPathRequests}  nav r{metrics.NavigationRevision}  " +
             $"buildings {_world?.DynamicOccupancy.Count ?? 0}  " +
             $"invalidated {metrics.NavigationInvalidations}  " +

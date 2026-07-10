@@ -33,6 +33,7 @@ public sealed class UnitStore
         PreferredVelocities = new Vector2[capacity];
         NextVelocities = new Vector2[capacity];
         SlotTargets = new Vector2[capacity];
+        MoveGoals = new Vector2[capacity];
         Radii = new float[capacity];
         MaxSpeeds = new float[capacity];
         Accelerations = new float[capacity];
@@ -60,6 +61,9 @@ public sealed class UnitStore
         RecoveryEventCounts = new int[capacity];
         RecoveryStableTimers = new float[capacity];
         RecoveryRetryCounts = new byte[capacity];
+        MovementGroupIds = new int[capacity];
+        MovementGroupSizes = new int[capacity];
+        SlotReflowCooldownTicks = new long[capacity];
         Array.Fill(ActiveChokeIds, -1);
     }
 
@@ -71,6 +75,7 @@ public sealed class UnitStore
     public Vector2[] PreferredVelocities { get; }
     public Vector2[] NextVelocities { get; }
     public Vector2[] SlotTargets { get; }
+    public Vector2[] MoveGoals { get; }
     public float[] Radii { get; }
     public float[] MaxSpeeds { get; }
     public float[] Accelerations { get; }
@@ -98,6 +103,9 @@ public sealed class UnitStore
     public int[] RecoveryEventCounts { get; }
     public float[] RecoveryStableTimers { get; }
     public byte[] RecoveryRetryCounts { get; }
+    public int[] MovementGroupIds { get; }
+    public int[] MovementGroupSizes { get; }
+    public long[] SlotReflowCooldownTicks { get; }
 
     public int Add(Vector2 position, float radius, float maxSpeed, float acceleration)
     {
@@ -110,6 +118,7 @@ public sealed class UnitStore
         Positions[index] = position;
         PreviousPositions[index] = position;
         SlotTargets[index] = position;
+        MoveGoals[index] = position;
         Radii[index] = radius;
         MaxSpeeds[index] = maxSpeed;
         Accelerations[index] = acceleration;
