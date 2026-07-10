@@ -33,6 +33,7 @@ public partial class RtsDemo : Node2D
     private int _visualTestFinishFrames = -1;
     private int _visualTestExitCode;
     private readonly Stack<DynamicFootprintId> _demoBuildings = new();
+    private int _nextDemoBuildingClass;
     private NavigationMapSnapshot? _navigationSnapshot;
 
     public override async void _Ready()
@@ -845,14 +846,29 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        var size = new NVector2(100f, 150f);
+        var footprintClass = (BuildingFootprintClass)(
+            _nextDemoBuildingClass %
+            ((int)BuildingFootprintClass.Huge + 1));
+        var profile = BuildingFootprintProfile.For(footprintClass);
+        var size = profile.Size;
         var halfSize = size * 0.5f;
         var allowedCenters = _world.Bounds.Inset(MathF.Max(halfSize.X, halfSize.Y));
         var center = allowedCenters.Clamp(
             GodotPathProvider.ToNumerics(GetGlobalMousePosition()));
-        var id = _simulation.PlaceBuilding(
-            new SimRect(center - halfSize, center + halfSize));
-        _demoBuildings.Push(id);
+        var result = _simulation.TryPlaceBuilding(
+            new SimRect(center - halfSize, center + halfSize),
+            new BuildingPlacementRules(MovementClass.Medium));
+        if (!result.Succeeded)
+        {
+            GD.Print($"RTS_BUILDING_REJECT class={footprintClass} " +
+                     $"code={result.Code} conflict={result.ConflictId}");
+            return;
+        }
+
+        _demoBuildings.Push(result.FootprintId);
+        _nextDemoBuildingClass++;
+        GD.Print($"RTS_BUILDING_PLACED class={footprintClass} " +
+                 $"size={size} id={result.FootprintId.Value}");
         QueueRedraw();
     }
 

@@ -53,4 +53,16 @@ public static class MovementClearance
             radius,
             MathF.Max(LargeNavigationRadius, radius));
     }
+
+    public static MovementClearanceProfile ForClass(MovementClass value) =>
+        value switch
+        {
+            MovementClass.Small => new(
+                value, SmallNavigationRadius, SmallNavigationRadius),
+            MovementClass.Medium => new(
+                value, MediumNavigationRadius, MediumNavigationRadius),
+            MovementClass.Large => new(
+                value, LargeNavigationRadius, LargeNavigationRadius),
+            _ => throw new ArgumentOutOfRangeException(nameof(value))
+        };
 }

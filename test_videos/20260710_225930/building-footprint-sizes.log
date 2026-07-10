@@ -1,0 +1,7 @@
+Godot Engine v4.7.stable.mono.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 595.95 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 2060 SUPER
+
+Movie Maker mode enabled, recording movie in 1280×720 @ 30 FPS...
+RTS_NAVIGATION_RESOURCE PASS path=res://data/demo_navigation_map.tres format=1 hash=B8441F9F1544B950
+RTS_VISUAL_TEST_START building-footprint-sizes: ticks=240, units=0
+RTS_VISUAL_TEST_PASS building-footprint-sizes: ticks=240, accepted=4/4, sizes=32x32/64x48/112x80/160x120, buildings=4

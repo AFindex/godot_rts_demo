@@ -24,6 +24,9 @@ public static class VisualTestCatalog
         "destination-corner-mixed",
         "clearance-portal-choice",
         "clearance-dynamic-gap",
+        "building-footprint-sizes",
+        "building-placement-rules",
+        "building-size-navigation",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -63,6 +66,9 @@ public static class VisualTestCatalog
         "destination-corner-mixed" => CreateDestinationCornerMixed(),
         "clearance-portal-choice" => CreateClearancePortalChoice(),
         "clearance-dynamic-gap" => CreateClearanceDynamicGap(),
+        "building-footprint-sizes" => CreateBuildingFootprintSizes(),
+        "building-placement-rules" => CreateBuildingPlacementRules(),
+        "building-size-navigation" => CreateBuildingSizeNavigation(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -414,6 +420,145 @@ public static class VisualTestCatalog
             600,
             "Large unit attempts the same dynamic gap",
             runtime => runtime.Move([large], new Vector2(1100f, 350f)));
+    }
+
+    private static VisualTestSession CreateBuildingFootprintSizes()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1400f, 900f), 8);
+        var results = new[]
+        {
+            rig.TryPlaceBuilding(
+                new Vector2(150f, 160f),
+                TestBuildingFootprintClass.Small,
+                TestMovementClass.Large),
+            rig.TryPlaceBuilding(
+                new Vector2(340f, 170f),
+                TestBuildingFootprintClass.Medium,
+                TestMovementClass.Large),
+            rig.TryPlaceBuilding(
+                new Vector2(580f, 190f),
+                TestBuildingFootprintClass.Large,
+                TestMovementClass.Large),
+            rig.TryPlaceBuilding(
+                new Vector2(900f, 220f),
+                TestBuildingFootprintClass.Huge,
+                TestMovementClass.Large)
+        };
+        return new VisualTestSession(
+            "building-footprint-sizes",
+            "Small, medium, large and huge business footprints",
+            240,
+            rig,
+            [],
+            runtime =>
+            {
+                var allAccepted = results.All(result => result.Succeeded);
+                var sizes = string.Join(
+                    "/", results.Select(result =>
+                        $"{result.Size.X:0}x{result.Size.Y:0}"));
+                return new ScenarioResult(
+                    allAccepted && runtime.BuildingCount == 4,
+                    $"accepted={results.Count(result => result.Succeeded)}/4, " +
+                    $"sizes={sizes}, buildings={runtime.BuildingCount}");
+            });
+    }
+
+    private static VisualTestSession CreateBuildingPlacementRules()
+    {
+        var rig = MovementTestRig.CreateClearanceChoiceMap(8);
+        var unit = rig.Spawn(new Vector2(1000f, 600f));
+        var anchor = rig.TryPlaceBuilding(
+            new Vector2(300f, 350f),
+            TestBuildingFootprintClass.Medium,
+            TestMovementClass.Large);
+        var dynamicOverlap = rig.TryPlaceBuilding(
+            new Vector2(300f, 350f),
+            TestBuildingFootprintClass.Small,
+            TestMovementClass.Large);
+        var staticOverlap = rig.TryPlaceBuilding(
+            new Vector2(600f, 350f),
+            TestBuildingFootprintClass.Small,
+            TestMovementClass.Large);
+        var outside = rig.TryPlaceBuilding(
+            new Vector2(5f, 100f),
+            TestBuildingFootprintClass.Small,
+            TestMovementClass.Large);
+        var unitOverlap = rig.TryPlaceBuilding(
+            new Vector2(1000f, 600f),
+            TestBuildingFootprintClass.Small,
+            TestMovementClass.Large);
+        var narrowGap = rig.TryPlaceBuilding(
+            new Vector2(36f, 100f),
+            TestBuildingFootprintClass.Small,
+            TestMovementClass.Large);
+        var flushWall = rig.TryPlaceBuilding(
+            new Vector2(16f, 100f),
+            TestBuildingFootprintClass.Small,
+            TestMovementClass.Large);
+        return new VisualTestSession(
+            "building-placement-rules",
+            "Business placement rejects overlap, occupancy and fake gaps",
+            360,
+            rig,
+            [unit],
+            runtime =>
+            {
+                var codesCorrect = anchor.Succeeded && flushWall.Succeeded &&
+                    dynamicOverlap.Code ==
+                        TestBuildingPlacementCode.DynamicFootprintOverlap &&
+                    staticOverlap.Code ==
+                        TestBuildingPlacementCode.StaticObstacleOverlap &&
+                    outside.Code == TestBuildingPlacementCode.OutsideWorld &&
+                    unitOverlap.Code == TestBuildingPlacementCode.UnitOverlap &&
+                    narrowGap.Code ==
+                        TestBuildingPlacementCode.InsufficientClearance;
+                return new ScenarioResult(
+                    codesCorrect && runtime.BuildingCount == 2,
+                    $"anchor={anchor.Code}, dynamic={dynamicOverlap.Code}, " +
+                    $"static={staticOverlap.Code}, outside={outside.Code}, " +
+                    $"unit={unitOverlap.Code}, gap={narrowGap.Code}, " +
+                    $"flush={flushWall.Code}, buildings={runtime.BuildingCount}");
+            });
+    }
+
+    private static VisualTestSession CreateBuildingSizeNavigation()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1400f, 900f), 64);
+        var placements = new[]
+        {
+            rig.TryPlaceBuilding(
+                new Vector2(350f, 270f),
+                TestBuildingFootprintClass.Small,
+                TestMovementClass.Medium),
+            rig.TryPlaceBuilding(
+                new Vector2(560f, 520f),
+                TestBuildingFootprintClass.Medium,
+                TestMovementClass.Medium),
+            rig.TryPlaceBuilding(
+                new Vector2(800f, 300f),
+                TestBuildingFootprintClass.Large,
+                TestMovementClass.Medium),
+            rig.TryPlaceBuilding(
+                new Vector2(1050f, 560f),
+                TestBuildingFootprintClass.Huge,
+                TestMovementClass.Medium)
+        };
+        var units = rig.SpawnGrid(new Vector2(70f, 350f), 4, 6, 20f);
+        rig.Move(units, new Vector2(1300f, 450f));
+        return new VisualTestSession(
+            "building-size-navigation",
+            "Formation navigates a mixed-size building field",
+            1800,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(runtime, units, 22, 18f, 3f, 4, 4);
+                var accepted = placements.Count(result => result.Succeeded);
+                return new ScenarioResult(
+                    arrival.Passed && accepted == placements.Length,
+                    $"accepted={accepted}/{placements.Length}, {arrival.Summary}");
+            });
     }
 
     private static VisualTestSession CreateStopCommand()

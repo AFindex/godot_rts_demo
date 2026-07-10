@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 33 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
+- 36 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering 或 UnitStore 内部状态。
 - 测试可以自动录制 AVI，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512 和 1000 单位。
 
 当前规模：
 
-- 33 个 C# 源文件。
-- 约 8,637 行 C#。
-- 33 个黑盒场景。
-- 覆盖 33 个逻辑场景的规范测试录像。
-- Release 1000 单位 P95：约 10.07ms。
+- 34 个 C# 源文件。
+- 约 9,060 行 C#。
+- 36 个黑盒场景。
+- 覆盖 36 个逻辑场景的规范测试录像。
+- Release 1000 单位 P95：约 11.46ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -34,7 +34,7 @@
 | S2 静态导航 | 原型完成 | Godot NavMesh、路径预算、命令版本隔离、Grid fallback | 路径缓存、后台查询、NavMesh chunk |
 | S3 群体抵达 | Demo 完成 | 唯一槽位、Hungarian 分配、跨命令预留、两单位换槽、局部多单位重匹配、进入方向秩序、主动 Yielding、唯一 Overflow | 生产级 SlotDepth 场、完整碰撞优先级、编队形状保持 |
 | S4 局部群体运动 | 原型完成 | SpatialHash、TTC、候选速度、避让侧记忆 | 更低成本的候选评估、复杂优先级、移动类型交互 |
-| S5 碰撞与约束 | 第一层完成 | 圆碰撞、静态墙约束、动态建筑占用、Small/Medium/Large、按尺寸 Grid/Portal/动态净空 | 放置前连通性检查、多移动层、非矩形 footprint |
+| S5 碰撞与约束 | 运行时闭环完成 | 圆碰撞、动态占用、三档净空、四档建筑、业务放置结果、局部假通道检查 | 数据 Resource、全局 connectivity、多移动层、非矩形 footprint |
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | 未开始 | 无 | AttackMove、攻击槽位、追击、leash、恢复原路线 |
@@ -143,7 +143,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 33 个场景覆盖：
+当前 36 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -155,6 +155,9 @@
 - 80 个混合半径单位在世界角落的终点收敛。
 - Small 使用窄 Portal、Large 选择宽 Portal。
 - 动态建筑 24px 缝隙只允许 Small 通过，Large 有界不可达。
+- 32×32、64×48、112×80、160×120 四档建筑 footprint。
+- 建筑放置边界、静态/动态重叠、单位占用、假窄缝和贴墙封闭规则。
+- 24 单位绕行四种尺寸建筑组成的错位障碍场。
 - 跨命令共享目标槽位。
 - Stop 与 Hold。
 - 混合单位半径和越界目标。
@@ -186,7 +189,7 @@ Observe unit / traffic / recovery / performance
 - 每个场景独立启动 Godot Movie Maker。
 - 每段录像保存 AVI、Godot 日志和 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 33 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 36 个逻辑场景的规范录像。
 - AVI 使用 Git LFS。
 
 注意：当前规范录像来自多个功能里程碑批次，并非全部在同一个 commit 上重新录制。发布正式版本前应执行一次全量重新录制，生成单一时间戳目录。
@@ -197,9 +200,9 @@ Observe unit / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|
-| 256 | 1.18ms | 1.69ms | 4ms | 27B |
-| 512 | 4.02ms | 4.84ms | 12.5ms | 182B |
-| 1000 | 8.12ms | 10.07ms | 16.67ms | 461B |
+| 256 | 1.08ms | 1.43ms | 4ms | 27B |
+| 512 | 3.74ms | 4.74ms | 12.5ms | 182B |
+| 1000 | 8.76ms | 11.46ms | 16.67ms | 461B |
 
 当前热点排序：
 
@@ -254,7 +257,6 @@ TODO：
 
 - NavMesh chunk 局部重烘焙。
 - 非矩形和旋转 footprint。
-- 建筑放置合法性与 clearance 检查。
 - 建筑压住单位时的安全迁移。
 - Portal/Sector 局部连通性更新。
 
@@ -391,11 +393,11 @@ TODO：
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（10.07ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（11.46ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
-### 下一步 C：Clearance 与 Movement Class（第一层完成，继续推进）
+### 下一步 C：Clearance 与 Movement Class（运行时与放置闭环完成）
 
 已完成：
 
@@ -404,8 +406,11 @@ TODO：
 - Grid 三档连通性缓存和动态 revision 失效。
 - Godot NavMesh 候选路径按单位净空复验并回退对应 Grid。
 - 动态建筑窄缝对 Small/Large 给出不同且有界的结果。
+- Small/Medium/Large/Huge 四档建筑 footprint。
+- 业务放置前检查边界、重叠、单位占用和局部假窄缝，并返回稳定结果码。
+- 多尺寸建筑群的实际绕行闭环。
 
-下一层：建筑放置前 connectivity/clearance 合法性检查、UnitMovementProfile Resource 和编辑器多尺寸 Preview。
+下一层：UnitMovementProfile / BuildingFootprint Resource、编辑器多尺寸 Preview，以及跨 Sector 的全局 connectivity 策略。
 
 ### 下一步 D：AttackMove 最小闭环
 

@@ -24,6 +24,7 @@
 - 动态建筑 footprint、16px 占用栅格、navigation revision 和局部路径失效。
 - Godot 静态 NavMesh 路径会经过动态占用验证，必要时使用纯 C# 栅格 A* 绕行。
 - Small/Medium/Large 使用 6/8/12px 导航净空档位；Grid、Portal、Godot 路径复验和动态建筑共享同一尺寸语义。
+- 建筑提供 32×32、64×48、112×80、160×120 四档 footprint；业务放置检查重叠、单位占用与局部假窄缝并返回稳定结果码。
 - 车道偏移会写入每单位路径点，避免出口处被共享中心 waypoint 回拉。
 - 目标槽位分配、空间哈希、候选速度 Steering、TTC、避让侧记忆和三轮碰撞推挤。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
@@ -45,7 +46,7 @@ S：Stop
 H：Hold Position
 D：切换路径、槽位、Portal 和狭口调试显示
 R：重置场景
-B：在鼠标处放置动态建筑
+B：在鼠标处轮换放置 Small/Medium/Large/Huge 动态建筑（业务合法性检查）
 X：移除最近放置的动态建筑
 ```
 
@@ -73,7 +74,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 1000 单位：P95 不超过 16.67ms。
 - 所有规模：当前线程分配不超过 1KB/Tick。
 
-当前机器的 Release 基线约为 1.69ms、4.84ms 和 10.07ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
+当前机器的 Release 基线约为 1.43ms、4.74ms 和 11.46ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。
 
 ## 导航数据资产
 
@@ -107,7 +108,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 33 个黑盒业务场景，并新增 Small/Large Portal 分流与动态建筑窄缝净空验证。场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限、多尺寸导航和 192 单位压力。
+当前包含 36 个黑盒业务场景，并覆盖 Small/Large Portal 分流、动态窄缝、四档建筑、业务放置结果和多尺寸建筑群绕行。其余场景覆盖基础移动、群体终点、动态地图、Portal/狭口、恢复上限和 192 单位压力。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -122,4 +123,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-动态建筑、双向狭口、终点协作收敛、动态失效共享改道和 Godot Resource → 纯 C# 导航快照链路已有可运行版本。Clearance / Movement Class 第一层已完成，下一步是建筑放置前连通性检查、UnitMovementProfile Resource 和编辑器多尺寸 Preview。完整碰撞优先级、自动 Portal/Sector Baker、战斗、联机和确定性回放暂未实现。
+动态建筑、双向狭口、终点协作收敛、动态失效共享改道和 Godot Resource → 纯 C# 导航快照链路已有可运行版本。Clearance / Movement Class 的运行时与业务放置闭环已完成，下一步是 UnitMovementProfile / BuildingFootprint Resource、编辑器多尺寸 Preview 和跨 Sector connectivity。完整碰撞优先级、自动 Portal/Sector Baker、战斗、联机和确定性回放暂未实现。

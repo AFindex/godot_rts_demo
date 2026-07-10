@@ -74,6 +74,22 @@ public sealed class RtsSimulation
         return id;
     }
 
+    public BuildingPlacementResult TryPlaceBuilding(
+        SimRect footprint,
+        BuildingPlacementRules rules)
+    {
+        var validation = BuildingPlacementValidator.Validate(
+            World, Units, footprint, rules);
+        if (!validation.Succeeded)
+        {
+            return validation;
+        }
+
+        var id = PlaceBuilding(footprint);
+        return new BuildingPlacementResult(
+            BuildingPlacementCode.Success, id, -1);
+    }
+
     public bool RemoveBuilding(DynamicFootprintId id)
     {
         if (!World.DynamicOccupancy.Remove(id, out _))

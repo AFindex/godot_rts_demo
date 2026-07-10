@@ -61,6 +61,19 @@ Portal Edge 继续保存实际可通行宽度。只有 `edge.Width >= navigation
 
 动态占用查询已经按请求导航半径扩张 footprint。放置或移除建筑会增加 `NavigationRevision`，三档 Grid 缓存在下一次对应查询时独立重建。
 
+业务放置使用 `TryPlaceBuilding`，并与地图脚本使用的强制 `PlaceBuilding` 分离。当前预设 footprint 为：
+
+| 建筑等级 | 尺寸 |
+|---|---:|
+| Small | 32×32px |
+| Medium | 64×48px |
+| Large | 112×80px |
+| Huge | 160×120px |
+
+业务放置会在写入动态占用前检查：有限且为正的 footprint、世界边界、静态障碍重叠、已有动态建筑重叠、单位占用，以及与世界边界/静态障碍/动态建筑之间是否留下小于指定 Movement Class 的假通道。0 宽贴墙或贴建筑表示明确封闭，允许放置；只有 `0 < gap < required width` 才拒绝。
+
+稳定结果码包括 `InvalidFootprint`、`OutsideWorld`、`StaticObstacleOverlap`、`DynamicFootprintOverlap`、`UnitOverlap` 和 `InsufficientClearance`。
+
 ## 5. 黑盒验收
 
 ### `clearance-portal-choice`
@@ -80,20 +93,32 @@ Portal Edge 继续保存实际可通行宽度。只有 `edge.Width >= navigation
 
 场景只使用 Spawn、Move、PlaceBuilding、Step 和业务状态观察，不读取 Grid、Portal 或 UnitStore 内部实现。
 
+### `building-footprint-sizes`
+
+Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验证实际尺寸和建筑计数。
+
+### `building-placement-rules`
+
+覆盖动态重叠、静态重叠、越界、压住单位、Large 净空不足，以及贴墙明确封闭。所有分支均验证稳定业务结果码。
+
+### `building-size-navigation`
+
+四种尺寸建筑形成错位障碍场，24 个单位全部绕行到达，0 重叠、0 不可达，动态 revision 为 4。
+
 ## 6. 当前性能
 
 | 单位数 | 平均 Tick | P95 | 分配/Tick |
 |---:|---:|---:|---:|
-| 256 | 1.18ms | 1.69ms | 27B |
-| 512 | 4.02ms | 4.84ms | 182B |
-| 1000 | 8.12ms | 10.07ms | 461B |
+| 256 | 1.08ms | 1.43ms | 27B |
+| 512 | 3.74ms | 4.74ms | 182B |
+| 1000 | 8.76ms | 11.46ms | 461B |
 
 ## 7. 后续层
 
 当前完成的是运行时尺寸语义与路径一致性第一层，后续按顺序推进：
 
-1. 建筑放置前的 connectivity/clearance 合法性检查，而不仅是放置后的路径判定。
-2. UnitMovementProfile Resource，把半径、速度、Movement Class 和移动层从代码参数迁移到数据资产。
-3. Editor 中的 Small/Medium/Large 连通性预览和非法窄口提示。
+1. UnitMovementProfile 与 BuildingFootprint Resource，把尺寸、速度、Movement Class 和放置规则迁移到数据资产。
+2. Editor 中的 Small/Medium/Large 连通性预览和非法窄口提示。
+3. 跨 Sector 的全局 connectivity 保持策略；当前放置检查负责局部假通道、重叠和占用。
 4. Ground、Hover、Air 等移动层，以及地形软代价和标签。
 5. 非矩形/旋转 footprint 与局部 NavMesh chunk 更新。

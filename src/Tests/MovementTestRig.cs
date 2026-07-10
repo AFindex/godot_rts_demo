@@ -6,6 +6,40 @@ namespace RtsDemo.Tests;
 public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
 
+public enum TestBuildingFootprintClass : byte
+{
+    Small,
+    Medium,
+    Large,
+    Huge
+}
+
+public enum TestMovementClass : byte
+{
+    Small,
+    Medium,
+    Large
+}
+
+public enum TestBuildingPlacementCode : byte
+{
+    Success,
+    InvalidFootprint,
+    OutsideWorld,
+    StaticObstacleOverlap,
+    DynamicFootprintOverlap,
+    UnitOverlap,
+    InsufficientClearance
+}
+
+public readonly record struct TestBuildingPlacementResult(
+    TestBuildingPlacementCode Code,
+    TestBuildingId BuildingId,
+    Vector2 Size)
+{
+    public bool Succeeded => Code == TestBuildingPlacementCode.Success;
+}
+
 public readonly record struct TestChokeTrafficSnapshot(
     int ActiveDirection,
     bool Draining,
@@ -246,6 +280,23 @@ public sealed class MovementTestRig
         var halfSize = size * 0.5f;
         var id = _simulation.PlaceBuilding(new SimRect(center - halfSize, center + halfSize));
         return new TestBuildingId(id.Value);
+    }
+
+    public TestBuildingPlacementResult TryPlaceBuilding(
+        Vector2 center,
+        TestBuildingFootprintClass footprintClass,
+        TestMovementClass minimumPassageClass)
+    {
+        var backendFootprintClass = (BuildingFootprintClass)footprintClass;
+        var profile = BuildingFootprintProfile.For(backendFootprintClass);
+        var halfSize = profile.Size * 0.5f;
+        var result = _simulation.TryPlaceBuilding(
+            new SimRect(center - halfSize, center + halfSize),
+            new BuildingPlacementRules((MovementClass)minimumPassageClass));
+        return new TestBuildingPlacementResult(
+            (TestBuildingPlacementCode)result.Code,
+            new TestBuildingId(result.FootprintId.Value),
+            profile.Size);
     }
 
     public bool RemoveBuilding(TestBuildingId id) =>
