@@ -1,0 +1,67 @@
+[gd_resource type="Resource" script_class="RtsGameplayProfilesResource" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/UnitMovementProfileResource.cs" id="1_unit"]
+[ext_resource type="Script" path="res://src/Godot/Resources/BuildingFootprintProfileResource.cs" id="2_building"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsGameplayProfilesResource.cs" id="3_catalog"]
+
+[sub_resource type="Resource" id="Unit_scout"]
+script = ExtResource("1_unit")
+DisplayName = "Scout"
+PhysicalRadius = 5.5
+MaximumSpeed = 150.0
+Acceleration = 780.0
+
+[sub_resource type="Resource" id="Unit_marine"]
+script = ExtResource("1_unit")
+Id = 1
+DisplayName = "Marine"
+PhysicalRadius = 7.5
+MaximumSpeed = 128.0
+Acceleration = 720.0
+
+[sub_resource type="Resource" id="Unit_heavy"]
+script = ExtResource("1_unit")
+Id = 2
+DisplayName = "Heavy"
+PhysicalRadius = 10.0
+MaximumSpeed = 105.0
+Acceleration = 600.0
+
+[sub_resource type="Resource" id="Building_pylon"]
+script = ExtResource("2_building")
+DisplayName = "Pylon"
+Size = Vector2(32, 32)
+MinimumPassageClass = 1
+UnitPadding = 2.0
+
+[sub_resource type="Resource" id="Building_barracks"]
+script = ExtResource("2_building")
+Id = 1
+DisplayName = "Barracks"
+FootprintClass = 1
+Size = Vector2(64, 48)
+MinimumPassageClass = 1
+UnitPadding = 2.0
+
+[sub_resource type="Resource" id="Building_factory"]
+script = ExtResource("2_building")
+Id = 2
+DisplayName = "Factory"
+FootprintClass = 2
+Size = Vector2(112, 80)
+MinimumPassageClass = 1
+UnitPadding = 2.0
+
+[sub_resource type="Resource" id="Building_command_center"]
+script = ExtResource("2_building")
+Id = 3
+DisplayName = "CommandCenter"
+FootprintClass = 3
+Size = Vector2(160, 120)
+MinimumPassageClass = 1
+UnitPadding = 2.0
+
+[resource]
+script = ExtResource("3_catalog")
+UnitProfiles = Array[ExtResource("1_unit")]([SubResource("Unit_scout"), SubResource("Unit_marine"), SubResource("Unit_heavy")])
+BuildingProfiles = Array[ExtResource("2_building")]([SubResource("Building_pylon"), SubResource("Building_barracks"), SubResource("Building_factory"), SubResource("Building_command_center")])

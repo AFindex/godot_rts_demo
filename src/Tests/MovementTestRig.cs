@@ -236,6 +236,11 @@ public sealed class MovementTestRig
         float acceleration = 720f) =>
         new(_simulation.AddUnit(position, radius, maximumSpeed, acceleration));
 
+    public TestUnitId Spawn(
+        Vector2 position,
+        UnitMovementProfileSnapshot profile) =>
+        new(_simulation.AddUnit(position, profile));
+
     public TestUnitId[] SpawnGrid(
         Vector2 origin,
         int rows,
@@ -293,6 +298,17 @@ public sealed class MovementTestRig
         var result = _simulation.TryPlaceBuilding(
             new SimRect(center - halfSize, center + halfSize),
             new BuildingPlacementRules((MovementClass)minimumPassageClass));
+        return new TestBuildingPlacementResult(
+            (TestBuildingPlacementCode)result.Code,
+            new TestBuildingId(result.FootprintId.Value),
+            profile.Size);
+    }
+
+    public TestBuildingPlacementResult TryPlaceBuilding(
+        Vector2 center,
+        BuildingFootprintProfileSnapshot profile)
+    {
+        var result = _simulation.TryPlaceBuilding(center, profile);
         return new TestBuildingPlacementResult(
             (TestBuildingPlacementCode)result.Code,
             new TestBuildingId(result.FootprintId.Value),

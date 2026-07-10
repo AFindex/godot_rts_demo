@@ -11,9 +11,14 @@ public partial class RtsDemo : Node2D
 {
     private const string DemoNavigationResourcePath =
         "res://data/demo_navigation_map.tres";
+    private const string DemoGameplayProfilesResourcePath =
+        "res://data/demo_gameplay_profiles.tres";
 
     [Export]
     public RtsNavigationMapResource? NavigationMapAsset { get; set; }
+
+    [Export]
+    public RtsGameplayProfilesResource? GameplayProfilesAsset { get; set; }
     private readonly HashSet<int> _selectedUnits = new();
     private StaticWorld? _world;
     private GodotPathProvider? _pathProvider;
@@ -35,6 +40,7 @@ public partial class RtsDemo : Node2D
     private readonly Stack<DynamicFootprintId> _demoBuildings = new();
     private int _nextDemoBuildingClass;
     private NavigationMapSnapshot? _navigationSnapshot;
+    private GameplayProfileCatalogSnapshot? _gameplayProfiles;
 
     public override async void _Ready()
     {
@@ -77,15 +83,23 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--validate-gameplay-profiles"))
+        {
+            var valid = TryLoadGameplayProfiles();
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--self-test"))
         {
-            if (!TryLoadNavigationSnapshot())
+            if (!TryLoadNavigationSnapshot() || !TryLoadGameplayProfiles())
             {
                 GetTree().Quit(1);
                 return;
             }
 
-            var result = SimulationSelfTest.Run(_navigationSnapshot);
+            var result = SimulationSelfTest.Run(
+                _navigationSnapshot, _gameplayProfiles);
             GD.Print($"RTS_SELF_TEST {(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -94,7 +108,7 @@ public partial class RtsDemo : Node2D
         var visualTestId = ReadArgument(userArguments, "--visual-test");
         if (visualTestId is not null)
         {
-            if (!TryLoadNavigationSnapshot())
+            if (!TryLoadNavigationSnapshot() || !TryLoadGameplayProfiles())
             {
                 GetTree().Quit(1);
                 return;
@@ -104,7 +118,8 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        if (!TryLoadNavigationSnapshot() || _navigationSnapshot is null)
+        if (!TryLoadNavigationSnapshot() || _navigationSnapshot is null ||
+            !TryLoadGameplayProfiles() || _gameplayProfiles is null)
         {
             GetTree().Quit(1);
             return;
@@ -691,7 +706,8 @@ public partial class RtsDemo : Node2D
     {
         try
         {
-            _visualTest = VisualTestCatalog.Create(caseId, _navigationSnapshot);
+            _visualTest = VisualTestCatalog.Create(
+                caseId, _navigationSnapshot, _gameplayProfiles);
         }
         catch (ArgumentException exception)
         {
@@ -774,6 +790,45 @@ public partial class RtsDemo : Node2D
         return false;
     }
 
+    private bool TryLoadGameplayProfiles()
+    {
+        if (_gameplayProfiles is not null)
+        {
+            return true;
+        }
+
+        var resourcePath = GameplayProfilesAsset?.ResourcePath ??
+                           DemoGameplayProfilesResourcePath;
+        var converted = GameplayProfilesAsset is not null
+            ? GameplayProfileResourceConverter.TryConvert(
+                GameplayProfilesAsset,
+                out var snapshot,
+                out var validation)
+            : GameplayProfileResourceConverter.TryLoadSnapshot(
+                DemoGameplayProfilesResourcePath,
+                out snapshot,
+                out validation);
+        if (converted && snapshot is not null)
+        {
+            _gameplayProfiles = snapshot;
+            GD.Print(
+                $"RTS_GAMEPLAY_PROFILES PASS path={resourcePath} " +
+                $"format={snapshot.FormatVersion} hash={snapshot.StableHashText} " +
+                $"units={snapshot.UnitProfiles.Length} " +
+                $"buildings={snapshot.BuildingProfiles.Length}");
+            return true;
+        }
+
+        foreach (var issue in validation.Issues)
+        {
+            GD.PushError(
+                $"RTS_GAMEPLAY_PROFILES FAIL code={issue.Code} " +
+                $"index={issue.ElementIndex} message={issue.Message}");
+        }
+
+        return false;
+    }
+
     private void GenerateDemoNavigationResource()
     {
         var snapshot = DemoMapDefinition.CreateSnapshot();
@@ -796,7 +851,7 @@ public partial class RtsDemo : Node2D
 
     private void SpawnDemoUnits()
     {
-        if (_simulation is null)
+        if (_simulation is null || _gameplayProfiles is null)
         {
             return;
         }
@@ -806,7 +861,9 @@ public partial class RtsDemo : Node2D
             for (var column = 0; column < 12; column++)
             {
                 var unit = _simulation.AddUnit(
-                    new NVector2(105f + column * 20f, 160f + row * 20f));
+                    new NVector2(105f + column * 20f, 160f + row * 20f),
+                    _gameplayProfiles.Unit((row + column) %
+                                           _gameplayProfiles.UnitProfiles.Length));
                 _selectedUnits.Add(unit);
             }
         }
@@ -816,7 +873,9 @@ public partial class RtsDemo : Node2D
             for (var column = 0; column < 8; column++)
             {
                 _simulation.AddUnit(
-                    new NVector2(1030f + column * 20f, 510f + row * 20f));
+                    new NVector2(1030f + column * 20f, 510f + row * 20f),
+                    _gameplayProfiles.Unit((row + column) %
+                                           _gameplayProfiles.UnitProfiles.Length));
             }
         }
     }
@@ -841,33 +900,30 @@ public partial class RtsDemo : Node2D
 
     private void PlaceDemoBuilding()
     {
-        if (_world is null || _simulation is null || _visualTest is not null)
+        if (_world is null || _simulation is null || _gameplayProfiles is null ||
+            _visualTest is not null)
         {
             return;
         }
 
-        var footprintClass = (BuildingFootprintClass)(
-            _nextDemoBuildingClass %
-            ((int)BuildingFootprintClass.Huge + 1));
-        var profile = BuildingFootprintProfile.For(footprintClass);
+        var profile = _gameplayProfiles.Building(
+            _nextDemoBuildingClass % _gameplayProfiles.BuildingProfiles.Length);
         var size = profile.Size;
         var halfSize = size * 0.5f;
         var allowedCenters = _world.Bounds.Inset(MathF.Max(halfSize.X, halfSize.Y));
         var center = allowedCenters.Clamp(
             GodotPathProvider.ToNumerics(GetGlobalMousePosition()));
-        var result = _simulation.TryPlaceBuilding(
-            new SimRect(center - halfSize, center + halfSize),
-            new BuildingPlacementRules(MovementClass.Medium));
+        var result = _simulation.TryPlaceBuilding(center, profile);
         if (!result.Succeeded)
         {
-            GD.Print($"RTS_BUILDING_REJECT class={footprintClass} " +
+            GD.Print($"RTS_BUILDING_REJECT profile={profile.Name} " +
                      $"code={result.Code} conflict={result.ConflictId}");
             return;
         }
 
         _demoBuildings.Push(result.FootprintId);
         _nextDemoBuildingClass++;
-        GD.Print($"RTS_BUILDING_PLACED class={footprintClass} " +
+        GD.Print($"RTS_BUILDING_PLACED profile={profile.Name} " +
                  $"size={size} id={result.FootprintId.Value}");
         QueueRedraw();
     }

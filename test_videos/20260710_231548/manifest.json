@@ -1,0 +1,57 @@
+﻿{
+    "created_at":  "2026-07-10T23:16:04.3361934+08:00",
+    "fps":  30,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "gameplay-profile-resource-runtime"
+                        ],
+    "available_cases":  [
+                            "single-unit",
+                            "open-field",
+                            "dense-formation",
+                            "opposing-streams",
+                            "crossing-streams",
+                            "command-replace",
+                            "rapid-reissue",
+                            "destination-convergence",
+                            "destination-outer-ring",
+                            "destination-overtake",
+                            "destination-corner-mixed",
+                            "clearance-portal-choice",
+                            "clearance-dynamic-gap",
+                            "building-footprint-sizes",
+                            "building-placement-rules",
+                            "building-size-navigation",
+                            "gameplay-profile-resource-runtime",
+                            "shared-target-reservations",
+                            "stop-command",
+                            "hold-command",
+                            "mixed-radii",
+                            "boundary-target",
+                            "dynamic-local-invalidation",
+                            "dynamic-building-detour",
+                            "dynamic-building-remove",
+                            "dynamic-portal-reroute",
+                            "dynamic-group-reroute",
+                            "navigation-resource-runtime",
+                            "portal-choke",
+                            "reverse-choke",
+                            "bidirectional-choke-balanced",
+                            "bidirectional-choke-asymmetric",
+                            "bidirectional-choke-waves",
+                            "hold-blocked-choke",
+                            "temporary-blocker-recovery",
+                            "unreachable-recovery-limit",
+                            "large-group-192"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "gameplay-profile-resource-runtime",
+                      "file":  "gameplay-profile-resource-runtime.avi",
+                      "log":  "gameplay-profile-resource-runtime.log",
+                      "bytes":  33470610,
+                      "exit_code":  0,
+                      "result":  "RTS_VISUAL_TEST_PASS gameplay-profile-resource-runtime: ticks=1200, format=1, hash=5A0A6FD9EA3985BF, radii=True, buildings=True, arrived=3/3, overlap=0.00, finite=True, inside=True, revision=4, buildings=4, moving=0, unreachable=0, maxDistance=3.4"
+                  }
+              ]
+}

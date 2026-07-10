@@ -6,20 +6,26 @@ public readonly record struct SelfTestResult(bool Passed, string Summary);
 
 public static class SimulationSelfTest
 {
-    public static SelfTestResult Run(NavigationMapSnapshot? navigationMap = null)
+    public static SelfTestResult Run(
+        NavigationMapSnapshot? navigationMap = null,
+        GameplayProfileCatalogSnapshot? gameplayProfiles = null)
     {
         try
         {
             var dataResult = NavigationMapSelfTest.Run();
-            var passed = dataResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 1)
+            var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
+            var passed = dataResult.Passed && profileResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 2)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
-                $"({dataResult.Summary})"
+                $"({dataResult.Summary})",
+                $"gameplay-profiles={(profileResult.Passed ? "PASS" : "FAIL")}" +
+                $"({profileResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {
-                var session = VisualTestCatalog.Create(caseId, navigationMap);
+                var session = VisualTestCatalog.Create(
+                    caseId, navigationMap, gameplayProfiles);
                 while (session.Rig.Tick < session.DurationTicks)
                 {
                     session.Step();

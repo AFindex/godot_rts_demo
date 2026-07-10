@@ -109,16 +109,16 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 | 单位数 | 平均 Tick | P95 | 分配/Tick |
 |---:|---:|---:|---:|
-| 256 | 1.08ms | 1.43ms | 27B |
-| 512 | 3.74ms | 4.74ms | 182B |
-| 1000 | 8.76ms | 11.46ms | 461B |
+| 256 | 1.19ms | 1.55ms | 27B |
+| 512 | 4.44ms | 5.81ms | 182B |
+| 1000 | 7.97ms | 9.52ms | 461B |
 
 ## 7. 后续层
 
 当前完成的是运行时尺寸语义与路径一致性第一层，后续按顺序推进：
 
-1. UnitMovementProfile 与 BuildingFootprint Resource，把尺寸、速度、Movement Class 和放置规则迁移到数据资产。
-2. Editor 中的 Small/Medium/Large 连通性预览和非法窄口提示。
-3. 跨 Sector 的全局 connectivity 保持策略；当前放置检查负责局部假通道、重叠和占用。
+1. Editor 中的 Small/Medium/Large 连通性预览、建筑 footprint 和非法窄口提示。
+2. 跨 Sector 的全局 connectivity 保持策略；当前放置检查负责局部假通道、重叠和占用。
+3. Gameplay Profile Resource 格式迁移和热重载。
 4. Ground、Hover、Air 等移动层，以及地形软代价和标签。
 5. 非矩形/旋转 footprint 与局部 NavMesh chunk 更新。

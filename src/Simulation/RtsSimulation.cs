@@ -90,6 +90,18 @@ public sealed class RtsSimulation
             BuildingPlacementCode.Success, id, -1);
     }
 
+    public BuildingPlacementResult TryPlaceBuilding(
+        Vector2 center,
+        BuildingFootprintProfileSnapshot profile)
+    {
+        var halfSize = profile.Size * 0.5f;
+        return TryPlaceBuilding(
+            new SimRect(center - halfSize, center + halfSize),
+            new BuildingPlacementRules(
+                profile.MinimumPassageClass,
+                profile.UnitPadding));
+    }
+
     public bool RemoveBuilding(DynamicFootprintId id)
     {
         if (!World.DynamicOccupancy.Remove(id, out _))
@@ -114,6 +126,15 @@ public sealed class RtsSimulation
         float maxSpeed = 128f,
         float acceleration = 720f) =>
         Units.Add(position, radius, maxSpeed, acceleration);
+
+    public int AddUnit(
+        Vector2 position,
+        UnitMovementProfileSnapshot profile) =>
+        AddUnit(
+            position,
+            profile.PhysicalRadius,
+            profile.MaximumSpeed,
+            profile.Acceleration);
 
     public void IssueMove(ReadOnlySpan<int> unitIndices, Vector2 target)
     {

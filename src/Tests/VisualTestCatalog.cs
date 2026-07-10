@@ -27,6 +27,7 @@ public static class VisualTestCatalog
         "building-footprint-sizes",
         "building-placement-rules",
         "building-size-navigation",
+        "gameplay-profile-resource-runtime",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -51,7 +52,8 @@ public static class VisualTestCatalog
 
     public static VisualTestSession Create(
         string caseId,
-        NavigationMapSnapshot? navigationMap = null) => caseId switch
+        NavigationMapSnapshot? navigationMap = null,
+        GameplayProfileCatalogSnapshot? gameplayProfiles = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "open-field" => CreateOpenField(),
@@ -69,6 +71,8 @@ public static class VisualTestCatalog
         "building-footprint-sizes" => CreateBuildingFootprintSizes(),
         "building-placement-rules" => CreateBuildingPlacementRules(),
         "building-size-navigation" => CreateBuildingSizeNavigation(),
+        "gameplay-profile-resource-runtime" =>
+            CreateGameplayProfileResourceRuntime(gameplayProfiles),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -558,6 +562,61 @@ public static class VisualTestCatalog
                 return new ScenarioResult(
                     arrival.Passed && accepted == placements.Length,
                     $"accepted={accepted}/{placements.Length}, {arrival.Summary}");
+            });
+    }
+
+    private static VisualTestSession CreateGameplayProfileResourceRuntime(
+        GameplayProfileCatalogSnapshot? profiles)
+    {
+        profiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 16);
+        var units = new TestUnitId[profiles.UnitProfiles.Length];
+        for (var index = 0; index < units.Length; index++)
+        {
+            units[index] = rig.Spawn(
+                new Vector2(90f, 130f + index * 95f),
+                profiles.Unit(index));
+            rig.Move(
+                [units[index]],
+                new Vector2(1080f, 130f + index * 95f));
+        }
+
+        var buildingResults = new TestBuildingPlacementResult[
+            profiles.BuildingProfiles.Length];
+        for (var index = 0; index < buildingResults.Length; index++)
+        {
+            buildingResults[index] = rig.TryPlaceBuilding(
+                new Vector2(240f + index * 250f, 570f),
+                profiles.Building(index));
+        }
+
+        return new VisualTestSession(
+            "gameplay-profile-resource-runtime",
+            "Godot gameplay profile Resource drives pure C# runtime data",
+            1200,
+            rig,
+            units,
+            runtime =>
+            {
+                var arrival = EvaluateArrival(
+                    runtime, units, units.Length, 12f, 1f, 4, 4);
+                var snapshots = runtime.Observe(units);
+                var radiiMatch = true;
+                for (var index = 0; index < snapshots.Length; index++)
+                {
+                    radiiMatch &= MathF.Abs(
+                        snapshots[index].Radius -
+                        profiles.Unit(index).PhysicalRadius) <= 0.001f;
+                }
+
+                var buildingsAccepted = buildingResults.All(
+                    result => result.Succeeded);
+                return new ScenarioResult(
+                    arrival.Passed && radiiMatch && buildingsAccepted &&
+                    profiles.StableHash != 0UL,
+                    $"format={profiles.FormatVersion}, hash={profiles.StableHashText}, " +
+                    $"radii={radiiMatch}, buildings={buildingsAccepted}, " +
+                    arrival.Summary);
             });
     }
 
