@@ -1,6 +1,6 @@
 # 命令队列、Control Group 与 SmartCommand
 
-更新日期：2026-07-11
+更新日期：2026-07-12
 
 ## 语义来源与当前边界
 
@@ -11,7 +11,7 @@ Control Group 只保存选择集合，不持有共享命令。命令始终进入
 ## 每单位命令队列
 
 - `UnitCommandQueueStore` 使用固定 SoA 环形队列，每单位最多 16 条待执行命令。
-- 支持 Move、AttackMove、AttackTarget、Stop 和 Hold 的活动命令记录。
+- 支持 Move、AttackMove、AttackTarget、AttackBuilding、Stop 和 Hold 的活动命令记录。
 - Shift+SmartCommand 追加；不带 Shift 的命令清空全部待执行命令并立即替换。
 - Stop/Hold 当前作为终止命令：立即清空队列，不参与 Shift 追加。
 - 队列满时拒绝新命令并累加 overflow，不分配新容器、不覆盖旧命令。
@@ -51,10 +51,16 @@ Control Group 只保存选择集合，不持有共享命令。命令始终进入
 地面             → Move
 友军单位位置     → Move
 敌军单位         → AttackTarget
+资源点           → 工人 Gather；非工人 Move
+等待施工者的己方建筑 → 最低 ID 合格工人 Resume；其余单位 Move
 A 修饰的任意目标 → AttackMove
 ```
 
 AttackTarget 使用现有战斗槽、追击与攻击结算，但锁定目标死亡后停止，不像 AttackMove 那样自动重选敌或恢复路线。
+
+资源与友方建筑上下文由纯 C# 模拟层拆分混合选择，不由 Godot UI 猜测单位能力。拆分前先验证全部工人采集条件，避免一组选中单位只执行一半；续建按稳定 Unit ID 选择唯一施工者。Gather/Resume 会清空对应工人的旧单位队列和旧经济工作，连续运行与 Replay Package 重放走同一正式入口。
+
+当前固定单位队列只保存移动/战斗 `UnitOrder`，尚不能保存未来 Tick 才解析的经济/施工意图。Shift+资源或 Shift+待续建建筑因此明确返回 `QueuedContextCommandUnsupported`，不会静默改成 Move、立即执行或产生部分副作用。跨域任务队列需要独立版本化格式后再开放。
 
 Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；敌军锁定攻击和 AttackMove 使用红色反馈。
 
@@ -75,6 +81,7 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `queued-capacity-limit`：16/16 待执行，额外两条得到 2 次显式 overflow。
 - `control-group-recall`：Ctrl 覆盖 4 人、Shift 添加 2 人、召回 6 人并全部到达。
 - `smart-command-sequence`：友军位置 Move → 敌军 AttackTarget → 地面 Move，目标死亡且两个 Shift 命令完成。
+- `smart-command-gameplay-context`：乱序混合选择右键矿点后两名工人采集、Marine 移动；右键待续建建筑稳定选择最低 ID 工人，Shift 上下文明确拒绝，Package 的 2 条经济、2 条施工、3 条单位命令重放后 Hash 一致。
 - `operation-selection-camera`：稳定点选、可见同类型双击、友军框选、光标锚定缩放、边缘滚动和编组双击定位全部通过。
 - `minimap-interaction`：世界/面板坐标往返、视口框、定位意图、SmartCommand 意图和边界外拒绝全部通过，并录制真实 Minimap Control。
 

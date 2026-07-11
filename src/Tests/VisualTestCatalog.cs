@@ -26,6 +26,7 @@ public static class VisualTestCatalog
         "queued-capacity-limit",
         "control-group-recall",
         "smart-command-sequence",
+        "smart-command-gameplay-context",
         "operation-selection-camera",
         "minimap-interaction",
         "command-log-replay",
@@ -122,6 +123,8 @@ public static class VisualTestCatalog
         "queued-capacity-limit" => CreateQueuedCapacityLimit(),
         "control-group-recall" => CreateControlGroupRecall(),
         "smart-command-sequence" => CreateSmartCommandSequence(),
+        "smart-command-gameplay-context" => CreateSmartCommandGameplayContext(
+            navigationMap, gameplayProfiles, clearanceBake),
         "operation-selection-camera" => CreateOperationSelectionCamera(),
         "minimap-interaction" => CreateMinimapInteraction(),
         "command-log-replay" => CreateCommandLogReplay(),
@@ -787,6 +790,103 @@ public static class VisualTestCatalog
                     $"position={attackerSnapshot.Position.X:F1},{attackerSnapshot.Position.Y:F1}, " +
                     $"completed={orders.CompletedQueuedOrders}");
             });
+    }
+
+    private static VisualTestSession CreateSmartCommandGameplayContext(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1000, 0, 15, 3);
+        var mineral = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(330f, 380f), 2000, 5, 0.35f, 2);
+        rig.AddResourceDropOff(1, new Vector2(230f, 380f));
+        var firstWorker = rig.SpawnWorker(new Vector2(150f, 210f), 1);
+        var secondWorker = rig.SpawnWorker(new Vector2(210f, 250f), 1);
+        var marine = rig.SpawnCombat(new Vector2(190f, 330f), 1);
+        rig.StartReplayPackageRecording();
+
+        var supply = default(TestConstructionResult);
+        var gatherResult = TestPlayerOrderCommandCode.InvalidTarget;
+        var queuedResult = TestPlayerOrderCommandCode.InvalidTarget;
+        var resumeResult = TestPlayerOrderCommandCode.InvalidTarget;
+        var interrupted = false;
+        var resourceSplitObserved = false;
+        return new VisualTestSession(
+            "smart-command-gameplay-context",
+            "Business SmartCommand splits mixed selections into gather, resume and move intents",
+            600,
+            rig,
+            [firstWorker, secondWorker, marine],
+            runtime =>
+            {
+                var building = runtime.ObserveGameplayBuilding(supply.BuildingId);
+                var first = runtime.ObserveWorkerEconomy(firstWorker);
+                var second = runtime.ObserveWorkerEconomy(secondWorker);
+                var marineState = runtime.Observe(marine);
+                var package = runtime.CaptureReplayPackage();
+                var replay = runtime.ReplayPackage(package, runtime.Tick);
+                var exact = replay.FinalHash == runtime.StateHash;
+                var workersResolved = first.State == TestWorkerEconomyState.Idle &&
+                                      second.State == TestWorkerEconomyState.Idle;
+                var marineMoved = Vector2.Distance(
+                    marineState.Position, new Vector2(400f, 260f)) < 45f;
+                var passed = supply.Succeeded && interrupted &&
+                             gatherResult == TestPlayerOrderCommandCode.Success &&
+                             queuedResult == TestPlayerOrderCommandCode.QueuedContextCommandUnsupported &&
+                             resumeResult == TestPlayerOrderCommandCode.Success &&
+                             building.State == TestBuildingLifecycleState.Completed &&
+                             building.BuilderUnit == firstWorker &&
+                             resourceSplitObserved && workersResolved && marineMoved && exact &&
+                             package.EconomyCommandCount == 2 &&
+                             package.ConstructionCommandCount == 2;
+                return new ScenarioResult(
+                    passed,
+                    $"smart={gatherResult}/{queuedResult}/{resumeResult}, " +
+                    $"building={building.State}/builder{building.BuilderUnit.Value}, " +
+                    $"split={resourceSplitObserved}, workers={first.State}/{second.State}, " +
+                    $"marine={marineState.Position.X:F0},{marineState.Position.Y:F0}, " +
+                    $"commands=e{package.EconomyCommandCount}/b{package.ConstructionCommandCount}/" +
+                    $"u{package.UnitCommandCount}, replay={exact}");
+            })
+            .At(1, "Place a real gameplay building", runtime =>
+                supply = runtime.Build(
+                    1, firstWorker,
+                    DemoBuildingTypes.SupplyDepot with { BuildSeconds = 4f },
+                    new Vector2(400f, 260f)))
+            .At(30, "Player Move interrupts the active builder", runtime =>
+            {
+                runtime.PlayerMove(1, [firstWorker], new Vector2(300f, 420f));
+                interrupted = runtime.ObserveGameplayBuilding(supply.BuildingId).State ==
+                              TestBuildingLifecycleState.WaitingForBuilder;
+            })
+            .At(45, "Right-click mineral: workers gather, marine moves", runtime =>
+                gatherResult = runtime.PlayerSmartResource(
+                    1, [firstWorker, secondWorker, marine], mineral))
+            .At(90, "Queued cross-domain context is explicitly rejected", runtime =>
+                queuedResult = runtime.PlayerSmartResource(
+                    1, [secondWorker], mineral, queued: true))
+            .At(120, "Observe mixed-selection context split", runtime =>
+            {
+                var first = runtime.ObserveWorkerEconomy(firstWorker);
+                var second = runtime.ObserveWorkerEconomy(secondWorker);
+                resourceSplitObserved =
+                    first.State is not TestWorkerEconomyState.None and
+                        not TestWorkerEconomyState.Idle &&
+                    second.State is not TestWorkerEconomyState.None and
+                        not TestWorkerEconomyState.Idle &&
+                    Vector2.Distance(
+                        runtime.Observe(marine).Position,
+                        new Vector2(330f, 380f)) < 45f;
+            })
+            .At(150, "Unordered mixed selection deterministically resumes lowest worker", runtime =>
+                resumeResult = runtime.PlayerSmartFriendlyBuilding(
+                    1, [secondWorker, marine, firstWorker], supply.BuildingId));
     }
 
     private static VisualTestSession CreateOperationSelectionCamera()

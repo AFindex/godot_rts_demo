@@ -1123,14 +1123,30 @@ public partial class RtsDemo : Node2D
                 if (!building.IsTerminal &&
                     (_playerView is null ||
                      _visibleBuildingIds.Contains(building.Id.Value)) &&
-                    building.Bounds.Contains(position) &&
-                    _simulation.Construction.IsEnemyTarget(
-                        building.Id, _simulation.Combat.Teams[selectedUnit]))
+                    building.Bounds.Contains(position))
                 {
+                    var ownBuilding = building.PlayerId ==
+                                      _simulation.Combat.Teams[selectedUnit];
                     return new SmartCommandTarget(
-                        SmartCommandTargetKind.EnemyBuilding,
+                        ownBuilding
+                            ? SmartCommandTargetKind.FriendlyBuilding
+                            : SmartCommandTargetKind.EnemyBuilding,
                         (building.Bounds.Min + building.Bounds.Max) * 0.5f,
                         Building: building.Id.Value);
+                }
+            }
+            if (_playerView is not null)
+            {
+                foreach (var resource in _playerView.Resources)
+                {
+                    if (NVector2.DistanceSquared(position, resource.Position) <=
+                        26f * 26f)
+                    {
+                        return new SmartCommandTarget(
+                            SmartCommandTargetKind.ResourceNode,
+                            resource.Position,
+                            ResourceNode: resource.NodeId.Value);
+                    }
                 }
             }
             return new SmartCommandTarget(SmartCommandTargetKind.Ground, position);

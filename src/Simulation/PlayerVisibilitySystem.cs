@@ -28,7 +28,9 @@ public enum PlayerOrderCommandCode : byte
     TargetNotVisible,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    QueuedContextCommandUnsupported,
+    ContextActionUnavailable
 }
 
 public readonly record struct PlayerOrderCommandResult(

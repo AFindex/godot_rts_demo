@@ -179,7 +179,8 @@ public readonly record struct TestGameplayBuildingSnapshot(
     float Progress,
     float Health,
     float MaximumHealth,
-    TestResourceNodeId RefineryNode);
+    TestResourceNodeId RefineryNode,
+    TestUnitId BuilderUnit);
 
 public enum TestEconomyResourceKind : byte
 {
@@ -262,7 +263,9 @@ public enum TestPlayerOrderCommandCode : byte
     TargetNotVisible,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    QueuedContextCommandUnsupported,
+    ContextActionUnavailable
 }
 
 public readonly record struct TestPlayerResourceView(
@@ -1324,6 +1327,43 @@ public sealed partial class MovementTestRig
             queued).Code;
     }
 
+    public TestPlayerOrderCommandCode PlayerSmartResource(
+        int playerId,
+        IReadOnlyList<TestUnitId> units,
+        TestResourceNodeId resource,
+        bool queued = false)
+    {
+        var snapshot = ObserveResourceNode(resource);
+        return (TestPlayerOrderCommandCode)_simulation.IssuePlayerSmartCommand(
+            playerId,
+            units.Select(value => value.Value).ToArray(),
+            new SmartCommandTarget(
+                SmartCommandTargetKind.ResourceNode,
+                snapshot.Position,
+                ResourceNode: resource.Value),
+            attackMoveModifier: false,
+            queued).Code;
+    }
+
+    public TestPlayerOrderCommandCode PlayerSmartFriendlyBuilding(
+        int playerId,
+        IReadOnlyList<TestUnitId> units,
+        TestGameplayBuildingId building,
+        bool queued = false)
+    {
+        var snapshot = _simulation.Construction.Observe(
+            new GameplayBuildingId(building.Value));
+        return (TestPlayerOrderCommandCode)_simulation.IssuePlayerSmartCommand(
+            playerId,
+            units.Select(value => value.Value).ToArray(),
+            new SmartCommandTarget(
+                SmartCommandTargetKind.FriendlyBuilding,
+                (snapshot.Bounds.Min + snapshot.Bounds.Max) * 0.5f,
+                Building: building.Value),
+            attackMoveModifier: false,
+            queued).Code;
+    }
+
     public TestEconomyBaseSnapshot[] ObserveEconomyBases(int playerId) =>
         _simulation.Economy.CreateBaseOverview(playerId, _simulation.Units.Count)
             .Select(value => new TestEconomyBaseSnapshot(
@@ -1413,7 +1453,8 @@ public sealed partial class MovementTestRig
             value.Progress,
             value.Health,
             value.MaximumHealth,
-            new TestResourceNodeId(value.RefineryNode.Value));
+            new TestResourceNodeId(value.RefineryNode.Value),
+            new TestUnitId(value.BuilderUnit));
     }
 
     public int CountPlayerBuildings(

@@ -381,6 +381,18 @@ public sealed class ConstructionSystem
         return true;
     }
 
+    public bool CanResume(
+        GameplayBuildingId buildingId,
+        int playerId,
+        int builderUnit,
+        EconomySystem economy,
+        UnitStore units) =>
+        TryGet(buildingId, out var building) &&
+        building.PlayerId == playerId &&
+        building.State == BuildingLifecycleState.WaitingForBuilder &&
+        (uint)builderUnit < (uint)units.Count && units.Alive[builderUnit] &&
+        economy.IsWorkerOwnedBy(builderUnit, playerId);
+
     public bool Cancel(
         GameplayBuildingId id,
         int playerId,

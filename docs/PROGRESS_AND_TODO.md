@@ -1,6 +1,6 @@
 # Godot RTS 移动系统：进度回顾与剩余 TODO
 
-更新日期：2026-07-11
+更新日期：2026-07-12
 
 这份文档是当前唯一的实施状态入口。它对照最初的 S0～S10 技术路线，区分已经形成可运行闭环的部分、只有原型的部分和尚未开始的部分。
 
@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 78 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 84 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
-- 85 个 C# 源文件。
-- 约 29,000 行 C#（按 `src/**/*.cs` 统计）。
-- 78 个黑盒场景。
-- 覆盖 78 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 8.26ms。
+- 117 个 C# 源文件。
+- 约 36,600 行 C#（按 `src/**/*.cs` 统计）。
+- 84 个黑盒场景。
+- 110 段 AV1/WebM 规范录像，覆盖全部 84 个当前逻辑场景。
+- Release 1000 单位移动 P95：约 8.33ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -38,10 +38,10 @@
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | Demo 闭环完成 | AttackMove、近战接触槽、远程攻击环、外圈 staging、Stop/Hold 索敌、多人重选敌、死亡/leash/路线恢复 | 后置的弹道、移动射击、动画事件、复杂目标权重和推挤优先级 |
-| 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
+| 操作层 | 玩法上下文第一层完成 | Shift 单位队列、Control Group、资源/施工 SmartCommand、选择、相机、解耦 Minimap | 跨域 Shift 任务队列、Alt 编组、混合子组、命令卡和 UI 皮肤 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | E2a 完成 | 双资源经济、五类建筑、生产/Rally、建筑前置、正式研究等级/互斥、Package/Hot v8、Hash v9 | Technology Resource、扩张、胜负与脚本 AI |
+| S11 实际 RTS 玩法 | I1 完成 | 双资源、五类建筑、生产/Rally、科技、扩张、视野/权限、胜负、模块化双 AI、资源/施工上下文命令、Package/Hot v11、Hash v12 | 跨域 Shift 任务队列，之后由明确玩法缺口驱动 |
 
 ## 3. 已完成的运行时闭环
 
@@ -373,7 +373,7 @@ TODO：
 
 后续 TODO：
 
-- 资源和建筑右键语义。
+- 跨经济/施工域的 Shift 任务队列；需要先定义版本化延迟意图格式。
 - Alt 移出/窃取编组和混合选择子组。
 - 命令卡与最终 UI 皮肤；仅由实际玩法驱动。
 
@@ -436,11 +436,7 @@ S11-B 已完成：
 - 热快照 v2 保存活跃采集状态，Checkpoint 可精确重演经济命令。
 - 900 Tick 连续运行、Tick 300 checkpoint 与 Tick 240 直接热恢复最终状态一致。
 
-下一步：
-
-- S11-C：双资源成本、建造时间、施工策略、取消退款、Refinery 绑定。
-- S11-D：单位生产队列、人口预留、Rally 和出口阻塞恢复。
-- S11-E：科技前置、扩张、玩家失败、胜负条件和脚本 AI。
+S11-C～H 和 I1 均已完成；详细逐段状态见本文第 7 节。下一项只接受明确玩法缺口，不再沿旧列表重复实现。
 
 详细路线见 `docs/ECONOMY_AND_PRODUCTION.md`。
 
@@ -463,7 +459,6 @@ S11-B 已完成：
 
 TODO：
 
-- 建造与生产尚未实现，因此 Build/Cancel、Train/Rally 还没有可持久化的正式业务实体。
 - 服务端权威、Lockstep 或混合方案决策。
 - 客户端表现插值与模拟状态分离。
 
@@ -911,6 +906,17 @@ H1 当时限定的下一段为 S11-H2：AI 配置 Resource、双 AI 错峰自对
 - 全库录像验证通过 109 个视频、57 个 manifest、108 个场景引用，编码均为 AV1。
 
 S11-H 已收口。后续不继续无证据优化 AI 微操；转入实际玩法闭环剩余的明确功能或由新失败场景驱动改进。
+
+### AD：S11-I1 资源与施工 SmartCommand（已完成）
+
+- `SmartCommandTargetKind` 增加 ResourceNode 与 FriendlyBuilding；Godot 只负责从当前 PlayerView/可见建筑解析目标，能力拆分位于纯 C# 模拟层。
+- 右键资源时先原子验证全部选中工人，再分别发正式 Gather；非工人批量 Move。右键 `WaitingForBuilder` 己方建筑时，按最低 Unit ID 选唯一工人 Resume，其余单位 Move。
+- A 修饰统一覆盖为 AttackMove。没有合格工人或建筑无需续建时保持普通 Move 语义。
+- Gather/Resume 正式入口会清理工人的旧单位队列；Resume 同时取消旧采集工作，修复经济/施工两个系统争用同一工人的问题。
+- 跨域 Shift 任务尚无版本化队列格式，返回 `QueuedContextCommandUnsupported`；不静默降级、不提前执行、不产生部分副作用。
+- `smart-command-gameplay-context` 验证乱序混合选择、两工人采集、Marine 移动、最低 ID 续建、队列拒绝和 Package 重放 Hash 一致；10 秒 AV1/WebM 位于 `test_videos/20260712_014124/`。
+- 84/84 全量黑盒回归通过。
+- Release 性能：256/512/1000 移动 P95 为 1.39/7.50/8.33ms，1000 单位分配 461B/Tick；128/256 战斗 P95 为 1.72/4.98ms。录像门禁通过 110 个视频、58 个 manifest、109 个场景引用，编码均为 AV1。
 
 ## 8. 可以并行但不能提前耦合的优化
 

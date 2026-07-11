@@ -207,14 +207,17 @@ public enum SmartCommandTargetKind : byte
     Ground,
     FriendlyUnit,
     EnemyUnit,
-    EnemyBuilding
+    EnemyBuilding,
+    FriendlyBuilding,
+    ResourceNode
 }
 
 public readonly record struct SmartCommandTarget(
     SmartCommandTargetKind Kind,
     Vector2 Position,
     int Unit = -1,
-    int Building = -1);
+    int Building = -1,
+    int ResourceNode = -1);
 
 public static class SmartCommandResolver
 {

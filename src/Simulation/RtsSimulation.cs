@@ -676,6 +676,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         _economyCommandRecorder?.RecordGather(
             Metrics.Tick, issuingPlayerId, unit, nodeId.Value);
+        CommandQueues.ClearPending(unit);
+        CommandQueues.HasActiveOrders[unit] = false;
         Span<int> gatheringWorker = stackalloc int[1];
         gatheringWorker[0] = unit;
         Construction.InterruptBuilders(gatheringWorker);
@@ -839,6 +841,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
             return false;
+        if (!Construction.CanResume(
+                buildingId, playerId, builderUnit, Economy, Units))
+            return false;
+        Span<int> builder = stackalloc int[1];
+        builder[0] = builderUnit;
+        Economy.Cancel(builder);
+        CommandQueues.ClearPending(builderUnit);
+        CommandQueues.HasActiveOrders[builderUnit] = false;
         var succeeded = Construction.Resume(
             buildingId, playerId, builderUnit, Economy, Units,
             _constructionMoveWorker);
@@ -1108,9 +1118,106 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 if (!Visibility.IsVisible(playerId, center))
                     return new(PlayerOrderCommandCode.TargetNotVisible);
                 break;
+            case SmartCommandTargetKind.FriendlyBuilding:
+                var friendlyId = new GameplayBuildingId(target.Building);
+                if (!Construction.IsAlive(friendlyId))
+                    return new(PlayerOrderCommandCode.InvalidTarget);
+                if (Construction.Observe(friendlyId).PlayerId != playerId)
+                    return new(PlayerOrderCommandCode.InvalidTarget);
+                break;
+            case SmartCommandTargetKind.ResourceNode:
+                if ((uint)target.ResourceNode >= (uint)Economy.ResourceNodeCount)
+                    return new(PlayerOrderCommandCode.InvalidTarget);
+                var resourceId = new EconomyResourceNodeId(target.ResourceNode);
+                if (Economy.ResourceNodePosition(resourceId) != target.Position)
+                    return new(PlayerOrderCommandCode.InvalidTarget);
+                if (Visibility.At(playerId, target.Position) == MapVisibility.Hidden)
+                    return new(PlayerOrderCommandCode.TargetNotVisible);
+                break;
         }
+
+        if (!attackMoveModifier && target.Kind == SmartCommandTargetKind.ResourceNode)
+            return IssueResourceSmartCommand(playerId, units, target, queued);
+        if (!attackMoveModifier && target.Kind == SmartCommandTargetKind.FriendlyBuilding)
+            return IssueFriendlyBuildingSmartCommand(playerId, units, target, queued);
         IssueSmartCommand(units, target, attackMoveModifier, queued);
         return validation;
+    }
+
+    private PlayerOrderCommandResult IssueResourceSmartCommand(
+        int playerId,
+        ReadOnlySpan<int> units,
+        SmartCommandTarget target,
+        bool queued)
+    {
+        var workers = new List<int>(units.Length);
+        var movers = new List<int>(units.Length);
+        for (var index = 0; index < units.Length; index++)
+        {
+            var unit = units[index];
+            (Economy.IsWorkerOwnedBy(unit, playerId) ? workers : movers).Add(unit);
+        }
+        if (workers.Count == 0)
+        {
+            IssueMove(units, target.Position, queued);
+            return new(PlayerOrderCommandCode.Success);
+        }
+        if (queued)
+            return new(PlayerOrderCommandCode.QueuedContextCommandUnsupported);
+
+        var resource = new EconomyResourceNodeId(target.ResourceNode);
+        for (var index = 0; index < workers.Count; index++)
+        {
+            if (!Economy.ValidateGather(playerId, workers[index], resource).Succeeded)
+                return new(PlayerOrderCommandCode.ContextActionUnavailable);
+        }
+        for (var index = 0; index < workers.Count; index++)
+            IssueGather(playerId, workers[index], resource);
+        if (movers.Count > 0)
+            IssueMove(movers.ToArray(), target.Position);
+        return new(PlayerOrderCommandCode.Success);
+    }
+
+    private PlayerOrderCommandResult IssueFriendlyBuildingSmartCommand(
+        int playerId,
+        ReadOnlySpan<int> units,
+        SmartCommandTarget target,
+        bool queued)
+    {
+        var buildingId = new GameplayBuildingId(target.Building);
+        var building = Construction.Observe(buildingId);
+        var builder = -1;
+        if (building.State == BuildingLifecycleState.WaitingForBuilder)
+        {
+            for (var index = 0; index < units.Length; index++)
+            {
+                var unit = units[index];
+                if (Economy.IsWorkerOwnedBy(unit, playerId) &&
+                    (builder < 0 || unit < builder))
+                    builder = unit;
+            }
+        }
+        if (builder < 0)
+        {
+            IssueMove(units, target.Position, queued);
+            return new(PlayerOrderCommandCode.Success);
+        }
+        if (queued)
+            return new(PlayerOrderCommandCode.QueuedContextCommandUnsupported);
+        if (!Construction.CanResume(
+                buildingId, playerId, builder, Economy, Units))
+            return new(PlayerOrderCommandCode.ContextActionUnavailable);
+        if (!ResumeConstruction(playerId, buildingId, builder))
+            return new(PlayerOrderCommandCode.ContextActionUnavailable);
+
+        var movers = new List<int>(units.Length - 1);
+        for (var index = 0; index < units.Length; index++)
+        {
+            if (units[index] != builder) movers.Add(units[index]);
+        }
+        if (movers.Count > 0)
+            IssueMove(movers.ToArray(), target.Position);
+        return new(PlayerOrderCommandCode.Success);
     }
 
     public void IssueMove(
