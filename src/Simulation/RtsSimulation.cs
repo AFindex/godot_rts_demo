@@ -763,47 +763,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Vector2 center,
         EconomyResourceNodeId refineryNode = default)
     {
-        var matchBlock = MatchCommandBlockFor(issuingPlayerId);
-        if (matchBlock != MatchCommandBlock.None)
-        {
-            return new ConstructionCommandResult(
-                matchBlock switch
-                {
-                    MatchCommandBlock.Completed => ConstructionCommandCode.MatchCompleted,
-                    MatchCommandBlock.NotParticipant => ConstructionCommandCode.NotParticipant,
-                    _ => ConstructionCommandCode.PlayerDefeated
-                }, default);
-        }
-        if (!profile.RequiresVespeneNode && refineryNode == default)
-        {
-            refineryNode = new EconomyResourceNodeId(-1);
-        }
-        var validation = Construction.ValidateRequest(
-            Economy, Units, issuingPlayerId, builderUnit, profile, refineryNode);
-        if (!validation.Succeeded)
-        {
-            return validation;
-        }
-        var spend = Economy.Players.ValidateSpend(issuingPlayerId, profile.Cost);
-        if (!spend.Succeeded)
-        {
-            return new ConstructionCommandResult(
-                spend.Code switch
-                {
-                    EconomyTransactionCode.InsufficientMinerals =>
-                        ConstructionCommandCode.InsufficientMinerals,
-                    EconomyTransactionCode.InsufficientVespeneGas =>
-                        ConstructionCommandCode.InsufficientVespeneGas,
-                    EconomyTransactionCode.SupplyBlocked =>
-                        ConstructionCommandCode.SupplyBlocked,
-                    _ => ConstructionCommandCode.InvalidPlayer
-                },
-                default);
-        }
-        if (profile.RequiresVespeneNode)
-        {
-            center = Economy.ResourceNodePosition(refineryNode);
-        }
+        var validation = ValidateConstructionRequest(
+            issuingPlayerId, builderUnit, profile, center, refineryNode,
+            out center, out refineryNode);
+        if (!validation.Succeeded) return validation;
         BuildingPlacementResult placement;
         _issuingConstructionWorldMutation = true;
         try
@@ -846,6 +809,81 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Metrics.Tick, issuingPlayerId, builderUnit, profile, center, refineryNode);
         return new ConstructionCommandResult(
             ConstructionCommandCode.Success, id);
+    }
+
+    public ConstructionCommandResult PreviewConstruction(
+        int issuingPlayerId,
+        int builderUnit,
+        BuildingTypeProfile profile,
+        Vector2 center,
+        EconomyResourceNodeId refineryNode = default) =>
+        ValidateConstructionRequest(
+            issuingPlayerId, builderUnit, profile, center, refineryNode,
+            out _, out _);
+
+    private ConstructionCommandResult ValidateConstructionRequest(
+        int issuingPlayerId,
+        int builderUnit,
+        BuildingTypeProfile profile,
+        Vector2 requestedCenter,
+        EconomyResourceNodeId requestedRefineryNode,
+        out Vector2 resolvedCenter,
+        out EconomyResourceNodeId resolvedRefineryNode)
+    {
+        resolvedCenter = requestedCenter;
+        resolvedRefineryNode = requestedRefineryNode;
+        var matchBlock = MatchCommandBlockFor(issuingPlayerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new ConstructionCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed => ConstructionCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant => ConstructionCommandCode.NotParticipant,
+                    _ => ConstructionCommandCode.PlayerDefeated
+                }, default);
+        }
+        if (!profile.RequiresVespeneNode && requestedRefineryNode == default)
+            resolvedRefineryNode = new EconomyResourceNodeId(-1);
+        var validation = Construction.ValidateRequest(
+            Economy, Units, issuingPlayerId, builderUnit, profile,
+            resolvedRefineryNode);
+        if (!validation.Succeeded) return validation;
+
+        var spend = Economy.Players.ValidateSpend(issuingPlayerId, profile.Cost);
+        if (!spend.Succeeded)
+        {
+            return new ConstructionCommandResult(
+                spend.Code switch
+                {
+                    EconomyTransactionCode.InsufficientMinerals =>
+                        ConstructionCommandCode.InsufficientMinerals,
+                    EconomyTransactionCode.InsufficientVespeneGas =>
+                        ConstructionCommandCode.InsufficientVespeneGas,
+                    EconomyTransactionCode.SupplyBlocked =>
+                        ConstructionCommandCode.SupplyBlocked,
+                    _ => ConstructionCommandCode.InvalidPlayer
+                }, default);
+        }
+        if (profile.RequiresVespeneNode)
+            resolvedCenter = Economy.ResourceNodePosition(resolvedRefineryNode);
+
+        var placementProfile = profile.PlacementProfile;
+        var halfSize = placementProfile.Size * 0.5f;
+        var footprint = new SimRect(
+            resolvedCenter - halfSize, resolvedCenter + halfSize);
+        var placement = BuildingPlacementValidator.Validate(
+            World, Units, footprint,
+            new BuildingPlacementRules(
+                placementProfile.MinimumPassageClass,
+                placementProfile.UnitPadding),
+            _buildingConnectivityGuard);
+        return placement.Succeeded
+            ? new ConstructionCommandResult(
+                ConstructionCommandCode.Success, default)
+            : new ConstructionCommandResult(
+                ConstructionCommandCode.PlacementRejected,
+                default, placement.Code);
     }
 
     public bool CancelConstruction(int playerId, GameplayBuildingId buildingId)

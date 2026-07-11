@@ -74,6 +74,7 @@ public enum CommandCardActionKind : byte
     Move,
     AttackMove,
     Rally,
+    Build,
     Stop,
     Hold,
     Train,
@@ -87,7 +88,8 @@ public enum TargetCommandKind : byte
 {
     Move,
     AttackMove,
-    Rally
+    Rally,
+    Build
 }
 
 public enum TargetCommandPointerButton : byte
@@ -106,13 +108,15 @@ public sealed record TargetCommandRequest(
     TargetCommandKind Kind,
     int[] UnitIds,
     int[] BuildingIds,
-    string Label)
+    string Label,
+    int DataId)
 {
     public static TargetCommandRequest Create(
         TargetCommandKind kind,
         IEnumerable<int> unitIds,
         IEnumerable<int> buildingIds,
-        string label)
+        string label,
+        int dataId = -1)
     {
         if (!Enum.IsDefined(kind) || string.IsNullOrWhiteSpace(label))
             throw new ArgumentOutOfRangeException(nameof(kind));
@@ -125,16 +129,47 @@ public sealed record TargetCommandRequest(
         var buildings = buildingValues.Distinct().Order().ToArray();
         if (kind is TargetCommandKind.Move or TargetCommandKind.AttackMove)
         {
-            if (units.Length == 0 || buildings.Length != 0)
+            if (units.Length == 0 || buildings.Length != 0 || dataId != -1)
                 throw new ArgumentException(
                     "Unit target commands require units and no buildings.");
         }
-        else if (buildings.Length == 0 || units.Length != 0)
+        else if (kind == TargetCommandKind.Rally)
+        {
+            if (buildings.Length == 0 || units.Length != 0 || dataId != -1)
+                throw new ArgumentException(
+                    "Rally target commands require buildings and no units.");
+        }
+        else if (units.Length == 0 || buildings.Length != 0 || dataId < 0)
         {
             throw new ArgumentException(
-                "Rally target commands require buildings and no units.");
+                "Build target commands require workers and a building type.");
         }
-        return new TargetCommandRequest(kind, units, buildings, label.Trim());
+        return new TargetCommandRequest(
+            kind, units, buildings, label.Trim(), dataId);
+    }
+}
+
+public sealed record BuildTargetPreviewSnapshot(
+    SimRect Bounds,
+    int BuilderUnit,
+    int ResourceNode,
+    bool CanPlace,
+    string Status)
+{
+    public static BuildTargetPreviewSnapshot Empty { get; } = new(
+        default, -1, -1, false, "No preview");
+}
+
+public static class BuildTargetSnapper
+{
+    public static Vector2 Snap(Vector2 position, float gridSize = 8f)
+    {
+        if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) ||
+            !float.IsFinite(gridSize) || gridSize <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(position));
+        return new Vector2(
+            MathF.Floor(position.X / gridSize + 0.5f) * gridSize,
+            MathF.Floor(position.Y / gridSize + 0.5f) * gridSize);
     }
 }
 

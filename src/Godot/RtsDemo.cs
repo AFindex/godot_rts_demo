@@ -76,6 +76,10 @@ public partial class RtsDemo : Node2D
     private bool _commandMarkerQueued;
     private TargetCommandRequest? _targetCommand;
     private RtsTargetCommandOverlay? _targetCommandOverlay;
+    private BuildTargetPreviewSnapshot? _buildTargetPreview;
+    private TargetCommandRequest? _buildPreviewRequest;
+    private Vector2 _buildPreviewPointer;
+    private long _buildPreviewTick = long.MinValue;
     private int _visualTestFinishFrames = -1;
     private int _visualTestExitCode;
     private readonly Stack<DynamicFootprintId> _demoBuildings = new();
@@ -400,6 +404,8 @@ public partial class RtsDemo : Node2D
     public override void _Process(double delta)
     {
         UpdateHudLayout();
+        if (_visualTest?.TargetCommandPreviewPointer is { } previewPointer)
+            _pointerScreen = GodotPathProvider.ToGodot(previewPointer);
         UpdateTargetCommandOverlay();
         if (_visualTest is null && _cameraController is not null && _camera is not null)
         {
@@ -1594,6 +1600,7 @@ public partial class RtsDemo : Node2D
         if (_visualTest is null || _visualTest.Id is
                 "operation-mixed-command-card" or
                 "operation-target-command-mode" or
+                "operation-build-placement-mode" or
                 "minimap-interaction")
         {
             _commandCard = new RtsCommandCardControl
@@ -1651,8 +1658,10 @@ public partial class RtsDemo : Node2D
 
     private void UpdateTargetCommandOverlay()
     {
+        var worldPosition = ScreenToWorld(_pointerScreen);
+        UpdateBuildTargetPreview(GodotPathProvider.ToNumerics(worldPosition));
         _targetCommandOverlay?.SetSnapshot(
-            _targetCommand, ScreenToWorld(_pointerScreen));
+            _targetCommand, worldPosition, _buildTargetPreview);
     }
 
     private void UpdateHudLayout()
@@ -1917,6 +1926,17 @@ public partial class RtsDemo : Node2D
                 "Stop", true, "S", 10));
             result.Add(new(key, CommandCardActionKind.Hold, -1, -1,
                 "Hold Position", true, "H", 20));
+            if (key.Kind == GameplaySelectionKind.Worker &&
+                _buildingTypes is not null)
+            {
+                foreach (var type in _buildingTypes.Types)
+                {
+                    result.Add(new(key, CommandCardActionKind.Build, -1, type.Id,
+                        $"Build {type.Name}", true,
+                        $"{type.Cost.Minerals}M {type.Cost.VespeneGas}G",
+                        30 + type.Id));
+                }
+            }
             return result;
         }
 
@@ -2017,6 +2037,12 @@ public partial class RtsDemo : Node2D
             case CommandCardActionKind.Rally:
                 BeginTargetCommand(TargetCommandKind.Rally, "Set Rally");
                 break;
+            case CommandCardActionKind.Build when _buildingTypes is not null:
+                BeginTargetCommand(
+                    TargetCommandKind.Build,
+                    $"Build {_buildingTypes.Type(action.DataId).Name}",
+                    action.DataId);
+                break;
             case CommandCardActionKind.Stop:
                 _simulation.IssuePlayerStop(PlayerTeam, activeUnits);
                 break;
@@ -2051,7 +2077,10 @@ public partial class RtsDemo : Node2D
         QueueRedraw();
     }
 
-    private void BeginTargetCommand(TargetCommandKind kind, string label)
+    private void BeginTargetCommand(
+        TargetCommandKind kind,
+        string label,
+        int dataId = -1)
     {
         var active = _selectionSnapshot.ActiveSubgroup?.Members ?? [];
         _targetCommand = TargetCommandRequest.Create(
@@ -2061,7 +2090,10 @@ public partial class RtsDemo : Node2D
                 .Select(value => value.EntityId),
             active.Where(value => value.Kind == GameplaySelectionKind.Building)
                 .Select(value => value.EntityId),
-            label);
+            label,
+            dataId);
+        _buildPreviewRequest = null;
+        _buildTargetPreview = null;
     }
 
     private void ResolveTargetCommand(InputEventMouseButton mouse)
@@ -2092,6 +2124,8 @@ public partial class RtsDemo : Node2D
                 resolution.Queued).Succeeded,
             TargetCommandKind.Rally => SetTargetCommandRally(
                 request.BuildingIds, resolution.Position),
+            TargetCommandKind.Build => IssueTargetConstruction(
+                request, resolution.Position),
             _ => false
         };
         if (!succeeded) return;
@@ -2103,6 +2137,103 @@ public partial class RtsDemo : Node2D
         if (!resolution.KeepTargeting) _targetCommand = null;
         UpdateCommandCard();
         QueueRedraw();
+    }
+
+    private void UpdateBuildTargetPreview(NVector2 pointer)
+    {
+        if (_targetCommand?.Kind != TargetCommandKind.Build)
+        {
+            _buildTargetPreview = null;
+            _buildPreviewRequest = null;
+            return;
+        }
+        var snapped = BuildTargetSnapper.Snap(pointer);
+        var tick = _simulation?.Metrics.Tick ?? 0;
+        if (ReferenceEquals(_buildPreviewRequest, _targetCommand) &&
+            _buildPreviewPointer == GodotPathProvider.ToGodot(snapped) &&
+            tick - _buildPreviewTick < 6)
+            return;
+        _buildPreviewRequest = _targetCommand;
+        _buildPreviewPointer = GodotPathProvider.ToGodot(snapped);
+        _buildPreviewTick = tick;
+        _buildTargetPreview = ComputeBuildTargetPreview(_targetCommand, snapped);
+    }
+
+    private BuildTargetPreviewSnapshot ComputeBuildTargetPreview(
+        TargetCommandRequest request,
+        NVector2 pointer)
+    {
+        if (_simulation is null || _buildingTypes is null ||
+            (uint)request.DataId >= (uint)_buildingTypes.Types.Length)
+            return BuildTargetPreviewSnapshot.Empty;
+        var profile = _buildingTypes.Type(request.DataId);
+        var center = BuildTargetSnapper.Snap(pointer);
+        var resourceNode = new EconomyResourceNodeId(-1);
+        if (profile.RequiresVespeneNode && _economyOverview is not null)
+        {
+            var node = _economyOverview.ResourceNodes
+                .Where(value => value.Kind == EconomyResourceKind.VespeneGas &&
+                                value.Operational &&
+                                NVector2.DistanceSquared(value.Position, pointer) <=
+                                32f * 32f)
+                .OrderBy(value => NVector2.DistanceSquared(value.Position, pointer))
+                .ThenBy(value => value.Id.Value)
+                .FirstOrDefault();
+            if (node.Kind == EconomyResourceKind.VespeneGas)
+            {
+                resourceNode = node.Id;
+                center = node.Position;
+            }
+        }
+
+        var candidates = request.UnitIds
+            .Where(value => (uint)value < (uint)_simulation.Units.Count)
+            .OrderBy(value => NVector2.DistanceSquared(
+                _simulation.Units.Positions[value], center))
+            .ThenBy(value => value)
+            .ToArray();
+        ConstructionCommandResult? first = null;
+        var builder = candidates.Length > 0 ? candidates[0] : -1;
+        foreach (var unit in candidates)
+        {
+            var preview = _simulation.PreviewConstruction(
+                PlayerTeam, unit, profile, center, resourceNode);
+            first ??= preview;
+            if (!preview.Succeeded) continue;
+            builder = unit;
+            first = preview;
+            break;
+        }
+        var result = first ?? new ConstructionCommandResult(
+            ConstructionCommandCode.InvalidBuilder, default);
+        var halfSize = profile.Size * 0.5f;
+        var status = result.Code == ConstructionCommandCode.PlacementRejected
+            ? result.PlacementCode.ToString()
+            : result.Code.ToString();
+        return new BuildTargetPreviewSnapshot(
+            new SimRect(center - halfSize, center + halfSize),
+            builder,
+            resourceNode.Value,
+            result.Succeeded,
+            status);
+    }
+
+    private bool IssueTargetConstruction(
+        TargetCommandRequest request,
+        NVector2 pointer)
+    {
+        if (_simulation is null || _buildingTypes is null) return false;
+        var preview = ComputeBuildTargetPreview(request, pointer);
+        _buildTargetPreview = preview;
+        if (!preview.CanPlace || preview.BuilderUnit < 0) return false;
+        var center = (preview.Bounds.Min + preview.Bounds.Max) * 0.5f;
+        var result = _simulation.IssueConstruction(
+            PlayerTeam,
+            preview.BuilderUnit,
+            _buildingTypes.Type(request.DataId),
+            center,
+            new EconomyResourceNodeId(preview.ResourceNode));
+        return result.Succeeded;
     }
 
     private bool SetTargetCommandRally(
@@ -2313,7 +2444,10 @@ public partial class RtsDemo : Node2D
         }
         foreach (var building in _visualTest.SelectedBuildings)
             _selectedBuildings.Add(building.Value);
-        _pointerScreen = GetViewportRect().Size * 0.5f;
+        _pointerScreen = _visualTest.TargetCommandPreviewPointer.HasValue
+            ? GodotPathProvider.ToGodot(
+                _visualTest.TargetCommandPreviewPointer.Value)
+            : GetViewportRect().Size * 0.5f;
         _targetCommand = _visualTest.TargetCommandPreview;
         if (caseId == "operation-mixed-command-card" &&
             _selectedBuildings.Count > 0)

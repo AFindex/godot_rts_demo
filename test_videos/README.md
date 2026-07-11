@@ -11,7 +11,7 @@ python -m http.server 10086
 
 然后访问 `http://localhost:10086/test_videos/showcase/`。浏览器出于安全限制不能在直接打开本地 HTML 文件时读取 JSON，因此需要一个本地 HTTP 服务。
 
-仓库保留覆盖 88 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+仓库保留覆盖 89 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
@@ -64,6 +64,7 @@ python -m http.server 10086
 - `20260712_024209/`：S11-J1 混合选择与解耦命令卡；2 Worker、1 Combat Unit、1 Barracks 显示 3 个稳定子组，真实 Control 展示生产可用性、取消进度和重新生产结果。
 - `20260712_030457/`：S11-J2a 混合 Control Group；2 Worker、Marine、Barracks 经 Ctrl、Alt 覆盖抢组和 Alt+Shift 添加抢组后稳定拆成 `1u/0b` 与 `2u/1b`，3 个单位全部按召回结果到达。
 - `20260712_034401/`：S11-J2b1 命令卡目标模式；独立 Overlay 展示 Move 目标准星，两段 Shift Move、右键取消、Rally 和 Attack Move 全链路通过，3/3 单位到达。
+- `20260712_040340/`：S11-J2b2a Build 放置模式；Worker 命令卡展示 5 种建筑，红色静态障碍拒绝切换为绿色合法 footprint，稳定选择最近工人并完成 Supply Depot。
 
 重新录制所有当前场景：
 

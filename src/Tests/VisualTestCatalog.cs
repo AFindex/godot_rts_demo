@@ -32,6 +32,7 @@ public static class VisualTestCatalog
         "operation-selection-camera",
         "operation-mixed-command-card",
         "operation-target-command-mode",
+        "operation-build-placement-mode",
         "minimap-interaction",
         "command-log-replay",
         "command-replay-divergence",
@@ -137,6 +138,8 @@ public static class VisualTestCatalog
         "operation-mixed-command-card" => CreateOperationMixedCommandCard(
             navigationMap, gameplayProfiles, clearanceBake),
         "operation-target-command-mode" => CreateOperationTargetCommandMode(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "operation-build-placement-mode" => CreateOperationBuildPlacementMode(
             navigationMap, gameplayProfiles, clearanceBake),
         "minimap-interaction" => CreateMinimapInteraction(),
         "command-log-replay" => CreateCommandLogReplay(),
@@ -1294,6 +1297,83 @@ public static class VisualTestCatalog
             .At(270, "Attack Move target uses the player command gate", runtime =>
                 attackResult = runtime.ResolveTargetCommand(
                     attackMove, marineTarget, shiftPressed: false));
+    }
+
+    private static VisualTestSession CreateOperationBuildPlacementMode(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            12, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1200, 300, 20, 2);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(120f, 500f), 1),
+            rig.SpawnWorker(new Vector2(250f, 220f), 1)
+        };
+        var request = rig.BeginTargetCommand(
+            1, TestTargetCommandKind.Build, workers, [],
+            "Build Supply Depot", DemoBuildingTypes.SupplyDepot.Id);
+        var initialBuildings = rig.GameplayBuildingCount;
+        var invalidPreview = default(TestBuildTargetPreview);
+        var invalidIssue = default(TestTargetCommandResult);
+        var validPreview = default(TestBuildTargetPreview);
+        var validIssue = default(TestTargetCommandResult);
+        var countAfterInvalid = -1;
+        var invalidCenter = new Vector2(620f, 200f);
+        var validCenter = new Vector2(400f, 220f);
+        return new VisualTestSession(
+            "operation-build-placement-mode",
+            "Build target preview rejects invalid ground and commits with the nearest worker",
+            480,
+            rig,
+            workers,
+            runtime =>
+            {
+                var depot = validIssue.Issued
+                    ? runtime.ObserveGameplayBuilding(validIssue.Building)
+                    : default;
+                var passed = invalidPreview.Code ==
+                                 TestConstructionCommandCode.PlacementRejected &&
+                             invalidPreview.PlacementCode ==
+                                 TestBuildingPlacementCode.StaticObstacleOverlap &&
+                             !invalidIssue.Issued && invalidIssue.KeepTargeting &&
+                             countAfterInvalid == initialBuildings &&
+                             validPreview.CanPlace &&
+                             validPreview.Builder == workers[1] &&
+                             validIssue.Issued && !validIssue.KeepTargeting &&
+                             runtime.GameplayBuildingCount == initialBuildings + 1 &&
+                             depot.BuilderUnit == workers[1] &&
+                             depot.State == TestBuildingLifecycleState.Completed;
+                return new ScenarioResult(
+                    passed,
+                    $"invalid={invalidPreview.PlacementCode}/keep{invalidIssue.KeepTargeting}, " +
+                    $"valid={validPreview.CanPlace}/builder{validPreview.Builder.Value}, " +
+                    $"issued={validIssue.Issued}, state={depot.State}");
+            })
+            .ShowTargetCommandPreview(request, invalidCenter)
+            .At(30, "Static obstacle preview is rejected without mutation", runtime =>
+            {
+                invalidPreview = runtime.PreviewBuildTarget(
+                    request, invalidCenter);
+                invalidIssue = runtime.ResolveTargetCommand(
+                    request, invalidCenter, shiftPressed: false);
+                countAfterInvalid = runtime.GameplayBuildingCount;
+            })
+            .MoveTargetCommandPreviewPointerAt(
+                90, "Valid preview chooses the nearest eligible worker", validCenter)
+            .At(90, "Valid preview chooses the nearest eligible worker", runtime =>
+            {
+                validPreview = runtime.PreviewBuildTarget(request, validCenter);
+            })
+            .At(150, "Confirm valid footprint through the construction command", runtime =>
+            {
+                validIssue = runtime.ResolveTargetCommand(
+                    request, validCenter, shiftPressed: false);
+            });
     }
 
     private static VisualTestSession CreateMinimapInteraction()

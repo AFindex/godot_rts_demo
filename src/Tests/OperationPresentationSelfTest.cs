@@ -46,6 +46,12 @@ public static class OperationPresentationSelfTest
             new Vector2(10f, 20f), shiftPressed: false);
         var rallyTarget = TargetCommandRequest.Create(
             TargetCommandKind.Rally, [], [7, 4, 7], "Set Rally");
+        var buildTarget = TargetCommandRequest.Create(
+            TargetCommandKind.Build, [3, 1, 3], [], "Build Depot", 0);
+        var buildResolution = TargetCommandResolver.Resolve(
+            buildTarget, TargetCommandPointerButton.Primary,
+            new Vector2(101f, 99f), shiftPressed: true);
+        var snappedBuild = BuildTargetSnapper.Snap(buildResolution.Position);
         var invalidTargetRejected = false;
         try
         {
@@ -77,6 +83,10 @@ public static class OperationPresentationSelfTest
                   canceledTarget.Kind == TargetCommandResolutionKind.Cancel &&
                   !canceledTarget.KeepTargeting &&
                   rallyTarget.BuildingIds.SequenceEqual([4, 7]) &&
+                  buildTarget.UnitIds.SequenceEqual([1, 3]) &&
+                  buildTarget.DataId == 0 &&
+                  !buildResolution.Queued && !buildResolution.KeepTargeting &&
+                  snappedBuild == new Vector2(104f, 96f) &&
                   invalidTargetRejected;
         return new SelfTestResult(
             passed,

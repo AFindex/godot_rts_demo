@@ -77,6 +77,16 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 - `RtsTargetCommandOverlay` 只消费请求与光标世界坐标，独立绘制颜色、准星和提示；换样式、文案和动画不修改输入解析或业务命令。
 - 编组召回、Space 全选会取消未完成目标模式；请求中的实体在确认时仍由正式业务 API 再验证生命期、所有权和比赛状态。
 
+### Build 放置
+
+- Worker 活动子组按 `BuildingTypeCatalogSnapshot` 生成 Supply Depot、Barracks、Command Center、Refinery、Academy 动作；尺寸、费用、功能和最小通行等级都来自 Catalog。
+- `RtsSimulation.PreviewConstruction` 是无副作用正式入口，与 `IssueConstruction` 共用比赛、工人、资源、Refinery、footprint、单位重叠、净空和 Connectivity Guard 验证；预览不会创建动态占用、扣资源或写命令日志。
+- 光标中心按 8px 网格吸附。Refinery 在 Vespene 节点 32px 内吸附到节点中心；否则明确显示 `RefineryNodeRequired`。
+- 多选 Worker 按目标距离、Unit ID 稳定排序，逐个调用正式预览并选第一个合格工人；因此忙碌或失效工人不会阻塞仍可用的近邻工人。
+- 预览按吸附位置缓存，并至多每 6 Tick 刷新相同位置的资源/生命期状态，避免每渲染帧重复执行 Connectivity Guard。
+- `BuildTargetPreviewSnapshot` 只向 Overlay 提供 bounds、builder、resource、CanPlace 和稳定状态；Overlay 绿色显示 Success，红色显示具体 Construction/Placement Code。
+- 左键只在最新正式预览通过时调用 `IssueConstruction`；失败保留目标模式以便改位置，成功退出。右键/Escape 始终无副作用取消。
+
 ## Minimap 与 UI 解耦
 
 Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效，而不修改模拟和命令语义：
@@ -101,7 +111,8 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `minimap-interaction`：世界/面板坐标往返、视口框、定位意图、SmartCommand 意图和边界外拒绝全部通过，并录制真实 Minimap Control。
 - `operation-mixed-command-card`：2 Worker、1 Combat Unit、1 Barracks 形成 3 个子组；快照命令卡完成生产、取消和重新生产，最终出生单位。
 - `operation-target-command-mode`：两段 Shift Move、右键取消、Ground Rally、Attack Move 全部通过稳定测试 Facade，目标模式保持/退出状态正确且 3/3 单位到达。
+- `operation-build-placement-mode`：静态障碍返回 `StaticObstacleOverlap`、不修改世界并保持目标模式；合法预览选择最近 worker 1，提交后 Supply Depot 完成。
 
 ## 当前收口
 
-操作表现已覆盖选择、混合子组、快照命令卡、Move/AttackMove/Rally 目标模式、相机、混合编组/Alt 抢组、编组定位和 Minimap。J2b2 仍包括 Build 放置模式、多建筑批量动作、图标/tooltip、皮肤与动画。
+操作表现已覆盖选择、混合子组、快照命令卡、Move/AttackMove/Rally/Build 目标模式、相机、混合编组/Alt 抢组、编组定位和 Minimap。J2b2b 仍包括多建筑批量动作、队列聚合、图标/tooltip、皮肤与动画。

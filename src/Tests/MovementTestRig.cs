@@ -17,7 +17,8 @@ public enum TestTargetCommandKind : byte
 {
     Move,
     AttackMove,
-    Rally
+    Rally,
+    Build
 }
 
 public sealed record TestTargetCommandRequest(
@@ -25,13 +26,24 @@ public sealed record TestTargetCommandRequest(
     TestTargetCommandKind Kind,
     TestUnitId[] Units,
     TestGameplayBuildingId[] Buildings,
-    string Label);
+    string Label,
+    int DataId);
 
 public readonly record struct TestTargetCommandResult(
     bool Issued,
     bool Canceled,
     bool Queued,
-    bool KeepTargeting);
+    bool KeepTargeting,
+    string Status = "",
+    TestGameplayBuildingId Building = default);
+
+public readonly record struct TestBuildTargetPreview(
+    Vector2 Center,
+    Vector2 Size,
+    TestUnitId Builder,
+    bool CanPlace,
+    TestConstructionCommandCode Code,
+    TestBuildingPlacementCode PlacementCode);
 
 public enum TestAiStrategicPhase : byte
 {
@@ -1840,19 +1852,22 @@ public sealed partial class MovementTestRig
         TestTargetCommandKind kind,
         IReadOnlyList<TestUnitId> units,
         IReadOnlyList<TestGameplayBuildingId> buildings,
-        string label)
+        string label,
+        int dataId = -1)
     {
         var request = TargetCommandRequest.Create(
             (TargetCommandKind)kind,
             units.Select(value => value.Value),
             buildings.Select(value => value.Value),
-            label);
+            label,
+            dataId);
         return new TestTargetCommandRequest(
             playerId, kind,
             request.UnitIds.Select(value => new TestUnitId(value)).ToArray(),
             request.BuildingIds.Select(value =>
                 new TestGameplayBuildingId(value)).ToArray(),
-            request.Label);
+            request.Label,
+            request.DataId);
     }
 
     public TestTargetCommandResult ResolveTargetCommand(
@@ -1865,7 +1880,8 @@ public sealed partial class MovementTestRig
             (TargetCommandKind)request.Kind,
             request.Units.Select(value => value.Value),
             request.Buildings.Select(value => value.Value),
-            request.Label);
+            request.Label,
+            request.DataId);
         var resolution = TargetCommandResolver.Resolve(
             internalRequest,
             cancel ? TargetCommandPointerButton.Secondary :
@@ -1875,6 +1891,27 @@ public sealed partial class MovementTestRig
         if (resolution.Kind == TargetCommandResolutionKind.Cancel)
             return new TestTargetCommandResult(
                 false, true, false, false);
+
+        if (request.Kind == TestTargetCommandKind.Build)
+        {
+            var preview = PreviewBuildTarget(request, resolution.Position);
+            if (!preview.CanPlace)
+                return new TestTargetCommandResult(
+                    false, false, false, true,
+                    preview.Code == TestConstructionCommandCode.PlacementRejected
+                        ? preview.PlacementCode.ToString()
+                        : preview.Code.ToString());
+            var result = _simulation.IssueConstruction(
+                request.PlayerId,
+                preview.Builder.Value,
+                DemoBuildingTypes.CreateCatalog().Type(request.DataId),
+                preview.Center,
+                new EconomyResourceNodeId(-1));
+            return new TestTargetCommandResult(
+                result.Succeeded, false, false, !result.Succeeded,
+                result.Succeeded ? "Success" : result.Code.ToString(),
+                new TestGameplayBuildingId(result.BuildingId.Value));
+        }
 
         var issued = request.Kind switch
         {
@@ -1895,7 +1932,41 @@ public sealed partial class MovementTestRig
         };
         return new TestTargetCommandResult(
             issued, false, resolution.Queued,
-            issued && resolution.KeepTargeting);
+            issued ? resolution.KeepTargeting : true);
+    }
+
+    public TestBuildTargetPreview PreviewBuildTarget(
+        TestTargetCommandRequest request,
+        Vector2 pointer)
+    {
+        if (request.Kind != TestTargetCommandKind.Build)
+            throw new ArgumentException("Request is not a Build target.", nameof(request));
+        var profile = DemoBuildingTypes.CreateCatalog().Type(request.DataId);
+        var center = BuildTargetSnapper.Snap(pointer);
+        var candidates = request.Units
+            .OrderBy(value => Vector2.DistanceSquared(
+                _simulation.Units.Positions[value.Value], center))
+            .ThenBy(value => value.Value)
+            .ToArray();
+        ConstructionCommandResult? first = null;
+        var builder = candidates.Length > 0 ? candidates[0] : new TestUnitId(-1);
+        foreach (var candidate in candidates)
+        {
+            var result = _simulation.PreviewConstruction(
+                request.PlayerId, candidate.Value, profile, center,
+                new EconomyResourceNodeId(-1));
+            first ??= result;
+            if (!result.Succeeded) continue;
+            first = result;
+            builder = candidate;
+            break;
+        }
+        var preview = first ?? new ConstructionCommandResult(
+            ConstructionCommandCode.InvalidBuilder, default);
+        return new TestBuildTargetPreview(
+            center, profile.Size, builder, preview.Succeeded,
+            (TestConstructionCommandCode)preview.Code,
+            (TestBuildingPlacementCode)preview.PlacementCode);
     }
 
     private bool SetTargetCommandRally(
@@ -2647,6 +2718,7 @@ public sealed class VisualTestSession
     internal IReadOnlyList<TestGameplayBuildingId> SelectedBuildings =>
         _selectedBuildings;
     internal TargetCommandRequest? TargetCommandPreview { get; private set; }
+    internal Vector2? TargetCommandPreviewPointer { get; private set; }
     private bool DynamicUnitRendering { get; set; }
 
     public VisualTestSession RenderSpawnedUnits()
@@ -2673,15 +2745,24 @@ public sealed class VisualTestSession
     }
 
     public VisualTestSession ShowTargetCommandPreview(
-        TestTargetCommandRequest request)
+        TestTargetCommandRequest request,
+        Vector2? pointer = null)
     {
         TargetCommandPreview = TargetCommandRequest.Create(
             (TargetCommandKind)request.Kind,
             request.Units.Select(value => value.Value),
             request.Buildings.Select(value => value.Value),
-            request.Label);
+            request.Label,
+            request.DataId);
+        TargetCommandPreviewPointer = pointer;
         return this;
     }
+
+    public VisualTestSession MoveTargetCommandPreviewPointerAt(
+        long tick,
+        string phase,
+        Vector2 pointer) =>
+        At(tick, phase, _ => TargetCommandPreviewPointer = pointer);
 
     public VisualTestSession At(
         long tick,
