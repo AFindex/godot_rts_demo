@@ -62,6 +62,7 @@ public static class VisualTestCatalog
         "economy-expansion-saturation",
         "player-visibility-authority",
         "match-capability-elimination",
+        "ai-modular-skirmish",
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
@@ -176,6 +177,7 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "match-capability-elimination" => CreateMatchCapabilityElimination(
             navigationMap, gameplayProfiles, clearanceBake),
+        "ai-modular-skirmish" => CreateModularAiSkirmish(),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
@@ -2555,6 +2557,150 @@ public static class VisualTestCatalog
             completedCommandRejected = runtime.PlayerMove(
                 1, [builders[0]], new Vector2(500f, 300f)) ==
                 TestPlayerOrderCommandCode.MatchCompleted;
+        });
+        return session;
+    }
+
+    private static VisualTestSession CreateModularAiSkirmish()
+    {
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1280f, 720f), 64);
+        rig.RegisterPlayer(1, 3500, 1000, 15, 6);
+        rig.RegisterPlayer(2, 500, 0, 15, 1);
+        var workers = Enumerable.Range(0, 6).Select(index =>
+            rig.SpawnWorker(
+                new Vector2(70f + (index % 2) * 20f, 290f + index * 24f),
+                1)).ToArray();
+        var defenderBuilder = rig.SpawnWorker(new Vector2(1210f, 360f), 2);
+        var localMinerals = new[]
+        {
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(390f, 285f), 3000, 8, 0.35f, 2),
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(420f, 360f), 3000, 8, 0.35f, 2),
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(390f, 435f), 3000, 8, 0.35f, 2)
+        };
+        rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+            new Vector2(650f, 360f), 3500, 8, 0.35f, 3);
+        var gas = rig.AddResourceNode(TestEconomyResourceKind.VespeneGas,
+            new Vector2(320f, 535f), 3500, 8, 0.4f, 3,
+            requiresRefinery: true, operational: false);
+        rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+            new Vector2(900f, 300f), 2500, 8, 0.4f, 2);
+
+        var fastTownHall = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 0.5f,
+            MaximumHealth = 1200f,
+            SupplyProvided = 0
+        };
+        var fragileEnemyTownHall = fastTownHall with { MaximumHealth = 360f };
+        rig.StartMatch(1, 2);
+        rig.StartCommandRecording();
+        var playerBase = rig.Build(
+            1, workers[0], fastTownHall, new Vector2(220f, 360f));
+        var enemyBase = rig.Build(
+            2, defenderBuilder, fragileEnemyTownHall, new Vector2(1050f, 360f));
+        for (var index = 1; index < workers.Length; index++)
+            rig.Gather(1, workers[index], localMinerals[(index - 1) % 3]);
+
+        var attached = false;
+        var developed = false;
+        var mobilized = false;
+        var visible = workers.Append(defenderBuilder).ToArray();
+        var session = new VisualTestSession(
+            "ai-modular-skirmish",
+            "Modular AI economy, infrastructure, technology, scouting and assault",
+            3600,
+            rig,
+            visible,
+            runtime =>
+            {
+                var match = runtime.ObserveMatch();
+                var ai = runtime.ObserveAi();
+                var player = match.Players.Single(value => value.PlayerId == 1);
+                var supplyBuildings = runtime.CountPlayerBuildings(
+                    1, DemoBuildingTypes.SupplyDepot.Id);
+                var barracksBuildings = runtime.CountPlayerBuildings(
+                    1, DemoBuildingTypes.Barracks.Id);
+                var refineryBuildings = runtime.CountPlayerBuildings(
+                    1, DemoBuildingTypes.Refinery.Id);
+                var academyBuildings = runtime.CountPlayerBuildings(
+                    1, DemoBuildingTypes.Academy.Id);
+                var townHalls = runtime.CountPlayerBuildings(
+                    1, DemoBuildingTypes.CommandCenter.Id);
+                var infrastructure = supplyBuildings >= 1 &&
+                                     barracksBuildings >= 1 &&
+                                     refineryBuildings >= 1 &&
+                                     academyBuildings >= 1;
+                var expanded = townHalls >= 2;
+                var technology = runtime.TechnologyLevel(
+                    1, DemoTechnologies.InfantryWeapons.Id) >= 1;
+                var economyLog = runtime.CaptureEconomyCommandLog();
+                var constructionLog = runtime.CaptureConstructionCommandLog();
+                var productionLog = runtime.CaptureProductionCommandLog();
+                var unitLog = runtime.CaptureCommandLog();
+                var economy = runtime.ObservePlayerEconomy(1);
+                var commandCoverage = economyLog.EntryCount >= 5 &&
+                                      constructionLog.EntryCount >= 6 &&
+                                      productionLog.EntryCount >= 5 &&
+                                      unitLog.EntryCount >= 2;
+                var victory = match.Phase == TestMatchPhase.Completed &&
+                              match.WinnerPlayerId == 1;
+                var passed = playerBase.Succeeded && enemyBase.Succeeded &&
+                             attached && developed && mobilized &&
+                             infrastructure && expanded && technology &&
+                             player.Workers >= 10 && player.CombatUnits >= 4 &&
+                             commandCoverage && victory && ai.StateBytes > 0 &&
+                             ai.LastDecisionTick > 300;
+                return new ScenarioResult(
+                    passed,
+                    $"phase={ai.Phase}, workers={player.Workers}, army={player.CombatUnits}, " +
+                    $"buildings=S{supplyBuildings}/B{barracksBuildings}/" +
+                    $"R{refineryBuildings}/A{academyBuildings}/CC{townHalls}, " +
+                    $"expand={expanded}, tech={technology}, " +
+                    $"bank={economy.Minerals}/{economy.VespeneGas} " +
+                    $"supply={economy.SupplyUsed}/{economy.SupplyCapacity}, " +
+                    $"commands=e{economyLog.EntryCount}/b{constructionLog.EntryCount}/" +
+                    $"p{productionLog.EntryCount}/u{unitLog.EntryCount}, " +
+                    $"victory={victory}@{match.CompletedTick}, aiState={ai.StateBytes}B");
+            })
+            .RenderSpawnedUnits()
+            .Highlight(
+                new SimRect(new Vector2(20f, 160f), new Vector2(540f, 590f)),
+                "AI BASE: economy / supply / production / refinery / academy",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(570f, 180f), new Vector2(900f, 560f)),
+                "EXPANSION: discovered resources drive second Town Hall",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(930f, 250f), new Vector2(1160f, 470f)),
+                "ASSAULT: explicit visible-building target closes the match",
+                TestDiagnosticKind.Rejected);
+        session.At(60, "Attach modular AI after both players establish", runtime =>
+        {
+            attached = runtime.ObserveMatch().Players.All(value =>
+                value.EstablishedPresence);
+            runtime.AttachDemoAi(1, targetWorkers: 10, attackArmySize: 4,
+                buildingSeconds: 1.2f);
+        });
+        session.At(900, "Economy and infrastructure planners operate concurrently", runtime =>
+        {
+            var ai = runtime.ObserveAi();
+            developed = (ai.Phase is TestAiStrategicPhase.Developing or
+                            TestAiStrategicPhase.Mobilizing or
+                            TestAiStrategicPhase.Attacking) &&
+                        runtime.CountPlayerBuildings(
+                            1, DemoBuildingTypes.Barracks.Id) >= 1;
+        });
+        session.At(1800, "Scouting and army production unlock expansion and attack", runtime =>
+        {
+            var player = runtime.ObserveMatch().Players.Single(value =>
+                value.PlayerId == 1);
+            mobilized = player.CombatUnits >= 4 &&
+                        runtime.ObserveAi().LastDecisionTick >= 1788;
         });
         return session;
     }

@@ -10,6 +10,20 @@ public readonly record struct TestEconomyBaseId(int Value);
 public readonly record struct TestGameplayBuildingId(int Value);
 public readonly record struct TestProductionOrderId(int Value);
 
+public enum TestAiStrategicPhase : byte
+{
+    Establishing,
+    Developing,
+    Mobilizing,
+    Attacking,
+    Recovering
+}
+
+public readonly record struct TestAiSnapshot(
+    TestAiStrategicPhase Phase,
+    long LastDecisionTick,
+    int StateBytes);
+
 public enum TestProductionCommandCode : byte
 {
     Success,
@@ -905,7 +919,7 @@ public readonly record struct TestUnitSnapshot(
 /// Stable business-level test API. Scenario definitions only use this facade;
 /// concrete simulation data structures are confined to this adapter.
 /// </summary>
-public sealed class MovementTestRig
+public sealed partial class MovementTestRig
 {
     private readonly StaticWorld _world;
     private readonly RtsSimulation _simulation;
@@ -1401,6 +1415,15 @@ public sealed class MovementTestRig
             value.MaximumHealth,
             new TestResourceNodeId(value.RefineryNode.Value));
     }
+
+    public int CountPlayerBuildings(
+        int playerId,
+        int typeId,
+        bool completedOnly = true) =>
+        _simulation.Construction.CreateOverview().Count(value =>
+            value.PlayerId == playerId && value.Type.Id == typeId &&
+            !value.IsTerminal &&
+            (!completedOnly || value.State == BuildingLifecycleState.Completed));
 
     public TestProductionResult Train(
         int playerId,
@@ -1939,7 +1962,13 @@ public sealed class MovementTestRig
             _simulation.Metrics.ClearanceBakeReloads);
     }
 
-    public void Step() => _simulation.Tick(1f / 60f);
+    public void Step()
+    {
+        StepAi();
+        _simulation.Tick(1f / 60f);
+    }
+
+    partial void StepAi();
 
     public void StartCommandRecording() =>
         _simulation.StartCommandRecording();
@@ -2408,8 +2437,17 @@ public sealed class VisualTestSession
     internal RtsSimulation Simulation => Rig.RenderSimulation;
     internal PortalGraphRoutePlanner? RoutePlanner => Rig.RenderRoutePlanner;
     internal ChokeController? ChokeController => Rig.RenderChokeController;
-    internal int[] RenderUnitIndices => Rig.ToBackendIndices(VisibleUnits);
+    internal int[] RenderUnitIndices => DynamicUnitRendering
+        ? Enumerable.Range(0, Rig.UnitCount).ToArray()
+        : Rig.ToBackendIndices(VisibleUnits);
     internal IReadOnlyList<TestDiagnosticArea> DiagnosticAreas => _diagnosticAreas;
+    private bool DynamicUnitRendering { get; set; }
+
+    public VisualTestSession RenderSpawnedUnits()
+    {
+        DynamicUnitRendering = true;
+        return this;
+    }
 
     public VisualTestSession Highlight(
         SimRect bounds,

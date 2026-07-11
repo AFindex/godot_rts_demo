@@ -69,6 +69,8 @@ public static class AiArchitectureSelfTest
                 new PlayerEconomySnapshot(playerId, 500, 100, 2, 15),
                 [],
                 [],
+                [],
+                [],
                 new MatchSnapshot(
                     MatchPhase.Running, 0, -1, -1, [capability]));
         }

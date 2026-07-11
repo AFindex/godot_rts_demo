@@ -884,7 +884,19 @@ S11-E 已收口。
 - `AiArchitectureSelfTest` 已验证 Tick 调度、容量裁剪、策略状态恢复和继续执行，且 fake policy 完全不依赖具体模拟实现。
 - 详细架构和下一层模块边界见 `docs/AI_ARCHITECTURE.md`。
 
-下一段实现完整模块化对局 AI：Economy/Build/Production/Technology/Scouting/Combat Planner、Strategic Blackboard 和稳定 Intent Arbiter。它需要覆盖双资源运营、供应、扩张、科技、侦察、防守和进攻，不按“最小脚本”收口。
+### AB：S11-H1 模块化完整对局 AI（已完成）
+
+- `ModularSkirmishAiPolicy` 拆为 Economy/Build/Production/Technology/Scouting/Defense/Combat 七类无状态 Planner；策略只负责知识更新、阶段和统一调度。
+- `StrategicBlackboard` 保存阶段、侦察/进攻/扩张冷却、最后敌情、放置重试和逐建筑退避；格式 v1 为 102 字节，支持严格恢复、截断拒绝和恢复后下一决策一致。
+- `AiIntentArbiter` 按 EmergencySupply/Defense/Combat/Expansion/Infrastructure/Production/Technology/Economy/Scouting 稳定优先级裁剪，并预留单 Tick 矿、气、人口、单位和设施占用。
+- 观察合同新增工人目标、设施 Builder、科技等级/排队和执行反馈；Planner 不读取 UnitStore、路径、Steering 或 Godot Node。
+- 真实闭环发现施工工人会被经济 Planner 重新派走；现已通过 Builder 占用和正式 `ResumeBuild` 意图解决，不依赖场景特判。
+- Combat 在未知区域使用 AttackMove；敌方单位/建筑可见后使用正式 AttackUnit/AttackBuilding，确保能摧毁建筑结束比赛。
+- `ai-modular-skirmish` 最终达到 10 工人/10 作战单位、S1/B1/R1/A1/CC2、Infantry Weapons 和 Tick 1,893 胜利；命令覆盖 e14/b7/p18/u8。
+- 82/82 全量黑盒回归通过。Release 性能：256/512/1000 移动 P95 为 1.53/4.51/10.83ms，分配 27/182/461B/Tick；128/256 战斗 P95 为 2.23/4.71ms。
+- 60 秒 AV1/WebM 位于 `test_videos/20260712_005031/`；全库验证通过 108 个视频、56 个 manifest、107 个场景引用，编码均为 AV1。
+
+下一段为有限的 S11-H2：AI 配置 Resource、双 AI 错峰自对战、Simulation+Director 成对热恢复和 AI 命令 Package 全程回放。撤退/目标价值只做有失败场景支持的规则，不进入无穷微操调参。
 
 ## 8. 可以并行但不能提前耦合的优化
 

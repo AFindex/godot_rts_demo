@@ -8,26 +8,49 @@ public enum AiIntentKind : byte
     Gather,
     TransferWorkers,
     Build,
+    ResumeBuild,
     Train,
     Research,
     Move,
-    AttackMove
+    AttackMove,
+    AttackUnit,
+    AttackBuilding
 }
+
+public readonly record struct AiUnitSnapshot(
+    int UnitId,
+    Vector2 Position,
+    bool IsWorker,
+    WorkerEconomyState WorkerState,
+    int TargetResourceNodeId,
+    EconomyResourceKind? TargetResourceKind,
+    UnitMoveMode MoveMode,
+    CombatPhase CombatPhase);
 
 public readonly record struct AiFacilitySnapshot(
     GameplayBuildingId BuildingId,
+    BuildingTypeProfile Type,
     BuildingFunctionKind Function,
     BuildingLifecycleState State,
+    SimRect Bounds,
+    int BuilderUnit,
     int ProductionOrders,
     int ResearchOrders);
+
+public readonly record struct AiTechnologySnapshot(
+    TechnologyProfile Technology,
+    int CurrentLevel,
+    bool Queued);
 
 public sealed record AiObservationSnapshot(
     long Tick,
     int PlayerId,
     PlayerViewSnapshot View,
     PlayerEconomySnapshot Economy,
+    AiUnitSnapshot[] OwnUnits,
     EconomyBaseSnapshot[] Bases,
     AiFacilitySnapshot[] Facilities,
+    AiTechnologySnapshot[] Technologies,
     MatchSnapshot Match);
 
 public readonly record struct AiIntent(
@@ -41,7 +64,9 @@ public readonly record struct AiIntent(
     GameplayBuildingId Facility = default,
     BuildingTypeProfile Building = default,
     ProductionRecipeProfile Recipe = default,
-    TechnologyProfile Technology = default);
+    TechnologyProfile Technology = default,
+    int TargetUnitId = -1,
+    int TargetBuildingId = -1);
 
 public enum AiIntentExecutionCode : byte
 {
@@ -80,6 +105,14 @@ public interface IRtsAiPolicy
     void Decide(AiObservationSnapshot observation, IAiIntentSink intents);
     byte[] CaptureState();
     void RestoreState(ReadOnlySpan<byte> state, int formatVersion);
+}
+
+public interface IRtsAiExecutionObserver
+{
+    void ObserveExecution(
+        long tick,
+        AiIntent intent,
+        AiIntentExecutionResult result);
 }
 
 public sealed class AiIntentBuffer : IAiIntentSink
@@ -187,7 +220,9 @@ public sealed class RtsAiDirector
             agent.Policy.Decide(observation, agent.Buffer);
             foreach (var intent in agent.Buffer.Intents)
             {
-                _executor.Execute(agent.PlayerId, intent);
+                var result = _executor.Execute(agent.PlayerId, intent);
+                if (agent.Policy is IRtsAiExecutionObserver observer)
+                    observer.ObserveExecution(tick, intent, result);
                 executed++;
             }
             agent.LastDecisionTick = tick;
@@ -250,9 +285,15 @@ public sealed class RtsSimulationAiAdapter :
     IRtsAiIntentExecutor
 {
     private readonly RtsSimulation _simulation;
+    private readonly TechnologyCatalogSnapshot? _technologyCatalog;
 
-    public RtsSimulationAiAdapter(RtsSimulation simulation) =>
+    public RtsSimulationAiAdapter(
+        RtsSimulation simulation,
+        TechnologyCatalogSnapshot? technologyCatalog = null)
+    {
         _simulation = simulation;
+        _technologyCatalog = technologyCatalog;
+    }
 
     public AiObservationSnapshot Capture(int playerId)
     {
@@ -261,19 +302,62 @@ public sealed class RtsSimulationAiAdapter :
             .Where(value => value.Relation == PlayerEntityRelation.Own)
             .Select(value => new AiFacilitySnapshot(
                 value.BuildingId,
+                value.Type,
                 value.Type.Function,
                 value.State,
+                value.Bounds,
+                _simulation.Construction.Observe(value.BuildingId).BuilderUnit,
                 _simulation.Production.Observe(value.BuildingId).Orders.Length,
                 _simulation.Technology.Observe(value.BuildingId).Orders.Length))
             .ToArray();
+        var ownUnits = view.Units
+            .Where(value => value.Relation == PlayerEntityRelation.Own)
+            .Select(value =>
+            {
+                var worker = _simulation.Economy.IsWorker(value.UnitId);
+                var workerSnapshot = worker
+                    ? _simulation.Economy.Worker(value.UnitId)
+                    : default;
+                return new AiUnitSnapshot(
+                    value.UnitId,
+                    value.Position,
+                    worker,
+                    worker
+                        ? workerSnapshot.State
+                        : WorkerEconomyState.None,
+                    worker
+                        ? workerSnapshot.TargetNode.Value
+                        : -1,
+                    worker && workerSnapshot.TargetNode.Value >= 0
+                        ? _simulation.Economy.ObserveResourceNode(
+                            workerSnapshot.TargetNode).Kind
+                        : null,
+                    value.MoveMode,
+                    value.CombatPhase);
+            })
+            .ToArray();
+        var technologies = _technologyCatalog is null
+            ? []
+            : _technologyCatalog.Technologies.ToArray().Select(value =>
+                new AiTechnologySnapshot(
+                    value,
+                    _simulation.Technology.Level(playerId, value.Id),
+                    facilities.Any(facility =>
+                        _simulation.Technology.Observe(facility.BuildingId)
+                            .Orders.Any(order =>
+                                order.PlayerId == playerId &&
+                                order.Technology.Id == value.Id))))
+                .ToArray();
         return new AiObservationSnapshot(
             _simulation.Metrics.Tick,
             playerId,
             view,
             _simulation.Economy.Players.Snapshot(playerId),
+            ownUnits,
             _simulation.Economy.CreateBaseOverview(
                 playerId, _simulation.Units.Count),
             facilities,
+            technologies,
             _simulation.Match.CreateSnapshot(
                 _simulation.Construction, _simulation.Economy,
                 _simulation.Units, _simulation.Combat));
@@ -297,6 +381,9 @@ public sealed class RtsSimulationAiAdapter :
                     playerId, intent.Units[0], intent.Building,
                     intent.Position,
                     new EconomyResourceNodeId(intent.ResourceNodeId)).Succeeded,
+            AiIntentKind.ResumeBuild => intent.Units.Length == 1 &&
+                _simulation.ResumeConstruction(
+                    playerId, intent.Facility, intent.Units[0]),
             AiIntentKind.Train => _simulation.IssueProduction(
                 playerId, intent.Facility, intent.Recipe).Succeeded,
             AiIntentKind.Research => _simulation.IssueResearch(
@@ -305,6 +392,24 @@ public sealed class RtsSimulationAiAdapter :
                 playerId, intent.Units, intent.Position).Succeeded,
             AiIntentKind.AttackMove => _simulation.IssuePlayerAttackMove(
                 playerId, intent.Units, intent.Position).Succeeded,
+            AiIntentKind.AttackUnit => intent.TargetUnitId >= 0 &&
+                _simulation.IssuePlayerSmartCommand(
+                    playerId,
+                    intent.Units,
+                    new SmartCommandTarget(
+                        SmartCommandTargetKind.EnemyUnit,
+                        intent.Position,
+                        Unit: intent.TargetUnitId),
+                    attackMoveModifier: false).Succeeded,
+            AiIntentKind.AttackBuilding => intent.TargetBuildingId >= 0 &&
+                _simulation.IssuePlayerSmartCommand(
+                    playerId,
+                    intent.Units,
+                    new SmartCommandTarget(
+                        SmartCommandTargetKind.EnemyBuilding,
+                        intent.Position,
+                        Building: intent.TargetBuildingId),
+                    attackMoveModifier: false).Succeeded,
             _ => false
         };
         return new(succeeded

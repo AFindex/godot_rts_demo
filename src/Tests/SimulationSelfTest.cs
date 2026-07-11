@@ -37,6 +37,7 @@ public static class SimulationSelfTest
             var technologyCatalogResult = TechnologyCatalogSelfTest.Run(
                 technologyCatalog);
             var aiArchitectureResult = AiArchitectureSelfTest.Run();
+            var modularAiResult = ModularAiPolicySelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
@@ -45,8 +46,8 @@ public static class SimulationSelfTest
                       economyResult.Passed && buildingTypeResult.Passed &&
                       productionCatalogResult.Passed &&
                       technologyCatalogResult.Passed &&
-                      aiArchitectureResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 15)
+                      aiArchitectureResult.Passed && modularAiResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 16)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -87,7 +88,10 @@ public static class SimulationSelfTest
                 $"({technologyCatalogResult.Summary})",
                 $"ai-architecture=" +
                 $"{(aiArchitectureResult.Passed ? "PASS" : "FAIL")}" +
-                $"({aiArchitectureResult.Summary})"
+                $"({aiArchitectureResult.Summary})",
+                $"ai-modular-policy=" +
+                $"{(modularAiResult.Passed ? "PASS" : "FAIL")}" +
+                $"({modularAiResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {
