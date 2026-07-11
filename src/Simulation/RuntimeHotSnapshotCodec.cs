@@ -405,6 +405,17 @@ internal static class RuntimeHotSnapshotCodec
             WriteVector(writer, dropOff.Position);
             writer.Write(dropOff.AcceptsMinerals);
             writer.Write(dropOff.AcceptsVespene);
+            writer.Write(dropOff.Operational);
+        }
+        writer.Write(economy.Bases.Length);
+        foreach (var value in economy.Bases)
+        {
+            writer.Write(value.Id.Value);
+            writer.Write(value.PlayerId);
+            writer.Write(value.TownHall.Value);
+            writer.Write(value.DropOff.Value);
+            WriteVector(writer, value.Position);
+            writer.Write(value.Operational);
         }
         if (economy.Workers.Length != unitCount)
         {
@@ -477,7 +488,8 @@ internal static class RuntimeHotSnapshotCodec
             var value = new EconomyDropOffRuntimeEntry(
                 new EconomyDropOffId(reader.ReadInt32()),
                 reader.ReadInt32(), ReadVector(reader),
-                reader.ReadBoolean(), reader.ReadBoolean());
+                reader.ReadBoolean(), reader.ReadBoolean(),
+                reader.ReadBoolean());
             if (value.Id.Value != index || !Finite(value.Position) ||
                 !players.Any(player => player.PlayerId == value.PlayerId) ||
                 !value.AcceptsMinerals && !value.AcceptsVespene)
@@ -485,6 +497,32 @@ internal static class RuntimeHotSnapshotCodec
                 throw new InvalidDataException();
             }
             dropOffs[index] = value;
+        }
+        var baseCount = ReadCount(reader, MaximumCapacity);
+        var bases = new EconomyBaseRuntimeEntry[baseCount];
+        var baseTownHalls = new HashSet<int>();
+        var baseDropOffs = new HashSet<int>();
+        for (var index = 0; index < baseCount; index++)
+        {
+            var value = new EconomyBaseRuntimeEntry(
+                new EconomyBaseId(reader.ReadInt32()),
+                reader.ReadInt32(),
+                new GameplayBuildingId(reader.ReadInt32()),
+                new EconomyDropOffId(reader.ReadInt32()),
+                ReadVector(reader),
+                reader.ReadBoolean());
+            if (value.Id.Value != index || value.TownHall.Value < 0 ||
+                (uint)value.DropOff.Value >= (uint)dropOffs.Length ||
+                dropOffs[value.DropOff.Value].PlayerId != value.PlayerId ||
+                dropOffs[value.DropOff.Value].Operational != value.Operational ||
+                !players.Any(player => player.PlayerId == value.PlayerId) ||
+                !Finite(value.Position) ||
+                !baseTownHalls.Add(value.TownHall.Value) ||
+                !baseDropOffs.Add(value.DropOff.Value))
+            {
+                throw new InvalidDataException();
+            }
+            bases[index] = value;
         }
         var workerCount = ReadCount(reader, MaximumCapacity);
         if (workerCount != unitCount)
@@ -526,7 +564,7 @@ internal static class RuntimeHotSnapshotCodec
                 throw new InvalidDataException();
             }
         }
-        return new EconomyRuntimeSnapshot(players, nodes, dropOffs, workers);
+        return new EconomyRuntimeSnapshot(players, nodes, dropOffs, bases, workers);
     }
 
     internal static void WriteConstruction(
@@ -619,6 +657,32 @@ internal static class RuntimeHotSnapshotCodec
                 throw new InvalidDataException();
             }
             buildings[index] = value;
+        }
+        foreach (var economyBase in economy.Bases)
+        {
+            if ((uint)economyBase.TownHall.Value >= (uint)buildings.Length)
+                throw new InvalidDataException();
+            var building = buildings[economyBase.TownHall.Value];
+            var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+            if (building.PlayerId != economyBase.PlayerId ||
+                building.Type.Function != BuildingFunctionKind.TownHall ||
+                center != economyBase.Position ||
+                economy.DropOffs[economyBase.DropOff.Value].Operational !=
+                    economyBase.Operational ||
+                economyBase.Operational !=
+                    (building.State == BuildingLifecycleState.Completed))
+            {
+                throw new InvalidDataException();
+            }
+        }
+        for (var index = 0; index < buildings.Length; index++)
+        {
+            if (buildings[index].Type.Function == BuildingFunctionKind.TownHall &&
+                buildings[index].State == BuildingLifecycleState.Completed &&
+                economy.Bases.Count(value => value.TownHall.Value == index) != 1)
+            {
+                throw new InvalidDataException();
+            }
         }
         return new ConstructionRuntimeSnapshot(buildings);
     }

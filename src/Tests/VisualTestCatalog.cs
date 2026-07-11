@@ -59,6 +59,7 @@ public static class VisualTestCatalog
         "resource-file-watch-workflow",
         "building-connectivity-diff-preview",
         "economy-dual-resource",
+        "economy-expansion-saturation",
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
@@ -168,6 +169,7 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview" =>
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
+        "economy-expansion-saturation" => CreateExpansionSaturation(),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
@@ -1115,7 +1117,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 8 &&
+                    exact && rejected && hot.FormatVersion == 9 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1209,7 +1211,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
+                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2164,6 +2166,123 @@ public static class VisualTestCatalog
                 TestDiagnosticKind.Accepted);
     }
 
+    private static VisualTestSession CreateExpansionSaturation()
+    {
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1300f, 720f), 32);
+        rig.RegisterPlayer(1, 3000, 500, 20);
+        var leftNodes = new[]
+        {
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(390f, 300f), 4000, 5, 0.45f, 2),
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(410f, 410f), 4000, 5, 0.45f, 2)
+        };
+        rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+            new Vector2(890f, 300f), 4000, 5, 0.45f, 2);
+        rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+            new Vector2(870f, 410f), 4000, 5, 0.45f, 2);
+        var workers = Enumerable.Range(0, 8)
+            .Select(index => rig.SpawnWorker(
+                new Vector2(120f + index % 4 * 24f, 250f + index / 4 * 28f), 1))
+            .ToArray();
+        var builders = new[]
+        {
+            rig.SpawnWorker(new Vector2(145f, 355f), 1),
+            rig.SpawnWorker(new Vector2(925f, 355f), 1)
+        };
+        var fastTownHall = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 1f
+        };
+        rig.StartCommandRecording();
+        var main = rig.Build(1, builders[0], fastTownHall, new Vector2(250f, 355f));
+        var expansion = rig.Build(
+            1, builders[1], fastTownHall, new Vector2(1030f, 355f));
+
+        TestEconomyBaseId mainBase = default;
+        TestEconomyBaseId expansionBase = default;
+        var basesRegistered = false;
+        var overSaturated = false;
+        var invalidTransferRejected = false;
+        var transferSucceeded = false;
+        var balanced = false;
+        var expansionDestroyed = false;
+        var session = new VisualTestSession(
+            "economy-expansion-saturation",
+            "Town Hall expansion, saturation and deterministic worker transfer",
+            900,
+            rig,
+            workers.Concat(builders).ToArray(),
+            runtime =>
+            {
+                var bases = runtime.ObserveEconomyBases(1);
+                var mainState = bases.Single(value => value.Id == mainBase);
+                var expansionState = bases.Single(value => value.Id == expansionBase);
+                var log = runtime.CaptureEconomyCommandLog();
+                var logValid = log.EntryCount == 9 &&
+                               log.TryCanonicalRoundTrip(out var roundTrip) &&
+                               roundTrip?.StableHash == log.StableHash;
+                var passed = main.Succeeded && expansion.Succeeded &&
+                             basesRegistered && overSaturated &&
+                             invalidTransferRejected && transferSucceeded &&
+                             balanced && expansionDestroyed &&
+                             mainState.Operational &&
+                             !expansionState.Operational && logValid;
+                return new ScenarioResult(
+                    passed,
+                    $"bases={bases.Length}, initial=8/4+0/4, balanced={balanced}, " +
+                    $"transfer={transferSucceeded}, destroyed={!expansionState.Operational}, " +
+                    $"log={log.EntryCount}/v{log.FormatVersion}, hash={log.StableHash:X16}");
+            })
+            .Highlight(
+                new SimRect(new Vector2(150f, 240f), new Vector2(450f, 470f)),
+                "MAIN: 4 ideal workers, initially 8 assigned",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(850f, 240f), new Vector2(1130f, 470f)),
+                "EXPANSION: receives 4 workers, then Town Hall is destroyed",
+                TestDiagnosticKind.Accepted);
+        session.At(90, "Register completed Town Halls and saturate the main", runtime =>
+        {
+            var bases = runtime.ObserveEconomyBases(1);
+            basesRegistered = bases.Length == 2 &&
+                              bases.All(value => value.Operational &&
+                                  value.MineralNodes == 2 && value.IdealWorkers == 4);
+            if (!basesRegistered)
+                return;
+            mainBase = bases.Single(value => value.TownHall == main.BuildingId).Id;
+            expansionBase = bases.Single(
+                value => value.TownHall == expansion.BuildingId).Id;
+            for (var index = 0; index < workers.Length; index++)
+                runtime.Gather(1, workers[index], leftNodes[index % leftNodes.Length]);
+        });
+        session.At(180, "Observe over-saturation and reject a same-base transfer", runtime =>
+        {
+            var bases = runtime.ObserveEconomyBases(1);
+            overSaturated = bases.Single(value => value.Id == mainBase).AssignedWorkers == 8 &&
+                            bases.Single(value => value.Id == expansionBase).AssignedWorkers == 0;
+            invalidTransferRejected = runtime.TransferWorkers(
+                1, mainBase, mainBase, 2).Code == TestWorkerTransferCommandCode.SameBase;
+        });
+        session.At(240, "Transfer the four closest eligible workers", runtime =>
+        {
+            var result = runtime.TransferWorkers(1, mainBase, expansionBase, 4);
+            transferSucceeded = result.Succeeded && result.TransferredWorkers == 4;
+        });
+        session.At(360, "Verify both mineral lines are exactly saturated", runtime =>
+        {
+            var bases = runtime.ObserveEconomyBases(1);
+            balanced = bases.All(value =>
+                value.AssignedWorkers == 4 && value.IdealWorkers == 4 &&
+                MathF.Abs(value.Saturation - 1f) < 0.001f);
+        });
+        session.At(720, "Destroy expansion and disable its DropOff", runtime =>
+            expansionDestroyed = runtime.DamageBuilding(
+                expansion.BuildingId, 100000f));
+        return session;
+    }
+
     private static VisualTestSession CreateConstructionGameplayBuildings()
     {
         var rig = MovementTestRig.CreateEconomyMap(
@@ -2590,9 +2709,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 8 &&
-                             producingHot.FormatVersion == 8 &&
-                             waitingHot.FormatVersion == 8 &&
+                             package.FormatVersion == 9 &&
+                             producingHot.FormatVersion == 9 &&
+                             waitingHot.FormatVersion == 9 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -2808,7 +2927,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
+                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -2948,7 +3067,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
+                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -3076,7 +3195,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
+                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -3233,7 +3352,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
+                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -3347,7 +3466,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 8 && exact;
+                             hotRoundTrip && hot.FormatVersion == 9 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

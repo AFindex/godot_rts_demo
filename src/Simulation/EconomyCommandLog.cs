@@ -3,7 +3,8 @@ namespace RtsDemo.Simulation;
 public enum EconomyCommandKind : byte
 {
     Gather = 1,
-    SetRefineryOperational = 2
+    SetRefineryOperational = 2,
+    TransferWorkers = 3
 }
 
 public readonly record struct RecordedEconomyCommand(
@@ -12,7 +13,10 @@ public readonly record struct RecordedEconomyCommand(
     int PlayerId,
     int UnitId,
     int ResourceNodeId,
-    bool Value);
+    bool Value,
+    int SourceBaseId,
+    int TargetBaseId,
+    int Count);
 
 public enum EconomyCommandLogValidationCode : byte
 {
@@ -30,7 +34,7 @@ public sealed class EconomyCommandLogSnapshot
 {
     private const uint Magic = 0x43455452; // RTEC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     public EconomyCommandLogSnapshot(RecordedEconomyCommand[] entries)
     {
@@ -84,15 +88,24 @@ public sealed class EconomyCommandLogSnapshot
                     reader.ReadInt32(),
                     reader.ReadInt32(),
                     reader.ReadInt32(),
-                    reader.ReadBoolean());
+                    reader.ReadBoolean(),
+                    reader.ReadInt32(),
+                    reader.ReadInt32(),
+                    reader.ReadInt32());
                 if (entry.Tick < previousTick)
                 {
                     validation = EconomyCommandLogValidationCode.InvalidTickOrder;
                     return false;
                 }
                 if (entry.Tick < 0 || !Enum.IsDefined(entry.Kind) ||
-                    entry.PlayerId < 0 || entry.ResourceNodeId < 0 ||
-                    entry.Kind == EconomyCommandKind.Gather && entry.UnitId < 0)
+                    entry.PlayerId < 0 ||
+                    entry.Kind == EconomyCommandKind.Gather &&
+                        (entry.UnitId < 0 || entry.ResourceNodeId < 0) ||
+                    entry.Kind == EconomyCommandKind.SetRefineryOperational &&
+                        entry.ResourceNodeId < 0 ||
+                    entry.Kind == EconomyCommandKind.TransferWorkers &&
+                        (entry.SourceBaseId < 0 || entry.TargetBaseId < 0 ||
+                         entry.Count <= 0))
                 {
                     validation = EconomyCommandLogValidationCode.InvalidEntry;
                     return false;
@@ -132,6 +145,9 @@ public sealed class EconomyCommandLogSnapshot
             writer.Write(entry.UnitId);
             writer.Write(entry.ResourceNodeId);
             writer.Write(entry.Value);
+            writer.Write(entry.SourceBaseId);
+            writer.Write(entry.TargetBaseId);
+            writer.Write(entry.Count);
         }
         writer.Flush();
         return stream.ToArray();
@@ -145,7 +161,7 @@ public sealed class EconomyCommandRecorder
     public void RecordGather(long tick, int playerId, int unitId, int nodeId) =>
         _entries.Add(new RecordedEconomyCommand(
             tick, EconomyCommandKind.Gather,
-            playerId, unitId, nodeId, false));
+            playerId, unitId, nodeId, false, -1, -1, 0));
 
     public void RecordRefinery(
         long tick,
@@ -154,7 +170,17 @@ public sealed class EconomyCommandRecorder
         bool operational) =>
         _entries.Add(new RecordedEconomyCommand(
             tick, EconomyCommandKind.SetRefineryOperational,
-            playerId, -1, nodeId, operational));
+            playerId, -1, nodeId, operational, -1, -1, 0));
+
+    public void RecordWorkerTransfer(
+        long tick,
+        int playerId,
+        EconomyBaseId source,
+        EconomyBaseId target,
+        int count) =>
+        _entries.Add(new RecordedEconomyCommand(
+            tick, EconomyCommandKind.TransferWorkers,
+            playerId, -1, -1, false, source.Value, target.Value, count));
 
     public EconomyCommandLogSnapshot Capture() => new(_entries.ToArray());
 }

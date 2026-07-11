@@ -1,9 +1,39 @@
 ﻿{
-    "generated_at":  "2026-07-11T21:38:25.7332817+08:00",
+    "generated_at":  "2026-07-11T22:15:20.6070169+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  103,
-    "case_count":  78,
+    "recording_count":  105,
+    "case_count":  79,
     "recordings":  [
+                       {
+                           "id":  "economy-expansion-saturation",
+                           "display_name":  "Town Hall expansion, saturation and deterministic worker transfer",
+                           "batch":  "20260711_221503",
+                           "created_at":  "2026-07-11T22:15:20.2270689+08:00",
+                           "video":  "../20260711_221503/economy-expansion-saturation.webm",
+                           "log":  "../20260711_221503/economy-expansion-saturation.log",
+                           "bytes":  940667,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-expansion-saturation: ticks=900, bases=2, initial=8/4+0/4, balanced=True, transfer=True, destroyed=True, log=9/v2, hash=7C334953EDB0F00D",
+                           "metrics":  "ticks=900, bases=2, initial=8/4+0/4, balanced=True, transfer=True, destroyed=True, log=9/v2, hash=7C334953EDB0F00D"
+                       },
+                       {
+                           "id":  "economy-expansion-saturation",
+                           "display_name":  "Town Hall expansion, saturation and deterministic worker transfer",
+                           "batch":  "20260711_221318",
+                           "created_at":  "2026-07-11T22:13:35.2864194+08:00",
+                           "video":  "../20260711_221318/economy-expansion-saturation.webm",
+                           "log":  "../20260711_221318/economy-expansion-saturation.log",
+                           "bytes":  953816,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-expansion-saturation: ticks=900, bases=2, initial=8/4+0/4, balanced=True, transfer=True, destroyed=True, log=9/v2, hash=7C334953EDB0F00D",
+                           "metrics":  "ticks=900, bases=2, initial=8/4+0/4, balanced=True, transfer=True, destroyed=True, log=9/v2, hash=7C334953EDB0F00D"
+                       },
                        {
                            "id":  "technology-research-upgrades",
                            "display_name":  "Research levels, cancellation, prerequisites and exclusivity persist",

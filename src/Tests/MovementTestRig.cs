@@ -6,6 +6,7 @@ namespace RtsDemo.Tests;
 public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
 public readonly record struct TestResourceNodeId(int Value);
+public readonly record struct TestEconomyBaseId(int Value);
 public readonly record struct TestGameplayBuildingId(int Value);
 public readonly record struct TestProductionOrderId(int Value);
 
@@ -215,6 +216,37 @@ public readonly record struct TestWorkerEconomySnapshot(
     TestResourceNodeId TargetNode,
     TestEconomyResourceKind CargoKind,
     int CargoAmount);
+
+public readonly record struct TestEconomyBaseSnapshot(
+    TestEconomyBaseId Id,
+    TestGameplayBuildingId TownHall,
+    Vector2 Position,
+    bool Operational,
+    int MineralNodes,
+    int VespeneNodes,
+    int AssignedWorkers,
+    int IdealWorkers,
+    float Saturation);
+
+public enum TestWorkerTransferCommandCode : byte
+{
+    Success,
+    InvalidPlayer,
+    InvalidSourceBase,
+    InvalidTargetBase,
+    SameBase,
+    InvalidCount,
+    NoTargetResources,
+    NoEligibleWorkers
+}
+
+public readonly record struct TestWorkerTransferResult(
+    TestWorkerTransferCommandCode Code,
+    int RequestedWorkers,
+    int TransferredWorkers)
+{
+    public bool Succeeded => Code == TestWorkerTransferCommandCode.Success;
+}
 
 public enum TestOrderKind : byte
 {
@@ -1114,6 +1146,37 @@ public sealed class MovementTestRig
             new TestResourceNodeId(snapshot.TargetNode.Value),
             (TestEconomyResourceKind)snapshot.CargoKind,
             snapshot.CargoAmount);
+    }
+
+    public TestEconomyBaseSnapshot[] ObserveEconomyBases(int playerId) =>
+        _simulation.Economy.CreateBaseOverview(playerId, _simulation.Units.Count)
+            .Select(value => new TestEconomyBaseSnapshot(
+                new TestEconomyBaseId(value.Id.Value),
+                new TestGameplayBuildingId(value.TownHall.Value),
+                value.Position,
+                value.Operational,
+                value.MineralNodes,
+                value.VespeneNodes,
+                value.AssignedWorkers,
+                value.IdealWorkers,
+                value.Saturation))
+            .ToArray();
+
+    public TestWorkerTransferResult TransferWorkers(
+        int playerId,
+        TestEconomyBaseId source,
+        TestEconomyBaseId target,
+        int count)
+    {
+        var result = _simulation.IssueWorkerTransfer(
+            playerId,
+            new EconomyBaseId(source.Value),
+            new EconomyBaseId(target.Value),
+            count);
+        return new TestWorkerTransferResult(
+            (TestWorkerTransferCommandCode)result.Code,
+            result.RequestedWorkers,
+            result.TransferredWorkers);
     }
 
     public TestConstructionResult Build(

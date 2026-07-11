@@ -263,6 +263,7 @@ public sealed class PlayerEconomyStore
 
 public readonly record struct EconomyResourceNodeId(int Value);
 public readonly record struct EconomyDropOffId(int Value);
+public readonly record struct EconomyBaseId(int Value);
 
 public readonly record struct EconomyResourceNodeSnapshot(
     EconomyResourceNodeId Id,
@@ -314,7 +315,16 @@ public readonly record struct EconomyDropOffRuntimeEntry(
     int PlayerId,
     Vector2 Position,
     bool AcceptsMinerals,
-    bool AcceptsVespene);
+    bool AcceptsVespene,
+    bool Operational);
+
+public readonly record struct EconomyBaseRuntimeEntry(
+    EconomyBaseId Id,
+    int PlayerId,
+    GameplayBuildingId TownHall,
+    EconomyDropOffId DropOff,
+    Vector2 Position,
+    bool Operational);
 
 public readonly record struct WorkerEconomyRuntimeEntry(
     int UnitId,
@@ -330,7 +340,47 @@ public sealed record EconomyRuntimeSnapshot(
     PlayerEconomyRuntimeEntry[] Players,
     EconomyResourceNodeRuntimeEntry[] ResourceNodes,
     EconomyDropOffRuntimeEntry[] DropOffs,
+    EconomyBaseRuntimeEntry[] Bases,
     WorkerEconomyRuntimeEntry[] Workers);
+
+public readonly record struct EconomyBaseSnapshot(
+    EconomyBaseId Id,
+    int PlayerId,
+    GameplayBuildingId TownHall,
+    EconomyDropOffId DropOff,
+    Vector2 Position,
+    bool Operational,
+    int MineralNodes,
+    int VespeneNodes,
+    int AssignedWorkers,
+    int IdealWorkers)
+{
+    public float Saturation => IdealWorkers == 0
+        ? 0f
+        : AssignedWorkers / (float)IdealWorkers;
+}
+
+public enum WorkerTransferCommandCode : byte
+{
+    Success,
+    InvalidPlayer,
+    InvalidSourceBase,
+    InvalidTargetBase,
+    SameBase,
+    InvalidCount,
+    NoTargetResources,
+    NoEligibleWorkers
+}
+
+public readonly record struct WorkerTransferCommandResult(
+    WorkerTransferCommandCode Code,
+    EconomyBaseId SourceBase,
+    EconomyBaseId TargetBase,
+    int RequestedWorkers,
+    int TransferredWorkers)
+{
+    public bool Succeeded => Code == WorkerTransferCommandCode.Success;
+}
 
 public sealed class EconomyOverviewSnapshot
 {
@@ -382,6 +432,7 @@ public sealed class EconomySystem
 {
     private const float NodeArrivalPadding = 30f;
     private const float DropOffArrivalRadius = 52f;
+    private const float BaseResourceRadius = 360f;
     private readonly bool[] _workers;
     private readonly int[] _workerPlayers;
     private readonly WorkerEconomyState[] _workerStates;
@@ -391,6 +442,7 @@ public sealed class EconomySystem
     private readonly float[] _workRemaining;
     private readonly List<ResourceNode> _nodes = [];
     private readonly List<DropOff> _dropOffs = [];
+    private readonly List<EconomyBase> _bases = [];
     private int _registeredWorkerCount;
 
     public EconomySystem(int unitCapacity)
@@ -409,6 +461,7 @@ public sealed class EconomySystem
     public PlayerEconomyStore Players { get; }
     public int ResourceNodeCount => _nodes.Count;
     public int DropOffCount => _dropOffs.Count;
+    public int BaseCount => _bases.Count(value => value.Operational);
     public bool HasRuntimeState =>
         Players.HasRegisteredPlayers || _nodes.Count > 0 || _dropOffs.Count > 0 ||
         _workers.Any(value => value);
@@ -462,8 +515,168 @@ public sealed class EconomySystem
         }
         var id = new EconomyDropOffId(_dropOffs.Count);
         _dropOffs.Add(new DropOff(
-            id, playerId, position, acceptsMinerals, acceptsVespene));
+            id, playerId, position, acceptsMinerals, acceptsVespene, true));
         return id;
+    }
+
+    public EconomyBaseId RegisterTownHall(
+        int playerId,
+        GameplayBuildingId townHall,
+        Vector2 position)
+    {
+        if (!Players.IsRegistered(playerId) || townHall.Value < 0 ||
+            !IsFinite(position))
+        {
+            throw new ArgumentOutOfRangeException(nameof(playerId));
+        }
+        for (var index = 0; index < _bases.Count; index++)
+        {
+            if (_bases[index].TownHall != townHall)
+            {
+                continue;
+            }
+            if (_bases[index].PlayerId != playerId)
+            {
+                throw new InvalidOperationException("Town Hall owner changed.");
+            }
+            _bases[index].Operational = true;
+            _dropOffs[_bases[index].DropOff.Value].Operational = true;
+            return _bases[index].Id;
+        }
+        var dropOff = AddDropOff(playerId, position);
+        var id = new EconomyBaseId(_bases.Count);
+        _bases.Add(new EconomyBase(
+            id, playerId, townHall, dropOff, position, true));
+        return id;
+    }
+
+    public void SetTownHallOperational(GameplayBuildingId townHall, bool value)
+    {
+        for (var index = 0; index < _bases.Count; index++)
+        {
+            var economyBase = _bases[index];
+            if (economyBase.TownHall != townHall)
+            {
+                continue;
+            }
+            economyBase.Operational = value;
+            _dropOffs[economyBase.DropOff.Value].Operational = value;
+            return;
+        }
+    }
+
+    public EconomyBaseSnapshot[] CreateBaseOverview(int playerId, int unitCount)
+    {
+        if (!Players.IsRegistered(playerId) || unitCount < 0 ||
+            unitCount > _workers.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(playerId));
+        }
+        var result = new List<EconomyBaseSnapshot>();
+        for (var baseIndex = 0; baseIndex < _bases.Count; baseIndex++)
+        {
+            var economyBase = _bases[baseIndex];
+            if (economyBase.PlayerId != playerId)
+            {
+                continue;
+            }
+            var minerals = 0;
+            var vespene = 0;
+            var ideal = 0;
+            for (var node = 0; node < _nodes.Count; node++)
+            {
+                if (OwningBase(node) != baseIndex)
+                {
+                    continue;
+                }
+                ideal += _nodes[node].HarvesterCapacity;
+                if (_nodes[node].Kind == EconomyResourceKind.Minerals)
+                {
+                    minerals++;
+                }
+                else
+                {
+                    vespene++;
+                }
+            }
+            var assigned = 0;
+            for (var unit = 0; unit < unitCount; unit++)
+            {
+                if (_workers[unit] && _workerPlayers[unit] == playerId &&
+                    OwningBase(_workerNodes[unit]) == baseIndex)
+                {
+                    assigned++;
+                }
+            }
+            result.Add(new EconomyBaseSnapshot(
+                economyBase.Id, economyBase.PlayerId, economyBase.TownHall,
+                economyBase.DropOff, economyBase.Position,
+                economyBase.Operational, minerals, vespene, assigned, ideal));
+        }
+        return result.ToArray();
+    }
+
+    public WorkerTransferCommandResult TransferWorkers(
+        int playerId,
+        EconomyBaseId sourceId,
+        EconomyBaseId targetId,
+        int count,
+        UnitStore units,
+        Action<int, Vector2> moveWorker)
+    {
+        if (!Players.IsRegistered(playerId))
+            return TransferFailure(WorkerTransferCommandCode.InvalidPlayer);
+        if (!TryOwnedOperationalBase(sourceId, playerId, out _))
+            return TransferFailure(WorkerTransferCommandCode.InvalidSourceBase);
+        if (!TryOwnedOperationalBase(targetId, playerId, out var target))
+            return TransferFailure(WorkerTransferCommandCode.InvalidTargetBase);
+        if (sourceId == targetId)
+            return TransferFailure(WorkerTransferCommandCode.SameBase);
+        if (count <= 0)
+            return TransferFailure(WorkerTransferCommandCode.InvalidCount);
+
+        var targetNodes = Enumerable.Range(0, _nodes.Count)
+            .Where(node => OwningBase(node) == targetId.Value &&
+                           IsNodeAvailable(node))
+            .OrderBy(node => _nodes[node].Kind == EconomyResourceKind.Minerals ? 0 : 1)
+            .ThenBy(node => node)
+            .ToArray();
+        if (targetNodes.Length == 0)
+            return TransferFailure(WorkerTransferCommandCode.NoTargetResources);
+
+        var candidates = Enumerable.Range(0, units.Count)
+            .Where(unit => units.Alive[unit] && _workers[unit] &&
+                           _workerPlayers[unit] == playerId &&
+                           OwningBase(_workerNodes[unit]) == sourceId.Value)
+            .OrderBy(unit => Vector2.DistanceSquared(
+                units.Positions[unit], target.Position))
+            .ThenBy(unit => unit)
+            .Take(count)
+            .ToArray();
+        if (candidates.Length == 0)
+            return TransferFailure(WorkerTransferCommandCode.NoEligibleWorkers);
+
+        var loads = new int[_nodes.Count];
+        for (var unit = 0; unit < units.Count; unit++)
+        {
+            if (_workers[unit] && (uint)_workerNodes[unit] < (uint)loads.Length)
+                loads[_workerNodes[unit]]++;
+        }
+        foreach (var unit in candidates)
+        {
+            var node = targetNodes
+                .OrderBy(value => loads[value] / (float)_nodes[value].HarvesterCapacity)
+                .ThenBy(value => value)
+                .First();
+            RetargetTransferredWorker(unit, node, units.Positions[unit], moveWorker);
+            loads[node]++;
+        }
+        return new WorkerTransferCommandResult(
+            WorkerTransferCommandCode.Success, sourceId, targetId,
+            count, candidates.Length);
+
+        WorkerTransferCommandResult TransferFailure(WorkerTransferCommandCode code) =>
+            new(code, sourceId, targetId, count, 0);
     }
 
     public void RegisterWorker(int unit, int playerId)
@@ -686,7 +899,11 @@ public sealed class EconomySystem
             node.ActiveHarvesters)).ToArray();
         var dropOffs = _dropOffs.Select(dropOff => new EconomyDropOffRuntimeEntry(
             dropOff.Id, dropOff.PlayerId, dropOff.Position,
-            dropOff.AcceptsMinerals, dropOff.AcceptsVespene)).ToArray();
+            dropOff.AcceptsMinerals, dropOff.AcceptsVespene,
+            dropOff.Operational)).ToArray();
+        var bases = _bases.Select(value => new EconomyBaseRuntimeEntry(
+            value.Id, value.PlayerId, value.TownHall, value.DropOff,
+            value.Position, value.Operational)).ToArray();
         var workers = new WorkerEconomyRuntimeEntry[unitCount];
         for (var unit = 0; unit < unitCount; unit++)
         {
@@ -696,7 +913,7 @@ public sealed class EconomySystem
                 _cargoAmounts[unit], _workRemaining[unit]);
         }
         return new EconomyRuntimeSnapshot(
-            Players.CaptureRuntimeState(), nodes, dropOffs, workers);
+            Players.CaptureRuntimeState(), nodes, dropOffs, bases, workers);
     }
 
     public void RestoreRuntimeState(EconomyRuntimeSnapshot snapshot, int unitCount)
@@ -733,7 +950,27 @@ public sealed class EconomySystem
             }
             _dropOffs.Add(new DropOff(
                 value.Id, value.PlayerId, value.Position,
-                value.AcceptsMinerals, value.AcceptsVespene));
+                value.AcceptsMinerals, value.AcceptsVespene,
+                value.Operational));
+        }
+        _bases.Clear();
+        for (var index = 0; index < snapshot.Bases.Length; index++)
+        {
+            var value = snapshot.Bases[index];
+            if (value.Id.Value != index || value.TownHall.Value < 0 ||
+                (uint)value.DropOff.Value >= (uint)_dropOffs.Count ||
+                _dropOffs[value.DropOff.Value].PlayerId != value.PlayerId ||
+                _dropOffs[value.DropOff.Value].Operational != value.Operational ||
+                !Players.IsRegistered(value.PlayerId) ||
+                _bases.Any(existing => existing.TownHall == value.TownHall ||
+                    existing.DropOff == value.DropOff) ||
+                !IsFinite(value.Position))
+            {
+                throw new InvalidOperationException("Economy base entry is invalid.");
+            }
+            _bases.Add(new EconomyBase(
+                value.Id, value.PlayerId, value.TownHall, value.DropOff,
+                value.Position, value.Operational));
         }
         Array.Clear(_workers);
         Array.Clear(_workerPlayers);
@@ -788,6 +1025,18 @@ public sealed class EconomySystem
             hash.Add(dropOff.Position);
             hash.Add(dropOff.AcceptsMinerals);
             hash.Add(dropOff.AcceptsVespene);
+            hash.Add(dropOff.Operational);
+        }
+        hash.Add(_bases.Count);
+        for (var index = 0; index < _bases.Count; index++)
+        {
+            var value = _bases[index];
+            hash.Add(value.Id.Value);
+            hash.Add(value.PlayerId);
+            hash.Add(value.TownHall.Value);
+            hash.Add(value.DropOff.Value);
+            hash.Add(value.Position);
+            hash.Add(value.Operational);
         }
         hash.Add(_registeredWorkerCount);
         if (_registeredWorkerCount == 0)
@@ -955,6 +1204,30 @@ public sealed class EconomySystem
         }
     }
 
+    private void RetargetTransferredWorker(
+        int unit,
+        int node,
+        Vector2 position,
+        Action<int, Vector2> moveWorker)
+    {
+        ReleaseClaim(unit);
+        _workerNodes[unit] = node;
+        _workRemaining[unit] = 0f;
+        if (_cargoAmounts[unit] > 0)
+        {
+            var dropOff = FindNearestDropOff(
+                _workerPlayers[unit], _cargoKinds[unit], position);
+            if (dropOff >= 0)
+            {
+                _workerStates[unit] = WorkerEconomyState.ReturningCargo;
+                moveWorker(unit, _dropOffs[dropOff].Position);
+                return;
+            }
+        }
+        _workerStates[unit] = WorkerEconomyState.GoingToResource;
+        moveWorker(unit, _nodes[node].Position);
+    }
+
     private int FindNearestNode(EconomyResourceKind kind, Vector2 position)
     {
         var best = -1;
@@ -985,7 +1258,8 @@ public sealed class EconomySystem
         for (var index = 0; index < _dropOffs.Count; index++)
         {
             var dropOff = _dropOffs[index];
-            if (dropOff.PlayerId != playerId || !dropOff.Accepts(kind))
+            if (!dropOff.Operational || dropOff.PlayerId != playerId ||
+                !dropOff.Accepts(kind))
             {
                 continue;
             }
@@ -1003,6 +1277,44 @@ public sealed class EconomySystem
         (uint)nodeIndex < (uint)_nodes.Count &&
         _nodes[nodeIndex].Remaining > 0 &&
         (!_nodes[nodeIndex].RequiresRefinery || _nodes[nodeIndex].Operational);
+
+    private int OwningBase(int nodeIndex)
+    {
+        if ((uint)nodeIndex >= (uint)_nodes.Count)
+            return -1;
+        var best = -1;
+        var bestDistance = BaseResourceRadius * BaseResourceRadius;
+        for (var index = 0; index < _bases.Count; index++)
+        {
+            var value = _bases[index];
+            if (!value.Operational)
+                continue;
+            var distance = Vector2.DistanceSquared(
+                value.Position, _nodes[nodeIndex].Position);
+            if (distance < bestDistance || distance == bestDistance && index < best)
+            {
+                best = index;
+                bestDistance = distance;
+            }
+        }
+        return best;
+    }
+
+    private bool TryOwnedOperationalBase(
+        EconomyBaseId id,
+        int playerId,
+        out EconomyBase value)
+    {
+        if ((uint)id.Value < (uint)_bases.Count &&
+            _bases[id.Value].PlayerId == playerId &&
+            _bases[id.Value].Operational)
+        {
+            value = _bases[id.Value];
+            return true;
+        }
+        value = null!;
+        return false;
+    }
 
     private void ReleaseClaim(int unit)
     {
@@ -1067,16 +1379,34 @@ public sealed class EconomySystem
         int playerId,
         Vector2 position,
         bool acceptsMinerals,
-        bool acceptsVespene)
+        bool acceptsVespene,
+        bool operational)
     {
         public EconomyDropOffId Id { get; } = id;
         public int PlayerId { get; } = playerId;
         public Vector2 Position { get; } = position;
         public bool AcceptsMinerals { get; } = acceptsMinerals;
         public bool AcceptsVespene { get; } = acceptsVespene;
+        public bool Operational { get; set; } = operational;
         public bool Accepts(EconomyResourceKind kind) =>
             kind == EconomyResourceKind.Minerals
                 ? AcceptsMinerals
                 : AcceptsVespene;
+    }
+
+    private sealed class EconomyBase(
+        EconomyBaseId id,
+        int playerId,
+        GameplayBuildingId townHall,
+        EconomyDropOffId dropOff,
+        Vector2 position,
+        bool operational)
+    {
+        public EconomyBaseId Id { get; } = id;
+        public int PlayerId { get; } = playerId;
+        public GameplayBuildingId TownHall { get; } = townHall;
+        public EconomyDropOffId DropOff { get; } = dropOff;
+        public Vector2 Position { get; } = position;
+        public bool Operational { get; set; } = operational;
     }
 }

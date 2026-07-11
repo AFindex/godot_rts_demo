@@ -317,6 +317,13 @@ public sealed class ConstructionSystem
                 economy.Players.AddSupplyCapacity(
                     building.PlayerId, building.Type.SupplyProvided);
             }
+            if (building.Type.Function == BuildingFunctionKind.TownHall)
+            {
+                economy.RegisterTownHall(
+                    building.PlayerId,
+                    building.Id,
+                    (building.Bounds.Min + building.Bounds.Max) * 0.5f);
+            }
             if (building.RefineryNode.Value >= 0)
             {
                 economy.SetRefineryOperational(building.RefineryNode, true);
@@ -419,6 +426,11 @@ public sealed class ConstructionSystem
         {
             economy.Players.RemoveSupplyCapacity(
                 building.PlayerId, building.Type.SupplyProvided);
+        }
+        if (building.State == BuildingLifecycleState.Completed &&
+            building.Type.Function == BuildingFunctionKind.TownHall)
+        {
+            economy.SetTownHallOperational(building.Id, false);
         }
         ReleaseRefinery(building, economy);
         building.State = BuildingLifecycleState.Destroyed;

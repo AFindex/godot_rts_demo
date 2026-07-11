@@ -76,7 +76,7 @@ Idle
 
 ### S11-B：经济确定性格式（已完成）
 
-- `EconomyCommandLogSnapshot` 以格式 1 记录成功的 Gather 和 Refinery operational 变化；未知版本、截断、非法命令和 Tick 逆序均拒绝。
+- `EconomyCommandLogSnapshot` 当前以格式 2 记录成功的 Gather、Refinery operational 变化和基地间 TransferWorkers；未知版本、截断、非法命令和 Tick 逆序均拒绝。
 - Return Cargo、自动转矿、内部 Stop/Move 属于确定性派生状态，不进入外部命令日志，避免回放时双重执行。
 - Replay Package 升级为格式 2，初始清单保存玩家账本、资源节点、DropOff、工人注册关系和空闲工作态。
 - 每 Tick 固定执行世界命令、经济命令、单位命令，再推进模拟。
@@ -187,12 +187,21 @@ S11-E2a 正式研究运行时已完成：
 
 S11-E2b Technology Resource 数据工作流已完成：Inspector 子资源、不可变转换、稳定 Hash、Fresh Load、生成/验证脚本，以及 Researcher/Building/Technology 无环依赖的跨目录诊断全部进入门禁。资源驱动研究录像位于 `test_videos/20260711_213803/`。
 
-下一段进入扩张、基地 DropOff、资源饱和度和工人转场。
+S11-F1 基地经济已经完成：
 
-### S11-E：科技、扩张和胜负
+- Town Hall 完工时注册 `EconomyBaseId` 和专属 `EconomyDropOffId`；摧毁时原子停用两者。
+- 资源点不保存可漂移的 Base 外键，而是在 360 世界单位半径内按最近有效基地和 Base ID 确定性归属。
+- `EconomyBaseSnapshot` 是 UI/AI 共用的只读业务合同，提供节点数、`AssignedWorkers/IdealWorkers` 与 Saturation；UI 不读取 Economy 内部数组。
+- `IssueWorkerTransfer` 按目标距离与 Unit ID 选工人，并按采集点负载率与 Node ID 分配，避免一批工人全部砸向同一矿点。
+- Economy Log v2 新增 TransferWorkers；Package/Hot v9 与 State Hash v10 保存 Base、DropOff operational 和工人目标未来态。
+- 黑盒场景验证 `8/4 + 0/4 -> 4/4 + 4/4`，并验证同基地拒绝、日志规范往返和扩张摧毁后的 DropOff 失效。
+
+下一段进入所有权/可见业务信息和胜负条件；脚本 AI 在这些公开合同稳定后接入。
+
+### S11-E/F：科技、扩张和胜负
 
 - 前置建筑、科技等级、升级队列和互斥规则。
-- 新基地 DropOff、资源饱和度和工人转场。
+- 新基地 DropOff、资源饱和度和工人转场。（已完成）
 - 建筑/单位所有权、可见业务信息和命令权限。
 - 玩家失败、关键建筑、生产能力和比赛结束状态。
 - 最小脚本 AI 驱动采集、建造、生产和 AttackMove，形成可持续对局。

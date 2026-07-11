@@ -386,6 +386,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     new EconomyResourceNodeId(command.ResourceNodeId),
                     command.Value);
                 break;
+            case EconomyCommandKind.TransferWorkers:
+                var transfer = IssueWorkerTransfer(
+                    command.PlayerId,
+                    new EconomyBaseId(command.SourceBaseId),
+                    new EconomyBaseId(command.TargetBaseId),
+                    command.Count);
+                if (!transfer.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Replay worker transfer failed with {transfer.Code}.");
+                }
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Unsupported economy command {command.Kind}.");
@@ -651,6 +663,23 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Economy.SetRefineryOperational(nodeId, operational);
         _economyCommandRecorder?.RecordRefinery(
             Metrics.Tick, issuingPlayerId, nodeId.Value, operational);
+    }
+
+    public WorkerTransferCommandResult IssueWorkerTransfer(
+        int issuingPlayerId,
+        EconomyBaseId sourceBase,
+        EconomyBaseId targetBase,
+        int count)
+    {
+        var result = Economy.TransferWorkers(
+            issuingPlayerId, sourceBase, targetBase, count,
+            Units, _economyMoveWorker);
+        if (result.Succeeded)
+        {
+            _economyCommandRecorder?.RecordWorkerTransfer(
+                Metrics.Tick, issuingPlayerId, sourceBase, targetBase, count);
+        }
+        return result;
     }
 
     public ConstructionCommandResult IssueConstruction(
