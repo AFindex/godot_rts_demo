@@ -1,5 +1,5 @@
 ﻿{
-    "CreatedAtUtc":  "2026-07-11T18:19:45.7706543Z",
+    "CreatedAtUtc":  "2026-07-11T18:45:48.9806451Z",
     "Passed":  true,
     "Cases":  [
                   {
@@ -9,16 +9,16 @@
                       "P95BudgetMilliseconds":  4,
                       "StateHashBudgetMilliseconds":  2,
                       "AllocationBudgetBytes":  1024,
-                      "AverageTickMilliseconds":  0.995715833333333,
-                      "P95TickMilliseconds":  1.281,
-                      "MaximumTickMilliseconds":  4.1588,
-                      "AverageStateHashMilliseconds":  1.4401875,
+                      "AverageTickMilliseconds":  1.1099463888888892,
+                      "P95TickMilliseconds":  1.4924,
+                      "MaximumTickMilliseconds":  4.7919,
+                      "AverageStateHashMilliseconds":  1.309675,
                       "AverageAllocatedBytes":  27.2,
-                      "AverageCombatMilliseconds":  0.006288055555555553,
-                      "AveragePathMilliseconds":  0.0004286111111111111,
-                      "AverageSteeringMilliseconds":  0.5650316666666674,
-                      "AverageCollisionMilliseconds":  0.3349683333333333,
-                      "AverageOtherMilliseconds":  0.08807888888888889
+                      "AverageCombatMilliseconds":  0.005372499999999997,
+                      "AveragePathMilliseconds":  0.00044861111111111046,
+                      "AverageSteeringMilliseconds":  0.6503269444444449,
+                      "AverageCollisionMilliseconds":  0.36712305555555547,
+                      "AverageOtherMilliseconds":  0.08554555555555553
                   },
                   {
                       "Units":  512,
@@ -27,16 +27,16 @@
                       "P95BudgetMilliseconds":  12.5,
                       "StateHashBudgetMilliseconds":  6.25,
                       "AllocationBudgetBytes":  1024,
-                      "AverageTickMilliseconds":  3.550729722222223,
-                      "P95TickMilliseconds":  4.4544,
-                      "MaximumTickMilliseconds":  6.0851,
-                      "AverageStateHashMilliseconds":  1.20901875,
+                      "AverageTickMilliseconds":  3.6152372222222238,
+                      "P95TickMilliseconds":  4.4829,
+                      "MaximumTickMilliseconds":  5.0901,
+                      "AverageStateHashMilliseconds":  1.22710625,
                       "AverageAllocatedBytes":  182.2,
-                      "AverageCombatMilliseconds":  0.002096111111111112,
-                      "AveragePathMilliseconds":  0.0010505555555555554,
-                      "AverageSteeringMilliseconds":  2.764851944444445,
-                      "AverageCollisionMilliseconds":  0.7181288888888893,
-                      "AverageOtherMilliseconds":  0.06415138888888886
+                      "AverageCombatMilliseconds":  0.0021827777777777817,
+                      "AveragePathMilliseconds":  0.0010080555555555563,
+                      "AverageSteeringMilliseconds":  2.8170980555555563,
+                      "AverageCollisionMilliseconds":  0.7274161111111114,
+                      "AverageOtherMilliseconds":  0.06703000000000003
                   },
                   {
                       "Units":  1000,
@@ -45,16 +45,16 @@
                       "P95BudgetMilliseconds":  16.67,
                       "StateHashBudgetMilliseconds":  8.335,
                       "AllocationBudgetBytes":  1024,
-                      "AverageTickMilliseconds":  7.141150555555555,
-                      "P95TickMilliseconds":  9.0294,
-                      "MaximumTickMilliseconds":  11.2622,
-                      "AverageStateHashMilliseconds":  1.29268125,
+                      "AverageTickMilliseconds":  8.098930833333329,
+                      "P95TickMilliseconds":  10.2081,
+                      "MaximumTickMilliseconds":  17.538,
+                      "AverageStateHashMilliseconds":  1.69486875,
                       "AverageAllocatedBytes":  461.15555555555557,
-                      "AverageCombatMilliseconds":  0.003981944444444456,
-                      "AveragePathMilliseconds":  0.001796111111111111,
-                      "AverageSteeringMilliseconds":  5.34801888888889,
-                      "AverageCollisionMilliseconds":  1.6578483333333338,
-                      "AverageOtherMilliseconds":  0.12896749999999987
+                      "AverageCombatMilliseconds":  0.00452722222222223,
+                      "AveragePathMilliseconds":  0.0021861111111111105,
+                      "AverageSteeringMilliseconds":  6.079668611111112,
+                      "AverageCollisionMilliseconds":  1.8633919444444442,
+                      "AverageOtherMilliseconds":  0.14853388888888883
                   }
               ],
     "CombatCases":  [
@@ -65,16 +65,16 @@
                             "P95BudgetMilliseconds":  4,
                             "StateHashBudgetMilliseconds":  2,
                             "AllocationBudgetBytes":  8192,
-                            "AverageTickMilliseconds":  1.465901944444444,
-                            "P95TickMilliseconds":  1.9958,
-                            "MaximumTickMilliseconds":  2.7386,
-                            "AverageStateHashMilliseconds":  0.328625,
+                            "AverageTickMilliseconds":  1.1796797222222213,
+                            "P95TickMilliseconds":  1.3864,
+                            "MaximumTickMilliseconds":  2.0064,
+                            "AverageStateHashMilliseconds":  0.26823125,
                             "AverageAllocatedBytes":  2382.133333333333,
-                            "AverageCombatMilliseconds":  0.4983011111111109,
-                            "AveragePathMilliseconds":  0.0036816666666666634,
-                            "AverageSteeringMilliseconds":  0.7254269444444444,
-                            "AverageCollisionMilliseconds":  0.14196944444444448,
-                            "AverageOtherMilliseconds":  0.09604583333333334
+                            "AverageCombatMilliseconds":  0.3936252777777777,
+                            "AveragePathMilliseconds":  0.0025638888888888873,
+                            "AverageSteeringMilliseconds":  0.596348333333333,
+                            "AverageCollisionMilliseconds":  0.11705249999999993,
+                            "AverageOtherMilliseconds":  0.06972027777777778
                         },
                         {
                             "Units":  256,
@@ -83,16 +83,16 @@
                             "P95BudgetMilliseconds":  8,
                             "StateHashBudgetMilliseconds":  4,
                             "AllocationBudgetBytes":  8192,
-                            "AverageTickMilliseconds":  3.8356727777777766,
-                            "P95TickMilliseconds":  5.05,
-                            "MaximumTickMilliseconds":  7.6013,
-                            "AverageStateHashMilliseconds":  0.789125,
+                            "AverageTickMilliseconds":  3.2766858333333335,
+                            "P95TickMilliseconds":  4.311,
+                            "MaximumTickMilliseconds":  5.2717,
+                            "AverageStateHashMilliseconds":  0.73379375,
                             "AverageAllocatedBytes":  4115.8,
-                            "AverageCombatMilliseconds":  1.789572222222223,
-                            "AveragePathMilliseconds":  0.007930000000000001,
-                            "AverageSteeringMilliseconds":  1.463338333333334,
-                            "AverageCollisionMilliseconds":  0.3385891666666669,
-                            "AverageOtherMilliseconds":  0.23566750000000009
+                            "AverageCombatMilliseconds":  1.4727563888888897,
+                            "AveragePathMilliseconds":  0.0057424999999999985,
+                            "AverageSteeringMilliseconds":  1.3130533333333325,
+                            "AverageCollisionMilliseconds":  0.29457805555555555,
+                            "AverageOtherMilliseconds":  0.1900822222222221
                         }
                     ]
 }

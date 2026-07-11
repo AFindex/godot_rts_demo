@@ -27,7 +27,7 @@ Control Group 只保存选择集合，不持有共享命令。命令始终进入
 - 0～9 在 0.35 秒内再次召回同一组：把镜头定位到当前存活成员的中心。
 - 编组内部为固定容量布尔索引，没有 HashSet、Node 或 Godot 对象。
 
-尚未实现 Alt 移出/窃取编组和建筑/单位混合子组。
+单位/工人/建筑混合选择子组和 Tab 切换已在 S11-J1 完成；Control Group 仍只保存单位，尚未实现建筑混合编组和 Alt 移出/窃取。
 
 ## 选择过滤与双击
 
@@ -87,7 +87,8 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `smart-command-shift-worker-tasks`：同时验证 Move→Gather、Move→Resume 和 Move→已枯竭资源→Move；Tick 60 的三条待执行跨域任务可由 Hot Snapshot v12 精确恢复，失效任务有界跳过，Package v12 最终 Hash 一致。
 - `operation-selection-camera`：稳定点选、可见同类型双击、友军框选、光标锚定缩放、边缘滚动和编组双击定位全部通过。
 - `minimap-interaction`：世界/面板坐标往返、视口框、定位意图、SmartCommand 意图和边界外拒绝全部通过，并录制真实 Minimap Control。
+- `operation-mixed-command-card`：2 Worker、1 Combat Unit、1 Barracks 形成 3 个子组；快照命令卡完成生产、取消和重新生产，最终出生单位。
 
 ## 当前收口
 
-操作表现基础闭环已覆盖选择、相机、编组定位和 Minimap。Alt 编组操作、混合选择子组、命令卡、皮肤与动画都留给实际游戏需求驱动；它们不再作为移动内核 Demo 的默认后续阶段。
+操作表现已覆盖选择、混合子组、快照命令卡、相机、编组定位和 Minimap。J2 仍包括建筑混合 Control Group、Alt 编组操作、目标模式命令卡、图标/tooltip、皮肤与动画。

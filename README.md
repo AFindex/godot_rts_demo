@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。实际玩法见 [S11 经济、建造与生产](docs/ECONOMY_AND_PRODUCTION.md)，比赛状态见 [比赛生命周期](docs/MATCH_LIFECYCLE.md)，AI 边界见 [RTS AI 架构](docs/AI_ARCHITECTURE.md)，AI 数据见 [AI Configuration Resource](docs/AI_CONFIGURATION_RESOURCE.md)，科技数据见 [Technology Catalog Resource](docs/TECHNOLOGY_RESOURCE.md)，战斗移动见 [AttackMove 与战斗占位](docs/ATTACK_MOVE.md)，操作层见 [命令队列、编组与 SmartCommand](docs/OPERATION_LAYER.md)，确定性基础见 [命令日志与回放](docs/COMMAND_REPLAY.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，资源更新见 [Resource 热重载与差异诊断](docs/RESOURCE_HOT_RELOAD.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
+完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。实际玩法见 [S11 经济、建造与生产](docs/ECONOMY_AND_PRODUCTION.md)，比赛状态见 [比赛生命周期](docs/MATCH_LIFECYCLE.md)，AI 边界见 [RTS AI 架构](docs/AI_ARCHITECTURE.md)，AI 数据见 [AI Configuration Resource](docs/AI_CONFIGURATION_RESOURCE.md)，科技数据见 [Technology Catalog Resource](docs/TECHNOLOGY_RESOURCE.md)，战斗移动见 [AttackMove 与战斗占位](docs/ATTACK_MOVE.md)，操作层见 [命令队列、编组与 SmartCommand](docs/OPERATION_LAYER.md) 和 [混合选择与命令卡](docs/COMMAND_CARD_AND_SELECTION.md)，确定性基础见 [命令日志与回放](docs/COMMAND_REPLAY.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，资源更新见 [Resource 热重载与差异诊断](docs/RESOURCE_HOT_RELOAD.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -47,6 +47,7 @@
 - 相机支持边缘/方向键滚动、光标锚定缩放和编组数字键双击定位。
 - Minimap 显示静态障碍、单位、不同 footprint 的建筑和当前视口框；左键/拖动定位，右键复用 SmartCommand。
 - Minimap 使用纯 C# 快照/坐标/交互意图、独立 Godot Control 和薄业务绑定三层结构，换皮与动效迭代不进入模拟层。
+- Worker、Combat Unit 和 Building 可形成稳定混合选择子组；独立命令卡 Control 只消费不可变快照，Train/Research/取消/Stop/Hold 意图复用正式业务命令。
 - S11 双资源经济支持 Minerals、Vespene、Supply 原子交易，矿脉单工人占用、Refinery 三工人容量、携带返还、枯竭转场、所有权校验和普通命令取消工作。
 - 经济/建筑/生产/研究 UI 使用不可变 Snapshot；状态 Hash v9 覆盖生产、Rally、配方前置、科技等级与研究队列未来态。
 - 版本化规范命令日志、固定 Tick 回放、精确状态 Hash 和首次分歧 Tick 定位。
@@ -208,6 +209,8 @@ S11-H1 模块化对局 AI 已完成：Economy/Build/Production/Technology/Scouti
 S11-H2 已完成：Standard/Aggressive 配置进入 [AI Configuration Resource](docs/AI_CONFIGURATION_RESOURCE.md)；双 AI 使用不同周期/offset 自对战。Tick 1,200 成对恢复后继续运行 AI，以及 Tick 0 只重放正式命令且不启动 AI，两条链都与连续运行最终 Hash 一致。
 
 S11-I1/I2 已完成：资源点与己方建筑进入正式 SmartCommand 目标协议；混合选择按能力拆分，乱序选择稳定选择最低 ID 施工者。Shift 现在可排队 `Move → GatherResource` 与 `Move → ResumeConstruction`；未来 Tick 重新验证失败的任务会有界跳过并继续下一条命令，详见 [操作层](docs/OPERATION_LAYER.md)。
+
+S11-J1 已完成：Worker、Combat Unit、Building 混合选择按稳定子组组织，Tab/Shift+Tab 切换活动子组；命令卡通过纯 C# Snapshot/Composer、独立 Godot Control 和薄意图绑定展示并执行 Stop/Hold、Train/Research 与取消。详见 [混合选择与命令卡](docs/COMMAND_CARD_AND_SELECTION.md)。
 
 生产目录资产说明见 [Production Catalog Resource](docs/PRODUCTION_CATALOG_RESOURCE.md)。
 

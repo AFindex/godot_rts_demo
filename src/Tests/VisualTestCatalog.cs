@@ -29,6 +29,7 @@ public static class VisualTestCatalog
         "smart-command-gameplay-context",
         "smart-command-shift-worker-tasks",
         "operation-selection-camera",
+        "operation-mixed-command-card",
         "minimap-interaction",
         "command-log-replay",
         "command-replay-divergence",
@@ -129,6 +130,8 @@ public static class VisualTestCatalog
         "smart-command-shift-worker-tasks" => CreateSmartCommandShiftWorkerTasks(
             navigationMap, gameplayProfiles, clearanceBake),
         "operation-selection-camera" => CreateOperationSelectionCamera(),
+        "operation-mixed-command-card" => CreateOperationMixedCommandCard(
+            navigationMap, gameplayProfiles, clearanceBake),
         "minimap-interaction" => CreateMinimapInteraction(),
         "command-log-replay" => CreateCommandLogReplay(),
         "command-replay-divergence" => CreateCommandReplayDivergence(),
@@ -1042,6 +1045,89 @@ public static class VisualTestCatalog
                     $"edge={result.EdgePanMoved}, double={result.GroupDoubleTap}, " +
                     $"focus={result.FocusPosition.X:F0},{result.FocusPosition.Y:F0}");
             });
+    }
+
+    private static VisualTestSession CreateOperationMixedCommandCard(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 2000, 500, 20, 3);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(180f, 220f), 1),
+            rig.SpawnWorker(new Vector2(220f, 320f), 1)
+        };
+        var marine = rig.SpawnCombat(new Vector2(300f, 340f), 1);
+        var barracks = rig.Build(
+            1, workers[0],
+            DemoBuildingTypes.Barracks with { BuildSeconds = 0.5f },
+            new Vector2(400f, 260f));
+        var recipe = DemoProductionCatalog.CreateSnapshot().Recipe(0) with
+        {
+            ProductionSeconds = 2f
+        };
+        var firstOrder = default(TestProductionResult);
+        var canceled = false;
+        var replacement = default(TestProductionResult);
+        var initialUnits = rig.UnitCount;
+        return new VisualTestSession(
+            "operation-mixed-command-card",
+            "Mixed worker, combat and building subgroups drive a snapshot-only command card",
+            540,
+            rig,
+            [workers[0], workers[1], marine],
+            runtime =>
+            {
+                var building = runtime.ObserveGameplayBuilding(barracks.BuildingId);
+                var selection = GameplaySelectionSnapshot.Create(
+                [
+                    new(GameplaySelectionKind.Worker, workers[1].Value, 2,
+                        "Worker", runtime.Observe(workers[1]).Position),
+                    new(GameplaySelectionKind.CombatUnit, marine.Value, 0,
+                        "Marine", runtime.Observe(marine).Position),
+                    new(GameplaySelectionKind.Worker, workers[0].Value, 2,
+                        "Worker", runtime.Observe(workers[0]).Position),
+                    new(GameplaySelectionKind.Building, barracks.BuildingId.Value,
+                        DemoBuildingTypes.Barracks.Id, "Barracks",
+                        new Vector2(400f, 260f))
+                ], new SelectionSubgroupKey(
+                    GameplaySelectionKind.Building, DemoBuildingTypes.Barracks.Id));
+                var card = CommandCardComposer.Compose(selection,
+                [
+                    new(selection.ActiveSubgroup!.Key,
+                        CommandCardActionKind.Train,
+                        barracks.BuildingId.Value, recipe.Id,
+                        "Train Marine", true, "Success", 10)
+                ]);
+                var passed = barracks.Succeeded && firstOrder.Succeeded && canceled &&
+                             replacement.Succeeded &&
+                             building.State == TestBuildingLifecycleState.Completed &&
+                             runtime.ObserveProduction(barracks.BuildingId).OrderCount == 0 &&
+                             runtime.UnitCount == initialUnits + 1 &&
+                             selection.Entities.Length == 4 &&
+                             selection.Subgroups.Length == 3 &&
+                             selection.ActiveSubgroup?.Name == "Barracks" &&
+                             card.Actions.Length == 1 && card.Actions[0].Enabled;
+                return new ScenarioResult(
+                    passed,
+                    $"selection={selection.Entities.Length}/groups{selection.Subgroups.Length}/" +
+                    $"active{selection.ActiveSubgroup?.Name}, card={card.Actions.Length}, " +
+                    $"orders={firstOrder.Code}/{canceled}/{replacement.Code}, " +
+                    $"building={building.State}, units={runtime.UnitCount}");
+            })
+            .SelectBuildings(barracks.BuildingId)
+            .At(150, "Command card availability follows completed Barracks", runtime =>
+                firstOrder = runtime.Train(1, barracks.BuildingId, recipe))
+            .At(180, "Cancel active production through the same business command", runtime =>
+                canceled = firstOrder.Succeeded &&
+                           runtime.CancelProduction(1, firstOrder.OrderId))
+            .At(210, "Requeue Marine after refund", runtime =>
+                replacement = runtime.Train(1, barracks.BuildingId, recipe));
     }
 
     private static VisualTestSession CreateMinimapInteraction()

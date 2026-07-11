@@ -50,7 +50,11 @@ public partial class RtsDemo : Node2D
     [Export]
     public bool EnableResourceFileWatcher { get; set; } = true;
     private readonly HashSet<int> _selectedUnits = new();
-    private GameplayBuildingId? _selectedBuilding;
+    private readonly HashSet<int> _selectedBuildings = [];
+    private SelectionSubgroupKey? _activeSelectionSubgroup;
+    private GameplaySelectionSnapshot _selectionSnapshot =
+        GameplaySelectionSnapshot.Empty;
+    private RtsCommandCardControl? _commandCard;
     private StaticWorld? _world;
     private GodotPathProvider? _pathProvider;
     private IPathProvider? _simulationPathProvider;
@@ -646,7 +650,7 @@ public partial class RtsDemo : Node2D
             var completed = building.State == BuildingLifecycleState.Completed;
             DrawRect(rect, color with { A = completed ? 0.88f : 0.46f }, true);
             DrawRect(rect, completed ? color.Lightened(0.25f) : color, false, 3f);
-            if (_selectedBuilding == building.Id)
+            if (_selectedBuildings.Contains(building.Id.Value))
             {
                 DrawRect(rect.Grow(5f), new Color("f8f4a6"), false, 3f);
             }
@@ -712,7 +716,7 @@ public partial class RtsDemo : Node2D
                     11,
                     new Color("eadbff"));
             }
-            if (_selectedBuilding == building.Id)
+            if (_selectedBuildings.Contains(building.Id.Value))
             {
                 DrawString(
                     ThemeDB.FallbackFont,
@@ -821,13 +825,15 @@ public partial class RtsDemo : Node2D
             ApplyCameraState();
         }
         else if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed &&
-                 _selectedBuilding.HasValue && _selectedUnits.Count == 0)
+                 _selectedBuildings.Count == 1 && _selectedUnits.Count == 0)
         {
             var worldPosition = GodotPathProvider.ToNumerics(
                 ScreenToWorld(mouse.Position));
+            var selectedBuilding = new GameplayBuildingId(
+                _selectedBuildings.First());
             var rally = ResolveProductionRallyTarget(worldPosition);
             if (_simulation.SetProductionRallyTarget(
-                    PlayerTeam, _selectedBuilding.Value, rally))
+                    PlayerTeam, selectedBuilding, rally))
             {
                 _commandMarker = GodotPathProvider.ToGodot(rally.Position);
                 _commandMarkerAttackMove = false;
@@ -884,6 +890,7 @@ public partial class RtsDemo : Node2D
         {
             case Key.Space:
                 _selectedUnits.Clear();
+                _selectedBuildings.Clear();
                 for (var unit = 0; unit < _simulation.Units.Count; unit++)
                 {
                     if (_simulation.Units.Alive[unit] &&
@@ -892,6 +899,9 @@ public partial class RtsDemo : Node2D
                         _selectedUnits.Add(unit);
                     }
                 }
+                break;
+            case Key.Tab:
+                CycleSelectionSubgroup(keyEvent.ShiftPressed ? -1 : 1);
                 break;
             case Key.S:
                 _simulation.IssuePlayerStop(PlayerTeam, SelectedLivingUnits());
@@ -1196,7 +1206,7 @@ public partial class RtsDemo : Node2D
         if (!additive)
         {
             _selectedUnits.Clear();
-            _selectedBuilding = null;
+            _selectedBuildings.Clear();
         }
 
         if (rect.Size.LengthSquared() < 5f * 5f)
@@ -1221,7 +1231,7 @@ public partial class RtsDemo : Node2D
                 {
                     _selectedUnits.Add(unit);
                 }
-                _selectedBuilding = null;
+                if (!additive) _selectedBuildings.Clear();
             }
             else
             {
@@ -1234,7 +1244,7 @@ public partial class RtsDemo : Node2D
                     .FirstOrDefault();
                 if (!string.IsNullOrEmpty(building.Type.Name))
                 {
-                    _selectedBuilding = building.Id;
+                    _selectedBuildings.Add(building.Id.Value);
                 }
             }
 
@@ -1507,6 +1517,17 @@ public partial class RtsDemo : Node2D
             _minimap.SmartCommandRequested += IssueMinimapCommand;
             _hudRoot.AddChild(_minimap);
         }
+        if (_visualTest is null || _visualTest.Id is
+                "operation-mixed-command-card" or "minimap-interaction")
+        {
+            _commandCard = new RtsCommandCardControl
+            {
+                Size = new Vector2(520f, 190f)
+            };
+            _commandCard.ActionRequested += ExecuteCommandCardAction;
+            _commandCard.SubgroupCycleRequested += CycleSelectionSubgroup;
+            _hudRoot.AddChild(_commandCard);
+        }
         if (_visualTest?.Id == "resource-hot-reload" && _hotReloadPlan is not null)
         {
             _resourceReloadControl = new RtsResourceReloadControl
@@ -1591,6 +1612,12 @@ public partial class RtsDemo : Node2D
                 24f,
                 viewportSize.Y - _economyControl.Size.Y - 20f);
         }
+        if (_commandCard is not null)
+        {
+            _commandCard.Position = new Vector2(
+                (viewportSize.X - _commandCard.Size.X) * 0.5f,
+                viewportSize.Y - _commandCard.Size.Y - 12f);
+        }
     }
 
     private void UpdateHud()
@@ -1624,6 +1651,7 @@ public partial class RtsDemo : Node2D
             _visibleBuildingIds.Clear();
             _visibleResources.Clear();
         }
+        UpdateCommandCard();
         var chokeUnits = 0;
         var livingUnits = 0;
         var engagedUnits = 0;
@@ -1709,7 +1737,8 @@ public partial class RtsDemo : Node2D
 
         _hud.Text =
             $"{title}  |  units {unitText}  " +
-            $"selected {_selectedUnits.Count}  moving {movingUnits}  " +
+            $"selected {_selectedUnits.Count + _selectedBuildings.Count}  " +
+            $"groups {_selectionSnapshot.Subgroups.Length}  moving {movingUnits}  " +
             $"arrived {arrivedUnits}  queued {metrics.PendingUnitOrders}  " +
             $"engaged {engagedUnits}  choke {chokeUnits}  " +
             $"route {_simulation.LastIssuedGroupRoute.Waypoints.Length}  " +
@@ -1739,6 +1768,177 @@ public partial class RtsDemo : Node2D
             "Ctrl+# assign  Shift+# add  # recall  Space all  S stop  H hold  " +
             "B place building  X remove building  D debug  R reset";
         UpdateMinimap();
+    }
+
+    private void UpdateCommandCard()
+    {
+        if (_simulation is null || _commandCard is null) return;
+        _selectedBuildings.RemoveWhere(value =>
+        {
+            var id = new GameplayBuildingId(value);
+            return !_simulation.Construction.IsAlive(id) ||
+                   _simulation.Construction.Observe(id).PlayerId != PlayerTeam;
+        });
+        var entities = new List<GameplaySelectionEntity>();
+        foreach (var unit in _selectedUnits.OrderBy(value => value))
+        {
+            if ((uint)unit >= (uint)_simulation.Units.Count ||
+                !_simulation.Units.Alive[unit] ||
+                _simulation.Combat.Teams[unit] != PlayerTeam)
+                continue;
+            var worker = _simulation.Economy.IsWorkerOwnedBy(unit, PlayerTeam);
+            var declaredType = (uint)unit < (uint)_selectionTypeIds.Length
+                ? _selectionTypeIds[unit]
+                : -1;
+            var typeId = declaredType >= 0 ? declaredType : worker ? 10_000 : 20_000;
+            var typeName = declaredType >= 0 && _gameplayProfiles is not null &&
+                           declaredType < _gameplayProfiles.UnitProfiles.Length
+                ? _gameplayProfiles.Unit(declaredType).Name
+                : worker ? "Worker" : "Combat Unit";
+            entities.Add(new GameplaySelectionEntity(
+                worker ? GameplaySelectionKind.Worker : GameplaySelectionKind.CombatUnit,
+                unit, typeId, typeName, _simulation.Units.Positions[unit]));
+        }
+        foreach (var buildingValue in _selectedBuildings.OrderBy(value => value))
+        {
+            var buildingId = new GameplayBuildingId(buildingValue);
+            if (!_simulation.Construction.IsAlive(buildingId)) continue;
+            var building = _simulation.Construction.Observe(buildingId);
+            if (building.PlayerId != PlayerTeam) continue;
+            entities.Add(new GameplaySelectionEntity(
+                GameplaySelectionKind.Building,
+                buildingValue,
+                building.Type.Id,
+                building.Type.Name,
+                (building.Bounds.Min + building.Bounds.Max) * 0.5f));
+        }
+        _selectionSnapshot = GameplaySelectionSnapshot.Create(
+            entities, _activeSelectionSubgroup);
+        _activeSelectionSubgroup = _selectionSnapshot.ActiveSubgroup?.Key;
+        _commandCard.SetSnapshot(CommandCardComposer.Compose(
+            _selectionSnapshot, BuildCommandCardCandidates()));
+    }
+
+    private List<CommandCardActionCandidate> BuildCommandCardCandidates()
+    {
+        var result = new List<CommandCardActionCandidate>();
+        if (_simulation is null || _selectionSnapshot.ActiveSubgroup is not { } active)
+            return result;
+        var key = active.Key;
+        if (key.Kind is GameplaySelectionKind.Worker or GameplaySelectionKind.CombatUnit)
+        {
+            result.Add(new(key, CommandCardActionKind.Stop, -1, -1,
+                "Stop", true, "S", 10));
+            result.Add(new(key, CommandCardActionKind.Hold, -1, -1,
+                "Hold Position", true, "H", 20));
+            return result;
+        }
+
+        var buildingId = new GameplayBuildingId(active.Members[0].EntityId);
+        var building = _simulation.Construction.Observe(buildingId);
+        if (building.State != BuildingLifecycleState.Completed)
+        {
+            result.Add(new(key, CommandCardActionKind.CancelConstruction,
+                buildingId.Value, -1, "Cancel Construction", true,
+                $"{building.Progress:P0}", 5));
+            return result;
+        }
+        if (_productionCatalog is not null)
+        {
+            foreach (var recipe in _productionCatalog.Recipes)
+            {
+                if (recipe.ProducerBuildingTypeId != building.Type.Id) continue;
+                var availability = _simulation.Production.ObserveAvailability(
+                    PlayerTeam, buildingId, recipe,
+                    _simulation.Construction, _simulation.Economy.Players);
+                result.Add(new(key, CommandCardActionKind.Train,
+                    buildingId.Value, recipe.Id, $"Train {recipe.UnitType.Name}",
+                    availability.Available, availability.Code.ToString(), 20 + recipe.Id));
+            }
+            var queue = _simulation.Production.Observe(buildingId);
+            if (queue.Orders.Length > 0)
+            {
+                result.Add(new(key, CommandCardActionKind.CancelProduction,
+                    buildingId.Value, queue.Orders[0].Id.Value,
+                    "Cancel Production", true,
+                    $"{queue.Orders[0].Progress:P0}", 80));
+            }
+        }
+        if (_technologyCatalog is not null)
+        {
+            foreach (var technology in _technologyCatalog.Technologies)
+            {
+                if (technology.ResearcherBuildingTypeId != building.Type.Id) continue;
+                var availability = _simulation.Technology.ObserveAvailability(
+                    PlayerTeam, buildingId, technology,
+                    _simulation.Construction, _simulation.Economy.Players);
+                result.Add(new(key, CommandCardActionKind.Research,
+                    buildingId.Value, technology.Id,
+                    $"Research {technology.Name}", availability.Available,
+                    $"L{availability.CurrentLevel} {availability.Code}",
+                    30 + technology.Id));
+            }
+            var queue = _simulation.Technology.Observe(buildingId);
+            if (queue.Orders.Length > 0)
+            {
+                result.Add(new(key, CommandCardActionKind.CancelResearch,
+                    buildingId.Value, queue.Orders[0].Id.Value,
+                    "Cancel Research", true,
+                    $"{queue.Orders[0].Progress:P0}", 90));
+            }
+        }
+        return result;
+    }
+
+    private void CycleSelectionSubgroup(int direction)
+    {
+        _selectionSnapshot = _selectionSnapshot.Cycle(direction);
+        _activeSelectionSubgroup = _selectionSnapshot.ActiveSubgroup?.Key;
+        UpdateCommandCard();
+    }
+
+    private void ExecuteCommandCardAction(CommandCardActionSnapshot action)
+    {
+        if (_simulation is null || !action.Enabled) return;
+        var activeUnits = _selectionSnapshot.ActiveSubgroup?.Members
+            .Where(value => value.Kind is GameplaySelectionKind.Worker or
+                GameplaySelectionKind.CombatUnit)
+            .Select(value => value.EntityId)
+            .ToArray() ?? [];
+        switch (action.Kind)
+        {
+            case CommandCardActionKind.Stop:
+                _simulation.IssuePlayerStop(PlayerTeam, activeUnits);
+                break;
+            case CommandCardActionKind.Hold:
+                _simulation.IssuePlayerHold(PlayerTeam, activeUnits);
+                break;
+            case CommandCardActionKind.Train when _productionCatalog is not null:
+                _simulation.IssueProduction(
+                    PlayerTeam, new GameplayBuildingId(action.TargetEntityId),
+                    _productionCatalog.Recipe(action.DataId));
+                break;
+            case CommandCardActionKind.CancelProduction:
+                _simulation.CancelProduction(
+                    PlayerTeam, new ProductionOrderId(action.DataId));
+                break;
+            case CommandCardActionKind.Research when _technologyCatalog is not null:
+                _simulation.IssueResearch(
+                    PlayerTeam, new GameplayBuildingId(action.TargetEntityId),
+                    _technologyCatalog.Technology(action.DataId));
+                break;
+            case CommandCardActionKind.CancelResearch:
+                _simulation.CancelResearch(
+                    PlayerTeam, new ResearchOrderId(action.DataId));
+                break;
+            case CommandCardActionKind.CancelConstruction:
+                _simulation.CancelConstruction(
+                    PlayerTeam, new GameplayBuildingId(action.TargetEntityId));
+                _selectedBuildings.Remove(action.TargetEntityId);
+                break;
+        }
+        UpdateCommandCard();
+        QueueRedraw();
     }
 
     private void UpdateMinimap()
@@ -1919,9 +2119,20 @@ public partial class RtsDemo : Node2D
                 ? ClearanceIncrementalSelfTest.ChangedArea
                 : null);
         _selectedUnits.Clear();
+        _selectedBuildings.Clear();
         foreach (var unit in _visualTest.RenderUnitIndices)
         {
             _selectedUnits.Add(unit);
+        }
+        foreach (var building in _visualTest.SelectedBuildings)
+            _selectedBuildings.Add(building.Value);
+        if (caseId == "operation-mixed-command-card" &&
+            _selectedBuildings.Count > 0)
+        {
+            var selected = _simulation.Construction.Observe(
+                new GameplayBuildingId(_selectedBuildings.Min()));
+            _activeSelectionSubgroup = new SelectionSubgroupKey(
+                GameplaySelectionKind.Building, selected.Type.Id);
         }
 
         _navigationReady = true;

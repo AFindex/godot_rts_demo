@@ -61,6 +61,7 @@ python -m http.server 10086
 - `20260712_011731/`：S11-H2 双 AI 错峰自对战；70 秒展示 Standard/Aggressive Resource 配置、Portal 战场长期交战、Tick 1,200 成对热恢复，以及不运行 AI 的完整命令回放一致性。
 - `20260712_014124/`：S11-I1 首版玩法上下文 SmartCommand；该历史录像仍展示当时尚未开放跨域 Shift 的明确拒绝语义，已由后续 I2 录像替代。
 - `20260712_021335/`：S11-I2 跨域 Shift 工人任务；重录 I1 混合选择，并新增 Move→Gather、Move→Resume、Move→枯竭资源→Move、Tick 60 待执行任务热恢复，以及 Command Log v3 / Package v12 / Hot v12 精确回放。
+- `20260712_024209/`：S11-J1 混合选择与解耦命令卡；2 Worker、1 Combat Unit、1 Barracks 显示 3 个稳定子组，真实 Control 展示生产可用性、取消进度和重新生产结果。
 
 重新录制所有当前场景：
 

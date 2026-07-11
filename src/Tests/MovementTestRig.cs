@@ -2451,6 +2451,7 @@ public sealed class VisualTestSession
 {
     private readonly SortedDictionary<long, List<ScheduledAction>> _actions = new();
     private readonly List<TestDiagnosticArea> _diagnosticAreas = [];
+    private readonly List<TestGameplayBuildingId> _selectedBuildings = [];
     private readonly Func<MovementTestRig, ScenarioResult> _evaluate;
 
     public VisualTestSession(
@@ -2484,6 +2485,8 @@ public sealed class VisualTestSession
         ? Enumerable.Range(0, Rig.UnitCount).ToArray()
         : Rig.ToBackendIndices(VisibleUnits);
     internal IReadOnlyList<TestDiagnosticArea> DiagnosticAreas => _diagnosticAreas;
+    internal IReadOnlyList<TestGameplayBuildingId> SelectedBuildings =>
+        _selectedBuildings;
     private bool DynamicUnitRendering { get; set; }
 
     public VisualTestSession RenderSpawnedUnits()
@@ -2498,6 +2501,14 @@ public sealed class VisualTestSession
         TestDiagnosticKind kind = TestDiagnosticKind.Info)
     {
         _diagnosticAreas.Add(new TestDiagnosticArea(bounds, label, kind));
+        return this;
+    }
+
+    public VisualTestSession SelectBuildings(
+        params TestGameplayBuildingId[] buildings)
+    {
+        _selectedBuildings.Clear();
+        _selectedBuildings.AddRange(buildings.Distinct().OrderBy(value => value.Value));
         return this;
     }
 
