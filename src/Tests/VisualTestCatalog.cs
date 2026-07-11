@@ -28,6 +28,7 @@ public static class VisualTestCatalog
         "command-log-replay",
         "command-replay-divergence",
         "replay-package-world",
+        "replay-checkpoint-resume",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -92,6 +93,8 @@ public static class VisualTestCatalog
         "command-log-replay" => CreateCommandLogReplay(),
         "command-replay-divergence" => CreateCommandReplayDivergence(),
         "replay-package-world" => CreateReplayPackageWorld(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "replay-checkpoint-resume" => CreateReplayCheckpointResume(
             navigationMap, gameplayProfiles, clearanceBake),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
@@ -810,6 +813,65 @@ public static class VisualTestCatalog
         session.At(270, "Remove dynamic building", runtime =>
             runtime.RemoveBuilding(dynamicBuilding));
         return session.At(360, "Issue post-world command", runtime =>
+            runtime.Move(units.Take(4).ToArray(), new Vector2(1110f, 530f)));
+    }
+
+    private static VisualTestSession CreateReplayCheckpointResume(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        var units = rig.SpawnGrid(
+            new Vector2(100f, 300f), 2, 4, 24f,
+            radius: 7.5f, maximumSpeed: 132f, acceleration: 720f);
+        rig.PlaceBuilding(new Vector2(300f, 150f), new Vector2(48f, 48f));
+        rig.StartReplayPackageRecording();
+        rig.Move(units, new Vector2(1160f, 350f));
+
+        const long checkpointTick = 240;
+        var checkpointStateHash = 0UL;
+        var dynamicBuilding = default(TestBuildingId);
+        var session = new VisualTestSession(
+            "replay-checkpoint-resume",
+            "Versioned checkpoint seeks to a middle tick and resumes exact replay",
+            720,
+            rig,
+            units,
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var checkpoint = runtime.CreateReplayCheckpoint(
+                    package, checkpointTick, checkpointStateHash);
+                var roundTrip = checkpoint.TryCanonicalRoundTrip(out var decoded);
+                var baseline = runtime.ReplayPackage(package, runtime.Tick);
+                var resumed = runtime.ResumeReplayPackage(
+                    package, decoded!, runtime.Tick);
+                var exact = baseline.MatchesFrom(resumed, checkpointTick) &&
+                            resumed.FinalHash == runtime.StateHash;
+                var rejected = checkpoint.RejectsUnsupportedVersion() &&
+                               checkpoint.RejectsTruncatedPayload() &&
+                               runtime.RejectsReplayCheckpointStateMismatch(
+                                   package, checkpoint);
+                return new ScenarioResult(
+                    roundTrip && exact && rejected &&
+                    checkpoint.CanonicalByteCount == 36 &&
+                    resumed.SampleCount == 17,
+                    $"tick={checkpoint.Tick}, bytes={checkpoint.CanonicalByteCount}, " +
+                    $"checkpoint={checkpoint.StableHash:X16}, samples={resumed.SampleCount}, " +
+                    $"state={resumed.FinalHash:X16}, exact={exact}, rejected={rejected}");
+            });
+        session.At(90, "Place pre-checkpoint building", runtime =>
+            dynamicBuilding = runtime.PlaceBuilding(
+                new Vector2(800f, 353f), new Vector2(72f, 96f)));
+        session.At(checkpointTick, "Capture checkpoint state", runtime =>
+            checkpointStateHash = runtime.StateHash);
+        session.At(270, "Remove post-checkpoint building", runtime =>
+            runtime.RemoveBuilding(dynamicBuilding));
+        return session.At(360, "Issue post-checkpoint command", runtime =>
             runtime.Move(units.Take(4).ToArray(), new Vector2(1110f, 530f)));
     }
 

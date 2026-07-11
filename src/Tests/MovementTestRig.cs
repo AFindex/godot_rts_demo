@@ -135,6 +135,52 @@ public sealed class TestReplayPackage
     }
 }
 
+public sealed class TestReplayCheckpoint
+{
+    internal TestReplayCheckpoint(SimulationReplayCheckpointSnapshot snapshot)
+    {
+        Backend = snapshot;
+    }
+
+    internal SimulationReplayCheckpointSnapshot Backend { get; }
+    public int FormatVersion => Backend.FormatVersion;
+    public long Tick => Backend.Tick;
+    public int CanonicalByteCount => Backend.CanonicalBytes.Length;
+    public ulong StableHash => Backend.StableHash;
+
+    public bool TryCanonicalRoundTrip(out TestReplayCheckpoint? roundTripped)
+    {
+        var succeeded = SimulationReplayCheckpointSnapshot.TryDeserialize(
+            Backend.CanonicalBytes, out var snapshot, out _);
+        roundTripped = succeeded && snapshot is not null
+            ? new TestReplayCheckpoint(snapshot)
+            : null;
+        return succeeded;
+    }
+
+    public bool RejectsUnsupportedVersion()
+    {
+        var payload = Backend.CanonicalBytes.ToArray();
+        payload[4]++;
+        return !SimulationReplayCheckpointSnapshot.TryDeserialize(
+            payload, out _, out var validation) &&
+            validation.Code == ReplayCheckpointValidationCode.UnsupportedVersion;
+    }
+
+    public bool RejectsTruncatedPayload() =>
+        !SimulationReplayCheckpointSnapshot.TryDeserialize(
+            Backend.CanonicalBytes.AsSpan(0, Backend.CanonicalBytes.Length - 1),
+            out _,
+            out var validation) &&
+        validation.Code == ReplayCheckpointValidationCode.InvalidLength;
+
+    public TestReplayCheckpoint WithStateHashOffset(ulong offset) =>
+        new(new SimulationReplayCheckpointSnapshot(
+            Backend.Tick,
+            Backend.PackageHash,
+            Backend.StateHash ^ offset));
+}
+
 public sealed class TestReplayTrace
 {
     internal TestReplayTrace(SimulationReplayTrace trace, ulong finalHash)
@@ -149,6 +195,13 @@ public sealed class TestReplayTrace
 
     public long FindFirstDivergence(TestReplayTrace other) =>
         SimulationReplayTrace.FindFirstDivergence(Backend, other.Backend);
+
+    public bool MatchesFrom(TestReplayTrace other, long firstTick)
+    {
+        var first = Backend.Samples.Where(sample => sample.Tick >= firstTick).ToArray();
+        var second = other.Backend.Samples.Where(sample => sample.Tick >= firstTick).ToArray();
+        return first.SequenceEqual(second);
+    }
 }
 
 public readonly record struct TestCombatProfile(
@@ -828,6 +881,80 @@ public sealed class MovementTestRig
                    out _,
                    out var validation) &&
                validation.Code == ReplayPackageValidationCode.ResourceMismatch;
+    }
+
+    public TestReplayCheckpoint CreateReplayCheckpoint(
+        TestReplayPackage package,
+        long tick,
+        ulong stateHash) =>
+        new(new SimulationReplayCheckpointSnapshot(
+            tick, package.StableHash, stateHash));
+
+    public TestReplayTrace ResumeReplayPackage(
+        TestReplayPackage package,
+        TestReplayCheckpoint checkpoint,
+        long targetTick,
+        int hashIntervalTicks = 30)
+    {
+        if (_navigationMap is null || _gameplayProfiles is null ||
+            targetTick < checkpoint.Tick || hashIntervalTicks <= 0)
+        {
+            throw new InvalidOperationException(
+                "Replay checkpoint assets or arguments are invalid.");
+        }
+        if (!SimulationReplayCheckpointFactory.TryRestore(
+                checkpoint.Backend,
+                package.Backend,
+                _navigationMap,
+                _gameplayProfiles,
+                _clearanceBake,
+                out var simulation,
+                out var runner,
+                out var validation) || simulation is null || runner is null)
+        {
+            throw new InvalidOperationException(
+                $"Replay checkpoint restore failed: {validation.Code}.");
+        }
+
+        var trace = new SimulationReplayTrace();
+        trace.Add(simulation.Metrics.Tick, simulation.ComputeStateHash());
+        while (simulation.Metrics.Tick < targetTick)
+        {
+            runner.ApplyForCurrentTick(simulation);
+            simulation.Tick(1f / 60f);
+            if (simulation.Metrics.Tick % hashIntervalTicks == 0 ||
+                simulation.Metrics.Tick == targetTick)
+            {
+                trace.Add(simulation.Metrics.Tick, simulation.ComputeStateHash());
+            }
+        }
+        if (!runner.Completed)
+        {
+            throw new InvalidOperationException(
+                "Replay checkpoint stopped before all commands were applied.");
+        }
+        return new TestReplayTrace(trace, simulation.ComputeStateHash());
+    }
+
+    public bool RejectsReplayCheckpointStateMismatch(
+        TestReplayPackage package,
+        TestReplayCheckpoint checkpoint)
+    {
+        if (_navigationMap is null || _gameplayProfiles is null)
+        {
+            return false;
+        }
+        var changed = checkpoint.WithStateHashOffset(1UL);
+        return !SimulationReplayCheckpointFactory.TryRestore(
+                   changed.Backend,
+                   package.Backend,
+                   _navigationMap,
+                   _gameplayProfiles,
+                   _clearanceBake,
+                   out _,
+                   out _,
+                   out var validation) &&
+               validation.Code == ReplayCheckpointValidationCode.StateMismatch;
     }
 
     public TestReplayTrace Replay(

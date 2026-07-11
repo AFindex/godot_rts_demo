@@ -57,11 +57,11 @@ Tick + OrderKind + Queued + TargetX + TargetY + UnitCount + sorted UnitIds
 
 | 场景 | Hash 平均耗时 |
 |---|---:|
-| 256 单位移动 | 0.652ms |
-| 512 单位移动 | 1.331ms |
-| 1000 单位移动 | 1.324ms |
-| 128 总单位持续战斗 | 0.151ms |
-| 256 总单位持续战斗 | 0.867ms |
+| 256 单位移动 | 0.750ms |
+| 512 单位移动 | 1.449ms |
+| 1000 单位移动 | 1.587ms |
+| 128 总单位持续战斗 | 0.136ms |
+| 256 总单位持续战斗 | 0.660ms |
 
 基准对 Hash 设置独立门槛，避免后续扩大状态覆盖时悄然引入不可接受的诊断成本。
 
@@ -80,13 +80,21 @@ Replay Package 在命令日志之外保存：
 
 当前验收包包含 8 个单位、1 个初始建筑、2 条动态建筑命令和 2 条单位命令；规范载荷 690 字节，包 Hash `5229BB45B72D5D04`。独立重建运行至 Tick 720 后，最终状态 Hash 与原运行同为 `E6CA47E1FC090065`。
 
-## 7. 明确未完成项
+## 7. Checkpoint v1
 
-Replay Package 当前从 Tick 0 顺序播放，尚未保存中间模拟快照，也不能快速跳转。它记录矩形动态建筑，但尚未覆盖未来可能出现的单位生产/销毁、非矩形建筑或玩家/随机种子等玩法状态。
+Checkpoint 使用 36 字节规范载荷保存格式版本、状态 Hash 格式版本、目标 Tick、Package Hash 和目标状态 Hash。恢复时先验证 Package 绑定，从 Tick 0 确定性 seek 到目标 Tick，并要求状态 Hash 完全匹配，然后继续使用已经推进到正确游标的同一个 Package Runner。
 
-下一阶段是版本化快照保存/恢复和中间 Tick checkpoint。跨平台 Lockstep、服务端权威和表现插值仍需在快照边界稳定后再决策。
+当前验收从 Tick 240 恢复到 Tick 720，后半段 17 个周期采样与连续运行完全相同；checkpoint Hash 为 `A83117D9561B50E2`，最终状态仍为 `E6CA47E1FC090065`。未知版本、截断数据和篡改后的目标状态 Hash 均被拒绝。
 
-## 8. 验证入口
+这一层固定了不泄漏内部 SoA 数组的上层契约，但恢复成本仍是 O(checkpoint Tick)，不是直接内存快照。
+
+## 8. 明确未完成项
+
+E4.2 需要保存并直接恢复影响未来模拟的完整运行时状态，避免从 Tick 0 重演。Replay Package 目前记录矩形动态建筑，但尚未覆盖未来可能出现的单位生产/销毁、非矩形建筑或玩家/随机种子等玩法状态。
+
+跨平台 Lockstep、服务端权威和表现插值仍需在直接快照边界稳定后再决策。
+
+## 9. 验证入口
 
 ```powershell
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
@@ -97,6 +105,9 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
   --headless --path . -- --visual-test replay-package-world
+
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --visual-test replay-checkpoint-resume
 ```
 
-对应规范录像位于 `test_videos/20260711_090654/` 和 `test_videos/20260711_094134/`。
+对应规范录像位于 `test_videos/20260711_090654/`、`test_videos/20260711_094134/` 和 `test_videos/20260711_110031/`。
