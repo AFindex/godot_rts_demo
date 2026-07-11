@@ -9,6 +9,9 @@ public readonly record struct TestResourceNodeId(int Value);
 public readonly record struct TestEconomyBaseId(int Value);
 public readonly record struct TestGameplayBuildingId(int Value);
 public readonly record struct TestProductionOrderId(int Value);
+public sealed record TestControlGroupSelection(
+    TestUnitId[] Units,
+    TestGameplayBuildingId[] Buildings);
 
 public enum TestAiStrategicPhase : byte
 {
@@ -1759,6 +1762,58 @@ public sealed partial class MovementTestRig
         }
         return result;
     }
+
+    public void AssignMixedControlGroup(
+        int group,
+        IReadOnlyList<TestUnitId> units,
+        IReadOnlyList<TestGameplayBuildingId> buildings) =>
+        _controlGroups.Assign(group, ToControlGroupEntities(units, buildings));
+
+    public void AddMixedControlGroup(
+        int group,
+        IReadOnlyList<TestUnitId> units,
+        IReadOnlyList<TestGameplayBuildingId> buildings) =>
+        _controlGroups.Add(group, ToControlGroupEntities(units, buildings));
+
+    public void StealAssignControlGroup(
+        int group,
+        IReadOnlyList<TestUnitId> units,
+        IReadOnlyList<TestGameplayBuildingId> buildings) =>
+        _controlGroups.StealAssign(group, ToControlGroupEntities(units, buildings));
+
+    public void StealAddControlGroup(
+        int group,
+        IReadOnlyList<TestUnitId> units,
+        IReadOnlyList<TestGameplayBuildingId> buildings) =>
+        _controlGroups.StealAdd(group, ToControlGroupEntities(units, buildings));
+
+    public TestControlGroupSelection RecallMixedControlGroup(int group)
+    {
+        var recalled = _controlGroups.Recall(group, entity => entity.Kind switch
+        {
+            ControlGroupEntityKind.Unit =>
+                (uint)entity.EntityId < (uint)_simulation.Units.Count &&
+                _simulation.Units.Alive[entity.EntityId],
+            ControlGroupEntityKind.Building =>
+                _simulation.Construction.IsAlive(
+                    new GameplayBuildingId(entity.EntityId)),
+            _ => false
+        });
+        return new TestControlGroupSelection(
+            recalled.Where(value => value.Kind == ControlGroupEntityKind.Unit)
+                .Select(value => new TestUnitId(value.EntityId)).ToArray(),
+            recalled.Where(value => value.Kind == ControlGroupEntityKind.Building)
+                .Select(value => new TestGameplayBuildingId(value.EntityId)).ToArray());
+    }
+
+    private static ControlGroupEntity[] ToControlGroupEntities(
+        IReadOnlyList<TestUnitId> units,
+        IReadOnlyList<TestGameplayBuildingId> buildings) =>
+        units.Select(value => new ControlGroupEntity(
+                ControlGroupEntityKind.Unit, value.Value))
+            .Concat(buildings.Select(value => new ControlGroupEntity(
+                ControlGroupEntityKind.Building, value.Value)))
+            .ToArray();
 
     public TestBuildingId PlaceBuilding(Vector2 center, Vector2 size)
     {

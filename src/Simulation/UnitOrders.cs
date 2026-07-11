@@ -273,59 +273,117 @@ public static class SmartCommandResolver
                 : new UnitOrder(UnitOrderKind.Move, target.Position);
 }
 
+public enum ControlGroupEntityKind : byte
+{
+    Unit,
+    Building
+}
+
+public readonly record struct ControlGroupEntity(
+    ControlGroupEntityKind Kind,
+    int EntityId);
+
 /// <summary>
-/// Pure selection index for ten SC-style control groups.
+/// Pure selection index for ten SC-style mixed entity control groups.
+/// This is an operation-layer index: entity lifetime and ownership are
+/// intentionally supplied by the caller when a group is recalled.
 /// </summary>
 public sealed class ControlGroupManager
 {
     public const int GroupCount = 10;
-    private readonly int _unitCapacity;
-    private readonly bool[] _memberships;
+    private readonly List<ControlGroupEntity>[] _groups;
 
-    public ControlGroupManager(int unitCapacity)
+    public ControlGroupManager(int unitCapacity = 0)
     {
-        _unitCapacity = unitCapacity;
-        _memberships = new bool[GroupCount * unitCapacity];
+        if (unitCapacity < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(unitCapacity));
+        }
+        _groups = Enumerable.Range(0, GroupCount)
+            .Select(_ => new List<ControlGroupEntity>())
+            .ToArray();
     }
 
     public void Assign(int group, ReadOnlySpan<int> units)
     {
-        ValidateGroup(group);
-        Array.Clear(_memberships, group * _unitCapacity, _unitCapacity);
-        Add(group, units);
+        var entities = ToUnitEntities(units);
+        Assign(group, entities);
     }
 
     public void Add(int group, ReadOnlySpan<int> units)
     {
+        var entities = ToUnitEntities(units);
+        Add(group, entities);
+    }
+
+    public void Assign(int group, ReadOnlySpan<ControlGroupEntity> entities)
+    {
         ValidateGroup(group);
-        var offset = group * _unitCapacity;
-        for (var index = 0; index < units.Length; index++)
+        _groups[group].Clear();
+        Add(group, entities);
+    }
+
+    public void Add(int group, ReadOnlySpan<ControlGroupEntity> entities)
+    {
+        ValidateGroup(group);
+        for (var index = 0; index < entities.Length; index++)
         {
-            var unit = units[index];
-            if ((uint)unit >= (uint)_unitCapacity)
-            {
-                throw new ArgumentOutOfRangeException(nameof(units));
-            }
-            _memberships[offset + unit] = true;
+            ValidateEntity(entities[index], nameof(entities));
+            InsertStable(_groups[group], entities[index]);
         }
+    }
+
+    public void StealAssign(int group, ReadOnlySpan<ControlGroupEntity> entities)
+    {
+        ValidateGroup(group);
+        RemoveFromAll(entities);
+        Assign(group, entities);
+    }
+
+    public void StealAdd(int group, ReadOnlySpan<ControlGroupEntity> entities)
+    {
+        ValidateGroup(group);
+        RemoveFromAll(entities, group);
+        Add(group, entities);
+    }
+
+    public int Recall(
+        int group,
+        Span<ControlGroupEntity> output,
+        Predicate<ControlGroupEntity>? available = null)
+    {
+        ValidateGroup(group);
+        var count = 0;
+        foreach (var entity in _groups[group])
+        {
+            if (count >= output.Length) break;
+            if (available is not null && !available(entity)) continue;
+            output[count++] = entity;
+        }
+        return count;
+    }
+
+    public ControlGroupEntity[] Recall(
+        int group,
+        Predicate<ControlGroupEntity>? available = null)
+    {
+        ValidateGroup(group);
+        return available is null
+            ? _groups[group].ToArray()
+            : _groups[group].Where(entity => available(entity)).ToArray();
     }
 
     public int Recall(int group, ReadOnlySpan<bool> alive, Span<int> output)
     {
         ValidateGroup(group);
-        if (alive.Length < _unitCapacity)
-        {
-            throw new ArgumentException("Alive mask is smaller than unit capacity.", nameof(alive));
-        }
-
         var count = 0;
-        var offset = group * _unitCapacity;
-        for (var unit = 0; unit < _unitCapacity && count < output.Length; unit++)
+        foreach (var entity in _groups[group])
         {
-            if (_memberships[offset + unit] && alive[unit])
-            {
-                output[count++] = unit;
-            }
+            if (count >= output.Length) break;
+            if (entity.Kind != ControlGroupEntityKind.Unit ||
+                (uint)entity.EntityId >= (uint)alive.Length ||
+                !alive[entity.EntityId]) continue;
+            output[count++] = entity.EntityId;
         }
         return count;
     }
@@ -334,15 +392,67 @@ public sealed class ControlGroupManager
     {
         ValidateGroup(group);
         var count = 0;
-        var offset = group * _unitCapacity;
-        for (var unit = 0; unit < _unitCapacity; unit++)
+        foreach (var entity in _groups[group])
         {
-            if (_memberships[offset + unit] && alive[unit])
-            {
-                count++;
-            }
+            if (entity.Kind == ControlGroupEntityKind.Unit &&
+                (uint)entity.EntityId < (uint)alive.Length &&
+                alive[entity.EntityId]) count++;
         }
         return count;
+    }
+
+    private void RemoveFromAll(
+        ReadOnlySpan<ControlGroupEntity> entities,
+        int exceptGroup = -1)
+    {
+        for (var index = 0; index < entities.Length; index++)
+        {
+            ValidateEntity(entities[index], nameof(entities));
+        }
+        for (var group = 0; group < GroupCount; group++)
+        {
+            if (group == exceptGroup) continue;
+            for (var index = 0; index < entities.Length; index++)
+            {
+                RemoveStable(_groups[group], entities[index]);
+            }
+        }
+    }
+
+    private static ControlGroupEntity[] ToUnitEntities(ReadOnlySpan<int> units)
+    {
+        var result = new ControlGroupEntity[units.Length];
+        for (var index = 0; index < units.Length; index++)
+        {
+            result[index] = new ControlGroupEntity(
+                ControlGroupEntityKind.Unit, units[index]);
+        }
+        return result;
+    }
+
+    private static void InsertStable(
+        List<ControlGroupEntity> group,
+        ControlGroupEntity entity)
+    {
+        var index = group.BinarySearch(entity, ControlGroupEntityComparer.Instance);
+        if (index < 0) group.Insert(~index, entity);
+    }
+
+    private static void RemoveStable(
+        List<ControlGroupEntity> group,
+        ControlGroupEntity entity)
+    {
+        var index = group.BinarySearch(entity, ControlGroupEntityComparer.Instance);
+        if (index >= 0) group.RemoveAt(index);
+    }
+
+    private static void ValidateEntity(ControlGroupEntity entity, string parameter)
+    {
+        if (entity.EntityId < 0 ||
+            !Enum.IsDefined(entity.Kind))
+        {
+            throw new ArgumentOutOfRangeException(parameter);
+        }
     }
 
     private static void ValidateGroup(int group)
@@ -350,6 +460,17 @@ public sealed class ControlGroupManager
         if ((uint)group >= GroupCount)
         {
             throw new ArgumentOutOfRangeException(nameof(group));
+        }
+    }
+
+    private sealed class ControlGroupEntityComparer : IComparer<ControlGroupEntity>
+    {
+        public static ControlGroupEntityComparer Instance { get; } = new();
+
+        public int Compare(ControlGroupEntity left, ControlGroupEntity right)
+        {
+            var kind = left.Kind.CompareTo(right.Kind);
+            return kind != 0 ? kind : left.EntityId.CompareTo(right.EntityId);
         }
     }
 }

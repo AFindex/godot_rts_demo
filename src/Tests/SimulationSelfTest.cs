@@ -43,6 +43,7 @@ public static class SimulationSelfTest
                 aiConfigurations);
             var modularAiResult = ModularAiPolicySelfTest.Run();
             var operationPresentationResult = OperationPresentationSelfTest.Run();
+            var controlGroupResult = ControlGroupSelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
@@ -53,8 +54,8 @@ public static class SimulationSelfTest
                       technologyCatalogResult.Passed &&
                        aiArchitectureResult.Passed &&
                        aiConfigurationResult.Passed && modularAiResult.Passed;
-            passed &= operationPresentationResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 17)
+            passed &= operationPresentationResult.Passed && controlGroupResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 18)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -104,7 +105,10 @@ public static class SimulationSelfTest
                 $"({modularAiResult.Summary})",
                 $"operation-presentation=" +
                 $"{(operationPresentationResult.Passed ? "PASS" : "FAIL")}" +
-                $"({operationPresentationResult.Summary})"
+                $"({operationPresentationResult.Summary})",
+                $"control-group=" +
+                $"{(controlGroupResult.Passed ? "PASS" : "FAIL")}" +
+                $"({controlGroupResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

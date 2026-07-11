@@ -4,7 +4,7 @@
 
 ## 语义来源与当前边界
 
-这一层参考 Blizzard 的 [Simplified Controls](https://news.blizzard.com/en-us/article/6640645/game-guide-simplified-controls) 与 [Special Control](https://news.blizzard.com/en-us/article/4552955/game-guide-special-control)：Shift 追加顺序命令，Ctrl+数字覆盖编组，Shift+数字添加，数字键召回。
+这一层参考 Blizzard 的 [Simplified Controls](https://news.blizzard.com/en-us/article/6640645/game-guide-simplified-controls)、[Special Control](https://news.blizzard.com/en-us/article/4552955/game-guide-special-control) 与 [Legacy of the Void Beta 2.5.3](https://news.blizzard.com/en-gb/starcraft2/19821986/legacy-of-the-void-beta-patch-2-5-3)：Shift 追加顺序命令，Ctrl+数字覆盖编组，Shift+数字添加，Alt 组合执行抢组，数字键召回。
 
 Control Group 只保存选择集合，不持有共享命令。命令始终进入每个单位自己的队列。
 
@@ -23,11 +23,14 @@ Control Group 只保存选择集合，不持有共享命令。命令始终进入
 
 - Ctrl+0～9：覆盖对应组。
 - Shift+0～9：把当前选择添加到对应组，不改变当前选择。
-- 0～9：召回仍存活的成员，按稳定 unit ID 排序。
+- Alt+0～9：覆盖对应组，同时把当前选择从所有其他组移出。
+- Alt+Shift+0～9：添加到对应组，同时把当前选择从所有其他组移出。
+- 0～9：召回仍存活/未销毁且仍归玩家控制的单位和建筑，按 Kind/Entity ID 稳定排序。
 - 0～9 在 0.35 秒内再次召回同一组：把镜头定位到当前存活成员的中心。
-- 编组内部为固定容量布尔索引，没有 HashSet、Node 或 Godot 对象。
+- 编组只保存纯 C# `ControlGroupEntity(Kind, EntityId)`，不持有 Node、Godot 对象或业务系统引用；实体生命期和所有权由召回者提供。
+- 编组列表在写入时去重并保持 Unit→Building、Entity ID 升序；建筑 ID 不依赖预设容量。
 
-单位/工人/建筑混合选择子组和 Tab 切换已在 S11-J1 完成；Control Group 仍只保存单位，尚未实现建筑混合编组和 Alt 移出/窃取。
+单位/工人/建筑混合选择子组和 Tab 切换在 S11-J1 完成；建筑混合编组和 Alt 抢组在 S11-J2a 完成。
 
 ## 选择过滤与双击
 
@@ -82,6 +85,7 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `queued-command-replace`：即时命令清空两条待执行命令并到达新目标。
 - `queued-capacity-limit`：16/16 待执行，额外两条得到 2 次显式 overflow。
 - `control-group-recall`：Ctrl 覆盖 4 人、Shift 添加 2 人、召回 6 人并全部到达。
+- `control-group-mixed-steal`：混合保存 2 Worker、Marine 与 Barracks；Alt 覆盖抢组和 Alt+Shift 添加抢组后，原组只剩 Marine，新组得到 2 Worker + Barracks，三个可移动单位全部按召回结果到达。
 - `smart-command-sequence`：友军位置 Move → 敌军 AttackTarget → 地面 Move，目标死亡且两个 Shift 命令完成。
 - `smart-command-gameplay-context`：乱序混合选择右键矿点后两名工人采集、Marine 移动；右键待续建建筑稳定选择最低 ID 工人，Package 重放后 Hash 一致。
 - `smart-command-shift-worker-tasks`：同时验证 Move→Gather、Move→Resume 和 Move→已枯竭资源→Move；Tick 60 的三条待执行跨域任务可由 Hot Snapshot v12 精确恢复，失效任务有界跳过，Package v12 最终 Hash 一致。
@@ -91,4 +95,4 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 
 ## 当前收口
 
-操作表现已覆盖选择、混合子组、快照命令卡、相机、编组定位和 Minimap。J2 仍包括建筑混合 Control Group、Alt 编组操作、目标模式命令卡、图标/tooltip、皮肤与动画。
+操作表现已覆盖选择、混合子组、快照命令卡、相机、混合编组/Alt 抢组、编组定位和 Minimap。J2b 仍包括目标模式命令卡、多建筑批量动作、图标/tooltip、皮肤与动画。

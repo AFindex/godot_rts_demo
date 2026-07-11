@@ -25,6 +25,7 @@ public static class VisualTestCatalog
         "queued-command-replace",
         "queued-capacity-limit",
         "control-group-recall",
+        "control-group-mixed-steal",
         "smart-command-sequence",
         "smart-command-gameplay-context",
         "smart-command-shift-worker-tasks",
@@ -124,6 +125,8 @@ public static class VisualTestCatalog
         "queued-command-replace" => CreateQueuedCommandReplace(),
         "queued-capacity-limit" => CreateQueuedCapacityLimit(),
         "control-group-recall" => CreateControlGroupRecall(),
+        "control-group-mixed-steal" => CreateControlGroupMixedSteal(
+            navigationMap, gameplayProfiles, clearanceBake),
         "smart-command-sequence" => CreateSmartCommandSequence(),
         "smart-command-gameplay-context" => CreateSmartCommandGameplayContext(
             navigationMap, gameplayProfiles, clearanceBake),
@@ -741,6 +744,73 @@ public static class VisualTestCatalog
                 return new ScenarioResult(
                     current.Length == 6 && arrived == 6,
                     $"members={current.Length}, arrived={arrived}/6");
+            });
+    }
+
+    private static VisualTestSession CreateControlGroupMixedSteal(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1200, 200, 20, 3);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(170f, 230f), 1),
+            rig.SpawnWorker(new Vector2(210f, 320f), 1)
+        };
+        var marine = rig.SpawnCombat(new Vector2(270f, 350f), 1);
+        var barracks = rig.Build(
+            1, workers[0],
+            DemoBuildingTypes.Barracks with { BuildSeconds = 0.5f },
+            new Vector2(390f, 260f));
+        return new VisualTestSession(
+            "control-group-mixed-steal",
+            "Mixed unit/building groups support Alt assign and Alt+Shift add stealing",
+            720,
+            rig,
+            [workers[0], workers[1], marine],
+            runtime =>
+            {
+                var first = runtime.RecallMixedControlGroup(1);
+                var second = runtime.RecallMixedControlGroup(2);
+                var marineState = runtime.Observe(marine);
+                var workerArrived = second.Units.Count(unit =>
+                    Vector2.Distance(
+                        runtime.Observe(unit).Position,
+                        runtime.Observe(unit).AssignedTarget) < 10f);
+                var marineArrived = Vector2.Distance(
+                    marineState.Position, marineState.AssignedTarget) < 10f;
+                var passed = barracks.Succeeded &&
+                             first.Units.SequenceEqual([marine]) &&
+                             first.Buildings.Length == 0 &&
+                             second.Units.SequenceEqual(workers) &&
+                             second.Buildings.SequenceEqual([barracks.BuildingId]) &&
+                             workerArrived == 2 &&
+                             marineArrived;
+                return new ScenarioResult(
+                    passed,
+                    $"group1={first.Units.Length}u/{first.Buildings.Length}b, " +
+                    $"group2={second.Units.Length}u/{second.Buildings.Length}b, " +
+                    $"arrived={workerArrived + (marineArrived ? 1 : 0)}/3");
+            })
+            .SelectBuildings(barracks.BuildingId)
+            .At(140, "Ctrl+1 stores two workers, Marine and Barracks", runtime =>
+                runtime.AssignMixedControlGroup(
+                    1, [workers[1], marine, workers[0]], [barracks.BuildingId]))
+            .At(160, "Alt+2 steals one worker from group 1", runtime =>
+                runtime.StealAssignControlGroup(2, [workers[0]], []))
+            .At(180, "Alt+Shift+2 steals the second worker and Barracks", runtime =>
+            {
+                runtime.StealAddControlGroup(
+                    2, [workers[1]], [barracks.BuildingId]);
+                var first = runtime.RecallMixedControlGroup(1);
+                var second = runtime.RecallMixedControlGroup(2);
+                runtime.Move(first.Units, new Vector2(930f, 210f));
+                runtime.Move(second.Units, new Vector2(930f, 480f));
             });
     }
 

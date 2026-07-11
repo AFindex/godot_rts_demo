@@ -85,7 +85,6 @@ public partial class RtsDemo : Node2D
     private TechnologyCatalogSnapshot? _technologyCatalog;
     private ClearanceBakeSnapshot? _clearanceBake;
     private ControlGroupManager? _controlGroups;
-    private int[] _controlGroupRecallBuffer = [];
     private int[] _selectionTypeIds = [];
     private readonly ControlGroupRecallTracker _controlGroupRecallTracker = new();
     private Camera2D? _camera;
@@ -881,7 +880,11 @@ public partial class RtsDemo : Node2D
 
         if (TryReadControlGroup(keyEvent, out var group))
         {
-            HandleControlGroup(group, keyEvent.CtrlPressed, keyEvent.ShiftPressed);
+            HandleControlGroup(
+                group,
+                keyEvent.CtrlPressed,
+                keyEvent.ShiftPressed,
+                keyEvent.AltPressed);
             QueueRedraw();
             return;
         }
@@ -933,7 +936,6 @@ public partial class RtsDemo : Node2D
             return;
         }
         _controlGroups = new ControlGroupManager(_simulation.Units.Capacity);
-        _controlGroupRecallBuffer = new int[_simulation.Units.Capacity];
         _selectionTypeIds = Enumerable.Repeat(-1, _simulation.Units.Capacity).ToArray();
     }
 
@@ -997,13 +999,20 @@ public partial class RtsDemo : Node2D
         {
             return;
         }
-        var selected = SelectedLivingUnits();
-        var positions = new NVector2[selected.Length];
-        for (var index = 0; index < selected.Length; index++)
+        var positions = new List<NVector2>();
+        foreach (var unit in SelectedLivingUnits())
         {
-            positions[index] = _simulation.Units.Positions[selected[index]];
+            positions.Add(_simulation.Units.Positions[unit]);
         }
-        _cameraController.Focus(positions);
+        foreach (var buildingValue in _selectedBuildings.OrderBy(value => value))
+        {
+            var buildingId = new GameplayBuildingId(buildingValue);
+            if (!_simulation.Construction.IsAlive(buildingId)) continue;
+            var building = _simulation.Construction.Observe(buildingId);
+            if (building.PlayerId != PlayerTeam) continue;
+            positions.Add((building.Bounds.Min + building.Bounds.Max) * 0.5f);
+        }
+        _cameraController.Focus(positions.ToArray());
         ApplyCameraState();
     }
 
@@ -1027,14 +1036,24 @@ public partial class RtsDemo : Node2D
         return result;
     }
 
-    private void HandleControlGroup(int group, bool assign, bool add)
+    private void HandleControlGroup(
+        int group,
+        bool assign,
+        bool add,
+        bool steal)
     {
         if (_simulation is null || _controlGroups is null)
         {
             return;
         }
 
-        var selected = SelectedLivingUnits();
+        var selected = SelectedControlGroupEntities();
+        if (steal)
+        {
+            if (add) _controlGroups.StealAdd(group, selected);
+            else _controlGroups.StealAssign(group, selected);
+            return;
+        }
         if (assign)
         {
             _controlGroups.Assign(group, selected);
@@ -1046,24 +1065,57 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        var count = _controlGroups.Recall(
-            group,
-            _simulation.Units.Alive,
-            _controlGroupRecallBuffer);
+        var recalled = _controlGroups.Recall(group, IsAvailableControlGroupEntity);
         _selectedUnits.Clear();
-        for (var index = 0; index < count; index++)
+        _selectedBuildings.Clear();
+        foreach (var entity in recalled)
         {
-            var unit = _controlGroupRecallBuffer[index];
-            if (_simulation.Combat.Teams[unit] == PlayerTeam)
+            if (entity.Kind == ControlGroupEntityKind.Unit)
             {
-                _selectedUnits.Add(unit);
+                _selectedUnits.Add(entity.EntityId);
+            }
+            else
+            {
+                _selectedBuildings.Add(entity.EntityId);
             }
         }
         if (_controlGroupRecallTracker.Register(
-                group, Time.GetTicksMsec() / 1000.0) && count > 0)
+                group, Time.GetTicksMsec() / 1000.0) && recalled.Length > 0)
         {
             FocusCameraOnSelection();
         }
+    }
+
+    private ControlGroupEntity[] SelectedControlGroupEntities()
+    {
+        var units = SelectedLivingUnits();
+        var result = new List<ControlGroupEntity>(
+            units.Length + _selectedBuildings.Count);
+        result.AddRange(units.Select(unit => new ControlGroupEntity(
+            ControlGroupEntityKind.Unit, unit)));
+        if (_simulation is null) return result.ToArray();
+        foreach (var value in _selectedBuildings.OrderBy(value => value))
+        {
+            var id = new GameplayBuildingId(value);
+            if (!_simulation.Construction.IsAlive(id) ||
+                _simulation.Construction.Observe(id).PlayerId != PlayerTeam) continue;
+            result.Add(new ControlGroupEntity(ControlGroupEntityKind.Building, value));
+        }
+        return result.ToArray();
+    }
+
+    private bool IsAvailableControlGroupEntity(ControlGroupEntity entity)
+    {
+        if (_simulation is null) return false;
+        if (entity.Kind == ControlGroupEntityKind.Unit)
+        {
+            return (uint)entity.EntityId < (uint)_simulation.Units.Count &&
+                   _simulation.Units.Alive[entity.EntityId] &&
+                   _simulation.Combat.Teams[entity.EntityId] == PlayerTeam;
+        }
+        var id = new GameplayBuildingId(entity.EntityId);
+        return _simulation.Construction.IsAlive(id) &&
+               _simulation.Construction.Observe(id).PlayerId == PlayerTeam;
     }
 
     private static bool TryReadControlGroup(
@@ -1765,7 +1817,7 @@ public partial class RtsDemo : Node2D
             $"{matchText}\n" +
             $"{trafficText}\n" +
             "LMB select  RMB smart  Shift+RMB queue  A+RMB attack-move  " +
-            "Ctrl+# assign  Shift+# add  # recall  Space all  S stop  H hold  " +
+            "Ctrl+# assign  Shift+# add  Alt+# steal  # recall  Space all  S stop  H hold  " +
             "B place building  X remove building  D debug  R reset";
         UpdateMinimap();
     }
