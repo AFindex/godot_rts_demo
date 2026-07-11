@@ -249,6 +249,15 @@ public sealed class UnitStore
         }
     }
 
+    internal void SetRuntimeCount(int count)
+    {
+        if ((uint)count > (uint)Capacity)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count));
+        }
+        Count = count;
+    }
+
     private static void Copy<T>(T[] source, T[] destination) =>
         Array.Copy(source, destination, source.Length);
 }

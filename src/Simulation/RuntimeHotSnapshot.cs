@@ -1,5 +1,17 @@
 namespace RtsDemo.Simulation;
 
+public enum HotSnapshotValidationCode : byte
+{
+    Success,
+    PayloadTooShort,
+    InvalidMagic,
+    UnsupportedVersion,
+    UnsupportedStateHashVersion,
+    InvalidHeader,
+    InvalidBody,
+    TrailingBytes
+}
+
 internal sealed record RtsPrivateRuntimeSnapshot(
     int PathBudgetPerTick,
     int PendingNavigationInvalidations,
@@ -34,12 +46,9 @@ public sealed class SimulationHotSnapshot
     {
         PackageHash = packageHash;
         State = state;
-        var hash = new StableHash64();
-        hash.Add(CurrentFormatVersion);
-        hash.Add((long)packageHash);
-        hash.Add(state.Tick);
-        hash.Add((long)state.StateHash);
-        StableHash = hash.Value;
+        CanonicalBytes = RuntimeHotSnapshotCodec.Serialize(
+            CurrentFormatVersion, packageHash, state);
+        StableHash = StableHash64.Compute(CanonicalBytes);
     }
 
     internal SimulationRuntimeStateCapture State { get; }
@@ -47,7 +56,28 @@ public sealed class SimulationHotSnapshot
     public ulong PackageHash { get; }
     public long Tick => State.Tick;
     public ulong StateHash => State.StateHash;
+    public byte[] CanonicalBytes { get; }
     public ulong StableHash { get; }
+
+    public static bool TryDeserialize(
+        ReadOnlySpan<byte> payload,
+        out SimulationHotSnapshot? snapshot,
+        out HotSnapshotValidationCode validation)
+    {
+        snapshot = null;
+        if (!RuntimeHotSnapshotCodec.TryDeserialize(
+                payload,
+                CurrentFormatVersion,
+                out var packageHash,
+                out var state,
+                out validation) ||
+            state is null)
+        {
+            return false;
+        }
+        snapshot = new SimulationHotSnapshot(packageHash, state);
+        return true;
+    }
 }
 
 public static class SimulationHotSnapshotFactory

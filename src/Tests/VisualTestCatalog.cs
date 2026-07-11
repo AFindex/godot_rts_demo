@@ -981,17 +981,24 @@ public static class VisualTestCatalog
             {
                 var package = runtime.CaptureReplayPackage();
                 var hot = runtime.BindHotSnapshot(package, runtimeCapture!);
+                var roundTrip = hot.TryCanonicalRoundTrip(out var decoded);
                 var baseline = runtime.ReplayPackage(package, runtime.Tick);
                 var restored = runtime.ResumeHotSnapshot(
-                    package, hot, runtime.Tick);
+                    package, decoded!, runtime.Tick);
                 var exact = baseline.MatchesFrom(restored, snapshotTick) &&
                             restored.FinalHash == runtime.StateHash;
-                var rejected = runtime.RejectsHotSnapshotPackageMismatch(
-                    package, hot);
+                var rejected = hot.RejectsUnsupportedVersion() &&
+                               hot.RejectsTruncatedPayload() &&
+                               runtime.RejectsHotSnapshotPackageMismatch(
+                                   package, hot) &&
+                               runtime.RejectsHotSnapshotStateMismatch(
+                                   package, hot);
                 return new ScenarioResult(
+                    roundTrip && decoded!.StableHash == hot.StableHash &&
                     exact && rejected && hot.FormatVersion == 1 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
-                    $"tick={hot.Tick}, snapshot={hot.StableHash:X16}, " +
+                    $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
+                    $"snapshot={hot.StableHash:X16}, " +
                     $"samples={restored.SampleCount}, state={restored.FinalHash:X16}, " +
                     $"exact={exact}, rejected={rejected}");
             });

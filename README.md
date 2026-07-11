@@ -42,6 +42,7 @@
 - 版本化 checkpoint 绑定 Package/状态 Hash，可确定性 seek 到中间 Tick 后继续精确回放。
 - 状态 Hash v2 覆盖动态建筑下一 ID 和狭口私有租约状态，避免公开诊断相同但未来调度分叉。
 - 进程内热快照可直接恢复 Unit/Combat SoA、路径、Shift 队列、动态占用、狭口租约和待处理请求，无需重演早期 Tick。
+- 热快照具有版本化规范二进制编码，可直接保存到磁盘；未知版本、截断、正文篡改和错误 Package 均被拒绝。
 - 战斗状态与移动路径分离；死亡保持稳定 unit ID，但从寻路邻居、碰撞、选择和建筑占用中移除。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
 
@@ -96,7 +97,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 非战斗移动：当前线程分配不超过 1KB/Tick。
 - 活跃战斗 128/256 总单位：P95 不超过 4/8ms，分配不超过 8KB/Tick。
 
-当前机器的 Release 移动基线约为 1.44ms、6.00ms 和 9.75ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.67/4.46ms P95。完整状态 Hash v2 在 1000 单位场景平均约 1.42ms。
+当前机器的 Release 移动基线约为 1.75ms、4.65ms 和 10.62ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.86/5.49ms P95。完整状态 Hash v2 在 1000 单位场景平均约 1.66ms。
 
 ## 导航数据资产
 
@@ -154,4 +155,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-移动、动态地图、战斗移动、第一层操作语义，以及确定性命令日志/Replay Package/checkpoint seek/直接热快照已经形成可运行闭环。下一步 E4.3 只负责热快照的持久化二进制编码；完成后确定性基础设施收口，返回选择、相机和 Minimap 操作层。
+移动、动态地图、战斗移动、第一层操作语义，以及确定性命令日志/Replay Package/checkpoint/持久化直接快照已经形成可运行闭环。确定性基础设施到此收口；下一阶段返回双击同类选择、选择过滤、相机和编组镜头定位，Minimap 随后接入。

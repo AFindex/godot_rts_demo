@@ -166,6 +166,21 @@ public sealed class UnitCommandQueueStore
         Copy(source._pendingSequenceIds, _pendingSequenceIds);
     }
 
+    internal UnitOrder PendingAt(int unit, int logicalIndex)
+    {
+        if ((uint)logicalIndex >= PendingCounts[unit])
+        {
+            throw new ArgumentOutOfRangeException(nameof(logicalIndex));
+        }
+        var slot = (_heads[unit] + logicalIndex) % MaximumPendingOrders;
+        var index = unit * MaximumPendingOrders + slot;
+        return new UnitOrder(
+            _pendingKinds[index],
+            _pendingPositions[index],
+            _pendingTargetUnits[index],
+            _pendingSequenceIds[index]);
+    }
+
     private static void Copy<T>(T[] source, T[] destination) =>
         Array.Copy(source, destination, source.Length);
 }

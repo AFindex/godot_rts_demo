@@ -205,6 +205,51 @@ public sealed class TestHotSnapshot
     public long Tick => Backend.Tick;
     public ulong StateHash => Backend.StateHash;
     public ulong StableHash => Backend.StableHash;
+    public int CanonicalByteCount => Backend.CanonicalBytes.Length;
+
+    public bool TryCanonicalRoundTrip(out TestHotSnapshot? roundTripped)
+    {
+        var succeeded = SimulationHotSnapshot.TryDeserialize(
+            Backend.CanonicalBytes, out var snapshot, out _);
+        roundTripped = succeeded && snapshot is not null
+            ? new TestHotSnapshot(snapshot)
+            : null;
+        return succeeded;
+    }
+
+    public bool RejectsUnsupportedVersion()
+    {
+        var payload = Backend.CanonicalBytes.ToArray();
+        payload[4]++;
+        return !SimulationHotSnapshot.TryDeserialize(
+            payload, out _, out var validation) &&
+            validation == HotSnapshotValidationCode.UnsupportedVersion;
+    }
+
+    public bool RejectsTruncatedPayload() =>
+        !SimulationHotSnapshot.TryDeserialize(
+            Backend.CanonicalBytes.AsSpan(0, Backend.CanonicalBytes.Length - 1),
+            out _,
+            out var validation) &&
+        validation == HotSnapshotValidationCode.InvalidBody;
+
+    internal TestHotSnapshot WithBodyByteFlip()
+    {
+        var payload = Backend.CanonicalBytes.ToArray();
+        const int firstUnitPositionByte = 105;
+        if (payload.Length <= firstUnitPositionByte)
+        {
+            throw new InvalidOperationException("Hot snapshot payload is too small.");
+        }
+        payload[firstUnitPositionByte] ^= 1;
+        if (!SimulationHotSnapshot.TryDeserialize(
+                payload, out var snapshot, out _) || snapshot is null)
+        {
+            throw new InvalidOperationException(
+                "Chosen hot snapshot corruption must remain structurally valid.");
+        }
+        return new TestHotSnapshot(snapshot);
+    }
 }
 
 public sealed class TestReplayTrace
@@ -1062,6 +1107,25 @@ public sealed class MovementTestRig
         return !SimulationHotSnapshotFactory.TryRestore(
             snapshot.Backend,
             changed,
+            _navigationMap,
+            _gameplayProfiles,
+            _clearanceBake,
+            out _,
+            out _);
+    }
+
+    public bool RejectsHotSnapshotStateMismatch(
+        TestReplayPackage package,
+        TestHotSnapshot snapshot)
+    {
+        if (_navigationMap is null || _gameplayProfiles is null)
+        {
+            return false;
+        }
+        var changed = snapshot.WithBodyByteFlip();
+        return !SimulationHotSnapshotFactory.TryRestore(
+            changed.Backend,
+            package.Backend,
             _navigationMap,
             _gameplayProfiles,
             _clearanceBake,
