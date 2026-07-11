@@ -20,6 +20,13 @@ public enum CombatPhase : byte
     Attacking
 }
 
+public enum CombatTargetKind : byte
+{
+    None,
+    Unit,
+    Building
+}
+
 public enum CombatPositioningKind : byte
 {
     Melee,
@@ -85,6 +92,8 @@ public sealed class CombatStore
         CommandIntents = new UnitCommandIntent[capacity];
         Phases = new CombatPhase[capacity];
         TargetUnits = new int[capacity];
+        TargetBuildings = new int[capacity];
+        TargetKinds = new CombatTargetKind[capacity];
         AttackMoveGoals = new Vector2[capacity];
         EngagementOrigins = new Vector2[capacity];
         LastChaseTargets = new Vector2[capacity];
@@ -96,6 +105,7 @@ public sealed class CombatStore
         WindupRemaining = new float[capacity];
         ChaseRepathRemaining = new float[capacity];
         Array.Fill(TargetUnits, -1);
+        Array.Fill(TargetBuildings, -1);
     }
 
     public int[] Teams { get; }
@@ -111,6 +121,8 @@ public sealed class CombatStore
     public UnitCommandIntent[] CommandIntents { get; }
     public CombatPhase[] Phases { get; }
     public int[] TargetUnits { get; }
+    public int[] TargetBuildings { get; }
+    public CombatTargetKind[] TargetKinds { get; }
     public Vector2[] AttackMoveGoals { get; }
     public Vector2[] EngagementOrigins { get; }
     public Vector2[] LastChaseTargets { get; }
@@ -138,6 +150,8 @@ public sealed class CombatStore
         CommandIntents[unit] = UnitCommandIntent.None;
         Phases[unit] = CombatPhase.None;
         TargetUnits[unit] = -1;
+        TargetBuildings[unit] = -1;
+        TargetKinds[unit] = CombatTargetKind.None;
         AttackMoveGoals[unit] = position;
         EngagementOrigins[unit] = position;
         LastChaseTargets[unit] = position;
@@ -163,6 +177,8 @@ public sealed class CombatStore
         Copy(source.CommandIntents, CommandIntents);
         Copy(source.Phases, Phases);
         Copy(source.TargetUnits, TargetUnits);
+        Copy(source.TargetBuildings, TargetBuildings);
+        Copy(source.TargetKinds, TargetKinds);
         Copy(source.AttackMoveGoals, AttackMoveGoals);
         Copy(source.EngagementOrigins, EngagementOrigins);
         Copy(source.LastChaseTargets, LastChaseTargets);
@@ -182,7 +198,8 @@ public sealed class CombatStore
         int unit,
         UnitCommandIntent intent,
         Vector2 goal,
-        int targetUnit = -1)
+        int targetUnit = -1,
+        int targetBuilding = -1)
     {
         CommandIntents[unit] = intent;
         Phases[unit] = intent is UnitCommandIntent.AttackMove or
@@ -191,8 +208,18 @@ public sealed class CombatStore
             ? CombatPhase.Searching
             : CombatPhase.None;
         TargetUnits[unit] = intent == UnitCommandIntent.AttackTarget
+            && targetUnit >= 0
             ? targetUnit
             : -1;
+        TargetBuildings[unit] = intent == UnitCommandIntent.AttackTarget
+            && targetBuilding >= 0
+            ? targetBuilding
+            : -1;
+        TargetKinds[unit] = TargetUnits[unit] >= 0
+            ? CombatTargetKind.Unit
+            : TargetBuildings[unit] >= 0
+                ? CombatTargetKind.Building
+                : CombatTargetKind.None;
         HasAttackSlots[unit] = false;
         WindupRemaining[unit] = 0f;
         ChaseRepathRemaining[unit] = 0f;

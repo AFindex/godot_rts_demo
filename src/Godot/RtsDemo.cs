@@ -29,6 +29,7 @@ public partial class RtsDemo : Node2D
     [Export]
     public bool EnableResourceFileWatcher { get; set; } = true;
     private readonly HashSet<int> _selectedUnits = new();
+    private GameplayBuildingId? _selectedBuilding;
     private StaticWorld? _world;
     private GodotPathProvider? _pathProvider;
     private IPathProvider? _simulationPathProvider;
@@ -502,6 +503,10 @@ public partial class RtsDemo : Node2D
             var completed = building.State == BuildingLifecycleState.Completed;
             DrawRect(rect, color with { A = completed ? 0.88f : 0.46f }, true);
             DrawRect(rect, completed ? color.Lightened(0.25f) : color, false, 3f);
+            if (_selectedBuilding == building.Id)
+            {
+                DrawRect(rect.Grow(5f), new Color("f8f4a6"), false, 3f);
+            }
 
             var progressWidth = rect.Size.X * Math.Clamp(building.Progress, 0f, 1f);
             var progressRect = new Rect2(
@@ -516,6 +521,17 @@ public partial class RtsDemo : Node2D
                 rect.Size.X - 10f,
                 12,
                 new Color("f5f7fa"));
+            if (_selectedBuilding == building.Id)
+            {
+                DrawString(
+                    ThemeDB.FallbackFont,
+                    rect.Position + new Vector2(5f, 35f),
+                    $"HP {building.Health:0}/{building.MaximumHealth:0}  {building.State}",
+                    HorizontalAlignment.Left,
+                    rect.Size.X - 10f,
+                    11,
+                    new Color("fff4b0"));
+            }
         }
     }
 
@@ -570,7 +586,9 @@ public partial class RtsDemo : Node2D
                 target,
                 _commandMarkerAttackMove,
                 queued: _commandMarkerQueued);
-            _commandMarkerAttackMove |= target.Kind == SmartCommandTargetKind.EnemyUnit;
+            _commandMarkerAttackMove |= target.Kind is
+                SmartCommandTargetKind.EnemyUnit or
+                SmartCommandTargetKind.EnemyBuilding;
             _commandMarker = worldPosition;
             _commandMarkerTime = 0.65f;
             QueueRedraw();
@@ -827,6 +845,18 @@ public partial class RtsDemo : Node2D
 
         if (best < 0)
         {
+            foreach (var building in _simulation.Construction.CreateOverview())
+            {
+                if (!building.IsTerminal && building.Bounds.Contains(position) &&
+                    _simulation.Construction.IsEnemyTarget(
+                        building.Id, _simulation.Combat.Teams[selectedUnit]))
+                {
+                    return new SmartCommandTarget(
+                        SmartCommandTargetKind.EnemyBuilding,
+                        (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                        Building: building.Id.Value);
+                }
+            }
             return new SmartCommandTarget(SmartCommandTargetKind.Ground, position);
         }
         var kind = _simulation.Combat.Teams[selectedUnit] ==
@@ -846,6 +876,7 @@ public partial class RtsDemo : Node2D
         if (!additive)
         {
             _selectedUnits.Clear();
+            _selectedBuilding = null;
         }
 
         if (rect.Size.LengthSquared() < 5f * 5f)
@@ -869,6 +900,21 @@ public partial class RtsDemo : Node2D
                 foreach (var unit in selected)
                 {
                     _selectedUnits.Add(unit);
+                }
+                _selectedBuilding = null;
+            }
+            else
+            {
+                var clickWorld = GodotPathProvider.ToNumerics(click);
+                var building = _simulation.Construction.CreateOverview()
+                    .Where(value =>
+                        !value.IsTerminal && value.PlayerId == PlayerTeam &&
+                        value.Bounds.Contains(clickWorld))
+                    .OrderByDescending(value => value.Id.Value)
+                    .FirstOrDefault();
+                if (!string.IsNullOrEmpty(building.Type.Name))
+                {
+                    _selectedBuilding = building.Id;
                 }
             }
 
@@ -1378,7 +1424,9 @@ public partial class RtsDemo : Node2D
             target,
             _commandMarkerAttackMove,
             queued: _commandMarkerQueued);
-        _commandMarkerAttackMove |= target.Kind == SmartCommandTargetKind.EnemyUnit;
+        _commandMarkerAttackMove |= target.Kind is
+            SmartCommandTargetKind.EnemyUnit or
+            SmartCommandTargetKind.EnemyBuilding;
         _commandMarker = GodotPathProvider.ToGodot(worldPosition);
         _commandMarkerTime = 0.65f;
         QueueRedraw();

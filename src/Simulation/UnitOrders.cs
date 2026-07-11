@@ -8,6 +8,7 @@ public enum UnitOrderKind : byte
     Move,
     AttackMove,
     AttackTarget,
+    AttackBuilding,
     Stop,
     Hold
 }
@@ -16,6 +17,7 @@ public readonly record struct UnitOrder(
     UnitOrderKind Kind,
     Vector2 TargetPosition,
     int TargetUnit = -1,
+    int TargetBuilding = -1,
     int SequenceId = 0);
 
 /// <summary>
@@ -29,6 +31,7 @@ public sealed class UnitCommandQueueStore
     private readonly UnitOrderKind[] _pendingKinds;
     private readonly Vector2[] _pendingPositions;
     private readonly int[] _pendingTargetUnits;
+    private readonly int[] _pendingTargetBuildings;
     private readonly int[] _pendingSequenceIds;
     private readonly byte[] _heads;
 
@@ -38,6 +41,7 @@ public sealed class UnitCommandQueueStore
         ActiveKinds = new UnitOrderKind[capacity];
         ActivePositions = new Vector2[capacity];
         ActiveTargetUnits = new int[capacity];
+        ActiveTargetBuildings = new int[capacity];
         ActiveSequenceIds = new int[capacity];
         HasActiveOrders = new bool[capacity];
         ActiveOrdersWereQueued = new bool[capacity];
@@ -47,15 +51,19 @@ public sealed class UnitCommandQueueStore
         _pendingKinds = new UnitOrderKind[capacity * MaximumPendingOrders];
         _pendingPositions = new Vector2[capacity * MaximumPendingOrders];
         _pendingTargetUnits = new int[capacity * MaximumPendingOrders];
+        _pendingTargetBuildings = new int[capacity * MaximumPendingOrders];
         _pendingSequenceIds = new int[capacity * MaximumPendingOrders];
         Array.Fill(ActiveTargetUnits, -1);
         Array.Fill(_pendingTargetUnits, -1);
+        Array.Fill(ActiveTargetBuildings, -1);
+        Array.Fill(_pendingTargetBuildings, -1);
     }
 
     public byte[] PendingCounts { get; }
     public UnitOrderKind[] ActiveKinds { get; }
     public Vector2[] ActivePositions { get; }
     public int[] ActiveTargetUnits { get; }
+    public int[] ActiveTargetBuildings { get; }
     public int[] ActiveSequenceIds { get; }
     public bool[] HasActiveOrders { get; }
     public bool[] ActiveOrdersWereQueued { get; }
@@ -67,6 +75,7 @@ public sealed class UnitCommandQueueStore
         ActiveKinds[unit] = order.Kind;
         ActivePositions[unit] = order.TargetPosition;
         ActiveTargetUnits[unit] = order.TargetUnit;
+        ActiveTargetBuildings[unit] = order.TargetBuilding;
         ActiveSequenceIds[unit] = order.SequenceId;
         HasActiveOrders[unit] = true;
         ActiveOrdersWereQueued[unit] = wasQueued;
@@ -92,6 +101,7 @@ public sealed class UnitCommandQueueStore
         _pendingKinds[index] = order.Kind;
         _pendingPositions[index] = order.TargetPosition;
         _pendingTargetUnits[index] = order.TargetUnit;
+        _pendingTargetBuildings[index] = order.TargetBuilding;
         _pendingSequenceIds[index] = order.SequenceId;
         PendingCounts[unit]++;
         return true;
@@ -111,8 +121,10 @@ public sealed class UnitCommandQueueStore
             _pendingKinds[index],
             _pendingPositions[index],
             _pendingTargetUnits[index],
+            _pendingTargetBuildings[index],
             _pendingSequenceIds[index]);
         _pendingTargetUnits[index] = -1;
+        _pendingTargetBuildings[index] = -1;
         _heads[unit] = (byte)((head + 1) % MaximumPendingOrders);
         PendingCounts[unit]--;
         return true;
@@ -126,6 +138,7 @@ public sealed class UnitCommandQueueStore
             hash.Add((byte)ActiveKinds[unit]);
             hash.Add(ActivePositions[unit]);
             hash.Add(ActiveTargetUnits[unit]);
+            hash.Add(ActiveTargetBuildings[unit]);
             hash.Add(ActiveSequenceIds[unit]);
             hash.Add(ActiveOrdersWereQueued[unit]);
             hash.Add(PendingCounts[unit]);
@@ -139,6 +152,7 @@ public sealed class UnitCommandQueueStore
                 hash.Add((byte)_pendingKinds[index]);
                 hash.Add(_pendingPositions[index]);
                 hash.Add(_pendingTargetUnits[index]);
+                hash.Add(_pendingTargetBuildings[index]);
                 hash.Add(_pendingSequenceIds[index]);
             }
         }
@@ -154,6 +168,7 @@ public sealed class UnitCommandQueueStore
         Copy(source.ActiveKinds, ActiveKinds);
         Copy(source.ActivePositions, ActivePositions);
         Copy(source.ActiveTargetUnits, ActiveTargetUnits);
+        Copy(source.ActiveTargetBuildings, ActiveTargetBuildings);
         Copy(source.ActiveSequenceIds, ActiveSequenceIds);
         Copy(source.HasActiveOrders, HasActiveOrders);
         Copy(source.ActiveOrdersWereQueued, ActiveOrdersWereQueued);
@@ -163,6 +178,7 @@ public sealed class UnitCommandQueueStore
         Copy(source._pendingKinds, _pendingKinds);
         Copy(source._pendingPositions, _pendingPositions);
         Copy(source._pendingTargetUnits, _pendingTargetUnits);
+        Copy(source._pendingTargetBuildings, _pendingTargetBuildings);
         Copy(source._pendingSequenceIds, _pendingSequenceIds);
     }
 
@@ -178,6 +194,7 @@ public sealed class UnitCommandQueueStore
             _pendingKinds[index],
             _pendingPositions[index],
             _pendingTargetUnits[index],
+            _pendingTargetBuildings[index],
             _pendingSequenceIds[index]);
     }
 
@@ -189,13 +206,15 @@ public enum SmartCommandTargetKind : byte
 {
     Ground,
     FriendlyUnit,
-    EnemyUnit
+    EnemyUnit,
+    EnemyBuilding
 }
 
 public readonly record struct SmartCommandTarget(
     SmartCommandTargetKind Kind,
     Vector2 Position,
-    int Unit = -1);
+    int Unit = -1,
+    int Building = -1);
 
 public static class SmartCommandResolver
 {
@@ -206,6 +225,11 @@ public static class SmartCommandResolver
             ? new UnitOrder(UnitOrderKind.AttackMove, target.Position)
             : target.Kind == SmartCommandTargetKind.EnemyUnit
                 ? new UnitOrder(UnitOrderKind.AttackTarget, target.Position, target.Unit)
+                : target.Kind == SmartCommandTargetKind.EnemyBuilding
+                    ? new UnitOrder(
+                        UnitOrderKind.AttackBuilding,
+                        target.Position,
+                        TargetBuilding: target.Building)
                 : new UnitOrder(UnitOrderKind.Move, target.Position);
 }
 

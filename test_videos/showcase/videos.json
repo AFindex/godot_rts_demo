@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T17:39:52.2272811+08:00",
+    "generated_at":  "2026-07-11T18:23:49.4919563+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  94,
-    "case_count":  70,
+    "recording_count":  95,
+    "case_count":  71,
     "recordings":  [
+                       {
+                           "id":  "combat-attack-building",
+                           "display_name":  "Explicit building target chase, perimeter attack, destruction and replay",
+                           "batch":  "20260711_182334",
+                           "created_at":  "2026-07-11T18:23:49.1524368+08:00",
+                           "video":  "../20260711_182334/combat-attack-building.webm",
+                           "log":  "../20260711_182334/combat-attack-building.log",
+                           "bytes":  385302,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS combat-attack-building: ticks=720, state=Destroyed, hp=0, footprints=0, supply=10, orders=1, hot=3738B, exact=True",
+                           "metrics":  "ticks=720, state=Destroyed, hp=0, footprints=0, supply=10, orders=1, hot=3738B, exact=True"
+                       },
                        {
                            "id":  "construction-replay-persistence",
                            "display_name":  "Build, cancel, resume, checkpoint and active-construction hot restore",

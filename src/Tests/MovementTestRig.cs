@@ -120,6 +120,7 @@ public enum TestOrderKind : byte
     Move,
     AttackMove,
     AttackTarget,
+    AttackBuilding,
     Stop,
     Hold
 }
@@ -1104,6 +1105,32 @@ public sealed class MovementTestRig
         _simulation.IssueAttackTarget(
             ToBackendIndices(units), target.Value, queued);
 
+    public void AttackBuilding(
+        IReadOnlyList<TestUnitId> units,
+        TestGameplayBuildingId target,
+        bool queued = false) =>
+        _simulation.IssueAttackBuilding(
+            ToBackendIndices(units),
+            new GameplayBuildingId(target.Value),
+            queued);
+
+    public void SmartCommandBuilding(
+        IReadOnlyList<TestUnitId> units,
+        TestGameplayBuildingId target,
+        bool queued = false)
+    {
+        var building = _simulation.Construction.Observe(
+            new GameplayBuildingId(target.Value));
+        _simulation.IssueSmartCommand(
+            ToBackendIndices(units),
+            new SmartCommandTarget(
+                SmartCommandTargetKind.EnemyBuilding,
+                (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                Building: target.Value),
+            attackMoveModifier: false,
+            queued);
+    }
+
     public void SmartCommandGround(
         IReadOnlyList<TestUnitId> units,
         Vector2 target,
@@ -1667,6 +1694,7 @@ public sealed class MovementTestRig
                     UnitOrderKind.Hold,
                     false,
                     Vector2.Zero,
+                    -1,
                     -1,
                     [0])).ToArray()));
         return !SimulationHotSnapshotFactory.TryRestore(

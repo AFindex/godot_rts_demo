@@ -9,6 +9,7 @@ public readonly record struct RecordedSimulationCommand(
     bool Queued,
     Vector2 TargetPosition,
     int TargetUnit,
+    int TargetBuilding,
     int[] Units);
 
 public enum CommandLogValidationCode : byte
@@ -36,9 +37,9 @@ public readonly record struct CommandLogValidationResult(
 public sealed class SimulationCommandLogSnapshot
 {
     private const uint Magic = 0x434D5452; // RTMC in little-endian bytes.
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
     private const int HeaderBytes = 12;
-    private const int EntryFixedBytes = 26;
+    private const int EntryFixedBytes = 30;
     private const int MaximumEntries = 1_000_000;
 
     public SimulationCommandLogSnapshot(RecordedSimulationCommand[] entries)
@@ -107,6 +108,7 @@ public sealed class SimulationCommandLogSnapshot
             var targetX = BitConverter.Int32BitsToSingle(ReadInt32(payload, ref offset));
             var targetY = BitConverter.Int32BitsToSingle(ReadInt32(payload, ref offset));
             var targetUnit = ReadInt32(payload, ref offset);
+            var targetBuilding = ReadInt32(payload, ref offset);
             var unitCount = ReadInt32(payload, ref offset);
             if (tick < previousTick)
             {
@@ -121,6 +123,15 @@ public sealed class SimulationCommandLogSnapshot
                 return false;
             }
             if (!float.IsFinite(targetX) || !float.IsFinite(targetY))
+            {
+                validation = new CommandLogValidationResult(
+                    CommandLogValidationCode.InvalidTarget, entryIndex);
+                return false;
+            }
+            if (kind == UnitOrderKind.AttackTarget && targetUnit < 0 ||
+                kind != UnitOrderKind.AttackTarget && targetUnit != -1 ||
+                kind == UnitOrderKind.AttackBuilding && targetBuilding < 0 ||
+                kind != UnitOrderKind.AttackBuilding && targetBuilding != -1)
             {
                 validation = new CommandLogValidationResult(
                     CommandLogValidationCode.InvalidTarget, entryIndex);
@@ -155,6 +166,7 @@ public sealed class SimulationCommandLogSnapshot
                 queued,
                 new Vector2(targetX, targetY),
                 targetUnit,
+                targetBuilding,
                 units);
             previousTick = tick;
         }
@@ -196,6 +208,7 @@ public sealed class SimulationCommandLogSnapshot
             WriteInt32(
                 payload, ref offset, BitConverter.SingleToInt32Bits(entry.TargetPosition.Y));
             WriteInt32(payload, ref offset, entry.TargetUnit);
+            WriteInt32(payload, ref offset, entry.TargetBuilding);
             WriteInt32(payload, ref offset, entry.Units.Length);
             for (var unitIndex = 0; unitIndex < entry.Units.Length; unitIndex++)
             {
@@ -271,6 +284,7 @@ public sealed class SimulationCommandRecorder
             queued,
             order.TargetPosition,
             order.TargetUnit,
+            order.TargetBuilding,
             canonicalUnits));
     }
 

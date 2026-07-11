@@ -462,6 +462,14 @@ public sealed class ConstructionSystem
         _buildings.Any(value =>
             !value.IsTerminal && value.FootprintId == footprintId);
 
+    public bool IsEnemyTarget(GameplayBuildingId id, int playerId) =>
+        TryGet(id, out var building) && !building.IsTerminal &&
+        building.PlayerId != playerId;
+
+    public bool IsAlive(GameplayBuildingId id) =>
+        TryGet(id, out var building) && !building.IsTerminal &&
+        building.Health > 0f;
+
     internal void AppendStateHash(ref StableHash64 hash)
     {
         hash.Add(_buildings.Count);

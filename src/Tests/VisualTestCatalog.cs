@@ -61,6 +61,7 @@ public static class VisualTestCatalog
         "economy-dual-resource",
         "construction-gameplay-buildings",
         "construction-replay-persistence",
+        "combat-attack-building",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -159,6 +160,8 @@ public static class VisualTestCatalog
         "economy-dual-resource" => CreateDualResourceEconomy(),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "combat-attack-building" => CreateCombatAttackBuilding(
             navigationMap, gameplayProfiles, clearanceBake),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
@@ -1085,7 +1088,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 3 &&
+                    exact && rejected && hot.FormatVersion == 4 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1179,7 +1182,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 3 && hot.FormatVersion == 3 &&
+                             package.FormatVersion == 4 && hot.FormatVersion == 4 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2369,7 +2372,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 3 && hot.FormatVersion == 3 &&
+                             package.FormatVersion == 4 && hot.FormatVersion == 4 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -2404,6 +2407,107 @@ public static class VisualTestCatalog
                 new SimRect(new Vector2(1000f, 520f), new Vector2(1100f, 620f)),
                 "REFINERY BINDING PERSISTS",
                 TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateCombatAttackBuilding(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 0, 0, 20, 8);
+        rig.RegisterPlayer(2, 500, 0, 10, 1);
+        var builder = rig.SpawnWorker(new Vector2(520f, 350f), 2);
+        var attackers = new TestUnitId[8];
+        var attackerProfile = new TestCombatProfile(
+            MaximumHealth: 100f,
+            AttackDamage: 25f,
+            AttackRange: 48f,
+            AcquisitionRange: 220f,
+            AttackCooldownSeconds: 0.45f,
+            AttackWindupSeconds: 0.08f,
+            LeashDistance: 500f);
+        for (var index = 0; index < attackers.Length; index++)
+        {
+            attackers[index] = rig.SpawnCombat(
+                new Vector2(100f + index % 4 * 24f, 310f + index / 4 * 28f),
+                1,
+                attackerProfile,
+                maximumSpeed: 150f);
+        }
+        var targetType = new BuildingTypeProfile(
+            20,
+            "Fortified Command Structure",
+            BuildingFunctionKind.Supply,
+            new Vector2(160f, 120f),
+            MovementClass.Large,
+            new EconomyCost(400, 0),
+            1.5f,
+            2000f,
+            8,
+            0.75f,
+            ConstructionMethodKind.ContinuousWorker);
+        rig.StartReplayPackageRecording();
+        var target = rig.Build(
+            2, builder, targetType, new Vector2(400f, 350f));
+
+        const long attackTick = 120;
+        const long hotTick = 300;
+        TestRuntimeStateCapture? hotCapture = null;
+        var attackIssued = false;
+        var targetCompletedBeforeAttack = false;
+        var session = new VisualTestSession(
+            "combat-attack-building",
+            "Explicit building target chase, perimeter attack, destruction and replay",
+            720,
+            rig,
+            attackers.Append(builder).ToArray(),
+            runtime =>
+            {
+                var building = runtime.ObserveGameplayBuilding(target.BuildingId);
+                var economy = runtime.ObservePlayerEconomy(2);
+                var package = runtime.CaptureReplayPackage();
+                var replay = runtime.ReplayPackage(package, runtime.Tick);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = replay.FinalHash == runtime.StateHash &&
+                            replay.MatchesFrom(resumed, hotTick) &&
+                            resumed.FinalHash == runtime.StateHash;
+                var passed = target.Succeeded && attackIssued &&
+                             targetCompletedBeforeAttack &&
+                             building.State == TestBuildingLifecycleState.Destroyed &&
+                             building.Health == 0f && runtime.GameplayBuildingCount == 0 &&
+                             runtime.BuildingCount == 0 &&
+                             economy.SupplyCapacity == 10 &&
+                             package.ConstructionCommandCount == 1 &&
+                             package.UnitCommandCount == 1 &&
+                             hotRoundTrip && hot.FormatVersion == 4 && exact;
+                return new ScenarioResult(
+                    passed,
+                    $"state={building.State}, hp={building.Health:0}, " +
+                    $"footprints={runtime.BuildingCount}, supply={economy.SupplyCapacity}, " +
+                    $"orders={package.UnitCommandCount}, hot={hot.CanonicalByteCount}B, " +
+                    $"exact={exact}");
+            });
+        session.At(attackTick, "Attack completed enemy building", runtime =>
+        {
+            targetCompletedBeforeAttack =
+                runtime.ObserveGameplayBuilding(target.BuildingId).State ==
+                TestBuildingLifecycleState.Completed;
+            runtime.SmartCommandBuilding(attackers, target.BuildingId);
+            attackIssued = true;
+        });
+        session.At(hotTick, "Capture active building engagement", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
+        return session.Highlight(
+            new SimRect(new Vector2(305f, 275f), new Vector2(495f, 425f)),
+            "BUILDING ATTACK TARGET: chase perimeter, damage, destroy",
+            TestDiagnosticKind.Rejected);
     }
 
     private static VisualTestSession CreateStopCommand()

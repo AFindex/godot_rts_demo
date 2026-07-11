@@ -52,11 +52,11 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v4 已加入玩家账本、节点余量/占用、工人阶段，以及正式建筑的类型、所有权、施工进度、生命与 Refinery 绑定。无经济工人的旧场景仍走零成本快速路径。
+状态 Hash v5 已覆盖经济、施工，以及显式 Unit/Building 战斗目标和命令队列未来态。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济与建造状态现已纳入 Replay Package v3 与持久化热快照 v3。Gather/Refinery 和 Build/Cancel/Resume 分属独立版本化日志；内部移动、停止、返还货物和 Footprint 变更保持派生，不重复记录。
+经济、建造和建筑战斗目标现已纳入 Replay Package v4 与持久化热快照 v4。Gather/Refinery、Build/Cancel/Resume 和 Unit/Building AttackTarget 保持独立语义；内部移动与 Footprint 变更仍是派生状态。
 
 ## 黑盒验收
 
@@ -112,7 +112,17 @@ S11-C2 已完成：
 - `construction-replay-persistence` 验证 7 条建造意图、0 条重复 World Command、Tick 360 checkpoint 与 Tick 300 活跃施工热恢复完全一致。
 - 专用 AV1/WebM 录像位于 `test_videos/20260711_173933/`。
 
-下一段：建筑成为战斗目标，以及 Godot Resource 化 Building Type Catalog；随后进入 S11-D 生产与人口队列。
+S11-C3 战斗层已完成：
+
+- CombatStore 使用显式 `CombatTargetKind`、TargetUnit 和 TargetBuilding，不用负数 ID 编码类型。
+- Unit Order/Command Log 格式 2 增加独立 AttackBuilding 和 TargetBuilding 字段，支持队列、回放与热快照。
+- 单位追击建筑外缘合法点，在攻击距离内按前摇/冷却造成真实建筑伤害；摧毁移除 Footprint、人口与 Refinery 效果。
+- SmartCommand 可解析 EnemyBuilding；Godot 支持选择己方建筑并显示 HP/生命周期，右键敌方建筑攻击。
+- Replay Package v4、热快照 v4、状态 Hash v5 保存建筑战斗目标未来态。
+- `combat-attack-building` 使用 8 个攻击者摧毁 2,000 HP 建筑，并验证战斗中热恢复和完整回放一致。
+- AV1/WebM 录像位于 `test_videos/20260711_182334/`。
+
+下一段只剩 Building Type Godot Resource/编辑器数据工作流；随后进入 S11-D 生产与人口队列。
 
 ### S11-D：生产与人口
 

@@ -320,6 +320,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
             case UnitOrderKind.AttackTarget:
                 IssueAttackTarget(command.Units, command.TargetUnit, command.Queued);
                 break;
+            case UnitOrderKind.AttackBuilding:
+                IssueAttackBuilding(
+                    command.Units,
+                    new GameplayBuildingId(command.TargetBuilding),
+                    command.Queued);
+                break;
             case UnitOrderKind.Stop:
                 Stop(command.Units);
                 break;
@@ -722,6 +728,37 @@ public sealed class RtsSimulation : ICombatMovementDriver
             queued);
     }
 
+    public void IssueAttackBuilding(
+        ReadOnlySpan<int> unitIndices,
+        GameplayBuildingId targetBuilding,
+        bool queued = false)
+    {
+        if (!Construction.IsAlive(targetBuilding))
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetBuilding));
+        }
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            ValidateUnitIndex(unitIndices[index]);
+            ValidateLivingUnit(unitIndices[index]);
+            if (!Construction.IsEnemyTarget(
+                    targetBuilding, Combat.Teams[unitIndices[index]]))
+            {
+                throw new InvalidOperationException(
+                    $"Building {targetBuilding.Value} is friendly to attacker " +
+                    $"{unitIndices[index]}.");
+            }
+        }
+        var target = Construction.Observe(targetBuilding);
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(
+                UnitOrderKind.AttackBuilding,
+                (target.Bounds.Min + target.Bounds.Max) * 0.5f,
+                TargetBuilding: targetBuilding.Value),
+            queued);
+    }
+
     public void IssueSmartCommand(
         ReadOnlySpan<int> unitIndices,
         SmartCommandTarget target,
@@ -978,6 +1015,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
             case UnitOrderKind.AttackTarget:
                 ExecuteAttackTarget(unitIndices, order.TargetUnit);
                 break;
+            case UnitOrderKind.AttackBuilding:
+                ExecuteAttackBuilding(unitIndices, order.TargetBuilding);
+                break;
             case UnitOrderKind.Stop:
                 ExecuteStop(unitIndices);
                 break;
@@ -1019,6 +1059,35 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 UnitCommandIntent.AttackTarget,
                 Units.Positions[targetUnit],
                 targetUnit);
+        }
+    }
+
+    private void ExecuteAttackBuilding(
+        ReadOnlySpan<int> unitIndices,
+        int targetBuilding)
+    {
+        ExecuteStop(unitIndices);
+        var buildingId = new GameplayBuildingId(targetBuilding);
+        if (!Construction.IsAlive(buildingId))
+        {
+            return;
+        }
+        var target = Construction.Observe(buildingId);
+        var center = (target.Bounds.Min + target.Bounds.Max) * 0.5f;
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            if (!Construction.IsEnemyTarget(
+                    buildingId, Combat.Teams[unit]))
+            {
+                throw new InvalidOperationException(
+                    $"Building {targetBuilding} is friendly to attacker {unit}.");
+            }
+            Combat.SetCommand(
+                unit,
+                UnitCommandIntent.AttackTarget,
+                center,
+                targetBuilding: targetBuilding);
         }
     }
 
@@ -2196,6 +2265,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
             UnitOrderKind.AttackTarget =>
                 (uint)CommandQueues.ActiveTargetUnits[unit] >= (uint)Units.Count ||
                 !Units.Alive[CommandQueues.ActiveTargetUnits[unit]],
+            UnitOrderKind.AttackBuilding =>
+                !Construction.IsAlive(new GameplayBuildingId(
+                    CommandQueues.ActiveTargetBuildings[unit])),
             UnitOrderKind.Stop or UnitOrderKind.Hold => true,
             _ => true
         };
@@ -2290,6 +2362,19 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CommandQueues.ClearPending(unit);
         CommandQueues.HasActiveOrders[unit] = false;
     }
+
+    bool ICombatMovementDriver.IsBuildingTargetValid(
+        int attacker,
+        GameplayBuildingId building) =>
+        (uint)attacker < (uint)Units.Count && Units.Alive[attacker] &&
+        Construction.IsEnemyTarget(building, Combat.Teams[attacker]);
+
+    SimRect ICombatMovementDriver.BuildingTargetBounds(
+        GameplayBuildingId building) => Construction.Observe(building).Bounds;
+
+    bool ICombatMovementDriver.DamageBuilding(
+        GameplayBuildingId building,
+        float damage) => DamageBuilding(building, damage);
 
     private void SetCombatDestination(int unit, Vector2 target)
     {

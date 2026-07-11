@@ -83,6 +83,7 @@ internal static class RuntimeHotSnapshotCodec
             var economy = ReadEconomy(reader, units.Count);
             var construction = ReadConstruction(
                 reader, units.Count, dynamic.Footprints, economy);
+            ValidateCombatTargets(combat, units.Count, construction);
             var queues = ReadQueues(reader, capacity, units.Count);
             var choke = ReadChoke(reader);
             var privateState = ReadPrivate(reader);
@@ -312,6 +313,8 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write((byte)combat.CommandIntents[unit]);
             writer.Write((byte)combat.Phases[unit]);
             writer.Write(combat.TargetUnits[unit]);
+            writer.Write(combat.TargetBuildings[unit]);
+            writer.Write((byte)combat.TargetKinds[unit]);
             WriteVector(writer, combat.AttackMoveGoals[unit]);
             WriteVector(writer, combat.EngagementOrigins[unit]);
             WriteVector(writer, combat.LastChaseTargets[unit]);
@@ -343,6 +346,8 @@ internal static class RuntimeHotSnapshotCodec
             combat.CommandIntents[unit] = (UnitCommandIntent)reader.ReadByte();
             combat.Phases[unit] = (CombatPhase)reader.ReadByte();
             combat.TargetUnits[unit] = reader.ReadInt32();
+            combat.TargetBuildings[unit] = reader.ReadInt32();
+            combat.TargetKinds[unit] = (CombatTargetKind)reader.ReadByte();
             combat.AttackMoveGoals[unit] = ReadVector(reader);
             combat.EngagementOrigins[unit] = ReadVector(reader);
             combat.LastChaseTargets[unit] = ReadVector(reader);
@@ -620,6 +625,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write((byte)queues.ActiveKinds[unit]);
             WriteVector(writer, queues.ActivePositions[unit]);
             writer.Write(queues.ActiveTargetUnits[unit]);
+            writer.Write(queues.ActiveTargetBuildings[unit]);
             writer.Write(queues.ActiveSequenceIds[unit]);
             writer.Write(queues.ActiveOrdersWereQueued[unit]);
             writer.Write(queues.CompletedQueuedOrders[unit]);
@@ -631,7 +637,32 @@ internal static class RuntimeHotSnapshotCodec
                 writer.Write((byte)order.Kind);
                 WriteVector(writer, order.TargetPosition);
                 writer.Write(order.TargetUnit);
+                writer.Write(order.TargetBuilding);
                 writer.Write(order.SequenceId);
+            }
+        }
+    }
+
+    private static void ValidateCombatTargets(
+        CombatStore combat,
+        int unitCount,
+        ConstructionRuntimeSnapshot construction)
+    {
+        for (var unit = 0; unit < unitCount; unit++)
+        {
+            var kind = combat.TargetKinds[unit];
+            var unitTarget = combat.TargetUnits[unit];
+            var buildingTarget = combat.TargetBuildings[unit];
+            if (!Enum.IsDefined(kind) ||
+                kind == CombatTargetKind.None &&
+                    (unitTarget != -1 || buildingTarget != -1) ||
+                kind == CombatTargetKind.Unit &&
+                    ((uint)unitTarget >= (uint)unitCount || buildingTarget != -1) ||
+                kind == CombatTargetKind.Building &&
+                    (unitTarget != -1 ||
+                     (uint)buildingTarget >= (uint)construction.Buildings.Length))
+            {
+                throw new InvalidDataException();
             }
         }
     }
@@ -646,6 +677,7 @@ internal static class RuntimeHotSnapshotCodec
             queues.ActiveKinds[unit] = (UnitOrderKind)reader.ReadByte();
             queues.ActivePositions[unit] = ReadVector(reader);
             queues.ActiveTargetUnits[unit] = reader.ReadInt32();
+            queues.ActiveTargetBuildings[unit] = reader.ReadInt32();
             queues.ActiveSequenceIds[unit] = reader.ReadInt32();
             queues.ActiveOrdersWereQueued[unit] = reader.ReadBoolean();
             queues.CompletedQueuedOrders[unit] = reader.ReadInt32();
@@ -660,6 +692,7 @@ internal static class RuntimeHotSnapshotCodec
                 var order = new UnitOrder(
                     (UnitOrderKind)reader.ReadByte(),
                     ReadVector(reader),
+                    reader.ReadInt32(),
                     reader.ReadInt32(),
                     reader.ReadInt32());
                 if (!queues.TryEnqueue(unit, order))

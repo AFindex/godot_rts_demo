@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 70 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem 或队列内部数组。
+- 71 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
 - 85 个 C# 源文件。
-- 约 23,548 行 C#（按 `src/**/*.cs` 统计）。
-- 70 个黑盒场景。
-- 覆盖 70 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 8.60ms。
+- 约 24,027 行 C#（按 `src/**/*.cs` 统计）。
+- 71 个黑盒场景。
+- 覆盖 71 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 8.50ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -41,7 +41,7 @@
 | 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | C1 完成 | 双资源经济/回放、正式建筑实体、施工/退款/生命/人口/Refinery、Hash v4、解耦表现 | 建筑持久化、生产、科技、扩张、胜负与脚本 AI |
+| S11 实际 RTS 玩法 | C3 战斗层完成 | 双资源经济/回放、建筑施工/持久化、建筑战斗目标/选择、Hash v5 | Building Type Resource、生产、科技、扩张、胜负与脚本 AI |
 
 ## 3. 已完成的运行时闭环
 
@@ -171,7 +171,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 70 个场景覆盖：
+当前 71 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -242,7 +242,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 70 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 71 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -254,16 +254,16 @@ Observe unit / combat / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | Hash 平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|
-| 256 | 1.02ms | 1.37ms | 0.794ms | 4ms | 27B |
-| 512 | 3.68ms | 4.63ms | 1.874ms | 12.5ms | 182B |
-| 1000 | 7.16ms | 8.60ms | 1.305ms | 16.67ms | 461B |
+| 256 | 0.89ms | 1.12ms | 0.860ms | 4ms | 27B |
+| 512 | 3.60ms | 4.49ms | 1.205ms | 12.5ms | 182B |
+| 1000 | 6.98ms | 8.50ms | 1.321ms | 16.67ms | 461B |
 
 双方持续 AttackMove 的活跃战斗门槛：
 
 | 总单位数 | 平均 Tick | P95 | Hash 平均 | 战斗阶段平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|---:|
-| 128 | 1.30ms | 1.81ms | 0.145ms | 0.47ms | 4ms | 2.3KB |
-| 256 | 3.84ms | 5.52ms | 0.957ms | 1.86ms | 8ms | 4.0KB |
+| 128 | 1.42ms | 2.00ms | 0.152ms | 0.53ms | 4ms | 2.3KB |
+| 256 | 4.21ms | 7.13ms | 1.581ms | 2.06ms | 8ms | 4.0KB |
 
 活跃追击会持续生成短路径，因此单独使用 8KB/Tick 分配门槛；非战斗移动仍保持 1KB/Tick 门槛。
 
@@ -528,7 +528,7 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（8.60ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（8.50ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
@@ -722,9 +722,21 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 - `construction-replay-persistence` 最终资源为 750/300、人口上限 38，热快照 2,751 字节；70/70 全量回归通过。
 - 专用 AV1/WebM 录像位于 `test_videos/20260711_173933/`；索引现有 94 段录像、覆盖 70 个逻辑场景。
 
+### O：S11-C3 建筑战斗目标与选择观察（战斗层已完成）
+
+- CombatStore 新增显式 `CombatTargetKind`、TargetUnits 和 TargetBuildings；没有使用负数 ID 或复用 Unit ID 空间。
+- UnitOrder 新增 AttackBuilding，活动/待执行队列均保存 TargetBuilding；Unit Command Log 升级为格式 2。
+- SmartCommand Resolver 支持 EnemyBuilding；Godot 右键敌方建筑下达攻击，点击己方建筑显示选择框、HP 和生命周期。
+- 建筑追击使用 Footprint 外缘合法点，攻击距离使用单位到矩形最近点，不会把不可达中心当目标。
+- 建筑攻击复用单位前摇、冷却和伤害 Profile；摧毁走 Construction 生命周期，移除导航占用、Supply 与 Refinery 效果。
+- 当前 AttackMove 仍只自动索敌单位；建筑自动索敌等待可见性和目标优先级规则，避免无条件吸向附近建筑。
+- Replay Package 升级为 v4、热快照为 v4、状态 Hash 为 v5，完整保存 Unit/Building 目标类型和命令队列。
+- `combat-attack-building` 中 8 个单位通过 SmartCommand 摧毁 2,000 HP 建筑，Footprint 归零、Supply 回退，并验证战斗中热恢复与完整回放一致。
+- 71/71 全量回归通过；专用 AV1/WebM 录像位于 `test_videos/20260711_182334/`，索引现有 95 段录像、覆盖 71 个场景。
+
 ### 下一阶段边界
 
-经济、正式建筑和施工持久化已经闭环。下一轮完成 S11-C3：建筑作为 AttackTarget/受击目标、建筑选择与业务观察，以及 Building Type Godot Resource/编辑器数据工作流。完成后进入 S11-D 生产队列、人口预留、出生点与 Rally；不再回头扩写无实际玩法驱动的导航细节。
+经济、施工持久化和建筑战斗目标已经闭环。S11-C 只剩 Building Type Godot Resource/编辑器数据工作流：把当前解析后 Profile 的来源资产化并加入 Fresh Load/差异诊断。完成后立即进入 S11-D 生产队列、人口预留、出生点与 Rally；AttackMove 自动索建筑延后到可见性和目标优先级出现时一起设计。
 
 ## 8. 可以并行但不能提前耦合的优化
 
