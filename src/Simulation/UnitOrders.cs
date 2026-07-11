@@ -117,6 +117,32 @@ public sealed class UnitCommandQueueStore
         PendingCounts[unit]--;
         return true;
     }
+
+    internal void AppendStateHash(ref StableHash64 hash, int unitCount)
+    {
+        for (var unit = 0; unit < unitCount; unit++)
+        {
+            hash.Add(HasActiveOrders[unit]);
+            hash.Add((byte)ActiveKinds[unit]);
+            hash.Add(ActivePositions[unit]);
+            hash.Add(ActiveTargetUnits[unit]);
+            hash.Add(ActiveSequenceIds[unit]);
+            hash.Add(ActiveOrdersWereQueued[unit]);
+            hash.Add(PendingCounts[unit]);
+            hash.Add(CompletedQueuedOrders[unit]);
+            hash.Add(QueueOverflowCounts[unit]);
+
+            for (var pending = 0; pending < PendingCounts[unit]; pending++)
+            {
+                var slot = (_heads[unit] + pending) % MaximumPendingOrders;
+                var index = unit * MaximumPendingOrders + slot;
+                hash.Add((byte)_pendingKinds[index]);
+                hash.Add(_pendingPositions[index]);
+                hash.Add(_pendingTargetUnits[index]);
+                hash.Add(_pendingSequenceIds[index]);
+            }
+        }
+    }
 }
 
 public enum SmartCommandTargetKind : byte

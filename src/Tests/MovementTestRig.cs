@@ -22,6 +22,88 @@ public readonly record struct TestOrderSnapshot(
     int CompletedQueuedOrders,
     int QueueOverflows);
 
+public sealed class TestCommandLog
+{
+    internal TestCommandLog(SimulationCommandLogSnapshot snapshot)
+    {
+        Backend = snapshot;
+    }
+
+    internal SimulationCommandLogSnapshot Backend { get; }
+    public int FormatVersion => Backend.FormatVersion;
+    public int EntryCount => Backend.Entries.Length;
+    public int CanonicalByteCount => Backend.CanonicalBytes.Length;
+    public ulong StableHash => Backend.StableHash;
+
+    public bool TryCanonicalRoundTrip(out TestCommandLog? roundTripped)
+    {
+        var succeeded = SimulationCommandLogSnapshot.TryDeserialize(
+            Backend.CanonicalBytes,
+            out var snapshot,
+            out _);
+        roundTripped = succeeded && snapshot is not null
+            ? new TestCommandLog(snapshot)
+            : null;
+        return succeeded;
+    }
+
+    public bool RejectsUnsupportedVersion()
+    {
+        var payload = Backend.CanonicalBytes.ToArray();
+        payload[4]++;
+        return !SimulationCommandLogSnapshot.TryDeserialize(
+            payload, out _, out var validation) &&
+            validation.Code == CommandLogValidationCode.UnsupportedVersion;
+    }
+
+    public bool RejectsTruncatedPayload()
+    {
+        var payload = Backend.CanonicalBytes.AsSpan(
+            0, Backend.CanonicalBytes.Length - 1);
+        return !SimulationCommandLogSnapshot.TryDeserialize(
+            payload, out _, out var validation) &&
+            validation.Code is CommandLogValidationCode.TruncatedEntry or
+                CommandLogValidationCode.InvalidUnitList;
+    }
+
+    public TestCommandLog WithTargetOffset(int entryIndex, Vector2 offset)
+    {
+        if ((uint)entryIndex >= (uint)Backend.Entries.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(entryIndex));
+        }
+        var entries = new RecordedSimulationCommand[Backend.Entries.Length];
+        for (var index = 0; index < entries.Length; index++)
+        {
+            var source = Backend.Entries[index];
+            entries[index] = source with
+            {
+                TargetPosition = index == entryIndex
+                    ? source.TargetPosition + offset
+                    : source.TargetPosition,
+                Units = source.Units.ToArray()
+            };
+        }
+        return new TestCommandLog(new SimulationCommandLogSnapshot(entries));
+    }
+}
+
+public sealed class TestReplayTrace
+{
+    internal TestReplayTrace(SimulationReplayTrace trace, ulong finalHash)
+    {
+        Backend = trace;
+        FinalHash = finalHash;
+    }
+
+    internal SimulationReplayTrace Backend { get; }
+    public int SampleCount => Backend.Samples.Count;
+    public ulong FinalHash { get; }
+
+    public long FindFirstDivergence(TestReplayTrace other) =>
+        SimulationReplayTrace.FindFirstDivergence(Backend, other.Backend);
+}
+
 public readonly record struct TestCombatProfile(
     float MaximumHealth = 45f,
     float AttackDamage = 8f,
@@ -208,6 +290,7 @@ public sealed class MovementTestRig
     public ulong NavigationDataHash => _navigationMap?.StableHash ?? 0UL;
     public int LastNavigationInvalidations =>
         _simulation.Metrics.NavigationInvalidations;
+    public ulong StateHash => _simulation.ComputeStateHash();
 
     internal StaticWorld RenderWorld => _world;
     internal RtsSimulation RenderSimulation => _simulation;
@@ -573,6 +656,42 @@ public sealed class MovementTestRig
     }
 
     public void Step() => _simulation.Tick(1f / 60f);
+
+    public void StartCommandRecording() =>
+        _simulation.StartCommandRecording();
+
+    public TestCommandLog CaptureCommandLog() =>
+        new(_simulation.CaptureCommandLog());
+
+    public TestReplayTrace Replay(
+        TestCommandLog log,
+        long targetTick,
+        int hashIntervalTicks = 30)
+    {
+        if (targetTick < Tick || hashIntervalTicks <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetTick));
+        }
+
+        var replay = new SimulationCommandReplay(log.Backend);
+        var trace = new SimulationReplayTrace();
+        trace.Add(Tick, StateHash);
+        while (Tick < targetTick)
+        {
+            replay.ApplyForCurrentTick(_simulation);
+            Step();
+            if (Tick % hashIntervalTicks == 0 || Tick == targetTick)
+            {
+                trace.Add(Tick, StateHash);
+            }
+        }
+        if (!replay.Completed)
+        {
+            throw new InvalidOperationException(
+                $"Replay stopped at tick {Tick} before all commands were applied.");
+        }
+        return new TestReplayTrace(trace, StateHash);
+    }
 
     public TestUnitSnapshot Observe(TestUnitId unit)
     {

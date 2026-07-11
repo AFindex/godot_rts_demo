@@ -44,6 +44,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private int _pendingNavigationInvalidations;
     private int _nextMovementGroupId = 1;
     private int _nextOrderSequenceId = 1;
+    private SimulationCommandRecorder? _commandRecorder;
 
     public RtsSimulation(
         StaticWorld world,
@@ -85,6 +86,47 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
     public ChokeController? ChokeController => _chokeController;
     public int PathBudgetPerTick { get; set; } = 24;
+
+    public ulong ComputeStateHash() => SimulationStateHasher.Compute(this);
+
+    public void StartCommandRecording()
+    {
+        _commandRecorder = new SimulationCommandRecorder();
+    }
+
+    public SimulationCommandLogSnapshot CaptureCommandLog()
+    {
+        if (_commandRecorder is null)
+        {
+            throw new InvalidOperationException("Command recording has not been started.");
+        }
+        return _commandRecorder.Capture();
+    }
+
+    public void ApplyRecordedCommand(RecordedSimulationCommand command)
+    {
+        switch (command.Kind)
+        {
+            case UnitOrderKind.Move:
+                IssueMove(command.Units, command.TargetPosition, command.Queued);
+                break;
+            case UnitOrderKind.AttackMove:
+                IssueAttackMove(command.Units, command.TargetPosition, command.Queued);
+                break;
+            case UnitOrderKind.AttackTarget:
+                IssueAttackTarget(command.Units, command.TargetUnit, command.Queued);
+                break;
+            case UnitOrderKind.Stop:
+                Stop(command.Units);
+                break;
+            case UnitOrderKind.Hold:
+                Hold(command.Units);
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported recorded command {command.Kind}.");
+        }
+    }
 
     public DynamicFootprintId PlaceBuilding(SimRect footprint)
     {
@@ -407,6 +449,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             ValidateLivingUnit(unitIndices[index]);
         }
 
+        _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
         order = order with { SequenceId = NextOrderSequenceId() };
         if (!queued || order.Kind is UnitOrderKind.Stop or UnitOrderKind.Hold)
         {
@@ -1788,6 +1831,20 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var hash = unchecked((uint)(left * 73856093) ^ (uint)(right * 19349663));
         var angle = hash / (float)uint.MaxValue * MathF.Tau;
         return new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+    }
+
+    internal void AppendPrivateStateHash(ref StableHash64 hash)
+    {
+        hash.Add(PathBudgetPerTick);
+        hash.Add(_pendingNavigationInvalidations);
+        hash.Add(_nextMovementGroupId);
+        hash.Add(_nextOrderSequenceId);
+        hash.Add(_pathRequests.Count);
+        foreach (var request in _pathRequests)
+        {
+            hash.Add(request.UnitIndex);
+            hash.Add(request.CommandVersion);
+        }
     }
 
     private static double ElapsedMilliseconds(long startTimestamp) =>

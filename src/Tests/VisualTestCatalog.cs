@@ -25,6 +25,8 @@ public static class VisualTestCatalog
         "queued-capacity-limit",
         "control-group-recall",
         "smart-command-sequence",
+        "command-log-replay",
+        "command-replay-divergence",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -86,6 +88,8 @@ public static class VisualTestCatalog
         "queued-capacity-limit" => CreateQueuedCapacityLimit(),
         "control-group-recall" => CreateControlGroupRecall(),
         "smart-command-sequence" => CreateSmartCommandSequence(),
+        "command-log-replay" => CreateCommandLogReplay(),
+        "command-replay-divergence" => CreateCommandReplayDivergence(),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
         "opposing-streams" => CreateOpposingStreams(),
@@ -693,6 +697,150 @@ public static class VisualTestCatalog
                     $"completed={orders.CompletedQueuedOrders}");
             });
     }
+
+    private static VisualTestSession CreateCommandLogReplay()
+    {
+        var fixture = CreateReplayFixture();
+        fixture.Rig.StartCommandRecording();
+        ConfigureReplayCommands(fixture);
+        return BuildReplaySession(
+            "command-log-replay",
+            "Versioned command log round-trip and exact fixed-tick replay",
+            fixture,
+            runtime =>
+            {
+                var log = runtime.CaptureCommandLog();
+                var roundTrip = log.TryCanonicalRoundTrip(out var decoded);
+                var replayFixture = CreateReplayFixture();
+                var trace = replayFixture.Rig.Replay(decoded!, runtime.Tick);
+                var exact = runtime.StateHash == trace.FinalHash;
+                var rejected = log.RejectsUnsupportedVersion() &&
+                               log.RejectsTruncatedPayload();
+                return new ScenarioResult(
+                    roundTrip && exact && rejected && log.EntryCount == 7 &&
+                    decoded!.StableHash == log.StableHash,
+                    $"entries={log.EntryCount}, bytes={log.CanonicalByteCount}, " +
+                    $"log={log.StableHash:X16}, state={runtime.StateHash:X16}, " +
+                    $"exact={exact}, rejected={rejected}");
+            });
+    }
+
+    private static VisualTestSession CreateCommandReplayDivergence()
+    {
+        var fixture = CreateReplayFixture();
+        fixture.Rig.StartCommandRecording();
+        ConfigureReplayCommands(fixture);
+        return BuildReplaySession(
+            "command-replay-divergence",
+            "Periodic state hashes locate the first divergent replay sample",
+            fixture,
+            runtime =>
+            {
+                var log = runtime.CaptureCommandLog();
+                var changed = log.WithTargetOffset(
+                    log.EntryCount - 1, new Vector2(0f, 90f));
+                var baselineFixture = CreateReplayFixture();
+                var changedFixture = CreateReplayFixture();
+                var baseline = baselineFixture.Rig.Replay(log, runtime.Tick);
+                var divergent = changedFixture.Rig.Replay(changed, runtime.Tick);
+                var firstDivergence = baseline.FindFirstDivergence(divergent);
+                var passed = firstDivergence >= 330 && firstDivergence <= 390 &&
+                             baseline.FinalHash != divergent.FinalHash &&
+                             baseline.SampleCount == divergent.SampleCount;
+                return new ScenarioResult(
+                    passed,
+                    $"first_divergence={firstDivergence}, " +
+                    $"baseline={baseline.FinalHash:X16}, " +
+                    $"changed={divergent.FinalHash:X16}, " +
+                    $"samples={baseline.SampleCount}");
+            });
+    }
+
+    private static VisualTestSession BuildReplaySession(
+        string id,
+        string name,
+        ReplayFixture fixture,
+        Func<MovementTestRig, ScenarioResult> evaluate)
+    {
+        var session = new VisualTestSession(
+            id,
+            name,
+            840,
+            fixture.Rig,
+            fixture.Allies.Concat(fixture.Enemies).ToArray(),
+            evaluate);
+        session.At(90, "Queue locked target", runtime =>
+            runtime.AttackTarget(
+                fixture.Allies.Take(2).ToArray(),
+                fixture.Enemies[0],
+                queued: true));
+        session.At(150, "Hold one unit and clear its queue", runtime =>
+            runtime.Hold([fixture.Allies[5]]));
+        session.At(210, "Queue from completed Hold", runtime =>
+            runtime.SmartCommandGround(
+                [fixture.Allies[5]],
+                new Vector2(780f, 590f),
+                queued: true));
+        session.At(300, "Replace two units with target attack", runtime =>
+            runtime.AttackTarget(
+                fixture.Allies.Take(2).ToArray(),
+                fixture.Enemies[1]));
+        return session.At(330, "Queue final ground order", runtime =>
+            runtime.Move(
+                fixture.Allies.Take(2).ToArray(),
+                new Vector2(980f, 560f),
+                queued: true));
+    }
+
+    private static void ConfigureReplayCommands(ReplayFixture fixture)
+    {
+        fixture.Rig.Move(fixture.Allies, new Vector2(350f, 180f));
+        fixture.Rig.AttackMove(
+            fixture.Allies, new Vector2(1050f, 350f), queued: true);
+    }
+
+    private static ReplayFixture CreateReplayFixture()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 16);
+        var attackerProfile = new TestCombatProfile(
+            MaximumHealth: 100f,
+            AttackDamage: 1f,
+            AttackRange: 42f,
+            AcquisitionRange: 190f,
+            AttackCooldownSeconds: 0.55f,
+            AttackWindupSeconds: 0.1f,
+            LeashDistance: 330f);
+        var durableTarget = new TestCombatProfile(
+            MaximumHealth: 5000f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 80f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 100f);
+        var allies = new TestUnitId[6];
+        for (var index = 0; index < allies.Length; index++)
+        {
+            allies[index] = rig.SpawnCombat(
+                new Vector2(90f + index % 3 * 22f, 260f + index / 3 * 75f),
+                team: 1,
+                attackerProfile);
+        }
+        var enemies = new TestUnitId[3];
+        for (var index = 0; index < enemies.Length; index++)
+        {
+            enemies[index] = rig.SpawnCombat(
+                new Vector2(520f + index * 190f, 310f + (index & 1) * 80f),
+                team: 2,
+                durableTarget);
+        }
+        return new ReplayFixture(rig, allies, enemies);
+    }
+
+    private readonly record struct ReplayFixture(
+        MovementTestRig Rig,
+        TestUnitId[] Allies,
+        TestUnitId[] Enemies);
 
     private static VisualTestSession CreateOpenField()
     {

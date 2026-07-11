@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 
 namespace RtsDemo.Tests;
 
@@ -7,10 +8,12 @@ public sealed record BenchmarkCaseResult(
     int MeasuredTicks,
     bool Passed,
     double P95BudgetMilliseconds,
+    double StateHashBudgetMilliseconds,
     long AllocationBudgetBytes,
     double AverageTickMilliseconds,
     double P95TickMilliseconds,
     double MaximumTickMilliseconds,
+    double AverageStateHashMilliseconds,
     double AverageAllocatedBytes,
     double AverageCombatMilliseconds,
     double AveragePathMilliseconds,
@@ -198,16 +201,31 @@ public static class SimulationBenchmark
             sorted.Length - 1);
         var p95 = sorted[p95Index];
         var averageAllocation = allocatedBytes / MeasuredTicks;
+        const int stateHashSamples = 16;
+        var stateHashStart = Stopwatch.GetTimestamp();
+        var lastStateHash = 0UL;
+        for (var sample = 0; sample < stateHashSamples; sample++)
+        {
+            lastStateHash = rig.StateHash;
+        }
+        var averageStateHashMilliseconds =
+            Stopwatch.GetElapsedTime(stateHashStart).TotalMilliseconds /
+            stateHashSamples;
+        var stateHashBudget = Math.Max(2.0, p95Budget * 0.5);
         return new BenchmarkCaseResult(
             units.Length,
             MeasuredTicks,
             finite && inside && p95 <= p95Budget &&
-            averageAllocation <= allocationBudget,
+            averageAllocation <= allocationBudget &&
+            averageStateHashMilliseconds <= stateHashBudget &&
+            lastStateHash != 0UL,
             p95Budget,
+            stateHashBudget,
             allocationBudget,
             tickTimes.Average(),
             p95,
             sorted[^1],
+            averageStateHashMilliseconds,
             averageAllocation,
             combat / MeasuredTicks,
             path / MeasuredTicks,
