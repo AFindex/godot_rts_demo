@@ -61,6 +61,7 @@ public static class VisualTestCatalog
         "economy-dual-resource",
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
+        "production-queue-exit-rally",
         "construction-replay-persistence",
         "combat-attack-building",
         "shared-target-reservations",
@@ -163,6 +164,7 @@ public static class VisualTestCatalog
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
+        "production-queue-exit-rally" => CreateProductionQueueExitRally(),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "combat-attack-building" => CreateCombatAttackBuilding(
@@ -2344,6 +2346,127 @@ public static class VisualTestCatalog
             .Highlight(
                 new SimRect(new Vector2(750f, 470f), new Vector2(850f, 570f)),
                 "RESOURCE CONTRACT: refinery binds gas node",
+                TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateProductionQueueExitRally()
+    {
+        var catalog = DemoProductionCatalog.CreateSnapshot();
+        var marine = catalog.Recipe(0);
+        var marauder = catalog.Recipe(1);
+        var workerRecipe = catalog.Recipe(2);
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1200f, 700f), 32);
+        rig.RegisterPlayer(1, 1000, 300, 10, 0);
+        var builder = rig.SpawnWorker(new Vector2(360f, 180f), 1);
+        var barracks = rig.Build(
+            1, builder, DemoBuildingTypes.Barracks, new Vector2(520f, 180f));
+        var blockers = Array.Empty<TestUnitId>();
+        var ordersAccepted = false;
+        var wrongProducerRejected = false;
+        var supplyBlocked = false;
+        var queueFull = false;
+        var canceled = false;
+        var waitedForExit = false;
+        var cleanupOrderAccepted = false;
+        var producerDestroyed = false;
+        var producedUnitKilled = false;
+        var rally = new Vector2(1000f, 400f);
+        var session = new VisualTestSession(
+            "production-queue-exit-rally",
+            "Reserved supply, cancel, blocked exit, delayed spawn and rally",
+            1320,
+            rig,
+            [builder],
+            runtime =>
+            {
+                var queue = runtime.ObserveProduction(barracks.BuildingId);
+                var economy = runtime.ObservePlayerEconomy(1);
+                var first = runtime.Observe(new TestUnitId(13));
+                var second = runtime.Observe(new TestUnitId(14));
+                var rallied = Vector2.Distance(first.Position, rally) < 45f &&
+                              Vector2.Distance(second.Position, rally) < 45f;
+                var building = runtime.ObserveGameplayBuilding(barracks.BuildingId);
+                var passed = barracks.Succeeded && ordersAccepted &&
+                             wrongProducerRejected && supplyBlocked && queueFull && canceled &&
+                             waitedForExit && cleanupOrderAccepted &&
+                             producerDestroyed && queue.OrderCount == 0 &&
+                             building.State == TestBuildingLifecycleState.Destroyed &&
+                             runtime.UnitCount == 15 && economy.Minerals == 750 &&
+                             economy.VespeneGas == 300 && economy.SupplyUsed == 1 &&
+                             producedUnitKilled &&
+                             rallied;
+                return new ScenarioResult(
+                    passed,
+                    $"catalog={catalog.StableHashText}, orders={ordersAccepted}, " +
+                    $"waited={waitedForExit}, units={runtime.UnitCount}, " +
+                    $"queue={queue.OrderCount}, resources={economy.Minerals}/" +
+                    $"{economy.VespeneGas}, supply={economy.SupplyUsed}/" +
+                    $"{economy.SupplyCapacity}, rallied={rallied}, " +
+                    $"destroyed={producerDestroyed}");
+            });
+        session.At(510, "Seal all Barracks exit candidates and reserve queue supply", runtime =>
+        {
+            Vector2[] positions =
+            [
+                new(589.5f, 180f), new(450.5f, 180f),
+                new(520f, 233.5f), new(520f, 126.5f),
+                new(589.5f, 233.5f), new(589.5f, 126.5f),
+                new(450.5f, 233.5f), new(450.5f, 126.5f),
+                new(589.5f, 160f), new(589.5f, 200f),
+                new(450.5f, 160f), new(450.5f, 200f)
+            ];
+            blockers = positions.Select(value => runtime.Spawn(value)).ToArray();
+            runtime.SetRallyPoint(1, barracks.BuildingId, rally);
+            var first = runtime.Train(1, barracks.BuildingId, marine);
+            var canceledOrder = runtime.Train(1, barracks.BuildingId, marauder);
+            var second = runtime.Train(1, barracks.BuildingId, marine);
+            var canceledThird = runtime.Train(1, barracks.BuildingId, marine);
+            var canceledFourth = runtime.Train(1, barracks.BuildingId, marine);
+            queueFull = runtime.Train(1, barracks.BuildingId, marine).Code ==
+                        TestProductionCommandCode.QueueFull;
+            wrongProducerRejected = runtime.Train(
+                1, barracks.BuildingId, workerRecipe).Code ==
+                TestProductionCommandCode.WrongProducerType;
+            canceled = runtime.CancelProduction(1, canceledOrder.OrderId) &&
+                       runtime.CancelProduction(1, canceledThird.OrderId) &&
+                       runtime.CancelProduction(1, canceledFourth.OrderId);
+            var oversized = marauder with
+            {
+                Cost = marauder.Cost with { Supply = 9 }
+            };
+            supplyBlocked = runtime.Train(1, barracks.BuildingId, oversized).Code ==
+                            TestProductionCommandCode.SupplyBlocked;
+            ordersAccepted = first.Succeeded && canceledOrder.Succeeded &&
+                             second.Succeeded && canceledThird.Succeeded &&
+                             canceledFourth.Succeeded;
+        });
+        session.At(720, "Completed unit remains reserved while all exits are blocked", runtime =>
+        {
+            var queue = runtime.ObserveProduction(barracks.BuildingId);
+            waitedForExit = queue.ActiveState ==
+                            TestProductionOrderState.WaitingForExit &&
+                            queue.ActiveProgress == 1f && runtime.UnitCount == 13;
+        });
+        session.At(750, "Open exits; produced units should rally", runtime =>
+            runtime.Move(blockers, new Vector2(1000f, 620f)));
+        session.At(1120, "Queue one more unit before producer destruction", runtime =>
+            cleanupOrderAccepted = runtime.Train(
+                1, barracks.BuildingId, marine).Succeeded);
+        session.At(1140, "Destroy producer and refund unfinished queue", runtime =>
+            producerDestroyed = runtime.DamageBuilding(
+                barracks.BuildingId, 2000f));
+        session.At(1180, "Produced unit death releases its reserved supply", runtime =>
+            producedUnitKilled = runtime.DamageUnit(
+                new TestUnitId(13), 1000f));
+        return session
+            .Highlight(
+                new SimRect(new Vector2(430f, 105f), new Vector2(610f, 255f)),
+                "BLOCKED EXIT: finished order waits without duplication",
+                TestDiagnosticKind.Rejected)
+            .Highlight(
+                new SimRect(new Vector2(900f, 340f), new Vector2(1080f, 470f)),
+                "RALLY: spawned units receive system Move",
                 TestDiagnosticKind.Accepted);
     }
 

@@ -52,7 +52,7 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v5 已覆盖经济、施工，以及显式 Unit/Building 战斗目标和命令队列未来态。
+状态 Hash v6 已覆盖经济、施工、显式 Unit/Building 战斗目标，以及生产队列、进度、出口等待和 Rally 未来态。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
@@ -122,15 +122,27 @@ S11-C3 战斗层已完成：
 - `combat-attack-building` 使用 8 个攻击者摧毁 2,000 HP 建筑，并验证战斗中热恢复和完整回放一致。
 - AV1/WebM 录像位于 `test_videos/20260711_182334/`。
 
-下一段只剩 Building Type Godot Resource/编辑器数据工作流；随后进入 S11-D 生产与人口队列。
+Building Type Godot Resource/编辑器数据工作流也已完成，S11-C 正式收口。
 
 ### S11-D：生产与人口
 
-- 单位 Type Profile：成本、人口、生产时间、移动/战斗 Profile。
-- 每建筑生产队列、取消退款和队列上限。
-- Rally Point 支持地面、资源节点和单位目标。
-- 出生出口合法位置搜索、被堵等待、重新选点和生产建筑摧毁处理。
-- 人口在入队时预留，取消/失败释放，完成时不重复扣除。
+S11-D1 运行时已完成：
+
+- `ProductionCatalogSnapshot v1` 包含 Marine、Marauder、SCV 三类单位及配方，规范字节、稳定 Hash、严格验证和纯 C# 自测已完成。
+- 单位 Type 保存移动、战斗和 Worker 语义；配方保存合法生产建筑、双资源/人口成本、生产时间和取消退款率。
+- 每建筑独立五格队列。资源和人口在入队事务中一次预留；排队失败不扣费，取消释放完整人口并按配方退款。
+- 只有己方已完工且 Type 匹配的建筑可生产；错误玩家、错误建筑、未完工、资源不足、人口阻塞和队列满均返回稳定结果。
+- 完成订单在十二个有界确定性候选点搜索出口，同时检查静态地图、动态 Footprint 和活单位；全部被堵时停在 `WaitingForExit`，不丢失、不重扣也不生成重叠单位。
+- 出口恢复后生成完整移动/战斗 Profile 单位；Worker 配方同时注册经济工人。地面 Rally 作为系统 Move 下发，不污染玩家命令录制。
+- 已出生单位保留稳定人口账本，首次观察到死亡时只释放预留人口，不错误返还生产资源。
+- 生产建筑被摧毁后，所有未完成订单全额退款并释放人口，队列和 Rally 状态一起移除。
+- Godot 建筑表现只消费 `ProductionQueueSnapshot`，绘制当前单位、进度、状态和队列长度；HUD 只显示活动订单总数。
+- `production-queue-exit-rally` 黑盒场景覆盖五格上限、错误生产者、人口阻塞、三项取消、十二出口全封、延迟出生、两单位 Rally、生产建筑摧毁退款与单位死亡释放人口。
+- 专用 22 秒 AV1/WebM 录像位于 `test_videos/20260711_190740/`。
+
+S11-D2 待完成：Production Command Log、Replay Package/热快照持久化、Rally SmartCommand（资源/单位目标）和 Unit/Recipe Godot Resource 数据工作流。
+在 D2 格式落地前，活动生产状态的 v4 热快照和录制期间的生产命令会被显式拒绝，
+不会生成缺少生产未来态但表面可用的错误存档。
 
 ### S11-E：科技、扩张和胜负
 

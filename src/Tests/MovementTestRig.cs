@@ -7,6 +7,43 @@ public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
 public readonly record struct TestResourceNodeId(int Value);
 public readonly record struct TestGameplayBuildingId(int Value);
+public readonly record struct TestProductionOrderId(int Value);
+
+public enum TestProductionCommandCode : byte
+{
+    Success,
+    InvalidPlayer,
+    InvalidProducer,
+    WrongOwner,
+    ProducerNotCompleted,
+    WrongProducerType,
+    QueueFull,
+    InvalidRecipe,
+    InsufficientMinerals,
+    InsufficientVespeneGas,
+    SupplyBlocked,
+    InvalidOrder
+}
+
+public enum TestProductionOrderState : byte
+{
+    Queued,
+    Producing,
+    WaitingForExit
+}
+
+public readonly record struct TestProductionResult(
+    TestProductionCommandCode Code,
+    TestProductionOrderId OrderId)
+{
+    public bool Succeeded => Code == TestProductionCommandCode.Success;
+}
+
+public readonly record struct TestProductionQueueSnapshot(
+    int OrderCount,
+    TestProductionOrderState? ActiveState,
+    float ActiveProgress,
+    Vector2? RallyPoint);
 
 public enum TestBuildingLifecycleState : byte
 {
@@ -1020,6 +1057,9 @@ public sealed class MovementTestRig
         _simulation.DamageBuilding(
             new GameplayBuildingId(building.Value), damage);
 
+    public bool DamageUnit(TestUnitId unit, float damage) =>
+        _simulation.DamageUnit(unit.Value, damage);
+
     public TestGameplayBuildingSnapshot ObserveGameplayBuilding(
         TestGameplayBuildingId building)
     {
@@ -1036,6 +1076,46 @@ public sealed class MovementTestRig
             value.Health,
             value.MaximumHealth,
             new TestResourceNodeId(value.RefineryNode.Value));
+    }
+
+    public TestProductionResult Train(
+        int playerId,
+        TestGameplayBuildingId producer,
+        ProductionRecipeProfile recipe)
+    {
+        var result = _simulation.IssueProduction(
+            playerId, new GameplayBuildingId(producer.Value), recipe);
+        return new TestProductionResult(
+            (TestProductionCommandCode)result.Code,
+            new TestProductionOrderId(result.OrderId.Value));
+    }
+
+    public bool CancelProduction(
+        int playerId,
+        TestProductionOrderId order) =>
+        _simulation.CancelProduction(
+            playerId, new ProductionOrderId(order.Value));
+
+    public bool SetRallyPoint(
+        int playerId,
+        TestGameplayBuildingId producer,
+        Vector2 point) =>
+        _simulation.SetProductionRallyPoint(
+            playerId, new GameplayBuildingId(producer.Value), point);
+
+    public TestProductionQueueSnapshot ObserveProduction(
+        TestGameplayBuildingId producer)
+    {
+        var queue = _simulation.Production.Observe(
+            new GameplayBuildingId(producer.Value));
+        var active = queue.Orders.FirstOrDefault();
+        return new TestProductionQueueSnapshot(
+            queue.Orders.Length,
+            queue.Orders.Length == 0
+                ? null
+                : (TestProductionOrderState)active.State,
+            queue.Orders.Length == 0 ? 0f : active.Progress,
+            queue.RallyPoint);
     }
 
 

@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T18:44:16.4699349+08:00",
+    "generated_at":  "2026-07-11T19:08:02.1278328+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  96,
-    "case_count":  72,
+    "recording_count":  97,
+    "case_count":  73,
     "recordings":  [
+                       {
+                           "id":  "production-queue-exit-rally",
+                           "display_name":  "Reserved supply, cancel, blocked exit, delayed spawn and rally",
+                           "batch":  "20260711_190740",
+                           "created_at":  "2026-07-11T19:08:01.6548836+08:00",
+                           "video":  "../20260711_190740/production-queue-exit-rally.webm",
+                           "log":  "../20260711_190740/production-queue-exit-rally.log",
+                           "bytes":  956495,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS production-queue-exit-rally: ticks=1320, catalog=88CB72E34880A0B7, orders=True, waited=True, units=15, queue=0, resources=750/300, supply=1/10, rallied=True, destroyed=True",
+                           "metrics":  "ticks=1320, catalog=88CB72E34880A0B7, orders=True, waited=True, units=15, queue=0, resources=750/300, supply=1/10, rallied=True, destroyed=True"
+                       },
                        {
                            "id":  "building-type-resource-runtime",
                            "display_name":  "Versioned building catalog drives four real construction lifecycles",

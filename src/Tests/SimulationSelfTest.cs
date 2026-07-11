@@ -30,13 +30,15 @@ public static class SimulationSelfTest
             var watchWorkflowResult = ResourceReloadWorkflowSelfTest.Run();
             var economyResult = EconomySelfTest.Run();
             var buildingTypeResult = BuildingTypeCatalogSelfTest.Run(buildingTypes);
+            var productionCatalogResult = ProductionCatalogSelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
                          reloadResult.Passed && bakeCommitResult.Passed;
             passed &= placementDiffResult.Passed && watchWorkflowResult.Passed &&
-                      economyResult.Passed && buildingTypeResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 12)
+                      economyResult.Passed && buildingTypeResult.Passed &&
+                      productionCatalogResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 13)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -68,7 +70,10 @@ public static class SimulationSelfTest
                 $"({economyResult.Summary})",
                 $"building-type-catalog=" +
                 $"{(buildingTypeResult.Passed ? "PASS" : "FAIL")}" +
-                $"({buildingTypeResult.Summary})"
+                $"({buildingTypeResult.Summary})",
+                $"production-catalog=" +
+                $"{(productionCatalogResult.Passed ? "PASS" : "FAIL")}" +
+                $"({productionCatalogResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

@@ -545,11 +545,32 @@ public partial class RtsDemo : Node2D
                 rect.Size.X - 10f,
                 12,
                 new Color("f5f7fa"));
+            var production = _simulation.Production.Observe(building.Id);
+            if (production.Orders.Length > 0)
+            {
+                var active = production.Orders[0];
+                var queueProgress = new Rect2(
+                    rect.Position + new Vector2(0f, rect.Size.Y - 13f),
+                    new Vector2(
+                        rect.Size.X * Math.Clamp(active.Progress, 0f, 1f),
+                        5f));
+                DrawRect(queueProgress, new Color("74d7ff"), true);
+                DrawString(
+                    ThemeDB.FallbackFont,
+                    rect.Position + new Vector2(5f, 34f),
+                    $"{active.Recipe.UnitType.Name}  {active.State}  " +
+                    $"Q:{production.Orders.Length}",
+                    HorizontalAlignment.Left,
+                    rect.Size.X - 10f,
+                    11,
+                    new Color("b9efff"));
+            }
             if (_selectedBuilding == building.Id)
             {
                 DrawString(
                     ThemeDB.FallbackFont,
-                    rect.Position + new Vector2(5f, 35f),
+                    rect.Position + new Vector2(
+                        5f, production.Orders.Length > 0 ? 51f : 35f),
                     $"HP {building.Health:0}/{building.MaximumHealth:0}  {building.State}",
                     HorizontalAlignment.Left,
                     rect.Size.X - 10f,
@@ -1366,6 +1387,7 @@ public partial class RtsDemo : Node2D
             $"path queue {metrics.PendingPathRequests}  nav r{metrics.NavigationRevision}  " +
             $"bake reload {metrics.ClearanceBakeReloads}  " +
             $"buildings {_world?.DynamicOccupancy.Count ?? 0}  " +
+            $"production {_simulation.Production.ActiveOrderCount}  " +
             $"invalidated {metrics.NavigationInvalidations}  " +
             $"recovery {metrics.RecoveryEvents}  unreachable {metrics.UnreachableUnits}\n" +
             $"map {ActiveNavigationLabel()}  " +

@@ -40,6 +40,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly Action<int> _economyStopWorker;
     private readonly Action<int, Vector2> _constructionMoveWorker;
     private readonly Action<int> _constructionStopWorker;
+    private readonly Func<UnitTypeProfile, int, Vector2, int> _productionSpawnUnit;
+    private readonly Action<int, Vector2> _productionMoveToRally;
     private readonly int[] _collisionNeighbors = new int[64];
     private readonly int[] _orderReadyUnits;
     private readonly UnitOrder[] _orderReadyOrders;
@@ -70,6 +72,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CommandQueues = new UnitCommandQueueStore(capacity);
         Economy = new EconomySystem(capacity);
         Construction = new ConstructionSystem();
+        Production = new ProductionSystem();
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
@@ -90,6 +93,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _economyStopWorker = StopEconomyWorker;
         _constructionMoveWorker = MoveConstructionWorker;
         _constructionStopWorker = StopConstructionWorker;
+        _productionSpawnUnit = SpawnProducedUnit;
+        _productionMoveToRally = MoveProducedUnitToRally;
     }
 
     public StaticWorld World { get; }
@@ -98,6 +103,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public UnitCommandQueueStore CommandQueues { get; }
     public EconomySystem Economy { get; }
     public ConstructionSystem Construction { get; }
+    public ProductionSystem Production { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -176,6 +182,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     internal SimulationRuntimeStateCapture CaptureRuntimeState()
     {
+        if (Production.HasRuntimeState)
+        {
+            throw new InvalidOperationException(
+                "Production runtime persistence is introduced by S11-D2; " +
+                "active production cannot be captured by hot snapshot v4.");
+        }
         var units = new UnitStore(Units.Capacity);
         units.CopyRuntimeStateFrom(Units);
         var combat = new CombatStore(Units.Capacity);
@@ -694,6 +706,60 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Construction.ApplyDamage(
             buildingId, damage, Economy, RemoveGameplayBuildingFootprint);
 
+    public bool DamageUnit(int unit, float damage)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit] ||
+            !float.IsFinite(damage) || damage <= 0f)
+            return false;
+        Combat.Health[unit] = MathF.Max(0f, Combat.Health[unit] - damage);
+        if (Combat.Health[unit] > 0f) return true;
+        Units.Alive[unit] = false;
+        Combat.CommandIntents[unit] = UnitCommandIntent.None;
+        Combat.Phases[unit] = CombatPhase.None;
+        Combat.TargetUnits[unit] = -1;
+        Combat.TargetBuildings[unit] = -1;
+        Combat.TargetKinds[unit] = CombatTargetKind.None;
+        ((ICombatMovementDriver)this).Kill(unit);
+        return true;
+    }
+
+    public ProductionCommandResult IssueProduction(
+        int playerId,
+        GameplayBuildingId producer,
+        ProductionRecipeProfile recipe)
+    {
+        EnsureProductionRecordingSupported();
+        return Production.Enqueue(
+            playerId, producer, recipe, Construction, Economy.Players);
+    }
+
+    public bool CancelProduction(
+        int playerId,
+        ProductionOrderId orderId)
+    {
+        EnsureProductionRecordingSupported();
+        return Production.Cancel(playerId, orderId, Economy.Players);
+    }
+
+    public bool SetProductionRallyPoint(
+        int playerId,
+        GameplayBuildingId producer,
+        Vector2 point)
+    {
+        EnsureProductionRecordingSupported();
+        return Production.SetRallyPoint(playerId, producer, point, Construction);
+    }
+
+    private void EnsureProductionRecordingSupported()
+    {
+        if (_commandRecorder is not null || _replayPackageRecorder is not null)
+        {
+            throw new InvalidOperationException(
+                "Production command recording is introduced by S11-D2; " +
+                "production commands cannot be issued during v4 recording.");
+        }
+    }
+
     public void IssueMove(
         ReadOnlySpan<int> unitIndices,
         Vector2 target,
@@ -1118,6 +1184,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Economy,
             _constructionMoveWorker,
             _constructionStopWorker);
+        Production.Update(
+            delta,
+            Construction,
+            Economy.Players,
+            Units,
+            World,
+            _productionSpawnUnit,
+            _productionMoveToRally);
         Economy.Update(
             delta, Units, _economyMoveWorker, _economyStopWorker);
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
@@ -1171,6 +1245,31 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.CommandMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
         Metrics.AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
+    }
+
+    private int SpawnProducedUnit(
+        UnitTypeProfile type,
+        int playerId,
+        Vector2 position)
+    {
+        var unit = AddUnit(position, type.Movement, playerId, type.Combat);
+        if (type.IsWorker) Economy.RegisterWorker(unit, playerId);
+        return unit;
+    }
+
+    private void MoveProducedUnitToRally(int unit, Vector2 target)
+    {
+        _issuingSystemOrder = true;
+        try
+        {
+            Span<int> produced = stackalloc int[1];
+            produced[0] = unit;
+            IssueMove(produced, target);
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
     }
 
     private void ProcessPathRequests()
