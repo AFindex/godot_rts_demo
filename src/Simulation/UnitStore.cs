@@ -172,4 +172,83 @@ public sealed class UnitStore
         ProgressBestDistances[index] = 0f;
         return index;
     }
+
+    internal void CopyRuntimeStateFrom(UnitStore source)
+    {
+        if (source.Capacity != Capacity)
+        {
+            throw new InvalidOperationException("Unit runtime capacity mismatch.");
+        }
+        Count = source.Count;
+        Copy(source.Positions, Positions);
+        Copy(source.Alive, Alive);
+        Copy(source.PreviousPositions, PreviousPositions);
+        Copy(source.Velocities, Velocities);
+        Copy(source.PreferredVelocities, PreferredVelocities);
+        Copy(source.NextVelocities, NextVelocities);
+        Copy(source.SlotTargets, SlotTargets);
+        Copy(source.MoveGoals, MoveGoals);
+        Copy(source.Radii, Radii);
+        Copy(source.MovementClasses, MovementClasses);
+        Copy(source.NavigationRadii, NavigationRadii);
+        Copy(source.MaxSpeeds, MaxSpeeds);
+        Copy(source.Accelerations, Accelerations);
+        Copy(source.Modes, Modes);
+        Copy(source.CommandVersions, CommandVersions);
+        Copy(source.PathPending, PathPending);
+        Copy(source.AvoidanceSides, AvoidanceSides);
+        Copy(source.AvoidanceLockTicks, AvoidanceLockTicks);
+        Copy(source.ProgressOrigins, ProgressOrigins);
+        Copy(source.ProgressTimers, ProgressTimers);
+        Copy(source.ProgressBestDistances, ProgressBestDistances);
+        Copy(source.RepathCooldowns, RepathCooldowns);
+        Copy(source.CollisionCorrections, CollisionCorrections);
+        Copy(source.ActiveChokeIds, ActiveChokeIds);
+        Copy(source.ChokeDirections, ChokeDirections);
+        Copy(source.ChokeLaneOffsets, ChokeLaneOffsets);
+        Copy(source.ChokePhases, ChokePhases);
+        Copy(source.ChokeAdmitted, ChokeAdmitted);
+        Copy(source.ChokeQueueRanks, ChokeQueueRanks);
+        Copy(source.ChokeWaitTicks, ChokeWaitTicks);
+        Copy(source.BlockedByNavigation, BlockedByNavigation);
+        Copy(source.RecoveryStages, RecoveryStages);
+        Copy(source.RecoveryEventCounts, RecoveryEventCounts);
+        Copy(source.RecoveryStableTimers, RecoveryStableTimers);
+        Copy(source.RecoveryRetryCounts, RecoveryRetryCounts);
+        Copy(source.MovementGroupIds, MovementGroupIds);
+        Copy(source.MovementGroupSizes, MovementGroupSizes);
+        Copy(source.SlotReflowCooldownTicks, SlotReflowCooldownTicks);
+        Copy(source.DestinationBestDistances, DestinationBestDistances);
+        Copy(source.DestinationStallTicks, DestinationStallTicks);
+        Copy(source.DestinationNearTicks, DestinationNearTicks);
+        Copy(source.DestinationOverflowed, DestinationOverflowed);
+        Copy(source.DestinationYieldPhases, DestinationYieldPhases);
+        Copy(source.DestinationYieldReturnTargets, DestinationYieldReturnTargets);
+        Copy(source.DestinationYieldPoints, DestinationYieldPoints);
+        Copy(source.DestinationYieldForUnits, DestinationYieldForUnits);
+        Copy(source.DestinationYieldForCommandVersions, DestinationYieldForCommandVersions);
+        Copy(source.DestinationYieldDeadlines, DestinationYieldDeadlines);
+        Copy(source.DestinationYieldCooldownTicks, DestinationYieldCooldownTicks);
+
+        for (var unit = 0; unit < Capacity; unit++)
+        {
+            var path = source.Paths[unit];
+            if (path is null)
+            {
+                Paths[unit] = null;
+            }
+            else
+            {
+                var copy = new UnitPath(path.Points.ToArray(), path.CommandVersion)
+                {
+                    Cursor = path.Cursor
+                };
+                Paths[unit] = copy;
+            }
+            RouteWaypoints[unit] = source.RouteWaypoints[unit]?.ToArray() ?? [];
+        }
+    }
+
+    private static void Copy<T>(T[] source, T[] destination) =>
+        Array.Copy(source, destination, source.Length);
 }

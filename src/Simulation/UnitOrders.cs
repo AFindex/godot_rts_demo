@@ -143,6 +143,31 @@ public sealed class UnitCommandQueueStore
             }
         }
     }
+
+    internal void CopyRuntimeStateFrom(UnitCommandQueueStore source)
+    {
+        if (source.PendingCounts.Length != PendingCounts.Length)
+        {
+            throw new InvalidOperationException("Command queue runtime capacity mismatch.");
+        }
+        Copy(source.PendingCounts, PendingCounts);
+        Copy(source.ActiveKinds, ActiveKinds);
+        Copy(source.ActivePositions, ActivePositions);
+        Copy(source.ActiveTargetUnits, ActiveTargetUnits);
+        Copy(source.ActiveSequenceIds, ActiveSequenceIds);
+        Copy(source.HasActiveOrders, HasActiveOrders);
+        Copy(source.ActiveOrdersWereQueued, ActiveOrdersWereQueued);
+        Copy(source.CompletedQueuedOrders, CompletedQueuedOrders);
+        Copy(source.QueueOverflowCounts, QueueOverflowCounts);
+        Copy(source._heads, _heads);
+        Copy(source._pendingKinds, _pendingKinds);
+        Copy(source._pendingPositions, _pendingPositions);
+        Copy(source._pendingTargetUnits, _pendingTargetUnits);
+        Copy(source._pendingSequenceIds, _pendingSequenceIds);
+    }
+
+    private static void Copy<T>(T[] source, T[] destination) =>
+        Array.Copy(source, destination, source.Length);
 }
 
 public enum SmartCommandTargetKind : byte

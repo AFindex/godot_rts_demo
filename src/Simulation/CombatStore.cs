@@ -144,6 +144,40 @@ public sealed class CombatStore
         AttackSlotTargets[unit] = position;
     }
 
+    internal void CopyRuntimeStateFrom(CombatStore source)
+    {
+        if (source.Teams.Length != Teams.Length)
+        {
+            throw new InvalidOperationException("Combat runtime capacity mismatch.");
+        }
+        Copy(source.Teams, Teams);
+        Copy(source.Health, Health);
+        Copy(source.MaximumHealth, MaximumHealth);
+        Copy(source.AttackDamage, AttackDamage);
+        Copy(source.AttackRanges, AttackRanges);
+        Copy(source.AcquisitionRanges, AcquisitionRanges);
+        Copy(source.AttackCooldownDurations, AttackCooldownDurations);
+        Copy(source.AttackWindupDurations, AttackWindupDurations);
+        Copy(source.LeashDistances, LeashDistances);
+        Copy(source.PositioningKinds, PositioningKinds);
+        Copy(source.CommandIntents, CommandIntents);
+        Copy(source.Phases, Phases);
+        Copy(source.TargetUnits, TargetUnits);
+        Copy(source.AttackMoveGoals, AttackMoveGoals);
+        Copy(source.EngagementOrigins, EngagementOrigins);
+        Copy(source.LastChaseTargets, LastChaseTargets);
+        Copy(source.AttackSlotTargets, AttackSlotTargets);
+        Copy(source.AttackSlotAngles, AttackSlotAngles);
+        Copy(source.AttackSlotRadii, AttackSlotRadii);
+        Copy(source.HasAttackSlots, HasAttackSlots);
+        Copy(source.CooldownRemaining, CooldownRemaining);
+        Copy(source.WindupRemaining, WindupRemaining);
+        Copy(source.ChaseRepathRemaining, ChaseRepathRemaining);
+    }
+
+    private static void Copy<T>(T[] source, T[] destination) =>
+        Array.Copy(source, destination, source.Length);
+
     public void SetCommand(
         int unit,
         UnitCommandIntent intent,

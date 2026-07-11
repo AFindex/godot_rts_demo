@@ -290,6 +290,16 @@ public sealed class SimulationCommandReplay
 
     public bool Completed => _cursor >= _log.Entries.Length;
 
+    internal void SeekToTick(long tick)
+    {
+        _cursor = 0;
+        while (_cursor < _log.Entries.Length &&
+               _log.Entries[_cursor].Tick < tick)
+        {
+            _cursor++;
+        }
+    }
+
     public void ApplyForCurrentTick(RtsSimulation simulation)
     {
         if (!Completed && _log.Entries[_cursor].Tick < simulation.Metrics.Tick)

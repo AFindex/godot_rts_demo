@@ -9,6 +9,11 @@ public readonly record struct DynamicFootprint(
     SimRect Bounds,
     int PlacedRevision);
 
+internal sealed record DynamicOccupancyRuntimeSnapshot(
+    int Revision,
+    int NextId,
+    DynamicFootprint[] Footprints);
+
 public sealed class DynamicOccupancyGrid
 {
     private readonly SimRect _bounds;
@@ -51,6 +56,34 @@ public sealed class DynamicOccupancyGrid
             hash.Add(footprints[index].Bounds.Max);
             hash.Add(footprints[index].PlacedRevision);
         }
+    }
+
+    internal DynamicOccupancyRuntimeSnapshot CaptureRuntimeState() =>
+        new(Revision, _nextId, Snapshot());
+
+    internal void RestoreRuntimeState(DynamicOccupancyRuntimeSnapshot snapshot)
+    {
+        Array.Clear(_occupancy);
+        for (var cell = 0; cell < _footprintsByCell.Length; cell++)
+        {
+            _footprintsByCell[cell]?.Clear();
+        }
+        _footprints.Clear();
+        for (var index = 0; index < snapshot.Footprints.Length; index++)
+        {
+            var footprint = snapshot.Footprints[index];
+            ValidateFootprint(footprint.Bounds);
+            var cells = CollectCells(footprint.Bounds);
+            _footprints.Add(footprint.Id.Value, new FootprintEntry(footprint, cells));
+            for (var cellIndex = 0; cellIndex < cells.Length; cellIndex++)
+            {
+                var cell = cells[cellIndex];
+                _occupancy[cell]++;
+                (_footprintsByCell[cell] ??= []).Add(footprint.Id.Value);
+            }
+        }
+        Revision = snapshot.Revision;
+        _nextId = snapshot.NextId;
     }
 
     public DynamicFootprintId Place(SimRect footprint)

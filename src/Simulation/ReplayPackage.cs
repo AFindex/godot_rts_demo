@@ -617,6 +617,17 @@ public sealed class SimulationReplayPackageRunner
     public bool Completed =>
         _worldCursor >= _package.WorldCommands.Length && _commands.Completed;
 
+    internal void SeekToTick(long tick)
+    {
+        _worldCursor = 0;
+        while (_worldCursor < _package.WorldCommands.Length &&
+               _package.WorldCommands[_worldCursor].Tick < tick)
+        {
+            _worldCursor++;
+        }
+        _commands.SeekToTick(tick);
+    }
+
     public void ApplyForCurrentTick(RtsSimulation simulation)
     {
         if (_worldCursor < _package.WorldCommands.Length &&

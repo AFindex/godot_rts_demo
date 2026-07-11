@@ -181,6 +181,32 @@ public sealed class TestReplayCheckpoint
             Backend.StateHash ^ offset));
 }
 
+public sealed class TestRuntimeStateCapture
+{
+    internal TestRuntimeStateCapture(SimulationRuntimeStateCapture backend)
+    {
+        Backend = backend;
+    }
+
+    internal SimulationRuntimeStateCapture Backend { get; }
+    public long Tick => Backend.Tick;
+    public ulong StateHash => Backend.StateHash;
+}
+
+public sealed class TestHotSnapshot
+{
+    internal TestHotSnapshot(SimulationHotSnapshot backend)
+    {
+        Backend = backend;
+    }
+
+    internal SimulationHotSnapshot Backend { get; }
+    public int FormatVersion => Backend.FormatVersion;
+    public long Tick => Backend.Tick;
+    public ulong StateHash => Backend.StateHash;
+    public ulong StableHash => Backend.StableHash;
+}
+
 public sealed class TestReplayTrace
 {
     internal TestReplayTrace(SimulationReplayTrace trace, ulong finalHash)
@@ -955,6 +981,92 @@ public sealed class MovementTestRig
                    out _,
                    out var validation) &&
                validation.Code == ReplayCheckpointValidationCode.StateMismatch;
+    }
+
+    public TestRuntimeStateCapture CaptureRuntimeState() =>
+        new(_simulation.CaptureRuntimeState());
+
+    public TestHotSnapshot BindHotSnapshot(
+        TestReplayPackage package,
+        TestRuntimeStateCapture capture) =>
+        new(SimulationHotSnapshotFactory.Bind(capture.Backend, package.Backend));
+
+    public TestReplayTrace ResumeHotSnapshot(
+        TestReplayPackage package,
+        TestHotSnapshot snapshot,
+        long targetTick,
+        int hashIntervalTicks = 30)
+    {
+        if (_navigationMap is null || _gameplayProfiles is null ||
+            targetTick < snapshot.Tick || hashIntervalTicks <= 0 ||
+            !SimulationHotSnapshotFactory.TryRestore(
+                snapshot.Backend,
+                package.Backend,
+                _navigationMap,
+                _gameplayProfiles,
+                _clearanceBake,
+                out var simulation,
+                out var runner) ||
+            simulation is null || runner is null)
+        {
+            throw new InvalidOperationException("Hot snapshot restore failed.");
+        }
+
+        var trace = new SimulationReplayTrace();
+        trace.Add(simulation.Metrics.Tick, simulation.ComputeStateHash());
+        while (simulation.Metrics.Tick < targetTick)
+        {
+            runner.ApplyForCurrentTick(simulation);
+            simulation.Tick(1f / 60f);
+            if (simulation.Metrics.Tick % hashIntervalTicks == 0 ||
+                simulation.Metrics.Tick == targetTick)
+            {
+                trace.Add(simulation.Metrics.Tick, simulation.ComputeStateHash());
+            }
+        }
+        if (!runner.Completed)
+        {
+            throw new InvalidOperationException(
+                "Hot snapshot stopped before all commands were applied.");
+        }
+        return new TestReplayTrace(trace, simulation.ComputeStateHash());
+    }
+
+    public bool RejectsHotSnapshotPackageMismatch(
+        TestReplayPackage package,
+        TestHotSnapshot snapshot)
+    {
+        if (_navigationMap is null || _gameplayProfiles is null)
+        {
+            return false;
+        }
+        var source = package.Backend;
+        var changed = new SimulationReplayPackageSnapshot(
+            source.SimulationCapacity,
+            source.InitialStateHash,
+            source.Resources,
+            source.Units.ToArray(),
+            source.Buildings.ToArray(),
+            source.WorldCommands.ToArray(),
+            new SimulationCommandLogSnapshot(
+                source.CommandLog.Entries.Select(entry => entry with
+                {
+                    Units = entry.Units.ToArray()
+                }).Append(new RecordedSimulationCommand(
+                    long.MaxValue,
+                    UnitOrderKind.Hold,
+                    false,
+                    Vector2.Zero,
+                    -1,
+                    [0])).ToArray()));
+        return !SimulationHotSnapshotFactory.TryRestore(
+            snapshot.Backend,
+            changed,
+            _navigationMap,
+            _gameplayProfiles,
+            _clearanceBake,
+            out _,
+            out _);
     }
 
     public TestReplayTrace Replay(

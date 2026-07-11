@@ -30,6 +30,7 @@ public static class VisualTestCatalog
         "replay-package-world",
         "replay-checkpoint-resume",
         "replay-checkpoint-choke",
+        "replay-hot-snapshot",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -98,6 +99,8 @@ public static class VisualTestCatalog
         "replay-checkpoint-resume" => CreateReplayCheckpointResume(
             navigationMap, gameplayProfiles, clearanceBake),
         "replay-checkpoint-choke" => CreateReplayCheckpointChoke(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "replay-hot-snapshot" => CreateReplayHotSnapshot(
             navigationMap, gameplayProfiles, clearanceBake),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
@@ -922,6 +925,85 @@ public static class VisualTestCatalog
             });
         return session.At(checkpointTick, "Capture active choke checkpoint", runtime =>
             checkpointStateHash = runtime.StateHash);
+    }
+
+    private static VisualTestSession CreateReplayHotSnapshot(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        var attackerProfile = new TestCombatProfile(
+            MaximumHealth: 100f,
+            AttackDamage: 1f,
+            AttackRange: 40f,
+            AcquisitionRange: 175f,
+            AttackCooldownSeconds: 0.6f,
+            AttackWindupSeconds: 0.1f,
+            LeashDistance: 320f);
+        var durableTarget = new TestCombatProfile(
+            MaximumHealth: 5000f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 60f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 80f);
+        var units = new TestUnitId[8];
+        for (var index = 0; index < units.Length; index++)
+        {
+            units[index] = rig.SpawnCombat(
+                new Vector2(100f + index % 4 * 24f, 300f + index / 4 * 24f),
+                team: 1,
+                attackerProfile,
+                maximumSpeed: 132f);
+        }
+        var enemy = rig.SpawnCombat(
+            new Vector2(700f, 350f), team: 2, durableTarget);
+        rig.PlaceBuilding(new Vector2(300f, 150f), new Vector2(48f, 48f));
+        rig.StartReplayPackageRecording();
+        rig.AttackMove(units, new Vector2(1160f, 350f));
+        rig.Move(units, new Vector2(1080f, 540f), queued: true);
+
+        const long snapshotTick = 240;
+        TestRuntimeStateCapture? runtimeCapture = null;
+        var dynamicBuilding = default(TestBuildingId);
+        var session = new VisualTestSession(
+            "replay-hot-snapshot",
+            "Deep runtime snapshot restores directly without replaying earlier ticks",
+            720,
+            rig,
+            units.Append(enemy).ToArray(),
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var hot = runtime.BindHotSnapshot(package, runtimeCapture!);
+                var baseline = runtime.ReplayPackage(package, runtime.Tick);
+                var restored = runtime.ResumeHotSnapshot(
+                    package, hot, runtime.Tick);
+                var exact = baseline.MatchesFrom(restored, snapshotTick) &&
+                            restored.FinalHash == runtime.StateHash;
+                var rejected = runtime.RejectsHotSnapshotPackageMismatch(
+                    package, hot);
+                return new ScenarioResult(
+                    exact && rejected && hot.FormatVersion == 1 &&
+                    hot.Tick == snapshotTick && restored.SampleCount == 17,
+                    $"tick={hot.Tick}, snapshot={hot.StableHash:X16}, " +
+                    $"samples={restored.SampleCount}, state={restored.FinalHash:X16}, " +
+                    $"exact={exact}, rejected={rejected}");
+            });
+        session.At(90, "Place pre-snapshot building", runtime =>
+            dynamicBuilding = runtime.PlaceBuilding(
+                new Vector2(800f, 353f), new Vector2(72f, 96f)));
+        session.At(snapshotTick, "Capture direct runtime snapshot", runtime =>
+            runtimeCapture = runtime.CaptureRuntimeState());
+        session.At(270, "Remove post-snapshot building", runtime =>
+            runtime.RemoveBuilding(dynamicBuilding));
+        return session.At(360, "Issue post-snapshot command", runtime =>
+            runtime.Move(units.Take(4).ToArray(), new Vector2(1110f, 530f)));
     }
 
     private static VisualTestSession BuildReplaySession(

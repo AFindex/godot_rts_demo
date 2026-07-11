@@ -90,6 +90,66 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public ulong ComputeStateHash() => SimulationStateHasher.Compute(this);
 
+    internal SimulationRuntimeStateCapture CaptureRuntimeState()
+    {
+        var units = new UnitStore(Units.Capacity);
+        units.CopyRuntimeStateFrom(Units);
+        var combat = new CombatStore(Units.Capacity);
+        combat.CopyRuntimeStateFrom(Combat);
+        var queues = new UnitCommandQueueStore(Units.Capacity);
+        queues.CopyRuntimeStateFrom(CommandQueues);
+        return new SimulationRuntimeStateCapture
+        {
+            Tick = Metrics.Tick,
+            StateHash = ComputeStateHash(),
+            DynamicOccupancy = World.DynamicOccupancy.CaptureRuntimeState(),
+            Units = units,
+            Combat = combat,
+            CommandQueues = queues,
+            ChokeTraffic = _chokeController?.CaptureRuntimeState(),
+            PrivateState = new RtsPrivateRuntimeSnapshot(
+                PathBudgetPerTick,
+                _pendingNavigationInvalidations,
+                _nextMovementGroupId,
+                _nextOrderSequenceId,
+                _pathRequests.ToArray())
+        };
+    }
+
+    internal void RestoreRuntimeState(SimulationRuntimeStateCapture snapshot)
+    {
+        if (snapshot.Units.Capacity != Units.Capacity)
+        {
+            throw new InvalidOperationException("Simulation runtime capacity mismatch.");
+        }
+        World.DynamicOccupancy.RestoreRuntimeState(snapshot.DynamicOccupancy);
+        Units.CopyRuntimeStateFrom(snapshot.Units);
+        Combat.CopyRuntimeStateFrom(snapshot.Combat);
+        CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
+        if (_chokeController is not null && snapshot.ChokeTraffic is not null)
+        {
+            _chokeController.RestoreRuntimeState(snapshot.ChokeTraffic);
+        }
+        else if (_chokeController is not null || snapshot.ChokeTraffic is not null)
+        {
+            throw new InvalidOperationException("Simulation choke runtime mismatch.");
+        }
+
+        Metrics.Tick = snapshot.Tick;
+        PathBudgetPerTick = snapshot.PrivateState.PathBudgetPerTick;
+        _pendingNavigationInvalidations =
+            snapshot.PrivateState.PendingNavigationInvalidations;
+        _nextMovementGroupId = snapshot.PrivateState.NextMovementGroupId;
+        _nextOrderSequenceId = snapshot.PrivateState.NextOrderSequenceId;
+        _pathRequests.Clear();
+        for (var index = 0; index < snapshot.PrivateState.PathRequests.Length; index++)
+        {
+            _pathRequests.Enqueue(snapshot.PrivateState.PathRequests[index]);
+        }
+        _commandRecorder = null;
+        _replayPackageRecorder = null;
+    }
+
     public void StartCommandRecording()
     {
         _commandRecorder = new SimulationCommandRecorder();

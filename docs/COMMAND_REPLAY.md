@@ -58,11 +58,11 @@ Tick + OrderKind + Queued + TargetX + TargetY + UnitCount + sorted UnitIds
 
 | 场景 | Hash 平均耗时 |
 |---|---:|
-| 256 单位移动 | 1.077ms |
-| 512 单位移动 | 1.285ms |
-| 1000 单位移动 | 1.853ms |
-| 128 总单位持续战斗 | 0.144ms |
-| 256 总单位持续战斗 | 0.917ms |
+| 256 单位移动 | 0.764ms |
+| 512 单位移动 | 1.787ms |
+| 1000 单位移动 | 1.425ms |
+| 128 总单位持续战斗 | 0.160ms |
+| 256 总单位持续战斗 | 0.715ms |
 
 基准对 Hash 设置独立门槛，避免后续扩大状态覆盖时悄然引入不可接受的诊断成本。
 
@@ -93,13 +93,28 @@ Checkpoint 会记录状态 Hash 格式版本，因此 v1 checkpoint 不会被误
 
 这一层固定了不泄漏内部 SoA 数组的上层契约，但恢复成本仍是 O(checkpoint Tick)，不是直接内存快照。
 
-## 8. 明确未完成项
+## 8. 热快照 v1
 
-E4.2 需要保存并直接恢复影响未来模拟的完整运行时状态，避免从 Tick 0 重演。Replay Package 目前记录矩形动态建筑，但尚未覆盖未来可能出现的单位生产/销毁、非矩形建筑或玩家/随机种子等玩法状态。
+热快照在 Tick 240 深拷贝当前运行态，并在恢复时直接写回新模拟实例，不执行 Tick 0～239。当前覆盖：
 
-跨平台 Lockstep、服务端权威和表现插值仍需在直接快照边界稳定后再决策。
+- Unit SoA 全部未来态、每单位路径点/游标和高层路线 waypoint。
+- Combat SoA 的生命、目标、AttackMove 意图、攻击槽、前摇与冷却。
+- 活动命令、Shift 队列环形缓冲、完成/溢出计数和稳定序列号。
+- 动态建筑 revision、next ID 和全部 footprint。
+- 狭口私有交通租约与诊断快照。
+- 路径预算、移动组/命令序列号、动态失效计数和待处理路径请求。
 
-## 9. 验证入口
+恢复后根据 snapshot Tick 直接定位 Replay Package 的世界命令和单位命令游标，再继续运行。验收场景在快照时同时存在 AttackMove 接敌、未消费 Shift 命令、活动路径、动态建筑和狭口状态；恢复至 Tick 720 后的 17 个采样与连续运行全部一致。热快照 Hash 为 `60606207D73440AD`，最终状态为 `5BCD03A0F9452F82`。
+
+热快照是进程内深拷贝对象，恢复不重演，但当前还不是可保存到磁盘或跨进程传输的字节格式。
+
+## 9. 明确未完成项
+
+E4.3 需要为热快照增加版本化、规范化的二进制编码和严格反序列化，使其可以保存到磁盘。Replay Package 目前记录矩形动态建筑，但尚未覆盖未来可能出现的单位生产/销毁、非矩形建筑或玩家/随机种子等玩法状态。
+
+跨平台 Lockstep、服务端权威和表现插值仍需在持久化格式稳定后再决策。
+
+## 10. 验证入口
 
 ```powershell
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
@@ -116,6 +131,9 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
   --headless --path . -- --visual-test replay-checkpoint-choke
+
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --visual-test replay-hot-snapshot
 ```
 
-当前状态 Hash v2 规范录像位于 `test_videos/20260711_113402/` 和 `test_videos/20260711_113232/`；更早三个目录保留为 v1 历史基线。
+当前状态 Hash v2 规范录像位于 `test_videos/20260711_113402/`、`test_videos/20260711_113232/` 和 `test_videos/20260711_114744/`；更早三个目录保留为 v1 历史基线。
