@@ -1,4 +1,5 @@
 using RtsDemo.Simulation;
+using RtsDemo.AI;
 
 namespace RtsDemo.Tests;
 
@@ -12,7 +13,8 @@ public static class SimulationSelfTest
         ClearanceBakeSnapshot? clearanceBake = null,
         BuildingTypeCatalogSnapshot? buildingTypes = null,
         ProductionCatalogSnapshot? productionCatalog = null,
-        TechnologyCatalogSnapshot? technologyCatalog = null)
+        TechnologyCatalogSnapshot? technologyCatalog = null,
+        AiConfigurationCatalogSnapshot? aiConfigurations = null)
     {
         try
         {
@@ -37,6 +39,8 @@ public static class SimulationSelfTest
             var technologyCatalogResult = TechnologyCatalogSelfTest.Run(
                 technologyCatalog);
             var aiArchitectureResult = AiArchitectureSelfTest.Run();
+            var aiConfigurationResult = AiConfigurationSelfTest.Run(
+                aiConfigurations);
             var modularAiResult = ModularAiPolicySelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
@@ -46,8 +50,9 @@ public static class SimulationSelfTest
                       economyResult.Passed && buildingTypeResult.Passed &&
                       productionCatalogResult.Passed &&
                       technologyCatalogResult.Passed &&
-                      aiArchitectureResult.Passed && modularAiResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 16)
+                      aiArchitectureResult.Passed &&
+                      aiConfigurationResult.Passed && modularAiResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 17)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -89,6 +94,9 @@ public static class SimulationSelfTest
                 $"ai-architecture=" +
                 $"{(aiArchitectureResult.Passed ? "PASS" : "FAIL")}" +
                 $"({aiArchitectureResult.Summary})",
+                $"ai-configuration=" +
+                $"{(aiConfigurationResult.Passed ? "PASS" : "FAIL")}" +
+                $"({aiConfigurationResult.Summary})",
                 $"ai-modular-policy=" +
                 $"{(modularAiResult.Passed ? "PASS" : "FAIL")}" +
                 $"({modularAiResult.Summary})"
@@ -99,7 +107,8 @@ public static class SimulationSelfTest
                     caseId, navigationMap, gameplayProfiles, clearanceBake,
                     buildingTypes: buildingTypes,
                     productionCatalog: productionCatalog,
-                    technologyCatalog: technologyCatalog);
+                    technologyCatalog: technologyCatalog,
+                    aiConfigurations: aiConfigurations);
                 while (session.Rig.Tick < session.DurationTicks)
                 {
                     session.Step();

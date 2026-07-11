@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="RtsAiConfigurationCatalogResource" format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/AiDifficultyProfileResource.cs" id="1_ai_profile"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsAiConfigurationCatalogResource.cs" id="2_ai_catalog"]
+
+[sub_resource type="Resource" id="Resource_7filn"]
+script = ExtResource("1_ai_profile")
+DisplayName = "Standard"
+
+[sub_resource type="Resource" id="Resource_evwjc"]
+script = ExtResource("1_ai_profile")
+Id = 1
+DisplayName = "Aggressive"
+TargetWorkers = 8
+AttackArmySize = 4
+MaximumIntentsPerDecision = 8
+SupplyBuffer = 2
+DecisionIntervalTicks = 10
+ScoutIntervalTicks = 240
+AttackIntervalTicks = 120
+DefenseRadius = 380.0
+
+[resource]
+script = ExtResource("2_ai_catalog")
+Profiles = Array[ExtResource("1_ai_profile")]([SubResource("Resource_7filn"), SubResource("Resource_evwjc")])

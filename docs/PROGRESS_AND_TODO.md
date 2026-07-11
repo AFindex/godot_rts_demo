@@ -896,7 +896,21 @@ S11-E 已收口。
 - 82/82 全量黑盒回归通过。Release 性能：256/512/1000 移动 P95 为 1.53/4.51/10.83ms，分配 27/182/461B/Tick；128/256 战斗 P95 为 2.23/4.71ms。
 - 60 秒 AV1/WebM 位于 `test_videos/20260712_005031/`；全库验证通过 108 个视频、56 个 manifest、107 个场景引用，编码均为 AV1。
 
-下一段为有限的 S11-H2：AI 配置 Resource、双 AI 错峰自对战、Simulation+Director 成对热恢复和 AI 命令 Package 全程回放。撤退/目标价值只做有失败场景支持的规则，不进入无穷微操调参。
+H1 当时限定的下一段为 S11-H2：AI 配置 Resource、双 AI 错峰自对战、Simulation+Director 成对热恢复和 AI 命令 Package 全程回放；完成情况如下。
+
+### AC：S11-H2 AI 数据、自对战与确定性恢复（已完成）
+
+- 新增纯 C# `AiConfigurationCatalogSnapshot v1`，Standard/Aggressive 两档配置 Hash 为 `509CED7A999A2BD0`；连续 ID、唯一名称、所有阈值和有限半径均严格验证。
+- 新增 Inspector 可编辑 `RtsAiConfigurationCatalogResource`/Profile 子资源、Fresh Load Converter 和 `data/demo_ai_configurations.tres`；主场景显式绑定资源。
+- 多 AI 共用一个 Director/Adapter，按 Player ID 排序；Standard 12 Tick offset 0，Aggressive 10 Tick offset 5，调度错峰。
+- `RtsAiRuntimeState` 同 Tick 捕获 Simulation Hot State 与全部 Director/Policy future。Tick 1,200 恢复后重新运行两个 AI 到 4,200，最终 Hash 与连续局一致。
+- Director 将已仲裁意图按 Construction→Production/Research→Economy→Unit 稳定域顺序执行，修复策略优先级顺序与 Replay Runner 不同导致的 Hash 分歧。
+- Replay Package v11 从 Tick 0 只重放 31 条经济、10 条建造、51 条生产/研究和 130 条单位命令，不创建 AI，最终 Hash 与连续局一致。
+- `ai-dual-runtime-replay` 4,200 Tick 黑盒自对战通过；70 秒 AV1/WebM 位于 `test_videos/20260712_011731/`。
+- 83/83 全量黑盒回归通过。Release 性能：256/512/1000 移动 P95 为 2.69/4.55/8.87ms，分配 27/182/461B/Tick；128/256 战斗 P95 为 1.95/6.80ms。
+- 全库录像验证通过 109 个视频、57 个 manifest、108 个场景引用，编码均为 AV1。
+
+S11-H 已收口。后续不继续无证据优化 AI 微操；转入实际玩法闭环剩余的明确功能或由新失败场景驱动改进。
 
 ## 8. 可以并行但不能提前耦合的优化
 

@@ -1,4 +1,5 @@
 using Godot;
+using RtsDemo.AI;
 using RtsDemo.Simulation;
 using RtsDemo.Tests;
 using RtsDemo.GodotRuntime.Resources;
@@ -20,6 +21,8 @@ public partial class RtsDemo : Node2D
         "res://data/demo_production_catalog.tres";
     private const string DemoTechnologyCatalogResourcePath =
         "res://data/demo_technology_catalog.tres";
+    private const string DemoAiConfigurationResourcePath =
+        "res://data/demo_ai_configurations.tres";
     private const string DemoClearanceBakeResourcePath =
         "res://data/demo_clearance_bake.tres";
 
@@ -39,6 +42,9 @@ public partial class RtsDemo : Node2D
     public RtsTechnologyCatalogResource? TechnologyCatalogAsset { get; set; }
 
     [Export]
+    public RtsAiConfigurationCatalogResource? AiConfigurationAsset { get; set; }
+
+    [Export]
     public RtsClearanceBakeResource? ClearanceBakeAsset { get; set; }
 
     [Export]
@@ -52,6 +58,7 @@ public partial class RtsDemo : Node2D
     private PortalGraphRoutePlanner? _routePlanner;
     private ChokeController? _chokeController;
     private VisualTestSession? _visualTest;
+    private AiConfigurationCatalogSnapshot? _aiConfigurations;
     private Label? _hud;
     private Control? _hudRoot;
     private bool _navigationReady;
@@ -204,6 +211,21 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-ai-configurations"))
+        {
+            GenerateDemoAiConfigurations();
+            return;
+        }
+
+        if (userArguments.Contains("--validate-ai-configurations"))
+        {
+            AiConfigurationAsset = null;
+            _aiConfigurations = null;
+            var valid = TryLoadAiConfigurations();
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--generate-demo-clearance-bake"))
         {
             if (!TryLoadNavigationSnapshot())
@@ -244,7 +266,8 @@ public partial class RtsDemo : Node2D
 
             var result = SimulationSelfTest.Run(
                 _navigationSnapshot, _gameplayProfiles, _clearanceBake,
-                _buildingTypes, _productionCatalog, _technologyCatalog);
+                _buildingTypes, _productionCatalog, _technologyCatalog,
+                _aiConfigurations);
             GD.Print($"RTS_SELF_TEST {(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -1835,7 +1858,8 @@ public partial class RtsDemo : Node2D
             _hotReloadCandidate,
             _buildingTypes,
             _productionCatalog,
-            _technologyCatalog);
+            _technologyCatalog,
+            _aiConfigurations);
         }
         catch (ArgumentException exception)
         {
@@ -2024,7 +2048,33 @@ public partial class RtsDemo : Node2D
         TryLoadBuildingTypes() &&
         TryLoadProductionCatalog() &&
         TryLoadTechnologyCatalog() &&
+        TryLoadAiConfigurations() &&
         TryLoadClearanceBake();
+
+    private bool TryLoadAiConfigurations()
+    {
+        if (_aiConfigurations is not null) return true;
+        var resourcePath = AiConfigurationAsset?.ResourcePath ??
+                           DemoAiConfigurationResourcePath;
+        var converted = AiConfigurationAsset is not null
+            ? AiConfigurationResourceConverter.TryConvert(
+                AiConfigurationAsset, out var snapshot, out var validation)
+            : AiConfigurationResourceConverter.TryLoadSnapshot(
+                DemoAiConfigurationResourcePath, out snapshot, out validation);
+        if (converted && snapshot is not null)
+        {
+            _aiConfigurations = snapshot;
+            GD.Print(
+                $"RTS_AI_CONFIG PASS path={resourcePath} " +
+                $"format={snapshot.FormatVersion} hash={snapshot.StableHashText} " +
+                $"profiles={snapshot.Profiles.Length}");
+            return true;
+        }
+        GD.PushError(
+            $"RTS_AI_CONFIG FAIL code={validation.Code} " +
+            $"index={validation.Index} message={validation.Message}");
+        return false;
+    }
 
     private bool TryLoadProductionCatalog()
     {
@@ -2268,6 +2318,24 @@ public partial class RtsDemo : Node2D
         GD.Print(
             $"RTS_TECHNOLOGY_CATALOG_GENERATE error={error} " +
             $"path={DemoTechnologyCatalogResourcePath} " +
+            $"hash={snapshot.StableHashText}");
+        GetTree().Quit(error == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateDemoAiConfigurations()
+    {
+        var snapshot = DemoAiConfigurations.CreateCatalog();
+        var resource = AiConfigurationResourceConverter.FromSnapshot(snapshot);
+        if (!EnsureDataDirectory())
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        var error = ResourceSaver.Save(
+            resource, DemoAiConfigurationResourcePath);
+        GD.Print(
+            $"RTS_AI_CONFIG_GENERATE error={error} " +
+            $"path={DemoAiConfigurationResourcePath} " +
             $"hash={snapshot.StableHashText}");
         GetTree().Quit(error == Error.Ok ? 0 : 1);
     }

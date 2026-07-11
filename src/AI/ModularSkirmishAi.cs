@@ -34,12 +34,29 @@ public sealed record ModularAiConfig(
     int MaximumIntentsPerDecision = 6,
     int SupplyBuffer = 3,
     long ScoutIntervalTicks = 360,
-    long AttackIntervalTicks = 240)
+    long AttackIntervalTicks = 240,
+    float DefenseRadius = 340f)
 {
     public static ModularAiConfig Demo() => new(
         DemoBuildingTypes.CreateCatalog(),
         DemoProductionCatalog.CreateSnapshot(),
         DemoTechnologies.CreateCatalog());
+
+    public static ModularAiConfig FromProfile(
+        BuildingTypeCatalogSnapshot buildings,
+        ProductionCatalogSnapshot production,
+        TechnologyCatalogSnapshot technologies,
+        AiDifficultyProfile profile) => new(
+        buildings,
+        production,
+        technologies,
+        profile.TargetWorkers,
+        profile.AttackArmySize,
+        profile.MaximumIntentsPerDecision,
+        profile.SupplyBuffer,
+        profile.ScoutIntervalTicks,
+        profile.AttackIntervalTicks,
+        profile.DefenseRadius);
 }
 
 public readonly record struct AiIntentProposal(
@@ -214,7 +231,8 @@ public sealed class ModularSkirmishAiPolicy : IRtsAiPolicy, IRtsAiExecutionObser
         if (config.TargetWorkers <= 0 || config.AttackArmySize <= 0 ||
             config.MaximumIntentsPerDecision is <= 0 or > 64 ||
             config.SupplyBuffer < 0 || config.ScoutIntervalTicks <= 0 ||
-            config.AttackIntervalTicks <= 0)
+            config.AttackIntervalTicks <= 0 ||
+            !float.IsFinite(config.DefenseRadius) || config.DefenseRadius <= 0f)
         {
             throw new ArgumentOutOfRangeException(nameof(config));
         }
@@ -766,6 +784,8 @@ public sealed class DefensePlanner : IAiPlanner
     public void Plan(AiPlanningContext context)
     {
         var observation = context.Observation;
+        if (observation.Tick - context.Blackboard.LastAttackTick < 30)
+            return;
         var army = observation.OwnUnits
             .Where(value => !value.IsWorker)
             .OrderBy(value => value.UnitId)
@@ -778,7 +798,7 @@ public sealed class DefensePlanner : IAiPlanner
         var threats = AiTargeting.VisibleEnemies(observation.View)
             .Where(target => operationalBases.Any(economyBase =>
                 Vector2.DistanceSquared(target.Position, economyBase.Position) <=
-                340f * 340f))
+                context.Config.DefenseRadius * context.Config.DefenseRadius))
             .OrderBy(target => operationalBases.Min(economyBase =>
                 Vector2.DistanceSquared(target.Position, economyBase.Position)))
             .ToArray();

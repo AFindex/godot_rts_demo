@@ -1,4 +1,5 @@
 using System.Numerics;
+using RtsDemo.AI;
 using RtsDemo.Simulation;
 
 namespace RtsDemo.Tests;
@@ -63,6 +64,7 @@ public static class VisualTestCatalog
         "player-visibility-authority",
         "match-capability-elimination",
         "ai-modular-skirmish",
+        "ai-dual-runtime-replay",
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
@@ -103,7 +105,8 @@ public static class VisualTestCatalog
         RuntimeResourceSetSnapshot? hotReloadCandidate = null,
         BuildingTypeCatalogSnapshot? buildingTypes = null,
         ProductionCatalogSnapshot? productionCatalog = null,
-        TechnologyCatalogSnapshot? technologyCatalog = null) => caseId switch
+        TechnologyCatalogSnapshot? technologyCatalog = null,
+        AiConfigurationCatalogSnapshot? aiConfigurations = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
@@ -177,7 +180,9 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "match-capability-elimination" => CreateMatchCapabilityElimination(
             navigationMap, gameplayProfiles, clearanceBake),
-        "ai-modular-skirmish" => CreateModularAiSkirmish(),
+        "ai-modular-skirmish" => CreateModularAiSkirmish(aiConfigurations),
+        "ai-dual-runtime-replay" => CreateDualAiRuntimeReplay(
+            navigationMap, gameplayProfiles, clearanceBake, aiConfigurations),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
@@ -2561,7 +2566,8 @@ public static class VisualTestCatalog
         return session;
     }
 
-    private static VisualTestSession CreateModularAiSkirmish()
+    private static VisualTestSession CreateModularAiSkirmish(
+        AiConfigurationCatalogSnapshot? aiConfigurations)
     {
         var rig = MovementTestRig.CreateEconomyMap(
             new Vector2(1280f, 720f), 64);
@@ -2683,8 +2689,9 @@ public static class VisualTestCatalog
         {
             attached = runtime.ObserveMatch().Players.All(value =>
                 value.EstablishedPresence);
-            runtime.AttachDemoAi(1, targetWorkers: 10, attackArmySize: 4,
-                buildingSeconds: 1.2f);
+            var profile = (aiConfigurations ?? DemoAiConfigurations.CreateCatalog())
+                .Profile(0) with { AttackArmySize = 4 };
+            runtime.AttachDemoAi(1, profile, buildingSeconds: 1.2f);
         });
         session.At(900, "Economy and infrastructure planners operate concurrently", runtime =>
         {
@@ -2702,6 +2709,143 @@ public static class VisualTestCatalog
             mobilized = player.CombatUnits >= 4 &&
                         runtime.ObserveAi().LastDecisionTick >= 1788;
         });
+        return session;
+    }
+
+    private static VisualTestSession CreateDualAiRuntimeReplay(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake,
+        AiConfigurationCatalogSnapshot? aiConfigurations)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        aiConfigurations ??= DemoAiConfigurations.CreateCatalog();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            96, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 3600, 1000, 15, 6);
+        rig.RegisterPlayer(2, 3600, 1000, 15, 6);
+        var leftWorkers = Enumerable.Range(0, 6).Select(index =>
+            rig.SpawnWorker(
+                new Vector2(80f + index % 2 * 18f, 300f + index * 24f), 1))
+            .ToArray();
+        var rightWorkers = Enumerable.Range(0, 6).Select(index =>
+            rig.SpawnWorker(
+                new Vector2(1190f - index % 2 * 18f, 440f + index * 24f), 2))
+            .ToArray();
+        var leftMinerals = new[]
+        {
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(370f, 250f), 4000, 8, 0.35f, 2),
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(410f, 350f), 4000, 8, 0.35f, 2),
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(370f, 460f), 4000, 8, 0.35f, 2)
+        };
+        var rightMinerals = new[]
+        {
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(1090f, 190f), 4000, 8, 0.35f, 2),
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(1110f, 330f), 4000, 8, 0.35f, 2),
+            rig.AddResourceNode(TestEconomyResourceKind.Minerals,
+                new Vector2(1060f, 640f), 4000, 8, 0.35f, 2)
+        };
+        rig.AddResourceNode(TestEconomyResourceKind.VespeneGas,
+            new Vector2(300f, 570f), 4000, 8, 0.4f, 3, true, false);
+        rig.AddResourceNode(TestEconomyResourceKind.VespeneGas,
+            new Vector2(1170f, 150f), 4000, 8, 0.4f, 3, true, false);
+        var townHall = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 0.5f,
+            MaximumHealth = 720f,
+            SupplyProvided = 0
+        };
+        rig.StartMatch(1, 2);
+        rig.StartReplayPackageRecording();
+        var leftBase = rig.Build(
+            1, leftWorkers[0], townHall, new Vector2(220f, 350f));
+        var rightBase = rig.Build(
+            2, rightWorkers[0], townHall, new Vector2(1080f, 500f));
+        for (var index = 1; index < 6; index++)
+        {
+            rig.Gather(1, leftWorkers[index], leftMinerals[(index - 1) % 3]);
+            rig.Gather(2, rightWorkers[index], rightMinerals[(index - 1) % 3]);
+        }
+
+        TestAiRuntimeCapture? pairedCapture = null;
+        var bothActive = false;
+        const long captureTick = 1200;
+        var visible = leftWorkers.Concat(rightWorkers).ToArray();
+        var session = new VisualTestSession(
+            "ai-dual-runtime-replay",
+            "Two offset AIs with paired hot restore and command-only replay",
+            4200,
+            rig,
+            visible,
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var persistence = runtime.ValidateAiPersistence(
+                    package, pairedCapture!, runtime.Tick);
+                var match = runtime.ObserveMatch();
+                var first = runtime.ObserveAi(1);
+                var second = runtime.ObserveAi(2);
+                var offset = first.LastDecisionTick != second.LastDecisionTick;
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out _);
+                var commandCoverage = package.EconomyCommandCount >= 12 &&
+                                      package.ConstructionCommandCount >= 8 &&
+                                      package.ProductionCommandCount >= 12 &&
+                                      package.UnitCommandCount >= 8;
+                var configMatches = aiConfigurations.StableHash ==
+                                    DemoAiConfigurations.CreateCatalog().StableHash;
+                var passed = leftBase.Succeeded && rightBase.Succeeded &&
+                             bothActive && pairedCapture?.AgentCount == 2 &&
+                             persistence.LiveExact && persistence.ReplayExact &&
+                             packageRoundTrip && offset && commandCoverage &&
+                             configMatches;
+                return new ScenarioResult(
+                    passed,
+                    $"build={leftBase.Code}/{rightBase.Code}, established={bothActive}, " +
+                    $"winner={match.WinnerPlayerId}@{match.CompletedTick}, " +
+                    $"capture={pairedCapture?.Tick}/agents{pairedCapture?.AgentCount}, " +
+                    $"offset={first.LastDecisionTick}/{second.LastDecisionTick}, " +
+                    $"live={persistence.LiveExact}, replayNoAi={persistence.ReplayExact}, " +
+                    $"package={package.FormatVersion}/{packageRoundTrip}, " +
+                    $"commands=e{package.EconomyCommandCount}/" +
+                    $"b{package.ConstructionCommandCount}/" +
+                    $"p{package.ProductionCommandCount}/u{package.UnitCommandCount}, " +
+                    $"config={configMatches}/{aiConfigurations.StableHashText}");
+            })
+            .RenderSpawnedUnits()
+            .Highlight(
+                new SimRect(new Vector2(25f, 80f), new Vector2(520f, 650f)),
+                "STANDARD AI: 12-tick decisions, economy before commitment",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(990f, 80f), new Vector2(1255f, 680f)),
+                "AGGRESSIVE AI: 10-tick decisions with offset 5",
+                TestDiagnosticKind.Rejected)
+            .Highlight(
+                new SimRect(new Vector2(500f, 290f), new Vector2(760f, 415f)),
+                "CHOKE: both restored live AI and command-only replay must match",
+                TestDiagnosticKind.Accepted);
+        session.At(60, "Load Resource profiles and attach offset AI agents", runtime =>
+        {
+            bothActive = runtime.ObserveMatch().Players.All(value =>
+                value.EstablishedPresence);
+            runtime.AttachDemoAi(
+                1, aiConfigurations.Profile(0), 1.2f, decisionOffsetTicks: 0);
+            runtime.AttachDemoAi(
+                2, aiConfigurations.Profile(1), 1.2f, decisionOffsetTicks: 5);
+        });
+        session.At(captureTick, "Capture Simulation and both policy futures together",
+            runtime =>
+            {
+                bothActive = runtime.ObserveMatch().Players.All(value =>
+                    value.EstablishedPresence);
+                pairedCapture = runtime.CaptureAiRuntimeState();
+            });
         return session;
     }
 

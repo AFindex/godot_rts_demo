@@ -159,6 +159,34 @@ public readonly record struct AiAgentRuntimeEntry(
 
 public sealed record RtsAiDirectorSnapshot(AiAgentRuntimeEntry[] Agents);
 
+internal sealed record RtsAiRuntimeSnapshot(
+    long Tick,
+    SimulationRuntimeStateCapture Simulation,
+    RtsAiDirectorSnapshot Director);
+
+internal static class RtsAiRuntimeState
+{
+    public static RtsAiRuntimeSnapshot Capture(
+        RtsSimulation simulation,
+        RtsAiDirector director) => new(
+        simulation.Metrics.Tick,
+        simulation.CaptureRuntimeState(),
+        director.CaptureState());
+
+    public static void Restore(
+        RtsSimulation simulation,
+        RtsAiDirector director,
+        RtsAiRuntimeSnapshot snapshot)
+    {
+        if (snapshot.Tick < 0 || snapshot.Simulation.Tick != snapshot.Tick ||
+            snapshot.Director.Agents.Any(value =>
+                value.LastDecisionTick > snapshot.Tick))
+            throw new InvalidOperationException("AI runtime snapshot tick mismatch.");
+        simulation.RestoreRuntimeState(snapshot.Simulation);
+        director.RestoreState(snapshot.Director);
+    }
+}
+
 public sealed class RtsAiDirector
 {
     private readonly IRtsAiObservationSource _observations;
@@ -218,7 +246,9 @@ public sealed class RtsAiDirector
             }
             agent.Buffer.Clear();
             agent.Policy.Decide(observation, agent.Buffer);
-            foreach (var intent in agent.Buffer.Intents)
+            var executionBatch = agent.Buffer.Intents.ToArray()
+                .OrderBy(intent => ExecutionDomain(intent.Kind));
+            foreach (var intent in executionBatch)
             {
                 var result = _executor.Execute(agent.PlayerId, intent);
                 if (agent.Policy is IRtsAiExecutionObserver observer)
@@ -229,6 +259,16 @@ public sealed class RtsAiDirector
         }
         return executed;
     }
+
+    private static int ExecutionDomain(AiIntentKind kind) => kind switch
+    {
+        AiIntentKind.Build or AiIntentKind.ResumeBuild => 0,
+        AiIntentKind.Train or AiIntentKind.Research => 1,
+        AiIntentKind.Gather or AiIntentKind.TransferWorkers => 2,
+        AiIntentKind.Move or AiIntentKind.AttackMove or AiIntentKind.AttackUnit or
+            AiIntentKind.AttackBuilding => 3,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 
     public RtsAiDirectorSnapshot CaptureState() => new(
         _agents.Select(value => new AiAgentRuntimeEntry(
