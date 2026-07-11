@@ -18,7 +18,7 @@
 
 验证器会拒绝未知版本、空目录、非连续 ID、重复名称、无效数值/枚举和不一致的功能
 契约。规范二进制使用固定字段顺序和 little-endian 基础类型，FNV-1a 64-bit Hash 用于
-确定性比较；当前 Demo Hash 为 `8862BE2D31947235`。
+确定性比较；当前五类 Demo 建筑新增 Academy/Research，Hash 为 `57DB7C4B43C00E8E`。
 `BuildingTypeCatalogDiff` 以稳定 Hash 判断是否变化，并给出逐类型变化数量；单项造价
 修改会稳定报告一个 Changed Type，供后续生产队列的安全重建策略消费。
 

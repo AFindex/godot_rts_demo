@@ -543,6 +543,7 @@ public partial class RtsDemo : Node2D
                 BuildingFunctionKind.Production => new Color("e58b52"),
                 BuildingFunctionKind.TownHall => new Color("5b9fe8"),
                 BuildingFunctionKind.Refinery => new Color("63d68b"),
+                BuildingFunctionKind.Research => new Color("a783e8"),
                 _ => new Color("d6d6d6")
             };
             var completed = building.State == BuildingLifecycleState.Completed;
@@ -567,6 +568,7 @@ public partial class RtsDemo : Node2D
                 12,
                 new Color("f5f7fa"));
             var production = _simulation.Production.Observe(building.Id);
+            var research = _simulation.Technology.Observe(building.Id);
             if (production.Orders.Length > 0)
             {
                 var active = production.Orders[0];
@@ -586,12 +588,36 @@ public partial class RtsDemo : Node2D
                     11,
                     new Color("b9efff"));
             }
+            if (research.Orders.Length > 0)
+            {
+                var activeResearch = research.Orders[0];
+                DrawRect(
+                    new Rect2(
+                        rect.Position + new Vector2(0f, rect.Size.Y - 19f),
+                        new Vector2(
+                            rect.Size.X * Math.Clamp(activeResearch.Progress, 0f, 1f),
+                            5f)),
+                    new Color("bd8cff"), true);
+                DrawString(
+                    ThemeDB.FallbackFont,
+                    rect.Position + new Vector2(5f, 34f),
+                    $"{activeResearch.Technology.Name} L" +
+                    $"{_simulation.Technology.Level(
+                        activeResearch.PlayerId,
+                        activeResearch.Technology.Id) + 1}  " +
+                    $"Q:{research.Orders.Length}",
+                    HorizontalAlignment.Left,
+                    rect.Size.X - 10f,
+                    11,
+                    new Color("eadbff"));
+            }
             if (_selectedBuilding == building.Id)
             {
                 DrawString(
                     ThemeDB.FallbackFont,
                     rect.Position + new Vector2(
-                        5f, production.Orders.Length > 0 ? 51f : 35f),
+                        5f, production.Orders.Length > 0 ||
+                            research.Orders.Length > 0 ? 51f : 35f),
                     $"HP {building.Health:0}/{building.MaximumHealth:0}  {building.State}",
                     HorizontalAlignment.Left,
                     rect.Size.X - 10f,
@@ -1512,6 +1538,7 @@ public partial class RtsDemo : Node2D
             $"bake reload {metrics.ClearanceBakeReloads}  " +
             $"buildings {_world?.DynamicOccupancy.Count ?? 0}  " +
             $"production {_simulation.Production.ActiveOrderCount}  " +
+            $"research {_simulation.Technology.ActiveOrderCount}  " +
             $"invalidated {metrics.NavigationInvalidations}  " +
             $"recovery {metrics.RecoveryEvents}  unreachable {metrics.UnreachableUnits}\n" +
             $"map {ActiveNavigationLabel()}  " +

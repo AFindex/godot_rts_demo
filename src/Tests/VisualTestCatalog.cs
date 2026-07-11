@@ -66,6 +66,7 @@ public static class VisualTestCatalog
         "production-catalog-resource-runtime",
         "production-rally-smart-targets",
         "production-building-prerequisites",
+        "technology-research-upgrades",
         "construction-replay-persistence",
         "combat-attack-building",
         "shared-target-reservations",
@@ -179,6 +180,9 @@ public static class VisualTestCatalog
                 navigationMap, gameplayProfiles, clearanceBake),
         "production-building-prerequisites" =>
             CreateProductionBuildingPrerequisites(
+                navigationMap, gameplayProfiles, clearanceBake),
+        "technology-research-upgrades" =>
+            CreateTechnologyResearchUpgrades(
                 navigationMap, gameplayProfiles, clearanceBake),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
@@ -1109,7 +1113,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 7 &&
+                    exact && rejected && hot.FormatVersion == 8 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1203,7 +1207,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
+                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2584,9 +2588,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 7 &&
-                             producingHot.FormatVersion == 7 &&
-                             waitingHot.FormatVersion == 7 &&
+                             package.FormatVersion == 8 &&
+                             producingHot.FormatVersion == 8 &&
+                             waitingHot.FormatVersion == 8 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -2802,7 +2806,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
+                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -2813,7 +2817,7 @@ public static class VisualTestCatalog
                     $"marine={marine.Position}->{marine.AssignedTarget}, " +
                     $"protocol={protocol}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log3/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"versions=log4/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
                     $"buildings={runtime.ObserveGameplayBuilding(townHall.BuildingId).State}/" +
                     $"{runtime.ObserveGameplayBuilding(barracks.BuildingId).State}, " +
                     $"issued={issued}({issueDetails}), ids={townHall.BuildingId.Value}/" +
@@ -2942,7 +2946,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
+                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -2954,7 +2958,7 @@ public static class VisualTestCatalog
                     $"{secondBarracks.Succeeded}, train={trained}, " +
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log3/package{package.FormatVersion}/hot{hot.FormatVersion}");
+                    $"versions=log4/package{package.FormatVersion}/hot{hot.FormatVersion}");
             });
         session.At(650, "Reject advanced unit while one Barracks is missing", runtime =>
         {
@@ -2984,6 +2988,148 @@ public static class VisualTestCatalog
             .Highlight(
                 new SimRect(new Vector2(320f, 190f), new Vector2(480f, 340f)),
                 "PRODUCTION AVAILABILITY: locked -> available",
+                TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateTechnologyResearchUpgrades(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var weapon = DemoTechnologies.InfantryWeapons with
+        {
+            ResearchSeconds = 1f,
+            MaximumLevel = 2
+        };
+        var assault = DemoTechnologies.AssaultDoctrine with
+        {
+            ResearchSeconds = 1f
+        };
+        var fortification = DemoTechnologies.FortificationDoctrine with
+        {
+            ResearchSeconds = 1f
+        };
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            24, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 3000, 2000, 20, 0);
+        var builder = rig.SpawnWorker(new Vector2(230f, 260f), 1);
+        rig.StartReplayPackageRecording();
+        var academy = rig.Build(
+            1, builder,
+            DemoBuildingTypes.Academy with { BuildSeconds = 1f },
+            new Vector2(400f, 260f));
+        var prerequisiteRejected = false;
+        var duplicateRejected = false;
+        var cancelRefunded = false;
+        var queuedConflictRejected = false;
+        var completedConflictRejected = false;
+        var maximumRejected = false;
+        var commandsIssued = false;
+        TestRuntimeStateCapture? activeCapture = null;
+        const long hotTick = 750;
+        var session = new VisualTestSession(
+            "technology-research-upgrades",
+            "Research levels, cancellation, prerequisites and exclusivity persist",
+            1320,
+            rig,
+            [builder],
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var log = runtime.CaptureProductionCommandLog();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var logRoundTrip = log.TryCanonicalRoundTrip(out var decodedLog);
+                var hot = runtime.BindHotSnapshot(package, activeCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var baseline = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = baseline.FinalHash == runtime.StateHash &&
+                            resumed.FinalHash == runtime.StateHash &&
+                            baseline.MatchesFrom(resumed, hotTick);
+                var economy = runtime.ObservePlayerEconomy(1);
+                var assaultAvailability = runtime.ObserveResearchAvailability(
+                    1, academy.BuildingId, assault);
+                var rejected = log.RejectsUnsupportedVersion() &&
+                               log.RejectsTruncatedPayload() &&
+                               package.RejectsUnsupportedVersion() &&
+                               package.RejectsTruncatedPayload() &&
+                               hot.RejectsUnsupportedVersion() &&
+                               hot.RejectsTruncatedPayload();
+                var passed = academy.Succeeded && prerequisiteRejected &&
+                             duplicateRejected && cancelRefunded &&
+                             queuedConflictRejected && completedConflictRejected &&
+                             maximumRejected && commandsIssued &&
+                             runtime.TechnologyLevel(1, weapon.Id) == 2 &&
+                             runtime.TechnologyLevel(1, assault.Id) == 1 &&
+                             runtime.TechnologyLevel(1, fortification.Id) == 0 &&
+                             runtime.ResearchQueueCount(academy.BuildingId) == 0 &&
+                             assaultAvailability.Code ==
+                                 TestResearchCommandCode.MaximumLevel &&
+                             economy.Minerals == 2475 &&
+                             economy.VespeneGas == 1575 &&
+                             packageRoundTrip && logRoundTrip && hotRoundTrip &&
+                             decodedLog!.StableHash == log.StableHash &&
+                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
+                             package.ConstructionCommandCount == 1 &&
+                             package.ProductionCommandCount == 5 && exact && rejected;
+                return new ScenarioResult(
+                    passed,
+                    $"levels=weapon{runtime.TechnologyLevel(1, weapon.Id)}/" +
+                    $"assault{runtime.TechnologyLevel(1, assault.Id)}/" +
+                    $"fort{runtime.TechnologyLevel(1, fortification.Id)}, " +
+                    $"rules={prerequisiteRejected}/{duplicateRejected}/" +
+                    $"{queuedConflictRejected}/{completedConflictRejected}/" +
+                    $"{maximumRejected}, cancel={cancelRefunded}, " +
+                    $"resources={economy.Minerals}/{economy.VespeneGas}, " +
+                    $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
+                    $"versions=log4/package{package.FormatVersion}/hot{hot.FormatVersion}");
+            });
+        session.At(700, "Reject doctrine, cancel first weapon order, then requeue", runtime =>
+        {
+            prerequisiteRejected = runtime.Research(
+                1, academy.BuildingId, assault).Code ==
+                TestResearchCommandCode.MissingPrerequisite;
+            var first = runtime.Research(1, academy.BuildingId, weapon);
+            duplicateRejected = runtime.Research(
+                1, academy.BuildingId, weapon).Code ==
+                TestResearchCommandCode.AlreadyQueued;
+            cancelRefunded = first.Succeeded &&
+                             runtime.CancelResearch(1, first.OrderId);
+            var replacement = runtime.Research(1, academy.BuildingId, weapon);
+            commandsIssued = replacement.Succeeded;
+        });
+        session.At(hotTick, "Capture active level-one research",
+            runtime => activeCapture = runtime.CaptureRuntimeState());
+        session.At(820, "Queue Assault Doctrine and reject its exclusive sibling", runtime =>
+        {
+            var assaultOrder = runtime.Research(1, academy.BuildingId, assault);
+            queuedConflictRejected = runtime.Research(
+                1, academy.BuildingId, fortification).Code ==
+                TestResearchCommandCode.MutuallyExclusive;
+            commandsIssued &= assaultOrder.Succeeded;
+        });
+        session.At(900, "Reject exclusive doctrine after Assault completes", runtime =>
+            completedConflictRejected = runtime.Research(
+                1, academy.BuildingId, fortification).Code ==
+                TestResearchCommandCode.MutuallyExclusive);
+        session.At(940, "Research Infantry Weapons level two", runtime =>
+            commandsIssued &= runtime.Research(
+                1, academy.BuildingId, weapon).Succeeded);
+        session.At(1040, "Reject research beyond configured maximum level", runtime =>
+            maximumRejected = runtime.Research(
+                1, academy.BuildingId, weapon).Code ==
+                TestResearchCommandCode.MaximumLevel);
+        return session
+            .Highlight(
+                new SimRect(new Vector2(330f, 210f), new Vector2(470f, 320f)),
+                "ACADEMY: formal research queue",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(500f, 180f), new Vector2(900f, 400f)),
+                "LEVELS + PREREQUISITES + EXCLUSIVE DOCTRINES",
                 TestDiagnosticKind.Accepted);
     }
 
@@ -3078,7 +3224,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
+                             package.FormatVersion == 8 && hot.FormatVersion == 8 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -3192,7 +3338,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 7 && exact;
+                             hotRoundTrip && hot.FormatVersion == 8 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

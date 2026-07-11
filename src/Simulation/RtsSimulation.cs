@@ -74,6 +74,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Economy = new EconomySystem(capacity);
         Construction = new ConstructionSystem();
         Production = new ProductionSystem();
+        Technology = new TechnologySystem();
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
@@ -105,6 +106,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public EconomySystem Economy { get; }
     public ConstructionSystem Construction { get; }
     public ProductionSystem Production { get; }
+    public TechnologySystem Technology { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -199,6 +201,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Economy = Economy.CaptureRuntimeState(Units.Count),
             Construction = Construction.CaptureRuntimeState(),
             Production = Production.CaptureRuntimeState(),
+            Technology = Technology.CaptureRuntimeState(),
             CommandQueues = queues,
             ChokeTraffic = _chokeController?.CaptureRuntimeState(),
             PrivateState = new RtsPrivateRuntimeSnapshot(
@@ -223,6 +226,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Construction.RestoreRuntimeState(snapshot.Construction);
         Production.RestoreRuntimeState(
             snapshot.Production, Construction, Economy, Units);
+        Technology.RestoreRuntimeState(
+            snapshot.Technology, Construction, Economy.Players);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -444,6 +449,19 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 if (!SetProductionRallyTarget(
                         command.PlayerId, command.Producer, command.Rally))
                     throw new InvalidOperationException("Replay Rally failed.");
+                break;
+            case ProductionReplayCommandKind.Research:
+                var research = IssueResearch(
+                    command.PlayerId, command.Producer, command.Technology);
+                if (!research.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Replay Research failed with {research.Code}.");
+                break;
+            case ProductionReplayCommandKind.CancelResearch:
+                if (!Technology.Observe(command.Producer).Orders.Any(
+                        value => value.Id == command.ResearchOrderId) ||
+                    !CancelResearch(command.PlayerId, command.ResearchOrderId))
+                    throw new InvalidOperationException("Replay research Cancel failed.");
                 break;
             default:
                 throw new InvalidOperationException(
@@ -806,6 +824,29 @@ public sealed class RtsSimulation : ICombatMovementDriver
         if (result)
             _productionCommandRecorder?.RecordRally(
                 Metrics.Tick, playerId, producer, rally);
+        return result;
+    }
+
+    public ResearchCommandResult IssueResearch(
+        int playerId,
+        GameplayBuildingId researcher,
+        TechnologyProfile technology)
+    {
+        var result = Technology.Enqueue(
+            playerId, researcher, technology, Construction, Economy.Players);
+        if (result.Succeeded)
+            _productionCommandRecorder?.RecordResearch(
+                Metrics.Tick, playerId, researcher, technology);
+        return result;
+    }
+
+    public bool CancelResearch(int playerId, ResearchOrderId orderId)
+    {
+        var result = Technology.Cancel(
+            playerId, orderId, Economy.Players, out var researcher);
+        if (result)
+            _productionCommandRecorder?.RecordCancelResearch(
+                Metrics.Tick, playerId, researcher, orderId);
         return result;
     }
 
@@ -1241,6 +1282,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             World,
             _productionSpawnUnit,
             _productionApplyRally);
+        Technology.Update(delta, Construction, Economy.Players);
         Economy.Update(
             delta, Units, _economyMoveWorker, _economyStopWorker);
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);

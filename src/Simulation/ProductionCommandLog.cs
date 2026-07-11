@@ -8,7 +8,9 @@ public enum ProductionReplayCommandKind : byte
 {
     Train = 1,
     Cancel = 2,
-    SetRallyPoint = 3
+    SetRallyPoint = 3,
+    Research = 4,
+    CancelResearch = 5
 }
 
 public readonly record struct RecordedProductionCommand(
@@ -18,7 +20,9 @@ public readonly record struct RecordedProductionCommand(
     GameplayBuildingId Producer,
     ProductionOrderId OrderId,
     ProductionRecipeProfile Recipe,
-    RallyTarget Rally);
+    RallyTarget Rally,
+    ResearchOrderId ResearchOrderId,
+    TechnologyProfile Technology);
 
 public enum ProductionCommandLogValidationCode : byte
 {
@@ -36,7 +40,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {
@@ -92,13 +96,21 @@ public sealed class ProductionCommandLogSnapshot
                 {
                     ProductionReplayCommandKind.Train => new(
                         tick, kind, player, producer, default,
-                        ProductionSerialization.ReadRecipe(reader), default),
+                        ProductionSerialization.ReadRecipe(reader), default,
+                        default, default),
                     ProductionReplayCommandKind.Cancel => new(
                         tick, kind, player, producer,
-                        new ProductionOrderId(reader.ReadInt32()), default, default),
+                        new ProductionOrderId(reader.ReadInt32()), default, default,
+                        default, default),
                     ProductionReplayCommandKind.SetRallyPoint => new(
                         tick, kind, player, producer, default, default,
-                        ReadRally(reader)),
+                        ReadRally(reader), default, default),
+                    ProductionReplayCommandKind.Research => new(
+                        tick, kind, player, producer, default, default, default,
+                        default, TechnologySerialization.ReadProfile(reader)),
+                    ProductionReplayCommandKind.CancelResearch => new(
+                        tick, kind, player, producer, default, default, default,
+                        new ResearchOrderId(reader.ReadInt32()), default),
                     _ => default
                 };
                 if (tick < previousTick)
@@ -113,7 +125,11 @@ public sealed class ProductionCommandLogSnapshot
                     kind == ProductionReplayCommandKind.Cancel &&
                         entry.OrderId.Value <= 0 ||
                     kind == ProductionReplayCommandKind.SetRallyPoint &&
-                        !ProductionSystem.ValidRallyTarget(entry.Rally))
+                        !ProductionSystem.ValidRallyTarget(entry.Rally) ||
+                    kind == ProductionReplayCommandKind.Research &&
+                        !TechnologyCatalogSnapshot.ValidProfile(entry.Technology) ||
+                    kind == ProductionReplayCommandKind.CancelResearch &&
+                        entry.ResearchOrderId.Value <= 0)
                 {
                     validation = ProductionCommandLogValidationCode.InvalidEntry;
                     return false;
@@ -156,8 +172,12 @@ public sealed class ProductionCommandLogSnapshot
                 ProductionSerialization.WriteRecipe(writer, entry.Recipe);
             else if (entry.Kind == ProductionReplayCommandKind.Cancel)
                 writer.Write(entry.OrderId.Value);
-            else
+            else if (entry.Kind == ProductionReplayCommandKind.SetRallyPoint)
                 WriteRally(writer, entry.Rally);
+            else if (entry.Kind == ProductionReplayCommandKind.Research)
+                TechnologySerialization.WriteProfile(writer, entry.Technology);
+            else
+                writer.Write(entry.ResearchOrderId.Value);
         }
         writer.Flush();
         return stream.ToArray();
@@ -186,18 +206,30 @@ public sealed class ProductionCommandRecorder
         ProductionRecipeProfile recipe) =>
         _entries.Add(new RecordedProductionCommand(
             tick, ProductionReplayCommandKind.Train, player, producer,
-            default, recipe, default));
+            default, recipe, default, default, default));
     public void RecordCancel(
         long tick, int player, GameplayBuildingId producer,
         ProductionOrderId order) =>
         _entries.Add(new RecordedProductionCommand(
             tick, ProductionReplayCommandKind.Cancel, player, producer,
-            order, default, default));
+            order, default, default, default, default));
     public void RecordRally(
         long tick, int player, GameplayBuildingId producer, RallyTarget rally) =>
         _entries.Add(new RecordedProductionCommand(
             tick, ProductionReplayCommandKind.SetRallyPoint, player, producer,
-            default, default, rally));
+            default, default, rally, default, default));
+    public void RecordResearch(
+        long tick, int player, GameplayBuildingId researcher,
+        TechnologyProfile technology) =>
+        _entries.Add(new RecordedProductionCommand(
+            tick, ProductionReplayCommandKind.Research, player, researcher,
+            default, default, default, default, technology));
+    public void RecordCancelResearch(
+        long tick, int player, GameplayBuildingId researcher,
+        ResearchOrderId order) =>
+        _entries.Add(new RecordedProductionCommand(
+            tick, ProductionReplayCommandKind.CancelResearch, player, researcher,
+            default, default, default, order, default));
     public ProductionCommandLogSnapshot Capture() => new(_entries.ToArray());
 }
 

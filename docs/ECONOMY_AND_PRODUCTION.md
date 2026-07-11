@@ -52,11 +52,11 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v8 已覆盖经济、施工、显式 Unit/Building 战斗目标，以及生产队列、进度、出口等待、类型化 Rally 和配方前置未来态。
+状态 Hash v9 已覆盖经济、施工、战斗、生产、Rally、配方前置、科技等级和研究队列未来态。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造、建筑战斗目标和生产现已纳入 Replay Package v7 与持久化热快照 v7。Gather/Refinery、Build/Cancel/Resume、Train/Cancel/Rally 和 Unit/Building AttackTarget 保持独立语义；内部移动、出生 Rally Move/Gather 与 Footprint 变更仍是派生状态。
+经济、建造、建筑战斗、生产和研究现已纳入 Replay Package v8 与持久化热快照 v8。Research/CancelResearch 使用设施命令日志独立语义。
 
 ## 黑盒验收
 
@@ -176,7 +176,16 @@ S11-E1 建筑前置与生产可用性已完成：
 - `production-building-prerequisites` 覆盖“2 Barracks + 1 Command Center”：缺少建筑时拒绝，补齐后解锁，并验证完整回放与生产中热恢复。
 - 77/77 全量黑盒回归通过；22 秒 AV1/WebM 位于 `test_videos/20260711_205020/`。
 
-下一段 S11-E2 实现正式研究/升级队列、科技等级、重复研究与互斥规则；不使用手动授予科技的占位接口。
+S11-E2a 正式研究运行时已完成：
+
+- 新增第五类建筑 `Academy`（Research），研究不会与 Barracks 单位队列错误并行。
+- `TechnologySystem` 持有正式订单和玩家等级；支持多级、取消退款、建筑/科技前置、排队重复、最大等级与互斥组。
+- Demo 包含 Infantry Weapons（最高三级）以及互斥的 Assault/Fortification Doctrine；没有直接授予等级的玩法命令。
+- 设施日志 v4、Replay Package/Hot Snapshot v8、State Hash v9 保存完整科技 Profile、等级、队列和进度。
+- `technology-research-upgrades` 覆盖取消重排、1→2 级、前置拒绝、排队/完成态互斥、最大等级、研究中热恢复与完整回放。
+- 78/78 黑盒回归通过；录像位于 `test_videos/20260711_211332/`。
+
+下一段 E2b 只做 Technology Godot Resource 数据工作流与跨目录编辑时诊断，然后再进入扩张规则。
 
 ### S11-E：科技、扩张和胜负
 

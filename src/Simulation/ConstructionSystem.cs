@@ -9,7 +9,8 @@ public enum BuildingFunctionKind : byte
     Supply,
     Production,
     TownHall,
-    Refinery
+    Refinery,
+    Research
 }
 
 public enum ConstructionMethodKind : byte
@@ -71,7 +72,12 @@ public static class DemoBuildingTypes
         new Vector2(72f, 72f), MovementClass.Medium,
         new EconomyCost(75, 0), 5f, 500f, 0, 0.75f,
         ConstructionMethodKind.ContinuousWorker,
-        RequiresVespeneNode: true)
+        RequiresVespeneNode: true),
+        new(
+        4, "Academy", BuildingFunctionKind.Research,
+        new Vector2(96f, 72f), MovementClass.Large,
+        new EconomyCost(150, 100), 6f, 850f, 0, 0.75f,
+        ConstructionMethodKind.ContinuousWorker)
     ];
 
     private static readonly BuildingTypeCatalogSnapshot Catalog = BuildCatalog();
@@ -80,6 +86,7 @@ public static class DemoBuildingTypes
     public static BuildingTypeProfile Barracks => Catalog.Type(1);
     public static BuildingTypeProfile CommandCenter => Catalog.Type(2);
     public static BuildingTypeProfile Refinery => Catalog.Type(3);
+    public static BuildingTypeProfile Academy => Catalog.Type(4);
 
     public static BuildingTypeProfile[] All => Catalog.Types.ToArray();
     public static BuildingTypeCatalogSnapshot CreateCatalog() => Catalog;

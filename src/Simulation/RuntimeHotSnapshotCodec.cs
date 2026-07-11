@@ -28,6 +28,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteEconomy(writer, state.Economy, state.Units.Count);
         WriteConstruction(writer, state.Construction);
         WriteProduction(writer, state.Production);
+        WriteTechnology(writer, state.Technology);
         WriteQueues(writer, state.CommandQueues, state.Units.Count);
         WriteChoke(writer, state.ChokeTraffic);
         WritePrivate(writer, state.PrivateState);
@@ -86,6 +87,7 @@ internal static class RuntimeHotSnapshotCodec
                 reader, units.Count, dynamic.Footprints, economy);
             var production = ReadProduction(
                 reader, units.Count, construction, economy);
+            var technology = ReadTechnology(reader, construction, economy);
             ValidateCombatTargets(combat, units.Count, construction);
             var queues = ReadQueues(reader, capacity, units.Count);
             var choke = ReadChoke(reader);
@@ -105,6 +107,7 @@ internal static class RuntimeHotSnapshotCodec
                 Economy = economy,
                 Construction = construction,
                 Production = production,
+                Technology = technology,
                 CommandQueues = queues,
                 ChokeTraffic = choke,
                 PrivateState = privateState
@@ -734,6 +737,97 @@ internal static class RuntimeHotSnapshotCodec
             if (value.Value > player.SupplyUsed) throw new InvalidDataException();
         }
         return new ProductionRuntimeSnapshot(nextOrder, queues, produced);
+    }
+
+    internal static void WriteTechnology(
+        BinaryWriter writer,
+        TechnologyRuntimeSnapshot technology)
+    {
+        writer.Write(technology.NextOrderId);
+        writer.Write(technology.Levels.Length);
+        foreach (var value in technology.Levels)
+        {
+            writer.Write(value.PlayerId);
+            TechnologySerialization.WriteProfile(writer, value.Technology);
+            writer.Write(value.Level);
+        }
+        writer.Write(technology.Queues.Length);
+        foreach (var queue in technology.Queues)
+        {
+            writer.Write(queue.Researcher.Value);
+            writer.Write(queue.Orders.Length);
+            foreach (var order in queue.Orders)
+            {
+                writer.Write(order.Id.Value);
+                writer.Write(order.PlayerId);
+                TechnologySerialization.WriteProfile(writer, order.Technology);
+                writer.Write(order.Progress);
+            }
+        }
+    }
+
+    internal static TechnologyRuntimeSnapshot ReadTechnology(
+        BinaryReader reader,
+        ConstructionRuntimeSnapshot construction,
+        EconomyRuntimeSnapshot economy)
+    {
+        var nextOrderId = reader.ReadInt32();
+        if (nextOrderId <= 0) throw new InvalidDataException();
+        var levelCount = ReadCount(reader, MaximumCapacity);
+        var levels = new TechnologyLevelRuntimeEntry[levelCount];
+        var levelKeys = new HashSet<(int, int)>();
+        for (var index = 0; index < levelCount; index++)
+        {
+            var player = reader.ReadInt32();
+            var technology = TechnologySerialization.ReadProfile(reader);
+            var level = reader.ReadInt32();
+            if (!economy.Players.Any(value => value.PlayerId == player) ||
+                !TechnologyCatalogSnapshot.ValidProfile(technology) ||
+                level <= 0 || level > technology.MaximumLevel ||
+                !levelKeys.Add((player, technology.Id)))
+                throw new InvalidDataException();
+            levels[index] = new TechnologyLevelRuntimeEntry(
+                player, technology, level);
+        }
+        var queueCount = ReadCount(reader, MaximumCapacity);
+        var queues = new ResearchQueueRuntimeEntry[queueCount];
+        var researchers = new HashSet<int>();
+        var orderIds = new HashSet<int>();
+        var maximumOrderId = 0;
+        for (var index = 0; index < queueCount; index++)
+        {
+            var researcher = new GameplayBuildingId(reader.ReadInt32());
+            var orderCount = ReadCount(reader, TechnologySystem.MaximumQueueLength);
+            var building = researcher.Value >= 0 &&
+                           researcher.Value < construction.Buildings.Length
+                ? construction.Buildings[researcher.Value]
+                : default;
+            if (!researchers.Add(researcher.Value) || building.Id != researcher ||
+                building.State != BuildingLifecycleState.Completed ||
+                building.Type.Function != BuildingFunctionKind.Research)
+                throw new InvalidDataException();
+            var orders = new ResearchOrderRuntimeEntry[orderCount];
+            for (var orderIndex = 0; orderIndex < orderCount; orderIndex++)
+            {
+                var id = new ResearchOrderId(reader.ReadInt32());
+                var player = reader.ReadInt32();
+                var technology = TechnologySerialization.ReadProfile(reader);
+                var progress = reader.ReadSingle();
+                if (id.Value <= 0 || !orderIds.Add(id.Value) ||
+                    !economy.Players.Any(value => value.PlayerId == player) ||
+                    building.PlayerId != player ||
+                    building.Type.Id != technology.ResearcherBuildingTypeId ||
+                    !TechnologyCatalogSnapshot.ValidProfile(technology) ||
+                    !float.IsFinite(progress) || progress is < 0f or >= 1f)
+                    throw new InvalidDataException();
+                orders[orderIndex] = new ResearchOrderRuntimeEntry(
+                    id, player, technology, progress);
+                maximumOrderId = Math.Max(maximumOrderId, id.Value);
+            }
+            queues[index] = new ResearchQueueRuntimeEntry(researcher, orders);
+        }
+        if (nextOrderId <= maximumOrderId) throw new InvalidDataException();
+        return new TechnologyRuntimeSnapshot(nextOrderId, levels, queues);
     }
 
     private static void WriteQueues(

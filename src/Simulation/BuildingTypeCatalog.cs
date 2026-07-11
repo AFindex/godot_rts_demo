@@ -131,6 +131,8 @@ public sealed class BuildingTypeCatalogSnapshot
                 BuildingFunctionKind.TownHall => !type.RequiresVespeneNode,
                 BuildingFunctionKind.Production =>
                     !type.RequiresVespeneNode && type.SupplyProvided == 0,
+                BuildingFunctionKind.Research =>
+                    !type.RequiresVespeneNode && type.SupplyProvided == 0,
                 _ => false
             };
             if (!functionValid)

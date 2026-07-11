@@ -39,11 +39,12 @@ public static class BuildingTypeCatalogSelfTest
             ? BuildingTypeCatalogDiff.Compare(loaded, changedSnapshot)
             : default;
         var profilesMatch = loaded.Types.SequenceEqual(canonical.Types);
-        var valid = loaded.Types.Length == 4 && profilesMatch &&
+        var valid = loaded.Types.Length == 5 && profilesMatch &&
                     loaded.Type(0).Size.X == 48f &&
                     loaded.Type(1).Size.X == 112f &&
                     loaded.Type(2).Size.X == 160f &&
                     loaded.Type(3).RequiresVespeneNode &&
+                    loaded.Type(4).Function == BuildingFunctionKind.Research &&
                     !invalidAccepted &&
                     diff is { Changed: true, ChangedTypes: 1 } &&
                     invalidValidation.FirstError ==

@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T20:50:44.6879685+08:00",
+    "generated_at":  "2026-07-11T21:13:55.4367881+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  101,
-    "case_count":  77,
+    "recording_count":  102,
+    "case_count":  78,
     "recordings":  [
+                       {
+                           "id":  "technology-research-upgrades",
+                           "display_name":  "Research levels, cancellation, prerequisites and exclusivity persist",
+                           "batch":  "20260711_211332",
+                           "created_at":  "2026-07-11T21:13:55.1235405+08:00",
+                           "video":  "../20260711_211332/technology-research-upgrades.webm",
+                           "log":  "../20260711_211332/technology-research-upgrades.log",
+                           "bytes":  441384,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS technology-research-upgrades: ticks=1320, levels=weapon2/assault1/fort0, rules=True/True/True/True/True, cancel=True, resources=2475/1575, persistence=True/True/True, versions=log4/package8/hot8",
+                           "metrics":  "ticks=1320, levels=weapon2/assault1/fort0, rules=True/True/True/True/True, cancel=True, resources=2475/1575, persistence=True/True/True, versions=log4/package8/hot8"
+                       },
                        {
                            "id":  "production-building-prerequisites",
                            "display_name":  "Multi-building prerequisites gate production and persist exactly",

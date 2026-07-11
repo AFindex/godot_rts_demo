@@ -321,6 +321,19 @@ public static class ProductionRequirementCatalogValidator
              recipeIndex++)
         {
             var recipe = production.Recipes[recipeIndex];
+            if ((uint)recipe.ProducerBuildingTypeId >=
+                    (uint)buildings.Types.Length ||
+                buildings.Type(recipe.ProducerBuildingTypeId).Function is not
+                    (BuildingFunctionKind.Production or
+                        BuildingFunctionKind.TownHall))
+            {
+                validation = new ProductionCatalogValidationResult(
+                    ProductionCatalogErrorCode.InvalidRecipe,
+                    recipeIndex,
+                    $"Producer building type {recipe.ProducerBuildingTypeId} " +
+                    "cannot train units.");
+                return false;
+            }
             foreach (var requirement in recipe.Requirements)
             {
                 if ((uint)requirement.TypeId >= (uint)buildings.Types.Length)

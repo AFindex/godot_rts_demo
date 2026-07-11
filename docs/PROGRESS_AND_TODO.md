@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 77 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem 或队列内部数组。
+- 78 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
 - 85 个 C# 源文件。
-- 约 27,600 行 C#（按 `src/**/*.cs` 统计）。
-- 77 个黑盒场景。
-- 覆盖 77 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 11.86ms。
+- 约 28,700 行 C#（按 `src/**/*.cs` 统计）。
+- 78 个黑盒场景。
+- 覆盖 78 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 8.26ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -41,7 +41,7 @@
 | 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | E1 完成 | 双资源经济、建筑施工、生产/Rally、Production Catalog v2、多建筑生产前置、Package/Hot v7、Hash v8 | 研究升级、扩张、胜负与脚本 AI |
+| S11 实际 RTS 玩法 | E2a 完成 | 双资源经济、五类建筑、生产/Rally、建筑前置、正式研究等级/互斥、Package/Hot v8、Hash v9 | Technology Resource、扩张、胜负与脚本 AI |
 
 ## 3. 已完成的运行时闭环
 
@@ -171,7 +171,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 77 个场景覆盖：
+当前 78 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -242,7 +242,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 77 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 78 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -736,7 +736,7 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 
 ### P：S11-C4 Building Type 数据工作流（已完成）
 
-- 新增版本化 `BuildingTypeCatalogSnapshot v1`，规范字节和稳定 Hash 不依赖 Godot；当前 Demo Hash 为 `8862BE2D31947235`。
+- 新增版本化 `BuildingTypeCatalogSnapshot v1`，规范字节和稳定 Hash 不依赖 Godot；E2a 加入 Academy 后当前 Hash 为 `57DB7C4B43C00E8E`。
 - 严格校验未知版本、空目录、非连续 ID、重复名称、数值/枚举和 Supply/Production/TownHall/Refinery 功能契约。
 - `RtsBuildingTypeCatalogResource` 与逐项子 Resource 可在 Inspector 编辑造价、人口、工期、生命、尺寸、施工策略和节点约束。
 - 主场景显式绑定 `data/demo_building_types.tres`；转换器支持 `CacheMode.Replace` Fresh Load，并只向模拟层交付不可变快照。
@@ -811,9 +811,21 @@ S11-D 已整体收口。
 - 77/77 全量黑盒回归通过；Release 256/512/1000 移动 P95 为 1.64/4.71/11.86ms，128/256 战斗 P95 为 1.80/4.57ms。
 - 22 秒 AV1/WebM 位于 `test_videos/20260711_205020/`；全库验证通过 102 个视频、50 个 manifest、101 个场景引用。
 
+### V：S11-E2a 正式研究与升级运行时（已完成）
+
+- 建筑目录加入第五类 96×72 Academy/Research，Hash 更新为 `57DB7C4B43C00E8E`；研究不与 Barracks 训练队列错误并行。
+- 纯 C# Technology Catalog v1 提供 Infantry Weapons 多等级，以及互斥的 Assault/Fortification Doctrine。
+- 正式 Research/CancelResearch 订单执行资源扣除、75% 取消退款、建筑/科技前置、AlreadyQueued、MaximumLevel 和 MutuallyExclusive 校验。
+- 玩家完成等级保存当时完整不可变科技 Profile；恢复时严格拒绝等级越界、重复 ID、互斥冲突、研究者错误和队列冲突。
+- 设施日志 v4、Replay Package/Hot Snapshot v8、State Hash v9 保存等级、队列、进度、前置和互斥未来态。
+- Godot 建筑表现读取 Research Snapshot 绘制紫色进度与目标等级，不读取系统内部集合。
+- `technology-research-upgrades` 覆盖取消重排、等级 1→2、前置、排队/完成互斥、最大等级、研究中热恢复和完整回放。
+- 78/78 全量回归通过；Release 256/512/1000 移动 P95 为 1.60/7.17/8.26ms，128/256 战斗 P95 为 2.75/3.83ms。
+- 22 秒 AV1/WebM 位于 `test_videos/20260711_211332/`；全库验证通过 103 个视频、51 个 manifest、102 个场景引用。
+
 ### 下一阶段边界
 
-下一段 S11-E2 实现正式研究/升级队列、玩家科技等级、重复研究与互斥规则。不会添加只能由测试或脚本直接授予科技的临时接口。AttackMove 自动索建筑仍延后到可见性和目标优先级出现时一起设计。
+下一段 S11-E2b 只补 Technology Godot Resource、Fresh Load、生成/验证工具和跨 Technology/Building Catalog 编辑时诊断。完成后进入扩张与基地经济规则。AttackMove 自动索建筑仍延后到可见性和目标优先级阶段。
 
 ## 8. 可以并行但不能提前耦合的优化
 

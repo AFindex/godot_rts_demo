@@ -41,6 +41,41 @@ public readonly record struct TestProductionAvailabilitySnapshot(
     public bool Available => Code == TestProductionCommandCode.Success;
 }
 
+public enum TestResearchCommandCode : byte
+{
+    Success,
+    InvalidPlayer,
+    InvalidResearcher,
+    WrongOwner,
+    ResearcherNotCompleted,
+    WrongResearcherType,
+    QueueFull,
+    InvalidTechnology,
+    MissingPrerequisite,
+    MaximumLevel,
+    AlreadyQueued,
+    MutuallyExclusive,
+    InsufficientMinerals,
+    InsufficientVespeneGas,
+    InvalidOrder
+}
+
+public readonly record struct TestResearchOrderId(int Value);
+public readonly record struct TestResearchResult(
+    TestResearchCommandCode Code,
+    TestResearchOrderId OrderId)
+{
+    public bool Succeeded => Code == TestResearchCommandCode.Success;
+}
+public readonly record struct TestResearchAvailabilitySnapshot(
+    TestResearchCommandCode Code,
+    int CurrentLevel,
+    int[] CurrentValues,
+    int[] RequiredValues)
+{
+    public bool Available => Code == TestResearchCommandCode.Success;
+}
+
 public enum TestProductionOrderState : byte
 {
     Queued,
@@ -1174,6 +1209,48 @@ public sealed class MovementTestRig
                     value.CurrentCount)).ToArray());
     }
 
+    public TestResearchResult Research(
+        int playerId,
+        TestGameplayBuildingId researcher,
+        TechnologyProfile technology)
+    {
+        var result = _simulation.IssueResearch(
+            playerId, new GameplayBuildingId(researcher.Value), technology);
+        return new TestResearchResult(
+            (TestResearchCommandCode)result.Code,
+            new TestResearchOrderId(result.OrderId.Value));
+    }
+
+    public bool CancelResearch(
+        int playerId,
+        TestResearchOrderId order) =>
+        _simulation.CancelResearch(playerId, new ResearchOrderId(order.Value));
+
+    public int TechnologyLevel(int playerId, int technologyId) =>
+        _simulation.Technology.Level(playerId, technologyId);
+
+    public int ResearchQueueCount(TestGameplayBuildingId researcher) =>
+        _simulation.Technology.Observe(
+            new GameplayBuildingId(researcher.Value)).Orders.Length;
+
+    public TestResearchAvailabilitySnapshot ObserveResearchAvailability(
+        int playerId,
+        TestGameplayBuildingId researcher,
+        TechnologyProfile technology)
+    {
+        var value = _simulation.Technology.ObserveAvailability(
+            playerId,
+            new GameplayBuildingId(researcher.Value),
+            technology,
+            _simulation.Construction,
+            _simulation.Economy.Players);
+        return new TestResearchAvailabilitySnapshot(
+            (TestResearchCommandCode)value.Code,
+            value.CurrentLevel,
+            value.Requirements.Select(item => item.CurrentValue).ToArray(),
+            value.Requirements.Select(item => item.Requirement.Value).ToArray());
+    }
+
     public bool CancelProduction(
         int playerId,
         TestProductionOrderId order) =>
@@ -1733,6 +1810,7 @@ public sealed class MovementTestRig
             source.Economy,
             source.Construction,
             source.Production,
+            source.Technology,
             source.WorldCommands.ToArray(),
             source.EconomyCommandLog,
             source.ConstructionCommandLog,
@@ -1889,6 +1967,7 @@ public sealed class MovementTestRig
             source.Economy,
             source.Construction,
             source.Production,
+            source.Technology,
             source.WorldCommands.ToArray(),
             source.EconomyCommandLog,
             source.ConstructionCommandLog,

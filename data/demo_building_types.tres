@@ -45,6 +45,18 @@ BuildSeconds = 5.0
 MaximumHealth = 500.0
 RequiresVespeneNode = true
 
+[sub_resource type="Resource" id="Resource_w31p3"]
+script = ExtResource("1_type")
+Id = 4
+DisplayName = "Academy"
+Function = 4
+Size = Vector2(96, 72)
+MinimumPassageClass = 2
+MineralCost = 150
+VespeneCost = 100
+BuildSeconds = 6.0
+MaximumHealth = 850.0
+
 [resource]
 script = ExtResource("2_catalog")
-Types = Array[ExtResource("1_type")]([SubResource("Resource_rnpfl"), SubResource("Resource_qrs4f"), SubResource("Resource_qbl0u"), SubResource("Resource_3emw1")])
+Types = Array[ExtResource("1_type")]([SubResource("Resource_rnpfl"), SubResource("Resource_qrs4f"), SubResource("Resource_qbl0u"), SubResource("Resource_3emw1"), SubResource("Resource_w31p3")])
