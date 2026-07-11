@@ -52,11 +52,11 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v6 已覆盖经济、施工、显式 Unit/Building 战斗目标，以及生产队列、进度、出口等待和 Rally 未来态。
+状态 Hash v7 已覆盖经济、施工、显式 Unit/Building 战斗目标，以及生产队列、进度、出口等待和类型化 Rally 未来态。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造、建筑战斗目标和生产现已纳入 Replay Package v5 与持久化热快照 v5。Gather/Refinery、Build/Cancel/Resume、Train/Cancel/Rally 和 Unit/Building AttackTarget 保持独立语义；内部移动、出生 Rally Move 与 Footprint 变更仍是派生状态。
+经济、建造、建筑战斗目标和生产现已纳入 Replay Package v6 与持久化热快照 v6。Gather/Refinery、Build/Cancel/Resume、Train/Cancel/Rally 和 Unit/Building AttackTarget 保持独立语义；内部移动、出生 Rally Move/Gather 与 Footprint 变更仍是派生状态。
 
 ## 黑盒验收
 
@@ -155,7 +155,17 @@ Resource、Fresh Load 和逐类型差异，运行时仍只消费 Hash `88CB72E34
 验证战斗 Profile、Worker 注册、资源和人口结果。
 专用 22 秒 AV1/WebM 录像位于 `test_videos/20260711_200053/`。
 
-下一段：Rally SmartCommand 的资源节点和友军单位目标协议。
+S11-D3b Rally SmartCommand 已完成：
+
+- `RallyTarget` 明确区分 None、Ground、ResourceNode 和 FriendlyUnit；实体目标同时保存稳定 ID 与确定性回退位置，不保存 Godot Node 引用。
+- 生产建筑右键复用命中解析：资源点写入 ResourceNode，友军写入 Unit ID，其余位置写入 Ground；表现层只消费生产 Snapshot 绘制虚线与标记。
+- Worker 出生到有效资源节点后直接进入正式 Gather 状态；非 Worker 对资源点执行 Move。友军目标在出生时解析当前有效位置，失效则使用记录位置。
+- 语义依据 [Blizzard《StarCraft II》Buildings Game Guide](https://news.blizzard.com/en-us/article/4488317/game-guide-buildings)：主基地 Rally 到资源会令新工人采集，单位目标失效后使用最后位置。当前 Demo 与既有 Friendly SmartCommand 一致，出生时生成 Move；持续 Follow 是未来独立订单能力，不塞进本次 Rally 协议升级。
+- Production Command Log 升级为 v2，Replay Package/Hot Snapshot 升级为 v6，状态 Hash 升级为 v7；编码和恢复均验证目标种类、坐标和实体范围。
+- `production-rally-smart-targets` 只通过测试业务 Facade 覆盖资源、友军、Ground 覆盖、生产中热恢复、完整回放和非法版本/截断拒绝。
+- 76/76 全量黑盒回归通过。
+
+下一段进入 S11-E：科技前置、生产可用性和升级队列；Rally 本阶段收口。
 
 ### S11-E：科技、扩张和胜负
 

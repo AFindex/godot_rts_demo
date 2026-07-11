@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T20:01:13.9435291+08:00",
+    "generated_at":  "2026-07-11T20:30:25.1590704+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  99,
-    "case_count":  75,
+    "recording_count":  100,
+    "case_count":  76,
     "recordings":  [
+                       {
+                           "id":  "production-rally-smart-targets",
+                           "display_name":  "Ground/resource/friendly Rally targets survive replay and hot restore",
+                           "batch":  "20260711_203001",
+                           "created_at":  "2026-07-11T20:30:24.8632188+08:00",
+                           "video":  "../20260711_203001/production-rally-smart-targets.webm",
+                           "log":  "../20260711_203001/production-rally-smart-targets.log",
+                           "bytes":  485437,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS production-rally-smart-targets: ticks=1320, targets=ResourceNode/Ground, gather=GoingToResource@node0, remaining=2000, marine=\u003c469.5, 313.5\u003e-\u003e\u003c700, 300\u003e, protocol=True, persistence=True/True/True, versions=log2/package6/hot6, buildings=Completed/Completed, issued=True(True/True/Success/Success), ids=0/1, ok=True/True, units=5",
+                           "metrics":  "ticks=1320, targets=ResourceNode/Ground, gather=GoingToResource@node0, remaining=2000, marine=\u003c469.5, 313.5\u003e-\u003e\u003c700, 300\u003e, protocol=True, persistence=True/True/True, versions=log2/package6/hot6, buildings=Completed/Completed, issued=True(True/True/Success/Success), ids=0/1, ok=True/True, units=5"
+                       },
                        {
                            "id":  "production-catalog-resource-runtime",
                            "display_name":  "Loaded Unit/Recipe Resource drives combat and worker production",

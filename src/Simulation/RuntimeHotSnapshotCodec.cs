@@ -629,8 +629,7 @@ internal static class RuntimeHotSnapshotCodec
         foreach (var queue in production.Queues)
         {
             writer.Write(queue.Producer.Value);
-            writer.Write(queue.RallyPoint.HasValue);
-            if (queue.RallyPoint.HasValue) WriteVector(writer, queue.RallyPoint.Value);
+            ProductionCommandLogSnapshot.WriteRally(writer, queue.Rally);
             writer.Write(queue.Orders.Length);
             foreach (var order in queue.Orders)
             {
@@ -667,8 +666,15 @@ internal static class RuntimeHotSnapshotCodec
         for (var index = 0; index < queueCount; index++)
         {
             var producer = new GameplayBuildingId(reader.ReadInt32());
-            var hasRally = reader.ReadBoolean();
-            Vector2? rally = hasRally ? ReadVector(reader) : null;
+            var rally = ProductionCommandLogSnapshot.ReadRally(reader);
+            if (!ProductionSystem.ValidRallyTarget(rally) ||
+                rally.Kind == RallyTargetKind.ResourceNode &&
+                    (rally.ResourceNode.Value >= economy.ResourceNodes.Length ||
+                     economy.ResourceNodes[rally.ResourceNode.Value].Position !=
+                         rally.Position) ||
+                rally.Kind == RallyTargetKind.FriendlyUnit &&
+                    rally.Unit >= unitCount)
+                throw new InvalidDataException("Invalid production rally target.");
             var orderCount = ReadCount(reader, ProductionSystem.MaximumQueueLength);
             var building = producer.Value >= 0 &&
                            producer.Value < construction.Buildings.Length
@@ -676,8 +682,7 @@ internal static class RuntimeHotSnapshotCodec
                 : default;
             if (!producers.Add(producer.Value) || building.Id != producer ||
                 building.State is BuildingLifecycleState.Canceled or
-                    BuildingLifecycleState.Destroyed ||
-                rally.HasValue && !Finite(rally.Value))
+                    BuildingLifecycleState.Destroyed)
                 throw new InvalidDataException();
             if (orderCount > 0 && building.State != BuildingLifecycleState.Completed)
                 throw new InvalidDataException();

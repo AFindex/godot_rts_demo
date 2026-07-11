@@ -597,6 +597,24 @@ public partial class RtsDemo : Node2D
                     rect.Size.X - 10f,
                     11,
                     new Color("fff4b0"));
+                if (production.Rally.IsSet)
+                {
+                    var center = GodotPathProvider.ToGodot(
+                        (building.Bounds.Min + building.Bounds.Max) * 0.5f);
+                    var target = production.Rally.Kind ==
+                                     RallyTargetKind.FriendlyUnit &&
+                                 (uint)production.Rally.Unit <
+                                     (uint)_simulation.Units.Count &&
+                                 _simulation.Units.Alive[production.Rally.Unit]
+                        ? _simulation.Units.Positions[production.Rally.Unit]
+                        : production.Rally.Position;
+                    var targetGodot = GodotPathProvider.ToGodot(target);
+                    DrawDashedLine(
+                        center, targetGodot, new Color("8dff9b"), 2f, 10f);
+                    DrawArc(
+                        targetGodot, 10f, 0f, MathF.Tau, 20,
+                        new Color("8dff9b"), 2f);
+                }
             }
         }
     }
@@ -633,6 +651,22 @@ public partial class RtsDemo : Node2D
                 GodotPathProvider.ToNumerics(mouse.Position),
                 mouse.ButtonIndex == MouseButton.WheelUp ? 1 : -1);
             ApplyCameraState();
+        }
+        else if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed &&
+                 _selectedBuilding.HasValue && _selectedUnits.Count == 0)
+        {
+            var worldPosition = GodotPathProvider.ToNumerics(
+                ScreenToWorld(mouse.Position));
+            var rally = ResolveProductionRallyTarget(worldPosition);
+            if (_simulation.SetProductionRallyTarget(
+                    PlayerTeam, _selectedBuilding.Value, rally))
+            {
+                _commandMarker = GodotPathProvider.ToGodot(rally.Position);
+                _commandMarkerAttackMove = false;
+                _commandMarkerQueued = false;
+                _commandMarkerTime = 0.65f;
+                QueueRedraw();
+            }
         }
         else if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed &&
                  _selectedUnits.Count > 0 && _navigationReady)
@@ -930,6 +964,34 @@ public partial class RtsDemo : Node2D
             ? SmartCommandTargetKind.FriendlyUnit
             : SmartCommandTargetKind.EnemyUnit;
         return new SmartCommandTarget(kind, _simulation.Units.Positions[best], best);
+    }
+
+    private RallyTarget ResolveProductionRallyTarget(NVector2 position)
+    {
+        if (_simulation is null) return RallyTarget.Ground(position);
+
+        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        {
+            if (!_simulation.Units.Alive[unit] ||
+                _simulation.Combat.Teams[unit] != PlayerTeam)
+                continue;
+            var hitRadius = _simulation.Units.Radii[unit] + 5f;
+            if (NVector2.DistanceSquared(
+                    position, _simulation.Units.Positions[unit]) <=
+                hitRadius * hitRadius)
+                return RallyTarget.Friendly(
+                    unit, _simulation.Units.Positions[unit]);
+        }
+
+        if (_economyOverview is not null)
+        {
+            foreach (var node in _economyOverview.ResourceNodes)
+            {
+                if (NVector2.DistanceSquared(position, node.Position) <= 26f * 26f)
+                    return RallyTarget.Resource(node.Id, node.Position);
+            }
+        }
+        return RallyTarget.Ground(position);
     }
 
     private void SelectInRect(Rect2 rect, bool additive, bool sameType)

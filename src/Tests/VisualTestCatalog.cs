@@ -64,6 +64,7 @@ public static class VisualTestCatalog
         "production-queue-exit-rally",
         "production-replay-persistence",
         "production-catalog-resource-runtime",
+        "production-rally-smart-targets",
         "construction-replay-persistence",
         "combat-attack-building",
         "shared-target-reservations",
@@ -172,6 +173,9 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "production-catalog-resource-runtime" =>
             CreateProductionCatalogResourceRuntime(productionCatalog),
+        "production-rally-smart-targets" =>
+            CreateProductionRallySmartTargets(
+                navigationMap, gameplayProfiles, clearanceBake),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "combat-attack-building" => CreateCombatAttackBuilding(
@@ -1101,7 +1105,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 5 &&
+                    exact && rejected && hot.FormatVersion == 6 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1195,7 +1199,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 5 && hot.FormatVersion == 5 &&
+                             package.FormatVersion == 6 && hot.FormatVersion == 6 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2576,9 +2580,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 5 &&
-                             producingHot.FormatVersion == 5 &&
-                             waitingHot.FormatVersion == 5 &&
+                             package.FormatVersion == 6 &&
+                             producingHot.FormatVersion == 6 &&
+                             waitingHot.FormatVersion == 6 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -2708,6 +2712,144 @@ public static class VisualTestCatalog
                 TestDiagnosticKind.Info);
     }
 
+    private static VisualTestSession CreateProductionRallySmartTargets(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var catalog = DemoProductionCatalog.CreateSnapshot();
+        var workerRecipe = catalog.Recipe(2) with { ProductionSeconds = 1f };
+        var marineRecipe = catalog.Recipe(0) with { ProductionSeconds = 1f };
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 2000, 500, 20, 0);
+        var minerals = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(1050f, 570f), 2000, 5, 0.35f, 2);
+        rig.AddResourceDropOff(1, new Vector2(850f, 570f));
+        var townHallBuilder = rig.SpawnWorker(new Vector2(100f, 500f), 1);
+        var barracksBuilder = rig.SpawnWorker(new Vector2(230f, 260f), 1);
+        var leader = rig.SpawnCombat(new Vector2(700f, 300f), 1);
+        rig.StartReplayPackageRecording();
+        var fastTownHall = DemoBuildingTypes.CommandCenter with { BuildSeconds = 1f };
+        var fastBarracks = DemoBuildingTypes.Barracks with { BuildSeconds = 1f };
+        var townHall = rig.Build(
+            1, townHallBuilder, fastTownHall, new Vector2(250f, 500f));
+        var barracks = rig.Build(
+            1, barracksBuilder, fastBarracks, new Vector2(400f, 260f));
+        var issued = false;
+        var issueDetails = string.Empty;
+        var friendlyProtocolObserved = false;
+        var groundSet = false;
+        TestRuntimeStateCapture? activeCapture = null;
+        const long hotTick = 780;
+        var session = new VisualTestSession(
+            "production-rally-smart-targets",
+            "Ground/resource/friendly Rally targets survive replay and hot restore",
+            1320,
+            rig,
+            [townHallBuilder, barracksBuilder, leader],
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var log = runtime.CaptureProductionCommandLog();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var logRoundTrip = log.TryCanonicalRoundTrip(out var decodedLog);
+                var hot = runtime.BindHotSnapshot(package, activeCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var baseline = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = baseline.FinalHash == runtime.StateHash &&
+                            resumed.FinalHash == runtime.StateHash &&
+                            baseline.MatchesFrom(resumed, hotTick);
+                var produced = runtime.UnitCount == 5;
+                var worker = produced
+                    ? runtime.ObserveWorkerEconomy(new TestUnitId(3))
+                    : default;
+                var resourceRally = runtime.ObserveProductionRally(
+                    townHall.BuildingId);
+                var friendlyRally = runtime.ObserveProductionRally(
+                    barracks.BuildingId);
+                var marine = produced
+                    ? runtime.Observe(new TestUnitId(4))
+                    : default;
+                var gatherStarted = worker.State is not
+                    TestWorkerEconomyState.None and not TestWorkerEconomyState.Idle &&
+                    worker.TargetNode == minerals;
+                var resolvedFriendlyTarget = Vector2.Distance(
+                    marine.AssignedTarget, new Vector2(700f, 300f)) < 0.1f;
+                var protocol = resourceRally.Kind ==
+                                   TestRallyTargetKind.ResourceNode &&
+                               resourceRally.ResourceNode == minerals &&
+                               friendlyRally.Kind ==
+                                   TestRallyTargetKind.Ground &&
+                               friendlyProtocolObserved && groundSet;
+                var rejected = log.RejectsUnsupportedVersion() &&
+                               log.RejectsTruncatedPayload() &&
+                               package.RejectsUnsupportedVersion() &&
+                               package.RejectsTruncatedPayload() &&
+                               hot.RejectsUnsupportedVersion() &&
+                               hot.RejectsTruncatedPayload();
+                var passed = townHall.Succeeded && barracks.Succeeded && issued &&
+                             produced && protocol && gatherStarted &&
+                             resolvedFriendlyTarget &&
+                             packageRoundTrip && logRoundTrip && hotRoundTrip &&
+                             decodedLog!.StableHash == log.StableHash &&
+                             package.FormatVersion == 6 && hot.FormatVersion == 6 &&
+                             package.ProductionCommandCount == 5 &&
+                             exact && rejected;
+                return new ScenarioResult(
+                    passed,
+                    $"targets={resourceRally.Kind}/{friendlyRally.Kind}, " +
+                    $"gather={worker.State}@node{worker.TargetNode.Value}, " +
+                    $"remaining={runtime.ObserveResourceNode(minerals).Remaining}, " +
+                    $"marine={marine.Position}->{marine.AssignedTarget}, " +
+                    $"protocol={protocol}, " +
+                    $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
+                    $"versions=log2/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"buildings={runtime.ObserveGameplayBuilding(townHall.BuildingId).State}/" +
+                    $"{runtime.ObserveGameplayBuilding(barracks.BuildingId).State}, " +
+                    $"issued={issued}({issueDetails}), ids={townHall.BuildingId.Value}/" +
+                    $"{barracks.BuildingId.Value}, ok={townHall.Succeeded}/" +
+                    $"{barracks.Succeeded}, units={runtime.UnitCount}");
+            });
+        session.At(720, "Bind resource and friendly-unit Rally targets", runtime =>
+        {
+            var resourceSet = runtime.SetRallyResource(
+                1, townHall.BuildingId, minerals);
+            var friendlySet = runtime.SetRallyFriendlyUnit(
+                1, barracks.BuildingId, leader);
+            runtime.Move([leader], new Vector2(900f, 350f));
+            var worker = runtime.Train(1, townHall.BuildingId, workerRecipe);
+            var marine = runtime.Train(1, barracks.BuildingId, marineRecipe);
+            issued = resourceSet && friendlySet && worker.Succeeded && marine.Succeeded;
+            issueDetails = $"{resourceSet}/{friendlySet}/{worker.Code}/{marine.Code}";
+        });
+        session.At(hotTick, "Capture entity-target Rally while both orders produce",
+            runtime => activeCapture = runtime.CaptureRuntimeState());
+        session.At(1000, "Replace friendly-unit Rally with a ground target", runtime =>
+        {
+            var friendly = runtime.ObserveProductionRally(barracks.BuildingId);
+            friendlyProtocolObserved = friendly.Kind ==
+                                       TestRallyTargetKind.FriendlyUnit &&
+                                       friendly.Unit == leader;
+            groundSet = runtime.SetRallyPoint(
+                1, barracks.BuildingId, new Vector2(800f, 500f));
+        });
+        return session
+            .Highlight(
+                new SimRect(new Vector2(170f, 190f), new Vector2(500f, 590f)),
+                "SMART RALLY: typed targets live in production state",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(730f, 300f), new Vector2(1120f, 620f)),
+                "RESOURCE -> Gather / FRIENDLY -> spawn-time position",
+                TestDiagnosticKind.Accepted);
+    }
+
     private static VisualTestSession CreateConstructionReplayPersistence(
         NavigationMapSnapshot? navigationMap,
         GameplayProfileCatalogSnapshot? gameplayProfiles,
@@ -2799,7 +2941,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 5 && hot.FormatVersion == 5 &&
+                             package.FormatVersion == 6 && hot.FormatVersion == 6 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -2913,7 +3055,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 5 && exact;
+                             hotRoundTrip && hot.FormatVersion == 6 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

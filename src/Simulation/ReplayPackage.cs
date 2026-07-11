@@ -85,7 +85,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 5;
+    public const int CurrentFormatVersion = 6;
 
     public SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -351,6 +351,23 @@ public sealed class SimulationReplayPackageSnapshot
                     ReplayPackageValidationCode.InvalidProductionCommandLog);
                 return false;
             }
+            for (var index = 0; index < productionLog!.Entries.Length; index++)
+            {
+                var command = productionLog.Entries[index];
+                if (command.Kind != ProductionReplayCommandKind.SetRallyPoint)
+                    continue;
+                if (command.Rally.Kind == RallyTargetKind.ResourceNode &&
+                        command.Rally.ResourceNode.Value >=
+                            economy.ResourceNodes.Length ||
+                    command.Rally.Kind == RallyTargetKind.FriendlyUnit &&
+                        command.Rally.Unit >= capacity)
+                {
+                    validation = new ReplayPackageValidationResult(
+                        ReplayPackageValidationCode.InvalidProductionCommandLog,
+                        index);
+                    return false;
+                }
+            }
 
             var commandLogBytes = ReadCount(reader);
             if (commandLogBytes < 0 || commandLogBytes > stream.Length - stream.Position)
@@ -386,7 +403,7 @@ public sealed class SimulationReplayPackageSnapshot
                 worldCommands,
                 economyLog!,
                 constructionLog!,
-                productionLog!,
+                productionLog,
                 commandLog!);
             validation = new ReplayPackageValidationResult(
                 ReplayPackageValidationCode.Success);
@@ -763,7 +780,7 @@ public static class SimulationReplayPackageFactory
             simulation.Production.RestoreRuntimeState(
                 package.Production,
                 simulation.Construction,
-                simulation.Economy.Players,
+                simulation.Economy,
                 simulation.Units);
         }
         catch (InvalidOperationException)

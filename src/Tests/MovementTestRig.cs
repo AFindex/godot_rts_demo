@@ -32,6 +32,20 @@ public enum TestProductionOrderState : byte
     WaitingForExit
 }
 
+public enum TestRallyTargetKind : byte
+{
+    None,
+    Ground,
+    ResourceNode,
+    FriendlyUnit
+}
+
+public readonly record struct TestRallyTarget(
+    TestRallyTargetKind Kind,
+    Vector2 Position,
+    TestResourceNodeId ResourceNode,
+    TestUnitId Unit);
+
 public readonly record struct TestProductionResult(
     TestProductionCommandCode Code,
     TestProductionOrderId OrderId)
@@ -1137,6 +1151,43 @@ public sealed class MovementTestRig
         _simulation.SetProductionRallyPoint(
             playerId, new GameplayBuildingId(producer.Value), point);
 
+    public bool SetRallyResource(
+        int playerId,
+        TestGameplayBuildingId producer,
+        TestResourceNodeId node)
+    {
+        var backend = new EconomyResourceNodeId(node.Value);
+        return _simulation.SetProductionRallyTarget(
+            playerId,
+            new GameplayBuildingId(producer.Value),
+            RallyTarget.Resource(
+                backend, _simulation.Economy.ResourceNodePosition(backend)));
+    }
+
+    public bool SetRallyFriendlyUnit(
+        int playerId,
+        TestGameplayBuildingId producer,
+        TestUnitId unit)
+    {
+        var position = _simulation.Units.Positions[unit.Value];
+        return _simulation.SetProductionRallyTarget(
+            playerId,
+            new GameplayBuildingId(producer.Value),
+            RallyTarget.Friendly(unit.Value, position));
+    }
+
+    public TestRallyTarget ObserveProductionRally(
+        TestGameplayBuildingId producer)
+    {
+        var rally = _simulation.Production.Observe(
+            new GameplayBuildingId(producer.Value)).Rally;
+        return new TestRallyTarget(
+            (TestRallyTargetKind)rally.Kind,
+            rally.Position,
+            new TestResourceNodeId(rally.ResourceNode.Value),
+            new TestUnitId(rally.Unit));
+    }
+
     public TestProductionQueueSnapshot ObserveProduction(
         TestGameplayBuildingId producer)
     {
@@ -1149,7 +1200,7 @@ public sealed class MovementTestRig
                 ? null
                 : (TestProductionOrderState)active.State,
             queue.Orders.Length == 0 ? 0f : active.Progress,
-            queue.RallyPoint);
+            queue.Rally.IsSet ? queue.Rally.Position : null);
     }
 
 

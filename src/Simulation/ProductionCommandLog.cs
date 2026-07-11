@@ -17,7 +17,7 @@ public readonly record struct RecordedProductionCommand(
     GameplayBuildingId Producer,
     ProductionOrderId OrderId,
     ProductionRecipeProfile Recipe,
-    Vector2 RallyPoint);
+    RallyTarget Rally);
 
 public enum ProductionCommandLogValidationCode : byte
 {
@@ -35,7 +35,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {
@@ -97,7 +97,7 @@ public sealed class ProductionCommandLogSnapshot
                         new ProductionOrderId(reader.ReadInt32()), default, default),
                     ProductionReplayCommandKind.SetRallyPoint => new(
                         tick, kind, player, producer, default, default,
-                        ConstructionSerialization.ReadVector(reader)),
+                        ReadRally(reader)),
                     _ => default
                 };
                 if (tick < previousTick)
@@ -112,7 +112,7 @@ public sealed class ProductionCommandLogSnapshot
                     kind == ProductionReplayCommandKind.Cancel &&
                         entry.OrderId.Value <= 0 ||
                     kind == ProductionReplayCommandKind.SetRallyPoint &&
-                        !ConstructionSerialization.Finite(entry.RallyPoint))
+                        !ProductionSystem.ValidRallyTarget(entry.Rally))
                 {
                     validation = ProductionCommandLogValidationCode.InvalidEntry;
                     return false;
@@ -156,11 +156,25 @@ public sealed class ProductionCommandLogSnapshot
             else if (entry.Kind == ProductionReplayCommandKind.Cancel)
                 writer.Write(entry.OrderId.Value);
             else
-                ConstructionSerialization.WriteVector(writer, entry.RallyPoint);
+                WriteRally(writer, entry.Rally);
         }
         writer.Flush();
         return stream.ToArray();
     }
+
+    internal static void WriteRally(BinaryWriter writer, RallyTarget value)
+    {
+        writer.Write((byte)value.Kind);
+        ConstructionSerialization.WriteVector(writer, value.Position);
+        writer.Write(value.ResourceNode.Value);
+        writer.Write(value.Unit);
+    }
+
+    internal static RallyTarget ReadRally(BinaryReader reader) => new(
+        (RallyTargetKind)reader.ReadByte(),
+        ConstructionSerialization.ReadVector(reader),
+        new EconomyResourceNodeId(reader.ReadInt32()),
+        reader.ReadInt32());
 }
 
 public sealed class ProductionCommandRecorder
@@ -179,10 +193,10 @@ public sealed class ProductionCommandRecorder
             tick, ProductionReplayCommandKind.Cancel, player, producer,
             order, default, default));
     public void RecordRally(
-        long tick, int player, GameplayBuildingId producer, Vector2 point) =>
+        long tick, int player, GameplayBuildingId producer, RallyTarget rally) =>
         _entries.Add(new RecordedProductionCommand(
             tick, ProductionReplayCommandKind.SetRallyPoint, player, producer,
-            default, default, point));
+            default, default, rally));
     public ProductionCommandLogSnapshot Capture() => new(_entries.ToArray());
 }
 

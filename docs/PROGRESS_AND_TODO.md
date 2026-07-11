@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 75 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem 或队列内部数组。
+- 76 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
 - 85 个 C# 源文件。
-- 约 24,027 行 C#（按 `src/**/*.cs` 统计）。
-- 75 个黑盒场景。
-- 覆盖 75 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 8.50ms。
+- 约 27,100 行 C#（按 `src/**/*.cs` 统计）。
+- 76 个黑盒场景。
+- 覆盖 76 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 9.00ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -41,7 +41,7 @@
 | 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | D3a 完成 | 双资源经济/回放、建筑施工/持久化、生产队列与 v5 持久化、Building/Production Resource、Hash v6 | Rally SmartCommand、科技、扩张、胜负与脚本 AI |
+| S11 实际 RTS 玩法 | D3 完成 | 双资源经济/回放、建筑施工/持久化、生产队列、Building/Production Resource、Rally SmartCommand、Package/Hot v6、Hash v7 | 科技、扩张、胜负与脚本 AI |
 
 ## 3. 已完成的运行时闭环
 
@@ -171,7 +171,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 75 个场景覆盖：
+当前 76 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -242,7 +242,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 75 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 76 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -785,9 +785,20 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 - Train 日志仍保存解析后的完整 Recipe/Unit Type，Resource 调参不改变历史 Package v5。
 - 75/75 全量回归与 Release 性能门槛通过；22 秒 AV1/WebM 录像位于 `test_videos/20260711_200053/`，索引现有 99 段录像、覆盖 75 个场景。
 
+### T：S11-D3b Rally SmartCommand 目标协议（已完成）
+
+- 新增纯 C# `RallyTarget`：None/Ground/ResourceNode/FriendlyUnit，实体目标保存稳定 ID 和回退坐标。
+- Godot 选中生产建筑后右键可命中资源点、友军单位或地面；Snapshot 驱动 Rally 连线，不向模拟层传 Node。
+- Worker 对资源 Rally 自动进入 Gather；普通单位对资源点 Move；友军目标在出生时按 ID 解析，失效时确定性降级到记录坐标。
+- Production Log v2、Replay Package v6、Hot Snapshot v6、State Hash v7 同步升级并严格验证类型、有限坐标与引用范围。
+- `production-rally-smart-targets` 覆盖三类目标、生产中热恢复、完整回放、规范 round-trip、未知版本和截断拒绝。
+- 76/76 全量黑盒回归通过。
+- Release 256/512/1000 单位移动 P95 为 1.77/5.76/9.00ms，128/256 单位持续战斗 P95 为 2.55/3.86ms；Hash v7 在 1000 单位下平均 1.32ms。
+- 22 秒 AV1/WebM 录像位于 `test_videos/20260711_203001/`；全库校验通过 101 个视频、49 个 manifest、100 个场景引用，编码均为 AV1。
+
 ### 下一阶段边界
 
-S11-D3a 已收口。下一段 D3b 只升级 Rally SmartCommand 的地面、资源节点和友军单位目标，并同步 Production Log/Package/Hot Snapshot 格式；完成后再决定是否进入科技前置。AttackMove 自动索建筑仍延后到可见性和目标优先级出现时一起设计。
+S11-D 已整体收口。下一段进入 S11-E 的科技前置、生产可用性和升级队列；不继续追加 Rally 表现细节。AttackMove 自动索建筑仍延后到可见性和目标优先级出现时一起设计。
 
 ## 8. 可以并行但不能提前耦合的优化
 

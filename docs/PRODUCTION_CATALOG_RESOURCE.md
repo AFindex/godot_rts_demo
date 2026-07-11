@@ -37,5 +37,5 @@ ID、重复名称、移动/战斗约束、Producer、成本、人口、工期和
 `production-catalog-resource-runtime` 黑盒场景只消费加载快照，从 Barracks 和 Command
 Center 生产三种单位，验证战斗 Profile、Worker 注册、双资源和人口结果。
 
-Replay Package v5 的 Train 命令保存当时解析后的完整 Recipe/Unit Type，因此之后修改
+Replay Package v6 的 Train 命令保存当时解析后的完整 Recipe/Unit Type，因此之后修改
 Resource 不会篡改已有录像。

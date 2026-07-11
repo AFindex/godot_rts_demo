@@ -34,6 +34,36 @@ public enum ProductionOrderState : byte
     WaitingForExit
 }
 
+public enum RallyTargetKind : byte
+{
+    None,
+    Ground,
+    ResourceNode,
+    FriendlyUnit
+}
+
+/// <summary>
+/// Stable production-rally intent. Position is the deterministic fallback used
+/// when an entity target disappears before the produced unit can resolve it.
+/// </summary>
+public readonly record struct RallyTarget(
+    RallyTargetKind Kind,
+    Vector2 Position,
+    EconomyResourceNodeId ResourceNode,
+    int Unit)
+{
+    public static RallyTarget None => new(
+        RallyTargetKind.None, default, new EconomyResourceNodeId(-1), -1);
+    public static RallyTarget Ground(Vector2 position) => new(
+        RallyTargetKind.Ground, position, new EconomyResourceNodeId(-1), -1);
+    public static RallyTarget Resource(EconomyResourceNodeId node, Vector2 position) =>
+        new(RallyTargetKind.ResourceNode, position, node, -1);
+    public static RallyTarget Friendly(int unit, Vector2 position) => new(
+        RallyTargetKind.FriendlyUnit, position, new EconomyResourceNodeId(-1), unit);
+
+    public bool IsSet => Kind != RallyTargetKind.None;
+}
+
 public readonly record struct ProductionOrderSnapshot(
     ProductionOrderId Id,
     GameplayBuildingId Producer,
@@ -44,7 +74,7 @@ public readonly record struct ProductionOrderSnapshot(
 
 public readonly record struct ProductionQueueSnapshot(
     GameplayBuildingId Producer,
-    Vector2? RallyPoint,
+    RallyTarget Rally,
     ProductionOrderSnapshot[] Orders);
 
 public readonly record struct ProductionOrderRuntimeEntry(
@@ -56,7 +86,7 @@ public readonly record struct ProductionOrderRuntimeEntry(
 
 public readonly record struct ProducerQueueRuntimeEntry(
     GameplayBuildingId Producer,
-    Vector2? RallyPoint,
+    RallyTarget Rally,
     ProductionOrderRuntimeEntry[] Orders);
 
 public readonly record struct ProducedUnitPopulationRuntimeEntry(
@@ -159,13 +189,13 @@ public sealed class ProductionSystem
         return false;
     }
 
-    public bool SetRallyPoint(
+    public bool SetRallyTarget(
         int playerId,
         GameplayBuildingId producer,
-        Vector2 rallyPoint,
+        RallyTarget rally,
         ConstructionSystem construction)
     {
-        if (!float.IsFinite(rallyPoint.X) || !float.IsFinite(rallyPoint.Y) ||
+        if (!ValidRallyTarget(rally) ||
             !construction.IsAlive(producer) ||
             construction.Observe(producer).PlayerId != playerId)
             return false;
@@ -174,7 +204,7 @@ public sealed class ProductionSystem
             queue = new ProducerQueue(producer);
             _queues.Add(producer.Value, queue);
         }
-        queue.RallyPoint = rallyPoint;
+        queue.Rally = rally;
         return true;
     }
 
@@ -185,7 +215,7 @@ public sealed class ProductionSystem
         UnitStore units,
         StaticWorld world,
         Func<UnitTypeProfile, int, Vector2, int> spawn,
-        Action<int, Vector2> moveToRally)
+        Action<int, int, RallyTarget> applyRally)
     {
         ReleaseDeadUnitSupply(units, economy);
         List<int>? retiredProducers = null;
@@ -218,7 +248,7 @@ public sealed class ProductionSystem
             if (!TryFindExit(
                     building.Bounds,
                     order.Recipe.UnitType.Movement.PhysicalRadius,
-                    queue.RallyPoint,
+                    queue.Rally.IsSet ? queue.Rally.Position : null,
                     units,
                     world,
                     out var exit))
@@ -226,8 +256,8 @@ public sealed class ProductionSystem
             var unit = spawn(order.Recipe.UnitType, order.PlayerId, exit);
             _producedUnits.Add(new ProducedUnitPopulation(
                 unit, order.PlayerId, order.Recipe.Cost.Supply));
-            if (queue.RallyPoint.HasValue)
-                moveToRally(unit, queue.RallyPoint.Value);
+            if (queue.Rally.IsSet)
+                applyRally(unit, order.PlayerId, queue.Rally);
             queue.Orders.RemoveAt(0);
         }
         if (retiredProducers is not null)
@@ -240,16 +270,16 @@ public sealed class ProductionSystem
     public ProductionQueueSnapshot Observe(GameplayBuildingId producer)
     {
         if (!_queues.TryGetValue(producer.Value, out var queue))
-            return new ProductionQueueSnapshot(producer, null, []);
+            return new ProductionQueueSnapshot(producer, RallyTarget.None, []);
         return new ProductionQueueSnapshot(
             producer,
-            queue.RallyPoint,
+            queue.Rally,
             queue.Orders.Select(value => value.Snapshot(producer)).ToArray());
     }
 
     public ProductionQueueSnapshot[] CreateOverview() =>
         _queues.Values
-            .Where(value => value.Orders.Count > 0 || value.RallyPoint.HasValue)
+            .Where(value => value.Orders.Count > 0 || value.Rally.IsSet)
             .OrderBy(value => value.Producer.Value)
             .Select(value => Observe(value.Producer))
             .ToArray();
@@ -259,7 +289,7 @@ public sealed class ProductionSystem
         _queues.Values.OrderBy(value => value.Producer.Value)
             .Select(value => new ProducerQueueRuntimeEntry(
                 value.Producer,
-                value.RallyPoint,
+                value.Rally,
                 value.Orders.Select(order => new ProductionOrderRuntimeEntry(
                     order.Id, order.PlayerId, order.Recipe,
                     order.State, order.Progress)).ToArray()))
@@ -271,7 +301,7 @@ public sealed class ProductionSystem
     public void RestoreRuntimeState(
         ProductionRuntimeSnapshot snapshot,
         ConstructionSystem construction,
-        PlayerEconomyStore economy,
+        EconomySystem economy,
         UnitStore units)
     {
         if (snapshot.NextOrderId <= 0)
@@ -287,20 +317,24 @@ public sealed class ProductionSystem
                 value.Orders.Length > 0 &&
                     construction.Observe(value.Producer).State !=
                         BuildingLifecycleState.Completed ||
-                value.RallyPoint.HasValue &&
-                    (!float.IsFinite(value.RallyPoint.Value.X) ||
-                     !float.IsFinite(value.RallyPoint.Value.Y)) ||
+                !ValidRallyTarget(value.Rally) ||
+                value.Rally.Kind == RallyTargetKind.ResourceNode &&
+                    (value.Rally.ResourceNode.Value >= economy.ResourceNodeCount ||
+                     economy.ResourceNodePosition(value.Rally.ResourceNode) !=
+                         value.Rally.Position) ||
+                value.Rally.Kind == RallyTargetKind.FriendlyUnit &&
+                    value.Rally.Unit >= units.Count ||
                 value.Orders.Length > MaximumQueueLength ||
                 !_queues.TryAdd(value.Producer.Value,
                     new ProducerQueue(value.Producer)))
                 throw new InvalidOperationException("Invalid production queue runtime entry.");
             var queue = _queues[value.Producer.Value];
-            queue.RallyPoint = value.RallyPoint;
+            queue.Rally = value.Rally;
             for (var index = 0; index < value.Orders.Length; index++)
             {
                 var order = value.Orders[index];
                 if (order.Id.Value <= 0 || !orderIds.Add(order.Id.Value) ||
-                    !economy.IsRegistered(order.PlayerId) ||
+                    !economy.Players.IsRegistered(order.PlayerId) ||
                     construction.Observe(value.Producer).PlayerId != order.PlayerId ||
                     !ValidRecipeProfile(order.Recipe) ||
                     construction.Observe(value.Producer).Type.Id !=
@@ -328,7 +362,7 @@ public sealed class ProductionSystem
         foreach (var value in snapshot.ProducedUnits)
         {
             if ((uint)value.Unit >= (uint)units.Count ||
-                !economy.IsRegistered(value.PlayerId) || value.Supply <= 0 ||
+                !economy.Players.IsRegistered(value.PlayerId) || value.Supply <= 0 ||
                 !producedIds.Add(value.Unit))
                 throw new InvalidOperationException(
                     "Invalid produced-unit population runtime entry.");
@@ -339,7 +373,7 @@ public sealed class ProductionSystem
         }
         foreach (var value in reservedSupply)
         {
-            if (value.Value > economy.Snapshot(value.Key).SupplyUsed)
+            if (value.Value > economy.Players.Snapshot(value.Key).SupplyUsed)
                 throw new InvalidOperationException(
                     "Production reserved supply exceeds player supply used.");
         }
@@ -368,8 +402,13 @@ public sealed class ProductionSystem
         foreach (var queue in queues)
         {
             hash.Add(queue.Producer.Value);
-            hash.Add(queue.RallyPoint.HasValue);
-            if (queue.RallyPoint.HasValue) hash.Add(queue.RallyPoint.Value);
+            hash.Add((byte)queue.Rally.Kind);
+            if (queue.Rally.IsSet)
+            {
+                hash.Add(queue.Rally.Position);
+                hash.Add(queue.Rally.ResourceNode.Value);
+                hash.Add(queue.Rally.Unit);
+            }
             hash.Add(queue.Orders.Count);
             foreach (var order in queue.Orders)
             {
@@ -460,13 +499,29 @@ public sealed class ProductionSystem
         float.IsFinite(recipe.CancelRefundFraction) &&
         recipe.CancelRefundFraction is >= 0f and <= 1f;
 
+    internal static bool ValidRallyTarget(RallyTarget target) =>
+        Enum.IsDefined(target.Kind) &&
+        (target.Kind == RallyTargetKind.None
+            ? target.ResourceNode.Value == -1 && target.Unit == -1
+            : float.IsFinite(target.Position.X) && float.IsFinite(target.Position.Y) &&
+              target.Kind switch
+              {
+                  RallyTargetKind.Ground =>
+                      target.ResourceNode.Value == -1 && target.Unit == -1,
+                  RallyTargetKind.ResourceNode =>
+                      target.ResourceNode.Value >= 0 && target.Unit == -1,
+                  RallyTargetKind.FriendlyUnit =>
+                      target.ResourceNode.Value == -1 && target.Unit >= 0,
+                  _ => false
+              });
+
     private static ProductionCommandResult Failure(ProductionCommandCode code) =>
         new(code, default);
 
     private sealed class ProducerQueue(GameplayBuildingId producer)
     {
         public GameplayBuildingId Producer { get; } = producer;
-        public Vector2? RallyPoint { get; set; }
+        public RallyTarget Rally { get; set; } = RallyTarget.None;
         public List<ProductionOrder> Orders { get; } = [];
     }
 

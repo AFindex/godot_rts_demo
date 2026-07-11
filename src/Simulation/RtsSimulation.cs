@@ -41,7 +41,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly Action<int, Vector2> _constructionMoveWorker;
     private readonly Action<int> _constructionStopWorker;
     private readonly Func<UnitTypeProfile, int, Vector2, int> _productionSpawnUnit;
-    private readonly Action<int, Vector2> _productionMoveToRally;
+    private readonly Action<int, int, RallyTarget> _productionApplyRally;
     private readonly int[] _collisionNeighbors = new int[64];
     private readonly int[] _orderReadyUnits;
     private readonly UnitOrder[] _orderReadyOrders;
@@ -95,7 +95,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _constructionMoveWorker = MoveConstructionWorker;
         _constructionStopWorker = StopConstructionWorker;
         _productionSpawnUnit = SpawnProducedUnit;
-        _productionMoveToRally = MoveProducedUnitToRally;
+        _productionApplyRally = ApplyProducedUnitRally;
     }
 
     public StaticWorld World { get; }
@@ -222,7 +222,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
         Construction.RestoreRuntimeState(snapshot.Construction);
         Production.RestoreRuntimeState(
-            snapshot.Production, Construction, Economy.Players, Units);
+            snapshot.Production, Construction, Economy, Units);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -441,8 +441,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     throw new InvalidOperationException("Replay production Cancel failed.");
                 break;
             case ProductionReplayCommandKind.SetRallyPoint:
-                if (!SetProductionRallyPoint(
-                        command.PlayerId, command.Producer, command.RallyPoint))
+                if (!SetProductionRallyTarget(
+                        command.PlayerId, command.Producer, command.Rally))
                     throw new InvalidOperationException("Replay Rally failed.");
                 break;
             default:
@@ -791,13 +791,21 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public bool SetProductionRallyPoint(
         int playerId,
         GameplayBuildingId producer,
-        Vector2 point)
+        Vector2 point) =>
+        SetProductionRallyTarget(
+            playerId, producer, RallyTarget.Ground(point));
+
+    public bool SetProductionRallyTarget(
+        int playerId,
+        GameplayBuildingId producer,
+        RallyTarget rally)
     {
-        var result = Production.SetRallyPoint(
-            playerId, producer, point, Construction);
+        if (!ValidateRallyReference(playerId, rally)) return false;
+        var result = Production.SetRallyTarget(
+            playerId, producer, rally, Construction);
         if (result)
             _productionCommandRecorder?.RecordRally(
-                Metrics.Tick, playerId, producer, point);
+                Metrics.Tick, playerId, producer, rally);
         return result;
     }
 
@@ -1232,7 +1240,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units,
             World,
             _productionSpawnUnit,
-            _productionMoveToRally);
+            _productionApplyRally);
         Economy.Update(
             delta, Units, _economyMoveWorker, _economyStopWorker);
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
@@ -1298,14 +1306,57 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return unit;
     }
 
-    private void MoveProducedUnitToRally(int unit, Vector2 target)
+    private bool ValidateRallyReference(int playerId, RallyTarget rally)
+    {
+        if (!ProductionSystem.ValidRallyTarget(rally)) return false;
+        return rally.Kind switch
+        {
+            RallyTargetKind.ResourceNode =>
+                rally.ResourceNode.Value < Economy.ResourceNodeCount &&
+                Economy.ResourceNodePosition(rally.ResourceNode) == rally.Position,
+            RallyTargetKind.FriendlyUnit =>
+                (uint)rally.Unit < (uint)Units.Count && Units.Alive[rally.Unit] &&
+                Combat.Teams[rally.Unit] == playerId,
+            _ => true
+        };
+    }
+
+    private void ApplyProducedUnitRally(
+        int unit,
+        int playerId,
+        RallyTarget rally)
     {
         _issuingSystemOrder = true;
         try
         {
             Span<int> produced = stackalloc int[1];
             produced[0] = unit;
-            IssueMove(produced, target);
+            switch (rally.Kind)
+            {
+                case RallyTargetKind.ResourceNode:
+                    if (Economy.IsWorkerOwnedBy(unit, playerId) &&
+                        Economy.ValidateGather(
+                            playerId, unit, rally.ResourceNode).Succeeded)
+                    {
+                        Economy.BeginGather(unit, rally.ResourceNode);
+                    }
+                    else
+                    {
+                        IssueMove(produced, rally.Position);
+                    }
+                    break;
+                case RallyTargetKind.FriendlyUnit:
+                    var target = (uint)rally.Unit < (uint)Units.Count &&
+                                 Units.Alive[rally.Unit] &&
+                                 Combat.Teams[rally.Unit] == playerId
+                        ? Units.Positions[rally.Unit]
+                        : rally.Position;
+                    IssueMove(produced, target);
+                    break;
+                case RallyTargetKind.Ground:
+                    IssueMove(produced, rally.Position);
+                    break;
+            }
         }
         finally
         {
