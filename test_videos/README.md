@@ -1,5 +1,16 @@
 # Test video index
 
+## 展示网页
+
+`showcase/` 提供面向评审的测试放映页：默认展示每个场景的最新录像，并附带中文测试说明、功能说明、运行指标和历史录制。录像完成后 `record_tests.ps1` 会自动刷新页面索引，也可以单独执行：
+
+```powershell
+.\tools\generate_test_video_showcase.ps1
+python -m http.server 10086
+```
+
+然后访问 `http://localhost:10086/test_videos/showcase/`。浏览器出于安全限制不能在直接打开本地 HTML 文件时读取 JSON，因此需要一个本地 HTTP 服务。
+
 仓库保留覆盖 64 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。

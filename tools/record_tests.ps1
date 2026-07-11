@@ -132,6 +132,8 @@ $manifest = [ordered]@{
 $manifestPath = Join-Path $outputDirectory "manifest.json"
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
+& (Join-Path $PSScriptRoot "generate_test_video_showcase.ps1")
+
 Write-Host "All requested recordings completed: $outputDirectory"
 if ($failedCases.Count -gt 0) {
     throw "Some visual tests failed: $($failedCases -join ', '). All available videos were preserved."

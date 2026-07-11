@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>RTS 测试放映室</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="回到测试列表顶部">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><strong>RTS 测试放映室</strong><small>Godot movement study</small></span>
+      </a>
+      <div class="summary" aria-label="测试概览">
+        <span><strong id="case-count">—</strong> 个场景</span>
+        <span><strong id="recording-count">—</strong> 段记录</span>
+        <span class="summary-status"><i></i><strong id="pass-count">—</strong> 最新通过</span>
+      </div>
+    </header>
+
+    <main>
+      <aside class="catalog" aria-label="测试视频目录">
+        <div class="catalog-intro">
+          <p class="eyebrow">Visual test archive</p>
+          <h1>把系统能力，<br>变成一眼能看懂的证据。</h1>
+          <p>这里收录移动、战斗、操作与回放系统的黑盒测试。选择一项，即可查看测试意图、功能原理和实际运行结果。</p>
+        </div>
+
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 20-4.2-4.2m1.7-5.3a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/></svg>
+          <input id="search-input" type="search" placeholder="搜索场景或功能" autocomplete="off">
+          <kbd>/</kbd>
+        </label>
+
+        <div class="filter-row" id="filters" aria-label="按功能筛选"></div>
+
+        <div class="catalog-meta">
+          <span id="visible-count">载入中…</span>
+          <label class="history-switch">
+            <input id="history-toggle" type="checkbox">
+            <span aria-hidden="true"></span>
+            显示历史录制
+          </label>
+        </div>
+        <div class="case-list" id="case-list" aria-live="polite"></div>
+      </aside>
+
+      <section class="viewer" id="viewer" aria-live="polite">
+        <div class="viewer-empty" id="loading-state">
+          <span class="loader" aria-hidden="true"></span>
+          <p>正在整理测试记录…</p>
+        </div>
+
+        <article class="viewer-content" id="viewer-content" hidden>
+          <div class="viewer-heading">
+            <div>
+              <div class="detail-kicker">
+                <span id="detail-category"></span>
+                <span class="result-badge" id="detail-status"></span>
+              </div>
+              <h2 id="detail-title"></h2>
+              <p id="detail-subtitle"></p>
+            </div>
+            <button class="copy-link" id="copy-link" type="button" title="复制当前测试链接">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 15 15 9m-4.5-2 1.1-1.1a4 4 0 0 1 5.7 5.7L16 13m-2.5 4-1.1 1.1a4 4 0 0 1-5.7-5.7L8 11"/></svg>
+              <span>复制链接</span>
+            </button>
+          </div>
+
+          <div class="stage-grid">
+            <div class="video-frame">
+              <video id="detail-video" controls playsinline preload="metadata"></video>
+              <div class="video-meta">
+                <span id="detail-date"></span>
+                <span id="detail-format"></span>
+                <span id="detail-size"></span>
+              </div>
+            </div>
+
+            <div class="info-rail">
+              <div class="explanation-grid">
+                <section class="explanation primary-explanation">
+                  <span class="section-number">01</span>
+                  <div>
+                    <h3>这段视频测试什么</h3>
+                    <p id="detail-test"></p>
+                  </div>
+                </section>
+                <section class="explanation">
+                  <span class="section-number">02</span>
+                  <div>
+                    <h3>为此实现了什么</h3>
+                    <p id="detail-feature"></p>
+                  </div>
+                </section>
+              </div>
+
+              <section class="history" id="history-section" hidden>
+                <div class="evidence-heading">
+                  <div>
+                    <p class="eyebrow">Recording history</p>
+                    <h3>同场景历史录制</h3>
+                  </div>
+                </div>
+                <div id="history-list"></div>
+              </section>
+            </div>
+          </div>
+
+          <section class="evidence">
+            <div class="evidence-heading">
+              <div>
+                <p class="eyebrow">Run evidence</p>
+                <h3>本次运行结果</h3>
+              </div>
+              <a id="log-link" href="#" target="_blank" rel="noreferrer">查看原始日志 <span>↗</span></a>
+            </div>
+            <div class="metric-list" id="metric-list"></div>
+            <p class="raw-result" id="raw-result"></p>
+          </section>
+
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">链接已复制</div>
+  <script src="app.js" defer></script>
+</body>
+</html>
