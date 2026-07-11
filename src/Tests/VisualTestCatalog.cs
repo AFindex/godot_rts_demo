@@ -52,6 +52,7 @@ public static class VisualTestCatalog
         "gameplay-profile-resource-runtime",
         "clearance-bake-resource-runtime",
         "clearance-editor-preview",
+        "clearance-incremental-chunks",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -129,6 +130,9 @@ public static class VisualTestCatalog
                 navigationMap, gameplayProfiles, clearanceBake),
         "clearance-editor-preview" =>
             CreateClearanceEditorPreview(
+                navigationMap, gameplayProfiles, clearanceBake),
+        "clearance-incremental-chunks" =>
+            CreateClearanceIncrementalChunks(
                 navigationMap, gameplayProfiles, clearanceBake),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
@@ -1797,6 +1801,37 @@ public static class VisualTestCatalog
                     $"previewChunks={preview.BakeChunks.Length}, " +
                     $"layers={clearanceBake.Layers.Length}, " +
                     $"components={componentsMatch}, baked={usesBake}");
+            });
+    }
+
+    private static VisualTestSession CreateClearanceIncrementalChunks(
+        NavigationMapSnapshot? navigation,
+        GameplayProfileCatalogSnapshot? profiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigation ??= DemoMapDefinition.CreateSnapshot();
+        profiles ??= DemoGameplayProfiles.CreateSnapshot();
+        clearanceBake ??= ClearanceBakeSnapshot.Build(navigation);
+        var preview = ClearancePreviewSnapshot.Create(
+            navigation,
+            profiles,
+            clearanceBake,
+            ClearanceIncrementalSelfTest.ChangedArea);
+        var rig = MovementTestRig.CreateChokeMap(8, navigation);
+        return new VisualTestSession(
+            "clearance-incremental-chunks",
+            "Dirty-chunk clearance resampling matches full topology",
+            600,
+            rig,
+            [],
+            _ =>
+            {
+                var result = ClearanceIncrementalSelfTest.Run(
+                    navigation, clearanceBake);
+                return new ScenarioResult(
+                    result.Passed && preview.DirtyBakeChunks.Length > 0,
+                    $"dirtyPreview={preview.DirtyBakeChunks.Length}, " +
+                    result.Summary);
             });
     }
 

@@ -19,10 +19,12 @@ public static class SimulationSelfTest
             var connectivityResult = NavigationConnectivitySelfTest.Run();
             var bakeResult = ClearanceBakeSelfTest.Run(
                 navigationMap, clearanceBake);
+            var incrementalResult = ClearanceIncrementalSelfTest.Run(
+                navigationMap, clearanceBake);
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
-                         bakeResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 5)
+                         bakeResult.Passed && incrementalResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 6)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -34,7 +36,10 @@ public static class SimulationSelfTest
                 $"{(connectivityResult.Passed ? "PASS" : "FAIL")}" +
                 $"({connectivityResult.Summary})",
                 $"clearance-bake={(bakeResult.Passed ? "PASS" : "FAIL")}" +
-                $"({bakeResult.Summary})"
+                $"({bakeResult.Summary})",
+                $"clearance-incremental=" +
+                $"{(incrementalResult.Passed ? "PASS" : "FAIL")}" +
+                $"({incrementalResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

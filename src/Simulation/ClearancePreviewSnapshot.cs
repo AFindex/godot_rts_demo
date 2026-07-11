@@ -42,6 +42,7 @@ public sealed class ClearancePreviewSnapshot
         ClearanceClassPreview[] classes,
         NavigationConnectivitySnapshot[] connectivity,
         ClearanceBakeChunk[] bakeChunks,
+        ClearanceBakeChunk[] dirtyBakeChunks,
         PortalClearancePreview[] portals,
         BuildingClearancePreview[] buildings)
     {
@@ -50,6 +51,7 @@ public sealed class ClearancePreviewSnapshot
         Classes = classes;
         Connectivity = connectivity;
         BakeChunks = bakeChunks;
+        DirtyBakeChunks = dirtyBakeChunks;
         Portals = portals;
         Buildings = buildings;
     }
@@ -59,13 +61,15 @@ public sealed class ClearancePreviewSnapshot
     public ClearanceClassPreview[] Classes { get; }
     public NavigationConnectivitySnapshot[] Connectivity { get; }
     public ClearanceBakeChunk[] BakeChunks { get; }
+    public ClearanceBakeChunk[] DirtyBakeChunks { get; }
     public PortalClearancePreview[] Portals { get; }
     public BuildingClearancePreview[] Buildings { get; }
 
     public static ClearancePreviewSnapshot Create(
         NavigationMapSnapshot navigation,
         GameplayProfileCatalogSnapshot profiles,
-        ClearanceBakeSnapshot? clearanceBake = null)
+        ClearanceBakeSnapshot? clearanceBake = null,
+        SimRect? changedWorldArea = null)
     {
         var classes = new ClearanceClassPreview[3];
         var connectivity = new NavigationConnectivitySnapshot[3];
@@ -149,6 +153,7 @@ public sealed class ClearancePreviewSnapshot
         }
 
         var bakeChunks = Array.Empty<ClearanceBakeChunk>();
+        var dirtyBakeChunks = Array.Empty<ClearanceBakeChunk>();
         if (clearanceBake is not null &&
             clearanceBake.SourceNavigationHash == navigation.StableHash)
         {
@@ -156,6 +161,18 @@ public sealed class ClearancePreviewSnapshot
             for (var chunk = 0; chunk < bakeChunks.Length; chunk++)
             {
                 bakeChunks[chunk] = clearanceBake.Chunk(chunk);
+            }
+
+            if (changedWorldArea is { } dirtyArea)
+            {
+                var dirtyIds = clearanceBake.FindIntersectingChunks(
+                    dirtyArea.Expanded(
+                        MovementClearance.LargeNavigationRadius));
+                dirtyBakeChunks = new ClearanceBakeChunk[dirtyIds.Length];
+                for (var index = 0; index < dirtyIds.Length; index++)
+                {
+                    dirtyBakeChunks[index] = clearanceBake.Chunk(dirtyIds[index]);
+                }
             }
         }
 
@@ -165,6 +182,7 @@ public sealed class ClearancePreviewSnapshot
             classes,
             connectivity,
             bakeChunks,
+            dirtyBakeChunks,
             portals,
             buildings);
     }

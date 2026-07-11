@@ -19,10 +19,12 @@ public partial class ClearancePreview2D : Node2D
     private NavigationMapSnapshot? _runtimeNavigation;
     private GameplayProfileCatalogSnapshot? _runtimeProfiles;
     private ClearanceBakeSnapshot? _runtimeClearanceBake;
+    private SimRect? _runtimeChangedWorldArea;
     private ClearancePreviewSnapshot? _cachedPreview;
     private ulong _cachedNavigationHash;
     private ulong _cachedProfilesHash;
     private ulong _cachedBakeHash;
+    private SimRect? _cachedChangedWorldArea;
     private double _redrawTimer;
 
     [Export]
@@ -73,11 +75,13 @@ public partial class ClearancePreview2D : Node2D
         NavigationMapSnapshot? navigation,
         GameplayProfileCatalogSnapshot? profiles,
         bool enabled,
-        ClearanceBakeSnapshot? clearanceBake = null)
+        ClearanceBakeSnapshot? clearanceBake = null,
+        SimRect? changedWorldArea = null)
     {
         _runtimeNavigation = navigation;
         _runtimeProfiles = profiles;
         _runtimeClearanceBake = clearanceBake;
+        _runtimeChangedWorldArea = changedWorldArea;
         _cachedPreview = null;
         RuntimePreviewEnabled = enabled;
         QueueRedraw();
@@ -100,6 +104,7 @@ public partial class ClearancePreview2D : Node2D
         if (DrawBakeChunks)
         {
             DrawChunkGrid(preview.BakeChunks);
+            DrawDirtyChunks(preview.DirtyBakeChunks);
         }
 
         for (var obstacleIndex = 0;
@@ -171,18 +176,20 @@ public partial class ClearancePreview2D : Node2D
         if (_cachedPreview is not null &&
             _cachedNavigationHash == navigation.StableHash &&
             _cachedProfilesHash == profiles.StableHash &&
-            _cachedBakeHash == (clearanceBake?.StableHash ?? 0UL))
+            _cachedBakeHash == (clearanceBake?.StableHash ?? 0UL) &&
+            _cachedChangedWorldArea == _runtimeChangedWorldArea)
         {
             preview = _cachedPreview;
             return true;
         }
 
         preview = ClearancePreviewSnapshot.Create(
-            navigation, profiles, clearanceBake);
+            navigation, profiles, clearanceBake, _runtimeChangedWorldArea);
         _cachedPreview = preview;
         _cachedNavigationHash = navigation.StableHash;
         _cachedProfilesHash = profiles.StableHash;
         _cachedBakeHash = clearanceBake?.StableHash ?? 0UL;
+        _cachedChangedWorldArea = _runtimeChangedWorldArea;
         return true;
     }
 
@@ -216,6 +223,23 @@ public partial class ClearancePreview2D : Node2D
                 rect.Position + new Vector2(4f, 15f),
                 $"C{chunk.Id}",
                 color with { A = 0.75f });
+        }
+    }
+
+    private void DrawDirtyChunks(ReadOnlySpan<ClearanceBakeChunk> chunks)
+    {
+        var fill = new Color(1f, 0.46f, 0.12f, 0.14f);
+        var border = new Color(1f, 0.56f, 0.18f, 0.92f);
+        for (var index = 0; index < chunks.Length; index++)
+        {
+            var chunk = chunks[index];
+            var rect = ToRect(chunk.WorldBounds);
+            DrawRect(rect, fill, true);
+            DrawRect(rect, border, false, 3f);
+            DrawLabel(
+                rect.Position + new Vector2(4f, 34f),
+                $"DIRTY C{chunk.Id}",
+                border);
         }
     }
 

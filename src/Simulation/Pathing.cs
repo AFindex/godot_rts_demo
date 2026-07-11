@@ -91,6 +91,7 @@ public sealed class GridPathProvider : IPathProvider
     private readonly StaticWorld _world;
     private readonly NavigationConnectivityAnalyzer _connectivityAnalyzer;
     private readonly ClearanceBakeSnapshot? _staticBake;
+    private readonly IncrementalNavigationConnectivityUpdater? _incrementalUpdater;
     private readonly NavigationConnectivitySnapshot?[] _snapshots =
         new NavigationConnectivitySnapshot?[3];
 
@@ -102,9 +103,18 @@ public sealed class GridPathProvider : IPathProvider
         _world = world;
         _connectivityAnalyzer = new NavigationConnectivityAnalyzer(world, cellSize);
         _staticBake = staticBake;
+        if (staticBake is not null &&
+            staticBake.WorldBounds == world.Bounds &&
+            MathF.Abs(staticBake.CellSize - cellSize) <= 0.0001f)
+        {
+            _incrementalUpdater = new IncrementalNavigationConnectivityUpdater(
+                world, staticBake);
+        }
     }
 
     public bool IsReady => true;
+    public int IncrementalConnectivityUpdates { get; private set; }
+    public int IncrementalConnectivityResampledCells { get; private set; }
 
     public Vector2[] FindPath(
         Vector2 start,
@@ -293,13 +303,28 @@ public sealed class GridPathProvider : IPathProvider
             return snapshot;
         }
 
-        snapshot = _staticBake is not null &&
-                   _staticBake.IsCompatible(
-                       _world,
-                       _connectivityAnalyzer.CellSize,
-                       clearance.NavigationRadius)
-            ? _staticBake.CreateConnectivitySnapshot(clearance.Class)
-            : _connectivityAnalyzer.Analyze(clearance.NavigationRadius);
+        if (snapshot is not null &&
+            _incrementalUpdater is not null &&
+            MathF.Abs(
+                snapshot.NavigationRadius - clearance.NavigationRadius) <= 0.0001f &&
+            _world.DynamicOccupancy.TryGetSingleChangeSince(
+                snapshot.WorldRevision, out var changedBounds))
+        {
+            var update = _incrementalUpdater.Update(snapshot, changedBounds);
+            snapshot = update.Snapshot;
+            IncrementalConnectivityUpdates++;
+            IncrementalConnectivityResampledCells += update.ResampledCells;
+        }
+        else
+        {
+            snapshot = _staticBake is not null &&
+                       _staticBake.IsCompatible(
+                           _world,
+                           _connectivityAnalyzer.CellSize,
+                           clearance.NavigationRadius)
+                ? _staticBake.CreateConnectivitySnapshot(clearance.Class)
+                : _connectivityAnalyzer.Analyze(clearance.NavigationRadius);
+        }
         _snapshots[classIndex] = snapshot;
         return snapshot;
     }

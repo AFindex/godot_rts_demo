@@ -23,6 +23,8 @@ public sealed class DynamicOccupancyGrid
     private readonly List<int>?[] _footprintsByCell;
     private readonly Dictionary<int, FootprintEntry> _footprints = new();
     private int _nextId = 1;
+    private int _lastChangedRevision = -1;
+    private SimRect _lastChangedBounds;
 
     public DynamicOccupancyGrid(SimRect bounds, float cellSize = 16f)
     {
@@ -84,6 +86,8 @@ public sealed class DynamicOccupancyGrid
         }
         Revision = snapshot.Revision;
         _nextId = snapshot.NextId;
+        _lastChangedRevision = -1;
+        _lastChangedBounds = default;
     }
 
     public DynamicFootprintId Place(SimRect footprint)
@@ -91,6 +95,8 @@ public sealed class DynamicOccupancyGrid
         ValidateFootprint(footprint);
         var id = new DynamicFootprintId(_nextId++);
         Revision++;
+        _lastChangedRevision = Revision;
+        _lastChangedBounds = footprint;
         var cells = CollectCells(footprint);
         var value = new DynamicFootprint(id, footprint, Revision);
         _footprints.Add(id.Value, new FootprintEntry(value, cells));
@@ -131,7 +137,23 @@ public sealed class DynamicOccupancyGrid
 
         Revision++;
         removedBounds = entry.Value.Bounds;
+        _lastChangedRevision = Revision;
+        _lastChangedBounds = removedBounds;
         return true;
+    }
+
+    internal bool TryGetSingleChangeSince(
+        int previousRevision,
+        out SimRect changedBounds)
+    {
+        if (previousRevision == Revision - 1 &&
+            _lastChangedRevision == Revision)
+        {
+            changedBounds = _lastChangedBounds;
+            return true;
+        }
+        changedBounds = default;
+        return false;
     }
 
     public DynamicFootprint[] Snapshot() =>

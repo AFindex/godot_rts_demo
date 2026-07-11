@@ -1,6 +1,6 @@
 # Test video index
 
-仓库保留覆盖 61 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+仓库保留覆盖 62 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
@@ -35,6 +35,7 @@
 - `20260711_122843/`：操作表现第二阶段；同类型双击选择、SelectionFilter、边缘滚动、光标锚定缩放和编组双击镜头定位全部通过。
 - `20260711_125649/`：解耦 Minimap；真实 Control 显示障碍、单位、四种 footprint 建筑和视口框，坐标往返、镜头定位与 SmartCommand 意图全部通过。
 - `20260711_132406/`：新版录制流水线验收；`single-unit` 从临时 AVI 自动编码、验证并保存为 AV1/WebM。
+- `20260711_135134/`：dirty-chunk 增量 Connectivity；橙色高亮 chunks 1/6，仅重采样 512/3,080 cells，加入/移除与全量拓扑严格一致，多 revision 输入明确拒绝增量路径。
 
 重新录制所有当前场景：
 

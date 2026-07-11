@@ -29,6 +29,7 @@ RtsNavigationMapResource + RtsGameplayProfilesResource
 - 底部建筑面板同时显示 Pylon、Barracks、Factory、CommandCenter 的 footprint，以及配置要求宽度形成的外框。
 - `ConnectivityClass` 选择当前着色等级；不同连通分量使用不同的低透明度底色，图例显示各等级的分量数量。
 - 有匹配 Bake 时图例显示 `source=StaticBake`，并绘制稳定 chunk ID 和世界边界；Bake 过期时不会被采用。
+- 传入局部变更区域时，按 Large 导航半径保守膨胀后高亮橙色 `DIRTY C#`；绘制节点只消费纯 C# 预览快照。
 
 ## Godot 接入
 
@@ -39,7 +40,7 @@ RtsNavigationMapResource + RtsGameplayProfilesResource
 - `ClearanceBakeAsset = data/demo_clearance_bake.tres`
 - `Enabled = true`
 
-节点使用 `[Tool]`，在编辑器场景视图中每 0.5 秒刷新一次。普通游戏运行时不显示它；测试用例通过 `SetRuntimeSnapshots` 只为 `clearance-editor-preview` 开启相同绘制路径，因此录像验证的不是另一份测试专用实现。
+节点使用 `[Tool]`，在编辑器场景视图中每 0.5 秒刷新一次。普通游戏运行时不显示它；测试用例通过 `SetRuntimeSnapshots` 为 `clearance-editor-preview`、Bake 和增量 chunk 场景开启相同绘制路径，因此录像验证的不是另一份测试专用实现。
 
 ## 验收
 
@@ -52,12 +53,14 @@ RtsNavigationMapResource + RtsGameplayProfilesResource
 
 Godot 黑盒场景验证正式 Demo Resource 能生成 3 档、5 条 Portal 和 4 档建筑预览，并自动录制 1280×720、30 FPS、10 秒 AV1/WebM。场景通过 VisualTestCatalog 公开的稳定用例入口启动，不访问 `ClearancePreview2D` 的私有绘制细节。
 
+`clearance-incremental-chunks` 额外验证 dirty chunks 为 `1,6`，仅重采样 512/3,080 cells；加入与移除后的拓扑都严格等于全量分析。录像以橙色覆盖层显示相同两个 chunks。
+
 ## 当前边界
 
 - 这是场景内 `[Tool]` 预览基线，还没有独立 EditorPlugin Dock、点击选择或拖拽 Portal。
 - 当前能显示全局连通分量，但没有点击分量、孤岛列表或放置前后差异面板。
-- 当前能显示 Bake chunk 边界，但没有受影响 chunk 高亮或增量重烘焙按钮。
+- 已能显示受影响 chunks，并由运行时增量更新器消费同一 chunk 规划；尚没有 EditorPlugin 重烘焙按钮。
 - 障碍与建筑均按轴对齐矩形显示；尚不支持旋转和非矩形 footprint。
 - Resource 改动可定时刷新画面，但运行中的模拟尚未实现差异热重载。
 
-下一步是在现有 Chunk API 上增加受影响区域高亮和增量重烘焙，再增加孤岛/放置差异面板与 Resource 热重载。绘制节点继续只消费分析结果，不实现拓扑算法。
+下一步是增加孤岛/放置差异面板、Resource 热重载和边界 component graph。绘制节点继续只消费分析结果，不实现拓扑算法。

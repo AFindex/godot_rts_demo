@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 61 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore 或队列内部数组。
+- 62 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
-- 64 个 C# 源文件。
-- 约 19,078 行 C#（按仓库源码统计）。
-- 61 个黑盒场景。
-- 覆盖 61 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 10.34ms。
+- 65 个 C# 源文件。
+- 约 19,485 行 C#（按仓库源码统计）。
+- 62 个黑盒场景。
+- 覆盖 62 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 10.00ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -39,7 +39,7 @@
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | Demo 闭环完成 | AttackMove、近战接触槽、远程攻击环、外圈 staging、Stop/Hold 索敌、多人重选敌、死亡/leash/路线恢复 | 后置的弹道、移动射击、动画事件、复杂目标权重和推挤优先级 |
 | 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
-| S9 编辑器与数据烘焙 | Bake 闭环完成 | Navigation/Gameplay/Bake Resource、稳定哈希、CLI Generator/Validator、三档分量与 chunk `[Tool]` Preview | 增量 Baker、几何拖拽、热重载和放置差异面板 |
+| S9 编辑器与数据烘焙 | 增量净空第一层完成 | Resource/Bake、稳定哈希、dirty-chunk 重采样、Grid 运行时接入与 `[Tool]` 诊断 | 边界 component graph、几何拖拽、热重载和放置差异面板 |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
 
 ## 3. 已完成的运行时闭环
@@ -170,7 +170,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 61 个场景覆盖：
+当前 62 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -188,6 +188,7 @@
 - 24 单位绕行四种尺寸建筑组成的错位障碍场。
 - Godot Gameplay Profile Resource 转纯 C# 快照并驱动 3 种单位和 4 种建筑。
 - Godot Clearance Bake Resource 解析版本化三层拓扑，核对源哈希并驱动静态 Connectivity 与 chunk 预览。
+- 单次动态 revision 的 dirty-chunk 重采样、GridPathProvider 运行时快路径、建筑加入/移除与全量拓扑一致性。
 - Godot 编辑器净空预览同时输出 3 档尺寸、5 条 Portal 和 4 档建筑，并由纯 C# 快照驱动。
 - 跨命令共享目标槽位。
 - Stop 与 Hold。
@@ -235,7 +236,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 61 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 62 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -247,16 +248,16 @@ Observe unit / combat / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | Hash 平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|
-| 256 | 1.26ms | 1.80ms | 0.977ms | 4ms | 27B |
-| 512 | 4.16ms | 5.21ms | 2.409ms | 12.5ms | 182B |
-| 1000 | 7.94ms | 10.34ms | 1.252ms | 16.67ms | 461B |
+| 256 | 1.60ms | 3.67ms | 0.784ms | 4ms | 27B |
+| 512 | 3.94ms | 4.99ms | 1.631ms | 12.5ms | 182B |
+| 1000 | 7.88ms | 10.00ms | 1.252ms | 16.67ms | 461B |
 
 双方持续 AttackMove 的活跃战斗门槛：
 
 | 总单位数 | 平均 Tick | P95 | Hash 平均 | 战斗阶段平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|---:|
-| 128 | 1.39ms | 2.07ms | 0.146ms | 0.51ms | 4ms | 2.3KB |
-| 256 | 3.50ms | 4.90ms | 0.806ms | 1.67ms | 8ms | 4.0KB |
+| 128 | 1.36ms | 1.95ms | 0.146ms | 0.49ms | 4ms | 2.3KB |
+| 256 | 3.70ms | 5.13ms | 0.831ms | 1.76ms | 8ms | 4.0KB |
 
 活跃追击会持续生成短路径，因此单独使用 8KB/Tick 分配门槛；非战斗移动仍保持 1KB/Tick 门槛。
 
@@ -295,12 +296,12 @@ TODO：
 
 ### 5.3 地图数据管线仍缺自动烘焙和交互编辑
 
-主 Demo 已从 `data/demo_navigation_map.tres` 加载地图，并要求加载源哈希匹配的 `data/demo_clearance_bake.tres`。Bake 保存三档 walkable 位图、component ID、16px cell 和 16×16-cell chunk；静态 Grid、放置基线和编辑器预览直接复用，动态 revision 安全回退 Analyzer。`DemoMapDefinition` 只作为纯 C# 测试夹具和示例资产重建源。
+主 Demo 已从 `data/demo_navigation_map.tres` 加载地图，并要求加载源哈希匹配的 `data/demo_clearance_bake.tres`。Bake 保存三档 walkable 位图、component ID、16px cell 和 16×16-cell chunk；静态 Grid、放置基线和编辑器预览直接复用。相邻单次动态 revision 只重采样 dirty chunks，多次累计变更安全回退 Analyzer。`DemoMapDefinition` 只作为纯 C# 测试夹具和示例资产重建源。
 
 TODO：
 
 - 从 NavMesh/场景几何自动提取 Sector 和 Portal。
-- 受影响 chunk 增量重采样和跨 chunk component 边界图。
+- 跨 chunk component 边界图，避免局部重采样后仍全图标号。
 - EditorPlugin 中的 Portal/Choke 拖拽与连线。
 - 孤岛列表和放置前后 connectivity 差异面板。
 - 格式版本迁移器。
@@ -366,12 +367,9 @@ TODO：
 
 后续 TODO：
 
-- 双击选择同类单位。
-- 选择优先级和 SelectionFilter。
 - 资源和建筑右键语义。
-- 相机边缘滚动、缩放和快速定位。
-- Minimap 命令。
-- 编组双击镜头定位、Alt 移出/窃取编组。
+- Alt 移出/窃取编组和混合选择子组。
+- 命令卡与最终 UI 皮肤；仅由实际玩法驱动。
 
 ### 6.3 S9 编辑器和数据管线
 
@@ -381,6 +379,10 @@ TODO：
 - 稳定格式验证、规范字节、哈希、Validator 和 Generator。
 - Clearance Bake 格式 1、38,215 字节规范载荷、源导航哈希和独立 Generator/Validator。
 - 三档静态 topology 的 Bake 复用、动态 revision 回退和 5×3 chunk 描述。
+- footprint 按导航半径膨胀后的 dirty-chunk 规划与局部 walkability 重采样。
+- `GridPathProvider` 相邻单 revision 增量快路径；多 revision、恢复和缺失差异时安全全量回退。
+- 局部重采样后全图确定性 component 重标号，加入/移除均与全量分析严格一致。
+- `[Tool]` 预览橙色高亮受影响 chunks，表现层只消费纯 C# 快照。
 - Small/Medium/Large 障碍净空轮廓、Portal 资格和四档建筑 footprint 的场景内 `[Tool]` 预览。
 - 与 GridPathProvider 共用的三档全局 Connectivity Snapshot 和分量着色。
 - 建筑放置前后分量比较与稳定 `DisconnectsNavigation` 业务结果。
@@ -389,7 +391,7 @@ TODO：
 TODO：
 
 - Gameplay Profile/Bake Resource 热重载与格式迁移。
-- Chunk 增量 Occupancy/Clearance 更新。
+- 跨 chunk component 边界图和批量 revision 变更区域合并。
 - Sector/Portal Authoring Tool。
 - 具名关键锚点策略、孤岛列表和放置前后差异面板。
 
@@ -477,7 +479,7 @@ TODO：
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（10.34ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（10.00ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
@@ -499,10 +501,10 @@ TODO：
 - 放置封闭原有分量时返回 `DisconnectsNavigation`；安全建筑仍能放置。
 - 全局连通保护黑盒场景、通用录像诊断区域和 20 秒规范录像。
 - 版本化 Clearance Bake Resource、稳定源哈希/Bake 哈希和 byte-identical 序列化。
-- 静态 Grid/放置/Preview 复用 Bake；动态 revision 自动回退 Analyzer。
+- 静态 Grid/放置/Preview 复用 Bake；单次动态 revision 增量更新，多次累计变更自动回退 Analyzer。
 - 16×16-cell chunk API、区域影响查询、5×3 编辑器 chunk 预览和规范录像。
 
-下一层：chunk 增量 Connectivity 与边界 component graph、Resource 热重载，以及 Portal/Sector 交互编辑。
+本轮已完成 dirty-chunk walkability 增量更新与 Grid 运行时接入：示例重采样 512/3,080 cells，加入/移除均与全量拓扑一致。下一层是边界 component graph、Resource 热重载，以及 Portal/Sector 交互编辑。
 
 ### 下一步 D：AttackMove 最小闭环（已完成）
 
@@ -581,9 +583,18 @@ TODO：
 - 显示障碍、单位、选择状态、不同 footprint 建筑和视口框；支持左键/拖动定位及右键命令。
 - 61/61 黑盒场景通过，专用真实 UI 录像已保存。
 
+### G：S9 dirty-chunk 增量 Connectivity（第一层完成）
+
+- 单次建筑放置/移除只重采样导航半径影响到的 bake chunks。
+- 示例 dirty chunks 为 `1,6`，重采样 512/3,080 cells（16.6%）。
+- 局部 walkability 更新后全图稳定重标号，加入与移除结果逐 cell、逐 component ID 等于全量分析。
+- `GridPathProvider` 已实际接入；连续多 revision 或快照恢复时明确回退全量分析。
+- 编辑器预览以橙色覆盖相同 dirty chunks，不读取更新器内部结构。
+- 62/62 黑盒场景、AV1/WebM 录像和全仓录像门禁通过。
+
 ### 下一阶段边界
 
-移动内核与基础操作表现已经形成 Demo 闭环。默认不继续追加命令卡、皮肤动画、混合选择子组或更多 Minimap 细节；下一轮应由实际玩法需求选择“游戏规则/战斗内容”或“S9 导航编辑工具”，避免陷入无限表现优化。
+移动内核与基础操作表现已经形成 Demo 闭环，S9 增量净空第一层也已完成。下一轮只选择一个有业务收益的方向：边界 component graph、Resource 热重载/差异面板，或实际游戏规则；不继续无边界追加表现细节。
 
 ## 8. 可以并行但不能提前耦合的优化
 

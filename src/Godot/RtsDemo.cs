@@ -1227,8 +1227,12 @@ public partial class RtsDemo : Node2D
             _navigationSnapshot,
             _gameplayProfiles,
             caseId is "clearance-editor-preview" or
-                "clearance-bake-resource-runtime",
-            _clearanceBake);
+                "clearance-bake-resource-runtime" or
+                "clearance-incremental-chunks",
+            _clearanceBake,
+            caseId == "clearance-incremental-chunks"
+                ? ClearanceIncrementalSelfTest.ChangedArea
+                : null);
         _selectedUnits.Clear();
         foreach (var unit in _visualTest.RenderUnitIndices)
         {

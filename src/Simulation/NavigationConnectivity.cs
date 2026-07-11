@@ -10,7 +10,8 @@ public readonly record struct NavigationComponentSummary(
 public enum NavigationConnectivitySource : byte
 {
     RuntimeAnalysis,
-    StaticBake
+    StaticBake,
+    IncrementalRuntimeAnalysis
 }
 
 /// <summary>
@@ -134,8 +135,6 @@ public sealed class NavigationConnectivityAnalyzer
 
         var nodeCount = _columns * _rows;
         var walkable = new bool[nodeCount];
-        var componentIds = new int[nodeCount];
-        Array.Fill(componentIds, -1);
         var expandedAdditionalObstacle = additionalObstacle?.Expanded(
             navigationRadius);
         for (var node = 0; node < nodeCount; node++)
@@ -146,6 +145,37 @@ public sealed class NavigationConnectivityAnalyzer
                 !(expandedAdditionalObstacle?.Contains(center) ?? false);
         }
 
+        return BuildSnapshot(
+            _world.Bounds,
+            CellSize,
+            _columns,
+            _rows,
+            navigationRadius,
+            _world.NavigationRevision,
+            NavigationConnectivitySource.RuntimeAnalysis,
+            walkable);
+    }
+
+    internal static NavigationConnectivitySnapshot BuildSnapshot(
+        SimRect worldBounds,
+        float cellSize,
+        int columns,
+        int rows,
+        float navigationRadius,
+        int worldRevision,
+        NavigationConnectivitySource source,
+        bool[] walkable)
+    {
+        if (walkable.Length != columns * rows)
+        {
+            throw new ArgumentException(
+                "Walkability must match the declared connectivity grid.",
+                nameof(walkable));
+        }
+
+        var nodeCount = walkable.Length;
+        var componentIds = new int[nodeCount];
+        Array.Fill(componentIds, -1);
         var queue = new int[nodeCount];
         var componentCells = new List<int>();
         var componentBounds = new List<SimRect>();
@@ -166,11 +196,12 @@ public sealed class NavigationConnectivityAnalyzer
             while (read < write)
             {
                 var current = queue[read++];
-                var cellBounds = CellBounds(current);
+                var cellBounds = CellBounds(
+                    worldBounds, cellSize, columns, current);
                 minimum = Vector2.Min(minimum, cellBounds.Min);
                 maximum = Vector2.Max(maximum, cellBounds.Max);
-                var currentColumn = current % _columns;
-                var currentRow = current / _columns;
+                var currentColumn = current % columns;
+                var currentRow = current / columns;
                 var offsets = NeighborOffsets;
                 for (var offsetIndex = 0;
                      offsetIndex < offsets.Length;
@@ -179,21 +210,21 @@ public sealed class NavigationConnectivityAnalyzer
                     var offset = offsets[offsetIndex];
                     var column = currentColumn + offset.Column;
                     var row = currentRow + offset.Row;
-                    if ((uint)column >= (uint)_columns ||
-                        (uint)row >= (uint)_rows)
+                    if ((uint)column >= (uint)columns ||
+                        (uint)row >= (uint)rows)
                     {
                         continue;
                     }
 
-                    var neighbor = row * _columns + column;
+                    var neighbor = row * columns + column;
                     if (!walkable[neighbor] || componentIds[neighbor] >= 0)
                     {
                         continue;
                     }
 
                     if (offset.Column != 0 && offset.Row != 0 &&
-                        (!walkable[currentRow * _columns + column] ||
-                         !walkable[row * _columns + currentColumn]))
+                        (!walkable[currentRow * columns + column] ||
+                         !walkable[row * columns + currentColumn]))
                     {
                         continue;
                     }
@@ -215,13 +246,13 @@ public sealed class NavigationConnectivityAnalyzer
         }
 
         return new NavigationConnectivitySnapshot(
-            _world.Bounds,
-            CellSize,
-            _columns,
-            _rows,
+            worldBounds,
+            cellSize,
+            columns,
+            rows,
             navigationRadius,
-            _world.NavigationRevision,
-            NavigationConnectivitySource.RuntimeAnalysis,
+            worldRevision,
+            source,
             walkable,
             componentIds,
             components);
@@ -235,17 +266,147 @@ public sealed class NavigationConnectivityAnalyzer
                new Vector2((column + 0.5f) * CellSize, (row + 0.5f) * CellSize);
     }
 
-    private SimRect CellBounds(int node)
+    private static SimRect CellBounds(
+        SimRect worldBounds,
+        float cellSize,
+        int columns,
+        int node)
     {
-        var center = CellCenter(node);
-        var halfSize = new Vector2(CellSize * 0.5f);
+        var column = node % columns;
+        var row = node / columns;
+        var center = worldBounds.Min +
+                     new Vector2(
+                         (column + 0.5f) * cellSize,
+                         (row + 0.5f) * cellSize);
+        var halfSize = new Vector2(cellSize * 0.5f);
         return new SimRect(
-            Vector2.Max(_world.Bounds.Min, center - halfSize),
-            Vector2.Min(_world.Bounds.Max, center + halfSize));
+            Vector2.Max(worldBounds.Min, center - halfSize),
+            Vector2.Min(worldBounds.Max, center + halfSize));
     }
 
     private static bool IsFinite(Vector2 value) =>
         float.IsFinite(value.X) && float.IsFinite(value.Y);
+}
+
+public readonly record struct IncrementalConnectivityUpdate(
+    NavigationConnectivitySnapshot Snapshot,
+    int[] DirtyChunkIds,
+    int ResampledCells,
+    int ChangedCells)
+{
+    public float ResampledRatio => Snapshot.NodeCount == 0
+        ? 0f
+        : (float)ResampledCells / Snapshot.NodeCount;
+}
+
+/// <summary>
+/// Reuses walkability outside dirty bake chunks, then globally relabels
+/// components so the result remains equivalent to a full runtime analysis.
+/// </summary>
+public sealed class IncrementalNavigationConnectivityUpdater
+{
+    private readonly StaticWorld _world;
+    private readonly ClearanceBakeSnapshot _layout;
+
+    public IncrementalNavigationConnectivityUpdater(
+        StaticWorld world,
+        ClearanceBakeSnapshot layout)
+    {
+        if (world.Bounds != layout.WorldBounds)
+        {
+            throw new ArgumentException(
+                "World and clearance bake must share bounds.", nameof(layout));
+        }
+        _world = world;
+        _layout = layout;
+    }
+
+    public IncrementalConnectivityUpdate Update(
+        NavigationConnectivitySnapshot previous,
+        SimRect changedWorldArea)
+    {
+        Validate(previous, changedWorldArea);
+        var dirtyChunks = _layout.FindIntersectingChunks(
+            changedWorldArea.Expanded(previous.NavigationRadius));
+        if (dirtyChunks.Length == 0)
+        {
+            throw new ArgumentException(
+                "Changed area must intersect the navigation world.",
+                nameof(changedWorldArea));
+        }
+
+        var walkable = new bool[previous.NodeCount];
+        for (var node = 0; node < walkable.Length; node++)
+        {
+            walkable[node] = previous.IsWalkable(node);
+        }
+
+        var resampled = 0;
+        var changed = 0;
+        for (var dirtyIndex = 0; dirtyIndex < dirtyChunks.Length; dirtyIndex++)
+        {
+            var chunk = _layout.Chunk(dirtyChunks[dirtyIndex]);
+            for (var row = chunk.MinimumCellRow;
+                 row < chunk.MaximumCellRowExclusive;
+                 row++)
+            {
+                for (var column = chunk.MinimumCellColumn;
+                     column < chunk.MaximumCellColumnExclusive;
+                     column++)
+                {
+                    var node = row * previous.Columns + column;
+                    var current = _world.IsDiscFree(
+                        previous.CellCenter(node), previous.NavigationRadius);
+                    changed += current == walkable[node] ? 0 : 1;
+                    walkable[node] = current;
+                    resampled++;
+                }
+            }
+        }
+
+        var snapshot = NavigationConnectivityAnalyzer.BuildSnapshot(
+            previous.WorldBounds,
+            previous.CellSize,
+            previous.Columns,
+            previous.Rows,
+            previous.NavigationRadius,
+            _world.NavigationRevision,
+            NavigationConnectivitySource.IncrementalRuntimeAnalysis,
+            walkable);
+        return new IncrementalConnectivityUpdate(
+            snapshot, dirtyChunks, resampled, changed);
+    }
+
+    private void Validate(
+        NavigationConnectivitySnapshot previous,
+        SimRect changedWorldArea)
+    {
+        if (previous.WorldBounds != _layout.WorldBounds ||
+            previous.Columns != _layout.Columns ||
+            previous.Rows != _layout.Rows ||
+            MathF.Abs(previous.CellSize - _layout.CellSize) > 0.0001f)
+        {
+            throw new ArgumentException(
+                "Previous connectivity must match the bake chunk layout.",
+                nameof(previous));
+        }
+        if (previous.WorldRevision != _world.NavigationRevision - 1)
+        {
+            throw new ArgumentException(
+                "Incremental connectivity requires exactly one world revision.",
+                nameof(previous));
+        }
+        if (!float.IsFinite(changedWorldArea.Min.X) ||
+            !float.IsFinite(changedWorldArea.Min.Y) ||
+            !float.IsFinite(changedWorldArea.Max.X) ||
+            !float.IsFinite(changedWorldArea.Max.Y) ||
+            changedWorldArea.Width <= 0f || changedWorldArea.Height <= 0f)
+        {
+            throw new ArgumentException(
+                "Changed area must be finite and non-empty.",
+                nameof(changedWorldArea));
+        }
+    }
 }
 
 public readonly record struct ConnectivityPreservationReport(
