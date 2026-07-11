@@ -31,6 +31,7 @@ public static class VisualTestCatalog
         "smart-command-shift-worker-tasks",
         "operation-selection-camera",
         "operation-mixed-command-card",
+        "operation-target-command-mode",
         "minimap-interaction",
         "command-log-replay",
         "command-replay-divergence",
@@ -134,6 +135,8 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "operation-selection-camera" => CreateOperationSelectionCamera(),
         "operation-mixed-command-card" => CreateOperationMixedCommandCard(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "operation-target-command-mode" => CreateOperationTargetCommandMode(
             navigationMap, gameplayProfiles, clearanceBake),
         "minimap-interaction" => CreateMinimapInteraction(),
         "command-log-replay" => CreateCommandLogReplay(),
@@ -1198,6 +1201,99 @@ public static class VisualTestCatalog
                            runtime.CancelProduction(1, firstOrder.OrderId))
             .At(210, "Requeue Marine after refund", runtime =>
                 replacement = runtime.Train(1, barracks.BuildingId, recipe));
+    }
+
+    private static VisualTestSession CreateOperationTargetCommandMode(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1600, 300, 20, 3);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(170f, 230f), 1),
+            rig.SpawnWorker(new Vector2(210f, 330f), 1)
+        };
+        var marine = rig.SpawnCombat(new Vector2(270f, 350f), 1);
+        var barracks = rig.Build(
+            1, workers[0],
+            DemoBuildingTypes.Barracks with { BuildSeconds = 0.5f },
+            new Vector2(390f, 260f));
+        var move = rig.BeginTargetCommand(
+            1, TestTargetCommandKind.Move, workers, [],
+            "Move / Shift multi-target");
+        var attackMove = rig.BeginTargetCommand(
+            1, TestTargetCommandKind.AttackMove, [marine], [],
+            "Attack Move");
+        var rally = rig.BeginTargetCommand(
+            1, TestTargetCommandKind.Rally, [], [barracks.BuildingId],
+            "Set Rally");
+        var moveFirst = default(TestTargetCommandResult);
+        var moveSecond = default(TestTargetCommandResult);
+        var canceled = default(TestTargetCommandResult);
+        var rallyResult = default(TestTargetCommandResult);
+        var attackResult = default(TestTargetCommandResult);
+        var workerTarget = new Vector2(900f, 470f);
+        var marineTarget = new Vector2(870f, 220f);
+        var rallyPoint = new Vector2(760f, 350f);
+        return new VisualTestSession(
+            "operation-target-command-mode",
+            "Command card target mode queues Move and issues Attack Move and Rally",
+            1080,
+            rig,
+            [workers[0], workers[1], marine],
+            runtime =>
+            {
+                var workersArrived = workers.Count(unit =>
+                {
+                    var state = runtime.Observe(unit);
+                    return Vector2.Distance(state.Position, state.AssignedTarget) < 10f &&
+                           Vector2.Distance(state.AssignedTarget, workerTarget) < 60f;
+                });
+                var marineState = runtime.Observe(marine);
+                var marineArrived = Vector2.Distance(
+                        marineState.Position, marineState.AssignedTarget) < 10f &&
+                    Vector2.Distance(marineState.AssignedTarget, marineTarget) < 60f;
+                var rallyState = runtime.ObserveProductionRally(barracks.BuildingId);
+                var queuedCompleted = workers.All(unit =>
+                    runtime.ObserveOrders(unit).CompletedQueuedOrders >= 1);
+                var passed = barracks.Succeeded &&
+                             moveFirst.Issued && moveFirst.Queued &&
+                             moveFirst.KeepTargeting &&
+                             moveSecond.Issued && moveSecond.KeepTargeting &&
+                             canceled.Canceled && !canceled.KeepTargeting &&
+                             rallyResult.Issued && !rallyResult.KeepTargeting &&
+                             attackResult.Issued && !attackResult.KeepTargeting &&
+                             workersArrived == 2 && marineArrived && queuedCompleted &&
+                             rallyState.Kind == TestRallyTargetKind.Ground &&
+                             Vector2.Distance(rallyState.Position, rallyPoint) < 0.1f;
+                return new ScenarioResult(
+                    passed,
+                    $"move={moveFirst.Issued}/{moveSecond.Issued}/" +
+                    $"cancel{canceled.Canceled}, attack={attackResult.Issued}, " +
+                    $"rally={rallyState.Kind}, arrived={workersArrived + (marineArrived ? 1 : 0)}/3");
+            })
+            .SelectBuildings(barracks.BuildingId)
+            .ShowTargetCommandPreview(move)
+            .At(150, "Move target mode: Shift keeps targeting", runtime =>
+                moveFirst = runtime.ResolveTargetCommand(
+                    move, new Vector2(570f, 180f), shiftPressed: true))
+            .At(180, "Second Shift target appends a waypoint", runtime =>
+                moveSecond = runtime.ResolveTargetCommand(
+                    move, workerTarget, shiftPressed: true))
+            .At(210, "Right click cancels target mode without issuing", runtime =>
+                canceled = runtime.ResolveTargetCommand(
+                    move, default, shiftPressed: false, cancel: true))
+            .At(240, "Rally target applies through the production command", runtime =>
+                rallyResult = runtime.ResolveTargetCommand(
+                    rally, rallyPoint, shiftPressed: false))
+            .At(270, "Attack Move target uses the player command gate", runtime =>
+                attackResult = runtime.ResolveTargetCommand(
+                    attackMove, marineTarget, shiftPressed: false));
     }
 
     private static VisualTestSession CreateMinimapInteraction()

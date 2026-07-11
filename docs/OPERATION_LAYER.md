@@ -69,6 +69,14 @@ Shift+资源和 Shift+待续建建筑会生成正式 `GatherResource` / `ResumeC
 
 Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；敌军锁定攻击和 AttackMove 使用红色反馈。
 
+## 命令卡目标模式
+
+- `TargetCommandRequest` 冻结命令类型与当前活动子组的稳定 Unit/Building ID；不会持有选择控件、Node 或模拟引用。
+- `TargetCommandResolver` 只解析 Primary/Secondary、世界坐标和 Shift：左键确认，右键取消；Move/AttackMove 的 Shift 确认进入队列并保持目标模式，后续以右键或 Escape 退出。
+- Move、Attack Move 分别进入正式 `IssuePlayerMove` / `IssuePlayerAttackMove` 玩家门禁；Rally 对活动同类型生产建筑子组执行正式 `SetProductionRallyTarget`，继续支持 Ground/Resource/FriendlyUnit。
+- `RtsTargetCommandOverlay` 只消费请求与光标世界坐标，独立绘制颜色、准星和提示；换样式、文案和动画不修改输入解析或业务命令。
+- 编组召回、Space 全选会取消未完成目标模式；请求中的实体在确认时仍由正式业务 API 再验证生命期、所有权和比赛状态。
+
 ## Minimap 与 UI 解耦
 
 Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效，而不修改模拟和命令语义：
@@ -92,7 +100,8 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `operation-selection-camera`：稳定点选、可见同类型双击、友军框选、光标锚定缩放、边缘滚动和编组双击定位全部通过。
 - `minimap-interaction`：世界/面板坐标往返、视口框、定位意图、SmartCommand 意图和边界外拒绝全部通过，并录制真实 Minimap Control。
 - `operation-mixed-command-card`：2 Worker、1 Combat Unit、1 Barracks 形成 3 个子组；快照命令卡完成生产、取消和重新生产，最终出生单位。
+- `operation-target-command-mode`：两段 Shift Move、右键取消、Ground Rally、Attack Move 全部通过稳定测试 Facade，目标模式保持/退出状态正确且 3/3 单位到达。
 
 ## 当前收口
 
-操作表现已覆盖选择、混合子组、快照命令卡、相机、混合编组/Alt 抢组、编组定位和 Minimap。J2b 仍包括目标模式命令卡、多建筑批量动作、图标/tooltip、皮肤与动画。
+操作表现已覆盖选择、混合子组、快照命令卡、Move/AttackMove/Rally 目标模式、相机、混合编组/Alt 抢组、编组定位和 Minimap。J2b2 仍包括 Build 放置模式、多建筑批量动作、图标/tooltip、皮肤与动画。

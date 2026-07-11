@@ -71,6 +71,9 @@ public sealed record GameplaySelectionSnapshot(
 
 public enum CommandCardActionKind : byte
 {
+    Move,
+    AttackMove,
+    Rally,
     Stop,
     Hold,
     Train,
@@ -78,6 +81,93 @@ public enum CommandCardActionKind : byte
     Research,
     CancelResearch,
     CancelConstruction
+}
+
+public enum TargetCommandKind : byte
+{
+    Move,
+    AttackMove,
+    Rally
+}
+
+public enum TargetCommandPointerButton : byte
+{
+    Primary,
+    Secondary
+}
+
+public enum TargetCommandResolutionKind : byte
+{
+    Issue,
+    Cancel
+}
+
+public sealed record TargetCommandRequest(
+    TargetCommandKind Kind,
+    int[] UnitIds,
+    int[] BuildingIds,
+    string Label)
+{
+    public static TargetCommandRequest Create(
+        TargetCommandKind kind,
+        IEnumerable<int> unitIds,
+        IEnumerable<int> buildingIds,
+        string label)
+    {
+        if (!Enum.IsDefined(kind) || string.IsNullOrWhiteSpace(label))
+            throw new ArgumentOutOfRangeException(nameof(kind));
+        var unitValues = unitIds.ToArray();
+        var buildingValues = buildingIds.ToArray();
+        if (unitValues.Any(value => value < 0) ||
+            buildingValues.Any(value => value < 0))
+            throw new ArgumentOutOfRangeException(nameof(unitIds));
+        var units = unitValues.Distinct().Order().ToArray();
+        var buildings = buildingValues.Distinct().Order().ToArray();
+        if (kind is TargetCommandKind.Move or TargetCommandKind.AttackMove)
+        {
+            if (units.Length == 0 || buildings.Length != 0)
+                throw new ArgumentException(
+                    "Unit target commands require units and no buildings.");
+        }
+        else if (buildings.Length == 0 || units.Length != 0)
+        {
+            throw new ArgumentException(
+                "Rally target commands require buildings and no units.");
+        }
+        return new TargetCommandRequest(kind, units, buildings, label.Trim());
+    }
+}
+
+public readonly record struct TargetCommandResolution(
+    TargetCommandResolutionKind Kind,
+    TargetCommandKind Command,
+    Vector2 Position,
+    bool Queued,
+    bool KeepTargeting);
+
+public static class TargetCommandResolver
+{
+    public static TargetCommandResolution Resolve(
+        TargetCommandRequest request,
+        TargetCommandPointerButton button,
+        Vector2 position,
+        bool shiftPressed)
+    {
+        if (button == TargetCommandPointerButton.Secondary)
+            return new TargetCommandResolution(
+                TargetCommandResolutionKind.Cancel,
+                request.Kind, default, false, false);
+        if (!float.IsFinite(position.X) || !float.IsFinite(position.Y))
+            throw new ArgumentOutOfRangeException(nameof(position));
+        var queueable = request.Kind is
+            TargetCommandKind.Move or TargetCommandKind.AttackMove;
+        return new TargetCommandResolution(
+            TargetCommandResolutionKind.Issue,
+            request.Kind,
+            position,
+            shiftPressed && queueable,
+            shiftPressed && queueable);
+    }
 }
 
 public readonly record struct CommandCardActionCandidate(

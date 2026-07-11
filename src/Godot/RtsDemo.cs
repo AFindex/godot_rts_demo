@@ -74,6 +74,8 @@ public partial class RtsDemo : Node2D
     private float _commandMarkerTime;
     private bool _commandMarkerAttackMove;
     private bool _commandMarkerQueued;
+    private TargetCommandRequest? _targetCommand;
+    private RtsTargetCommandOverlay? _targetCommandOverlay;
     private int _visualTestFinishFrames = -1;
     private int _visualTestExitCode;
     private readonly Stack<DynamicFootprintId> _demoBuildings = new();
@@ -398,6 +400,7 @@ public partial class RtsDemo : Node2D
     public override void _Process(double delta)
     {
         UpdateHudLayout();
+        UpdateTargetCommandOverlay();
         if (_visualTest is null && _cameraController is not null && _camera is not null)
         {
             UpdateCamera((float)delta);
@@ -797,6 +800,13 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (_targetCommand is not null && mouse.Pressed &&
+            mouse.ButtonIndex is MouseButton.Left or MouseButton.Right)
+        {
+            ResolveTargetCommand(mouse);
+            return;
+        }
+
         if (mouse.ButtonIndex == MouseButton.Left)
         {
             if (mouse.Pressed)
@@ -878,6 +888,13 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (keyEvent.Keycode == Key.Escape && _targetCommand is not null)
+        {
+            _targetCommand = null;
+            QueueRedraw();
+            return;
+        }
+
         if (TryReadControlGroup(keyEvent, out var group))
         {
             HandleControlGroup(
@@ -892,6 +909,7 @@ public partial class RtsDemo : Node2D
         switch (keyEvent.Keycode)
         {
             case Key.Space:
+                _targetCommand = null;
                 _selectedUnits.Clear();
                 _selectedBuildings.Clear();
                 for (var unit = 0; unit < _simulation.Units.Count; unit++)
@@ -1065,6 +1083,7 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        _targetCommand = null;
         var recalled = _controlGroups.Recall(group, IsAvailableControlGroupEntity);
         _selectedUnits.Clear();
         _selectedBuildings.Clear();
@@ -1544,6 +1563,9 @@ public partial class RtsDemo : Node2D
 
     private void CreateHud()
     {
+        _targetCommandOverlay ??= new RtsTargetCommandOverlay();
+        if (_targetCommandOverlay.GetParent() is null)
+            AddChild(_targetCommandOverlay);
         _hud = new Label
         {
             Position = new Vector2(12f, 8f),
@@ -1570,7 +1592,9 @@ public partial class RtsDemo : Node2D
             _hudRoot.AddChild(_minimap);
         }
         if (_visualTest is null || _visualTest.Id is
-                "operation-mixed-command-card" or "minimap-interaction")
+                "operation-mixed-command-card" or
+                "operation-target-command-mode" or
+                "minimap-interaction")
         {
             _commandCard = new RtsCommandCardControl
             {
@@ -1623,6 +1647,12 @@ public partial class RtsDemo : Node2D
             _hudRoot.AddChild(_economyControl);
         }
         UpdateHudLayout();
+    }
+
+    private void UpdateTargetCommandOverlay()
+    {
+        _targetCommandOverlay?.SetSnapshot(
+            _targetCommand, ScreenToWorld(_pointerScreen));
     }
 
     private void UpdateHudLayout()
@@ -1879,6 +1909,10 @@ public partial class RtsDemo : Node2D
         var key = active.Key;
         if (key.Kind is GameplaySelectionKind.Worker or GameplaySelectionKind.CombatUnit)
         {
+            result.Add(new(key, CommandCardActionKind.Move, -1, -1,
+                "Move", true, "Choose target", 1));
+            result.Add(new(key, CommandCardActionKind.AttackMove, -1, -1,
+                "Attack Move", true, "Choose target", 2));
             result.Add(new(key, CommandCardActionKind.Stop, -1, -1,
                 "Stop", true, "S", 10));
             result.Add(new(key, CommandCardActionKind.Hold, -1, -1,
@@ -1897,6 +1931,21 @@ public partial class RtsDemo : Node2D
         }
         if (_productionCatalog is not null)
         {
+            var canProduce = false;
+            foreach (var recipe in _productionCatalog.Recipes)
+            {
+                if (recipe.ProducerBuildingTypeId == building.Type.Id)
+                {
+                    canProduce = true;
+                    break;
+                }
+            }
+            if (canProduce)
+            {
+                result.Add(new(key, CommandCardActionKind.Rally,
+                    buildingId.Value, -1, "Set Rally", true,
+                    "Ground / Resource / Unit", 5));
+            }
             foreach (var recipe in _productionCatalog.Recipes)
             {
                 if (recipe.ProducerBuildingTypeId != building.Type.Id) continue;
@@ -1959,6 +2008,15 @@ public partial class RtsDemo : Node2D
             .ToArray() ?? [];
         switch (action.Kind)
         {
+            case CommandCardActionKind.Move:
+                BeginTargetCommand(TargetCommandKind.Move, "Move");
+                break;
+            case CommandCardActionKind.AttackMove:
+                BeginTargetCommand(TargetCommandKind.AttackMove, "Attack Move");
+                break;
+            case CommandCardActionKind.Rally:
+                BeginTargetCommand(TargetCommandKind.Rally, "Set Rally");
+                break;
             case CommandCardActionKind.Stop:
                 _simulation.IssuePlayerStop(PlayerTeam, activeUnits);
                 break;
@@ -1991,6 +2049,83 @@ public partial class RtsDemo : Node2D
         }
         UpdateCommandCard();
         QueueRedraw();
+    }
+
+    private void BeginTargetCommand(TargetCommandKind kind, string label)
+    {
+        var active = _selectionSnapshot.ActiveSubgroup?.Members ?? [];
+        _targetCommand = TargetCommandRequest.Create(
+            kind,
+            active.Where(value => value.Kind is GameplaySelectionKind.Worker or
+                    GameplaySelectionKind.CombatUnit)
+                .Select(value => value.EntityId),
+            active.Where(value => value.Kind == GameplaySelectionKind.Building)
+                .Select(value => value.EntityId),
+            label);
+    }
+
+    private void ResolveTargetCommand(InputEventMouseButton mouse)
+    {
+        if (_simulation is null || _targetCommand is null) return;
+        var request = _targetCommand;
+        var resolution = TargetCommandResolver.Resolve(
+            request,
+            mouse.ButtonIndex == MouseButton.Left
+                ? TargetCommandPointerButton.Primary
+                : TargetCommandPointerButton.Secondary,
+            GodotPathProvider.ToNumerics(ScreenToWorld(mouse.Position)),
+            mouse.ShiftPressed);
+        if (resolution.Kind == TargetCommandResolutionKind.Cancel)
+        {
+            _targetCommand = null;
+            QueueRedraw();
+            return;
+        }
+
+        var succeeded = resolution.Command switch
+        {
+            TargetCommandKind.Move => _simulation.IssuePlayerMove(
+                PlayerTeam, request.UnitIds, resolution.Position,
+                resolution.Queued).Succeeded,
+            TargetCommandKind.AttackMove => _simulation.IssuePlayerAttackMove(
+                PlayerTeam, request.UnitIds, resolution.Position,
+                resolution.Queued).Succeeded,
+            TargetCommandKind.Rally => SetTargetCommandRally(
+                request.BuildingIds, resolution.Position),
+            _ => false
+        };
+        if (!succeeded) return;
+
+        _commandMarker = GodotPathProvider.ToGodot(resolution.Position);
+        _commandMarkerAttackMove = resolution.Command == TargetCommandKind.AttackMove;
+        _commandMarkerQueued = resolution.Queued;
+        _commandMarkerTime = 0.65f;
+        if (!resolution.KeepTargeting) _targetCommand = null;
+        UpdateCommandCard();
+        QueueRedraw();
+    }
+
+    private bool SetTargetCommandRally(
+        IReadOnlyList<int> buildings,
+        NVector2 position)
+    {
+        if (_simulation is null || buildings.Count == 0) return false;
+        var rally = ResolveProductionRallyTarget(position);
+        foreach (var value in buildings)
+        {
+            var id = new GameplayBuildingId(value);
+            if (!_simulation.Construction.IsAlive(id) ||
+                _simulation.Construction.Observe(id).PlayerId != PlayerTeam)
+                return false;
+        }
+        var succeeded = 0;
+        foreach (var value in buildings)
+        {
+            if (_simulation.SetProductionRallyTarget(
+                    PlayerTeam, new GameplayBuildingId(value), rally))
+                succeeded++;
+        }
+        return succeeded == buildings.Count;
     }
 
     private void UpdateMinimap()
@@ -2178,6 +2313,8 @@ public partial class RtsDemo : Node2D
         }
         foreach (var building in _visualTest.SelectedBuildings)
             _selectedBuildings.Add(building.Value);
+        _pointerScreen = GetViewportRect().Size * 0.5f;
+        _targetCommand = _visualTest.TargetCommandPreview;
         if (caseId == "operation-mixed-command-card" &&
             _selectedBuildings.Count > 0)
         {

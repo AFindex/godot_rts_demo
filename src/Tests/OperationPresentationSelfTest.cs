@@ -36,6 +36,26 @@ public static class OperationPresentationSelfTest
                 CommandCardActionKind.Train, 7, 0,
                 "Train Marine", false, "SupplyBlocked", 10)
         ]);
+        var moveTarget = TargetCommandRequest.Create(
+            TargetCommandKind.Move, [3, 1, 3], [], "Move");
+        var queuedTarget = TargetCommandResolver.Resolve(
+            moveTarget, TargetCommandPointerButton.Primary,
+            new Vector2(80f, 90f), shiftPressed: true);
+        var canceledTarget = TargetCommandResolver.Resolve(
+            moveTarget, TargetCommandPointerButton.Secondary,
+            new Vector2(10f, 20f), shiftPressed: false);
+        var rallyTarget = TargetCommandRequest.Create(
+            TargetCommandKind.Rally, [], [7, 4, 7], "Set Rally");
+        var invalidTargetRejected = false;
+        try
+        {
+            TargetCommandRequest.Create(
+                TargetCommandKind.Move, [-1], [], "Invalid");
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            invalidTargetRejected = true;
+        }
         var passed = selection.Entities.Length == 4 &&
                      selection.Subgroups.Length == 3 &&
                      selection.ActiveSubgroup?.Key == workerKey &&
@@ -51,10 +71,18 @@ public static class OperationPresentationSelfTest
                      buildingCard.Actions.Length == 1 &&
                      !buildingCard.Actions[0].Enabled &&
                      buildingCard.Actions[0].Status == "SupplyBlocked";
+        passed &= moveTarget.UnitIds.SequenceEqual([1, 3]) &&
+                  queuedTarget.Kind == TargetCommandResolutionKind.Issue &&
+                  queuedTarget.Queued && queuedTarget.KeepTargeting &&
+                  canceledTarget.Kind == TargetCommandResolutionKind.Cancel &&
+                  !canceledTarget.KeepTargeting &&
+                  rallyTarget.BuildingIds.SequenceEqual([4, 7]) &&
+                  invalidTargetRejected;
         return new SelfTestResult(
             passed,
             $"entities={selection.Entities.Length}, groups={selection.Subgroups.Length}, " +
             $"active={selection.ActiveSubgroup?.Name}, actions={card.Actions.Length}, " +
-            $"building={(buildingCard.Actions.Length > 0 ? buildingCard.Actions[0].Status : "missing")}");
+            $"building={(buildingCard.Actions.Length > 0 ? buildingCard.Actions[0].Status : "missing")}, " +
+            $"target={queuedTarget.Kind}/{queuedTarget.KeepTargeting}");
     }
 }

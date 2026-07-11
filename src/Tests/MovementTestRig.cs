@@ -13,6 +13,26 @@ public sealed record TestControlGroupSelection(
     TestUnitId[] Units,
     TestGameplayBuildingId[] Buildings);
 
+public enum TestTargetCommandKind : byte
+{
+    Move,
+    AttackMove,
+    Rally
+}
+
+public sealed record TestTargetCommandRequest(
+    int PlayerId,
+    TestTargetCommandKind Kind,
+    TestUnitId[] Units,
+    TestGameplayBuildingId[] Buildings,
+    string Label);
+
+public readonly record struct TestTargetCommandResult(
+    bool Issued,
+    bool Canceled,
+    bool Queued,
+    bool KeepTargeting);
+
 public enum TestAiStrategicPhase : byte
 {
     Establishing,
@@ -1815,6 +1835,90 @@ public sealed partial class MovementTestRig
                 ControlGroupEntityKind.Building, value.Value)))
             .ToArray();
 
+    public TestTargetCommandRequest BeginTargetCommand(
+        int playerId,
+        TestTargetCommandKind kind,
+        IReadOnlyList<TestUnitId> units,
+        IReadOnlyList<TestGameplayBuildingId> buildings,
+        string label)
+    {
+        var request = TargetCommandRequest.Create(
+            (TargetCommandKind)kind,
+            units.Select(value => value.Value),
+            buildings.Select(value => value.Value),
+            label);
+        return new TestTargetCommandRequest(
+            playerId, kind,
+            request.UnitIds.Select(value => new TestUnitId(value)).ToArray(),
+            request.BuildingIds.Select(value =>
+                new TestGameplayBuildingId(value)).ToArray(),
+            request.Label);
+    }
+
+    public TestTargetCommandResult ResolveTargetCommand(
+        TestTargetCommandRequest request,
+        Vector2 position,
+        bool shiftPressed,
+        bool cancel = false)
+    {
+        var internalRequest = TargetCommandRequest.Create(
+            (TargetCommandKind)request.Kind,
+            request.Units.Select(value => value.Value),
+            request.Buildings.Select(value => value.Value),
+            request.Label);
+        var resolution = TargetCommandResolver.Resolve(
+            internalRequest,
+            cancel ? TargetCommandPointerButton.Secondary :
+                TargetCommandPointerButton.Primary,
+            position,
+            shiftPressed);
+        if (resolution.Kind == TargetCommandResolutionKind.Cancel)
+            return new TestTargetCommandResult(
+                false, true, false, false);
+
+        var issued = request.Kind switch
+        {
+            TestTargetCommandKind.Move => _simulation.IssuePlayerMove(
+                request.PlayerId,
+                request.Units.Select(value => value.Value).ToArray(),
+                resolution.Position,
+                resolution.Queued).Succeeded,
+            TestTargetCommandKind.AttackMove =>
+                _simulation.IssuePlayerAttackMove(
+                    request.PlayerId,
+                    request.Units.Select(value => value.Value).ToArray(),
+                    resolution.Position,
+                    resolution.Queued).Succeeded,
+            TestTargetCommandKind.Rally => SetTargetCommandRally(
+                request.PlayerId, request.Buildings, resolution.Position),
+            _ => false
+        };
+        return new TestTargetCommandResult(
+            issued, false, resolution.Queued,
+            issued && resolution.KeepTargeting);
+    }
+
+    private bool SetTargetCommandRally(
+        int playerId,
+        IReadOnlyList<TestGameplayBuildingId> buildings,
+        Vector2 position)
+    {
+        foreach (var value in buildings)
+        {
+            var id = new GameplayBuildingId(value.Value);
+            if (!_simulation.Construction.IsAlive(id) ||
+                _simulation.Construction.Observe(id).PlayerId != playerId)
+                return false;
+        }
+        foreach (var value in buildings)
+        {
+            if (!_simulation.SetProductionRallyPoint(
+                    playerId, new GameplayBuildingId(value.Value), position))
+                return false;
+        }
+        return true;
+    }
+
     public TestBuildingId PlaceBuilding(Vector2 center, Vector2 size)
     {
         if (size.X <= 0f || size.Y <= 0f)
@@ -2542,6 +2646,7 @@ public sealed class VisualTestSession
     internal IReadOnlyList<TestDiagnosticArea> DiagnosticAreas => _diagnosticAreas;
     internal IReadOnlyList<TestGameplayBuildingId> SelectedBuildings =>
         _selectedBuildings;
+    internal TargetCommandRequest? TargetCommandPreview { get; private set; }
     private bool DynamicUnitRendering { get; set; }
 
     public VisualTestSession RenderSpawnedUnits()
@@ -2564,6 +2669,17 @@ public sealed class VisualTestSession
     {
         _selectedBuildings.Clear();
         _selectedBuildings.AddRange(buildings.Distinct().OrderBy(value => value.Value));
+        return this;
+    }
+
+    public VisualTestSession ShowTargetCommandPreview(
+        TestTargetCommandRequest request)
+    {
+        TargetCommandPreview = TargetCommandRequest.Create(
+            (TargetCommandKind)request.Kind,
+            request.Units.Select(value => value.Value),
+            request.Buildings.Select(value => value.Value),
+            request.Label);
         return this;
     }
 
