@@ -60,6 +60,9 @@ public partial class RtsDemo : Node2D
     private Vector2 _pointerScreen;
     private bool _doubleClickSelection;
     private RtsMinimapControl? _minimap;
+    private RuntimeResourceSetSnapshot? _hotReloadCandidate;
+    private RuntimeResourceReloadPlan? _hotReloadPlan;
+    private RtsResourceReloadControl? _resourceReloadControl;
 
     public override async void _Ready()
     {
@@ -139,6 +142,17 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-hot-reload-test-resources"))
+        {
+            if (!TryLoadRuntimeData())
+            {
+                GetTree().Quit(1);
+                return;
+            }
+            GenerateHotReloadTestResources();
+            return;
+        }
+
         if (userArguments.Contains("--self-test"))
         {
             if (!TryLoadRuntimeData())
@@ -163,6 +177,12 @@ public partial class RtsDemo : Node2D
                 return;
             }
 
+            if (visualTestId == "resource-hot-reload" &&
+                !TryPrepareHotReloadCandidate())
+            {
+                GetTree().Quit(1);
+                return;
+            }
             StartVisualTest(visualTestId);
             return;
         }
@@ -1019,6 +1039,15 @@ public partial class RtsDemo : Node2D
             _minimap.SmartCommandRequested += IssueMinimapCommand;
             _hudRoot.AddChild(_minimap);
         }
+        if (_visualTest?.Id == "resource-hot-reload" && _hotReloadPlan is not null)
+        {
+            _resourceReloadControl = new RtsResourceReloadControl
+            {
+                Size = new Vector2(720f, 190f)
+            };
+            _resourceReloadControl.SetPlan(_hotReloadPlan);
+            _hudRoot.AddChild(_resourceReloadControl);
+        }
         UpdateHudLayout();
     }
 
@@ -1036,6 +1065,12 @@ public partial class RtsDemo : Node2D
         if (_minimap is not null)
         {
             _minimap.Position = viewportSize - _minimap.Size - new Vector2(12f, 12f);
+        }
+        if (_resourceReloadControl is not null)
+        {
+            _resourceReloadControl.Position = new Vector2(
+                24f,
+                viewportSize.Y - _resourceReloadControl.Size.Y - 20f);
         }
     }
 
@@ -1210,7 +1245,11 @@ public partial class RtsDemo : Node2D
         try
         {
         _visualTest = VisualTestCatalog.Create(
-            caseId, _navigationSnapshot, _gameplayProfiles, _clearanceBake);
+            caseId,
+            _navigationSnapshot,
+            _gameplayProfiles,
+            _clearanceBake,
+            _hotReloadCandidate);
         }
         catch (ArgumentException exception)
         {
@@ -1253,6 +1292,69 @@ public partial class RtsDemo : Node2D
         GD.Print(
             $"RTS_VISUAL_TEST_START {_visualTest.Id}: " +
             $"ticks={_visualTest.DurationTicks}, units={_visualTest.VisibleUnits.Length}");
+    }
+
+    private bool TryPrepareHotReloadCandidate()
+    {
+        if (_navigationSnapshot is null || _gameplayProfiles is null ||
+            _clearanceBake is null)
+        {
+            GD.PushError("RTS_RESOURCE_RELOAD FAIL baseline resources missing");
+            return false;
+        }
+        if (!RuntimeResourceSetSnapshot.TryCreate(
+                _navigationSnapshot,
+                _gameplayProfiles,
+                _clearanceBake,
+                out var current,
+                out var currentValidation) ||
+            current is null)
+        {
+            GD.PushError(
+                $"RTS_RESOURCE_RELOAD FAIL baseline={currentValidation.Message}");
+            return false;
+        }
+        if (!RuntimeResourceSetLoader.TryLoadFresh(
+                HotReloadTestResourceGenerator.NavigationPath,
+                HotReloadTestResourceGenerator.ProfilesPath,
+                HotReloadTestResourceGenerator.BakePath,
+                out _hotReloadCandidate,
+                out var loadResult) ||
+            _hotReloadCandidate is null)
+        {
+            GD.PushError(
+                $"RTS_RESOURCE_RELOAD FAIL code={loadResult.Code} " +
+                $"message={loadResult.Message}");
+            return false;
+        }
+
+        _hotReloadPlan = RuntimeResourceReloadPlan.Create(
+            current, _hotReloadCandidate);
+        var mismatchRejected = !RuntimeResourceSetLoader.TryLoadFresh(
+            HotReloadTestResourceGenerator.NavigationPath,
+            HotReloadTestResourceGenerator.ProfilesPath,
+            DemoClearanceBakeResourcePath,
+            out _,
+            out var mismatchResult) &&
+            mismatchResult.Code ==
+                RuntimeResourceLoadErrorCode.ClearanceBakeLoadFailed;
+        if (!mismatchRejected)
+        {
+            GD.PushError(
+                $"RTS_RESOURCE_RELOAD FAIL mismatched set accepted " +
+                $"code={mismatchResult.Code}");
+            return false;
+        }
+        GD.Print(
+            $"RTS_RESOURCE_RELOAD PASS impact={_hotReloadPlan.Impact} " +
+            $"navigation={_hotReloadPlan.Navigation.ChangedObstacles}/" +
+            $"{_hotReloadPlan.Navigation.ChangedPortals}/" +
+            $"{_hotReloadPlan.Navigation.ChangedEdges} " +
+            $"profiles={_hotReloadPlan.GameplayProfiles.ChangedUnitProfiles}/" +
+            $"{_hotReloadPlan.GameplayProfiles.ChangedBuildingProfiles} " +
+            $"bake={_hotReloadPlan.ClearanceBake.Changed} " +
+            $"mismatchRejected={mismatchRejected}");
+        return true;
     }
 
     private static string? ReadArgument(string[] arguments, string name)
@@ -1444,6 +1546,26 @@ public partial class RtsDemo : Node2D
             $"hash={snapshot.StableHashText} " +
             $"bytes={snapshot.CanonicalBytes.Length}");
         GetTree().Quit(saveError == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateHotReloadTestResources()
+    {
+        if (_navigationSnapshot is null || _gameplayProfiles is null)
+        {
+            GD.PushError("Runtime resources must load before generating fixtures.");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var result = HotReloadTestResourceGenerator.Generate(
+            _navigationSnapshot, _gameplayProfiles);
+        GD.Print(
+            $"RTS_HOT_RELOAD_FIXTURES {(result.Succeeded ? "PASS" : "FAIL")} " +
+            $"navigation={result.NavigationHash} " +
+            $"profiles={result.ProfilesHash} bake={result.BakeHash} " +
+            $"errors={result.NavigationError}/{result.ProfilesError}/" +
+            $"{result.BakeError}");
+        GetTree().Quit(result.Succeeded ? 0 : 1);
     }
 
     private static bool EnsureDataDirectory()

@@ -74,4 +74,4 @@
 
 ## 6. 后续
 
-场景内 `[Tool]` 多尺寸 Preview 与全局 Connectivity 第一层已经完成：编辑器可显示单位净空、Portal 宽度资格、四档建筑 footprint 和所选 Movement Class 的连通分量；业务放置会拒绝切断已有分量。下一层是资源格式迁移、差异诊断和热重载。
+场景内 `[Tool]` 多尺寸 Preview 与全局 Connectivity 第一层已经完成：编辑器可显示单位净空、Portal 宽度资格、四档建筑 footprint 和所选 Movement Class 的连通分量；业务放置会拒绝切断已有分量。Resource Fresh Load 与差异诊断也已完成，Profile 变化会明确返回 `RebuildSimulation`，不会原地部分修改现有单位。下一层是显式重建/状态迁移和格式版本迁移。

@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="RtsGameplayProfilesResource" format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/BuildingFootprintProfileResource.cs" id="1_tvii0"]
+[ext_resource type="Script" path="res://src/Godot/Resources/UnitMovementProfileResource.cs" id="2_d3rla"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsGameplayProfilesResource.cs" id="3_ej7tm"]
+
+[sub_resource type="Resource" id="Resource_l6x3c"]
+script = ExtResource("1_tvii0")
+DisplayName = "Pylon"
+Size = Vector2(32, 32)
+
+[sub_resource type="Resource" id="Resource_2m27j"]
+script = ExtResource("1_tvii0")
+Id = 1
+DisplayName = "Barracks"
+FootprintClass = 1
+
+[sub_resource type="Resource" id="Resource_of13w"]
+script = ExtResource("1_tvii0")
+Id = 2
+DisplayName = "Factory"
+FootprintClass = 2
+Size = Vector2(112, 80)
+
+[sub_resource type="Resource" id="Resource_nooe7"]
+script = ExtResource("1_tvii0")
+Id = 3
+DisplayName = "CommandCenter"
+FootprintClass = 3
+Size = Vector2(160, 120)
+
+[sub_resource type="Resource" id="Resource_fd4bi"]
+script = ExtResource("2_d3rla")
+DisplayName = "Scout"
+PhysicalRadius = 5.5
+MaximumSpeed = 166.0
+Acceleration = 780.0
+
+[sub_resource type="Resource" id="Resource_a55vx"]
+script = ExtResource("2_d3rla")
+Id = 1
+DisplayName = "Marine"
+
+[sub_resource type="Resource" id="Resource_bmyyw"]
+script = ExtResource("2_d3rla")
+Id = 2
+DisplayName = "Heavy"
+PhysicalRadius = 10.0
+MaximumSpeed = 105.0
+Acceleration = 600.0
+
+[resource]
+script = ExtResource("3_ej7tm")
+UnitProfiles = Array[ExtResource("2_d3rla")]([SubResource("Resource_fd4bi"), SubResource("Resource_a55vx"), SubResource("Resource_bmyyw")])
+BuildingProfiles = Array[ExtResource("1_tvii0")]([SubResource("Resource_l6x3c"), SubResource("Resource_2m27j"), SubResource("Resource_of13w"), SubResource("Resource_nooe7")])

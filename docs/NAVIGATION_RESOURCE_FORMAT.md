@@ -132,6 +132,6 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 没有 Sector、Clearance Field 和 Movement Class。
 - 没有 EditorPlugin 几何拖拽、连线和多尺寸通行预览。
 - 没有格式迁移器；非版本 1 数据会明确拒绝。
-- 运行中不热重载资源，需要重新启动场景。
+- 已支持绕过缓存 Fresh Load、原子资源集校验和差异报告；Navigation 改变会返回 `RebuildSimulation`，当前仍不原地修改运行中的世界。
 
-Clearance 与 Movement Class、静态 Bake 和编辑器几何/Connectivity 预览已经完成。导航几何修改后需运行 `generate_demo_clearance_bake.ps1`；加载时通过源导航哈希拒绝过期 Bake。后续 S9 继续做 chunk 增量更新与 Portal/Sector 交互编辑。
+Clearance 与 Movement Class、静态 Bake、dirty-chunk 更新和编辑器几何/Connectivity 预览已经完成。导航几何修改后需生成匹配 Bake；Fresh Load 会通过源导航哈希原子拒绝过期组合。后续 S9 继续做安全重建提交与 Portal/Sector 交互编辑。

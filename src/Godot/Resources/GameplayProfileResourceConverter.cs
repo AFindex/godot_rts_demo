@@ -6,6 +6,43 @@ namespace RtsDemo.GodotRuntime.Resources;
 
 public static class GameplayProfileResourceConverter
 {
+    public static RtsGameplayProfilesResource FromSnapshot(
+        GameplayProfileCatalogSnapshot snapshot)
+    {
+        var resource = new RtsGameplayProfilesResource
+        {
+            FormatVersion = snapshot.FormatVersion
+        };
+        var units = snapshot.UnitProfiles;
+        for (var index = 0; index < units.Length; index++)
+        {
+            var source = units[index];
+            resource.UnitProfiles.Add(new UnitMovementProfileResource
+            {
+                Id = source.Id,
+                DisplayName = source.Name,
+                PhysicalRadius = source.PhysicalRadius,
+                MaximumSpeed = source.MaximumSpeed,
+                Acceleration = source.Acceleration
+            });
+        }
+        var buildings = snapshot.BuildingProfiles;
+        for (var index = 0; index < buildings.Length; index++)
+        {
+            var source = buildings[index];
+            resource.BuildingProfiles.Add(new BuildingFootprintProfileResource
+            {
+                Id = source.Id,
+                DisplayName = source.Name,
+                FootprintClass = source.FootprintClass,
+                Size = new Vector2(source.Size.X, source.Size.Y),
+                MinimumPassageClass = source.MinimumPassageClass,
+                UnitPadding = source.UnitPadding
+            });
+        }
+        return resource;
+    }
+
     public static bool TryLoadSnapshot(
         string resourcePath,
         out GameplayProfileCatalogSnapshot? snapshot,

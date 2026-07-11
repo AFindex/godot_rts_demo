@@ -53,6 +53,7 @@ public static class VisualTestCatalog
         "clearance-bake-resource-runtime",
         "clearance-editor-preview",
         "clearance-incremental-chunks",
+        "resource-hot-reload",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -79,7 +80,8 @@ public static class VisualTestCatalog
         string caseId,
         NavigationMapSnapshot? navigationMap = null,
         GameplayProfileCatalogSnapshot? gameplayProfiles = null,
-        ClearanceBakeSnapshot? clearanceBake = null) => caseId switch
+        ClearanceBakeSnapshot? clearanceBake = null,
+        RuntimeResourceSetSnapshot? hotReloadCandidate = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
@@ -134,6 +136,11 @@ public static class VisualTestCatalog
         "clearance-incremental-chunks" =>
             CreateClearanceIncrementalChunks(
                 navigationMap, gameplayProfiles, clearanceBake),
+        "resource-hot-reload" => CreateResourceHotReload(
+            navigationMap,
+            gameplayProfiles,
+            clearanceBake,
+            hotReloadCandidate),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -1832,6 +1839,33 @@ public static class VisualTestCatalog
                     result.Passed && preview.DirtyBakeChunks.Length > 0,
                     $"dirtyPreview={preview.DirtyBakeChunks.Length}, " +
                     result.Summary);
+            });
+    }
+
+    private static VisualTestSession CreateResourceHotReload(
+        NavigationMapSnapshot? navigation,
+        GameplayProfileCatalogSnapshot? profiles,
+        ClearanceBakeSnapshot? clearanceBake,
+        RuntimeResourceSetSnapshot? generatedCandidate)
+    {
+        navigation ??= DemoMapDefinition.CreateSnapshot();
+        profiles ??= DemoGameplayProfiles.CreateSnapshot();
+        clearanceBake ??= ClearanceBakeSnapshot.Build(navigation);
+        var rig = MovementTestRig.CreateChokeMap(8, navigation);
+        return new VisualTestSession(
+            "resource-hot-reload",
+            "Atomic Resource reload diff and rebuild policy",
+            600,
+            rig,
+            [],
+            _ =>
+            {
+                var result = ResourceReloadSelfTest.Run(
+                    navigation,
+                    profiles,
+                    clearanceBake,
+                    generatedCandidate);
+                return new ScenarioResult(result.Passed, result.Summary);
             });
     }
 

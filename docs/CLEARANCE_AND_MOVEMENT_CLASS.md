@@ -140,8 +140,8 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 当前完成的是运行时尺寸语义与路径一致性第一层，后续按顺序推进：
 
-1. 按 chunk 增量更新动态 Connectivity Snapshot 和边界 component graph。
-2. Gameplay Profile/Bake Resource 格式迁移、差异诊断和热重载。
+1. 在已有 dirty-chunk 重采样上增加边界 component graph。
+2. 在已有 Resource Fresh Load/差异报告上增加 Bake-only 安全提交和格式迁移。
 3. Editor 中的 Portal/Choke 交互编辑、局部非法窄口定位和放置前后差异面板。
 4. Ground、Hover、Air 等移动层，以及地形软代价和标签。
 5. 非矩形/旋转 footprint 与局部 NavMesh chunk 更新。

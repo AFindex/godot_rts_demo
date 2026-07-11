@@ -1,0 +1,103 @@
+[gd_resource type="Resource" script_class="RtsNavigationMapResource" format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/NavigationChokeResource.cs" id="1_vmrap"]
+[ext_resource type="Script" path="res://src/Godot/Resources/NavigationPortalEdgeResource.cs" id="2_45qde"]
+[ext_resource type="Script" path="res://src/Godot/Resources/NavigationObstacleResource.cs" id="3_b7g6e"]
+[ext_resource type="Script" path="res://src/Godot/Resources/NavigationPortalResource.cs" id="4_fs6vu"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsNavigationMapResource.cs" id="5_f62u6"]
+
+[sub_resource type="Resource" id="Resource_1voii"]
+script = ExtResource("1_vmrap")
+A = Vector2(520, 353)
+B = Vector2(740, 353)
+Width = 112.0
+ApproachDistance = 155.0
+
+[sub_resource type="Resource" id="Resource_8756q"]
+script = ExtResource("2_45qde")
+ToPortal = 1
+Width = 112.0
+ChokeId = 0
+
+[sub_resource type="Resource" id="Resource_4h57x"]
+script = ExtResource("2_45qde")
+FromPortal = 1
+ToPortal = 2
+Width = 190.0
+
+[sub_resource type="Resource" id="Resource_bnrok"]
+script = ExtResource("2_45qde")
+FromPortal = 2
+ToPortal = 3
+Width = 180.0
+
+[sub_resource type="Resource" id="Resource_l6rg0"]
+script = ExtResource("2_45qde")
+FromPortal = 1
+ToPortal = 4
+Width = 190.0
+
+[sub_resource type="Resource" id="Resource_serci"]
+script = ExtResource("2_45qde")
+FromPortal = 4
+ToPortal = 5
+Width = 180.0
+
+[sub_resource type="Resource" id="Resource_7yuvf"]
+script = ExtResource("3_b7g6e")
+Bounds = Rect2(545, 100, 170, 192)
+
+[sub_resource type="Resource" id="Resource_w0xiu"]
+script = ExtResource("3_b7g6e")
+Bounds = Rect2(545, 414, 170, 228)
+
+[sub_resource type="Resource" id="Resource_dj2lc"]
+script = ExtResource("3_b7g6e")
+Bounds = Rect2(870, 250, 100, 200)
+
+[sub_resource type="Resource" id="Resource_0si5x"]
+script = ExtResource("3_b7g6e")
+Bounds = Rect2(360, 500, 48, 48)
+
+[sub_resource type="Resource" id="Resource_lsi2b"]
+script = ExtResource("4_fs6vu")
+Position = Vector2(520, 353)
+DisplayName = "West choke mouth"
+
+[sub_resource type="Resource" id="Resource_qgels"]
+script = ExtResource("4_fs6vu")
+Id = 1
+Position = Vector2(740, 353)
+DisplayName = "East choke mouth"
+
+[sub_resource type="Resource" id="Resource_1j3o2"]
+script = ExtResource("4_fs6vu")
+Id = 2
+Position = Vector2(825, 225)
+DisplayName = "Upper west bypass"
+
+[sub_resource type="Resource" id="Resource_2kpr3"]
+script = ExtResource("4_fs6vu")
+Id = 3
+Position = Vector2(1015, 225)
+DisplayName = "Upper east bypass"
+
+[sub_resource type="Resource" id="Resource_sf1sw"]
+script = ExtResource("4_fs6vu")
+Id = 4
+Position = Vector2(825, 475)
+DisplayName = "Lower west bypass"
+
+[sub_resource type="Resource" id="Resource_xdlhn"]
+script = ExtResource("4_fs6vu")
+Id = 5
+Position = Vector2(1015, 475)
+DisplayName = "Lower east bypass"
+
+[resource]
+script = ExtResource("5_f62u6")
+WorldBounds = Rect2(24, 70, 1232, 626)
+Obstacles = Array[ExtResource("3_b7g6e")]([SubResource("Resource_7yuvf"), SubResource("Resource_w0xiu"), SubResource("Resource_dj2lc"), SubResource("Resource_0si5x")])
+Portals = Array[ExtResource("4_fs6vu")]([SubResource("Resource_lsi2b"), SubResource("Resource_qgels"), SubResource("Resource_1j3o2"), SubResource("Resource_2kpr3"), SubResource("Resource_sf1sw"), SubResource("Resource_xdlhn")])
+Edges = Array[ExtResource("2_45qde")]([SubResource("Resource_8756q"), SubResource("Resource_4h57x"), SubResource("Resource_bnrok"), SubResource("Resource_l6rg0"), SubResource("Resource_serci")])
+Chokes = Array[ExtResource("1_vmrap")]([SubResource("Resource_1voii")])
