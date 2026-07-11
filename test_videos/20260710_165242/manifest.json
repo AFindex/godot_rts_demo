@@ -29,27 +29,39 @@
     "cases":  [
                   {
                       "id":  "dynamic-building-detour",
-                      "file":  "dynamic-building-detour.avi",
+                      "file":  "dynamic-building-detour.webm",
                       "log":  "dynamic-building-detour.log",
-                      "bytes":  34415178,
+                      "bytes":  2530484,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS dynamic-building-detour: ticks=1200, arrived=19/20, overlap=0.00, finite=True, inside=True, revision=1, buildings=1"
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-building-detour: ticks=1200, arrived=19/20, overlap=0.00, finite=True, inside=True, revision=1, buildings=1",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "dynamic-building-remove",
-                      "file":  "dynamic-building-remove.avi",
+                      "file":  "dynamic-building-remove.webm",
                       "log":  "dynamic-building-remove.log",
-                      "bytes":  33523456,
+                      "bytes":  1718956,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS dynamic-building-remove: ticks=1200, arrived=20/20, overlap=0.00, finite=True, inside=True, revision=2, buildings=0"
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-building-remove: ticks=1200, arrived=20/20, overlap=0.00, finite=True, inside=True, revision=2, buildings=0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "dynamic-portal-reroute",
-                      "file":  "dynamic-portal-reroute.avi",
+                      "file":  "dynamic-portal-reroute.webm",
                       "log":  "dynamic-portal-reroute.log",
-                      "bytes":  62020228,
+                      "bytes":  3209747,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS dynamic-portal-reroute: ticks=1800, arrived=22/24, overlap=0.00, finite=True, inside=True, revision=1, buildings=1"
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-portal-reroute: ticks=1800, arrived=22/24, overlap=0.00, finite=True, inside=True, revision=1, buildings=1",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

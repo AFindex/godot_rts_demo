@@ -66,19 +66,27 @@
     "cases":  [
                   {
                       "id":  "command-log-replay",
-                      "file":  "command-log-replay.avi",
+                      "file":  "command-log-replay.webm",
                       "log":  "command-log-replay.log",
-                      "bytes":  24338030,
+                      "bytes":  726116,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS command-log-replay: ticks=840, entries=7, bytes=274, log=160A423C68D3AF41, state=0745CD63FEF92D2C, exact=True, rejected=True"
+                      "result":  "RTS_VISUAL_TEST_PASS command-log-replay: ticks=840, entries=7, bytes=274, log=160A423C68D3AF41, state=0745CD63FEF92D2C, exact=True, rejected=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "command-replay-divergence",
-                      "file":  "command-replay-divergence.avi",
+                      "file":  "command-replay-divergence.webm",
                       "log":  "command-replay-divergence.log",
-                      "bytes":  24346462,
+                      "bytes":  738881,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS command-replay-divergence: ticks=840, first_divergence=360, baseline=0745CD63FEF92D2C, changed=3987BC62C2F24A60, samples=29"
+                      "result":  "RTS_VISUAL_TEST_PASS command-replay-divergence: ticks=840, first_divergence=360, baseline=0745CD63FEF92D2C, changed=3987BC62C2F24A60, samples=29",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

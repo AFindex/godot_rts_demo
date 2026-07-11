@@ -150,11 +150,24 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
+录像流水线先让 Godot Movie Maker 生成临时 AVI，再自动使用固定版本 FFmpeg 的
+`libsvtav1` 编码为 AV1/WebM；只有 codec、分辨率和逐帧数量验证通过后才删除临时
+AVI。默认使用 `CRF 32 / preset 8 / yuv420p / 无音轨`，也可以显式调整：
+
+```powershell
+.\tools\record_tests.ps1 -Case portal-choke -Fps 30 -Crf 32 -EncoderPreset 8
+```
+
+首次运行会下载并校验 FFmpeg 8.1.2 Full Build 到 `tools/.cache/`，工具二进制不进入
+版本库。历史 AVI 可通过 `tools/compress_test_videos.ps1` 批量迁移。当前 85 段历史录像
+已从 3,309,160,498 字节压缩到 228,515,601 字节（保留 6.91%，节省约 3.08GB）。
+完整约定见 [测试录像与 FFmpeg 工具链](docs/VIDEO_RECORDING.md)。
+
 当前包含 61 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、选择/相机、Minimap、命令回放、Replay Package、checkpoint 和持久化热快照。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
-脚本会向运行中的测试目录自动查询全部用例，不维护第二份硬编码列表。录像、对应 Godot 日志和 `manifest.json` 会保存在 `test_videos/<录制时间>/`。某项失败时仍会继续录制剩余用例，并在最后返回失败。录像使用 Godot Movie Maker 的固定帧率模式；模拟始终以 60 Hz 推进，因此适合逐版本对比。
+脚本会向运行中的测试目录自动查询全部用例，不维护第二份硬编码列表。AV1/WebM 录像、对应 Godot 日志和 `manifest.json` 会保存在 `test_videos/<录制时间>/`。某项失败时仍会继续录制剩余用例，并在最后返回失败。录像使用 Godot Movie Maker 的固定帧率模式；模拟始终以 60 Hz 推进，因此适合逐版本对比。
 
 生成自动验证截图：
 

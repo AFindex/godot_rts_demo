@@ -22,115 +22,171 @@
     "cases":  [
                   {
                       "id":  "single-unit",
-                      "file":  "single-unit.avi",
+                      "file":  "single-unit.webm",
                       "log":  "single-unit.log",
-                      "bytes":  10157102,
+                      "bytes":  129241,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS single-unit: ticks=480, arrived=1/1, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS single-unit: ticks=480, arrived=1/1, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "open-field",
-                      "file":  "open-field.avi",
+                      "file":  "open-field.webm",
                       "log":  "open-field.log",
-                      "bytes":  28209708,
+                      "bytes":  3530163,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS open-field: ticks=960, arrived=47/48, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS open-field: ticks=960, arrived=47/48, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "dense-formation",
-                      "file":  "dense-formation.avi",
+                      "file":  "dense-formation.webm",
                       "log":  "dense-formation.log",
-                      "bytes":  35723114,
+                      "bytes":  5792051,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS dense-formation: ticks=1080, arrived=76/80, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS dense-formation: ticks=1080, arrived=76/80, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "opposing-streams",
-                      "file":  "opposing-streams.avi",
+                      "file":  "opposing-streams.webm",
                       "log":  "opposing-streams.log",
-                      "bytes":  34720312,
+                      "bytes":  4372678,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS opposing-streams: ticks=1200, arrived=44/48, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS opposing-streams: ticks=1200, arrived=44/48, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "crossing-streams",
-                      "file":  "crossing-streams.avi",
+                      "file":  "crossing-streams.webm",
                       "log":  "crossing-streams.log",
-                      "bytes":  24491894,
+                      "bytes":  1968555,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS crossing-streams: ticks=900, arrived=32/32, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS crossing-streams: ticks=900, arrived=32/32, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "command-replace",
-                      "file":  "command-replace.avi",
+                      "file":  "command-replace.webm",
                       "log":  "command-replace.log",
-                      "bytes":  20547622,
+                      "bytes":  1635583,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS command-replace: ticks=780, arrived=19/20, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS command-replace: ticks=780, arrived=19/20, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "rapid-reissue",
-                      "file":  "rapid-reissue.avi",
+                      "file":  "rapid-reissue.webm",
                       "log":  "rapid-reissue.log",
-                      "bytes":  26128680,
+                      "bytes":  2733543,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS rapid-reissue: ticks=960, arrived=24/24, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS rapid-reissue: ticks=960, arrived=24/24, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "stop-command",
-                      "file":  "stop-command.avi",
+                      "file":  "stop-command.webm",
                       "log":  "stop-command.log",
-                      "bytes":  10781568,
+                      "bytes":  578684,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS stop-command: ticks=420, state=16/16, settled=16/16, stopRadius=16/16, overlap=0.00"
+                      "result":  "RTS_VISUAL_TEST_PASS stop-command: ticks=420, state=16/16, settled=16/16, stopRadius=16/16, overlap=0.00",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "hold-command",
-                      "file":  "hold-command.avi",
+                      "file":  "hold-command.webm",
                       "log":  "hold-command.log",
-                      "bytes":  11043322,
+                      "bytes":  605860,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS hold-command: ticks=420, state=16/16, settled=16/16, stopRadius=16/16, overlap=0.00"
+                      "result":  "RTS_VISUAL_TEST_PASS hold-command: ticks=420, state=16/16, settled=16/16, stopRadius=16/16, overlap=0.00",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "mixed-radii",
-                      "file":  "mixed-radii.avi",
+                      "file":  "mixed-radii.webm",
                       "log":  "mixed-radii.log",
-                      "bytes":  26462240,
+                      "bytes":  1788484,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS mixed-radii: ticks=1020, arrived=30/30, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS mixed-radii: ticks=1020, arrived=30/30, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "boundary-target",
-                      "file":  "boundary-target.avi",
+                      "file":  "boundary-target.webm",
                       "log":  "boundary-target.log",
-                      "bytes":  26041528,
+                      "bytes":  1906563,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS boundary-target: ticks=960, arrived=20/20, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS boundary-target: ticks=960, arrived=20/20, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "portal-choke",
-                      "file":  "portal-choke.avi",
+                      "file":  "portal-choke.webm",
                       "log":  "portal-choke.log",
-                      "bytes":  48462258,
+                      "bytes":  3013085,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS portal-choke: ticks=1500, arrived=20/24, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS portal-choke: ticks=1500, arrived=20/24, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "reverse-choke",
-                      "file":  "reverse-choke.avi",
+                      "file":  "reverse-choke.webm",
                       "log":  "reverse-choke.log",
-                      "bytes":  47937700,
+                      "bytes":  2404059,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS reverse-choke: ticks=1500, arrived=23/24, overlap=0.00, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS reverse-choke: ticks=1500, arrived=23/24, overlap=0.00, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "large-group-192",
-                      "file":  "large-group-192.avi",
+                      "file":  "large-group-192.webm",
                       "log":  "large-group-192.log",
-                      "bytes":  63664674,
+                      "bytes":  13175113,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS large-group-192: ticks=1500, arrived=182/192, overlap=0.15, finite=True, inside=True"
+                      "result":  "RTS_VISUAL_TEST_PASS large-group-192: ticks=1500, arrived=182/192, overlap=0.15, finite=True, inside=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

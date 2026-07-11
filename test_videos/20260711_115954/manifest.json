@@ -69,11 +69,15 @@
     "cases":  [
                   {
                       "id":  "replay-hot-snapshot",
-                      "file":  "replay-hot-snapshot.avi",
+                      "file":  "replay-hot-snapshot.webm",
                       "log":  "replay-hot-snapshot.log",
-                      "bytes":  27331980,
+                      "bytes":  998590,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS replay-hot-snapshot: ticks=720, tick=240, bytes=3646, snapshot=E1BF8DB843B3C0A7, samples=17, state=5BCD03A0F9452F82, exact=True, rejected=True"
+                      "result":  "RTS_VISUAL_TEST_PASS replay-hot-snapshot: ticks=720, tick=240, bytes=3646, snapshot=E1BF8DB843B3C0A7, samples=17, state=5BCD03A0F9452F82, exact=True, rejected=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

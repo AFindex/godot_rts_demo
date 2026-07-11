@@ -38,11 +38,15 @@
     "cases":  [
                   {
                       "id":  "navigation-resource-runtime",
-                      "file":  "navigation-resource-runtime.avi",
+                      "file":  "navigation-resource-runtime.webm",
                       "log":  "navigation-resource-runtime.log",
-                      "bytes":  56996252,
+                      "bytes":  3247726,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS navigation-resource-runtime: ticks=1500, format=1, hash=B8441F9F1544B950, dataValid=True, arrived=21/24, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=3, unreachable=0, maxDistance=74.8"
+                      "result":  "RTS_VISUAL_TEST_PASS navigation-resource-runtime: ticks=1500, format=1, hash=B8441F9F1544B950, dataValid=True, arrived=21/24, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=3, unreachable=0, maxDistance=74.8",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

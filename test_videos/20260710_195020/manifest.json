@@ -38,19 +38,27 @@
     "cases":  [
                   {
                       "id":  "destination-convergence",
-                      "file":  "destination-convergence.avi",
+                      "file":  "destination-convergence.webm",
                       "log":  "destination-convergence.log",
-                      "bytes":  69131166,
+                      "bytes":  5939375,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS destination-convergence: ticks=1800, movers=59/64, released=16/16, slotSwaps=27, converged=True, arrived=75/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=5, unreachable=0, maxDistance=89.8"
+                      "result":  "RTS_VISUAL_TEST_PASS destination-convergence: ticks=1800, movers=59/64, released=16/16, slotSwaps=27, converged=True, arrived=75/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=5, unreachable=0, maxDistance=89.8",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "dynamic-group-reroute",
-                      "file":  "dynamic-group-reroute.avi",
+                      "file":  "dynamic-group-reroute.webm",
                       "log":  "dynamic-group-reroute.log",
-                      "bytes":  122139628,
+                      "bytes":  9821744,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS dynamic-group-reroute: ticks=3000, routePlans=8, sharedAssignments=96, invalidated=48, activeRouteClosed=True, arrived=40/48, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, moving=8, unreachable=0, maxDistance=94.5"
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-group-reroute: ticks=3000, routePlans=8, sharedAssignments=96, invalidated=48, activeRouteClosed=True, arrived=40/48, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, moving=8, unreachable=0, maxDistance=94.5",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

@@ -71,11 +71,15 @@
     "cases":  [
                   {
                       "id":  "minimap-interaction",
-                      "file":  "minimap-interaction.avi",
+                      "file":  "minimap-interaction.webm",
                       "log":  "minimap-interaction.log",
-                      "bytes":  14748452,
+                      "bytes":  1097660,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS minimap-interaction: ticks=480, roundtrip=True, viewport=True, focus=True, command=True, outside=True, world=900,500"
+                      "result":  "RTS_VISUAL_TEST_PASS minimap-interaction: ticks=480, roundtrip=True, viewport=True, focus=True, command=True, outside=True, world=900,500",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

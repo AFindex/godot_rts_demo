@@ -7,6 +7,9 @@
 **/obj/
 /benchmark_results/*.json
 !/benchmark_results/latest.json
+/tools/.cache/
+/test_videos/**/*.avi
+/test_videos/**/*.partial.webm
 /test_videos/20260710_161621/
 /test_videos/20260710_161652/
 /test_videos/20260710_161725/

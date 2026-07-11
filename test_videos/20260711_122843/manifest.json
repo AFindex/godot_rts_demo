@@ -70,11 +70,15 @@
     "cases":  [
                   {
                       "id":  "operation-selection-camera",
-                      "file":  "operation-selection-camera.avi",
+                      "file":  "operation-selection-camera.webm",
                       "log":  "operation-selection-camera.log",
-                      "bytes":  10418118,
+                      "bytes":  335446,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS operation-selection-camera: ticks=360, point=0, same=2, box=3, zoom=True, edge=True, double=True, focus=950,550"
+                      "result":  "RTS_VISUAL_TEST_PASS operation-selection-camera: ticks=360, point=0, same=2, box=3, zoom=True, edge=True, double=True, focus=950,550",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

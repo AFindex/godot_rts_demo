@@ -51,19 +51,27 @@
     "cases":  [
                   {
                       "id":  "clearance-bake-resource-runtime",
-                      "file":  "clearance-bake-resource-runtime.avi",
+                      "file":  "clearance-bake-resource-runtime.webm",
                       "log":  "clearance-bake-resource-runtime.log",
-                      "bytes":  29301032,
+                      "bytes":  187300,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS clearance-bake-resource-runtime: ticks=600, format=1, hash=A1BCA2BD6C885350, grid=77x40, chunks=5x3, previewChunks=15, layers=3, components=True, baked=True"
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-bake-resource-runtime: ticks=600, format=1, hash=A1BCA2BD6C885350, grid=77x40, chunks=5x3, previewChunks=15, layers=3, components=True, baked=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "clearance-editor-preview",
-                      "file":  "clearance-editor-preview.avi",
+                      "file":  "clearance-editor-preview.webm",
                       "log":  "clearance-editor-preview.log",
-                      "bytes":  29283394,
+                      "bytes":  188620,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, components=1/1/1, portals=5, buildings=4, largeEdges=True"
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, components=1/1/1, portals=5, buildings=4, largeEdges=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

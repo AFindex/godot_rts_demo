@@ -1,0 +1,12 @@
+﻿{
+    "created_at":  "2026-07-11T13:23:47.6784700+08:00",
+    "codec":  "AV1 (libsvtav1)",
+    "container":  "WebM",
+    "crf":  32,
+    "preset":  8,
+    "files":  85,
+    "source_bytes":  3309160498,
+    "output_bytes":  228515601,
+    "ratio":  0.069055460180342088,
+    "saved_bytes":  3080644897
+}

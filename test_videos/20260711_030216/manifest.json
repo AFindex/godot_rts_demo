@@ -65,67 +65,99 @@
     "cases":  [
                   {
                       "id":  "attack-move-engage-resume",
-                      "file":  "attack-move-engage-resume.avi",
+                      "file":  "attack-move-engage-resume.webm",
                       "log":  "attack-move-engage-resume.log",
-                      "bytes":  22069838,
+                      "bytes":  311869,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-engage-resume: ticks=840, defender_alive=False, attacker_x=1051.5, state=Searching"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-engage-resume: ticks=840, defender_alive=False, attacker_x=1051.5, state=Searching",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "attack-move-leash-resume",
-                      "file":  "attack-move-leash-resume.avi",
+                      "file":  "attack-move-leash-resume.webm",
                       "log":  "attack-move-leash-resume.log",
-                      "bytes":  20678280,
+                      "bytes":  363776,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-leash-resume: ticks=780, target_alive=True, attacker_x=1056.7"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-leash-resume: ticks=780, target_alive=True, attacker_x=1056.7",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "attack-move-command-isolation",
-                      "file":  "attack-move-command-isolation.avi",
+                      "file":  "attack-move-command-isolation.webm",
                       "log":  "attack-move-command-isolation.log",
-                      "bytes":  21015322,
+                      "bytes":  369089,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-command-isolation: ticks=780, move_enemy_alive=True, attack_enemy_alive=False, move_x=1056.6, attack_x=1018.2"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-command-isolation: ticks=780, move_enemy_alive=True, attack_enemy_alive=False, move_x=1056.6, attack_x=1018.2",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "attack-move-cancel",
-                      "file":  "attack-move-cancel.avi",
+                      "file":  "attack-move-cancel.webm",
                       "log":  "attack-move-cancel.log",
-                      "bytes":  9298186,
+                      "bytes":  129293,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-cancel: ticks=300, stop=Holding/Attacking, hold=Holding/Searching, x=285.5/266.0, targets=TestUnitId { Value = 2 }/"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-cancel: ticks=300, stop=Holding/Attacking, hold=Holding/Searching, x=285.5/266.0, targets=TestUnitId { Value = 2 }/",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "combat-melee-slots",
-                      "file":  "combat-melee-slots.avi",
+                      "file":  "combat-melee-slots.webm",
                       "log":  "combat-melee-slots.log",
-                      "bytes":  25041656,
+                      "bytes":  623006,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS combat-melee-slots: ticks=900, attacking=8/8, slots=8, unique=True, radiusBand=True, maxSlotError=8.9"
+                      "result":  "RTS_VISUAL_TEST_PASS combat-melee-slots: ticks=900, attacking=8/8, slots=8, unique=True, radiusBand=True, maxSlotError=8.9",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "combat-ranged-ring",
-                      "file":  "combat-ranged-ring.avi",
+                      "file":  "combat-ranged-ring.webm",
                       "log":  "combat-ranged-ring.log",
-                      "bytes":  18711220,
+                      "bytes":  628645,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS combat-ranged-ring: ticks=660, attacking=10/10, slots=10, unique=True, radiusBand=True, maxSlotError=9.0"
+                      "result":  "RTS_VISUAL_TEST_PASS combat-ranged-ring: ticks=660, attacking=10/10, slots=10, unique=True, radiusBand=True, maxSlotError=9.0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "combat-stop-hold-acquire",
-                      "file":  "combat-stop-hold-acquire.avi",
+                      "file":  "combat-stop-hold-acquire.webm",
                       "log":  "combat-stop-hold-acquire.log",
-                      "bytes":  11108830,
+                      "bytes":  127508,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS combat-stop-hold-acquire: ticks=360, stop_x=181.7/Attacking, hold_delta=0.0, near_hp=444, far_hp=500"
+                      "result":  "RTS_VISUAL_TEST_PASS combat-stop-hold-acquire: ticks=360, stop_x=181.7/Attacking, hold_delta=0.0, near_hp=444, far_hp=500",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "combat-multi-retarget",
-                      "file":  "combat-multi-retarget.avi",
+                      "file":  "combat-multi-retarget.webm",
                       "log":  "combat-multi-retarget.log",
-                      "bytes":  25383376,
+                      "bytes":  1431952,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS combat-multi-retarget: ticks=900, defeated=4/4, resumed=8/8"
+                      "result":  "RTS_VISUAL_TEST_PASS combat-multi-retarget: ticks=900, defeated=4/4, resumed=8/8",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

@@ -44,19 +44,27 @@
     "cases":  [
                   {
                       "id":  "mixed-radii",
-                      "file":  "mixed-radii.avi",
+                      "file":  "mixed-radii.webm",
                       "log":  "mixed-radii.log",
-                      "bytes":  32336806,
+                      "bytes":  2647818,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS mixed-radii: ticks=1020, arrived=30/30, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.5"
+                      "result":  "RTS_VISUAL_TEST_PASS mixed-radii: ticks=1020, arrived=30/30, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.5",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "destination-corner-mixed",
-                      "file":  "destination-corner-mixed.avi",
+                      "file":  "destination-corner-mixed.webm",
                       "log":  "destination-corner-mixed.log",
-                      "bytes":  90607218,
+                      "bytes":  7918818,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS destination-corner-mixed: ticks=2400, localRematch=0/0, yield=0, overflow=0, arrived=80/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.5"
+                      "result":  "RTS_VISUAL_TEST_PASS destination-corner-mixed: ticks=2400, localRematch=0/0, yield=0, overflow=0, arrived=80/80, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.5",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

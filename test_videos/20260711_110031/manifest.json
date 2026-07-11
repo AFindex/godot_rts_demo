@@ -67,11 +67,15 @@
     "cases":  [
                   {
                       "id":  "replay-checkpoint-resume",
-                      "file":  "replay-checkpoint-resume.avi",
+                      "file":  "replay-checkpoint-resume.webm",
                       "log":  "replay-checkpoint-resume.log",
-                      "bytes":  27719206,
+                      "bytes":  1121484,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS replay-checkpoint-resume: ticks=720, tick=240, bytes=36, checkpoint=A83117D9561B50E2, samples=17, state=E6CA47E1FC090065, exact=True, rejected=True"
+                      "result":  "RTS_VISUAL_TEST_PASS replay-checkpoint-resume: ticks=720, tick=240, bytes=36, checkpoint=A83117D9561B50E2, samples=17, state=E6CA47E1FC090065, exact=True, rejected=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

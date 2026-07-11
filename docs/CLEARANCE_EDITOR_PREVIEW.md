@@ -50,7 +50,7 @@ RtsNavigationMapResource + RtsGameplayProfilesResource
 - 22px Portal 的结果为 `SM-`。
 - 96px Portal 的结果为 `SML`。
 
-Godot 黑盒场景验证正式 Demo Resource 能生成 3 档、5 条 Portal 和 4 档建筑预览，并自动录制 1280×720、30 FPS、10 秒 AVI。场景通过 VisualTestCatalog 公开的稳定用例入口启动，不访问 `ClearancePreview2D` 的私有绘制细节。
+Godot 黑盒场景验证正式 Demo Resource 能生成 3 档、5 条 Portal 和 4 档建筑预览，并自动录制 1280×720、30 FPS、10 秒 AV1/WebM。场景通过 VisualTestCatalog 公开的稳定用例入口启动，不访问 `ClearancePreview2D` 的私有绘制细节。
 
 ## 当前边界
 

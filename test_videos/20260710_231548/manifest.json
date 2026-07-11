@@ -47,11 +47,15 @@
     "cases":  [
                   {
                       "id":  "gameplay-profile-resource-runtime",
-                      "file":  "gameplay-profile-resource-runtime.avi",
+                      "file":  "gameplay-profile-resource-runtime.webm",
                       "log":  "gameplay-profile-resource-runtime.log",
-                      "bytes":  33470610,
+                      "bytes":  480810,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS gameplay-profile-resource-runtime: ticks=1200, format=1, hash=5A0A6FD9EA3985BF, radii=True, buildings=True, arrived=3/3, overlap=0.00, finite=True, inside=True, revision=4, buildings=4, moving=0, unreachable=0, maxDistance=3.4"
+                      "result":  "RTS_VISUAL_TEST_PASS gameplay-profile-resource-runtime: ticks=1200, format=1, hash=5A0A6FD9EA3985BF, radii=True, buildings=True, arrived=3/3, overlap=0.00, finite=True, inside=True, revision=4, buildings=4, moving=0, unreachable=0, maxDistance=3.4",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

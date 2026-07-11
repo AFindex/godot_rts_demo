@@ -67,43 +67,63 @@
     "cases":  [
                   {
                       "id":  "queued-waypoints",
-                      "file":  "queued-waypoints.avi",
+                      "file":  "queued-waypoints.webm",
                       "log":  "queued-waypoints.log",
-                      "bytes":  21080774,
+                      "bytes":  335656,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS queued-waypoints: ticks=780, position=926.7,430.0, active=Move, pending=0, completed=2"
+                      "result":  "RTS_VISUAL_TEST_PASS queued-waypoints: ticks=780, position=926.7,430.0, active=Move, pending=0, completed=2",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "queued-command-replace",
-                      "file":  "queued-command-replace.avi",
+                      "file":  "queued-command-replace.webm",
                       "log":  "queued-command-replace.log",
-                      "bytes":  16226120,
+                      "bytes":  225454,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS queued-command-replace: ticks=600, position=230.5,516.7, pending=0, completed=0"
+                      "result":  "RTS_VISUAL_TEST_PASS queued-command-replace: ticks=600, position=230.5,516.7, pending=0, completed=0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "queued-capacity-limit",
-                      "file":  "queued-capacity-limit.avi",
+                      "file":  "queued-capacity-limit.webm",
                       "log":  "queued-capacity-limit.log",
-                      "bytes":  3406124,
+                      "bytes":  64718,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS queued-capacity-limit: ticks=120, pending=16/16, overflows=2"
+                      "result":  "RTS_VISUAL_TEST_PASS queued-capacity-limit: ticks=120, pending=16/16, overflows=2",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "control-group-recall",
-                      "file":  "control-group-recall.avi",
+                      "file":  "control-group-recall.webm",
                       "log":  "control-group-recall.log",
-                      "bytes":  20674242,
+                      "bytes":  630171,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS control-group-recall: ticks=720, members=6, arrived=6/6"
+                      "result":  "RTS_VISUAL_TEST_PASS control-group-recall: ticks=720, members=6, arrived=6/6",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "smart-command-sequence",
-                      "file":  "smart-command-sequence.avi",
+                      "file":  "smart-command-sequence.webm",
                       "log":  "smart-command-sequence.log",
-                      "bytes":  24682312,
+                      "bytes":  351287,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS smart-command-sequence: ticks=900, enemy_alive=False, position=1016.8,498.9, completed=2"
+                      "result":  "RTS_VISUAL_TEST_PASS smart-command-sequence: ticks=900, enemy_alive=False, position=1016.8,498.9, completed=2",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

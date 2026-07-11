@@ -33,27 +33,39 @@
     "cases":  [
                   {
                       "id":  "bidirectional-choke-balanced",
-                      "file":  "bidirectional-choke-balanced.avi",
+                      "file":  "bidirectional-choke-balanced.webm",
                       "log":  "bidirectional-choke-balanced.log",
-                      "bytes":  100049052,
+                      "bytes":  6014526,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-balanced: ticks=2700, positive=14/16, negative=14/16, both=True, conflicts=0, maxWait=333, trafficSafe=True, arrived=28/32, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-balanced: ticks=2700, positive=14/16, negative=14/16, both=True, conflicts=0, maxWait=333, trafficSafe=True, arrived=28/32, overlap=0.00, finite=True, inside=True, revision=0, buildings=0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "bidirectional-choke-asymmetric",
-                      "file":  "bidirectional-choke-asymmetric.avi",
+                      "file":  "bidirectional-choke-asymmetric.webm",
                       "log":  "bidirectional-choke-asymmetric.log",
-                      "bytes":  125095880,
+                      "bytes":  8079932,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-asymmetric: ticks=3300, positive=7/8, negative=27/32, both=True, conflicts=0, maxWait=356, trafficSafe=True, arrived=34/40, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-asymmetric: ticks=3300, positive=7/8, negative=27/32, both=True, conflicts=0, maxWait=356, trafficSafe=True, arrived=34/40, overlap=0.00, finite=True, inside=True, revision=0, buildings=0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "bidirectional-choke-waves",
-                      "file":  "bidirectional-choke-waves.avi",
+                      "file":  "bidirectional-choke-waves.webm",
                       "log":  "bidirectional-choke-waves.log",
-                      "bytes":  149611762,
+                      "bytes":  7868880,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-waves: ticks=3900, positive=24/24, negative=22/24, both=True, conflicts=0, maxWait=346, trafficSafe=True, arrived=46/48, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                      "result":  "RTS_VISUAL_TEST_PASS bidirectional-choke-waves: ticks=3900, positive=24/24, negative=22/24, both=True, conflicts=0, maxWait=346, trafficSafe=True, arrived=46/48, overlap=0.00, finite=True, inside=True, revision=0, buildings=0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

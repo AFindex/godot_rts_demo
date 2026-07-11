@@ -37,27 +37,39 @@
     "cases":  [
                   {
                       "id":  "shared-target-reservations",
-                      "file":  "shared-target-reservations.avi",
+                      "file":  "shared-target-reservations.webm",
                       "log":  "shared-target-reservations.log",
-                      "bytes":  37943342,
+                      "bytes":  2644677,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS shared-target-reservations: ticks=1320, targetClearance=4.00, unique=True, arrived=32/32, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=6.1"
+                      "result":  "RTS_VISUAL_TEST_PASS shared-target-reservations: ticks=1320, targetClearance=4.00, unique=True, arrived=32/32, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=6.1",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "temporary-blocker-recovery",
-                      "file":  "temporary-blocker-recovery.avi",
+                      "file":  "temporary-blocker-recovery.webm",
                       "log":  "temporary-blocker-recovery.log",
-                      "bytes":  23758950,
+                      "bytes":  513305,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS temporary-blocker-recovery: ticks=960, events=2, unreachable=0, stage=Normal, recovered=True, arrived=1/1, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.4"
+                      "result":  "RTS_VISUAL_TEST_PASS temporary-blocker-recovery: ticks=960, events=2, unreachable=0, stage=Normal, recovered=True, arrived=1/1, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.4",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "unreachable-recovery-limit",
-                      "file":  "unreachable-recovery-limit.avi",
+                      "file":  "unreachable-recovery-limit.webm",
                       "log":  "unreachable-recovery-limit.log",
-                      "bytes":  19267092,
+                      "bytes":  139247,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS unreachable-recovery-limit: ticks=720, idle=4/4, events=4, unreachable=4, pending=0, bounded=True"
+                      "result":  "RTS_VISUAL_TEST_PASS unreachable-recovery-limit: ticks=720, idle=4/4, events=4, unreachable=4, pending=0, bounded=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

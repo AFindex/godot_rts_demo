@@ -71,35 +71,51 @@
     "cases":  [
                   {
                       "id":  "command-log-replay",
-                      "file":  "command-log-replay.avi",
+                      "file":  "command-log-replay.webm",
                       "log":  "command-log-replay.log",
-                      "bytes":  24338496,
+                      "bytes":  737759,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS command-log-replay: ticks=840, entries=7, bytes=274, log=160A423C68D3AF41, state=995B000A2787A5AE, exact=True, rejected=True"
+                      "result":  "RTS_VISUAL_TEST_PASS command-log-replay: ticks=840, entries=7, bytes=274, log=160A423C68D3AF41, state=995B000A2787A5AE, exact=True, rejected=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "command-replay-divergence",
-                      "file":  "command-replay-divergence.avi",
+                      "file":  "command-replay-divergence.webm",
                       "log":  "command-replay-divergence.log",
-                      "bytes":  24345274,
+                      "bytes":  746531,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS command-replay-divergence: ticks=840, first_divergence=360, baseline=995B000A2787A5AE, changed=AE823DDB88EE4022, samples=29"
+                      "result":  "RTS_VISUAL_TEST_PASS command-replay-divergence: ticks=840, first_divergence=360, baseline=995B000A2787A5AE, changed=AE823DDB88EE4022, samples=29",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "replay-package-world",
-                      "file":  "replay-package-world.avi",
+                      "file":  "replay-package-world.webm",
                       "log":  "replay-package-world.log",
-                      "bytes":  27727164,
+                      "bytes":  1116120,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS replay-package-world: ticks=720, units=8, world=2, orders=2, bytes=690, package=800F3FAE85F87D40, state=AC0D861311EB0D52, exact=True, rejected=True"
+                      "result":  "RTS_VISUAL_TEST_PASS replay-package-world: ticks=720, units=8, world=2, orders=2, bytes=690, package=800F3FAE85F87D40, state=AC0D861311EB0D52, exact=True, rejected=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "replay-checkpoint-resume",
-                      "file":  "replay-checkpoint-resume.avi",
+                      "file":  "replay-checkpoint-resume.webm",
                       "log":  "replay-checkpoint-resume.log",
-                      "bytes":  27718038,
+                      "bytes":  1132756,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS replay-checkpoint-resume: ticks=720, tick=240, bytes=36, checkpoint=BE7D34BD9720DB76, samples=17, state=AC0D861311EB0D52, exact=True, rejected=True"
+                      "result":  "RTS_VISUAL_TEST_PASS replay-checkpoint-resume: ticks=720, tick=240, bytes=36, checkpoint=BE7D34BD9720DB76, samples=17, state=AC0D861311EB0D52, exact=True, rejected=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

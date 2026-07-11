@@ -48,11 +48,15 @@
     "cases":  [
                   {
                       "id":  "clearance-editor-preview",
-                      "file":  "clearance-editor-preview.avi",
+                      "file":  "clearance-editor-preview.webm",
                       "log":  "clearance-editor-preview.log",
-                      "bytes":  25387532,
+                      "bytes":  167087,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, portals=5, buildings=4, largeEdges=True"
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, portals=5, buildings=4, largeEdges=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

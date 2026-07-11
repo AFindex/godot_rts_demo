@@ -28,11 +28,15 @@
     "cases":  [
                   {
                       "id":  "dynamic-local-invalidation",
-                      "file":  "dynamic-local-invalidation.avi",
+                      "file":  "dynamic-local-invalidation.webm",
                       "log":  "dynamic-local-invalidation.log",
-                      "bytes":  35871308,
+                      "bytes":  2741309,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS dynamic-local-invalidation: ticks=1200, arrived=31/32, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, invalidated=16/32, local=True"
+                      "result":  "RTS_VISUAL_TEST_PASS dynamic-local-invalidation: ticks=1200, arrived=31/32, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, invalidated=16/32, local=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

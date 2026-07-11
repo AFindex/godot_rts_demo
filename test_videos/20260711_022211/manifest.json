@@ -57,35 +57,51 @@
     "cases":  [
                   {
                       "id":  "attack-move-engage-resume",
-                      "file":  "attack-move-engage-resume.avi",
+                      "file":  "attack-move-engage-resume.webm",
                       "log":  "attack-move-engage-resume.log",
-                      "bytes":  18577554,
+                      "bytes":  267389,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-engage-resume: ticks=720, defender_alive=False, attacker_x=982.4, state=Searching"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-engage-resume: ticks=720, defender_alive=False, attacker_x=982.4, state=Searching",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "attack-move-leash-resume",
-                      "file":  "attack-move-leash-resume.avi",
+                      "file":  "attack-move-leash-resume.webm",
                       "log":  "attack-move-leash-resume.log",
-                      "bytes":  20273436,
+                      "bytes":  356138,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-leash-resume: ticks=780, target_alive=True, attacker_x=1056.6"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-leash-resume: ticks=780, target_alive=True, attacker_x=1056.6",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "attack-move-command-isolation",
-                      "file":  "attack-move-command-isolation.avi",
+                      "file":  "attack-move-command-isolation.webm",
                       "log":  "attack-move-command-isolation.log",
-                      "bytes":  20561308,
+                      "bytes":  352752,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-command-isolation: ticks=780, move_enemy_alive=True, attack_enemy_alive=False, move_x=1056.6, attack_x=1048.8"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-command-isolation: ticks=780, move_enemy_alive=True, attack_enemy_alive=False, move_x=1056.6, attack_x=1048.8",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "attack-move-cancel",
-                      "file":  "attack-move-cancel.avi",
+                      "file":  "attack-move-cancel.webm",
                       "log":  "attack-move-cancel.log",
-                      "bytes":  9148982,
+                      "bytes":  117485,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS attack-move-cancel: ticks=300, stop=Idle/None, hold=Holding/None, targets=/"
+                      "result":  "RTS_VISUAL_TEST_PASS attack-move-cancel: ticks=300, stop=Idle/None, hold=Holding/None, targets=/",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

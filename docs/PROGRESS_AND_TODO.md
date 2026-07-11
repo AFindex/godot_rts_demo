@@ -11,7 +11,7 @@
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
 - 61 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore 或队列内部数组。
-- 测试可以自动录制 AVI，并通过 Git LFS 保存在仓库中。
+- 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
@@ -231,10 +231,13 @@ Observe unit / combat / traffic / recovery / performance
 
 - `tools/record_tests.ps1` 自动向运行时查询场景目录。
 - 每个场景独立启动 Godot Movie Maker。
-- 每段录像保存 AVI、Godot 日志和 manifest。
+- Godot AVI 只作为临时采集文件；成功后由固定版本 FFmpeg 编码为 AV1/WebM。
+- 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
+- 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
 - 当前仓库包含覆盖 61 个逻辑场景的规范录像。
-- AVI 使用 Git LFS。
+- WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
+- 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
 注意：当前规范录像来自多个功能里程碑批次，并非全部在同一个 commit 上重新录制。发布正式版本前应执行一次全量重新录制，生成单一时间戳目录。
 
@@ -625,6 +628,6 @@ Release 性能基准：
 
 - GitHub：`https://github.com/AFindex/godot_rts_demo`
 - 默认分支：`main`
-- AVI：Git LFS。
+- AV1/WebM：Git LFS；临时 AVI 不入库。
 - 当前基线报告：`benchmark_results/latest.json`。
 - 录像索引：`test_videos/README.md`。

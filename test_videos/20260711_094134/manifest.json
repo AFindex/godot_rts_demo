@@ -66,11 +66,15 @@
     "cases":  [
                   {
                       "id":  "replay-package-world",
-                      "file":  "replay-package-world.avi",
+                      "file":  "replay-package-world.webm",
                       "log":  "replay-package-world.log",
-                      "bytes":  27728374,
+                      "bytes":  1107650,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS replay-package-world: ticks=720, units=8, world=2, orders=2, bytes=690, package=5229BB45B72D5D04, state=E6CA47E1FC090065, exact=True, rejected=True"
+                      "result":  "RTS_VISUAL_TEST_PASS replay-package-world: ticks=720, units=8, world=2, orders=2, bytes=690, package=5229BB45B72D5D04, state=E6CA47E1FC090065, exact=True, rejected=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

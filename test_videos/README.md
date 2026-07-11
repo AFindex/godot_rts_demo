@@ -1,6 +1,8 @@
 # Test video index
 
-仓库保留 61 个黑盒测试的规范录像，AVI 使用 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+仓库保留覆盖 61 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+
+85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
 - `20260710_163708/`：最初 14 个基础移动、命令、避让、边界、单向狭口和 192 单位场景。
 - `20260710_165242/`：动态建筑绕行、移除恢复和动态 Portal 改道。
@@ -32,9 +34,12 @@
 - `20260711_115954/`：持久化热快照；3,646 字节规范载荷 round-trip 后直接恢复，并验证版本、截断、Package 不匹配和正文篡改拒绝。
 - `20260711_122843/`：操作表现第二阶段；同类型双击选择、SelectionFilter、边缘滚动、光标锚定缩放和编组双击镜头定位全部通过。
 - `20260711_125649/`：解耦 Minimap；真实 Control 显示障碍、单位、四种 footprint 建筑和视口框，坐标往返、镜头定位与 SmartCommand 意图全部通过。
+- `20260711_132406/`：新版录制流水线验收；`single-unit` 从临时 AVI 自动编码、验证并保存为 AV1/WebM。
 
 重新录制所有当前场景：
 
 ```powershell
 .\tools\record_tests.ps1
 ```
+
+录像脚本默认输出 AV1/WebM。首次运行自动下载经过 SHA-256 校验的 FFmpeg 到忽略目录 `tools/.cache/`；不会把 FFmpeg 二进制提交到仓库。编码与迁移细节见 `docs/VIDEO_RECORDING.md`。

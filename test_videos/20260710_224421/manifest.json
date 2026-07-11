@@ -44,19 +44,27 @@
     "cases":  [
                   {
                       "id":  "clearance-portal-choice",
-                      "file":  "clearance-portal-choice.avi",
+                      "file":  "clearance-portal-choice.webm",
                       "log":  "clearance-portal-choice.log",
-                      "bytes":  33483964,
+                      "bytes":  492186,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS clearance-portal-choice: ticks=1200, smallNarrow=True, largeWide=True, arrived=2/2, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.4"
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-portal-choice: ticks=1200, smallNarrow=True, largeWide=True, arrived=2/2, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.4",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "clearance-dynamic-gap",
-                      "file":  "clearance-dynamic-gap.avi",
+                      "file":  "clearance-dynamic-gap.webm",
                       "log":  "clearance-dynamic-gap.log",
-                      "bytes":  50040140,
+                      "bytes":  491455,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS clearance-dynamic-gap: ticks=1800, smallArrived=True, largeRejected=True, largeStage=Unreachable, largeX=100.0"
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-dynamic-gap: ticks=1800, smallArrived=True, largeRejected=True, largeStage=Unreachable, largeX=100.0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

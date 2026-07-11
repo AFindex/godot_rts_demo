@@ -68,11 +68,15 @@
     "cases":  [
                   {
                       "id":  "replay-checkpoint-choke",
-                      "file":  "replay-checkpoint-choke.avi",
+                      "file":  "replay-checkpoint-choke.webm",
                       "log":  "replay-checkpoint-choke.log",
-                      "bytes":  33904524,
+                      "bytes":  3698640,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS replay-checkpoint-choke: ticks=780, tick=240, samples=19, direction=-1, conflicts=0, state=083EDE1CDD642993, exact=True"
+                      "result":  "RTS_VISUAL_TEST_PASS replay-checkpoint-choke: ticks=780, tick=240, samples=19, direction=-1, conflicts=0, state=083EDE1CDD642993, exact=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

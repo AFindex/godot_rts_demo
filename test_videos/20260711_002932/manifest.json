@@ -50,19 +50,27 @@
     "cases":  [
                   {
                       "id":  "building-connectivity-guard",
-                      "file":  "building-connectivity-guard.avi",
+                      "file":  "building-connectivity-guard.webm",
                       "log":  "building-connectivity-guard.log",
-                      "bytes":  41227728,
+                      "bytes":  712417,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS building-connectivity-guard: ticks=1200, blocking=DisconnectsNavigation, safe=Success, arrived=8/8, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, moving=0, unreachable=0, maxDistance=3.5"
+                      "result":  "RTS_VISUAL_TEST_PASS building-connectivity-guard: ticks=1200, blocking=DisconnectsNavigation, safe=Success, arrived=8/8, overlap=0.00, finite=True, inside=True, revision=1, buildings=1, moving=0, unreachable=0, maxDistance=3.5",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "clearance-editor-preview",
-                      "file":  "clearance-editor-preview.avi",
+                      "file":  "clearance-editor-preview.webm",
                       "log":  "clearance-editor-preview.log",
-                      "bytes":  26017794,
+                      "bytes":  170255,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, components=1/1/1, portals=5, buildings=4, largeEdges=True"
+                      "result":  "RTS_VISUAL_TEST_PASS clearance-editor-preview: ticks=600, classes=3, components=1/1/1, portals=5, buildings=4, largeEdges=True",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

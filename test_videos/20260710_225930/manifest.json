@@ -48,27 +48,39 @@
     "cases":  [
                   {
                       "id":  "building-footprint-sizes",
-                      "file":  "building-footprint-sizes.avi",
+                      "file":  "building-footprint-sizes.webm",
                       "log":  "building-footprint-sizes.log",
-                      "bytes":  5905770,
+                      "bytes":  55914,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS building-footprint-sizes: ticks=240, accepted=4/4, sizes=32x32/64x48/112x80/160x120, buildings=4"
+                      "result":  "RTS_VISUAL_TEST_PASS building-footprint-sizes: ticks=240, accepted=4/4, sizes=32x32/64x48/112x80/160x120, buildings=4",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "building-placement-rules",
-                      "file":  "building-placement-rules.avi",
+                      "file":  "building-placement-rules.webm",
                       "log":  "building-placement-rules.log",
-                      "bytes":  9939302,
+                      "bytes":  108003,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS building-placement-rules: ticks=360, anchor=Success, dynamic=DynamicFootprintOverlap, static=StaticObstacleOverlap, outside=OutsideWorld, unit=UnitOverlap, gap=InsufficientClearance, flush=Success, buildings=2"
+                      "result":  "RTS_VISUAL_TEST_PASS building-placement-rules: ticks=360, anchor=Success, dynamic=DynamicFootprintOverlap, static=StaticObstacleOverlap, outside=OutsideWorld, unit=UnitOverlap, gap=InsufficientClearance, flush=Success, buildings=2",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   },
                   {
                       "id":  "building-size-navigation",
-                      "file":  "building-size-navigation.avi",
+                      "file":  "building-size-navigation.webm",
                       "log":  "building-size-navigation.log",
-                      "bytes":  49080852,
+                      "bytes":  2573711,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS building-size-navigation: ticks=1800, accepted=4/4, arrived=24/24, overlap=0.00, finite=True, inside=True, revision=4, buildings=4, moving=0, unreachable=0, maxDistance=3.5"
+                      "result":  "RTS_VISUAL_TEST_PASS building-size-navigation: ticks=1800, accepted=4/4, arrived=24/24, overlap=0.00, finite=True, inside=True, revision=4, buildings=4, moving=0, unreachable=0, maxDistance=3.5",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }

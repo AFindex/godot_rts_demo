@@ -32,11 +32,15 @@
     "cases":  [
                   {
                       "id":  "hold-blocked-choke",
-                      "file":  "hold-blocked-choke.avi",
+                      "file":  "hold-blocked-choke.webm",
                       "log":  "hold-blocked-choke.log",
-                      "bytes":  108387120,
+                      "bytes":  5723628,
                       "exit_code":  0,
-                      "result":  "RTS_VISUAL_TEST_PASS hold-blocked-choke: ticks=3000, positive=11/12, negative=11/12, blockedTicks=600, conflicts=0, safe=True, arrived=22/24, overlap=0.00, finite=True, inside=True, revision=0, buildings=0"
+                      "result":  "RTS_VISUAL_TEST_PASS hold-blocked-choke: ticks=3000, positive=11/12, negative=11/12, blockedTicks=600, conflicts=0, safe=True, arrived=22/24, overlap=0.00, finite=True, inside=True, revision=0, buildings=0",
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8
                   }
               ]
 }
