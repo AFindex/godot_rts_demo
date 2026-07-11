@@ -369,7 +369,10 @@ public enum WorkerTransferCommandCode : byte
     SameBase,
     InvalidCount,
     NoTargetResources,
-    NoEligibleWorkers
+    NoEligibleWorkers,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct WorkerTransferCommandResult(
@@ -417,7 +420,10 @@ public enum GatherCommandCode : byte
     InvalidNode,
     RefineryRequired,
     ResourceDepleted,
-    MissingDropOff
+    MissingDropOff,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct GatherCommandResult(

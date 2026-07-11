@@ -18,7 +18,10 @@ public enum ProductionCommandCode : byte
     InsufficientVespeneGas,
     SupplyBlocked,
     MissingPrerequisite,
-    InvalidOrder
+    InvalidOrder,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct ProductionCommandResult(

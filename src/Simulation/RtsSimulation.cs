@@ -76,6 +76,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Production = new ProductionSystem();
         Technology = new TechnologySystem();
         Visibility = new PlayerVisibilitySystem(world.Bounds);
+        Match = new MatchSystem();
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
@@ -109,6 +110,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public ProductionSystem Production { get; }
     public TechnologySystem Technology { get; }
     public PlayerVisibilitySystem Visibility { get; }
+    public MatchSystem Match { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -202,6 +204,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Combat = combat,
             Economy = Economy.CaptureRuntimeState(Units.Count),
             Visibility = Visibility.CaptureRuntimeState(),
+            Match = Match.CaptureRuntimeState(),
             Construction = Construction.CaptureRuntimeState(),
             Production = Production.CaptureRuntimeState(),
             Technology = Technology.CaptureRuntimeState(),
@@ -233,6 +236,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             snapshot.Technology, Construction, Economy.Players);
         Visibility.RestoreRuntimeState(snapshot.Visibility);
         Visibility.Update(Units, Combat, Construction);
+        Match.RestoreRuntimeState(snapshot.Match, Economy.Players);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -267,6 +271,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _economyCommandRecorder = new EconomyCommandRecorder();
         _constructionCommandRecorder = new ConstructionCommandRecorder();
         _productionCommandRecorder = new ProductionCommandRecorder();
+    }
+
+    public void StartMatch(ReadOnlySpan<int> playerIds)
+    {
+        if (_commandRecorder is not null || _replayPackageRecorder is not null)
+            throw new InvalidOperationException(
+                "Match setup must be completed before command recording starts.");
+        Match.Start(Metrics.Tick, playerIds, Economy.Players);
     }
 
     public SimulationCommandLogSnapshot CaptureCommandLog()
@@ -640,6 +652,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int unit,
         EconomyResourceNodeId nodeId)
     {
+        var matchBlock = MatchCommandBlockFor(issuingPlayerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new GatherCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed => GatherCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant => GatherCommandCode.NotParticipant,
+                    _ => GatherCommandCode.PlayerDefeated
+                }, unit, nodeId);
+        }
         if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
         {
             return new GatherCommandResult(
@@ -681,6 +704,19 @@ public sealed class RtsSimulation : ICombatMovementDriver
         EconomyBaseId targetBase,
         int count)
     {
+        var matchBlock = MatchCommandBlockFor(issuingPlayerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new WorkerTransferCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed =>
+                        WorkerTransferCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant =>
+                        WorkerTransferCommandCode.NotParticipant,
+                    _ => WorkerTransferCommandCode.PlayerDefeated
+                }, sourceBase, targetBase, count, 0);
+        }
         var result = Economy.TransferWorkers(
             issuingPlayerId, sourceBase, targetBase, count,
             Units, _economyMoveWorker);
@@ -699,6 +735,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Vector2 center,
         EconomyResourceNodeId refineryNode = default)
     {
+        var matchBlock = MatchCommandBlockFor(issuingPlayerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new ConstructionCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed => ConstructionCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant => ConstructionCommandCode.NotParticipant,
+                    _ => ConstructionCommandCode.PlayerDefeated
+                }, default);
+        }
         if (!profile.RequiresVespeneNode && refineryNode == default)
         {
             refineryNode = new EconomyResourceNodeId(-1);
@@ -773,6 +820,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public bool CancelConstruction(int playerId, GameplayBuildingId buildingId)
     {
+        if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
+            return false;
         var succeeded = Construction.Cancel(
             buildingId, playerId, Economy, RemoveGameplayBuildingFootprint);
         if (succeeded)
@@ -788,6 +837,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId buildingId,
         int builderUnit)
     {
+        if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
+            return false;
         var succeeded = Construction.Resume(
             buildingId, playerId, builderUnit, Economy, Units,
             _constructionMoveWorker);
@@ -825,6 +876,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId producer,
         ProductionRecipeProfile recipe)
     {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new ProductionCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed => ProductionCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant => ProductionCommandCode.NotParticipant,
+                    _ => ProductionCommandCode.PlayerDefeated
+                }, default);
+        }
         var result = Production.Enqueue(
             playerId, producer, recipe, Construction, Economy.Players);
         if (result.Succeeded)
@@ -837,6 +899,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int playerId,
         ProductionOrderId orderId)
     {
+        if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
+            return false;
         var result = Production.Cancel(
             playerId, orderId, Economy.Players, out var producer);
         if (result)
@@ -857,6 +921,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId producer,
         RallyTarget rally)
     {
+        if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
+            return false;
         if (!ValidateRallyReference(playerId, rally)) return false;
         var result = Production.SetRallyTarget(
             playerId, producer, rally, Construction);
@@ -871,6 +937,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId researcher,
         TechnologyProfile technology)
     {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new ResearchCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed => ResearchCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant => ResearchCommandCode.NotParticipant,
+                    _ => ResearchCommandCode.PlayerDefeated
+                }, default);
+        }
         var result = Technology.Enqueue(
             playerId, researcher, technology, Construction, Economy.Players);
         if (result.Succeeded)
@@ -881,6 +958,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public bool CancelResearch(int playerId, ResearchOrderId orderId)
     {
+        if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
+            return false;
         var result = Technology.Cancel(
             playerId, orderId, Economy.Players, out var researcher);
         if (result)
@@ -1047,6 +1126,16 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int playerId,
         ReadOnlySpan<int> units)
     {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new PlayerOrderCommandResult(matchBlock switch
+            {
+                MatchCommandBlock.Completed => PlayerOrderCommandCode.MatchCompleted,
+                MatchCommandBlock.NotParticipant => PlayerOrderCommandCode.NotParticipant,
+                _ => PlayerOrderCommandCode.PlayerDefeated
+            });
+        }
         if (!Economy.Players.IsRegistered(playerId))
             return new(PlayerOrderCommandCode.InvalidPlayer);
         if (units.IsEmpty)
@@ -1060,6 +1149,27 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 return new(PlayerOrderCommandCode.WrongOwner);
         }
         return new(PlayerOrderCommandCode.Success);
+    }
+
+    private MatchCommandBlock MatchCommandBlockFor(int playerId)
+    {
+        if (Match.Phase == MatchPhase.Setup)
+            return MatchCommandBlock.None;
+        if (Match.Phase == MatchPhase.Completed)
+            return MatchCommandBlock.Completed;
+        if (!Match.IsParticipant(playerId))
+            return MatchCommandBlock.NotParticipant;
+        return Match.IsDefeated(playerId)
+            ? MatchCommandBlock.Defeated
+            : MatchCommandBlock.None;
+    }
+
+    private enum MatchCommandBlock : byte
+    {
+        None,
+        Defeated,
+        Completed,
+        NotParticipant
     }
 
     private static PlayerEntityRelation Relation(int playerId, int ownerId) =>
@@ -1544,6 +1654,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         phaseStart = Stopwatch.GetTimestamp();
         AdvanceQueuedOrders();
         Visibility.Update(Units, Combat, Construction);
+        Match.Update(Metrics.Tick, Construction);
         Metrics.CommandMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
         Metrics.AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;

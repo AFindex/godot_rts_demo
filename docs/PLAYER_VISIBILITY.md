@@ -1,6 +1,6 @@
 # 玩家视野与命令权限
 
-S11-F2 把所有权、可见信息和玩家命令权限收敛到纯 C# 模拟边界。Godot、脚本 AI 和后续胜负系统不再通过遍历 `UnitStore`、`CombatStore` 或 Construction 内部集合自行判断玩家能知道什么。
+S11-F2 把所有权、可见信息和玩家命令权限收敛到纯 C# 模拟边界。Godot、脚本 AI 和胜负系统不再通过遍历 `UnitStore`、`CombatStore` 或 Construction 内部集合自行判断玩家能知道什么。
 
 ## 状态模型
 

@@ -61,6 +61,7 @@ public static class VisualTestCatalog
         "economy-dual-resource",
         "economy-expansion-saturation",
         "player-visibility-authority",
+        "match-capability-elimination",
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
@@ -172,6 +173,8 @@ public static class VisualTestCatalog
         "economy-dual-resource" => CreateDualResourceEconomy(),
         "economy-expansion-saturation" => CreateExpansionSaturation(),
         "player-visibility-authority" => CreatePlayerVisibilityAuthority(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "match-capability-elimination" => CreateMatchCapabilityElimination(
             navigationMap, gameplayProfiles, clearanceBake),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "building-type-resource-runtime" =>
@@ -1120,7 +1123,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 10 &&
+                    exact && rejected && hot.FormatVersion == 11 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1214,7 +1217,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
+                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2343,8 +2346,8 @@ public static class VisualTestCatalog
                 var exact = replay.FinalHash == runtime.StateHash &&
                             resumed.FinalHash == runtime.StateHash &&
                             replay.MatchesFrom(resumed, hotTick);
-                var versions = package.FormatVersion == 10 &&
-                               hot.FormatVersion == 10;
+                var versions = package.FormatVersion == 11 &&
+                               hot.FormatVersion == 11;
                 var passed = enemyBarracks.Succeeded && initialBoundary &&
                              ownershipRejected && hiddenTargetRejected &&
                              visibleResourceObserved &&
@@ -2414,6 +2417,144 @@ public static class VisualTestCatalog
                                       value.NodeId == minerals &&
                                       value.Visibility == TestMapVisibility.Explored &&
                                       value.KnownRemaining == -1);
+        });
+        return session;
+    }
+
+    private static VisualTestSession CreateMatchCapabilityElimination(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            40, navigationMap, gameplayProfiles, clearanceBake);
+        for (var player = 1; player <= 3; player++)
+            rig.RegisterPlayer(player, 3000, 500, 30);
+        var builders = new[]
+        {
+            rig.SpawnWorker(new Vector2(120f, 500f), 1),
+            rig.SpawnWorker(new Vector2(930f, 570f), 2),
+            rig.SpawnWorker(new Vector2(400f, 360f), 2),
+            rig.SpawnWorker(new Vector2(800f, 210f), 3)
+        };
+        var commandCenter = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 0.5f,
+            MaximumHealth = 240f
+        };
+        var barracks = DemoBuildingTypes.Barracks with
+        {
+            BuildSeconds = 0.5f,
+            MaximumHealth = 220f
+        };
+        rig.StartMatch(1, 2, 3);
+        rig.StartReplayPackageRecording();
+        var playerOneBase = rig.Build(
+            1, builders[0], commandCenter, new Vector2(250f, 500f));
+        var playerTwoBase = rig.Build(
+            2, builders[1], commandCenter, new Vector2(1050f, 570f));
+        var playerTwoProduction = rig.Build(
+            2, builders[2], barracks, new Vector2(400f, 260f));
+        var playerThreeBase = rig.Build(
+            3, builders[3], barracks, new Vector2(800f, 140f));
+
+        var established = false;
+        var townHallLossIsNotDefeat = false;
+        var defeatedCommandRejected = false;
+        var matchCompleted = false;
+        var completedCommandRejected = false;
+        var establishedStateHash = 0UL;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 420;
+        var visible = builders;
+        var session = new VisualTestSession(
+            "match-capability-elimination",
+            "Explicit participants, production capability and terminal elimination",
+            600,
+            rig,
+            visible,
+            runtime =>
+            {
+                var match = runtime.ObserveMatch();
+                var package = runtime.CaptureReplayPackage();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var establishedReplay = runtime.ReplayPackage(decoded!, 60);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = establishedReplay.FinalHash == establishedStateHash &&
+                            resumed.FinalHash == runtime.StateHash;
+                var winner = match.Phase == TestMatchPhase.Completed &&
+                             match.WinnerPlayerId == 1 &&
+                             match.Players.Single(value => value.PlayerId == 1).Status ==
+                                 TestMatchPlayerStatus.Victorious &&
+                             match.Players.Where(value => value.PlayerId != 1).All(
+                                 value => value.Status == TestMatchPlayerStatus.Defeated);
+                var passed = playerOneBase.Succeeded && playerTwoBase.Succeeded &&
+                             playerTwoProduction.Succeeded && playerThreeBase.Succeeded &&
+                             established && townHallLossIsNotDefeat &&
+                             defeatedCommandRejected && matchCompleted &&
+                             completedCommandRejected && winner &&
+                             packageRoundTrip && hotRoundTrip && exact &&
+                             package.FormatVersion == 11 && hot.FormatVersion == 11;
+                return new ScenarioResult(
+                    passed,
+                    $"build={playerOneBase.Code}/{playerTwoBase.Code}/" +
+                    $"{playerTwoProduction.Code}/{playerThreeBase.Code}, " +
+                    $"established={established}, townHallLoss={townHallLossIsNotDefeat}, " +
+                    $"defeatedReject={defeatedCommandRejected}, winner={match.WinnerPlayerId}, " +
+                    $"completed={matchCompleted}/{completedCommandRejected}@{match.CompletedTick}, " +
+                    $"versions=package{package.FormatVersion}/hot{hot.FormatVersion}, exact={exact}");
+            })
+            .Highlight(
+                new SimRect(new Vector2(760f, 480f), new Vector2(1180f, 640f)),
+                "PLAYER 2: losing Town Hall is critical, last Barracks is elimination",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(1020f, 80f), new Vector2(1230f, 210f)),
+                "PLAYER 3: final remaining opponent determines victory",
+                TestDiagnosticKind.Accepted);
+        session.At(60, "All participants establish at least one active structure", runtime =>
+        {
+            var match = runtime.ObserveMatch();
+            established = match.Phase == TestMatchPhase.Running &&
+                          match.Players.All(value => value.EstablishedPresence) &&
+                          match.Players.Single(value => value.PlayerId == 2)
+                              .HasAnyProduction;
+            establishedStateHash = runtime.StateHash;
+        });
+        session.At(120, "Destroy player 2 Town Hall first", runtime =>
+            runtime.DamageBuilding(playerTwoBase.BuildingId, 100000f));
+        session.At(180, "Town Hall loss leaves Barracks production and player active", runtime =>
+        {
+            var player = runtime.ObserveMatch().Players.Single(value =>
+                value.PlayerId == 2);
+            townHallLossIsNotDefeat = player.Status == TestMatchPlayerStatus.Active &&
+                                      player.TownHalls == 0 &&
+                                      player.ProductionFacilities == 1 &&
+                                      player.ActiveBuildings == 1 &&
+                                      player.IsEliminationRisk;
+            runtime.DamageBuilding(playerTwoProduction.BuildingId, 100000f);
+        });
+        session.At(260, "Eliminated participant cannot issue further commands", runtime =>
+            defeatedCommandRejected = runtime.PlayerMove(
+                2, [builders[1]], new Vector2(900f, 400f)) ==
+                TestPlayerOrderCommandCode.PlayerDefeated);
+        session.At(300, "Destroy the last opposing participant", runtime =>
+            runtime.DamageBuilding(playerThreeBase.BuildingId, 100000f));
+        session.At(hotTick, "Capture terminal match state", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
+        session.At(480, "Winner is terminal and all new player commands are rejected", runtime =>
+        {
+            var match = runtime.ObserveMatch();
+            matchCompleted = match.Phase == TestMatchPhase.Completed &&
+                             match.WinnerPlayerId == 1;
+            completedCommandRejected = runtime.PlayerMove(
+                1, [builders[0]], new Vector2(500f, 300f)) ==
+                TestPlayerOrderCommandCode.MatchCompleted;
         });
         return session;
     }
@@ -2844,9 +2985,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 10 &&
-                             producingHot.FormatVersion == 10 &&
-                             waitingHot.FormatVersion == 10 &&
+                             package.FormatVersion == 11 &&
+                             producingHot.FormatVersion == 11 &&
+                             waitingHot.FormatVersion == 11 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -3062,7 +3203,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
+                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -3202,7 +3343,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
+                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -3330,7 +3471,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
+                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -3487,7 +3628,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
+                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -3601,7 +3742,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 10 && exact;
+                             hotRoundTrip && hot.FormatVersion == 11 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

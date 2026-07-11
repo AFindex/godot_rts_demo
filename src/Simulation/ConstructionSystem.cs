@@ -130,7 +130,10 @@ public enum ConstructionCommandCode : byte
     PlacementRejected,
     RefineryNodeRequired,
     InvalidRefineryNode,
-    RefineryAlreadyBound
+    RefineryAlreadyBound,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct ConstructionCommandResult(
@@ -471,6 +474,30 @@ public sealed class ConstructionSystem
                 (building.Bounds.Min + building.Bounds.Max) * 0.5f,
                 building.Type.Function);
         }
+    }
+
+    internal PlayerBuildingCapabilities CountPlayerCapabilities(int playerId)
+    {
+        var active = 0;
+        var completed = 0;
+        var townHalls = 0;
+        var production = 0;
+        var research = 0;
+        for (var index = 0; index < _buildings.Count; index++)
+        {
+            var building = _buildings[index];
+            if (building.PlayerId != playerId || building.IsTerminal)
+                continue;
+            active++;
+            if (building.State != BuildingLifecycleState.Completed)
+                continue;
+            completed++;
+            townHalls += building.Type.Function == BuildingFunctionKind.TownHall ? 1 : 0;
+            production += building.Type.Function == BuildingFunctionKind.Production ? 1 : 0;
+            research += building.Type.Function == BuildingFunctionKind.Research ? 1 : 0;
+        }
+        return new PlayerBuildingCapabilities(
+            active, completed, townHalls, production, research);
     }
 
     public int CountCompleted(int playerId, int buildingTypeId) =>

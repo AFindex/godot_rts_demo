@@ -204,7 +204,10 @@ public enum ResearchCommandCode : byte
     MutuallyExclusive,
     InsufficientMinerals,
     InsufficientVespeneGas,
-    InvalidOrder
+    InvalidOrder,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct ResearchCommandResult(

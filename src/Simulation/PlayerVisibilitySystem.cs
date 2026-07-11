@@ -25,7 +25,10 @@ public enum PlayerOrderCommandCode : byte
     WrongOwner,
     InvalidTarget,
     FriendlyTarget,
-    TargetNotVisible
+    TargetNotVisible,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct PlayerOrderCommandResult(

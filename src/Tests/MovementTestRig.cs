@@ -24,7 +24,10 @@ public enum TestProductionCommandCode : byte
     InsufficientVespeneGas,
     SupplyBlocked,
     MissingPrerequisite,
-    InvalidOrder
+    InvalidOrder,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct TestProductionRequirementStatus(
@@ -58,7 +61,10 @@ public enum TestResearchCommandCode : byte
     MutuallyExclusive,
     InsufficientMinerals,
     InsufficientVespeneGas,
-    InvalidOrder
+    InvalidOrder,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct TestResearchOrderId(int Value);
@@ -135,7 +141,10 @@ public enum TestConstructionCommandCode : byte
     PlacementRejected,
     RefineryNodeRequired,
     InvalidRefineryNode,
-    RefineryAlreadyBound
+    RefineryAlreadyBound,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct TestConstructionResult(
@@ -183,7 +192,10 @@ public enum TestGatherCommandCode : byte
     InvalidNode,
     RefineryRequired,
     ResourceDepleted,
-    MissingDropOff
+    MissingDropOff,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public enum TestWorkerEconomyState : byte
@@ -233,7 +245,10 @@ public enum TestPlayerOrderCommandCode : byte
     WrongOwner,
     InvalidTarget,
     FriendlyTarget,
-    TargetNotVisible
+    TargetNotVisible,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct TestPlayerResourceView(
@@ -249,6 +264,38 @@ public readonly record struct TestPlayerViewSnapshot(
     int HiddenCells,
     int ExploredCells,
     int VisibleCells);
+
+public enum TestMatchPhase : byte
+{
+    Setup,
+    Running,
+    Completed
+}
+
+public enum TestMatchPlayerStatus : byte
+{
+    Active,
+    Defeated,
+    Victorious
+}
+
+public readonly record struct TestPlayerCapabilitySnapshot(
+    int PlayerId,
+    TestMatchPlayerStatus Status,
+    bool EstablishedPresence,
+    int ActiveBuildings,
+    int TownHalls,
+    int ProductionFacilities,
+    int Workers,
+    int CombatUnits,
+    bool HasAnyProduction,
+    bool IsEliminationRisk);
+
+public readonly record struct TestMatchSnapshot(
+    TestMatchPhase Phase,
+    long CompletedTick,
+    int WinnerPlayerId,
+    TestPlayerCapabilitySnapshot[] Players);
 
 public readonly record struct TestEconomyBaseSnapshot(
     TestEconomyBaseId Id,
@@ -270,7 +317,10 @@ public enum TestWorkerTransferCommandCode : byte
     SameBase,
     InvalidCount,
     NoTargetResources,
-    NoEligibleWorkers
+    NoEligibleWorkers,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
 }
 
 public readonly record struct TestWorkerTransferResult(
@@ -1201,6 +1251,34 @@ public sealed class MovementTestRig
                 value == (byte)MapVisibility.Visible));
     }
 
+    public void StartMatch(params int[] playerIds) =>
+        _simulation.StartMatch(playerIds);
+
+    public TestMatchSnapshot ObserveMatch()
+    {
+        var snapshot = _simulation.Match.CreateSnapshot(
+            _simulation.Construction,
+            _simulation.Economy,
+            _simulation.Units,
+            _simulation.Combat);
+        return new TestMatchSnapshot(
+            (TestMatchPhase)snapshot.Phase,
+            snapshot.CompletedTick,
+            snapshot.WinnerPlayerId,
+            snapshot.Players.Select(value =>
+                new TestPlayerCapabilitySnapshot(
+                    value.PlayerId,
+                    (TestMatchPlayerStatus)value.Status,
+                    value.EstablishedPresence,
+                    value.ActiveBuildings,
+                    value.TownHalls,
+                    value.ProductionFacilities,
+                    value.Workers,
+                    value.CombatUnits,
+                    value.HasAnyProduction,
+                    value.IsEliminationRisk)).ToArray());
+    }
+
     public TestPlayerOrderCommandCode PlayerMove(
         int playerId,
         IReadOnlyList<TestUnitId> units,
@@ -1958,6 +2036,7 @@ public sealed class MovementTestRig
             source.Construction,
             source.Production,
             source.Technology,
+            source.Match,
             source.WorldCommands.ToArray(),
             source.EconomyCommandLog,
             source.ConstructionCommandLog,
@@ -2115,6 +2194,7 @@ public sealed class MovementTestRig
             source.Construction,
             source.Production,
             source.Technology,
+            source.Match,
             source.WorldCommands.ToArray(),
             source.EconomyCommandLog,
             source.ConstructionCommandLog,

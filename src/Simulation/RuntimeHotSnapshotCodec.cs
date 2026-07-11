@@ -27,6 +27,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteCombat(writer, state.Combat, state.Units.Count);
         WriteEconomy(writer, state.Economy, state.Units.Count);
         WriteVisibility(writer, state.Visibility);
+        WriteMatch(writer, state.Match);
         WriteConstruction(writer, state.Construction);
         WriteProduction(writer, state.Production);
         WriteTechnology(writer, state.Technology);
@@ -85,6 +86,7 @@ internal static class RuntimeHotSnapshotCodec
             var combat = ReadCombat(reader, capacity, units.Count);
             var economy = ReadEconomy(reader, units.Count);
             var visibility = ReadVisibility(reader);
+            var match = ReadMatch(reader, economy);
             var construction = ReadConstruction(
                 reader, units.Count, dynamic.Footprints, economy);
             var production = ReadProduction(
@@ -108,6 +110,7 @@ internal static class RuntimeHotSnapshotCodec
                 Combat = combat,
                 Economy = economy,
                 Visibility = visibility,
+                Match = match,
                 Construction = construction,
                 Production = production,
                 Technology = technology,
@@ -645,6 +648,78 @@ internal static class RuntimeHotSnapshotCodec
         }
         return new PlayerVisibilityRuntimeSnapshot(
             cellSize, columns, rows, players);
+    }
+
+    internal static void WriteMatch(BinaryWriter writer, MatchRuntimeSnapshot match)
+    {
+        writer.Write((byte)match.Phase);
+        writer.Write(match.StartedTick);
+        writer.Write(match.CompletedTick);
+        writer.Write(match.WinnerPlayerId);
+        writer.Write(match.Players.Length);
+        foreach (var player in match.Players)
+        {
+            writer.Write(player.PlayerId);
+            writer.Write((byte)player.Status);
+            writer.Write(player.EstablishedPresence);
+            writer.Write(player.DefeatedTick);
+        }
+    }
+
+    internal static MatchRuntimeSnapshot ReadMatch(
+        BinaryReader reader,
+        EconomyRuntimeSnapshot economy)
+    {
+        var phase = (MatchPhase)reader.ReadByte();
+        var startedTick = reader.ReadInt64();
+        var completedTick = reader.ReadInt64();
+        var winner = reader.ReadInt32();
+        var count = ReadCount(reader, PlayerVisibilitySystem.MaximumPlayers);
+        var players = new MatchPlayerRuntimeEntry[count];
+        var previousPlayer = 0;
+        var active = 0;
+        var victorious = 0;
+        for (var index = 0; index < count; index++)
+        {
+            var value = new MatchPlayerRuntimeEntry(
+                reader.ReadInt32(),
+                (MatchPlayerStatus)reader.ReadByte(),
+                reader.ReadBoolean(),
+                reader.ReadInt64());
+            if (value.PlayerId <= previousPlayer ||
+                value.PlayerId >= PlayerVisibilitySystem.MaximumPlayers ||
+                !economy.Players.Any(player =>
+                    player.PlayerId == value.PlayerId) ||
+                !Enum.IsDefined(value.Status) || value.DefeatedTick < -1 ||
+                value.Status == MatchPlayerStatus.Active &&
+                    value.DefeatedTick != -1 ||
+                value.Status == MatchPlayerStatus.Victorious &&
+                    value.PlayerId != winner ||
+                value.Status == MatchPlayerStatus.Defeated &&
+                    (!value.EstablishedPresence || value.DefeatedTick < 0))
+            {
+                throw new InvalidDataException();
+            }
+            players[index] = value;
+            active += value.Status == MatchPlayerStatus.Active ? 1 : 0;
+            victorious += value.Status == MatchPlayerStatus.Victorious ? 1 : 0;
+            previousPlayer = value.PlayerId;
+        }
+        if (!Enum.IsDefined(phase) || startedTick < -1 || completedTick < -1 ||
+            winner < -1 ||
+            phase == MatchPhase.Setup &&
+                (startedTick != -1 || completedTick != -1 || winner != -1 ||
+                 players.Length != 0) ||
+            phase == MatchPhase.Running &&
+                (startedTick != 0 || completedTick != -1 || winner != -1 ||
+                 players.Length < 2 || active == 0 || victorious != 0) ||
+            phase == MatchPhase.Completed &&
+                (startedTick != 0 || completedTick < 0 || players.Length < 2 ||
+                 active != 0) ||
+            winner >= 0 && victorious != 1 || winner < 0 && victorious != 0)
+            throw new InvalidDataException();
+        return new MatchRuntimeSnapshot(
+            phase, startedTick, completedTick, winner, players);
     }
 
     internal static ConstructionRuntimeSnapshot ReadConstruction(

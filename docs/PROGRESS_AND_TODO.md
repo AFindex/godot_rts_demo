@@ -863,7 +863,28 @@ S11-E 已收口。
 - 80/80 全量黑盒回归通过。Release 性能：256/512/1000 移动 P95 为 1.97/4.56/9.25ms，分配 27/182/461B/Tick；128/256 战斗 P95 为 2.00/4.77ms。
 - 15 秒 AV1/WebM 位于 `test_videos/20260711_224643/`；全库验证通过 106 个视频、54 个 manifest、105 个场景引用，编码均为 AV1。
 
-下一段进入 S11-G：关键建筑、生产能力、玩家失败与比赛结束状态；之后接最小脚本 AI。AttackMove 自动索建筑现在可以基于 PlayerView 实现，但仍与胜负/目标优先级一起推进，避免提前写死规则。
+### Z：S11-G 玩家能力、失败与比赛终局（已完成）
+
+- 新增纯 C# `MatchSystem`；比赛只能在 Tick 0 以至少两名已注册唯一玩家启动，并持有 Setup/Running/Completed 与 Active/Defeated/Victorious 状态。
+- `EstablishedPresence` 避免初始化阶段误判；建立过正式建筑后，活跃建筑归零才失败。失去 Town Hall 但仍有生产建筑不会出局。
+- `PlayerCapabilitySnapshot` 为 UI/AI 提供活跃/完工建筑、Town Hall、生产/研究设施、工人和作战单位计数，不暴露 Construction/UnitStore 内部集合。
+- 采集、转场、建造、生产、研究、Move、AttackMove、Stop、Hold 和 SmartCommand 统一获得非参赛者、已失败与终局门禁。
+- Replay Package/Hot Snapshot 升级 v11，State Hash 升级 v12；严格持久化参赛者、建立存在、失败 Tick、完成 Tick 和胜者。
+- `match-capability-elimination` 三方场景覆盖 Town Hall 丢失但继续存活、最后建筑出局、唯一胜者、终局命令拒绝、规范载荷、前段完整回放与终局热恢复。
+- Godot HUD 只消费 `MatchSnapshot` 展示能力和胜者。详细设计见 `docs/MATCH_LIFECYCLE.md`。
+- 81/81 全量黑盒回归通过。Release 性能：256/512/1000 移动 P95 为 1.35/6.24/9.32ms，分配 27/182/461B/Tick；128/256 战斗 P95 为 2.69/4.59ms。
+- 10 秒 AV1/WebM 位于 `test_videos/20260711_234241/`；全库验证通过 107 个视频、55 个 manifest、106 个场景引用，编码均为 AV1。
+
+### AA：可扩展 AI 宿主架构（基础已完成，策略待实现）
+
+- AI 独立于 `RtsSimulation.Tick` 和 Godot；只读 PlayerView、经济、基地、设施队列与 Match 观察快照，不接触寻路、Steering 或权威内部集合。
+- `IRtsAiPolicy` 只输出 Gather/Transfer/Build/Train/Research/Move/AttackMove 高层意图；Adapter 通过正式玩家命令执行，因此权限、业务拒绝和命令日志不复制。
+- `RtsAiDirector` 提供 Player ID 稳定顺序、周期/offset 错峰、有界意图数，以及 Policy ID/格式版本/内部状态的严格捕获恢复。
+- 回放只重放已经执行的游戏命令，不重新运行 AI；实时续跑将 Simulation Hot Snapshot 与 Director Snapshot 配对保存。
+- `AiArchitectureSelfTest` 已验证 Tick 调度、容量裁剪、策略状态恢复和继续执行，且 fake policy 完全不依赖具体模拟实现。
+- 详细架构和下一层模块边界见 `docs/AI_ARCHITECTURE.md`。
+
+下一段实现完整模块化对局 AI：Economy/Build/Production/Technology/Scouting/Combat Planner、Strategic Blackboard 和稳定 Intent Arbiter。它需要覆盖双资源运营、供应、扩张、科技、侦察、防守和进攻，不按“最小脚本”收口。
 
 ## 8. 可以并行但不能提前耦合的优化
 

@@ -1633,6 +1633,24 @@ public partial class RtsDemo : Node2D
                 .Where(value => value.Relation == PlayerEntityRelation.Own)
                 .Sum(value => _simulation.Technology
                     .Observe(value.BuildingId).Orders.Length);
+        var match = _simulation.Match.CreateSnapshot(
+            _simulation.Construction,
+            _simulation.Economy,
+            _simulation.Units,
+            _simulation.Combat);
+        var matchText = match.Phase switch
+        {
+            MatchPhase.Setup => "match setup",
+            MatchPhase.Running => "match running  " + string.Join("  ",
+                match.Players.Select(value =>
+                    $"P{value.PlayerId}:{value.Status} " +
+                    $"B{value.ActiveBuildings}/TH{value.TownHalls}/" +
+                    $"Prod{value.ProductionFacilities}")),
+            MatchPhase.Completed when match.WinnerPlayerId >= 0 =>
+                $"MATCH COMPLETE  WINNER P{match.WinnerPlayerId}",
+            MatchPhase.Completed => "MATCH COMPLETE  DRAW",
+            _ => throw new ArgumentOutOfRangeException()
+        };
         var trafficText = "traffic none";
         if (_chokeController is not null && _chokeController.TrafficSnapshots.Length > 0)
         {
@@ -1676,6 +1694,7 @@ public partial class RtsDemo : Node2D
             $"steer {metrics.SteeringMilliseconds:0.00}  " +
             $"collision {metrics.CollisionMilliseconds:0.00}  " +
             $"alloc {metrics.AllocatedBytes / 1024.0:0.0}KB\n" +
+            $"{matchText}\n" +
             $"{trafficText}\n" +
             "LMB select  RMB smart  Shift+RMB queue  A+RMB attack-move  " +
             "Ctrl+# assign  Shift+# add  # recall  Space all  S stop  H hold  " +

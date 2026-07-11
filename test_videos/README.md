@@ -56,6 +56,7 @@ python -m http.server 10086
 - `20260711_145641/`：放置前后 Connectivity 差异；候选 footprint 封死唯一走廊，Small/Medium/Large 均从 1 个分量变为 2 个，面板显示 blocked/split/disconnected 与 dirty chunks，安全候选三档均保持连通。
 - `20260711_151949/`：S9 文件监听闭环；2 次 Bake 写入通知经过去抖只触发 1 次 Fresh Load/原子提交，8 个移动单位全部重规划并 8/8 到达，面板显示 `Applied / Success / reloads=1`。
 - `20260711_154903/`：S11-A 双资源经济；8 个工人在三个矿脉与一个 Refinery 间实际往返，第一矿脉枯竭后自动转场，20 秒获得 105 Minerals/48 Vespene，实时显示资源、人口、工作阶段与节点余量。
+- `20260711_234241/`：S11-G 三方比赛生命周期；展示 Town Hall 丢失不立即出局、最后建筑摧毁后命令被拒绝、唯一胜者与终局门禁，并验证 Package v11/Hot v11 的回放恢复一致性。
 
 重新录制所有当前场景：
 
