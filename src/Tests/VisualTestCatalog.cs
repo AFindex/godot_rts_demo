@@ -62,6 +62,7 @@ public static class VisualTestCatalog
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
+        "production-replay-persistence",
         "construction-replay-persistence",
         "combat-attack-building",
         "shared-target-reservations",
@@ -165,6 +166,8 @@ public static class VisualTestCatalog
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
         "production-queue-exit-rally" => CreateProductionQueueExitRally(),
+        "production-replay-persistence" => CreateProductionReplayPersistence(
+            navigationMap, gameplayProfiles, clearanceBake),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "combat-attack-building" => CreateCombatAttackBuilding(
@@ -1094,7 +1097,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 4 &&
+                    exact && rejected && hot.FormatVersion == 5 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1188,7 +1191,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 4 && hot.FormatVersion == 4 &&
+                             package.FormatVersion == 5 && hot.FormatVersion == 5 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2470,6 +2473,172 @@ public static class VisualTestCatalog
                 TestDiagnosticKind.Accepted);
     }
 
+    private static VisualTestSession CreateProductionReplayPersistence(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var catalog = DemoProductionCatalog.CreateSnapshot();
+        var marine = catalog.Recipe(0) with { ProductionSeconds = 1f };
+        var marauder = catalog.Recipe(1);
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1000, 300, 10, 0);
+        var builder = rig.SpawnWorker(new Vector2(230f, 260f), 1);
+        rig.StartReplayPackageRecording();
+        var fastBarracks = DemoBuildingTypes.Barracks with { BuildSeconds = 1f };
+        var barracks = rig.Build(
+            1, builder, fastBarracks, new Vector2(400f, 260f));
+        var rally = new Vector2(650f, 400f);
+        var blockers = Array.Empty<TestBuildingId>();
+        var commandsIssued = false;
+        var canceled = false;
+        var issueDiagnostic = string.Empty;
+        TestRuntimeStateCapture? producingCapture = null;
+        TestRuntimeStateCapture? waitingCapture = null;
+        TestRuntimeStateCapture? spawnedCapture = null;
+        var checkpointHash = 0UL;
+        const long producingTick = 270;
+        const long checkpointTick = 300;
+        const long waitingTick = 330;
+        const long spawnedTick = 420;
+        var session = new VisualTestSession(
+            "production-replay-persistence",
+            "Train/Cancel/Rally replay with producing and blocked-exit hot restore",
+            540,
+            rig,
+            [builder],
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var log = runtime.CaptureProductionCommandLog();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var logRoundTrip = log.TryCanonicalRoundTrip(out var decodedLog);
+                var baseline = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var checkpoint = runtime.CreateReplayCheckpoint(
+                    package, checkpointTick, checkpointHash);
+                var checkpointReplay = runtime.ResumeReplayPackage(
+                    package, checkpoint, runtime.Tick);
+                var producingHot = runtime.BindHotSnapshot(
+                    package, producingCapture!);
+                var producingRoundTrip = producingHot.TryCanonicalRoundTrip(
+                    out var decodedProducing);
+                var producingReplay = runtime.ResumeHotSnapshot(
+                    package, decodedProducing!, runtime.Tick);
+                var waitingHot = runtime.BindHotSnapshot(package, waitingCapture!);
+                var waitingRoundTrip = waitingHot.TryCanonicalRoundTrip(
+                    out var decodedWaiting);
+                var waitingReplay = runtime.ResumeHotSnapshot(
+                    package, decodedWaiting!, runtime.Tick);
+                var spawnedHot = runtime.BindHotSnapshot(package, spawnedCapture!);
+                var spawnedRoundTrip = spawnedHot.TryCanonicalRoundTrip(
+                    out var decodedSpawned);
+                var spawnedReplay = runtime.ResumeHotSnapshot(
+                    package, decodedSpawned!, runtime.Tick);
+                var checkpointExact = baseline.MatchesFrom(
+                    checkpointReplay, checkpointTick);
+                var producingExact = baseline.MatchesFrom(
+                    producingReplay, producingTick);
+                var waitingExact = baseline.MatchesFrom(
+                    waitingReplay, waitingTick);
+                var spawnedExact = baseline.MatchesFrom(
+                    spawnedReplay, spawnedTick);
+                var exact = baseline.FinalHash == runtime.StateHash &&
+                            checkpointExact && producingExact && waitingExact &&
+                            spawnedExact &&
+                            checkpointReplay.FinalHash == runtime.StateHash &&
+                            producingReplay.FinalHash == runtime.StateHash &&
+                            waitingReplay.FinalHash == runtime.StateHash;
+                exact &= spawnedReplay.FinalHash == runtime.StateHash;
+                var rejected = log.RejectsUnsupportedVersion() &&
+                               log.RejectsTruncatedPayload() &&
+                               package.RejectsUnsupportedVersion() &&
+                               package.RejectsTruncatedPayload() &&
+                               producingHot.RejectsUnsupportedVersion() &&
+                               producingHot.RejectsTruncatedPayload() &&
+                               waitingHot.RejectsUnsupportedVersion() &&
+                               waitingHot.RejectsTruncatedPayload() &&
+                               spawnedHot.RejectsUnsupportedVersion() &&
+                               spawnedHot.RejectsTruncatedPayload();
+                var economy = runtime.ObservePlayerEconomy(1);
+                var queue = runtime.ObserveProduction(barracks.BuildingId);
+                var rallied = runtime.UnitCount >= 2 && Vector2.Distance(
+                                  runtime.Observe(new TestUnitId(1)).Position,
+                                  rally) < 45f;
+                var passed = barracks.Succeeded && commandsIssued && canceled &&
+                             packageRoundTrip && logRoundTrip &&
+                             producingRoundTrip && waitingRoundTrip &&
+                             spawnedRoundTrip &&
+                             decodedLog!.StableHash == log.StableHash &&
+                             package.FormatVersion == 5 &&
+                             producingHot.FormatVersion == 5 &&
+                             waitingHot.FormatVersion == 5 &&
+                             package.ConstructionCommandCount == 1 &&
+                             package.ProductionCommandCount == 4 &&
+                             package.WorldCommandCount == 8 &&
+                             package.UnitCommandCount == 0 &&
+                             runtime.UnitCount == 2 && queue.OrderCount == 0 &&
+                             economy.Minerals == 800 && economy.VespeneGas == 300 &&
+                             economy.SupplyUsed == 1 && rallied && exact && rejected;
+                return new ScenarioResult(
+                    passed,
+                    $"productionOrders={package.ProductionCommandCount}, " +
+                    $"world={package.WorldCommandCount}, units={runtime.UnitCount}, " +
+                    $"hot={producingHot.CanonicalByteCount}/" +
+                    $"{waitingHot.CanonicalByteCount}/" +
+                    $"{spawnedHot.CanonicalByteCount}B, exact={exact}, " +
+                    $"hash={runtime.StateHash:X}/{baseline.FinalHash:X}/" +
+                    $"{checkpointReplay.FinalHash:X}/{producingReplay.FinalHash:X}/" +
+                    $"{waitingReplay.FinalHash:X}/{spawnedReplay.FinalHash:X}, " +
+                    $"traces={checkpointExact}/{producingExact}/{waitingExact}/" +
+                    $"{spawnedExact}, rejected={rejected}, " +
+                    $"rallied={rallied}, issue={issueDiagnostic}");
+            });
+        session.At(240, "Record blocked exits, Rally, Train and Cancel", runtime =>
+        {
+            blockers =
+            [
+                runtime.PlaceBuilding(new Vector2(470f, 260f), new Vector2(20f, 130f)),
+                runtime.PlaceBuilding(new Vector2(330f, 260f), new Vector2(20f, 130f)),
+                runtime.PlaceBuilding(new Vector2(400f, 315f), new Vector2(120f, 20f)),
+                runtime.PlaceBuilding(new Vector2(400f, 205f), new Vector2(120f, 20f))
+            ];
+            var rallySet = runtime.SetRallyPoint(1, barracks.BuildingId, rally);
+            var first = runtime.Train(1, barracks.BuildingId, marine);
+            var canceledOrder = runtime.Train(1, barracks.BuildingId, marauder);
+            canceled = runtime.CancelProduction(1, canceledOrder.OrderId);
+            issueDiagnostic =
+                $"building={runtime.ObserveGameplayBuilding(barracks.BuildingId).State}, " +
+                $"rally={rallySet}, train={first.Code}/{canceledOrder.Code}, " +
+                $"cancel={canceled}";
+            commandsIssued = rallySet && first.Succeeded &&
+                             canceledOrder.Succeeded;
+        });
+        session.At(producingTick, "Capture active production hot state", runtime =>
+            producingCapture = runtime.CaptureRuntimeState());
+        session.At(checkpointTick, "Capture production checkpoint", runtime =>
+            checkpointHash = runtime.StateHash);
+        session.At(waitingTick, "Capture completed order blocked at exit", runtime =>
+            waitingCapture = runtime.CaptureRuntimeState());
+        session.At(360, "Record removal of all exit blockers", runtime =>
+        {
+            foreach (var blocker in blockers) runtime.RemoveBuilding(blocker);
+        });
+        session.At(spawnedTick, "Capture spawned unit population ledger", runtime =>
+            spawnedCapture = runtime.CaptureRuntimeState());
+        return session
+            .Highlight(
+                new SimRect(new Vector2(310f, 185f), new Vector2(490f, 335f)),
+                "HOT STATE: producing -> waiting for exit",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(590f, 340f), new Vector2(710f, 470f)),
+                "REPLAYED RALLY FUTURE STATE",
+                TestDiagnosticKind.Accepted);
+    }
+
     private static VisualTestSession CreateConstructionReplayPersistence(
         NavigationMapSnapshot? navigationMap,
         GameplayProfileCatalogSnapshot? gameplayProfiles,
@@ -2561,7 +2730,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 4 && hot.FormatVersion == 4 &&
+                             package.FormatVersion == 5 && hot.FormatVersion == 5 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -2675,7 +2844,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 4 && exact;
+                             hotRoundTrip && hot.FormatVersion == 5 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

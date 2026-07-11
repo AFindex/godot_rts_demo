@@ -310,6 +310,38 @@ public sealed class TestConstructionCommandLog
         validation == ConstructionCommandLogValidationCode.PayloadTooShort;
 }
 
+public sealed class TestProductionCommandLog
+{
+    internal TestProductionCommandLog(ProductionCommandLogSnapshot snapshot) =>
+        Backend = snapshot;
+    internal ProductionCommandLogSnapshot Backend { get; }
+    public int EntryCount => Backend.Entries.Length;
+    public int CanonicalByteCount => Backend.CanonicalBytes.Length;
+    public ulong StableHash => Backend.StableHash;
+    public bool TryCanonicalRoundTrip(out TestProductionCommandLog? roundTripped)
+    {
+        var succeeded = ProductionCommandLogSnapshot.TryDeserialize(
+            Backend.CanonicalBytes, out var snapshot, out _);
+        roundTripped = succeeded && snapshot is not null
+            ? new TestProductionCommandLog(snapshot)
+            : null;
+        return succeeded;
+    }
+    public bool RejectsUnsupportedVersion()
+    {
+        var payload = Backend.CanonicalBytes.ToArray();
+        payload[4]++;
+        return !ProductionCommandLogSnapshot.TryDeserialize(
+            payload, out _, out var validation) &&
+            validation == ProductionCommandLogValidationCode.UnsupportedVersion;
+    }
+    public bool RejectsTruncatedPayload() =>
+        !ProductionCommandLogSnapshot.TryDeserialize(
+            Backend.CanonicalBytes.AsSpan(0, Backend.CanonicalBytes.Length - 1),
+            out _, out var validation) &&
+        validation == ProductionCommandLogValidationCode.PayloadTooShort;
+}
+
 public sealed class TestReplayPackage
 {
     internal TestReplayPackage(SimulationReplayPackageSnapshot snapshot)
@@ -325,6 +357,8 @@ public sealed class TestReplayPackage
     public int EconomyCommandCount => Backend.EconomyCommandLog.Entries.Length;
     public int ConstructionCommandCount =>
         Backend.ConstructionCommandLog.Entries.Length;
+    public int ProductionCommandCount =>
+        Backend.ProductionCommandLog.Entries.Length;
     public int UnitCommandCount => Backend.CommandLog.Entries.Length;
     public int CanonicalByteCount => Backend.CanonicalBytes.Length;
     public ulong StableHash => Backend.StableHash;
@@ -1541,6 +1575,9 @@ public sealed class MovementTestRig
     public TestConstructionCommandLog CaptureConstructionCommandLog() =>
         new(_simulation.CaptureConstructionCommandLog());
 
+    public TestProductionCommandLog CaptureProductionCommandLog() =>
+        new(_simulation.CaptureProductionCommandLog());
+
     public TestReplayPackage CaptureReplayPackage() =>
         new(_simulation.CaptureReplayPackage());
 
@@ -1608,9 +1645,11 @@ public sealed class MovementTestRig
             source.Buildings.ToArray(),
             source.Economy,
             source.Construction,
+            source.Production,
             source.WorldCommands.ToArray(),
             source.EconomyCommandLog,
             source.ConstructionCommandLog,
+            source.ProductionCommandLog,
             source.CommandLog);
         return !SimulationReplayPackageFactory.TryCreateSimulation(
                    changed,
@@ -1762,9 +1801,11 @@ public sealed class MovementTestRig
             source.Buildings.ToArray(),
             source.Economy,
             source.Construction,
+            source.Production,
             source.WorldCommands.ToArray(),
             source.EconomyCommandLog,
             source.ConstructionCommandLog,
+            source.ProductionCommandLog,
             new SimulationCommandLogSnapshot(
                 source.CommandLog.Entries.Select(entry => entry with
                 {

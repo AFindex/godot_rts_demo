@@ -53,6 +53,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private SimulationCommandRecorder? _commandRecorder;
     private EconomyCommandRecorder? _economyCommandRecorder;
     private ConstructionCommandRecorder? _constructionCommandRecorder;
+    private ProductionCommandRecorder? _productionCommandRecorder;
     private SimulationReplayPackageRecorder? _replayPackageRecorder;
     private bool _issuingSystemOrder;
     private bool _issuingConstructionWorldMutation;
@@ -182,12 +183,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     internal SimulationRuntimeStateCapture CaptureRuntimeState()
     {
-        if (Production.HasRuntimeState)
-        {
-            throw new InvalidOperationException(
-                "Production runtime persistence is introduced by S11-D2; " +
-                "active production cannot be captured by hot snapshot v4.");
-        }
         var units = new UnitStore(Units.Capacity);
         units.CopyRuntimeStateFrom(Units);
         var combat = new CombatStore(Units.Capacity);
@@ -203,6 +198,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Combat = combat,
             Economy = Economy.CaptureRuntimeState(Units.Count),
             Construction = Construction.CaptureRuntimeState(),
+            Production = Production.CaptureRuntimeState(),
             CommandQueues = queues,
             ChokeTraffic = _chokeController?.CaptureRuntimeState(),
             PrivateState = new RtsPrivateRuntimeSnapshot(
@@ -225,6 +221,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
         Construction.RestoreRuntimeState(snapshot.Construction);
+        Production.RestoreRuntimeState(
+            snapshot.Production, Construction, Economy.Players, Units);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -249,6 +247,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _commandRecorder = null;
         _economyCommandRecorder = null;
         _constructionCommandRecorder = null;
+        _productionCommandRecorder = null;
         _replayPackageRecorder = null;
     }
 
@@ -257,6 +256,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _commandRecorder = new SimulationCommandRecorder();
         _economyCommandRecorder = new EconomyCommandRecorder();
         _constructionCommandRecorder = new ConstructionCommandRecorder();
+        _productionCommandRecorder = new ProductionCommandRecorder();
     }
 
     public SimulationCommandLogSnapshot CaptureCommandLog()
@@ -286,6 +286,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return _constructionCommandRecorder.Capture();
     }
 
+    public ProductionCommandLogSnapshot CaptureProductionCommandLog()
+    {
+        if (_productionCommandRecorder is null)
+            throw new InvalidOperationException("Command recording has not been started.");
+        return _productionCommandRecorder.Capture();
+    }
+
     public void StartReplayPackageRecording(ReplayResourceManifest resources)
     {
         if (!Economy.CanStartReplayRecording(Units.Count))
@@ -301,6 +308,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _commandRecorder = new SimulationCommandRecorder();
         _economyCommandRecorder = new EconomyCommandRecorder();
         _constructionCommandRecorder = new ConstructionCommandRecorder();
+        _productionCommandRecorder = new ProductionCommandRecorder();
         _replayPackageRecorder = new SimulationReplayPackageRecorder(this, resources);
     }
 
@@ -308,6 +316,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         if (_commandRecorder is null || _economyCommandRecorder is null ||
             _constructionCommandRecorder is null ||
+            _productionCommandRecorder is null ||
             _replayPackageRecorder is null)
         {
             throw new InvalidOperationException(
@@ -316,7 +325,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return _replayPackageRecorder.Capture(
             _commandRecorder.Capture(),
             _economyCommandRecorder.Capture(),
-            _constructionCommandRecorder.Capture());
+            _constructionCommandRecorder.Capture(),
+            _productionCommandRecorder.Capture());
     }
 
     public void ApplyRecordedCommand(RecordedSimulationCommand command)
@@ -408,6 +418,36 @@ public sealed class RtsSimulation : ICombatMovementDriver
             default:
                 throw new InvalidOperationException(
                     $"Unsupported construction command {command.Kind}.");
+        }
+    }
+
+    public void ApplyRecordedProductionCommand(RecordedProductionCommand command)
+    {
+        switch (command.Kind)
+        {
+            case ProductionReplayCommandKind.Train:
+                var result = IssueProduction(
+                    command.PlayerId, command.Producer, command.Recipe);
+                if (!result.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Replay Train failed with {result.Code}.");
+                break;
+            case ProductionReplayCommandKind.Cancel:
+                if (!Production.Observe(command.Producer).Orders.Any(
+                        value => value.Id == command.OrderId))
+                    throw new InvalidOperationException(
+                        "Replay production Cancel producer/order mismatch.");
+                if (!CancelProduction(command.PlayerId, command.OrderId))
+                    throw new InvalidOperationException("Replay production Cancel failed.");
+                break;
+            case ProductionReplayCommandKind.SetRallyPoint:
+                if (!SetProductionRallyPoint(
+                        command.PlayerId, command.Producer, command.RallyPoint))
+                    throw new InvalidOperationException("Replay Rally failed.");
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported production command {command.Kind}.");
         }
     }
 
@@ -728,17 +768,24 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId producer,
         ProductionRecipeProfile recipe)
     {
-        EnsureProductionRecordingSupported();
-        return Production.Enqueue(
+        var result = Production.Enqueue(
             playerId, producer, recipe, Construction, Economy.Players);
+        if (result.Succeeded)
+            _productionCommandRecorder?.RecordTrain(
+                Metrics.Tick, playerId, producer, recipe);
+        return result;
     }
 
     public bool CancelProduction(
         int playerId,
         ProductionOrderId orderId)
     {
-        EnsureProductionRecordingSupported();
-        return Production.Cancel(playerId, orderId, Economy.Players);
+        var result = Production.Cancel(
+            playerId, orderId, Economy.Players, out var producer);
+        if (result)
+            _productionCommandRecorder?.RecordCancel(
+                Metrics.Tick, playerId, producer, orderId);
+        return result;
     }
 
     public bool SetProductionRallyPoint(
@@ -746,18 +793,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId producer,
         Vector2 point)
     {
-        EnsureProductionRecordingSupported();
-        return Production.SetRallyPoint(playerId, producer, point, Construction);
-    }
-
-    private void EnsureProductionRecordingSupported()
-    {
-        if (_commandRecorder is not null || _replayPackageRecorder is not null)
-        {
-            throw new InvalidOperationException(
-                "Production command recording is introduced by S11-D2; " +
-                "production commands cannot be issued during v4 recording.");
-        }
+        var result = Production.SetRallyPoint(
+            playerId, producer, point, Construction);
+        if (result)
+            _productionCommandRecorder?.RecordRally(
+                Metrics.Tick, playerId, producer, point);
+        return result;
     }
 
     public void IssueMove(

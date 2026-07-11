@@ -28,6 +28,7 @@ internal sealed class SimulationRuntimeStateCapture
     public required CombatStore Combat { get; init; }
     public required EconomyRuntimeSnapshot Economy { get; init; }
     public required ConstructionRuntimeSnapshot Construction { get; init; }
+    public required ProductionRuntimeSnapshot Production { get; init; }
     public required UnitCommandQueueStore CommandQueues { get; init; }
     public ChokeTrafficRuntimeSnapshot? ChokeTraffic { get; init; }
     public required RtsPrivateRuntimeSnapshot PrivateState { get; init; }
@@ -40,7 +41,7 @@ internal sealed class SimulationRuntimeStateCapture
 /// </summary>
 public sealed class SimulationHotSnapshot
 {
-    public const int CurrentFormatVersion = 4;
+    public const int CurrentFormatVersion = 5;
 
     internal SimulationHotSnapshot(
         ulong packageHash,

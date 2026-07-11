@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T19:08:02.1278328+08:00",
+    "generated_at":  "2026-07-11T19:48:28.5506631+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  97,
-    "case_count":  73,
+    "recording_count":  98,
+    "case_count":  74,
     "recordings":  [
+                       {
+                           "id":  "production-replay-persistence",
+                           "display_name":  "Train/Cancel/Rally replay with producing and blocked-exit hot restore",
+                           "batch":  "20260711_194814",
+                           "created_at":  "2026-07-11T19:48:28.1759603+08:00",
+                           "video":  "../20260711_194814/production-replay-persistence.webm",
+                           "log":  "../20260711_194814/production-replay-persistence.log",
+                           "bytes":  247303,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS production-replay-persistence: ticks=540, productionOrders=4, world=8, units=2, hot=980/980/1164B, exact=True, hash=B81DC5487461085E/B81DC5487461085E/B81DC5487461085E/B81DC5487461085E/B81DC5487461085E/B81DC5487461085E, traces=True/True/True/True, rejected=True, rallied=True, issue=building=Completed, rally=True, train=Success/Success, cancel=True",
+                           "metrics":  "ticks=540, productionOrders=4, world=8, units=2, hot=980/980/1164B, exact=True, hash=B81DC5487461085E/B81DC5487461085E/B81DC5487461085E/B81DC5487461085E/B81DC5487461085E/B81DC5487461085E, traces=True/True/True/True, rejected=True, rallied=True, issue=building=Completed, rally=True, train=Success/Success, cancel=True"
+                       },
                        {
                            "id":  "production-queue-exit-rally",
                            "display_name":  "Reserved supply, cancel, blocked exit, delayed spawn and rally",

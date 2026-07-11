@@ -27,6 +27,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteCombat(writer, state.Combat, state.Units.Count);
         WriteEconomy(writer, state.Economy, state.Units.Count);
         WriteConstruction(writer, state.Construction);
+        WriteProduction(writer, state.Production);
         WriteQueues(writer, state.CommandQueues, state.Units.Count);
         WriteChoke(writer, state.ChokeTraffic);
         WritePrivate(writer, state.PrivateState);
@@ -83,6 +84,8 @@ internal static class RuntimeHotSnapshotCodec
             var economy = ReadEconomy(reader, units.Count);
             var construction = ReadConstruction(
                 reader, units.Count, dynamic.Footprints, economy);
+            var production = ReadProduction(
+                reader, units.Count, construction, economy);
             ValidateCombatTargets(combat, units.Count, construction);
             var queues = ReadQueues(reader, capacity, units.Count);
             var choke = ReadChoke(reader);
@@ -101,6 +104,7 @@ internal static class RuntimeHotSnapshotCodec
                 Combat = combat,
                 Economy = economy,
                 Construction = construction,
+                Production = production,
                 CommandQueues = queues,
                 ChokeTraffic = choke,
                 PrivateState = privateState
@@ -614,6 +618,117 @@ internal static class RuntimeHotSnapshotCodec
             buildings[index] = value;
         }
         return new ConstructionRuntimeSnapshot(buildings);
+    }
+
+    internal static void WriteProduction(
+        BinaryWriter writer,
+        ProductionRuntimeSnapshot production)
+    {
+        writer.Write(production.NextOrderId);
+        writer.Write(production.Queues.Length);
+        foreach (var queue in production.Queues)
+        {
+            writer.Write(queue.Producer.Value);
+            writer.Write(queue.RallyPoint.HasValue);
+            if (queue.RallyPoint.HasValue) WriteVector(writer, queue.RallyPoint.Value);
+            writer.Write(queue.Orders.Length);
+            foreach (var order in queue.Orders)
+            {
+                writer.Write(order.Id.Value);
+                writer.Write(order.PlayerId);
+                ProductionSerialization.WriteRecipe(writer, order.Recipe);
+                writer.Write((byte)order.State);
+                writer.Write(order.Progress);
+            }
+        }
+        writer.Write(production.ProducedUnits.Length);
+        foreach (var unit in production.ProducedUnits)
+        {
+            writer.Write(unit.Unit);
+            writer.Write(unit.PlayerId);
+            writer.Write(unit.Supply);
+        }
+    }
+
+    internal static ProductionRuntimeSnapshot ReadProduction(
+        BinaryReader reader,
+        int unitCount,
+        ConstructionRuntimeSnapshot construction,
+        EconomyRuntimeSnapshot economy)
+    {
+        var nextOrder = reader.ReadInt32();
+        var queueCount = ReadCount(reader, MaximumCapacity);
+        if (nextOrder <= 0) throw new InvalidDataException();
+        var queues = new ProducerQueueRuntimeEntry[queueCount];
+        var producers = new HashSet<int>();
+        var orderIds = new HashSet<int>();
+        var reservedSupply = new Dictionary<int, int>();
+        var maximumOrder = 0;
+        for (var index = 0; index < queueCount; index++)
+        {
+            var producer = new GameplayBuildingId(reader.ReadInt32());
+            var hasRally = reader.ReadBoolean();
+            Vector2? rally = hasRally ? ReadVector(reader) : null;
+            var orderCount = ReadCount(reader, ProductionSystem.MaximumQueueLength);
+            var building = producer.Value >= 0 &&
+                           producer.Value < construction.Buildings.Length
+                ? construction.Buildings[producer.Value]
+                : default;
+            if (!producers.Add(producer.Value) || building.Id != producer ||
+                building.State is BuildingLifecycleState.Canceled or
+                    BuildingLifecycleState.Destroyed ||
+                rally.HasValue && !Finite(rally.Value))
+                throw new InvalidDataException();
+            if (orderCount > 0 && building.State != BuildingLifecycleState.Completed)
+                throw new InvalidDataException();
+            var orders = new ProductionOrderRuntimeEntry[orderCount];
+            for (var orderIndex = 0; orderIndex < orderCount; orderIndex++)
+            {
+                var id = new ProductionOrderId(reader.ReadInt32());
+                var player = reader.ReadInt32();
+                var recipe = ProductionSerialization.ReadRecipe(reader);
+                var state = (ProductionOrderState)reader.ReadByte();
+                var progress = reader.ReadSingle();
+                if (id.Value <= 0 || !orderIds.Add(id.Value) ||
+                    !economy.Players.Any(value => value.PlayerId == player) ||
+                    building.PlayerId != player ||
+                    !ProductionSystem.ValidRecipeProfile(recipe) ||
+                    building.Type.Id != recipe.ProducerBuildingTypeId ||
+                    !Enum.IsDefined(state) || !float.IsFinite(progress) ||
+                    progress is < 0f or > 1f ||
+                    orderIndex > 0 && state != ProductionOrderState.Queued ||
+                    state == ProductionOrderState.WaitingForExit && progress != 1f)
+                    throw new InvalidDataException();
+                orders[orderIndex] = new ProductionOrderRuntimeEntry(
+                    id, player, recipe, state, progress);
+                maximumOrder = Math.Max(maximumOrder, id.Value);
+                reservedSupply[player] = reservedSupply.GetValueOrDefault(player) +
+                                         recipe.Cost.Supply;
+            }
+            queues[index] = new ProducerQueueRuntimeEntry(producer, rally, orders);
+        }
+        if (nextOrder <= maximumOrder) throw new InvalidDataException();
+        var producedCount = ReadCount(reader, MaximumCapacity);
+        var produced = new ProducedUnitPopulationRuntimeEntry[producedCount];
+        var producedIds = new HashSet<int>();
+        for (var index = 0; index < producedCount; index++)
+        {
+            var value = new ProducedUnitPopulationRuntimeEntry(
+                reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
+            if ((uint)value.Unit >= (uint)unitCount ||
+                !producedIds.Add(value.Unit) || value.Supply <= 0 ||
+                !economy.Players.Any(player => player.PlayerId == value.PlayerId))
+                throw new InvalidDataException();
+            produced[index] = value;
+            reservedSupply[value.PlayerId] =
+                reservedSupply.GetValueOrDefault(value.PlayerId) + value.Supply;
+        }
+        foreach (var value in reservedSupply)
+        {
+            var player = economy.Players.First(item => item.PlayerId == value.Key);
+            if (value.Value > player.SupplyUsed) throw new InvalidDataException();
+        }
+        return new ProductionRuntimeSnapshot(nextOrder, queues, produced);
     }
 
     private static void WriteQueues(

@@ -56,7 +56,7 @@ Idle
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造和建筑战斗目标现已纳入 Replay Package v4 与持久化热快照 v4。Gather/Refinery、Build/Cancel/Resume 和 Unit/Building AttackTarget 保持独立语义；内部移动与 Footprint 变更仍是派生状态。
+经济、建造、建筑战斗目标和生产现已纳入 Replay Package v5 与持久化热快照 v5。Gather/Refinery、Build/Cancel/Resume、Train/Cancel/Rally 和 Unit/Building AttackTarget 保持独立语义；内部移动、出生 Rally Move 与 Footprint 变更仍是派生状态。
 
 ## 黑盒验收
 
@@ -140,9 +140,16 @@ S11-D1 运行时已完成：
 - `production-queue-exit-rally` 黑盒场景覆盖五格上限、错误生产者、人口阻塞、三项取消、十二出口全封、延迟出生、两单位 Rally、生产建筑摧毁退款与单位死亡释放人口。
 - 专用 22 秒 AV1/WebM 录像位于 `test_videos/20260711_190740/`。
 
-S11-D2 待完成：Production Command Log、Replay Package/热快照持久化、Rally SmartCommand（资源/单位目标）和 Unit/Recipe Godot Resource 数据工作流。
-在 D2 格式落地前，活动生产状态的 v4 热快照和录制期间的生产命令会被显式拒绝，
-不会生成缺少生产未来态但表面可用的错误存档。
+S11-D2 已完成：
+
+- `ProductionCommandLogSnapshot v1` 独立记录成功的 Train、Cancel 和地面 Rally；解析后的完整 Recipe/Unit Type 写入 Train，旧录像不依赖当前平衡参数。
+- Replay Package 升级为 v5，初始清单增加生产队列、下一个订单 ID、Rally 和已出生单位人口账本；每 Tick 顺序固定为 World → Construction → Production → Economy → Unit → Tick。
+- 热快照升级为 v5，直接恢复 `Producing`、`WaitingForExit`、队列顺序和出生后人口释放未来态。
+- `production-replay-persistence` 验证 4 条生产命令、8 条出口 World 命令、0 条派生 Unit 命令；Tick 270 生产中、Tick 330 出口等待、Tick 420 已出生人口账本三份热恢复，以及 Tick 300 checkpoint 均与连续运行周期采样和最终 Hash 完全一致。
+- Production Log、Package 和三份 Hot Snapshot 的未知版本及截断载荷均稳定拒绝。
+- 专用 9 秒 AV1/WebM 录像位于 `test_videos/20260711_194814/`。
+
+下一段：Rally SmartCommand（资源/单位目标）和 Unit/Recipe Godot Resource 数据工作流。
 
 ### S11-E：科技、扩张和胜负
 

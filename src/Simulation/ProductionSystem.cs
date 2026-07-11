@@ -47,6 +47,28 @@ public readonly record struct ProductionQueueSnapshot(
     Vector2? RallyPoint,
     ProductionOrderSnapshot[] Orders);
 
+public readonly record struct ProductionOrderRuntimeEntry(
+    ProductionOrderId Id,
+    int PlayerId,
+    ProductionRecipeProfile Recipe,
+    ProductionOrderState State,
+    float Progress);
+
+public readonly record struct ProducerQueueRuntimeEntry(
+    GameplayBuildingId Producer,
+    Vector2? RallyPoint,
+    ProductionOrderRuntimeEntry[] Orders);
+
+public readonly record struct ProducedUnitPopulationRuntimeEntry(
+    int Unit,
+    int PlayerId,
+    int Supply);
+
+public sealed record ProductionRuntimeSnapshot(
+    int NextOrderId,
+    ProducerQueueRuntimeEntry[] Queues,
+    ProducedUnitPopulationRuntimeEntry[] ProducedUnits);
+
 public sealed class ProductionSystem
 {
     public const int MaximumQueueLength = 5;
@@ -90,7 +112,7 @@ public sealed class ProductionSystem
         PlayerEconomyStore economy)
     {
         if (!economy.IsRegistered(playerId)) return Failure(ProductionCommandCode.InvalidPlayer);
-        if (!ValidRecipe(recipe)) return Failure(ProductionCommandCode.InvalidRecipe);
+        if (!ValidRecipeProfile(recipe)) return Failure(ProductionCommandCode.InvalidRecipe);
         if (!construction.IsAlive(producer)) return Failure(ProductionCommandCode.InvalidProducer);
         var building = construction.Observe(producer);
         if (building.PlayerId != playerId) return Failure(ProductionCommandCode.WrongOwner);
@@ -119,8 +141,10 @@ public sealed class ProductionSystem
     public bool Cancel(
         int playerId,
         ProductionOrderId orderId,
-        PlayerEconomyStore economy)
+        PlayerEconomyStore economy,
+        out GameplayBuildingId producer)
     {
+        producer = default;
         foreach (var queue in _queues.Values)
         {
             var index = queue.Orders.FindIndex(value => value.Id == orderId);
@@ -129,6 +153,7 @@ public sealed class ProductionSystem
             economy.Refund(playerId, order.Recipe.Cost,
                 order.Recipe.CancelRefundFraction);
             queue.Orders.RemoveAt(index);
+            producer = queue.Producer;
             return true;
         }
         return false;
@@ -228,6 +253,100 @@ public sealed class ProductionSystem
             .OrderBy(value => value.Producer.Value)
             .Select(value => Observe(value.Producer))
             .ToArray();
+
+    public ProductionRuntimeSnapshot CaptureRuntimeState() => new(
+        _nextOrderId,
+        _queues.Values.OrderBy(value => value.Producer.Value)
+            .Select(value => new ProducerQueueRuntimeEntry(
+                value.Producer,
+                value.RallyPoint,
+                value.Orders.Select(order => new ProductionOrderRuntimeEntry(
+                    order.Id, order.PlayerId, order.Recipe,
+                    order.State, order.Progress)).ToArray()))
+            .ToArray(),
+        _producedUnits.Select(value =>
+            new ProducedUnitPopulationRuntimeEntry(
+                value.Unit, value.PlayerId, value.Supply)).ToArray());
+
+    public void RestoreRuntimeState(
+        ProductionRuntimeSnapshot snapshot,
+        ConstructionSystem construction,
+        PlayerEconomyStore economy,
+        UnitStore units)
+    {
+        if (snapshot.NextOrderId <= 0)
+            throw new InvalidOperationException("Invalid next production order ID.");
+        _queues.Clear();
+        _producedUnits.Clear();
+        var orderIds = new HashSet<int>();
+        var reservedSupply = new Dictionary<int, int>();
+        var maximumOrderId = 0;
+        foreach (var value in snapshot.Queues)
+        {
+            if (value.Producer.Value < 0 || !construction.IsAlive(value.Producer) ||
+                value.Orders.Length > 0 &&
+                    construction.Observe(value.Producer).State !=
+                        BuildingLifecycleState.Completed ||
+                value.RallyPoint.HasValue &&
+                    (!float.IsFinite(value.RallyPoint.Value.X) ||
+                     !float.IsFinite(value.RallyPoint.Value.Y)) ||
+                value.Orders.Length > MaximumQueueLength ||
+                !_queues.TryAdd(value.Producer.Value,
+                    new ProducerQueue(value.Producer)))
+                throw new InvalidOperationException("Invalid production queue runtime entry.");
+            var queue = _queues[value.Producer.Value];
+            queue.RallyPoint = value.RallyPoint;
+            for (var index = 0; index < value.Orders.Length; index++)
+            {
+                var order = value.Orders[index];
+                if (order.Id.Value <= 0 || !orderIds.Add(order.Id.Value) ||
+                    !economy.IsRegistered(order.PlayerId) ||
+                    construction.Observe(value.Producer).PlayerId != order.PlayerId ||
+                    !ValidRecipeProfile(order.Recipe) ||
+                    construction.Observe(value.Producer).Type.Id !=
+                        order.Recipe.ProducerBuildingTypeId ||
+                    !Enum.IsDefined(order.State) ||
+                    !float.IsFinite(order.Progress) ||
+                    order.Progress is < 0f or > 1f ||
+                    index > 0 && order.State != ProductionOrderState.Queued ||
+                    order.State == ProductionOrderState.WaitingForExit &&
+                        order.Progress != 1f)
+                    throw new InvalidOperationException("Invalid production order runtime entry.");
+                queue.Orders.Add(new ProductionOrder(
+                    order.Id, order.PlayerId, order.Recipe)
+                {
+                    State = order.State,
+                    Progress = order.Progress
+                });
+                maximumOrderId = Math.Max(maximumOrderId, order.Id.Value);
+                reservedSupply[order.PlayerId] =
+                    reservedSupply.GetValueOrDefault(order.PlayerId) +
+                    order.Recipe.Cost.Supply;
+            }
+        }
+        var producedIds = new HashSet<int>();
+        foreach (var value in snapshot.ProducedUnits)
+        {
+            if ((uint)value.Unit >= (uint)units.Count ||
+                !economy.IsRegistered(value.PlayerId) || value.Supply <= 0 ||
+                !producedIds.Add(value.Unit))
+                throw new InvalidOperationException(
+                    "Invalid produced-unit population runtime entry.");
+            _producedUnits.Add(new ProducedUnitPopulation(
+                value.Unit, value.PlayerId, value.Supply));
+            reservedSupply[value.PlayerId] =
+                reservedSupply.GetValueOrDefault(value.PlayerId) + value.Supply;
+        }
+        foreach (var value in reservedSupply)
+        {
+            if (value.Value > economy.Snapshot(value.Key).SupplyUsed)
+                throw new InvalidOperationException(
+                    "Production reserved supply exceeds player supply used.");
+        }
+        if (snapshot.NextOrderId <= maximumOrderId)
+            throw new InvalidOperationException("Next production order ID is stale.");
+        _nextOrderId = snapshot.NextOrderId;
+    }
 
     internal void AppendStateHash(ref StableHash64 hash)
     {
@@ -332,7 +451,7 @@ public sealed class ProductionSystem
         }
     }
 
-    private static bool ValidRecipe(ProductionRecipeProfile recipe) =>
+    internal static bool ValidRecipeProfile(ProductionRecipeProfile recipe) =>
         recipe.Id >= 0 && !string.IsNullOrWhiteSpace(recipe.Name) &&
         ProductionCatalogSnapshot.ValidUnitProfile(recipe.UnitType) &&
         recipe.ProducerBuildingTypeId >= 0 && recipe.Cost.IsValid &&
