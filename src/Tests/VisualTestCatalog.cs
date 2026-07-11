@@ -60,6 +60,7 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview",
         "economy-dual-resource",
         "construction-gameplay-buildings",
+        "construction-replay-persistence",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -157,6 +158,8 @@ public static class VisualTestCatalog
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
+        "construction-replay-persistence" => CreateConstructionReplayPersistence(
+            navigationMap, gameplayProfiles, clearanceBake),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -1082,7 +1085,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 2 &&
+                    exact && rejected && hot.FormatVersion == 3 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1176,7 +1179,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 2 && hot.FormatVersion == 2 &&
+                             package.FormatVersion == 3 && hot.FormatVersion == 3 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2272,6 +2275,134 @@ public static class VisualTestCatalog
             .Highlight(
                 new SimRect(new Vector2(730f, 470f), new Vector2(830f, 570f)),
                 "REFINERY: bound to Vespene node",
+                TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateConstructionReplayPersistence(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            24, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1500, 300, 15, 6);
+        var gas = rig.AddResourceNode(
+            TestEconomyResourceKind.VespeneGas,
+            new Vector2(1050f, 570f), 1000, 4, 0.5f, 3,
+            requiresRefinery: true, operational: false);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(120f, 150f), 1),
+            rig.SpawnWorker(new Vector2(230f, 260f), 1),
+            rig.SpawnWorker(new Vector2(100f, 500f), 1),
+            rig.SpawnWorker(new Vector2(930f, 570f), 1),
+            rig.SpawnWorker(new Vector2(360f, 500f), 1)
+        };
+        rig.StartReplayPackageRecording();
+        var supply = rig.Build(
+            1, workers[0], DemoBuildingTypes.SupplyDepot,
+            new Vector2(260f, 150f));
+        var barracks = rig.Build(
+            1, workers[1], DemoBuildingTypes.Barracks,
+            new Vector2(400f, 260f));
+        var commandCenter = rig.Build(
+            1, workers[2], DemoBuildingTypes.CommandCenter,
+            new Vector2(250f, 500f));
+        var refinery = rig.Build(
+            1, workers[3], DemoBuildingTypes.Refinery,
+            Vector2.Zero, gas);
+        var canceled = rig.Build(
+            1, workers[4], DemoBuildingTypes.SupplyDepot,
+            new Vector2(440f, 500f));
+        var issued = new[]
+        {
+            supply, barracks, commandCenter, refinery, canceled
+        }.All(value => value.Succeeded);
+
+        const long hotTick = 300;
+        const long checkpointTick = 360;
+        TestRuntimeStateCapture? runtimeCapture = null;
+        var checkpointHash = 0UL;
+        var canceledSuccessfully = false;
+        var resumed = false;
+        var session = new VisualTestSession(
+            "construction-replay-persistence",
+            "Build, cancel, resume, checkpoint and active-construction hot restore",
+            900,
+            rig,
+            workers,
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var log = runtime.CaptureConstructionCommandLog();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var logRoundTrip = log.TryCanonicalRoundTrip(out var decodedLog);
+                var baseline = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var checkpoint = runtime.CreateReplayCheckpoint(
+                    package, checkpointTick, checkpointHash);
+                var checkpointReplay = runtime.ResumeReplayPackage(
+                    package, checkpoint, runtime.Tick);
+                var hot = runtime.BindHotSnapshot(package, runtimeCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var hotReplay = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = baseline.FinalHash == runtime.StateHash &&
+                            baseline.MatchesFrom(checkpointReplay, checkpointTick) &&
+                            baseline.MatchesFrom(hotReplay, hotTick) &&
+                            checkpointReplay.FinalHash == runtime.StateHash &&
+                            hotReplay.FinalHash == runtime.StateHash;
+                var rejected = log.RejectsUnsupportedVersion() &&
+                               log.RejectsTruncatedPayload() &&
+                               package.RejectsUnsupportedVersion() &&
+                               package.RejectsTruncatedPayload() &&
+                               hot.RejectsUnsupportedVersion() &&
+                               hot.RejectsTruncatedPayload();
+                var economy = runtime.ObservePlayerEconomy(1);
+                var completed = new[]
+                {
+                    supply.BuildingId, barracks.BuildingId,
+                    commandCenter.BuildingId, refinery.BuildingId
+                }.All(id => runtime.ObserveGameplayBuilding(id).State ==
+                            TestBuildingLifecycleState.Completed);
+                var passed = issued && canceledSuccessfully && resumed &&
+                             packageRoundTrip && logRoundTrip && hotRoundTrip &&
+                             decodedLog!.StableHash == log.StableHash &&
+                             package.FormatVersion == 3 && hot.FormatVersion == 3 &&
+                             package.ConstructionCommandCount == 7 &&
+                             package.WorldCommandCount == 0 &&
+                             package.UnitCommandCount == 1 &&
+                             completed && economy.Minerals == 750 &&
+                             economy.SupplyCapacity == 38 && exact && rejected;
+                return new ScenarioResult(
+                    passed,
+                    $"buildOrders={package.ConstructionCommandCount}, " +
+                    $"derivedWorld={package.WorldCommandCount}, unitOrders={package.UnitCommandCount}, " +
+                    $"resources={economy.Minerals}/{economy.VespeneGas}, " +
+                    $"hot={hot.CanonicalByteCount}B@{hot.Tick}, " +
+                    $"exact={exact}, rejected={rejected}");
+            });
+        session.At(120, "Cancel unfinished building", runtime =>
+            canceledSuccessfully = runtime.CancelConstruction(
+                1, canceled.BuildingId));
+        session.At(180, "Interrupt Barracks builder with player Move", runtime =>
+            runtime.Move([workers[1]], new Vector2(240f, 350f)));
+        session.At(240, "Record Resume construction command", runtime =>
+            resumed = runtime.ResumeConstruction(
+                1, barracks.BuildingId, workers[1]));
+        session.At(hotTick, "Capture active construction hot snapshot", runtime =>
+            runtimeCapture = runtime.CaptureRuntimeState());
+        session.At(checkpointTick, "Capture construction checkpoint hash", runtime =>
+            checkpointHash = runtime.StateHash);
+        return session
+            .Highlight(
+                new SimRect(new Vector2(150f, 100f), new Vector2(490f, 570f)),
+                "CONSTRUCTION FUTURE STATE: replay/checkpoint/hot snapshot",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(1000f, 520f), new Vector2(1100f, 620f)),
+                "REFINERY BINDING PERSISTS",
                 TestDiagnosticKind.Accepted);
     }
 

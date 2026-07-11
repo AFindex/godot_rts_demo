@@ -50,8 +50,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private int _nextOrderSequenceId = 1;
     private SimulationCommandRecorder? _commandRecorder;
     private EconomyCommandRecorder? _economyCommandRecorder;
+    private ConstructionCommandRecorder? _constructionCommandRecorder;
     private SimulationReplayPackageRecorder? _replayPackageRecorder;
     private bool _issuingSystemOrder;
+    private bool _issuingConstructionWorldMutation;
 
     public RtsSimulation(
         StaticWorld world,
@@ -174,7 +176,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     internal SimulationRuntimeStateCapture CaptureRuntimeState()
     {
-        EnsureConstructionPersistenceSupported();
         var units = new UnitStore(Units.Capacity);
         units.CopyRuntimeStateFrom(Units);
         var combat = new CombatStore(Units.Capacity);
@@ -189,6 +190,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units = units,
             Combat = combat,
             Economy = Economy.CaptureRuntimeState(Units.Count),
+            Construction = Construction.CaptureRuntimeState(),
             CommandQueues = queues,
             ChokeTraffic = _chokeController?.CaptureRuntimeState(),
             PrivateState = new RtsPrivateRuntimeSnapshot(
@@ -210,6 +212,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.CopyRuntimeStateFrom(snapshot.Units);
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
+        Construction.RestoreRuntimeState(snapshot.Construction);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -233,6 +236,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         _commandRecorder = null;
         _economyCommandRecorder = null;
+        _constructionCommandRecorder = null;
         _replayPackageRecorder = null;
     }
 
@@ -240,6 +244,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         _commandRecorder = new SimulationCommandRecorder();
         _economyCommandRecorder = new EconomyCommandRecorder();
+        _constructionCommandRecorder = new ConstructionCommandRecorder();
     }
 
     public SimulationCommandLogSnapshot CaptureCommandLog()
@@ -260,9 +265,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return _economyCommandRecorder.Capture();
     }
 
+    public ConstructionCommandLogSnapshot CaptureConstructionCommandLog()
+    {
+        if (_constructionCommandRecorder is null)
+        {
+            throw new InvalidOperationException("Command recording has not been started.");
+        }
+        return _constructionCommandRecorder.Capture();
+    }
+
     public void StartReplayPackageRecording(ReplayResourceManifest resources)
     {
-        EnsureConstructionPersistenceSupported();
         if (!Economy.CanStartReplayRecording(Units.Count))
         {
             throw new InvalidOperationException(
@@ -275,19 +288,23 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         _commandRecorder = new SimulationCommandRecorder();
         _economyCommandRecorder = new EconomyCommandRecorder();
+        _constructionCommandRecorder = new ConstructionCommandRecorder();
         _replayPackageRecorder = new SimulationReplayPackageRecorder(this, resources);
     }
 
     public SimulationReplayPackageSnapshot CaptureReplayPackage()
     {
         if (_commandRecorder is null || _economyCommandRecorder is null ||
+            _constructionCommandRecorder is null ||
             _replayPackageRecorder is null)
         {
             throw new InvalidOperationException(
                 "Replay package recording has not been started.");
         }
         return _replayPackageRecorder.Capture(
-            _commandRecorder.Capture(), _economyCommandRecorder.Capture());
+            _commandRecorder.Capture(),
+            _economyCommandRecorder.Capture(),
+            _constructionCommandRecorder.Capture());
     }
 
     public void ApplyRecordedCommand(RecordedSimulationCommand command)
@@ -342,11 +359,48 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
+    public void ApplyRecordedConstructionCommand(
+        RecordedConstructionCommand command)
+    {
+        switch (command.Kind)
+        {
+            case ConstructionReplayCommandKind.Build:
+                var result = IssueConstruction(
+                    command.PlayerId, command.BuilderUnit, command.Type,
+                    command.Center, command.RefineryNode);
+                if (!result.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Replay Build failed with {result.Code}.");
+                }
+                break;
+            case ConstructionReplayCommandKind.Cancel:
+                if (!CancelConstruction(command.PlayerId, command.BuildingId))
+                {
+                    throw new InvalidOperationException("Replay Cancel failed.");
+                }
+                break;
+            case ConstructionReplayCommandKind.Resume:
+                if (!ResumeConstruction(
+                        command.PlayerId, command.BuildingId, command.BuilderUnit))
+                {
+                    throw new InvalidOperationException("Replay Resume failed.");
+                }
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported construction command {command.Kind}.");
+        }
+    }
+
     public DynamicFootprintId PlaceBuilding(SimRect footprint)
     {
         var id = World.DynamicOccupancy.Place(footprint);
         InvalidatePathsIntersecting(footprint);
-        _replayPackageRecorder?.RecordPlace(Metrics.Tick, id, footprint);
+        if (!_issuingConstructionWorldMutation)
+        {
+            _replayPackageRecorder?.RecordPlace(Metrics.Tick, id, footprint);
+        }
         return id;
     }
 
@@ -387,8 +441,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return RemoveDynamicFootprint(id);
     }
 
-    private bool RemoveGameplayBuildingFootprint(DynamicFootprintId id) =>
-        RemoveDynamicFootprint(id);
+    private bool RemoveGameplayBuildingFootprint(DynamicFootprintId id)
+    {
+        _issuingConstructionWorldMutation = true;
+        try
+        {
+            return RemoveDynamicFootprint(id);
+        }
+        finally
+        {
+            _issuingConstructionWorldMutation = false;
+        }
+    }
 
     private bool RemoveDynamicFootprint(DynamicFootprintId id)
     {
@@ -397,7 +461,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
             return false;
         }
 
-        _replayPackageRecorder?.RecordRemove(Metrics.Tick, id, removedBounds);
+        if (!_issuingConstructionWorldMutation)
+        {
+            _replayPackageRecorder?.RecordRemove(Metrics.Tick, id, removedBounds);
+        }
 
         for (var unit = 0; unit < Units.Count; unit++)
         {
@@ -517,11 +584,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Vector2 center,
         EconomyResourceNodeId refineryNode = default)
     {
-        if (_commandRecorder is not null || _replayPackageRecorder is not null)
-        {
-            throw new InvalidOperationException(
-                "Construction recording is introduced with the S11-C persistence format.");
-        }
         if (!profile.RequiresVespeneNode && refineryNode == default)
         {
             refineryNode = new EconomyResourceNodeId(-1);
@@ -552,7 +614,16 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             center = Economy.ResourceNodePosition(refineryNode);
         }
-        var placement = TryPlaceBuilding(center, profile.PlacementProfile);
+        BuildingPlacementResult placement;
+        _issuingConstructionWorldMutation = true;
+        try
+        {
+            placement = TryPlaceBuilding(center, profile.PlacementProfile);
+        }
+        finally
+        {
+            _issuingConstructionWorldMutation = false;
+        }
         if (!placement.Succeeded)
         {
             return new ConstructionCommandResult(
@@ -579,21 +650,39 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units.Positions[builderUnit],
             Units.Radii[builderUnit]);
         MoveConstructionWorker(builderUnit, Construction.BuilderAccessPoint(id));
+        _constructionCommandRecorder?.RecordBuild(
+            Metrics.Tick, issuingPlayerId, builderUnit, profile, center, refineryNode);
         return new ConstructionCommandResult(
             ConstructionCommandCode.Success, id);
     }
 
-    public bool CancelConstruction(int playerId, GameplayBuildingId buildingId) =>
-        Construction.Cancel(
+    public bool CancelConstruction(int playerId, GameplayBuildingId buildingId)
+    {
+        var succeeded = Construction.Cancel(
             buildingId, playerId, Economy, RemoveGameplayBuildingFootprint);
+        if (succeeded)
+        {
+            _constructionCommandRecorder?.RecordCancel(
+                Metrics.Tick, playerId, buildingId);
+        }
+        return succeeded;
+    }
 
     public bool ResumeConstruction(
         int playerId,
         GameplayBuildingId buildingId,
-        int builderUnit) =>
-        Construction.Resume(
+        int builderUnit)
+    {
+        var succeeded = Construction.Resume(
             buildingId, playerId, builderUnit, Economy, Units,
             _constructionMoveWorker);
+        if (succeeded)
+        {
+            _constructionCommandRecorder?.RecordResume(
+                Metrics.Tick, playerId, buildingId, builderUnit);
+        }
+        return succeeded;
+    }
 
     public bool DamageBuilding(GameplayBuildingId buildingId, float damage) =>
         Construction.ApplyDamage(
@@ -2306,13 +2395,5 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
-    private void EnsureConstructionPersistenceSupported()
-    {
-        if (Construction.HasRuntimeState)
-        {
-            throw new InvalidOperationException(
-                "Active construction requires the S11-C replay/hot-snapshot format.");
-        }
-    }
 
 }

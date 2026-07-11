@@ -130,6 +130,22 @@ public readonly record struct GameplayBuildingSnapshot(
         BuildingLifecycleState.Canceled or BuildingLifecycleState.Destroyed;
 }
 
+public readonly record struct ConstructionRuntimeEntry(
+    GameplayBuildingId Id,
+    int PlayerId,
+    BuildingTypeProfile Type,
+    SimRect Bounds,
+    DynamicFootprintId FootprintId,
+    BuildingLifecycleState State,
+    int BuilderUnit,
+    Vector2 AccessPoint,
+    float Progress,
+    float Health,
+    EconomyResourceNodeId RefineryNode);
+
+public sealed record ConstructionRuntimeSnapshot(
+    ConstructionRuntimeEntry[] Buildings);
+
 public sealed class ConstructionSystem
 {
     private const float BuilderArrivalTolerance = 12f;
@@ -402,6 +418,46 @@ public sealed class ConstructionSystem
     public GameplayBuildingSnapshot[] CreateOverview() =>
         _buildings.Select(value => value.Snapshot()).ToArray();
 
+    public ConstructionRuntimeSnapshot CaptureRuntimeState() => new(
+        _buildings.Select(value => value.RuntimeSnapshot()).ToArray());
+
+    public void RestoreRuntimeState(ConstructionRuntimeSnapshot snapshot)
+    {
+        _buildings.Clear();
+        _boundRefineryNodes.Clear();
+        for (var index = 0; index < snapshot.Buildings.Length; index++)
+        {
+            var value = snapshot.Buildings[index];
+            if (value.Id.Value != index || !ValidProfile(value.Type) ||
+                !Enum.IsDefined(value.State) || value.PlayerId < 0 ||
+                value.FootprintId.Value <= 0 ||
+                !float.IsFinite(value.Progress) || value.Progress is < 0f or > 1f ||
+                !float.IsFinite(value.Health) || value.Health < 0f ||
+                !float.IsFinite(value.AccessPoint.X) ||
+                !float.IsFinite(value.AccessPoint.Y))
+            {
+                throw new InvalidOperationException(
+                    "Construction runtime entry is invalid.");
+            }
+            var building = new BuildingEntity(
+                value.Id, value.PlayerId, value.Type, value.Bounds,
+                value.FootprintId, value.BuilderUnit, value.RefineryNode,
+                value.AccessPoint)
+            {
+                State = value.State,
+                Progress = value.Progress,
+                Health = value.Health
+            };
+            _buildings.Add(building);
+            if (!building.IsTerminal && value.RefineryNode.Value >= 0 &&
+                !_boundRefineryNodes.Add(value.RefineryNode.Value))
+            {
+                throw new InvalidOperationException(
+                    "A Vespene node is bound by multiple buildings.");
+            }
+        }
+    }
+
     public bool OwnsActiveFootprint(DynamicFootprintId footprintId) =>
         _buildings.Any(value =>
             !value.IsTerminal && value.FootprintId == footprintId);
@@ -472,7 +528,7 @@ public sealed class ConstructionSystem
         return candidates.OrderBy(value => Vector2.DistanceSquared(origin, value)).First();
     }
 
-    private static bool ValidProfile(BuildingTypeProfile profile) =>
+    internal static bool ValidProfile(BuildingTypeProfile profile) =>
         profile.Id >= 0 && !string.IsNullOrWhiteSpace(profile.Name) &&
         Enum.IsDefined(profile.Function) && Enum.IsDefined(profile.MinimumPassageClass) &&
         Enum.IsDefined(profile.ConstructionMethod) && profile.Cost.IsValid &&
@@ -528,5 +584,9 @@ public sealed class ConstructionSystem
         public GameplayBuildingSnapshot Snapshot() => new(
             Id, PlayerId, Type, Bounds, FootprintId, State, BuilderUnit,
             Progress, Health, Type.MaximumHealth, RefineryNode);
+
+        public ConstructionRuntimeEntry RuntimeSnapshot() => new(
+            Id, PlayerId, Type, Bounds, FootprintId, State, BuilderUnit,
+            AccessPoint, Progress, Health, RefineryNode);
     }
 }

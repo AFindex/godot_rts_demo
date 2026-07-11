@@ -26,6 +26,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteUnits(writer, state.Units);
         WriteCombat(writer, state.Combat, state.Units.Count);
         WriteEconomy(writer, state.Economy, state.Units.Count);
+        WriteConstruction(writer, state.Construction);
         WriteQueues(writer, state.CommandQueues, state.Units.Count);
         WriteChoke(writer, state.ChokeTraffic);
         WritePrivate(writer, state.PrivateState);
@@ -80,6 +81,8 @@ internal static class RuntimeHotSnapshotCodec
             var units = ReadUnits(reader, capacity);
             var combat = ReadCombat(reader, capacity, units.Count);
             var economy = ReadEconomy(reader, units.Count);
+            var construction = ReadConstruction(
+                reader, units.Count, dynamic.Footprints, economy);
             var queues = ReadQueues(reader, capacity, units.Count);
             var choke = ReadChoke(reader);
             var privateState = ReadPrivate(reader);
@@ -96,6 +99,7 @@ internal static class RuntimeHotSnapshotCodec
                 Units = units,
                 Combat = combat,
                 Economy = economy,
+                Construction = construction,
                 CommandQueues = queues,
                 ChokeTraffic = choke,
                 PrivateState = privateState
@@ -511,6 +515,100 @@ internal static class RuntimeHotSnapshotCodec
             }
         }
         return new EconomyRuntimeSnapshot(players, nodes, dropOffs, workers);
+    }
+
+    internal static void WriteConstruction(
+        BinaryWriter writer,
+        ConstructionRuntimeSnapshot construction)
+    {
+        writer.Write(construction.Buildings.Length);
+        foreach (var value in construction.Buildings)
+        {
+            writer.Write(value.Id.Value);
+            writer.Write(value.PlayerId);
+            ConstructionSerialization.WriteProfile(writer, value.Type);
+            WriteRect(writer, value.Bounds);
+            writer.Write(value.FootprintId.Value);
+            writer.Write((byte)value.State);
+            writer.Write(value.BuilderUnit);
+            WriteVector(writer, value.AccessPoint);
+            writer.Write(value.Progress);
+            writer.Write(value.Health);
+            writer.Write(value.RefineryNode.Value);
+        }
+    }
+
+    internal static ConstructionRuntimeSnapshot ReadConstruction(
+        BinaryReader reader,
+        int unitCount,
+        DynamicFootprint[] footprints,
+        EconomyRuntimeSnapshot economy)
+    {
+        var count = ReadCount(reader, MaximumCapacity);
+        var buildings = new ConstructionRuntimeEntry[count];
+        var boundNodes = new HashSet<int>();
+        for (var index = 0; index < count; index++)
+        {
+            var value = new ConstructionRuntimeEntry(
+                new GameplayBuildingId(reader.ReadInt32()),
+                reader.ReadInt32(),
+                ConstructionSerialization.ReadProfile(reader),
+                ReadRect(reader),
+                new DynamicFootprintId(reader.ReadInt32()),
+                (BuildingLifecycleState)reader.ReadByte(),
+                reader.ReadInt32(),
+                ReadVector(reader),
+                reader.ReadSingle(),
+                reader.ReadSingle(),
+                new EconomyResourceNodeId(reader.ReadInt32()));
+            var terminal = value.State is
+                BuildingLifecycleState.Canceled or BuildingLifecycleState.Destroyed;
+            var activeProgress = value.State is
+                BuildingLifecycleState.Approaching or
+                BuildingLifecycleState.Constructing or
+                BuildingLifecycleState.WaitingForBuilder;
+            var continuousBuilderRequired =
+                value.Type.ConstructionMethod ==
+                    ConstructionMethodKind.ContinuousWorker &&
+                value.State is BuildingLifecycleState.Approaching or
+                    BuildingLifecycleState.Constructing;
+            var footprint = footprints.FirstOrDefault(item =>
+                item.Id == value.FootprintId);
+            var hasFootprint = footprint.Id.Value > 0;
+            if (value.Id.Value != index || value.PlayerId < 0 ||
+                !economy.Players.Any(player => player.PlayerId == value.PlayerId) ||
+                !ConstructionSerialization.ValidProfile(value.Type) ||
+                !Enum.IsDefined(value.State) || !Finite(value.Bounds.Min) ||
+                !Finite(value.Bounds.Max) || value.Bounds.Width <= 0f ||
+                value.Bounds.Height <= 0f ||
+                value.FootprintId.Value <= 0 ||
+                value.BuilderUnit < -1 || value.BuilderUnit >= unitCount ||
+                !Finite(value.AccessPoint) ||
+                !float.IsFinite(value.Progress) || value.Progress is < 0f or > 1f ||
+                !float.IsFinite(value.Health) || value.Health < 0f ||
+                value.Health > value.Type.MaximumHealth ||
+                value.State == BuildingLifecycleState.Completed &&
+                    value.Progress != 1f ||
+                activeProgress && value.Progress >= 1f ||
+                continuousBuilderRequired && value.BuilderUnit < 0 ||
+                terminal == hasFootprint ||
+                hasFootprint && footprint.Bounds != value.Bounds ||
+                value.RefineryNode.Value < -1 ||
+                value.RefineryNode.Value >= economy.ResourceNodes.Length ||
+                value.Type.RequiresVespeneNode != (value.RefineryNode.Value >= 0) ||
+                value.RefineryNode.Value >= 0 &&
+                    (economy.ResourceNodes[value.RefineryNode.Value].Kind !=
+                         EconomyResourceKind.VespeneGas ||
+                     !economy.ResourceNodes[value.RefineryNode.Value]
+                         .RequiresRefinery) ||
+                value.RefineryNode.Value >= 0 &&
+                    !boundNodes.Add(value.RefineryNode.Value))
+            {
+                throw new InvalidDataException();
+            }
+            buildings[index] = value;
+        }
+        return new ConstructionRuntimeSnapshot(buildings);
     }
 
     private static void WriteQueues(

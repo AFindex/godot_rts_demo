@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 69 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem 或队列内部数组。
+- 70 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
-- 84 个 C# 源文件。
-- 约 22,792 行 C#（按 `src/**/*.cs` 统计）。
-- 69 个黑盒场景。
-- 覆盖 69 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 8.89ms。
+- 85 个 C# 源文件。
+- 约 23,548 行 C#（按 `src/**/*.cs` 统计）。
+- 70 个黑盒场景。
+- 覆盖 70 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 8.60ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -171,7 +171,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 69 个场景覆盖：
+当前 70 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -242,7 +242,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 69 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 70 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -254,16 +254,16 @@ Observe unit / combat / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | Hash 平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|
-| 256 | 1.19ms | 1.63ms | 1.081ms | 4ms | 27B |
-| 512 | 3.85ms | 5.07ms | 1.293ms | 12.5ms | 182B |
-| 1000 | 7.23ms | 8.89ms | 1.546ms | 16.67ms | 461B |
+| 256 | 1.02ms | 1.37ms | 0.794ms | 4ms | 27B |
+| 512 | 3.68ms | 4.63ms | 1.874ms | 12.5ms | 182B |
+| 1000 | 7.16ms | 8.60ms | 1.305ms | 16.67ms | 461B |
 
 双方持续 AttackMove 的活跃战斗门槛：
 
 | 总单位数 | 平均 Tick | P95 | Hash 平均 | 战斗阶段平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|---:|
-| 128 | 1.27ms | 1.64ms | 0.152ms | 0.45ms | 4ms | 2.3KB |
-| 256 | 3.45ms | 5.01ms | 1.077ms | 1.63ms | 8ms | 4.0KB |
+| 128 | 1.30ms | 1.81ms | 0.145ms | 0.47ms | 4ms | 2.3KB |
+| 256 | 3.84ms | 5.52ms | 0.957ms | 1.86ms | 8ms | 4.0KB |
 
 活跃追击会持续生成短路径，因此单独使用 8KB/Tick 分配门槛；非战斗移动仍保持 1KB/Tick 门槛。
 
@@ -528,7 +528,7 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（8.89ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（8.60ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
@@ -710,9 +710,21 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 - `construction-gameplay-buildings` 960 Tick 验收四建筑完工、取消退款、暂停续建、生命伤害、人口 6/38、资源 250/300 和 Refinery 启用；69/69 全量回归通过。
 - 专用 AV1/WebM 录像位于 `test_videos/20260711_170403/`；索引现有 93 段录像、覆盖 69 个逻辑场景。
 
+### N：S11-C2 建造回放与活跃施工持久化（已完成）
+
+- 新增独立 Construction Command Log 格式 1，记录成功的 Build/Cancel/Resume；未知版本、截断、非法 Profile、非法 Tick 顺序稳定拒绝。
+- Build 记录解析后的完整 Building Type Profile，历史录像不依赖回放时的当前资产参数。
+- Replay Package 升级为格式 3，初始清单包含正式建筑状态，命令区增加 Construction Log。
+- 同 Tick 固定顺序为 World → Construction → Economy → Unit → Tick。
+- 施工派生的 Place/Remove Footprint 与 Move/Stop 不进入 World/Unit Log；验收明确为 7 条建造命令、0 条派生 World Command、1 条真实玩家 Move。
+- 热快照升级为格式 3，保存施工接近点、施工者、状态、进度、生命、完整类型和 Refinery 绑定，并验证实体与 Footprint、资源节点的一致性。
+- Tick 0 全量回放、Tick 360 checkpoint、Tick 300 活跃施工直接恢复到 Tick 900 的周期采样和最终 Hash 完全一致。
+- `construction-replay-persistence` 最终资源为 750/300、人口上限 38，热快照 2,751 字节；70/70 全量回归通过。
+- 专用 AV1/WebM 录像位于 `test_videos/20260711_173933/`；索引现有 94 段录像、覆盖 70 个逻辑场景。
+
 ### 下一阶段边界
 
-移动、操作、数据工作流、经济确定性和正式建筑第一层已经形成可见闭环。下一轮完成 S11-C2：版本化 Build/Cancel/Resume 命令、Replay Package 建筑初始清单、施工热快照、建筑战斗目标与 Building Type Godot Resource。完成这些持久化和交互边界后再进入 S11-D 生产/人口队列，避免建筑实体尚不稳定时叠加生产状态。
+经济、正式建筑和施工持久化已经闭环。下一轮完成 S11-C3：建筑作为 AttackTarget/受击目标、建筑选择与业务观察，以及 Building Type Godot Resource/编辑器数据工作流。完成后进入 S11-D 生产队列、人口预留、出生点与 Rally；不再回头扩写无实际玩法驱动的导航细节。
 
 ## 8. 可以并行但不能提前耦合的优化
 

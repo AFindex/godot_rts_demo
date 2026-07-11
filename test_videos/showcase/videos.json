@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T17:04:35.5636742+08:00",
+    "generated_at":  "2026-07-11T17:39:52.2272811+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  93,
-    "case_count":  69,
+    "recording_count":  94,
+    "case_count":  70,
     "recordings":  [
+                       {
+                           "id":  "construction-replay-persistence",
+                           "display_name":  "Build, cancel, resume, checkpoint and active-construction hot restore",
+                           "batch":  "20260711_173933",
+                           "created_at":  "2026-07-11T17:39:51.9219235+08:00",
+                           "video":  "../20260711_173933/construction-replay-persistence.webm",
+                           "log":  "../20260711_173933/construction-replay-persistence.log",
+                           "bytes":  411757,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS construction-replay-persistence: ticks=900, buildOrders=7, derivedWorld=0, unitOrders=1, resources=750/300, hot=2751B@300, exact=True, rejected=True",
+                           "metrics":  "ticks=900, buildOrders=7, derivedWorld=0, unitOrders=1, resources=750/300, hot=2751B@300, exact=True, rejected=True"
+                       },
                        {
                            "id":  "construction-gameplay-buildings",
                            "display_name":  "Owned buildings with costs, builders, progress, refund and refinery binding",
