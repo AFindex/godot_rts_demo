@@ -458,6 +458,21 @@ public sealed class ConstructionSystem
     public GameplayBuildingSnapshot[] CreateOverview() =>
         _buildings.Select(value => value.Snapshot()).ToArray();
 
+    internal void VisitVisionSources(
+        Action<int, Vector2, BuildingFunctionKind> visitor)
+    {
+        for (var index = 0; index < _buildings.Count; index++)
+        {
+            var building = _buildings[index];
+            if (building.IsTerminal || building.PlayerId <= 0)
+                continue;
+            visitor(
+                building.PlayerId,
+                (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                building.Type.Function);
+        }
+    }
+
     public int CountCompleted(int playerId, int buildingTypeId) =>
         _buildings.Count(value =>
             value.PlayerId == playerId && value.Type.Id == buildingTypeId &&

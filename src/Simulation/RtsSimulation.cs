@@ -75,6 +75,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Construction = new ConstructionSystem();
         Production = new ProductionSystem();
         Technology = new TechnologySystem();
+        Visibility = new PlayerVisibilitySystem(world.Bounds);
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
@@ -107,6 +108,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public ConstructionSystem Construction { get; }
     public ProductionSystem Production { get; }
     public TechnologySystem Technology { get; }
+    public PlayerVisibilitySystem Visibility { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -199,6 +201,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units = units,
             Combat = combat,
             Economy = Economy.CaptureRuntimeState(Units.Count),
+            Visibility = Visibility.CaptureRuntimeState(),
             Construction = Construction.CaptureRuntimeState(),
             Production = Production.CaptureRuntimeState(),
             Technology = Technology.CaptureRuntimeState(),
@@ -228,6 +231,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
             snapshot.Production, Construction, Economy, Units);
         Technology.RestoreRuntimeState(
             snapshot.Technology, Construction, Economy.Players);
+        Visibility.RestoreRuntimeState(snapshot.Visibility);
+        Visibility.Update(Units, Combat, Construction);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -304,6 +309,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             throw new InvalidOperationException(
                 "Replay package recording requires idle economy workers at tick zero.");
+        }
+        if (Visibility.HasExploredState)
+        {
+            throw new InvalidOperationException(
+                "Replay package recording requires unexplored visibility at tick zero.");
         }
         if (resources.ClearanceBakeHash != ActiveClearanceBakeHash)
         {
@@ -879,6 +889,151 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return result;
     }
 
+    public PlayerViewSnapshot CreatePlayerView(int playerId)
+    {
+        if (!Economy.Players.IsRegistered(playerId))
+            throw new ArgumentOutOfRangeException(nameof(playerId));
+        var units = new List<PlayerUnitViewSnapshot>();
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit])
+                continue;
+            var owner = Combat.Teams[unit];
+            var relation = Relation(playerId, owner);
+            if (relation != PlayerEntityRelation.Own &&
+                !Visibility.IsVisible(playerId, Units.Positions[unit]))
+            {
+                continue;
+            }
+            units.Add(new PlayerUnitViewSnapshot(
+                unit, owner, relation, Units.Positions[unit], Units.Radii[unit],
+                Combat.Health[unit], Combat.MaximumHealth[unit],
+                Units.Modes[unit], Combat.Phases[unit]));
+        }
+        var buildings = new List<PlayerBuildingViewSnapshot>();
+        foreach (var building in Construction.CreateOverview())
+        {
+            if (building.IsTerminal)
+                continue;
+            var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+            var relation = Relation(playerId, building.PlayerId);
+            if (relation != PlayerEntityRelation.Own &&
+                !Visibility.IsVisible(playerId, center))
+            {
+                continue;
+            }
+            buildings.Add(new PlayerBuildingViewSnapshot(
+                building.Id, building.PlayerId, relation, building.Type,
+                building.Bounds, building.State, building.Progress,
+                building.Health, building.MaximumHealth));
+        }
+        var resources = new List<PlayerResourceViewSnapshot>();
+        for (var index = 0; index < Economy.ResourceNodeCount; index++)
+        {
+            var node = Economy.ObserveResourceNode(
+                new EconomyResourceNodeId(index));
+            var visibility = Visibility.At(playerId, node.Position);
+            if (visibility == MapVisibility.Hidden)
+                continue;
+            resources.Add(new PlayerResourceViewSnapshot(
+                node.Id, node.Kind, node.Position, visibility,
+                visibility == MapVisibility.Visible ? node.Remaining : -1,
+                visibility == MapVisibility.Visible && node.Operational));
+        }
+        return new PlayerViewSnapshot(
+            playerId, World.Bounds, Visibility.CellSize,
+            Visibility.Columns, Visibility.Rows,
+            Visibility.CreateCells(playerId),
+            units.ToArray(), buildings.ToArray(), resources.ToArray());
+    }
+
+    public PlayerOrderCommandResult IssuePlayerMove(
+        int playerId,
+        ReadOnlySpan<int> units,
+        Vector2 target,
+        bool queued = false)
+    {
+        var validation = ValidatePlayerSelection(playerId, units);
+        if (!validation.Succeeded) return validation;
+        IssueMove(units, target, queued);
+        return validation;
+    }
+
+    public PlayerOrderCommandResult IssuePlayerAttackMove(
+        int playerId,
+        ReadOnlySpan<int> units,
+        Vector2 target,
+        bool queued = false)
+    {
+        var validation = ValidatePlayerSelection(playerId, units);
+        if (!validation.Succeeded) return validation;
+        IssueAttackMove(units, target, queued);
+        return validation;
+    }
+
+    public PlayerOrderCommandResult IssuePlayerStop(
+        int playerId,
+        ReadOnlySpan<int> units)
+    {
+        var validation = ValidatePlayerSelection(playerId, units);
+        if (!validation.Succeeded) return validation;
+        Stop(units);
+        return validation;
+    }
+
+    public PlayerOrderCommandResult IssuePlayerHold(
+        int playerId,
+        ReadOnlySpan<int> units)
+    {
+        var validation = ValidatePlayerSelection(playerId, units);
+        if (!validation.Succeeded) return validation;
+        Hold(units);
+        return validation;
+    }
+
+    public PlayerOrderCommandResult IssuePlayerSmartCommand(
+        int playerId,
+        ReadOnlySpan<int> units,
+        SmartCommandTarget target,
+        bool attackMoveModifier,
+        bool queued = false)
+    {
+        var validation = ValidatePlayerSelection(playerId, units);
+        if (!validation.Succeeded) return validation;
+        switch (target.Kind)
+        {
+            case SmartCommandTargetKind.FriendlyUnit:
+                if ((uint)target.Unit >= (uint)Units.Count ||
+                    !Units.Alive[target.Unit])
+                    return new(PlayerOrderCommandCode.InvalidTarget);
+                if (Combat.Teams[target.Unit] != playerId)
+                    return new(PlayerOrderCommandCode.FriendlyTarget);
+                break;
+            case SmartCommandTargetKind.EnemyUnit:
+                if ((uint)target.Unit >= (uint)Units.Count ||
+                    !Units.Alive[target.Unit])
+                    return new(PlayerOrderCommandCode.InvalidTarget);
+                if (Combat.Teams[target.Unit] == playerId)
+                    return new(PlayerOrderCommandCode.FriendlyTarget);
+                if (!Visibility.IsVisible(playerId, Units.Positions[target.Unit]))
+                    return new(PlayerOrderCommandCode.TargetNotVisible);
+                break;
+            case SmartCommandTargetKind.EnemyBuilding:
+                var id = new GameplayBuildingId(target.Building);
+                if (!Construction.IsAlive(id))
+                    return new(PlayerOrderCommandCode.InvalidTarget);
+                var building = Construction.Observe(id);
+                if (building.PlayerId == playerId)
+                    return new(PlayerOrderCommandCode.FriendlyTarget);
+                var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+                if (!Visibility.IsVisible(playerId, center))
+                    return new(PlayerOrderCommandCode.TargetNotVisible);
+                break;
+        }
+        IssueSmartCommand(units, target, attackMoveModifier, queued);
+        return validation;
+    }
+
     public void IssueMove(
         ReadOnlySpan<int> unitIndices,
         Vector2 target,
@@ -887,6 +1042,32 @@ public sealed class RtsSimulation : ICombatMovementDriver
             unitIndices,
             new UnitOrder(UnitOrderKind.Move, target),
             queued);
+
+    private PlayerOrderCommandResult ValidatePlayerSelection(
+        int playerId,
+        ReadOnlySpan<int> units)
+    {
+        if (!Economy.Players.IsRegistered(playerId))
+            return new(PlayerOrderCommandCode.InvalidPlayer);
+        if (units.IsEmpty)
+            return new(PlayerOrderCommandCode.EmptySelection);
+        for (var index = 0; index < units.Length; index++)
+        {
+            var unit = units[index];
+            if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
+                return new(PlayerOrderCommandCode.InvalidUnit);
+            if (Combat.Teams[unit] != playerId)
+                return new(PlayerOrderCommandCode.WrongOwner);
+        }
+        return new(PlayerOrderCommandCode.Success);
+    }
+
+    private static PlayerEntityRelation Relation(int playerId, int ownerId) =>
+        ownerId == playerId
+            ? PlayerEntityRelation.Own
+            : ownerId <= 0
+                ? PlayerEntityRelation.Neutral
+                : PlayerEntityRelation.Enemy;
 
     public void IssueAttackMove(
         ReadOnlySpan<int> unitIndices,
@@ -1362,6 +1543,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
         phaseStart = Stopwatch.GetTimestamp();
         AdvanceQueuedOrders();
+        Visibility.Update(Units, Combat, Construction);
         Metrics.CommandMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
         Metrics.AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;

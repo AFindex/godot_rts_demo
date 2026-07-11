@@ -217,6 +217,39 @@ public readonly record struct TestWorkerEconomySnapshot(
     TestEconomyResourceKind CargoKind,
     int CargoAmount);
 
+public enum TestMapVisibility : byte
+{
+    Hidden,
+    Explored,
+    Visible
+}
+
+public enum TestPlayerOrderCommandCode : byte
+{
+    Success,
+    InvalidPlayer,
+    EmptySelection,
+    InvalidUnit,
+    WrongOwner,
+    InvalidTarget,
+    FriendlyTarget,
+    TargetNotVisible
+}
+
+public readonly record struct TestPlayerResourceView(
+    TestResourceNodeId NodeId,
+    TestMapVisibility Visibility,
+    int KnownRemaining);
+
+public readonly record struct TestPlayerViewSnapshot(
+    int PlayerId,
+    TestUnitId[] Units,
+    TestGameplayBuildingId[] Buildings,
+    TestPlayerResourceView[] Resources,
+    int HiddenCells,
+    int ExploredCells,
+    int VisibleCells);
+
 public readonly record struct TestEconomyBaseSnapshot(
     TestEconomyBaseId Id,
     TestGameplayBuildingId TownHall,
@@ -1146,6 +1179,57 @@ public sealed class MovementTestRig
             new TestResourceNodeId(snapshot.TargetNode.Value),
             (TestEconomyResourceKind)snapshot.CargoKind,
             snapshot.CargoAmount);
+    }
+
+    public TestPlayerViewSnapshot ObservePlayerView(int playerId)
+    {
+        var view = _simulation.CreatePlayerView(playerId);
+        return new TestPlayerViewSnapshot(
+            playerId,
+            view.Units.Select(value => new TestUnitId(value.UnitId)).ToArray(),
+            view.Buildings.Select(value =>
+                new TestGameplayBuildingId(value.BuildingId.Value)).ToArray(),
+            view.Resources.Select(value => new TestPlayerResourceView(
+                new TestResourceNodeId(value.NodeId.Value),
+                (TestMapVisibility)value.Visibility,
+                value.KnownRemaining)).ToArray(),
+            view.VisibilityCells.Count(value =>
+                value == (byte)MapVisibility.Hidden),
+            view.VisibilityCells.Count(value =>
+                value == (byte)MapVisibility.Explored),
+            view.VisibilityCells.Count(value =>
+                value == (byte)MapVisibility.Visible));
+    }
+
+    public TestPlayerOrderCommandCode PlayerMove(
+        int playerId,
+        IReadOnlyList<TestUnitId> units,
+        Vector2 target,
+        bool queued = false) =>
+        (TestPlayerOrderCommandCode)_simulation.IssuePlayerMove(
+            playerId,
+            units.Select(value => value.Value).ToArray(),
+            target,
+            queued).Code;
+
+    public TestPlayerOrderCommandCode PlayerAttackUnit(
+        int playerId,
+        IReadOnlyList<TestUnitId> units,
+        TestUnitId target,
+        bool queued = false)
+    {
+        var targetPosition = (uint)target.Value < (uint)_simulation.Units.Count
+            ? _simulation.Units.Positions[target.Value]
+            : Vector2.Zero;
+        return (TestPlayerOrderCommandCode)_simulation.IssuePlayerSmartCommand(
+            playerId,
+            units.Select(value => value.Value).ToArray(),
+            new SmartCommandTarget(
+                SmartCommandTargetKind.EnemyUnit,
+                targetPosition,
+                target.Value),
+            attackMoveModifier: false,
+            queued).Code;
     }
 
     public TestEconomyBaseSnapshot[] ObserveEconomyBases(int playerId) =>

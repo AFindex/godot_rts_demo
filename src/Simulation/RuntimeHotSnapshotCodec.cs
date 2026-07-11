@@ -26,6 +26,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteUnits(writer, state.Units);
         WriteCombat(writer, state.Combat, state.Units.Count);
         WriteEconomy(writer, state.Economy, state.Units.Count);
+        WriteVisibility(writer, state.Visibility);
         WriteConstruction(writer, state.Construction);
         WriteProduction(writer, state.Production);
         WriteTechnology(writer, state.Technology);
@@ -83,6 +84,7 @@ internal static class RuntimeHotSnapshotCodec
             var units = ReadUnits(reader, capacity);
             var combat = ReadCombat(reader, capacity, units.Count);
             var economy = ReadEconomy(reader, units.Count);
+            var visibility = ReadVisibility(reader);
             var construction = ReadConstruction(
                 reader, units.Count, dynamic.Footprints, economy);
             var production = ReadProduction(
@@ -105,6 +107,7 @@ internal static class RuntimeHotSnapshotCodec
                 Units = units,
                 Combat = combat,
                 Economy = economy,
+                Visibility = visibility,
                 Construction = construction,
                 Production = production,
                 Technology = technology,
@@ -586,6 +589,62 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(value.Health);
             writer.Write(value.RefineryNode.Value);
         }
+    }
+
+    private static void WriteVisibility(
+        BinaryWriter writer,
+        PlayerVisibilityRuntimeSnapshot visibility)
+    {
+        writer.Write(visibility.CellSize);
+        writer.Write(visibility.Columns);
+        writer.Write(visibility.Rows);
+        writer.Write(visibility.Players.Length);
+        foreach (var player in visibility.Players)
+        {
+            writer.Write(player.PlayerId);
+            writer.Write(player.ExploredCells.Length);
+            writer.Write(player.ExploredCells);
+        }
+    }
+
+    private static PlayerVisibilityRuntimeSnapshot ReadVisibility(
+        BinaryReader reader)
+    {
+        var cellSize = reader.ReadSingle();
+        var columns = reader.ReadInt32();
+        var rows = reader.ReadInt32();
+        if (!Positive(cellSize) || columns <= 0 || rows <= 0 ||
+            columns > MaximumCapacity || rows > MaximumCapacity ||
+            (long)columns * rows > MaximumPoints)
+        {
+            throw new InvalidDataException();
+        }
+        var packedLength = ((columns * rows) + 7) / 8;
+        var count = ReadCount(reader, PlayerVisibilitySystem.MaximumPlayers);
+        var players = new PlayerVisibilityRuntimeEntry[count];
+        var previousPlayer = 0;
+        for (var index = 0; index < count; index++)
+        {
+            var playerId = reader.ReadInt32();
+            var length = reader.ReadInt32();
+            if (playerId <= previousPlayer ||
+                playerId >= PlayerVisibilitySystem.MaximumPlayers ||
+                length != packedLength)
+                throw new InvalidDataException();
+            var cells = reader.ReadBytes(length);
+            if (cells.Length != length)
+                throw new EndOfStreamException();
+            var unusedBits = length * 8 - columns * rows;
+            if (unusedBits > 0 &&
+                (cells[^1] & (0xFF << (8 - unusedBits))) != 0)
+            {
+                throw new InvalidDataException();
+            }
+            players[index] = new PlayerVisibilityRuntimeEntry(playerId, cells);
+            previousPlayer = playerId;
+        }
+        return new PlayerVisibilityRuntimeSnapshot(
+            cellSize, columns, rows, players);
     }
 
     internal static ConstructionRuntimeSnapshot ReadConstruction(

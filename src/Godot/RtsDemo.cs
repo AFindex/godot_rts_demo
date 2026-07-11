@@ -92,6 +92,10 @@ public partial class RtsDemo : Node2D
         ResourceReloadWorkflowSnapshot.Idle;
     private RtsResourceWatchControl? _resourceWatchControl;
     private EconomyOverviewSnapshot? _economyOverview;
+    private PlayerViewSnapshot? _playerView;
+    private readonly HashSet<int> _visibleUnitIds = [];
+    private readonly HashSet<int> _visibleBuildingIds = [];
+    private readonly Dictionary<int, PlayerResourceViewSnapshot> _visibleResources = [];
     private RtsEconomyControl? _economyControl;
 
     public override async void _Ready()
@@ -434,13 +438,17 @@ public partial class RtsDemo : Node2D
             DrawRect(rect, new Color("71869a"), filled: false, width: 2f);
         }
 
-        foreach (var footprint in _world.DynamicOccupancy.Snapshot())
+        if (_playerView is null)
         {
-            var rect = ToRect2(footprint.Bounds);
-            DrawRect(rect, new Color(0.82f, 0.25f, 0.16f, 0.72f), filled: true);
-            DrawRect(rect, new Color("ff9b5e"), filled: false, width: 2f);
+            foreach (var footprint in _world.DynamicOccupancy.Snapshot())
+            {
+                var rect = ToRect2(footprint.Bounds);
+                DrawRect(rect, new Color(0.82f, 0.25f, 0.16f, 0.72f), filled: true);
+                DrawRect(rect, new Color("ff9b5e"), filled: false, width: 2f);
+            }
         }
 
+        DrawPlayerFog();
         DrawEconomyResources();
         DrawGameplayBuildings();
 
@@ -516,6 +524,35 @@ public partial class RtsDemo : Node2D
         }
     }
 
+    private void DrawPlayerFog()
+    {
+        if (_playerView is null)
+            return;
+        var cells = _playerView.VisibilityCells;
+        for (var row = 0; row < _playerView.VisibilityRows; row++)
+        {
+            for (var column = 0; column < _playerView.VisibilityColumns; column++)
+            {
+                var visibility = (MapVisibility)cells[
+                    row * _playerView.VisibilityColumns + column];
+                if (visibility == MapVisibility.Visible)
+                    continue;
+                var minimum = _playerView.WorldBounds.Min + new NVector2(
+                    column * _playerView.VisibilityCellSize,
+                    row * _playerView.VisibilityCellSize);
+                var maximum = NVector2.Min(
+                    minimum + new NVector2(_playerView.VisibilityCellSize),
+                    _playerView.WorldBounds.Max);
+                DrawRect(
+                    ToRect2(new SimRect(minimum, maximum)),
+                    visibility == MapVisibility.Hidden
+                        ? new Color(0.015f, 0.025f, 0.04f, 0.82f)
+                        : new Color(0.03f, 0.05f, 0.075f, 0.46f),
+                    filled: true);
+            }
+        }
+    }
+
     private void DrawEconomyResources()
     {
         if (_economyOverview is null)
@@ -524,11 +561,20 @@ public partial class RtsDemo : Node2D
         }
         foreach (var node in _economyOverview.ResourceNodes)
         {
+            var visibleNode = default(PlayerResourceViewSnapshot);
+            if (_playerView is not null &&
+                !_visibleResources.TryGetValue(node.Id.Value, out visibleNode))
+            {
+                continue;
+            }
             var position = GodotPathProvider.ToGodot(node.Position);
             var color = node.Kind == EconomyResourceKind.Minerals
                 ? new Color("65c9ff")
                 : new Color("61db83");
-            if (!node.Operational)
+            var operational = _playerView is null
+                ? node.Operational
+                : visibleNode.KnownOperational;
+            if (!operational)
             {
                 color = new Color("7a8791");
             }
@@ -537,7 +583,9 @@ public partial class RtsDemo : Node2D
             DrawString(
                 ThemeDB.FallbackFont,
                 position + new Vector2(-18f, 38f),
-                node.Remaining.ToString(),
+                _playerView is not null && visibleNode.KnownRemaining < 0
+                    ? "?"
+                    : node.Remaining.ToString(),
                 HorizontalAlignment.Left,
                 -1f,
                 13,
@@ -554,6 +602,11 @@ public partial class RtsDemo : Node2D
         foreach (var building in _simulation.Construction.CreateOverview())
         {
             if (building.IsTerminal)
+            {
+                continue;
+            }
+            if (_playerView is not null &&
+                !_visibleBuildingIds.Contains(building.Id.Value))
             {
                 continue;
             }
@@ -588,8 +641,12 @@ public partial class RtsDemo : Node2D
                 rect.Size.X - 10f,
                 12,
                 new Color("f5f7fa"));
-            var production = _simulation.Production.Observe(building.Id);
-            var research = _simulation.Technology.Observe(building.Id);
+            var production = building.PlayerId == PlayerTeam
+                ? _simulation.Production.Observe(building.Id)
+                : new ProductionQueueSnapshot(building.Id, RallyTarget.None, []);
+            var research = building.PlayerId == PlayerTeam
+                ? _simulation.Technology.Observe(building.Id)
+                : new ResearchQueueSnapshot(building.Id, []);
             if (production.Orders.Length > 0)
             {
                 var active = production.Orders[0];
@@ -769,11 +826,14 @@ public partial class RtsDemo : Node2D
             var worldPosition = ScreenToWorld(mouse.Position);
             var target = ResolveSmartCommandTarget(
                 selected[0], GodotPathProvider.ToNumerics(worldPosition));
-            _simulation.IssueSmartCommand(
+            var issued = _simulation.IssuePlayerSmartCommand(
+                PlayerTeam,
                 selected,
                 target,
                 _commandMarkerAttackMove,
                 queued: _commandMarkerQueued);
+            if (!issued.Succeeded)
+                return;
             _commandMarkerAttackMove |= target.Kind is
                 SmartCommandTargetKind.EnemyUnit or
                 SmartCommandTargetKind.EnemyBuilding;
@@ -811,10 +871,10 @@ public partial class RtsDemo : Node2D
                 }
                 break;
             case Key.S:
-                _simulation.Stop(SelectedLivingUnits());
+                _simulation.IssuePlayerStop(PlayerTeam, SelectedLivingUnits());
                 break;
             case Key.H:
-                _simulation.Hold(SelectedLivingUnits());
+                _simulation.IssuePlayerHold(PlayerTeam, SelectedLivingUnits());
                 break;
             case Key.D:
                 _showDebug = !_showDebug;
@@ -1020,6 +1080,8 @@ public partial class RtsDemo : Node2D
             {
                 continue;
             }
+            if (_playerView is not null && !_visibleUnitIds.Contains(unit))
+                continue;
             var distanceSquared = NVector2.DistanceSquared(
                 position, _simulation.Units.Positions[unit]);
             var hitRadius = _simulation.Units.Radii[unit] + 5f;
@@ -1035,7 +1097,10 @@ public partial class RtsDemo : Node2D
         {
             foreach (var building in _simulation.Construction.CreateOverview())
             {
-                if (!building.IsTerminal && building.Bounds.Contains(position) &&
+                if (!building.IsTerminal &&
+                    (_playerView is null ||
+                     _visibleBuildingIds.Contains(building.Id.Value)) &&
+                    building.Bounds.Contains(position) &&
                     _simulation.Construction.IsEnemyTarget(
                         building.Id, _simulation.Combat.Teams[selectedUnit]))
                 {
@@ -1162,6 +1227,8 @@ public partial class RtsDemo : Node2D
             {
                 continue;
             }
+            if (_playerView is not null && !_visibleUnitIds.Contains(unit))
+                continue;
             var position = GodotPathProvider.ToGodot(_simulation.Units.Positions[unit]);
             var radius = _simulation.Units.Radii[unit];
             var mode = _simulation.Units.Modes[unit];
@@ -1500,12 +1567,31 @@ public partial class RtsDemo : Node2D
             _economyOverview = _simulation.Economy.CreateOverview(
                 PlayerTeam, _simulation.Units.Count);
             _economyControl?.SetSnapshot(_economyOverview);
+            _playerView = _simulation.CreatePlayerView(PlayerTeam);
+            _visibleUnitIds.Clear();
+            _visibleBuildingIds.Clear();
+            _visibleResources.Clear();
+            foreach (var unit in _playerView.Units)
+                _visibleUnitIds.Add(unit.UnitId);
+            foreach (var building in _playerView.Buildings)
+                _visibleBuildingIds.Add(building.BuildingId.Value);
+            foreach (var resource in _playerView.Resources)
+                _visibleResources.Add(resource.NodeId.Value, resource);
+        }
+        else
+        {
+            _playerView = null;
+            _visibleUnitIds.Clear();
+            _visibleBuildingIds.Clear();
+            _visibleResources.Clear();
         }
         var chokeUnits = 0;
         var livingUnits = 0;
         var engagedUnits = 0;
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
+            if (_playerView is not null && !_visibleUnitIds.Contains(unit))
+                continue;
             if (_simulation.Units.Alive[unit])
             {
                 livingUnits++;
@@ -1525,6 +1611,28 @@ public partial class RtsDemo : Node2D
             : $"REC  {_visualTest.DisplayName}  " +
               $"{metrics.Tick / 60f:0.0}/{_visualTest.DurationTicks / 60f:0.0}s  " +
               $"[{_visualTest.Phase}]";
+        var unitText = _playerView is null
+            ? $"{livingUnits}/{_simulation.Units.Count}"
+            : $"{livingUnits} visible";
+        var movingUnits = _playerView?.Units.Count(value =>
+            value.MoveMode is UnitMoveMode.Moving or UnitMoveMode.WaitingForPath)
+            ?? metrics.MovingUnits;
+        var arrivedUnits = _playerView?.Units.Count(value =>
+            value.MoveMode == UnitMoveMode.Arrived) ?? metrics.ArrivedUnits;
+        var buildingCount = _playerView?.Buildings.Length ??
+                            _world?.DynamicOccupancy.Count ?? 0;
+        var productionOrders = _playerView is null
+            ? _simulation.Production.ActiveOrderCount
+            : _playerView.Buildings
+                .Where(value => value.Relation == PlayerEntityRelation.Own)
+                .Sum(value => _simulation.Production
+                    .Observe(value.BuildingId).Orders.Length);
+        var researchOrders = _playerView is null
+            ? _simulation.Technology.ActiveOrderCount
+            : _playerView.Buildings
+                .Where(value => value.Relation == PlayerEntityRelation.Own)
+                .Sum(value => _simulation.Technology
+                    .Observe(value.BuildingId).Orders.Length);
         var trafficText = "traffic none";
         if (_chokeController is not null && _chokeController.TrafficSnapshots.Length > 0)
         {
@@ -1543,9 +1651,9 @@ public partial class RtsDemo : Node2D
         }
 
         _hud.Text =
-            $"{title}  |  units {livingUnits}/{_simulation.Units.Count}  " +
-            $"selected {_selectedUnits.Count}  moving {metrics.MovingUnits}  " +
-            $"arrived {metrics.ArrivedUnits}  queued {metrics.PendingUnitOrders}  " +
+            $"{title}  |  units {unitText}  " +
+            $"selected {_selectedUnits.Count}  moving {movingUnits}  " +
+            $"arrived {arrivedUnits}  queued {metrics.PendingUnitOrders}  " +
             $"engaged {engagedUnits}  choke {chokeUnits}  " +
             $"route {_simulation.LastIssuedGroupRoute.Waypoints.Length}  " +
             $"route plans {metrics.GroupRoutePlans} shared {metrics.SharedRouteAssignments}  " +
@@ -1557,9 +1665,9 @@ public partial class RtsDemo : Node2D
             $"yield {metrics.DestinationYieldEvents}/{metrics.ActiveDestinationYields}  " +
             $"path queue {metrics.PendingPathRequests}  nav r{metrics.NavigationRevision}  " +
             $"bake reload {metrics.ClearanceBakeReloads}  " +
-            $"buildings {_world?.DynamicOccupancy.Count ?? 0}  " +
-            $"production {_simulation.Production.ActiveOrderCount}  " +
-            $"research {_simulation.Technology.ActiveOrderCount}  " +
+            $"buildings {buildingCount}  " +
+            $"production {productionOrders}  " +
+            $"research {researchOrders}  " +
             $"invalidated {metrics.NavigationInvalidations}  " +
             $"recovery {metrics.RecoveryEvents}  unreachable {metrics.UnreachableUnits}\n" +
             $"map {ActiveNavigationLabel()}  " +
@@ -1583,6 +1691,34 @@ public partial class RtsDemo : Node2D
         }
         var markers = new List<MinimapMarker>(
             _simulation.Units.Count + _world.DynamicOccupancy.Count);
+        if (_playerView is not null)
+        {
+            foreach (var unit in _playerView.Units)
+            {
+                markers.Add(new MinimapMarker(
+                    unit.UnitId,
+                    MinimapMarkerKind.Unit,
+                    unit.OwnerPlayerId,
+                    unit.Position,
+                    new NVector2(unit.Radius * 2f),
+                    _selectedUnits.Contains(unit.UnitId)));
+            }
+            foreach (var building in _playerView.Buildings)
+            {
+                markers.Add(new MinimapMarker(
+                    building.BuildingId.Value,
+                    MinimapMarkerKind.Building,
+                    building.OwnerPlayerId,
+                    (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                    building.Bounds.Max - building.Bounds.Min));
+            }
+            _minimap.SetSnapshot(new MinimapSnapshot(
+                _world.Bounds,
+                _cameraController?.VisibleWorld ?? _world.Bounds,
+                _world.Obstacles.ToArray(),
+                markers.ToArray()));
+            return;
+        }
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
             if (!_simulation.Units.Alive[unit])
@@ -1637,11 +1773,14 @@ public partial class RtsDemo : Node2D
         _commandMarkerAttackMove = Input.IsKeyPressed(Key.A);
         _commandMarkerQueued = Input.IsKeyPressed(Key.Shift);
         var target = ResolveSmartCommandTarget(selected[0], worldPosition);
-        _simulation.IssueSmartCommand(
+        var issued = _simulation.IssuePlayerSmartCommand(
+            PlayerTeam,
             selected,
             target,
             _commandMarkerAttackMove,
             queued: _commandMarkerQueued);
+        if (!issued.Succeeded)
+            return;
         _commandMarkerAttackMove |= target.Kind is
             SmartCommandTargetKind.EnemyUnit or
             SmartCommandTargetKind.EnemyBuilding;

@@ -60,6 +60,7 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview",
         "economy-dual-resource",
         "economy-expansion-saturation",
+        "player-visibility-authority",
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
@@ -170,6 +171,8 @@ public static class VisualTestCatalog
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
         "economy-expansion-saturation" => CreateExpansionSaturation(),
+        "player-visibility-authority" => CreatePlayerVisibilityAuthority(
+            navigationMap, gameplayProfiles, clearanceBake),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
@@ -1117,7 +1120,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 9 &&
+                    exact && rejected && hot.FormatVersion == 10 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1211,7 +1214,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
+                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2283,6 +2286,138 @@ public static class VisualTestCatalog
         return session;
     }
 
+    private static VisualTestSession CreatePlayerVisibilityAuthority(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            24, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1200, 200, 20);
+        rig.RegisterPlayer(2, 1200, 200, 20);
+        var scout = rig.SpawnCombat(
+            new Vector2(120f, 350f), 1,
+            maximumSpeed: 170f, acceleration: 760f);
+        var enemy = rig.SpawnCombat(new Vector2(930f, 350f), 2);
+        var enemyBuilder = rig.SpawnWorker(new Vector2(930f, 500f), 2);
+        var minerals = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(600f, 280f), 2400, 5, 0.5f, 2);
+        rig.AddResourceDropOff(2, new Vector2(1030f, 500f));
+        rig.StartReplayPackageRecording();
+        var enemyBarracks = rig.Build(
+            2,
+            enemyBuilder,
+            DemoBuildingTypes.Barracks with { BuildSeconds = 1f },
+            new Vector2(1030f, 500f));
+
+        var initialBoundary = false;
+        var ownershipRejected = false;
+        var hiddenTargetRejected = false;
+        var visibleResourceObserved = false;
+        var visibleEntitiesObserved = false;
+        var visibleAttackAccepted = false;
+        var hiddenAgain = false;
+        var explorationRetained = false;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 480;
+        var visible = new[] { scout, enemy, enemyBuilder };
+        var session = new VisualTestSession(
+            "player-visibility-authority",
+            "Player view, explored fog and authoritative command ownership",
+            900,
+            rig,
+            visible,
+            runtime =>
+            {
+                var view = runtime.ObservePlayerView(1);
+                var package = runtime.CaptureReplayPackage();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var replay = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = replay.FinalHash == runtime.StateHash &&
+                            resumed.FinalHash == runtime.StateHash &&
+                            replay.MatchesFrom(resumed, hotTick);
+                var versions = package.FormatVersion == 10 &&
+                               hot.FormatVersion == 10;
+                var passed = enemyBarracks.Succeeded && initialBoundary &&
+                             ownershipRejected && hiddenTargetRejected &&
+                             visibleResourceObserved &&
+                             visibleEntitiesObserved && visibleAttackAccepted &&
+                             hiddenAgain && explorationRetained &&
+                             packageRoundTrip && hotRoundTrip && exact && versions;
+                return new ScenarioResult(
+                    passed,
+                    $"initial={initialBoundary}, authority={ownershipRejected}/" +
+                    $"{hiddenTargetRejected}, visible={visibleResourceObserved}/" +
+                    $"{visibleEntitiesObserved}/" +
+                    $"{visibleAttackAccepted}, hiddenAgain={hiddenAgain}, " +
+                    $"fog={view.HiddenCells}/{view.ExploredCells}/{view.VisibleCells}, " +
+                    $"versions=package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"exact={exact}");
+            })
+            .Highlight(
+                new SimRect(new Vector2(40f, 220f), new Vector2(360f, 500f)),
+                "OWN TERRITORY: always queryable",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(850f, 220f), new Vector2(1120f, 590f)),
+                "ENEMY: hidden -> visible -> hidden, no live-state leak",
+                TestDiagnosticKind.Accepted);
+        session.At(30, "Reject enemy control and hidden entity targeting", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            initialBoundary = view.Units.SequenceEqual([scout]) &&
+                              view.Buildings.Length == 0 &&
+                              view.Resources.Length == 0;
+            ownershipRejected = runtime.PlayerMove(
+                1, [enemy], new Vector2(700f, 350f)) ==
+                TestPlayerOrderCommandCode.WrongOwner;
+            hiddenTargetRejected = runtime.PlayerAttackUnit(1, [scout], enemy) ==
+                                   TestPlayerOrderCommandCode.TargetNotVisible;
+        });
+        session.At(60, "Scout into unexplored territory through the mineral field",
+            runtime => runtime.PlayerMove(1, [scout], new Vector2(850f, 350f)));
+        session.At(240, "Observe the mineral field without leaking hidden enemies", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            visibleResourceObserved = view.Resources.Any(value =>
+                value.NodeId == minerals &&
+                value.Visibility == TestMapVisibility.Visible &&
+                value.KnownRemaining == 2400);
+        });
+        session.At(420, "Observe and legally target visible enemy entities", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            visibleEntitiesObserved = view.Units.Contains(enemy) &&
+                                      view.Buildings.Contains(enemyBarracks.BuildingId);
+            visibleAttackAccepted = runtime.PlayerAttackUnit(1, [scout], enemy) ==
+                                    TestPlayerOrderCommandCode.Success;
+            runtime.PlayerMove(1, [scout], new Vector2(120f, 350f));
+        });
+        session.At(hotTick, "Capture explored fog while the scout returns", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
+        session.At(720, "Verify dynamic enemies hide but exploration remains", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            hiddenAgain = !view.Units.Contains(enemy) &&
+                          !view.Buildings.Contains(enemyBarracks.BuildingId);
+            explorationRetained = view.ExploredCells > 0 &&
+                                  view.VisibleCells > 0 &&
+                                  view.HiddenCells > 0 &&
+                                  view.Resources.Any(value =>
+                                      value.NodeId == minerals &&
+                                      value.Visibility == TestMapVisibility.Explored &&
+                                      value.KnownRemaining == -1);
+        });
+        return session;
+    }
+
     private static VisualTestSession CreateConstructionGameplayBuildings()
     {
         var rig = MovementTestRig.CreateEconomyMap(
@@ -2709,9 +2844,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 9 &&
-                             producingHot.FormatVersion == 9 &&
-                             waitingHot.FormatVersion == 9 &&
+                             package.FormatVersion == 10 &&
+                             producingHot.FormatVersion == 10 &&
+                             waitingHot.FormatVersion == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -2927,7 +3062,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
+                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -3067,7 +3202,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
+                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -3195,7 +3330,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
+                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -3352,7 +3487,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 9 && hot.FormatVersion == 9 &&
+                             package.FormatVersion == 10 && hot.FormatVersion == 10 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -3466,7 +3601,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 9 && exact;
+                             hotRoundTrip && hot.FormatVersion == 10 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +
