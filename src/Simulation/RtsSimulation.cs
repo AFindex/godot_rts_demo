@@ -47,6 +47,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private int _nextMovementGroupId = 1;
     private int _nextOrderSequenceId = 1;
     private SimulationCommandRecorder? _commandRecorder;
+    private EconomyCommandRecorder? _economyCommandRecorder;
     private SimulationReplayPackageRecorder? _replayPackageRecorder;
     private bool _issuingEconomyOrder;
 
@@ -167,7 +168,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     internal SimulationRuntimeStateCapture CaptureRuntimeState()
     {
-        EnsureEconomyPersistenceSupported();
         var units = new UnitStore(Units.Capacity);
         units.CopyRuntimeStateFrom(Units);
         var combat = new CombatStore(Units.Capacity);
@@ -181,6 +181,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             DynamicOccupancy = World.DynamicOccupancy.CaptureRuntimeState(),
             Units = units,
             Combat = combat,
+            Economy = Economy.CaptureRuntimeState(Units.Count),
             CommandQueues = queues,
             ChokeTraffic = _chokeController?.CaptureRuntimeState(),
             PrivateState = new RtsPrivateRuntimeSnapshot(
@@ -201,6 +202,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         World.DynamicOccupancy.RestoreRuntimeState(snapshot.DynamicOccupancy);
         Units.CopyRuntimeStateFrom(snapshot.Units);
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
+        Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -223,13 +225,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
             _pathRequests.Enqueue(snapshot.PrivateState.PathRequests[index]);
         }
         _commandRecorder = null;
+        _economyCommandRecorder = null;
         _replayPackageRecorder = null;
     }
 
     public void StartCommandRecording()
     {
-        EnsureEconomyPersistenceSupported();
         _commandRecorder = new SimulationCommandRecorder();
+        _economyCommandRecorder = new EconomyCommandRecorder();
     }
 
     public SimulationCommandLogSnapshot CaptureCommandLog()
@@ -241,26 +244,42 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return _commandRecorder.Capture();
     }
 
+    public EconomyCommandLogSnapshot CaptureEconomyCommandLog()
+    {
+        if (_economyCommandRecorder is null)
+        {
+            throw new InvalidOperationException("Command recording has not been started.");
+        }
+        return _economyCommandRecorder.Capture();
+    }
+
     public void StartReplayPackageRecording(ReplayResourceManifest resources)
     {
-        EnsureEconomyPersistenceSupported();
+        if (!Economy.CanStartReplayRecording(Units.Count))
+        {
+            throw new InvalidOperationException(
+                "Replay package recording requires idle economy workers at tick zero.");
+        }
         if (resources.ClearanceBakeHash != ActiveClearanceBakeHash)
         {
             throw new InvalidOperationException(
                 "Replay manifest must reference the active Clearance Bake.");
         }
         _commandRecorder = new SimulationCommandRecorder();
+        _economyCommandRecorder = new EconomyCommandRecorder();
         _replayPackageRecorder = new SimulationReplayPackageRecorder(this, resources);
     }
 
     public SimulationReplayPackageSnapshot CaptureReplayPackage()
     {
-        if (_commandRecorder is null || _replayPackageRecorder is null)
+        if (_commandRecorder is null || _economyCommandRecorder is null ||
+            _replayPackageRecorder is null)
         {
             throw new InvalidOperationException(
                 "Replay package recording has not been started.");
         }
-        return _replayPackageRecorder.Capture(_commandRecorder.Capture());
+        return _replayPackageRecorder.Capture(
+            _commandRecorder.Capture(), _economyCommandRecorder.Capture());
     }
 
     public void ApplyRecordedCommand(RecordedSimulationCommand command)
@@ -285,6 +304,33 @@ public sealed class RtsSimulation : ICombatMovementDriver
             default:
                 throw new InvalidOperationException(
                     $"Unsupported recorded command {command.Kind}.");
+        }
+    }
+
+    public void ApplyRecordedEconomyCommand(RecordedEconomyCommand command)
+    {
+        switch (command.Kind)
+        {
+            case EconomyCommandKind.Gather:
+                var result = IssueGather(
+                    command.PlayerId,
+                    command.UnitId,
+                    new EconomyResourceNodeId(command.ResourceNodeId));
+                if (!result.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Replay Gather failed with {result.Code}.");
+                }
+                break;
+            case EconomyCommandKind.SetRefineryOperational:
+                SetRefineryOperational(
+                    command.PlayerId,
+                    new EconomyResourceNodeId(command.ResourceNodeId),
+                    command.Value);
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported economy command {command.Kind}.");
         }
     }
 
@@ -409,11 +455,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int unit,
         EconomyResourceNodeId nodeId)
     {
-        if (_commandRecorder is not null || _replayPackageRecorder is not null)
-        {
-            throw new InvalidOperationException(
-                "Gather commands require the S11 economy replay format.");
-        }
         if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
         {
             return new GatherCommandResult(
@@ -425,9 +466,25 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             return validation;
         }
+        _economyCommandRecorder?.RecordGather(
+            Metrics.Tick, issuingPlayerId, unit, nodeId.Value);
         Economy.BeginGather(unit, nodeId);
         MoveEconomyWorker(unit, Economy.ObserveResourceNode(nodeId).Position);
         return validation;
+    }
+
+    public void SetRefineryOperational(
+        int issuingPlayerId,
+        EconomyResourceNodeId nodeId,
+        bool operational)
+    {
+        if (!Economy.Players.IsRegistered(issuingPlayerId))
+        {
+            throw new ArgumentOutOfRangeException(nameof(issuingPlayerId));
+        }
+        Economy.SetRefineryOperational(nodeId, operational);
+        _economyCommandRecorder?.RecordRefinery(
+            Metrics.Tick, issuingPlayerId, nodeId.Value, operational);
     }
 
     public void IssueMove(
@@ -661,7 +718,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Economy.Cancel(unitIndices);
         }
 
-        _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
+        if (!_issuingEconomyOrder)
+        {
+            _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
+        }
         order = order with { SequenceId = NextOrderSequenceId() };
         if (!queued || order.Kind is UnitOrderKind.Stop or UnitOrderKind.Hold)
         {
@@ -2097,13 +2157,4 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
-    private void EnsureEconomyPersistenceSupported()
-    {
-        if (Economy.HasRuntimeState)
-        {
-            throw new InvalidOperationException(
-                "Economy command replay and hot snapshots require the S11 " +
-                "economy persistence format, which is not implemented yet.");
-        }
-    }
 }

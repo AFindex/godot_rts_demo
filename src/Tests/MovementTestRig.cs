@@ -148,6 +148,46 @@ public sealed class TestCommandLog
     }
 }
 
+public sealed class TestEconomyCommandLog
+{
+    internal TestEconomyCommandLog(EconomyCommandLogSnapshot snapshot)
+    {
+        Backend = snapshot;
+    }
+
+    internal EconomyCommandLogSnapshot Backend { get; }
+    public int FormatVersion => EconomyCommandLogSnapshot.CurrentFormatVersion;
+    public int EntryCount => Backend.Entries.Length;
+    public int CanonicalByteCount => Backend.CanonicalBytes.Length;
+    public ulong StableHash => Backend.StableHash;
+
+    public bool TryCanonicalRoundTrip(out TestEconomyCommandLog? roundTripped)
+    {
+        var succeeded = EconomyCommandLogSnapshot.TryDeserialize(
+            Backend.CanonicalBytes, out var snapshot, out _);
+        roundTripped = succeeded && snapshot is not null
+            ? new TestEconomyCommandLog(snapshot)
+            : null;
+        return succeeded;
+    }
+
+    public bool RejectsUnsupportedVersion()
+    {
+        var payload = Backend.CanonicalBytes.ToArray();
+        payload[4]++;
+        return !EconomyCommandLogSnapshot.TryDeserialize(
+            payload, out _, out var validation) &&
+            validation == EconomyCommandLogValidationCode.UnsupportedVersion;
+    }
+
+    public bool RejectsTruncatedPayload() =>
+        !EconomyCommandLogSnapshot.TryDeserialize(
+            Backend.CanonicalBytes.AsSpan(0, Backend.CanonicalBytes.Length - 1),
+            out _,
+            out var validation) &&
+        validation == EconomyCommandLogValidationCode.PayloadTooShort;
+}
+
 public sealed class TestReplayPackage
 {
     internal TestReplayPackage(SimulationReplayPackageSnapshot snapshot)
@@ -160,6 +200,7 @@ public sealed class TestReplayPackage
     public int InitialUnitCount => Backend.Units.Length;
     public int InitialBuildingCount => Backend.Buildings.Length;
     public int WorldCommandCount => Backend.WorldCommands.Length;
+    public int EconomyCommandCount => Backend.EconomyCommandLog.Entries.Length;
     public int UnitCommandCount => Backend.CommandLog.Entries.Length;
     public int CanonicalByteCount => Backend.CanonicalBytes.Length;
     public ulong StableHash => Backend.StableHash;
@@ -190,7 +231,8 @@ public sealed class TestReplayPackage
             Backend.CanonicalBytes.AsSpan(0, Backend.CanonicalBytes.Length - 1),
             out _,
             out var validation) &&
-            validation.Code is ReplayPackageValidationCode.InvalidCommandLog or
+            validation.Code is ReplayPackageValidationCode.InvalidEconomyCommandLog or
+                ReplayPackageValidationCode.InvalidCommandLog or
                 ReplayPackageValidationCode.PayloadTooShort;
     }
 }
@@ -779,9 +821,12 @@ public sealed class MovementTestRig
         _simulation.Economy.AddDropOff(
             playerId, position, acceptsMinerals, acceptsVespene);
 
-    public void SetRefineryOperational(TestResourceNodeId nodeId, bool value) =>
-        _simulation.Economy.SetRefineryOperational(
-            new EconomyResourceNodeId(nodeId.Value), value);
+    public void SetRefineryOperational(
+        TestResourceNodeId nodeId,
+        bool value,
+        int playerId = 1) =>
+        _simulation.SetRefineryOperational(
+            playerId, new EconomyResourceNodeId(nodeId.Value), value);
 
     public TestGatherCommandCode Gather(
         int issuingPlayerId,
@@ -847,18 +892,6 @@ public sealed class MovementTestRig
             snapshot.CargoAmount);
     }
 
-    public bool RejectsLegacyPersistenceForActiveEconomy()
-    {
-        try
-        {
-            _simulation.StartCommandRecording();
-            return false;
-        }
-        catch (InvalidOperationException)
-        {
-            return true;
-        }
-    }
 
     public TestUnitId SpawnCombat(
         Vector2 position,
@@ -1250,6 +1283,9 @@ public sealed class MovementTestRig
     public TestCommandLog CaptureCommandLog() =>
         new(_simulation.CaptureCommandLog());
 
+    public TestEconomyCommandLog CaptureEconomyCommandLog() =>
+        new(_simulation.CaptureEconomyCommandLog());
+
     public TestReplayPackage CaptureReplayPackage() =>
         new(_simulation.CaptureReplayPackage());
 
@@ -1315,7 +1351,9 @@ public sealed class MovementTestRig
             changedResources,
             source.Units.ToArray(),
             source.Buildings.ToArray(),
+            source.Economy,
             source.WorldCommands.ToArray(),
+            source.EconomyCommandLog,
             source.CommandLog);
         return !SimulationReplayPackageFactory.TryCreateSimulation(
                    changed,
@@ -1465,7 +1503,9 @@ public sealed class MovementTestRig
             source.Resources,
             source.Units.ToArray(),
             source.Buildings.ToArray(),
+            source.Economy,
             source.WorldCommands.ToArray(),
+            source.EconomyCommandLog,
             new SimulationCommandLogSnapshot(
                 source.CommandLog.Entries.Select(entry => entry with
                 {

@@ -56,7 +56,7 @@ Idle
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济命令日志、Replay Package 和持久化热快照正文尚未扩展。活动经济局会明确拒绝开始旧格式录制，避免生成表面成功但遗漏经济未来态的回放。
+经济状态现已纳入 Replay Package v2 与持久化热快照 v2。外部 Gather/Refinery 意图使用独立版本化日志；前往资源、停止采集、返还货物和再次出发仍由状态机派生，不重复记录为玩家移动命令。
 
 ## 黑盒验收
 
@@ -74,12 +74,18 @@ Idle
 
 ## 后续顺序
 
-### S11-B：经济确定性格式
+### S11-B：经济确定性格式（已完成）
 
-- Gather、Return Cargo、Build、Cancel、Train、Rally 的版本化外部命令。
-- Replay Package 初始玩家、资源节点、DropOff、建筑与生产队列清单。
-- Checkpoint/热快照保存经济与生产状态。
-- 经济场景 byte-identical 回放和首次分歧定位。
+- `EconomyCommandLogSnapshot` 以格式 1 记录成功的 Gather 和 Refinery operational 变化；未知版本、截断、非法命令和 Tick 逆序均拒绝。
+- Return Cargo、自动转矿、内部 Stop/Move 属于确定性派生状态，不进入外部命令日志，避免回放时双重执行。
+- Replay Package 升级为格式 2，初始清单保存玩家账本、资源节点、DropOff、工人注册关系和空闲工作态。
+- 每 Tick 固定执行世界命令、经济命令、单位命令，再推进模拟。
+- 持久化热快照升级为格式 2，保存进行中的工作阶段、目标节点、携带物、剩余工作时间和节点占用。
+- Checkpoint 从 Tick 0 重演经济命令；热快照直接恢复活跃采集，不重演此前 Tick。
+- `economy-replay-persistence` 在 900 Tick 验证 7 条经济命令、0 条重复派生移动、Tick 300 checkpoint 和 Tick 240 热恢复最终 Hash 精确一致。
+- 专用 AV1/WebM 录像位于 `test_videos/20260711_163809/`。
+
+Build/Cancel、Train/Rally 不做没有实体语义的占位命令；它们分别随 S11-C 建造和 S11-D 生产进入同一版本化边界。
 
 ### S11-C：建造系统
 

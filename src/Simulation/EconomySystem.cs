@@ -185,6 +185,44 @@ public sealed class PlayerEconomyStore
         }
     }
 
+    internal PlayerEconomyRuntimeEntry[] CaptureRuntimeState()
+    {
+        var result = new List<PlayerEconomyRuntimeEntry>();
+        for (var player = 0; player < MaximumPlayers; player++)
+        {
+            if (_registered[player])
+            {
+                result.Add(new PlayerEconomyRuntimeEntry(
+                    player, _minerals[player], _vespene[player],
+                    _supplyUsed[player], _supplyCapacity[player]));
+            }
+        }
+        return result.ToArray();
+    }
+
+    internal void RestoreRuntimeState(PlayerEconomyRuntimeEntry[] players)
+    {
+        Array.Clear(_registered);
+        Array.Clear(_minerals);
+        Array.Clear(_vespene);
+        Array.Clear(_supplyUsed);
+        Array.Clear(_supplyCapacity);
+        var previousId = -1;
+        for (var index = 0; index < players.Length; index++)
+        {
+            var player = players[index];
+            if (player.PlayerId <= previousId)
+            {
+                throw new InvalidOperationException(
+                    "Economy player IDs must be unique and ascending.");
+            }
+            RegisterPlayer(
+                player.PlayerId, player.Minerals, player.VespeneGas,
+                player.SupplyCapacity, player.SupplyUsed);
+            previousId = player.PlayerId;
+        }
+    }
+
     private void ValidateRegistered(int playerId)
     {
         if (!IsRegistered(playerId))
@@ -233,6 +271,45 @@ public readonly record struct WorkerEconomySnapshot(
     EconomyResourceKind CargoKind,
     int CargoAmount,
     float WorkRemaining);
+
+public readonly record struct PlayerEconomyRuntimeEntry(
+    int PlayerId, int Minerals, int VespeneGas,
+    int SupplyUsed, int SupplyCapacity);
+
+public readonly record struct EconomyResourceNodeRuntimeEntry(
+    EconomyResourceNodeId Id,
+    EconomyResourceKind Kind,
+    Vector2 Position,
+    int Remaining,
+    int HarvestBatch,
+    float HarvestSeconds,
+    int HarvesterCapacity,
+    bool RequiresRefinery,
+    bool Operational,
+    int ActiveHarvesters);
+
+public readonly record struct EconomyDropOffRuntimeEntry(
+    EconomyDropOffId Id,
+    int PlayerId,
+    Vector2 Position,
+    bool AcceptsMinerals,
+    bool AcceptsVespene);
+
+public readonly record struct WorkerEconomyRuntimeEntry(
+    int UnitId,
+    bool Registered,
+    int PlayerId,
+    WorkerEconomyState State,
+    int TargetNodeId,
+    EconomyResourceKind CargoKind,
+    int CargoAmount,
+    float WorkRemaining);
+
+public sealed record EconomyRuntimeSnapshot(
+    PlayerEconomyRuntimeEntry[] Players,
+    EconomyResourceNodeRuntimeEntry[] ResourceNodes,
+    EconomyDropOffRuntimeEntry[] DropOffs,
+    WorkerEconomyRuntimeEntry[] Workers);
 
 public sealed class EconomyOverviewSnapshot
 {
@@ -544,6 +621,112 @@ public sealed class EconomySystem
             waiting);
     }
 
+    public bool CanStartReplayRecording(int unitCount)
+    {
+        if (unitCount < 0 || unitCount > _workers.Length)
+        {
+            return false;
+        }
+        for (var unit = 0; unit < unitCount; unit++)
+        {
+            if (_workers[unit] &&
+                (_workerStates[unit] != WorkerEconomyState.Idle ||
+                 _cargoAmounts[unit] != 0 || _workRemaining[unit] != 0f))
+            {
+                return false;
+            }
+        }
+        return _nodes.All(node => node.ActiveHarvesters == 0);
+    }
+
+    public EconomyRuntimeSnapshot CaptureRuntimeState(int unitCount)
+    {
+        if (unitCount < 0 || unitCount > _workers.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(unitCount));
+        }
+        var nodes = _nodes.Select(node => new EconomyResourceNodeRuntimeEntry(
+            node.Id, node.Kind, node.Position, node.Remaining,
+            node.HarvestBatch, node.HarvestSeconds, node.HarvesterCapacity,
+            node.RequiresRefinery, node.Operational,
+            node.ActiveHarvesters)).ToArray();
+        var dropOffs = _dropOffs.Select(dropOff => new EconomyDropOffRuntimeEntry(
+            dropOff.Id, dropOff.PlayerId, dropOff.Position,
+            dropOff.AcceptsMinerals, dropOff.AcceptsVespene)).ToArray();
+        var workers = new WorkerEconomyRuntimeEntry[unitCount];
+        for (var unit = 0; unit < unitCount; unit++)
+        {
+            workers[unit] = new WorkerEconomyRuntimeEntry(
+                unit, _workers[unit], _workerPlayers[unit],
+                _workerStates[unit], _workerNodes[unit], _cargoKinds[unit],
+                _cargoAmounts[unit], _workRemaining[unit]);
+        }
+        return new EconomyRuntimeSnapshot(
+            Players.CaptureRuntimeState(), nodes, dropOffs, workers);
+    }
+
+    public void RestoreRuntimeState(EconomyRuntimeSnapshot snapshot, int unitCount)
+    {
+        if (snapshot.Workers.Length != unitCount || unitCount > _workers.Length)
+        {
+            throw new InvalidOperationException("Economy worker capacity mismatch.");
+        }
+        Players.RestoreRuntimeState(snapshot.Players);
+        _nodes.Clear();
+        for (var index = 0; index < snapshot.ResourceNodes.Length; index++)
+        {
+            var value = snapshot.ResourceNodes[index];
+            if (value.Id.Value != index)
+            {
+                throw new InvalidOperationException("Resource node IDs must be dense.");
+            }
+            _nodes.Add(new ResourceNode(
+                value.Id, value.Kind, value.Position, value.Remaining,
+                value.HarvestBatch, value.HarvestSeconds,
+                value.HarvesterCapacity, value.RequiresRefinery,
+                value.Operational)
+            {
+                ActiveHarvesters = value.ActiveHarvesters
+            });
+        }
+        _dropOffs.Clear();
+        for (var index = 0; index < snapshot.DropOffs.Length; index++)
+        {
+            var value = snapshot.DropOffs[index];
+            if (value.Id.Value != index)
+            {
+                throw new InvalidOperationException("DropOff IDs must be dense.");
+            }
+            _dropOffs.Add(new DropOff(
+                value.Id, value.PlayerId, value.Position,
+                value.AcceptsMinerals, value.AcceptsVespene));
+        }
+        Array.Clear(_workers);
+        Array.Clear(_workerPlayers);
+        Array.Clear(_workerStates);
+        Array.Fill(_workerNodes, -1);
+        Array.Clear(_cargoKinds);
+        Array.Clear(_cargoAmounts);
+        Array.Clear(_workRemaining);
+        _registeredWorkerCount = 0;
+        for (var unit = 0; unit < snapshot.Workers.Length; unit++)
+        {
+            var value = snapshot.Workers[unit];
+            if (value.UnitId != unit)
+            {
+                throw new InvalidOperationException("Worker IDs must be dense.");
+            }
+            _workers[unit] = value.Registered;
+            _workerPlayers[unit] = value.PlayerId;
+            _workerStates[unit] = value.State;
+            _workerNodes[unit] = value.TargetNodeId;
+            _cargoKinds[unit] = value.CargoKind;
+            _cargoAmounts[unit] = value.CargoAmount;
+            _workRemaining[unit] = value.WorkRemaining;
+            _registeredWorkerCount += value.Registered ? 1 : 0;
+        }
+    }
+
     internal void AppendStateHash(ref StableHash64 hash, int unitCount)
     {
         Players.AppendStateHash(ref hash);
@@ -659,6 +842,7 @@ public sealed class EconomySystem
         {
             return;
         }
+        _workRemaining[unit] = 0f;
         var node = _nodes[_workerNodes[unit]];
         var amount = Math.Min(node.HarvestBatch, node.Remaining);
         node.Remaining -= amount;

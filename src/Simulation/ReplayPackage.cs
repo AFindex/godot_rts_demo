@@ -57,7 +57,9 @@ public enum ReplayPackageValidationCode : byte
     InvalidCapacity,
     InvalidUnitManifest,
     InvalidBuildingManifest,
+    InvalidEconomyManifest,
     InvalidWorldCommand,
+    InvalidEconomyCommandLog,
     InvalidCommandLog,
     TrailingBytes,
     ResourceMismatch,
@@ -79,7 +81,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     public SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -87,7 +89,9 @@ public sealed class SimulationReplayPackageSnapshot
         ReplayResourceManifest resources,
         ReplayInitialUnit[] units,
         ReplayInitialBuilding[] buildings,
+        EconomyRuntimeSnapshot economy,
         RecordedWorldCommand[] worldCommands,
+        EconomyCommandLogSnapshot economyCommandLog,
         SimulationCommandLogSnapshot commandLog)
     {
         SimulationCapacity = simulationCapacity;
@@ -95,7 +99,9 @@ public sealed class SimulationReplayPackageSnapshot
         Resources = resources;
         Units = units;
         Buildings = buildings;
+        Economy = economy;
         WorldCommands = worldCommands;
+        EconomyCommandLog = economyCommandLog;
         CommandLog = commandLog;
         CanonicalBytes = Serialize();
         StableHash = StableHash64.Compute(CanonicalBytes);
@@ -107,7 +113,9 @@ public sealed class SimulationReplayPackageSnapshot
     public ReplayResourceManifest Resources { get; }
     public ReplayInitialUnit[] Units { get; }
     public ReplayInitialBuilding[] Buildings { get; }
+    public EconomyRuntimeSnapshot Economy { get; }
     public RecordedWorldCommand[] WorldCommands { get; }
+    public EconomyCommandLogSnapshot EconomyCommandLog { get; }
     public SimulationCommandLogSnapshot CommandLog { get; }
     public byte[] CanonicalBytes { get; }
     public ulong StableHash { get; }
@@ -212,6 +220,18 @@ public sealed class SimulationReplayPackageSnapshot
                 }
             }
 
+            EconomyRuntimeSnapshot economy;
+            try
+            {
+                economy = RuntimeHotSnapshotCodec.ReadEconomy(reader, unitCount);
+            }
+            catch (InvalidDataException)
+            {
+                validation = new ReplayPackageValidationResult(
+                    ReplayPackageValidationCode.InvalidEconomyManifest);
+                return false;
+            }
+
             var worldCommandCount = ReadCount(reader);
             if (worldCommandCount < 0)
             {
@@ -235,6 +255,23 @@ public sealed class SimulationReplayPackageSnapshot
                     return false;
                 }
                 previousTick = worldCommands[index].Tick;
+            }
+
+            var economyLogBytes = ReadCount(reader);
+            if (economyLogBytes < 0 ||
+                economyLogBytes > stream.Length - stream.Position)
+            {
+                validation = new ReplayPackageValidationResult(
+                    ReplayPackageValidationCode.InvalidEconomyCommandLog);
+                return false;
+            }
+            var economyPayload = reader.ReadBytes(economyLogBytes);
+            if (!EconomyCommandLogSnapshot.TryDeserialize(
+                    economyPayload, out var economyLog, out _))
+            {
+                validation = new ReplayPackageValidationResult(
+                    ReplayPackageValidationCode.InvalidEconomyCommandLog);
+                return false;
             }
 
             var commandLogBytes = ReadCount(reader);
@@ -265,7 +302,9 @@ public sealed class SimulationReplayPackageSnapshot
                 resources,
                 units,
                 buildings,
+                economy,
                 worldCommands,
+                economyLog!,
                 commandLog!);
             validation = new ReplayPackageValidationResult(
                 ReplayPackageValidationCode.Success);
@@ -304,11 +343,15 @@ public sealed class SimulationReplayPackageSnapshot
         {
             WriteBuilding(writer, Buildings[index]);
         }
+        RuntimeHotSnapshotCodec.WriteEconomy(
+            writer, Economy, Units.Length);
         writer.Write(WorldCommands.Length);
         for (var index = 0; index < WorldCommands.Length; index++)
         {
             WriteWorldCommand(writer, WorldCommands[index]);
         }
+        writer.Write(EconomyCommandLog.CanonicalBytes.Length);
+        writer.Write(EconomyCommandLog.CanonicalBytes);
         writer.Write(CommandLog.CanonicalBytes.Length);
         writer.Write(CommandLog.CanonicalBytes);
         writer.Flush();
@@ -456,6 +499,7 @@ public sealed class SimulationReplayPackageRecorder
     private readonly ReplayResourceManifest _resources;
     private readonly ReplayInitialUnit[] _units;
     private readonly ReplayInitialBuilding[] _buildings;
+    private readonly EconomyRuntimeSnapshot _economy;
     private readonly List<RecordedWorldCommand> _worldCommands = [];
 
     public SimulationReplayPackageRecorder(
@@ -471,6 +515,8 @@ public sealed class SimulationReplayPackageRecorder
         _initialStateHash = simulation.ComputeStateHash();
         _resources = resources;
         _units = CaptureUnits(simulation);
+        _economy = simulation.Economy.CaptureRuntimeState(
+            simulation.Units.Count);
         _buildings = simulation.World.DynamicOccupancy.Snapshot()
             .Select(value => new ReplayInitialBuilding(
                 value.Id, value.Bounds, value.PlacedRevision))
@@ -495,13 +541,16 @@ public sealed class SimulationReplayPackageRecorder
             tick, ReplayWorldCommandKind.RemoveBuilding, id, bounds));
 
     public SimulationReplayPackageSnapshot Capture(
-        SimulationCommandLogSnapshot commandLog) => new(
+        SimulationCommandLogSnapshot commandLog,
+        EconomyCommandLogSnapshot economyCommandLog) => new(
         _capacity,
         _initialStateHash,
         _resources,
         _units.ToArray(),
         _buildings.ToArray(),
+        _economy,
         _worldCommands.ToArray(),
+        economyCommandLog,
         commandLog);
 
     private static ReplayInitialUnit[] CaptureUnits(RtsSimulation simulation)
@@ -588,6 +637,18 @@ public static class SimulationReplayPackageFactory
                 throw new InvalidOperationException("Unit IDs are not dense.");
             }
         }
+        try
+        {
+            simulation.Economy.RestoreRuntimeState(
+                package.Economy, simulation.Units.Count);
+        }
+        catch (InvalidOperationException)
+        {
+            simulation = null;
+            validation = new ReplayPackageValidationResult(
+                ReplayPackageValidationCode.InvalidEconomyManifest);
+            return false;
+        }
         if (simulation.ComputeStateHash() != package.InitialStateHash)
         {
             simulation = null;
@@ -606,16 +667,19 @@ public sealed class SimulationReplayPackageRunner
 {
     private readonly SimulationReplayPackageSnapshot _package;
     private readonly SimulationCommandReplay _commands;
+    private readonly EconomyCommandReplay _economyCommands;
     private int _worldCursor;
 
     public SimulationReplayPackageRunner(SimulationReplayPackageSnapshot package)
     {
         _package = package;
         _commands = new SimulationCommandReplay(package.CommandLog);
+        _economyCommands = new EconomyCommandReplay(package.EconomyCommandLog);
     }
 
     public bool Completed =>
-        _worldCursor >= _package.WorldCommands.Length && _commands.Completed;
+        _worldCursor >= _package.WorldCommands.Length &&
+        _economyCommands.Completed && _commands.Completed;
 
     internal void SeekToTick(long tick)
     {
@@ -626,6 +690,7 @@ public sealed class SimulationReplayPackageRunner
             _worldCursor++;
         }
         _commands.SeekToTick(tick);
+        _economyCommands.SeekToTick(tick);
     }
 
     public void ApplyForCurrentTick(RtsSimulation simulation)
@@ -641,6 +706,7 @@ public sealed class SimulationReplayPackageRunner
             ApplyWorldCommand(simulation, _package.WorldCommands[_worldCursor]);
             _worldCursor++;
         }
+        _economyCommands.ApplyForCurrentTick(simulation);
         _commands.ApplyForCurrentTick(simulation);
     }
 

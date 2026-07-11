@@ -25,6 +25,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteDynamic(writer, state.DynamicOccupancy);
         WriteUnits(writer, state.Units);
         WriteCombat(writer, state.Combat, state.Units.Count);
+        WriteEconomy(writer, state.Economy, state.Units.Count);
         WriteQueues(writer, state.CommandQueues, state.Units.Count);
         WriteChoke(writer, state.ChokeTraffic);
         WritePrivate(writer, state.PrivateState);
@@ -78,6 +79,7 @@ internal static class RuntimeHotSnapshotCodec
             var dynamic = ReadDynamic(reader);
             var units = ReadUnits(reader, capacity);
             var combat = ReadCombat(reader, capacity, units.Count);
+            var economy = ReadEconomy(reader, units.Count);
             var queues = ReadQueues(reader, capacity, units.Count);
             var choke = ReadChoke(reader);
             var privateState = ReadPrivate(reader);
@@ -93,6 +95,7 @@ internal static class RuntimeHotSnapshotCodec
                 DynamicOccupancy = dynamic,
                 Units = units,
                 Combat = combat,
+                Economy = economy,
                 CommandQueues = queues,
                 ChokeTraffic = choke,
                 PrivateState = privateState
@@ -350,6 +353,166 @@ internal static class RuntimeHotSnapshotCodec
         return combat;
     }
 
+    internal static void WriteEconomy(
+        BinaryWriter writer,
+        EconomyRuntimeSnapshot economy,
+        int unitCount)
+    {
+        writer.Write(economy.Players.Length);
+        foreach (var player in economy.Players)
+        {
+            writer.Write(player.PlayerId);
+            writer.Write(player.Minerals);
+            writer.Write(player.VespeneGas);
+            writer.Write(player.SupplyUsed);
+            writer.Write(player.SupplyCapacity);
+        }
+        writer.Write(economy.ResourceNodes.Length);
+        foreach (var node in economy.ResourceNodes)
+        {
+            writer.Write(node.Id.Value);
+            writer.Write((byte)node.Kind);
+            WriteVector(writer, node.Position);
+            writer.Write(node.Remaining);
+            writer.Write(node.HarvestBatch);
+            writer.Write(node.HarvestSeconds);
+            writer.Write(node.HarvesterCapacity);
+            writer.Write(node.RequiresRefinery);
+            writer.Write(node.Operational);
+            writer.Write(node.ActiveHarvesters);
+        }
+        writer.Write(economy.DropOffs.Length);
+        foreach (var dropOff in economy.DropOffs)
+        {
+            writer.Write(dropOff.Id.Value);
+            writer.Write(dropOff.PlayerId);
+            WriteVector(writer, dropOff.Position);
+            writer.Write(dropOff.AcceptsMinerals);
+            writer.Write(dropOff.AcceptsVespene);
+        }
+        if (economy.Workers.Length != unitCount)
+        {
+            throw new InvalidOperationException("Economy worker count mismatch.");
+        }
+        writer.Write(economy.Workers.Length);
+        foreach (var worker in economy.Workers)
+        {
+            writer.Write(worker.UnitId);
+            writer.Write(worker.Registered);
+            writer.Write(worker.PlayerId);
+            writer.Write((byte)worker.State);
+            writer.Write(worker.TargetNodeId);
+            writer.Write((byte)worker.CargoKind);
+            writer.Write(worker.CargoAmount);
+            writer.Write(worker.WorkRemaining);
+        }
+    }
+
+    internal static EconomyRuntimeSnapshot ReadEconomy(
+        BinaryReader reader,
+        int unitCount)
+    {
+        var playerCount = ReadCount(reader, 16);
+        var players = new PlayerEconomyRuntimeEntry[playerCount];
+        var previousPlayer = -1;
+        for (var index = 0; index < playerCount; index++)
+        {
+            var value = new PlayerEconomyRuntimeEntry(
+                reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(),
+                reader.ReadInt32(), reader.ReadInt32());
+            if (value.PlayerId <= previousPlayer || value.Minerals < 0 ||
+                value.VespeneGas < 0 || value.SupplyUsed < 0 ||
+                value.SupplyCapacity < value.SupplyUsed)
+            {
+                throw new InvalidDataException();
+            }
+            players[index] = value;
+            previousPlayer = value.PlayerId;
+        }
+        var nodeCount = ReadCount(reader, MaximumCapacity);
+        var nodes = new EconomyResourceNodeRuntimeEntry[nodeCount];
+        for (var index = 0; index < nodeCount; index++)
+        {
+            var value = new EconomyResourceNodeRuntimeEntry(
+                new EconomyResourceNodeId(reader.ReadInt32()),
+                (EconomyResourceKind)reader.ReadByte(),
+                ReadVector(reader),
+                reader.ReadInt32(),
+                reader.ReadInt32(),
+                reader.ReadSingle(),
+                reader.ReadInt32(),
+                reader.ReadBoolean(),
+                reader.ReadBoolean(),
+                reader.ReadInt32());
+            if (value.Id.Value != index || !Enum.IsDefined(value.Kind) ||
+                !Finite(value.Position) || value.Remaining < 0 ||
+                value.HarvestBatch <= 0 || !Positive(value.HarvestSeconds) ||
+                value.HarvesterCapacity <= 0 || value.ActiveHarvesters < 0 ||
+                value.ActiveHarvesters > value.HarvesterCapacity)
+            {
+                throw new InvalidDataException();
+            }
+            nodes[index] = value;
+        }
+        var dropOffCount = ReadCount(reader, MaximumCapacity);
+        var dropOffs = new EconomyDropOffRuntimeEntry[dropOffCount];
+        for (var index = 0; index < dropOffCount; index++)
+        {
+            var value = new EconomyDropOffRuntimeEntry(
+                new EconomyDropOffId(reader.ReadInt32()),
+                reader.ReadInt32(), ReadVector(reader),
+                reader.ReadBoolean(), reader.ReadBoolean());
+            if (value.Id.Value != index || !Finite(value.Position) ||
+                !players.Any(player => player.PlayerId == value.PlayerId) ||
+                !value.AcceptsMinerals && !value.AcceptsVespene)
+            {
+                throw new InvalidDataException();
+            }
+            dropOffs[index] = value;
+        }
+        var workerCount = ReadCount(reader, MaximumCapacity);
+        if (workerCount != unitCount)
+        {
+            throw new InvalidDataException();
+        }
+        var workers = new WorkerEconomyRuntimeEntry[workerCount];
+        var gatheringCounts = new int[nodeCount];
+        for (var unit = 0; unit < workerCount; unit++)
+        {
+            var value = new WorkerEconomyRuntimeEntry(
+                reader.ReadInt32(), reader.ReadBoolean(), reader.ReadInt32(),
+                (WorkerEconomyState)reader.ReadByte(), reader.ReadInt32(),
+                (EconomyResourceKind)reader.ReadByte(), reader.ReadInt32(),
+                reader.ReadSingle());
+            if (value.UnitId != unit || !Enum.IsDefined(value.State) ||
+                !Enum.IsDefined(value.CargoKind) || value.CargoAmount < 0 ||
+                !float.IsFinite(value.WorkRemaining) || value.WorkRemaining < 0f ||
+                value.Registered &&
+                    !players.Any(player => player.PlayerId == value.PlayerId) ||
+                value.TargetNodeId < -1 || value.TargetNodeId >= nodeCount)
+            {
+                throw new InvalidDataException();
+            }
+            if (value.State == WorkerEconomyState.Gathering)
+            {
+                if (value.TargetNodeId < 0)
+                {
+                    throw new InvalidDataException();
+                }
+                gatheringCounts[value.TargetNodeId]++;
+            }
+            workers[unit] = value;
+        }
+        for (var node = 0; node < nodeCount; node++)
+        {
+            if (gatheringCounts[node] != nodes[node].ActiveHarvesters)
+            {
+                throw new InvalidDataException();
+            }
+        }
+        return new EconomyRuntimeSnapshot(players, nodes, dropOffs, workers);
+    }
+
     private static void WriteQueues(
         BinaryWriter writer, UnitCommandQueueStore queues, int count)
     {
@@ -574,4 +737,10 @@ internal static class RuntimeHotSnapshotCodec
 
     private static Vector2 ReadVector(BinaryReader reader) =>
         new(reader.ReadSingle(), reader.ReadSingle());
+
+    private static bool Finite(Vector2 value) =>
+        float.IsFinite(value.X) && float.IsFinite(value.Y);
+
+    private static bool Positive(float value) =>
+        float.IsFinite(value) && value > 0f;
 }

@@ -66,16 +66,17 @@ Tick + OrderKind + Queued + TargetX + TargetY + UnitCount + sorted UnitIds
 
 基准对 Hash 设置独立门槛，避免后续扩大状态覆盖时悄然引入不可接受的诊断成本。
 
-## 6. Replay Package v1
+## 6. Replay Package v2
 
 Replay Package 在命令日志之外保存：
 
 - Navigation、Gameplay Profile、Clearance Bake 的格式版本与稳定 Hash。
 - 模拟容量、初始状态 Hash、稳定顺序的单位完整移动/战斗配置。
 - 初始动态建筑 ID、Bounds 和放置 revision。
-- 后续建筑放置/移除世界命令，以及既有单位命令日志。
+- 初始玩家账本、资源节点、DropOff、工人注册关系与初始工作状态。
+- 后续建筑放置/移除世界命令、经济命令日志和既有单位命令日志。
 
-重建时先严格匹配三类资源身份，再按清单创建建筑和单位，并要求初始状态 Hash 完全一致。每个 Tick 固定先应用世界命令、再应用单位命令，消除两类输入之间的隐式顺序。
+重建时先严格匹配三类资源身份，再按清单创建建筑、单位和经济状态，并要求初始状态 Hash 完全一致。每个 Tick 固定应用世界命令、经济命令、单位命令，然后推进模拟，消除输入域之间的隐式顺序。
 
 录制必须在 Tick 0、首条玩法命令之前启动。初始动态建筑允许先完成一轮连续放置，但不能在启动录制前先移除并留下 ID/revision 空洞；这种输入会明确拒绝，而不是生成无法精确重建的包。
 
@@ -93,7 +94,7 @@ Checkpoint 会记录状态 Hash 格式版本，因此 v1 checkpoint 不会被误
 
 这一层固定了不泄漏内部 SoA 数组的上层契约，但恢复成本仍是 O(checkpoint Tick)，不是直接内存快照。
 
-## 8. 热快照 v1
+## 8. 热快照 v2
 
 热快照在 Tick 240 深拷贝当前运行态，并在恢复时直接写回新模拟实例，不执行 Tick 0～239。当前覆盖：
 
@@ -101,24 +102,25 @@ Checkpoint 会记录状态 Hash 格式版本，因此 v1 checkpoint 不会被误
 - Combat SoA 的生命、目标、AttackMove 意图、攻击槽、前摇与冷却。
 - 活动命令、Shift 队列环形缓冲、完成/溢出计数和稳定序列号。
 - 动态建筑 revision、next ID 和全部 footprint。
+- 玩家账本、资源节点余量/占用、DropOff，以及工人的工作阶段、目标、货物和计时。
 - 狭口私有交通租约与诊断快照。
 - 路径预算、移动组/命令序列号、动态失效计数和待处理路径请求。
 
-恢复后根据 snapshot Tick 直接定位 Replay Package 的世界命令和单位命令游标，再继续运行。验收场景在快照时同时存在 AttackMove 接敌、未消费 Shift 命令、活动路径、动态建筑和狭口状态；恢复至 Tick 720 后的 17 个采样与连续运行全部一致，最终状态为 `5BCD03A0F9452F82`。
+恢复后根据 snapshot Tick 直接定位 Replay Package 的世界、经济和单位命令游标，再继续运行。原战斗验收仍覆盖 AttackMove 接敌、未消费 Shift 命令、活动路径、动态建筑和狭口状态；新增经济验收在 Tick 240 的活跃采集循环中直接恢复，到 Tick 900 与连续运行完全一致。
 
-## 9. 持久化热快照格式 v1
+## 9. 持久化热快照格式 v2
 
-热快照现在生成 3,646 字节规范载荷，快照 Hash 为 `E1BF8DB843B3C0A7`。头部绑定快照格式、状态 Hash 格式、Package Hash、Tick、声明状态 Hash 和模拟容量；正文按逻辑状态保存 Unit、Combat、Queue、World、Choke 和私有请求数据。
+头部绑定快照格式、状态 Hash 格式、Package Hash、Tick、声明状态 Hash 和模拟容量；正文按逻辑状态保存 Unit、Combat、Economy、Queue、World、Choke 和私有请求数据。当前战斗场景载荷为 3,869 字节，6 工人经济场景载荷为 2,627 字节；大小随实体与路径状态变化，不作为协议常量。
 
 Shift 队列按执行顺序编码，反序列化时可重建为新的物理环形布局，因此持久化格式不依赖 `_heads` 或底层数组排列。路径和高层路线使用有界点数，容量、单位数、建筑数、狭口数和待处理请求均有读取上限。
 
 同一快照 round-trip 后生成相同规范字节，并能直接恢复。未知格式、旧状态 Hash 版本、截断载荷、尾部多余数据、结构非法正文、Package 不匹配和正文单字节篡改都会被拒绝。`CanonicalBytes` 可由上层直接写入文件或网络存储，模拟层不绑定具体文件系统 API。
 
-## 10. 明确未完成项
+## 10. 经济命令边界与未完成项
 
-状态 Hash v3 已覆盖玩家经济账本、资源节点、DropOff、工人工作阶段、目标节点、携带量和采集计时，因此同一进程内可以定位经济状态分歧。
+`EconomyCommandLogSnapshot` 格式 1 只记录外部玩家意图：Gather 与 Refinery operational 变化。Return Cargo、自动转矿和内部 Move/Stop 是确定性派生状态，不重复写入单位命令日志。这样回放不会把一次 Gather 展开成两次移动命令。
 
-Replay Package、命令日志和热快照正文仍是经济加入前的格式，尚未保存 Gather 命令、初始玩家/资源节点和工作状态。活动经济局会明确拒绝开始旧格式录制或捕获热快照，避免生成遗漏未来态的不完整数据。S11-B 将以真实经济字段扩展这些格式并重新建立 round-trip 基线。
+Replay Package v2 与热快照 v2 已保存当前全部经济未来态。尚未完成的是建造与生产实体，因此 Build/Cancel、Train/Rally 将分别在 S11-C/S11-D 拥有正式业务语义时加入，而不是先放无行为的占位命令。
 
 当前仍只承诺相同运行时精确确定性，不承诺跨 CPU/.NET/平台 Lockstep。服务端权威和表现插值留到真正进入联机阶段再决策。
 
@@ -142,6 +144,9 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
   --headless --path . -- --visual-test replay-hot-snapshot
+
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --visual-test economy-replay-persistence
 ```
 
-状态 Hash v2 规范录像位于 `test_videos/20260711_113402/`、`test_videos/20260711_113232/` 和 `test_videos/20260711_115954/`；这些现在是经济加入前的历史基线。当前 Hash v3 由 67 项全量回归覆盖，S11-B 完成经济 Replay/快照格式后再生成专用确定性录像。
+状态 Hash v2 规范录像位于 `test_videos/20260711_113402/`、`test_videos/20260711_113232/` 和 `test_videos/20260711_115954/`；这些是经济加入前的历史基线。当前 Hash v3 与经济格式 v2 由 68 项全量回归覆盖，专用录像位于 `test_videos/20260711_163809/`。

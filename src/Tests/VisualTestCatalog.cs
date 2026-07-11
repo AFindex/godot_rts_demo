@@ -33,6 +33,7 @@ public static class VisualTestCatalog
         "replay-checkpoint-resume",
         "replay-checkpoint-choke",
         "replay-hot-snapshot",
+        "economy-replay-persistence",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -112,6 +113,8 @@ public static class VisualTestCatalog
         "replay-checkpoint-choke" => CreateReplayCheckpointChoke(
             navigationMap, gameplayProfiles, clearanceBake),
         "replay-hot-snapshot" => CreateReplayHotSnapshot(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "economy-replay-persistence" => CreateEconomyReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
@@ -1077,7 +1080,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 1 &&
+                    exact && rejected && hot.FormatVersion == 2 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1093,6 +1096,115 @@ public static class VisualTestCatalog
             runtime.RemoveBuilding(dynamicBuilding));
         return session.At(360, "Issue post-snapshot command", runtime =>
             runtime.Move(units.Take(4).ToArray(), new Vector2(1110f, 530f)));
+    }
+
+    private static VisualTestSession CreateEconomyReplayPersistence(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            24, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 300, 0, 15, 6);
+        rig.AddResourceDropOff(1, new Vector2(170f, 350f));
+        var mineralA = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(430f, 250f), 240, 5, 0.4f, 2);
+        var mineralB = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(475f, 390f), 240, 5, 0.4f, 2);
+        var gas = rig.AddResourceNode(
+            TestEconomyResourceKind.VespeneGas,
+            new Vector2(470f, 520f), 240, 4, 0.5f, 3,
+            requiresRefinery: true,
+            operational: false);
+        var workers = new TestUnitId[6];
+        for (var index = 0; index < workers.Length; index++)
+        {
+            workers[index] = rig.SpawnWorker(
+                new Vector2(115f + index * 17f, 315f + index % 2 * 28f), 1);
+        }
+
+        rig.StartReplayPackageRecording();
+        rig.Gather(1, workers[0], mineralA);
+        rig.Gather(1, workers[1], mineralA);
+        rig.Gather(1, workers[2], mineralB);
+        rig.Gather(1, workers[3], mineralB);
+
+        const long hotTick = 240;
+        const long checkpointTick = 300;
+        TestRuntimeStateCapture? runtimeCapture = null;
+        var checkpointStateHash = 0UL;
+        var session = new VisualTestSession(
+            "economy-replay-persistence",
+            "Economy command log, replay, checkpoint and active-loop hot restore",
+            900,
+            rig,
+            workers,
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var economyLog = runtime.CaptureEconomyCommandLog();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var logRoundTrip = economyLog.TryCanonicalRoundTrip(out var decodedLog);
+                var baseline = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var checkpoint = runtime.CreateReplayCheckpoint(
+                    package, checkpointTick, checkpointStateHash);
+                var resumed = runtime.ResumeReplayPackage(
+                    package, checkpoint, runtime.Tick);
+                var hot = runtime.BindHotSnapshot(package, runtimeCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var hotResumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = baseline.FinalHash == runtime.StateHash &&
+                            baseline.MatchesFrom(resumed, checkpointTick) &&
+                            baseline.MatchesFrom(hotResumed, hotTick) &&
+                            resumed.FinalHash == runtime.StateHash &&
+                            hotResumed.FinalHash == runtime.StateHash;
+                var rejected = economyLog.RejectsUnsupportedVersion() &&
+                               economyLog.RejectsTruncatedPayload() &&
+                               package.RejectsUnsupportedVersion() &&
+                               package.RejectsTruncatedPayload() &&
+                               hot.RejectsUnsupportedVersion() &&
+                               hot.RejectsTruncatedPayload();
+                var economy = runtime.ObservePlayerEconomy(1);
+                var resourcesFlowed = economy.Minerals > 300 &&
+                                      economy.VespeneGas > 0;
+                var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
+                             decodedLog!.StableHash == economyLog.StableHash &&
+                             package.FormatVersion == 2 && hot.FormatVersion == 2 &&
+                             package.EconomyCommandCount == 7 &&
+                             package.UnitCommandCount == 0 &&
+                             exact && rejected && resourcesFlowed;
+                return new ScenarioResult(
+                    passed,
+                    $"economyOrders={package.EconomyCommandCount}, " +
+                    $"derivedMoves={package.UnitCommandCount}, " +
+                    $"resources={economy.Minerals}/{economy.VespeneGas}, " +
+                    $"hot={hot.CanonicalByteCount}B@{hot.Tick}, " +
+                    $"exact={exact}, rejected={rejected}");
+            });
+        session.At(90, "Complete refinery and assign gas workers", runtime =>
+        {
+            runtime.SetRefineryOperational(gas, true);
+            runtime.Gather(1, workers[4], gas);
+            runtime.Gather(1, workers[5], gas);
+        });
+        session.At(hotTick, "Capture workers inside active gather loop", runtime =>
+            runtimeCapture = runtime.CaptureRuntimeState());
+        session.At(checkpointTick, "Capture deterministic replay checkpoint", runtime =>
+            checkpointStateHash = runtime.StateHash);
+        return session
+            .Highlight(
+                new SimRect(new Vector2(395f, 210f), new Vector2(515f, 425f)),
+                "MINERAL LOOP: replayed from player Gather intent",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(425f, 475f), new Vector2(515f, 565f)),
+                "REFINERY: operational transition is recorded",
+                TestDiagnosticKind.Accepted);
     }
 
     private static VisualTestSession BuildReplaySession(

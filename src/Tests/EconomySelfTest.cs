@@ -113,8 +113,7 @@ public static class EconomySelfTest
             refineryRequired == TestGatherCommandCode.RefineryRequired &&
             wrongOwner == TestGatherCommandCode.WrongOwner &&
             gatherBeforeCancel == TestGatherCommandCode.Success && cancelled &&
-            commands.All(value => value == TestGatherCommandCode.Success) &&
-            rig.RejectsLegacyPersistenceForActiveEconomy();
+            commands.All(value => value == TestGatherCommandCode.Success);
 
         return new EconomyScenarioFixture(
             rig,
