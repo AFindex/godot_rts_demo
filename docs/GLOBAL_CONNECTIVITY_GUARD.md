@@ -52,7 +52,7 @@ StaticWorld
 - 候选分析只在低频建筑放置时运行，不进入 60Hz 单位模拟 Tick。
 - 正常寻路继续复用按 revision 缓存的 Snapshot，没有新增每 Tick 分配。
 
-静态 revision 的基线可以直接来自 Clearance Bake；动态 revision 则回退 Analyzer。当前 1000 单位基准为平均 8.45ms、P95 11.75ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
+静态 revision 的基线可以直接来自 Clearance Bake；动态 revision 则回退 Analyzer。当前 1000 单位基准为平均 7.99ms、P95 9.78ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
 
 ## 验收与录像
 
@@ -68,4 +68,4 @@ StaticWorld
 - Bake 已提供 16×16-cell chunk 描述和区域到 chunk 的映射；单 revision 已局部重采样 walkability，但 component 重标号仍是全图执行。
 - 尚未把 Portal/Sector 图与 Grid 分量做双向一致性诊断。
 
-下一阶段若继续拓扑性能方向，应维护跨 chunk 的 component 边界图；否则优先进入文件监听或实际玩法，不再扩张诊断 UI。
+若后续地图规模证明全图 component 重标号成为瓶颈，再维护跨 chunk 边界图；当前转入实际玩法，不再扩张诊断 UI。

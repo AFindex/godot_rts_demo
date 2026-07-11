@@ -1,0 +1,13 @@
+Godot Engine v4.7.stable.mono.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 595.95 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 2060 SUPER
+
+Movie Maker mode enabled, recording movie in 1280×720 @ 30 FPS...
+RTS_NAVIGATION_RESOURCE PASS path=res://data/demo_navigation_map.tres format=1 hash=B8441F9F1544B950
+RTS_GAMEPLAY_PROFILES PASS path=res://data/demo_gameplay_profiles.tres format=1 hash=5A0A6FD9EA3985BF units=3 buildings=4
+RTS_CLEARANCE_BAKE PASS path=res://data/demo_clearance_bake.tres format=1 hash=A1BCA2BD6C885350 source=B8441F9F1544B950 grid=77x40 chunks=5x3
+RTS_RESOURCE_WATCH state=Idle changes=None notices=0 attempt=0 impact=None commit= replanned=0 message=Watching Navigation / Profiles / Clearance Bake
+RTS_VISUAL_TEST_START resource-file-watch-workflow: ticks=900, units=8
+RTS_RESOURCE_WATCH state=Debouncing changes=ClearanceBake notices=2 attempt=0 impact=None commit= replanned=0 message=Waiting for the resource write burst to settle
+RTS_RESOURCE_WATCH state=Loading changes=ClearanceBake notices=2 attempt=1 impact=None commit= replanned=0 message=Fresh-loading the complete resource set
+RTS_RESOURCE_WATCH state=Applied changes=ClearanceBake notices=2 attempt=1 impact=RefreshPathingCaches commit=Success replanned=8 message=Bake-only update committed; replanned 8 units
+RTS_VISUAL_TEST_PASS resource-file-watch-workflow: ticks=900, coalesced=3, changes=Navigation, ClearanceBake, retry=2, terminal=True, arrived=8/8, overlap=0.00, finite=True, inside=True, revision=0, buildings=0, moving=0, unreachable=0, maxDistance=3.5, watcher=Applied, reloads=1, replanned=8

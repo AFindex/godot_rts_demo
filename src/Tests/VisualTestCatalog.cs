@@ -55,6 +55,7 @@ public static class VisualTestCatalog
         "clearance-incremental-chunks",
         "resource-hot-reload",
         "clearance-bake-live-commit",
+        "resource-file-watch-workflow",
         "building-connectivity-diff-preview",
         "shared-target-reservations",
         "stop-command",
@@ -144,6 +145,8 @@ public static class VisualTestCatalog
             clearanceBake,
             hotReloadCandidate),
         "clearance-bake-live-commit" => CreateClearanceBakeLiveCommit(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "resource-file-watch-workflow" => CreateResourceFileWatchWorkflow(
             navigationMap, gameplayProfiles, clearanceBake),
         "building-connectivity-diff-preview" =>
             CreateBuildingConnectivityDiffPreview(),
@@ -1953,6 +1956,35 @@ public static class VisualTestCatalog
                 BuildingConnectivityDiffSelfTest.BlockingFootprint,
                 "REJECT: splits Small / Medium / Large",
                 TestDiagnosticKind.Rejected);
+    }
+
+    private static VisualTestSession CreateResourceFileWatchWorkflow(
+        NavigationMapSnapshot? navigation,
+        GameplayProfileCatalogSnapshot? profiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigation ??= DemoMapDefinition.CreateSnapshot();
+        profiles ??= DemoGameplayProfiles.CreateSnapshot();
+        clearanceBake ??= ClearanceBakeSnapshot.Build(navigation);
+        var rig = MovementTestRig.CreateBakeReloadMap(
+            32, navigation, profiles, clearanceBake);
+        var units = rig.SpawnGrid(new Vector2(100f, 300f), 2, 4, 22f);
+        rig.Move(units, new Vector2(1160f, 353f));
+        return new VisualTestSession(
+            "resource-file-watch-workflow",
+            "Debounced file watch and safe Bake-only auto commit",
+            900,
+            rig,
+            units,
+            runtime =>
+            {
+                var workflow = ResourceReloadWorkflowSelfTest.Run();
+                var arrival = EvaluateArrival(
+                    runtime, units, units.Length, 14f, 1f, 0, 0);
+                return new ScenarioResult(
+                    workflow.Passed && arrival.Passed,
+                    $"{workflow.Summary}, {arrival.Summary}");
+            });
     }
 
     private static VisualTestSession CreateStopCommand()

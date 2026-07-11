@@ -26,12 +26,13 @@ public static class SimulationSelfTest
             var bakeCommitResult = ClearanceBakeCommitSelfTest.Run(
                 navigationMap, gameplayProfiles, clearanceBake);
             var placementDiffResult = BuildingConnectivityDiffSelfTest.Run();
+            var watchWorkflowResult = ResourceReloadWorkflowSelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
                          reloadResult.Passed && bakeCommitResult.Passed;
-            passed &= placementDiffResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 9)
+            passed &= placementDiffResult.Passed && watchWorkflowResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 10)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -54,7 +55,10 @@ public static class SimulationSelfTest
                 $"({bakeCommitResult.Summary})",
                 $"building-connectivity-diff=" +
                 $"{(placementDiffResult.Passed ? "PASS" : "FAIL")}" +
-                $"({placementDiffResult.Summary})"
+                $"({placementDiffResult.Summary})",
+                $"resource-watch-workflow=" +
+                $"{(watchWorkflowResult.Passed ? "PASS" : "FAIL")}" +
+                $"({watchWorkflowResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

@@ -25,6 +25,9 @@ public partial class RtsDemo : Node2D
 
     [Export]
     public RtsClearanceBakeResource? ClearanceBakeAsset { get; set; }
+
+    [Export]
+    public bool EnableResourceFileWatcher { get; set; } = true;
     private readonly HashSet<int> _selectedUnits = new();
     private StaticWorld? _world;
     private GodotPathProvider? _pathProvider;
@@ -65,6 +68,10 @@ public partial class RtsDemo : Node2D
     private RtsResourceReloadControl? _resourceReloadControl;
     private BuildingConnectivityDiffSnapshot? _buildingConnectivityDiff;
     private RtsBuildingConnectivityDiffControl? _buildingConnectivityDiffControl;
+    private RuntimeResourceFileWatcher? _resourceFileWatcher;
+    private ResourceReloadWorkflowSnapshot _resourceWatchStatus =
+        ResourceReloadWorkflowSnapshot.Idle;
+    private RtsResourceWatchControl? _resourceWatchControl;
 
     public override async void _Ready()
     {
@@ -211,6 +218,8 @@ public partial class RtsDemo : Node2D
             groupRoutePlanner: _routePlanner,
             chokeController: _chokeController,
             clearanceBake: _clearanceBake);
+        InitializeResourceFileWatcher(enableFileSystemWatchers:
+            EnableResourceFileWatcher);
         InitializeOperationState();
         InitializeCamera();
         CreateHud();
@@ -238,6 +247,7 @@ public partial class RtsDemo : Node2D
 
     public override void _ExitTree()
     {
+        _resourceFileWatcher?.Stop();
         _pathProvider?.Dispose();
     }
 
@@ -266,10 +276,23 @@ public partial class RtsDemo : Node2D
             _navigationReady = false;
             _visualTestFinishFrames = 2;
             var result = _visualTest.Evaluate();
-            _visualTestExitCode = result.Passed ? 0 : 1;
+            var passed = result.Passed;
+            var summary = result.Summary;
+            if (_visualTest.Id == "resource-file-watch-workflow")
+            {
+                var watcherPassed =
+                    _resourceWatchStatus.State ==
+                        ResourceReloadWorkflowState.Applied &&
+                    _simulation.Metrics.ClearanceBakeReloads == 1;
+                passed &= watcherPassed;
+                summary += $", watcher={_resourceWatchStatus.State}, " +
+                           $"reloads={_simulation.Metrics.ClearanceBakeReloads}, " +
+                           $"replanned={_resourceWatchStatus.ReplannedUnits}";
+            }
+            _visualTestExitCode = passed ? 0 : 1;
             GD.Print(
-                $"RTS_VISUAL_TEST_{(result.Passed ? "PASS" : "FAIL")} {_visualTest.Id}: " +
-                $"ticks={_simulation.Metrics.Tick}, {result.Summary}");
+                $"RTS_VISUAL_TEST_{(passed ? "PASS" : "FAIL")} {_visualTest.Id}: " +
+                $"ticks={_simulation.Metrics.Tick}, {summary}");
         }
     }
 
@@ -1062,6 +1085,15 @@ public partial class RtsDemo : Node2D
                 _buildingConnectivityDiff);
             _hudRoot.AddChild(_buildingConnectivityDiffControl);
         }
+        if (_visualTest?.Id == "resource-file-watch-workflow")
+        {
+            _resourceWatchControl = new RtsResourceWatchControl
+            {
+                Size = new Vector2(720f, 190f)
+            };
+            _resourceWatchControl.SetSnapshot(_resourceWatchStatus);
+            _hudRoot.AddChild(_resourceWatchControl);
+        }
         UpdateHudLayout();
     }
 
@@ -1091,6 +1123,12 @@ public partial class RtsDemo : Node2D
             _buildingConnectivityDiffControl.Position = new Vector2(
                 24f,
                 viewportSize.Y - _buildingConnectivityDiffControl.Size.Y - 20f);
+        }
+        if (_resourceWatchControl is not null)
+        {
+            _resourceWatchControl.Position = new Vector2(
+                24f,
+                viewportSize.Y - _resourceWatchControl.Size.Y - 20f);
         }
     }
 
@@ -1283,6 +1321,16 @@ public partial class RtsDemo : Node2D
         _simulation = _visualTest.Simulation;
         _routePlanner = _visualTest.RoutePlanner;
         _chokeController = _visualTest.ChokeController;
+        if (caseId == "resource-file-watch-workflow")
+        {
+            InitializeResourceFileWatcher(
+                enableFileSystemWatchers: false,
+                clearanceBakePath: HotReloadTestResourceGenerator.BakeOnlyPath);
+            _resourceFileWatcher?.NotifyChanged(
+                RuntimeResourceChangeKind.ClearanceBake);
+            _resourceFileWatcher?.NotifyChanged(
+                RuntimeResourceChangeKind.ClearanceBake);
+        }
         if (caseId == "building-connectivity-diff-preview")
         {
             var navigation =
@@ -1594,9 +1642,50 @@ public partial class RtsDemo : Node2D
             $"RTS_HOT_RELOAD_FIXTURES {(result.Succeeded ? "PASS" : "FAIL")} " +
             $"navigation={result.NavigationHash} " +
             $"profiles={result.ProfilesHash} bake={result.BakeHash} " +
+            $"bakeOnly={result.BakeOnlyHash} " +
             $"errors={result.NavigationError}/{result.ProfilesError}/" +
-            $"{result.BakeError}");
+            $"{result.BakeError}/{result.BakeOnlyError}");
         GetTree().Quit(result.Succeeded ? 0 : 1);
+    }
+
+    private void InitializeResourceFileWatcher(
+        bool enableFileSystemWatchers,
+        string clearanceBakePath = DemoClearanceBakeResourcePath)
+    {
+        if (_navigationSnapshot is null || _gameplayProfiles is null ||
+            _clearanceBake is null || _simulation is null ||
+            !RuntimeResourceSetSnapshot.TryCreate(
+                _navigationSnapshot,
+                _gameplayProfiles,
+                _clearanceBake,
+                out var current,
+                out _) ||
+            current is null)
+        {
+            GD.PushError("RTS_RESOURCE_WATCH baseline resource set is invalid.");
+            return;
+        }
+
+        _resourceFileWatcher?.QueueFree();
+        _resourceFileWatcher = new RuntimeResourceFileWatcher();
+        _resourceFileWatcher.StatusChanged += status =>
+        {
+            _resourceWatchStatus = status;
+            _resourceWatchControl?.SetSnapshot(status);
+        };
+        _resourceFileWatcher.ResourceSetApplied += applied =>
+        {
+            _clearanceBake = applied.ClearanceBake;
+        };
+        AddChild(_resourceFileWatcher);
+        _resourceFileWatcher.Start(
+            DemoNavigationResourcePath,
+            DemoGameplayProfilesResourcePath,
+            clearanceBakePath,
+            current,
+            _simulation,
+            enableFileSystemWatchers);
+        _resourceWatchStatus = _resourceFileWatcher.Status;
     }
 
     private static bool EnsureDataDirectory()

@@ -7,13 +7,16 @@ public readonly record struct HotReloadTestResourceGeneration(
     Error NavigationError,
     Error ProfilesError,
     Error BakeError,
+    Error BakeOnlyError,
     string NavigationHash,
     string ProfilesHash,
-    string BakeHash)
+    string BakeHash,
+    string BakeOnlyHash)
 {
     public bool Succeeded => NavigationError == Error.Ok &&
                              ProfilesError == Error.Ok &&
-                             BakeError == Error.Ok;
+                             BakeError == Error.Ok &&
+                             BakeOnlyError == Error.Ok;
 }
 
 public static class HotReloadTestResourceGenerator
@@ -22,6 +25,8 @@ public static class HotReloadTestResourceGenerator
     public const string NavigationPath = DirectoryPath + "/navigation_variant.tres";
     public const string ProfilesPath = DirectoryPath + "/gameplay_variant.tres";
     public const string BakePath = DirectoryPath + "/clearance_variant.tres";
+    public const string BakeOnlyPath =
+        DirectoryPath + "/clearance_bake_only_variant.tres";
 
     public static HotReloadTestResourceGeneration Generate(
         NavigationMapSnapshot sourceNavigation,
@@ -32,6 +37,8 @@ public static class HotReloadTestResourceGenerator
         var profiles = DemoResourceVariantFactory.CreateGameplayVariant(
             sourceProfiles);
         var bake = ClearanceBakeSnapshot.Build(navigation);
+        var bakeOnly = ClearanceBakeSnapshot.Build(
+            sourceNavigation, chunkSizeCells: 8);
         var directoryError = DirAccess.MakeDirRecursiveAbsolute(
             ProjectSettings.GlobalizePath(DirectoryPath));
         if (directoryError is not (Error.Ok or Error.AlreadyExists))
@@ -40,9 +47,11 @@ public static class HotReloadTestResourceGenerator
                 directoryError,
                 directoryError,
                 directoryError,
+                directoryError,
                 navigation.StableHashText,
                 profiles.StableHashText,
-                bake.StableHashText);
+                bake.StableHashText,
+                bakeOnly.StableHashText);
         }
 
         return new HotReloadTestResourceGeneration(
@@ -55,8 +64,12 @@ public static class HotReloadTestResourceGenerator
             ResourceSaver.Save(
                 ClearanceBakeResourceConverter.FromSnapshot(bake),
                 BakePath),
+            ResourceSaver.Save(
+                ClearanceBakeResourceConverter.FromSnapshot(bakeOnly),
+                BakeOnlyPath),
             navigation.StableHashText,
             profiles.StableHashText,
-            bake.StableHashText);
+            bake.StableHashText,
+            bakeOnly.StableHashText);
     }
 }

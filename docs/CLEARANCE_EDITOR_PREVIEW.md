@@ -63,6 +63,6 @@ Godot 黑盒场景验证正式 Demo Resource 能生成 3 档、5 条 Portal 和 
 - 已有放置前后差异面板；尚没有点击分量、可交互孤岛列表或 EditorPlugin Dock。
 - 已能显示受影响 chunks，并由运行时增量更新器消费同一 chunk 规划；尚没有 EditorPlugin 重烘焙按钮。
 - 障碍与建筑均按轴对齐矩形显示；尚不支持旋转和非矩形 footprint。
-- Resource 已支持 Fresh Load、原子差异、影响等级和 Bake-only 两阶段提交；Navigation/Profile 仍要求显式模拟重建。
+- Resource 已支持文件监听、去抖、Fresh Load、原子差异、影响等级和 Bake-only 自动两阶段提交；Navigation/Profile 仍要求显式模拟重建。
 
-下一步只在文件监听、边界 component graph 和可交互孤岛列表中选择一项。绘制节点继续只消费分析结果，不实现拓扑算法。
+文件监听数据闭环已经完成。边界 component graph、可交互孤岛列表和 Portal/Choke Authoring Tool 等编辑增强只在实际地图规模需要时启动；绘制节点继续只消费分析结果。
