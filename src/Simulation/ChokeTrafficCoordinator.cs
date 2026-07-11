@@ -19,6 +19,24 @@ public readonly record struct ChokeTrafficSnapshot(
     int HardBlockers,
     int BlockedTicks);
 
+internal readonly record struct ChokeTrafficStateSnapshot(
+    sbyte ActiveDirection,
+    sbyte LastDirection,
+    bool Draining,
+    int ClearTicks,
+    int BurstTicks,
+    int PositiveWaitTicks,
+    int NegativeWaitTicks,
+    int Capacity,
+    int ConflictTicks,
+    int MaximumPositiveWaitTicks,
+    int MaximumNegativeWaitTicks,
+    int BlockedTicks);
+
+internal sealed record ChokeTrafficRuntimeSnapshot(
+    ChokeTrafficStateSnapshot[] States,
+    ChokeTrafficSnapshot[] Diagnostics);
+
 public sealed class ChokeTrafficCoordinator
 {
     private const int MinimumBurstTicks = 90;
@@ -45,6 +63,81 @@ public sealed class ChokeTrafficCoordinator
     }
 
     public ReadOnlySpan<ChokeTrafficSnapshot> Snapshots => _snapshots;
+
+    internal ChokeTrafficRuntimeSnapshot CaptureRuntimeState()
+    {
+        var states = new ChokeTrafficStateSnapshot[_states.Length];
+        for (var index = 0; index < states.Length; index++)
+        {
+            var state = _states[index];
+            states[index] = new ChokeTrafficStateSnapshot(
+                state.ActiveDirection,
+                state.LastDirection,
+                state.Draining,
+                state.ClearTicks,
+                state.BurstTicks,
+                state.PositiveWaitTicks,
+                state.NegativeWaitTicks,
+                state.Capacity,
+                state.ConflictTicks,
+                state.MaximumPositiveWaitTicks,
+                state.MaximumNegativeWaitTicks,
+                state.BlockedTicks);
+        }
+        return new ChokeTrafficRuntimeSnapshot(states, _snapshots.ToArray());
+    }
+
+    internal void RestoreRuntimeState(ChokeTrafficRuntimeSnapshot snapshot)
+    {
+        if (snapshot.States.Length != _states.Length ||
+            snapshot.Diagnostics.Length != _snapshots.Length)
+        {
+            throw new InvalidOperationException("Choke runtime snapshot size mismatch.");
+        }
+        for (var index = 0; index < _states.Length; index++)
+        {
+            var source = snapshot.States[index];
+            _states[index] = new TrafficState
+            {
+                ActiveDirection = source.ActiveDirection,
+                LastDirection = source.LastDirection,
+                Draining = source.Draining,
+                ClearTicks = source.ClearTicks,
+                BurstTicks = source.BurstTicks,
+                PositiveWaitTicks = source.PositiveWaitTicks,
+                NegativeWaitTicks = source.NegativeWaitTicks,
+                Capacity = source.Capacity,
+                ConflictTicks = source.ConflictTicks,
+                MaximumPositiveWaitTicks = source.MaximumPositiveWaitTicks,
+                MaximumNegativeWaitTicks = source.MaximumNegativeWaitTicks,
+                BlockedTicks = source.BlockedTicks
+            };
+            _snapshots[index] = snapshot.Diagnostics[index];
+            _positiveCandidates[index].Clear();
+            _negativeCandidates[index].Clear();
+        }
+    }
+
+    internal void AppendStateHash(ref StableHash64 hash)
+    {
+        hash.Add(_states.Length);
+        for (var index = 0; index < _states.Length; index++)
+        {
+            var state = _states[index];
+            hash.Add((byte)state.ActiveDirection);
+            hash.Add((byte)state.LastDirection);
+            hash.Add(state.Draining);
+            hash.Add(state.ClearTicks);
+            hash.Add(state.BurstTicks);
+            hash.Add(state.PositiveWaitTicks);
+            hash.Add(state.NegativeWaitTicks);
+            hash.Add(state.Capacity);
+            hash.Add(state.ConflictTicks);
+            hash.Add(state.MaximumPositiveWaitTicks);
+            hash.Add(state.MaximumNegativeWaitTicks);
+            hash.Add(state.BlockedTicks);
+        }
+    }
 
     public void Update(UnitStore units, ReadOnlySpan<ChokeDefinition> definitions)
     {

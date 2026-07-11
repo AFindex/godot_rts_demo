@@ -6,7 +6,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public static class SimulationStateHasher
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     public static ulong Compute(RtsSimulation simulation)
     {
@@ -25,15 +25,7 @@ public static class SimulationStateHasher
             hash.Add(obstacles[index].Max);
         }
 
-        var footprints = simulation.World.DynamicOccupancy.Snapshot();
-        hash.Add(footprints.Length);
-        for (var index = 0; index < footprints.Length; index++)
-        {
-            hash.Add(footprints[index].Id.Value);
-            hash.Add(footprints[index].Bounds.Min);
-            hash.Add(footprints[index].Bounds.Max);
-            hash.Add(footprints[index].PlacedRevision);
-        }
+        simulation.World.DynamicOccupancy.AppendStateHash(ref hash);
 
         AppendUnits(ref hash, simulation.Units);
         AppendCombat(ref hash, simulation.Combat, simulation.Units.Count);
@@ -185,6 +177,7 @@ public static class SimulationStateHasher
             hash.Add(snapshot.HardBlockers);
             hash.Add(snapshot.BlockedTicks);
         }
+        controller.AppendStateHash(ref hash);
     }
 }
 

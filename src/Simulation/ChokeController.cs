@@ -52,6 +52,15 @@ public sealed class ChokeController
     public ReadOnlySpan<ChokeTrafficSnapshot> TrafficSnapshots =>
         _trafficCoordinator.Snapshots;
 
+    internal ChokeTrafficRuntimeSnapshot CaptureRuntimeState() =>
+        _trafficCoordinator.CaptureRuntimeState();
+
+    internal void RestoreRuntimeState(ChokeTrafficRuntimeSnapshot snapshot) =>
+        _trafficCoordinator.RestoreRuntimeState(snapshot);
+
+    internal void AppendStateHash(ref StableHash64 hash) =>
+        _trafficCoordinator.AppendStateHash(ref hash);
+
     public void AssignForMove(
         UnitStore units,
         ReadOnlySpan<int> unitIndices,

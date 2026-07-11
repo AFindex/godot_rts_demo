@@ -40,6 +40,7 @@
 - 版本化规范命令日志、固定 Tick 回放、精确状态 Hash 和首次分歧 Tick 定位。
 - Replay Package 保存资源版本/Hash、初始单位与建筑清单，并按固定顺序重放动态建筑世界命令。
 - 版本化 checkpoint 绑定 Package/状态 Hash，可确定性 seek 到中间 Tick 后继续精确回放。
+- 状态 Hash v2 覆盖动态建筑下一 ID 和狭口私有租约状态，避免公开诊断相同但未来调度分叉。
 - 战斗状态与移动路径分离；死亡保持稳定 unit ID，但从寻路邻居、碰撞、选择和建筑占用中移除。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
 
@@ -94,7 +95,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 非战斗移动：当前线程分配不超过 1KB/Tick。
 - 活跃战斗 128/256 总单位：P95 不超过 4/8ms，分配不超过 8KB/Tick。
 
-当前机器的 Release 移动基线约为 1.80ms、6.34ms 和 9.38ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.84/4.75ms P95。完整状态 Hash 在 1000 单位场景平均约 1.59ms。
+当前机器的 Release 移动基线约为 1.41ms、5.08ms 和 11.13ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.72/4.87ms P95。完整状态 Hash v2 在 1000 单位场景平均约 1.85ms。
 
 ## 导航数据资产
 
@@ -137,7 +138,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 57 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、命令日志精确回放、Replay Package 和中间 Tick checkpoint 恢复。
+当前包含 58 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、命令日志精确回放、Replay Package，以及普通/活跃狭口 checkpoint 恢复。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -152,4 +153,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-移动、动态地图、战斗移动、第一层操作语义，以及确定性命令日志/Replay Package/checkpoint seek 已经形成可运行闭环。下一阶段是 E4.2 直接运行时快照，目标是避免 checkpoint 恢复时从 Tick 0 重演；双击同类选择、相机与 Minimap 输入随后继续。
+移动、动态地图、战斗移动、第一层操作语义，以及确定性命令日志/Replay Package/checkpoint seek 已经形成可运行闭环。E4.2 的未来态审计和状态 Hash v2 已完成，下一步实现直接运行时快照主体，避免 checkpoint 恢复时从 Tick 0 重演。

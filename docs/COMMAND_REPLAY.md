@@ -29,9 +29,10 @@ Tick + OrderKind + Queued + TargetX + TargetY + UnitCount + sorted UnitIds
 
 ## 3. 状态 Hash 覆盖
 
-格式版本 1 当前覆盖：
+状态 Hash 格式版本 2 当前覆盖：
 
 - Tick、世界边界、静态障碍、导航 revision 和按 ID 排序的动态建筑 footprint。
+- 动态建筑下一稳定 ID，以及狭口的 LastDirection、ClearTicks、BurstTicks、等待计时等私有未来态。
 - 单位存活、位置、速度、目标、移动配置、移动模式、路径/高层路线游标、目标槽位和各恢复状态机。
 - 战斗生命、阵营、攻击配置、目标、前摇/冷却、AttackMove 恢复意图和战斗占位。
 - 每单位活动命令、逻辑顺序的待执行队列和稳定序列号。
@@ -49,7 +50,7 @@ Tick + OrderKind + Queued + TargetX + TargetY + UnitCount + sorted UnitIds
 -> 到采样边界时计算 StateHash
 ```
 
-当前测试每 30 Tick 采样一次。基线重复执行到 840 Tick 后得到状态 Hash `0745CD63FEF92D2C`；把最后一条命令目标偏移 90px 后，首次采样分歧位于 Tick 360，最终 Hash 为 `3987BC62C2F24A60`。
+当前测试每 30 Tick 采样一次。基线重复执行到 840 Tick 后得到状态 Hash `995B000A2787A5AE`；把最后一条命令目标偏移 90px 后，首次采样分歧位于 Tick 360，最终 Hash 为 `AE823DDB88EE4022`。
 
 ## 5. 性能
 
@@ -57,11 +58,11 @@ Tick + OrderKind + Queued + TargetX + TargetY + UnitCount + sorted UnitIds
 
 | 场景 | Hash 平均耗时 |
 |---|---:|
-| 256 单位移动 | 0.750ms |
-| 512 单位移动 | 1.449ms |
-| 1000 单位移动 | 1.587ms |
-| 128 总单位持续战斗 | 0.136ms |
-| 256 总单位持续战斗 | 0.660ms |
+| 256 单位移动 | 1.077ms |
+| 512 单位移动 | 1.285ms |
+| 1000 单位移动 | 1.853ms |
+| 128 总单位持续战斗 | 0.144ms |
+| 256 总单位持续战斗 | 0.917ms |
 
 基准对 Hash 设置独立门槛，避免后续扩大状态覆盖时悄然引入不可接受的诊断成本。
 
@@ -78,13 +79,17 @@ Replay Package 在命令日志之外保存：
 
 录制必须在 Tick 0、首条玩法命令之前启动。初始动态建筑允许先完成一轮连续放置，但不能在启动录制前先移除并留下 ID/revision 空洞；这种输入会明确拒绝，而不是生成无法精确重建的包。
 
-当前验收包包含 8 个单位、1 个初始建筑、2 条动态建筑命令和 2 条单位命令；规范载荷 690 字节，包 Hash `5229BB45B72D5D04`。独立重建运行至 Tick 720 后，最终状态 Hash 与原运行同为 `E6CA47E1FC090065`。
+当前验收包包含 8 个单位、1 个初始建筑、2 条动态建筑命令和 2 条单位命令；规范载荷 690 字节，包 Hash `800F3FAE85F87D40`。独立重建运行至 Tick 720 后，最终状态 Hash 与原运行同为 `AC0D861311EB0D52`。
 
 ## 7. Checkpoint v1
 
 Checkpoint 使用 36 字节规范载荷保存格式版本、状态 Hash 格式版本、目标 Tick、Package Hash 和目标状态 Hash。恢复时先验证 Package 绑定，从 Tick 0 确定性 seek 到目标 Tick，并要求状态 Hash 完全匹配，然后继续使用已经推进到正确游标的同一个 Package Runner。
 
-当前验收从 Tick 240 恢复到 Tick 720，后半段 17 个周期采样与连续运行完全相同；checkpoint Hash 为 `A83117D9561B50E2`，最终状态仍为 `E6CA47E1FC090065`。未知版本、截断数据和篡改后的目标状态 Hash 均被拒绝。
+当前普通验收从 Tick 240 恢复到 Tick 720，后半段 17 个周期采样与连续运行完全相同；checkpoint Hash 为 `BE7D34BD9720DB76`，最终状态为 `AC0D861311EB0D52`。未知版本、截断数据和篡改后的目标状态 Hash 均被拒绝。
+
+状态 Hash v2 额外使用 32 个单位的双向狭口场景，在交通租约活跃时于 Tick 240 建立 checkpoint，恢复后到 Tick 780 的 19 个采样全部一致，最终状态为 `083EDE1CDD642993`。这覆盖了 v1 未包含的私有交通状态。
+
+Checkpoint 会记录状态 Hash 格式版本，因此 v1 checkpoint 不会被误当作 v2 使用；升级后必须重新生成，旧文件只作为历史诊断材料保留。
 
 这一层固定了不泄漏内部 SoA 数组的上层契约，但恢复成本仍是 O(checkpoint Tick)，不是直接内存快照。
 
@@ -108,6 +113,9 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
   --headless --path . -- --visual-test replay-checkpoint-resume
+
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --visual-test replay-checkpoint-choke
 ```
 
-对应规范录像位于 `test_videos/20260711_090654/`、`test_videos/20260711_094134/` 和 `test_videos/20260711_110031/`。
+当前状态 Hash v2 规范录像位于 `test_videos/20260711_113402/` 和 `test_videos/20260711_113232/`；更早三个目录保留为 v1 历史基线。

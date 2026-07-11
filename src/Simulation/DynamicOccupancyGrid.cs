@@ -38,6 +38,21 @@ public sealed class DynamicOccupancyGrid
     public int Revision { get; private set; }
     public int Count => _footprints.Count;
 
+    internal void AppendStateHash(ref StableHash64 hash)
+    {
+        hash.Add(Revision);
+        hash.Add(_nextId);
+        var footprints = Snapshot();
+        hash.Add(footprints.Length);
+        for (var index = 0; index < footprints.Length; index++)
+        {
+            hash.Add(footprints[index].Id.Value);
+            hash.Add(footprints[index].Bounds.Min);
+            hash.Add(footprints[index].Bounds.Max);
+            hash.Add(footprints[index].PlacedRevision);
+        }
+    }
+
     public DynamicFootprintId Place(SimRect footprint)
     {
         ValidateFootprint(footprint);

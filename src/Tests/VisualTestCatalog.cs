@@ -29,6 +29,7 @@ public static class VisualTestCatalog
         "command-replay-divergence",
         "replay-package-world",
         "replay-checkpoint-resume",
+        "replay-checkpoint-choke",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -95,6 +96,8 @@ public static class VisualTestCatalog
         "replay-package-world" => CreateReplayPackageWorld(
             navigationMap, gameplayProfiles, clearanceBake),
         "replay-checkpoint-resume" => CreateReplayCheckpointResume(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "replay-checkpoint-choke" => CreateReplayCheckpointChoke(
             navigationMap, gameplayProfiles, clearanceBake),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
@@ -873,6 +876,52 @@ public static class VisualTestCatalog
             runtime.RemoveBuilding(dynamicBuilding));
         return session.At(360, "Issue post-checkpoint command", runtime =>
             runtime.Move(units.Take(4).ToArray(), new Vector2(1110f, 530f)));
+    }
+
+    private static VisualTestSession CreateReplayCheckpointChoke(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            48, navigationMap, gameplayProfiles, clearanceBake);
+        var west = rig.SpawnGrid(new Vector2(100f, 250f), 4, 4, 20f);
+        var east = rig.SpawnGrid(new Vector2(1120f, 390f), 4, 4, 20f);
+        var all = west.Concat(east).ToArray();
+        rig.StartReplayPackageRecording();
+        rig.Move(west, new Vector2(1160f, 300f));
+        rig.Move(east, new Vector2(90f, 410f));
+
+        const long checkpointTick = 240;
+        var checkpointStateHash = 0UL;
+        var session = new VisualTestSession(
+            "replay-checkpoint-choke",
+            "Checkpoint covers private bidirectional choke traffic state",
+            780,
+            rig,
+            all,
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var checkpoint = runtime.CreateReplayCheckpoint(
+                    package, checkpointTick, checkpointStateHash);
+                var baseline = runtime.ReplayPackage(package, runtime.Tick);
+                var resumed = runtime.ResumeReplayPackage(
+                    package, checkpoint, runtime.Tick);
+                var traffic = runtime.ObserveChokeTraffic();
+                var exact = baseline.MatchesFrom(resumed, checkpointTick) &&
+                            resumed.FinalHash == runtime.StateHash;
+                return new ScenarioResult(
+                    exact && traffic.ConflictTicks == 0 &&
+                    resumed.SampleCount == 19,
+                    $"tick={checkpoint.Tick}, samples={resumed.SampleCount}, " +
+                    $"direction={traffic.ActiveDirection}, conflicts={traffic.ConflictTicks}, " +
+                    $"state={resumed.FinalHash:X16}, exact={exact}");
+            });
+        return session.At(checkpointTick, "Capture active choke checkpoint", runtime =>
+            checkpointStateHash = runtime.StateHash);
     }
 
     private static VisualTestSession BuildReplaySession(
