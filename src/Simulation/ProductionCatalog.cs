@@ -1,4 +1,5 @@
 using System.Text;
+using System.Collections.Immutable;
 
 namespace RtsDemo.Simulation;
 
@@ -16,7 +17,20 @@ public readonly record struct ProductionRecipeProfile(
     UnitTypeProfile UnitType,
     EconomyCost Cost,
     float ProductionSeconds,
-    float CancelRefundFraction);
+    float CancelRefundFraction)
+{
+    public ImmutableArray<ProductionRequirementProfile> Requirements { get; init; } = [];
+}
+
+public enum ProductionRequirementKind : byte
+{
+    CompletedBuilding
+}
+
+public readonly record struct ProductionRequirementProfile(
+    ProductionRequirementKind Kind,
+    int TypeId,
+    int Count);
 
 public enum ProductionCatalogErrorCode
 {
@@ -44,7 +58,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;
@@ -132,6 +146,9 @@ public sealed class ProductionCatalogSnapshot
                 recipe.CancelRefundFraction is < 0f or > 1f)
                 return Failure(ProductionCatalogErrorCode.InvalidRecipe, index,
                     "Recipe producer, cost, supply, duration and refund must be valid.");
+            if (!ValidRequirements(recipe.Requirements))
+                return Failure(ProductionCatalogErrorCode.InvalidRecipe, index,
+                    "Recipe requirements must be unique completed-building counts.");
             if ((uint)recipe.UnitType.Id >= (uint)units.Length ||
                 recipe.UnitType != units[recipe.UnitType.Id])
                 return Failure(ProductionCatalogErrorCode.RecipeUnitMismatch, index,
@@ -163,6 +180,13 @@ public sealed class ProductionCatalogSnapshot
             writer.Write(recipe.Cost.Supply);
             writer.Write(BitConverter.SingleToInt32Bits(recipe.ProductionSeconds));
             writer.Write(BitConverter.SingleToInt32Bits(recipe.CancelRefundFraction));
+            writer.Write(recipe.Requirements.Length);
+            foreach (var requirement in recipe.Requirements)
+            {
+                writer.Write((byte)requirement.Kind);
+                writer.Write(requirement.TypeId);
+                writer.Write(requirement.Count);
+            }
         }
         writer.Flush();
         return stream.ToArray();
@@ -212,6 +236,28 @@ public sealed class ProductionCatalogSnapshot
         unit.Combat.LeashDistance >= unit.Combat.AcquisitionRange &&
         Enum.IsDefined(unit.Combat.Positioning);
 
+    internal static bool ValidRequirements(
+        ImmutableArray<ProductionRequirementProfile> requirements)
+    {
+        if (requirements.IsDefault || requirements.Length > 32) return false;
+        var keys = new HashSet<(ProductionRequirementKind, int)>();
+        foreach (var requirement in requirements)
+        {
+            if (!Enum.IsDefined(requirement.Kind) || requirement.TypeId < 0 ||
+                requirement.Count <= 0 ||
+                !keys.Add((requirement.Kind, requirement.TypeId)))
+                return false;
+        }
+        return true;
+    }
+
+    public static bool RecipeEquals(
+        ProductionRecipeProfile left,
+        ProductionRecipeProfile right) =>
+        left with { Requirements = default } ==
+            right with { Requirements = default } &&
+        left.Requirements.AsSpan().SequenceEqual(right.Requirements.AsSpan());
+
     private static bool Positive(float value) => float.IsFinite(value) && value > 0f;
     private static void WriteString(BinaryWriter writer, string value)
     {
@@ -234,7 +280,7 @@ public readonly record struct ProductionCatalogDiff(
         ProductionCatalogSnapshot candidate) => new(
         current.StableHash != candidate.StableHash,
         CountChanged(current.UnitTypes, candidate.UnitTypes),
-        CountChanged(current.Recipes, candidate.Recipes));
+        CountChangedRecipes(current.Recipes, candidate.Recipes));
 
     private static int CountChanged<T>(ReadOnlySpan<T> current, ReadOnlySpan<T> candidate)
         where T : IEquatable<T>
@@ -244,6 +290,53 @@ public readonly record struct ProductionCatalogDiff(
         for (var index = 0; index < shared; index++)
             changed += current[index].Equals(candidate[index]) ? 0 : 1;
         return changed;
+    }
+
+    private static int CountChangedRecipes(
+        ReadOnlySpan<ProductionRecipeProfile> current,
+        ReadOnlySpan<ProductionRecipeProfile> candidate)
+    {
+        var shared = Math.Min(current.Length, candidate.Length);
+        var changed = Math.Abs(current.Length - candidate.Length);
+        for (var index = 0; index < shared; index++)
+        {
+            var left = current[index];
+            var right = candidate[index];
+            if (!ProductionCatalogSnapshot.RecipeEquals(left, right))
+                changed++;
+        }
+        return changed;
+    }
+}
+
+public static class ProductionRequirementCatalogValidator
+{
+    public static bool TryValidate(
+        ProductionCatalogSnapshot production,
+        BuildingTypeCatalogSnapshot buildings,
+        out ProductionCatalogValidationResult validation)
+    {
+        for (var recipeIndex = 0;
+             recipeIndex < production.Recipes.Length;
+             recipeIndex++)
+        {
+            var recipe = production.Recipes[recipeIndex];
+            foreach (var requirement in recipe.Requirements)
+            {
+                if ((uint)requirement.TypeId >= (uint)buildings.Types.Length)
+                {
+                    validation = new ProductionCatalogValidationResult(
+                        ProductionCatalogErrorCode.InvalidRecipe,
+                        recipeIndex,
+                        $"Requirement building type {requirement.TypeId} " +
+                        "is outside the building catalog.");
+                    return false;
+                }
+            }
+        }
+        validation = new ProductionCatalogValidationResult(
+            ProductionCatalogErrorCode.None, -1, string.Empty);
+        return true;
     }
 }
 

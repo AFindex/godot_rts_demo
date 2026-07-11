@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Text;
+using System.Collections.Immutable;
 
 namespace RtsDemo.Simulation;
 
@@ -35,7 +36,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {
@@ -238,13 +239,32 @@ internal static class ProductionSerialization
         writer.Write(value.Cost.Supply);
         writer.Write(value.ProductionSeconds);
         writer.Write(value.CancelRefundFraction);
+        writer.Write(value.Requirements.Length);
+        foreach (var requirement in value.Requirements)
+        {
+            writer.Write((byte)requirement.Kind);
+            writer.Write(requirement.TypeId);
+            writer.Write(requirement.Count);
+        }
     }
 
-    public static ProductionRecipeProfile ReadRecipe(BinaryReader reader) => new(
-        reader.ReadInt32(), ReadString(reader), reader.ReadInt32(),
-        ReadUnitType(reader),
-        new EconomyCost(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32()),
-        reader.ReadSingle(), reader.ReadSingle());
+    public static ProductionRecipeProfile ReadRecipe(BinaryReader reader)
+    {
+        var recipe = new ProductionRecipeProfile(
+            reader.ReadInt32(), ReadString(reader), reader.ReadInt32(),
+            ReadUnitType(reader),
+            new EconomyCost(
+                reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32()),
+            reader.ReadSingle(), reader.ReadSingle());
+        var count = reader.ReadInt32();
+        if (count is < 0 or > 32) throw new InvalidDataException();
+        var requirements = new ProductionRequirementProfile[count];
+        for (var index = 0; index < count; index++)
+            requirements[index] = new ProductionRequirementProfile(
+                (ProductionRequirementKind)reader.ReadByte(),
+                reader.ReadInt32(), reader.ReadInt32());
+        return recipe with { Requirements = requirements.ToImmutableArray() };
+    }
 
     private static void WriteUnitType(BinaryWriter writer, UnitTypeProfile value)
     {

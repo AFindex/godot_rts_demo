@@ -439,6 +439,12 @@ public sealed class ConstructionSystem
     public GameplayBuildingSnapshot[] CreateOverview() =>
         _buildings.Select(value => value.Snapshot()).ToArray();
 
+    public int CountCompleted(int playerId, int buildingTypeId) =>
+        _buildings.Count(value =>
+            value.PlayerId == playerId && value.Type.Id == buildingTypeId &&
+            value.State == BuildingLifecycleState.Completed &&
+            value.Health > 0f);
+
     public ConstructionRuntimeSnapshot CaptureRuntimeState() => new(
         _buildings.Select(value => value.RuntimeSnapshot()).ToArray());
 

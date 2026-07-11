@@ -52,11 +52,11 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v7 已覆盖经济、施工、显式 Unit/Building 战斗目标，以及生产队列、进度、出口等待和类型化 Rally 未来态。
+状态 Hash v8 已覆盖经济、施工、显式 Unit/Building 战斗目标，以及生产队列、进度、出口等待、类型化 Rally 和配方前置未来态。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造、建筑战斗目标和生产现已纳入 Replay Package v6 与持久化热快照 v6。Gather/Refinery、Build/Cancel/Resume、Train/Cancel/Rally 和 Unit/Building AttackTarget 保持独立语义；内部移动、出生 Rally Move/Gather 与 Footprint 变更仍是派生状态。
+经济、建造、建筑战斗目标和生产现已纳入 Replay Package v7 与持久化热快照 v7。Gather/Refinery、Build/Cancel/Resume、Train/Cancel/Rally 和 Unit/Building AttackTarget 保持独立语义；内部移动、出生 Rally Move/Gather 与 Footprint 变更仍是派生状态。
 
 ## 黑盒验收
 
@@ -149,8 +149,8 @@ S11-D2 已完成：
 - Production Log、Package 和三份 Hot Snapshot 的未知版本及截断载荷均稳定拒绝。
 - 专用 9 秒 AV1/WebM 录像位于 `test_videos/20260711_194814/`。
 
-S11-D3a Production Catalog 数据工作流已完成：Unit Type/Recipe 使用独立 Godot
-Resource、Fresh Load 和逐类型差异，运行时仍只消费 Hash `88CB72E34880A0B7` 的纯 C#
+S11-D3a Production Catalog 数据工作流已完成并在 E1 升级到 v2：Unit Type/Recipe 使用独立 Godot
+Resource、Fresh Load 和逐类型差异，运行时消费 Hash `DE89CDDC5527EF18` 的纯 C#
 快照。`production-catalog-resource-runtime` 从加载资产生产 Marine、Marauder、SCV，
 验证战斗 Profile、Worker 注册、资源和人口结果。
 专用 22 秒 AV1/WebM 录像位于 `test_videos/20260711_200053/`。
@@ -165,7 +165,18 @@ S11-D3b Rally SmartCommand 已完成：
 - `production-rally-smart-targets` 只通过测试业务 Facade 覆盖资源、友军、Ground 覆盖、生产中热恢复、完整回放和非法版本/截断拒绝。
 - 76/76 全量黑盒回归通过。
 
-下一段进入 S11-E：科技前置、生产可用性和升级队列；Rally 本阶段收口。
+Rally 本阶段已收口；当前后续是 S11-E2 正式研究/升级队列。
+
+S11-E1 建筑前置与生产可用性已完成：
+
+- Production Catalog v2 的每条 Recipe 可声明多个 `CompletedBuilding(TypeId, Count)` 条件；转换时深拷贝条件数组，并与 Building Type Catalog 交叉校验。
+- `ProductionAvailabilitySnapshot` 同时给出稳定结果码和逐条件 `CurrentCount/RequiredCount`，Godot 选择生产建筑后只读取该快照显示 READY、资源不足或 `MissingPrerequisite`。
+- 条件在新订单入队时检查。已入队订单保存解析后的完整条件，不会因表现层刷新或 Resource 改动改变历史结果。
+- Production Log v3、Replay Package/Hot Snapshot v7、State Hash v8 保存并验证条件未来态。
+- `production-building-prerequisites` 覆盖“2 Barracks + 1 Command Center”：缺少建筑时拒绝，补齐后解锁，并验证完整回放与生产中热恢复。
+- 77/77 全量黑盒回归通过；22 秒 AV1/WebM 位于 `test_videos/20260711_205020/`。
+
+下一段 S11-E2 实现正式研究/升级队列、科技等级、重复研究与互斥规则；不使用手动授予科技的占位接口。
 
 ### S11-E：科技、扩张和胜负
 

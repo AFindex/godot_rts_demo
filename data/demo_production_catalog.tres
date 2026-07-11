@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="RtsProductionCatalogResource" format=3]
 
 [ext_resource type="Script" path="res://src/Godot/Resources/ProductionRecipeProfileResource.cs" id="1_stt7f"]
+[ext_resource type="Script" path="res://src/Godot/Resources/ProductionRequirementProfileResource.cs" id="2_u7x0v"]
 [ext_resource type="Script" path="res://src/Godot/Resources/UnitTypeProfileResource.cs" id="2_wxyxp"]
 [ext_resource type="Script" path="res://src/Godot/Resources/RtsProductionCatalogResource.cs" id="3_u7x0v"]
 
@@ -65,5 +66,6 @@ IsWorker = true
 
 [resource]
 script = ExtResource("3_u7x0v")
+FormatVersion = 2
 UnitTypes = Array[ExtResource("2_wxyxp")]([SubResource("Resource_djvlx"), SubResource("Resource_wj7fp"), SubResource("Resource_hyt0c")])
 Recipes = Array[ExtResource("1_stt7f")]([SubResource("Resource_6y3cf"), SubResource("Resource_bfokk"), SubResource("Resource_m8e84")])

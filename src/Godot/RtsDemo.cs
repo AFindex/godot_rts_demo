@@ -615,7 +615,48 @@ public partial class RtsDemo : Node2D
                         targetGodot, 10f, 0f, MathF.Tau, 20,
                         new Color("8dff9b"), 2f);
                 }
+                DrawProductionAvailability(building, rect);
             }
+        }
+    }
+
+    private void DrawProductionAvailability(
+        GameplayBuildingSnapshot building,
+        Rect2 rect)
+    {
+        if (_simulation is null || _productionCatalog is null ||
+            building.State != BuildingLifecycleState.Completed)
+            return;
+        var row = 0;
+        foreach (var recipe in _productionCatalog.Recipes)
+        {
+            if (recipe.ProducerBuildingTypeId != building.Type.Id) continue;
+            var availability = _simulation.Production.ObserveAvailability(
+                building.PlayerId,
+                building.Id,
+                recipe,
+                _simulation.Construction,
+                _simulation.Economy.Players);
+            var requirementText = availability.Requirements.Length == 0
+                ? string.Empty
+                : " [" + string.Join(", ", availability.Requirements.Select(value =>
+                    $"B{value.Requirement.TypeId} " +
+                    $"{value.CurrentCount}/{value.Requirement.Count}")) + "]";
+            var color = availability.Code is ProductionCommandCode.Success or
+                ProductionCommandCode.InsufficientMinerals or
+                ProductionCommandCode.InsufficientVespeneGas or
+                ProductionCommandCode.SupplyBlocked
+                ? new Color("b9efff")
+                : new Color("ffad8f");
+            DrawString(
+                ThemeDB.FallbackFont,
+                rect.Position + new Vector2(5f, 68f + row * 15f),
+                $"{recipe.UnitType.Name}: {availability.Code}{requirementText}",
+                HorizontalAlignment.Left,
+                Math.Max(rect.Size.X - 10f, 220f),
+                10,
+                color);
+            row++;
         }
     }
 
@@ -1780,6 +1821,7 @@ public partial class RtsDemo : Node2D
     private bool TryLoadProductionCatalog()
     {
         if (_productionCatalog is not null) return true;
+        if (_buildingTypes is null && !TryLoadBuildingTypes()) return false;
         var resourcePath = ProductionCatalogAsset?.ResourcePath ??
                            DemoProductionCatalogResourcePath;
         var converted = ProductionCatalogAsset is not null
@@ -1787,7 +1829,9 @@ public partial class RtsDemo : Node2D
                 ProductionCatalogAsset, out var snapshot, out var validation)
             : ProductionCatalogResourceConverter.TryLoadSnapshot(
                 DemoProductionCatalogResourcePath, out snapshot, out validation);
-        if (converted && snapshot is not null)
+        if (converted && snapshot is not null &&
+            ProductionRequirementCatalogValidator.TryValidate(
+                snapshot, _buildingTypes!, out validation))
         {
             _productionCatalog = snapshot;
             GD.Print(

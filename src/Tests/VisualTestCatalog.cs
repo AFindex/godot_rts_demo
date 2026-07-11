@@ -65,6 +65,7 @@ public static class VisualTestCatalog
         "production-replay-persistence",
         "production-catalog-resource-runtime",
         "production-rally-smart-targets",
+        "production-building-prerequisites",
         "construction-replay-persistence",
         "combat-attack-building",
         "shared-target-reservations",
@@ -175,6 +176,9 @@ public static class VisualTestCatalog
             CreateProductionCatalogResourceRuntime(productionCatalog),
         "production-rally-smart-targets" =>
             CreateProductionRallySmartTargets(
+                navigationMap, gameplayProfiles, clearanceBake),
+        "production-building-prerequisites" =>
+            CreateProductionBuildingPrerequisites(
                 navigationMap, gameplayProfiles, clearanceBake),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
@@ -1105,7 +1109,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 6 &&
+                    exact && rejected && hot.FormatVersion == 7 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1199,7 +1203,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 6 && hot.FormatVersion == 6 &&
+                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2580,9 +2584,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 6 &&
-                             producingHot.FormatVersion == 6 &&
-                             waitingHot.FormatVersion == 6 &&
+                             package.FormatVersion == 7 &&
+                             producingHot.FormatVersion == 7 &&
+                             waitingHot.FormatVersion == 7 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -2798,7 +2802,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 6 && hot.FormatVersion == 6 &&
+                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -2809,7 +2813,7 @@ public static class VisualTestCatalog
                     $"marine={marine.Position}->{marine.AssignedTarget}, " +
                     $"protocol={protocol}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log2/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"versions=log3/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
                     $"buildings={runtime.ObserveGameplayBuilding(townHall.BuildingId).State}/" +
                     $"{runtime.ObserveGameplayBuilding(barracks.BuildingId).State}, " +
                     $"issued={issued}({issueDetails}), ids={townHall.BuildingId.Value}/" +
@@ -2847,6 +2851,139 @@ public static class VisualTestCatalog
             .Highlight(
                 new SimRect(new Vector2(730f, 300f), new Vector2(1120f, 620f)),
                 "RESOURCE -> Gather / FRIENDLY -> spawn-time position",
+                TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateProductionBuildingPrerequisites(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var baseRecipe = DemoProductionCatalog.CreateSnapshot().Recipe(1);
+        var advancedRecipe = baseRecipe with
+        {
+            Name = "Train Advanced Marauder",
+            Cost = new EconomyCost(125, 50, 2),
+            ProductionSeconds = 1f,
+            Requirements =
+            [
+                new ProductionRequirementProfile(
+                    ProductionRequirementKind.CompletedBuilding,
+                    DemoBuildingTypes.Barracks.Id, 2),
+                new ProductionRequirementProfile(
+                    ProductionRequirementKind.CompletedBuilding,
+                    DemoBuildingTypes.CommandCenter.Id, 1)
+            ]
+        };
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 3000, 500, 20, 0);
+        var barracksBuilder = rig.SpawnWorker(new Vector2(230f, 260f), 1);
+        var townHallBuilder = rig.SpawnWorker(new Vector2(100f, 500f), 1);
+        var expansionBuilder = rig.SpawnWorker(new Vector2(850f, 500f), 1);
+        rig.StartReplayPackageRecording();
+        var fastBarracks = DemoBuildingTypes.Barracks with { BuildSeconds = 1f };
+        var fastTownHall = DemoBuildingTypes.CommandCenter with { BuildSeconds = 1f };
+        var firstBarracks = rig.Build(
+            1, barracksBuilder, fastBarracks, new Vector2(400f, 260f));
+        var townHall = rig.Build(
+            1, townHallBuilder, fastTownHall, new Vector2(250f, 500f));
+        TestConstructionResult secondBarracks = default;
+        var missingRejected = false;
+        var firstAvailability = default(TestProductionAvailabilitySnapshot);
+        var unlockedAvailability = default(TestProductionAvailabilitySnapshot);
+        var trained = false;
+        TestRuntimeStateCapture? activeCapture = null;
+        const long hotTick = 1080;
+        var session = new VisualTestSession(
+            "production-building-prerequisites",
+            "Multi-building prerequisites gate production and persist exactly",
+            1320,
+            rig,
+            [barracksBuilder, townHallBuilder, expansionBuilder],
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var log = runtime.CaptureProductionCommandLog();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var logRoundTrip = log.TryCanonicalRoundTrip(out var decodedLog);
+                var hot = runtime.BindHotSnapshot(package, activeCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var baseline = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = baseline.FinalHash == runtime.StateHash &&
+                            resumed.FinalHash == runtime.StateHash &&
+                            baseline.MatchesFrom(resumed, hotTick);
+                var requirements = unlockedAvailability.Requirements;
+                var countsExact = requirements.Length == 2 &&
+                    requirements[0].BuildingTypeId == DemoBuildingTypes.Barracks.Id &&
+                    requirements[0].CurrentCount == 2 &&
+                    requirements[0].RequiredCount == 2 &&
+                    requirements[1].BuildingTypeId ==
+                        DemoBuildingTypes.CommandCenter.Id &&
+                    requirements[1].CurrentCount == 1 &&
+                    requirements.All(value => value.Satisfied);
+                var economy = runtime.ObservePlayerEconomy(1);
+                var rejected = log.RejectsUnsupportedVersion() &&
+                               log.RejectsTruncatedPayload() &&
+                               package.RejectsUnsupportedVersion() &&
+                               package.RejectsTruncatedPayload() &&
+                               hot.RejectsUnsupportedVersion() &&
+                               hot.RejectsTruncatedPayload();
+                var passed = firstBarracks.Succeeded && townHall.Succeeded &&
+                             secondBarracks.Succeeded && missingRejected &&
+                             firstAvailability.Code ==
+                                 TestProductionCommandCode.MissingPrerequisite &&
+                             unlockedAvailability.Available && countsExact && trained &&
+                             runtime.UnitCount == 4 && economy.Minerals == 2175 &&
+                             economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
+                             packageRoundTrip && logRoundTrip && hotRoundTrip &&
+                             decodedLog!.StableHash == log.StableHash &&
+                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
+                             package.ConstructionCommandCount == 3 &&
+                             package.ProductionCommandCount == 1 && exact && rejected;
+                return new ScenarioResult(
+                    passed,
+                    $"gate={firstAvailability.Code}->{unlockedAvailability.Code}, " +
+                    $"counts={string.Join('/', requirements.Select(value =>
+                        $"{value.CurrentCount}/{value.RequiredCount}"))}, " +
+                    $"build={firstBarracks.Succeeded}/{townHall.Succeeded}/" +
+                    $"{secondBarracks.Succeeded}, train={trained}, " +
+                    $"resources={economy.Minerals}/{economy.VespeneGas}, " +
+                    $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
+                    $"versions=log3/package{package.FormatVersion}/hot{hot.FormatVersion}");
+            });
+        session.At(650, "Reject advanced unit while one Barracks is missing", runtime =>
+        {
+            firstAvailability = runtime.ObserveProductionAvailability(
+                1, firstBarracks.BuildingId, advancedRecipe);
+            missingRejected = runtime.Train(
+                1, firstBarracks.BuildingId, advancedRecipe).Code ==
+                TestProductionCommandCode.MissingPrerequisite;
+        });
+        session.At(700, "Construct the second required Barracks", runtime =>
+            secondBarracks = runtime.Build(
+                1, expansionBuilder, fastBarracks, new Vector2(800f, 150f)));
+        session.At(1050, "Availability snapshot unlocks and accepts production", runtime =>
+        {
+            unlockedAvailability = runtime.ObserveProductionAvailability(
+                1, firstBarracks.BuildingId, advancedRecipe);
+            trained = runtime.Train(
+                1, firstBarracks.BuildingId, advancedRecipe).Succeeded;
+        });
+        session.At(hotTick, "Capture active advanced production with prerequisites",
+            runtime => activeCapture = runtime.CaptureRuntimeState());
+        return session
+            .Highlight(
+                new SimRect(new Vector2(320f, 80f), new Vector2(880f, 590f)),
+                "TECH GRAPH: 2 Barracks + 1 Command Center",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(320f, 190f), new Vector2(480f, 340f)),
+                "PRODUCTION AVAILABILITY: locked -> available",
                 TestDiagnosticKind.Accepted);
     }
 
@@ -2941,7 +3078,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 6 && hot.FormatVersion == 6 &&
+                             package.FormatVersion == 7 && hot.FormatVersion == 7 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -3055,7 +3192,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 6 && exact;
+                             hotRoundTrip && hot.FormatVersion == 7 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

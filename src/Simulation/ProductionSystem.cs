@@ -17,6 +17,7 @@ public enum ProductionCommandCode : byte
     InsufficientMinerals,
     InsufficientVespeneGas,
     SupplyBlocked,
+    MissingPrerequisite,
     InvalidOrder
 }
 
@@ -25,6 +26,20 @@ public readonly record struct ProductionCommandResult(
     ProductionOrderId OrderId)
 {
     public bool Succeeded => Code == ProductionCommandCode.Success;
+}
+
+public readonly record struct ProductionRequirementStatus(
+    ProductionRequirementProfile Requirement,
+    int CurrentCount)
+{
+    public bool Satisfied => CurrentCount >= Requirement.Count;
+}
+
+public readonly record struct ProductionAvailabilitySnapshot(
+    ProductionCommandCode Code,
+    ProductionRequirementStatus[] Requirements)
+{
+    public bool Available => Code == ProductionCommandCode.Success;
 }
 
 public enum ProductionOrderState : byte
@@ -153,6 +168,10 @@ public sealed class ProductionSystem
         if (_queues.TryGetValue(producer.Value, out var queue) &&
             queue.Orders.Count >= MaximumQueueLength)
             return Failure(ProductionCommandCode.QueueFull);
+        var requirements = EvaluateRequirements(
+            playerId, recipe.Requirements, construction);
+        if (requirements.Any(value => !value.Satisfied))
+            return Failure(ProductionCommandCode.MissingPrerequisite);
         var spend = economy.ValidateSpend(playerId, recipe.Cost);
         return spend.Code switch
         {
@@ -166,6 +185,22 @@ public sealed class ProductionSystem
                 Failure(ProductionCommandCode.SupplyBlocked),
             _ => Failure(ProductionCommandCode.InvalidPlayer)
         };
+    }
+
+    public ProductionAvailabilitySnapshot ObserveAvailability(
+        int playerId,
+        GameplayBuildingId producer,
+        ProductionRecipeProfile recipe,
+        ConstructionSystem construction,
+        PlayerEconomyStore economy)
+    {
+        var result = ValidateEnqueue(
+            playerId, producer, recipe, construction, economy);
+        return new ProductionAvailabilitySnapshot(
+            result.Code,
+            ProductionCatalogSnapshot.ValidRequirements(recipe.Requirements)
+                ? EvaluateRequirements(playerId, recipe.Requirements, construction)
+                : []);
     }
 
     public bool Cancel(
@@ -415,6 +450,13 @@ public sealed class ProductionSystem
                 hash.Add(order.Id.Value);
                 hash.Add(order.PlayerId);
                 hash.Add(order.Recipe.Id);
+                hash.Add(order.Recipe.Requirements.Length);
+                foreach (var requirement in order.Recipe.Requirements)
+                {
+                    hash.Add((byte)requirement.Kind);
+                    hash.Add(requirement.TypeId);
+                    hash.Add(requirement.Count);
+                }
                 hash.Add((byte)order.State);
                 hash.Add(order.Progress);
             }
@@ -497,7 +539,27 @@ public sealed class ProductionSystem
         recipe.Cost.Supply > 0 && float.IsFinite(recipe.ProductionSeconds) &&
         recipe.ProductionSeconds > 0f &&
         float.IsFinite(recipe.CancelRefundFraction) &&
-        recipe.CancelRefundFraction is >= 0f and <= 1f;
+        recipe.CancelRefundFraction is >= 0f and <= 1f &&
+        ProductionCatalogSnapshot.ValidRequirements(recipe.Requirements);
+
+    private static ProductionRequirementStatus[] EvaluateRequirements(
+        int playerId,
+        System.Collections.Immutable.ImmutableArray<ProductionRequirementProfile>
+            requirements,
+        ConstructionSystem construction)
+    {
+        var result = new ProductionRequirementStatus[requirements.Length];
+        for (var index = 0; index < requirements.Length; index++)
+        {
+            var requirement = requirements[index];
+            var current = requirement.Kind ==
+                          ProductionRequirementKind.CompletedBuilding
+                ? construction.CountCompleted(playerId, requirement.TypeId)
+                : 0;
+            result[index] = new ProductionRequirementStatus(requirement, current);
+        }
+        return result;
+    }
 
     internal static bool ValidRallyTarget(RallyTarget target) =>
         Enum.IsDefined(target.Kind) &&

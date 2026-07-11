@@ -4,11 +4,11 @@
 Godot 层只负责把 `RtsProductionCatalogResource` 转成不可变纯 C#
 `ProductionCatalogSnapshot`；生产队列、回放、热快照和状态 Hash 不引用 Godot 对象。
 
-## v1 数据
+## v2 数据
 
 Unit Type 声明稳定连续 ID、名称、半径、速度、加速度、完整战斗 Profile 和 Worker
 语义。Recipe 通过 Unit Type ID 引用目录中的单位，并声明合法 Producer Building Type、
-Minerals/Vespene/Supply 成本、生产时间和取消退款率。
+Minerals/Vespene/Supply 成本、生产时间、取消退款率，以及零到多个“已完成建筑类型 × 数量”前置条件。
 
 当前 Demo 包含：
 
@@ -18,9 +18,9 @@ Minerals/Vespene/Supply 成本、生产时间和取消退款率。
 
 转换器根据物理半径重新推导 Movement Class 和 Navigation Radius，不允许编辑资产写入
 互相矛盾的派生净空数据。Recipe 的 Unit Type ID 必须落在目录内，最终快照还会验证连续
-ID、重复名称、移动/战斗约束、Producer、成本、人口、工期和退款率。
+ID、重复名称、移动/战斗约束、Producer、成本、人口、工期、退款率和重复/非法前置条件。加载到主场景时还会与 Building Type Catalog 交叉校验引用范围。
 
-当前规范 Hash 为 `88CB72E34880A0B7`。`ProductionCatalogDiff` 分别统计 Unit Type
+当前规范 Hash 为 `DE89CDDC5527EF18`。`ProductionCatalogDiff` 分别统计 Unit Type
 和 Recipe 变化数量；单独修改一个生产时间稳定报告 `0/1`。
 
 ## 工作流
@@ -37,5 +37,5 @@ ID、重复名称、移动/战斗约束、Producer、成本、人口、工期和
 `production-catalog-resource-runtime` 黑盒场景只消费加载快照，从 Barracks 和 Command
 Center 生产三种单位，验证战斗 Profile、Worker 注册、双资源和人口结果。
 
-Replay Package v6 的 Train 命令保存当时解析后的完整 Recipe/Unit Type，因此之后修改
+Replay Package v7 的 Train 命令保存当时解析后的完整 Recipe/Unit Type/Requirements，因此之后修改
 Resource 不会篡改已有录像。

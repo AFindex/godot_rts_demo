@@ -25,6 +25,44 @@ public static class ProductionCatalogSelfTest
             invalidRecipes,
             out _,
             out var invalidValidation);
+        var duplicateRequirementRecipes = catalog.Recipes.ToArray();
+        duplicateRequirementRecipes[0] = duplicateRequirementRecipes[0] with
+        {
+            Requirements =
+            [
+                new ProductionRequirementProfile(
+                    ProductionRequirementKind.CompletedBuilding, 1, 1),
+                new ProductionRequirementProfile(
+                    ProductionRequirementKind.CompletedBuilding, 1, 2)
+            ]
+        };
+        var duplicateRequirementAccepted = ProductionCatalogSnapshot.TryCreate(
+            catalog.FormatVersion,
+            catalog.UnitTypes,
+            duplicateRequirementRecipes,
+            out _,
+            out var duplicateRequirementValidation);
+        var crossCatalogRecipes = catalog.Recipes.ToArray();
+        crossCatalogRecipes[0] = crossCatalogRecipes[0] with
+        {
+            Requirements =
+            [
+                new ProductionRequirementProfile(
+                    ProductionRequirementKind.CompletedBuilding, 999, 1)
+            ]
+        };
+        var crossCatalogCreated = ProductionCatalogSnapshot.TryCreate(
+            catalog.FormatVersion,
+            catalog.UnitTypes,
+            crossCatalogRecipes,
+            out var crossCatalog,
+            out _);
+        var crossCatalogRejected = crossCatalogCreated && crossCatalog is not null &&
+            !ProductionRequirementCatalogValidator.TryValidate(
+                crossCatalog,
+                DemoBuildingTypes.CreateCatalog(),
+                out var crossValidation) &&
+            crossValidation.Code == ProductionCatalogErrorCode.InvalidRecipe;
         var changedRecipes = loaded.Recipes.ToArray();
         changedRecipes[0] = changedRecipes[0] with
         {
@@ -42,17 +80,25 @@ public static class ProductionCatalogSelfTest
                      roundTrip.CanonicalBytes.Span.SequenceEqual(
                          loaded.CanonicalBytes.Span) &&
                      loaded.UnitTypes.SequenceEqual(catalog.UnitTypes) &&
-                     loaded.Recipes.SequenceEqual(catalog.Recipes) &&
+                     loaded.Recipes.Length == catalog.Recipes.Length &&
+                     loaded.Recipes.ToArray().Zip(catalog.Recipes.ToArray())
+                         .All(pair => ProductionCatalogSnapshot.RecipeEquals(
+                             pair.First, pair.Second)) &&
                      diff is { Changed: true, ChangedUnitTypes: 0,
                          ChangedRecipes: 1 } &&
                      !invalidAccepted &&
                      invalidValidation.Code ==
-                         ProductionCatalogErrorCode.InvalidRecipe;
+                         ProductionCatalogErrorCode.InvalidRecipe &&
+                     !duplicateRequirementAccepted &&
+                     duplicateRequirementValidation.Code ==
+                         ProductionCatalogErrorCode.InvalidRecipe &&
+                     crossCatalogRejected;
         return new SelfTestResult(
             passed,
             $"format={loaded.FormatVersion}, hash={loaded.StableHashText}, " +
             $"units={loaded.UnitTypes.Length}, recipes={loaded.Recipes.Length}, " +
             $"changed={diff.ChangedUnitTypes}/{diff.ChangedRecipes}, " +
-            $"invalid={invalidValidation.Code}");
+            $"invalid={invalidValidation.Code}, requirements=" +
+            $"{duplicateRequirementValidation.Code}/{crossCatalogRejected}");
     }
 }

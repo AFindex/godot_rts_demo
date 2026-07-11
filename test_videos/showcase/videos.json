@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T20:30:25.1590704+08:00",
+    "generated_at":  "2026-07-11T20:50:44.6879685+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  100,
-    "case_count":  76,
+    "recording_count":  101,
+    "case_count":  77,
     "recordings":  [
+                       {
+                           "id":  "production-building-prerequisites",
+                           "display_name":  "Multi-building prerequisites gate production and persist exactly",
+                           "batch":  "20260711_205020",
+                           "created_at":  "2026-07-11T20:50:44.3142589+08:00",
+                           "video":  "../20260711_205020/production-building-prerequisites.webm",
+                           "log":  "../20260711_205020/production-building-prerequisites.log",
+                           "bytes":  478793,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS production-building-prerequisites: ticks=1320, gate=MissingPrerequisite-\u003eSuccess, counts=2/2/1/1, build=True/True/True, train=True, resources=2175/450, persistence=True/True/True, versions=log3/package7/hot7",
+                           "metrics":  "ticks=1320, gate=MissingPrerequisite-\u003eSuccess, counts=2/2/1/1, build=True/True/True, train=True, resources=2175/450, persistence=True/True/True, versions=log3/package7/hot7"
+                       },
                        {
                            "id":  "production-rally-smart-targets",
                            "display_name":  "Ground/resource/friendly Rally targets survive replay and hot restore",

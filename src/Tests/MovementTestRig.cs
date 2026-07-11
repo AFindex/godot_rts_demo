@@ -22,7 +22,23 @@ public enum TestProductionCommandCode : byte
     InsufficientMinerals,
     InsufficientVespeneGas,
     SupplyBlocked,
+    MissingPrerequisite,
     InvalidOrder
+}
+
+public readonly record struct TestProductionRequirementStatus(
+    int BuildingTypeId,
+    int RequiredCount,
+    int CurrentCount)
+{
+    public bool Satisfied => CurrentCount >= RequiredCount;
+}
+
+public readonly record struct TestProductionAvailabilitySnapshot(
+    TestProductionCommandCode Code,
+    TestProductionRequirementStatus[] Requirements)
+{
+    public bool Available => Code == TestProductionCommandCode.Success;
 }
 
 public enum TestProductionOrderState : byte
@@ -1136,6 +1152,26 @@ public sealed class MovementTestRig
         return new TestProductionResult(
             (TestProductionCommandCode)result.Code,
             new TestProductionOrderId(result.OrderId.Value));
+    }
+
+    public TestProductionAvailabilitySnapshot ObserveProductionAvailability(
+        int playerId,
+        TestGameplayBuildingId producer,
+        ProductionRecipeProfile recipe)
+    {
+        var snapshot = _simulation.Production.ObserveAvailability(
+            playerId,
+            new GameplayBuildingId(producer.Value),
+            recipe,
+            _simulation.Construction,
+            _simulation.Economy.Players);
+        return new TestProductionAvailabilitySnapshot(
+            (TestProductionCommandCode)snapshot.Code,
+            snapshot.Requirements.Select(value =>
+                new TestProductionRequirementStatus(
+                    value.Requirement.TypeId,
+                    value.Requirement.Count,
+                    value.CurrentCount)).ToArray());
     }
 
     public bool CancelProduction(

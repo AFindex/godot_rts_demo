@@ -1,4 +1,5 @@
 using Godot;
+using Godot.Collections;
 
 namespace RtsDemo.GodotRuntime.Resources;
 
@@ -19,4 +20,7 @@ public partial class ProductionRecipeProfileResource : Resource
     public float ProductionSeconds { get; set; } = 1f;
     [Export(PropertyHint.Range, "0,1,0.01")]
     public float CancelRefundFraction { get; set; } = 1f;
+    [Export]
+    public Array<ProductionRequirementProfileResource> Requirements { get; set; } =
+        new();
 }

@@ -1,5 +1,6 @@
 using Godot;
 using RtsDemo.Simulation;
+using System.Collections.Immutable;
 
 namespace RtsDemo.GodotRuntime.Resources;
 
@@ -34,7 +35,7 @@ public static class ProductionCatalogResourceConverter
         }
         foreach (var recipe in snapshot.Recipes)
         {
-            resource.Recipes.Add(new ProductionRecipeProfileResource
+            var recipeResource = new ProductionRecipeProfileResource
             {
                 Id = recipe.Id,
                 DisplayName = recipe.Name,
@@ -45,7 +46,17 @@ public static class ProductionCatalogResourceConverter
                 SupplyCost = recipe.Cost.Supply,
                 ProductionSeconds = recipe.ProductionSeconds,
                 CancelRefundFraction = recipe.CancelRefundFraction
-            });
+            };
+            foreach (var requirement in recipe.Requirements)
+            {
+                recipeResource.Requirements.Add(
+                    new ProductionRequirementProfileResource
+                    {
+                        RequiredBuildingTypeId = requirement.TypeId,
+                        RequiredCompletedCount = requirement.Count
+                    });
+            }
+            resource.Recipes.Add(recipeResource);
         }
         return resource;
     }
@@ -111,12 +122,30 @@ public static class ProductionCatalogResourceConverter
                     $"Recipe unit type ID {source.UnitTypeId} is outside the catalog.");
                 return false;
             }
+            var requirements = new ProductionRequirementProfile[
+                source.Requirements.Count];
+            for (var requirementIndex = 0;
+                 requirementIndex < requirements.Length;
+                 requirementIndex++)
+            {
+                var requirement = source.Requirements[requirementIndex];
+                if (requirement is null)
+                    return NullElement(
+                        "recipe requirement", index, out snapshot, out validation);
+                requirements[requirementIndex] = new ProductionRequirementProfile(
+                    ProductionRequirementKind.CompletedBuilding,
+                    requirement.RequiredBuildingTypeId,
+                    requirement.RequiredCompletedCount);
+            }
             recipes[index] = new ProductionRecipeProfile(
                 source.Id, source.DisplayName ?? string.Empty,
                 source.ProducerBuildingTypeId, units[source.UnitTypeId],
                 new EconomyCost(
                     source.MineralCost, source.VespeneCost, source.SupplyCost),
-                source.ProductionSeconds, source.CancelRefundFraction);
+                source.ProductionSeconds, source.CancelRefundFraction)
+            {
+                Requirements = requirements.ToImmutableArray()
+            };
         }
         return ProductionCatalogSnapshot.TryCreate(
             resource.FormatVersion, units, recipes, out snapshot, out validation);

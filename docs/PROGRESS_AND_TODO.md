@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 76 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem 或队列内部数组。
+- 77 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
 - 85 个 C# 源文件。
-- 约 27,100 行 C#（按 `src/**/*.cs` 统计）。
-- 76 个黑盒场景。
-- 覆盖 76 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 9.00ms。
+- 约 27,600 行 C#（按 `src/**/*.cs` 统计）。
+- 77 个黑盒场景。
+- 覆盖 77 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 11.86ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -41,7 +41,7 @@
 | 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | D3 完成 | 双资源经济/回放、建筑施工/持久化、生产队列、Building/Production Resource、Rally SmartCommand、Package/Hot v6、Hash v7 | 科技、扩张、胜负与脚本 AI |
+| S11 实际 RTS 玩法 | E1 完成 | 双资源经济、建筑施工、生产/Rally、Production Catalog v2、多建筑生产前置、Package/Hot v7、Hash v8 | 研究升级、扩张、胜负与脚本 AI |
 
 ## 3. 已完成的运行时闭环
 
@@ -171,7 +171,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 76 个场景覆盖：
+当前 77 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -242,7 +242,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 76 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 77 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -798,7 +798,22 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 
 ### 下一阶段边界
 
-S11-D 已整体收口。下一段进入 S11-E 的科技前置、生产可用性和升级队列；不继续追加 Rally 表现细节。AttackMove 自动索建筑仍延后到可见性和目标优先级出现时一起设计。
+S11-D 已整体收口。
+
+### U：S11-E1 建筑前置与生产可用性（已完成）
+
+- Production Catalog 升级为 v2；Recipe 支持最多 32 个唯一 `CompletedBuilding(TypeId, Count)` 条件，并深拷贝进入不可变运行时快照。
+- Resource 新增条件子资源；加载时同时验证空项、重复类型、非法数量以及跨 Building Type Catalog 越界引用。Demo Hash 更新为 `DE89CDDC5527EF18`。
+- Production 返回 `MissingPrerequisite` 和逐条件 `CurrentCount/RequiredCount` Availability Snapshot；Godot 只读该快照显示配方可用性。
+- 新订单实时检查已完成且存活的己方建筑数量；已入队订单不因后续目录调参被篡改。
+- Production Log v3、Replay Package/Hot Snapshot v7、State Hash v8 完整编码活动订单的前置条件。
+- `production-building-prerequisites` 覆盖 2 Barracks + 1 Command Center 的锁定、补齐解锁、生产、完整回放、生产中热恢复和协议拒绝。
+- 77/77 全量黑盒回归通过；Release 256/512/1000 移动 P95 为 1.64/4.71/11.86ms，128/256 战斗 P95 为 1.80/4.57ms。
+- 22 秒 AV1/WebM 位于 `test_videos/20260711_205020/`；全库验证通过 102 个视频、50 个 manifest、101 个场景引用。
+
+### 下一阶段边界
+
+下一段 S11-E2 实现正式研究/升级队列、玩家科技等级、重复研究与互斥规则。不会添加只能由测试或脚本直接授予科技的临时接口。AttackMove 自动索建筑仍延后到可见性和目标优先级出现时一起设计。
 
 ## 8. 可以并行但不能提前耦合的优化
 
