@@ -14,7 +14,8 @@ StaticWorld
   → NavigationConnectivitySnapshot
      ├─ GridPathProvider：起终点分量快速拒绝
      ├─ BuildingConnectivityGuard：候选放置前后比较
-     └─ ClearancePreviewSnapshot：编辑器分量着色
+     ├─ ClearancePreviewSnapshot：编辑器分量着色
+     └─ BuildingConnectivityDiffSnapshot：三档候选差异诊断
 ```
 
 拓扑算法只有一份。`GridPathProvider` 不再维护私有的 walkable/component 烘焙代码；寻路、放置和编辑器使用相同的八邻域、禁止对角穿角、净空半径和动态 revision 语义。
@@ -51,19 +52,20 @@ StaticWorld
 - 候选分析只在低频建筑放置时运行，不进入 60Hz 单位模拟 Tick。
 - 正常寻路继续复用按 revision 缓存的 Snapshot，没有新增每 Tick 分配。
 
-静态 revision 的基线可以直接来自 Clearance Bake；动态 revision 则回退 Analyzer。当前 1000 单位基准为平均 7.90ms、P95 9.40ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
+静态 revision 的基线可以直接来自 Clearance Bake；动态 revision 则回退 Analyzer。当前 1000 单位基准为平均 8.45ms、P95 11.75ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
 
 ## 验收与录像
 
 - 纯 C# 自测：基线 1 个分量；封路候选变成 2 个分量并报告 split；安全候选保持连通。
 - 业务黑盒：封闭唯一缺口返回 `DisconnectsNavigation`，安全建筑成功，8/8 单位仍穿过通道。
 - VisualTestSession 提供通用诊断区域，录像中以红色标出被拒绝的 footprint；该显示不参与业务判定。
+- 放置差异快照同时检查 Small/Medium/Large；阻断夹具为 3/3 拒绝，安全夹具为 3/3 保持连通，并由独立 Godot Control 展示 before/after 指标。
 
 ## 当前边界
 
 - 这是全局采样 Grid 连通性，不是精确多边形布尔运算；正确性粒度由 cell size 决定。
 - 当前保护的是“已有可走区域不被进一步切开”，还没有出生点、资源区或基地出口等具名关键锚点策略。
-- Bake 已提供 16×16-cell chunk 描述和区域到 chunk 的映射，但动态 revision 尚未实现增量 flood fill。
+- Bake 已提供 16×16-cell chunk 描述和区域到 chunk 的映射；单 revision 已局部重采样 walkability，但 component 重标号仍是全图执行。
 - 尚未把 Portal/Sector 图与 Grid 分量做双向一致性诊断。
 
-下一阶段使用现有 `FindIntersectingChunks` 只重采样受影响 chunks，并维护跨 chunk 的 component 边界图；在此之前动态 revision 继续安全回退全图分析。
+下一阶段若继续拓扑性能方向，应维护跨 chunk 的 component 边界图；否则优先进入文件监听或实际玩法，不再扩张诊断 UI。

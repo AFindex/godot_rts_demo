@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 64 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore 或队列内部数组。
+- 65 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
-- 73 个 C# 源文件。
-- 约 20,660 行 C#（按仓库源码统计）。
-- 64 个黑盒场景。
-- 覆盖 64 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 12.30ms。
+- 76 个 C# 源文件。
+- 约 20,978 行 C#（按仓库源码统计）。
+- 65 个黑盒场景。
+- 覆盖 65 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 11.75ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -39,7 +39,7 @@
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
 | S8 战斗移动 | Demo 闭环完成 | AttackMove、近战接触槽、远程攻击环、外圈 staging、Stop/Hold 索敌、多人重选敌、死亡/leash/路线恢复 | 后置的弹道、移动射击、动画事件、复杂目标权重和推挤优先级 |
 | 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
-| S9 编辑器与数据烘焙 | Bake Reload 闭环完成 | dirty chunks、Fresh Load、原子差异、Bake-only 两阶段提交、重规划与诊断 | 文件监听、几何拖拽、边界 component graph 和放置差异面板 |
+| S9 编辑器与数据烘焙 | 放置诊断闭环完成 | dirty chunks、Fresh Load、原子差异、Bake-only 两阶段提交、重规划、三档放置差异面板 | 文件监听、几何拖拽、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
 
 ## 3. 已完成的运行时闭环
@@ -170,7 +170,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 64 个场景覆盖：
+当前 65 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -191,6 +191,7 @@
 - 单次动态 revision 的 dirty-chunk 重采样、GridPathProvider 运行时快路径、建筑加入/移除与全量拓扑一致性。
 - 生成式 Navigation/Profile/Bake 变体、Godot Fresh Load、原子资源集拒绝、逐类型差异和重建影响等级。
 - Bake-only 两阶段提交、Grid/放置守卫同时换代、活动编队重规划、录制期/错误哈希/不支持 Provider 拒绝。
+- 候选 footprint 对 Small/Medium/Large 的放置前后 Connectivity 差异、三档安全/断路判定、dirty chunks 和独立诊断面板。
 - Godot 编辑器净空预览同时输出 3 档尺寸、5 条 Portal 和 4 档建筑，并由纯 C# 快照驱动。
 - 跨命令共享目标槽位。
 - Stop 与 Hold。
@@ -238,7 +239,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 64 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 65 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -250,16 +251,16 @@ Observe unit / combat / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | Hash 平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|
-| 256 | 1.46ms | 3.10ms | 0.982ms | 4ms | 27B |
-| 512 | 3.63ms | 4.55ms | 1.230ms | 12.5ms | 182B |
-| 1000 | 8.50ms | 12.30ms | 1.591ms | 16.67ms | 461B |
+| 256 | 1.20ms | 1.76ms | 1.210ms | 4ms | 27B |
+| 512 | 3.96ms | 4.88ms | 1.301ms | 12.5ms | 182B |
+| 1000 | 8.45ms | 11.75ms | 1.496ms | 16.67ms | 461B |
 
 双方持续 AttackMove 的活跃战斗门槛：
 
 | 总单位数 | 平均 Tick | P95 | Hash 平均 | 战斗阶段平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|---:|
-| 128 | 1.24ms | 1.57ms | 0.158ms | 0.44ms | 4ms | 2.3KB |
-| 256 | 3.43ms | 4.90ms | 0.695ms | 1.62ms | 8ms | 4.0KB |
+| 128 | 1.46ms | 2.03ms | 0.147ms | 0.53ms | 4ms | 2.3KB |
+| 256 | 3.72ms | 4.90ms | 0.701ms | 1.83ms | 8ms | 4.0KB |
 
 活跃追击会持续生成短路径，因此单独使用 8KB/Tick 分配门槛；非战斗移动仍保持 1KB/Tick 门槛。
 
@@ -395,6 +396,8 @@ TODO：
 - Small/Medium/Large 障碍净空轮廓、Portal 资格和四档建筑 footprint 的场景内 `[Tool]` 预览。
 - 与 GridPathProvider 共用的三档全局 Connectivity Snapshot 和分量着色。
 - 建筑放置前后分量比较与稳定 `DisconnectsNavigation` 业务结果。
+- 纯 C# `BuildingConnectivityDiffSnapshot` 同时比较三档 before/after 拓扑，输出 blocked/split/disconnected 与 dirty chunks。
+- 独立 Godot `RtsBuildingConnectivityDiffControl` 只消费差异快照；候选 footprint 与面板表现不进入业务判定。
 - 与预览实现解耦的纯 C# 自测、Godot 黑盒用例和自动录像。
 
 TODO：
@@ -402,7 +405,7 @@ TODO：
 - Resource 文件监听、自动提交去抖和格式迁移。
 - 跨 chunk component 边界图和批量 revision 变更区域合并。
 - Sector/Portal Authoring Tool。
-- 具名关键锚点策略、孤岛列表和放置前后差异面板。
+- 具名关键锚点策略和可交互孤岛列表。
 
 ### 6.4 确定性、回放和联机
 
@@ -488,7 +491,7 @@ TODO：
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（12.30ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（11.75ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
@@ -617,11 +620,19 @@ TODO：
 - 8 个移动单位按原编组全部重规划并 8/8 到达，reload 计数为 1。
 - 错误 Navigation Hash 候选被拒绝，旧活动 Bake 和 reload 计数保持不变。
 - 命令/Replay 录制期间与不支持 reload 的 Provider 明确拒绝。
-- 64/64 黑盒场景、Release 门槛和 AV1/WebM 全仓门禁通过。
+- 64/64 当时的黑盒场景、Release 门槛和 AV1/WebM 全仓门禁通过。
+
+### I：S9 放置前后 Connectivity 差异面板（已完成）
+
+- 纯 C# 快照对同一候选 footprint 一次输出 Small/Medium/Large 三档 before/after 组件数、blocked cells、split components、disconnected cells 与受影响 chunks。
+- 匹配静态 Bake 时复用其基线；候选态使用正式 `NavigationConnectivityAnalyzer`，不复制编辑器专用拓扑规则。
+- 专用走廊夹具中阻断候选三档全部拒绝，安全候选三档全部保持连通；总计报告 1,902 个 disconnected cells，dirty chunks 为 2/1。
+- Godot Control 只消费不可变快照，UI 可独立换皮或重排，不依赖模拟、GridPathProvider 或 Guard 私有状态。
+- `building-connectivity-diff-preview` 黑盒场景与 AV1/WebM 录像已保存；65/65 全量回归和 Release 性能门禁通过。
 
 ### 下一阶段边界
 
-移动内核与基础操作表现已经形成 Demo 闭环，S9 的增量净空、Resource Reload 和 Bake-only 提交也已闭环。下一轮只选择一个有业务收益的方向：放置差异面板、文件监听或实际游戏规则；不继续无边界追加表现细节。
+移动内核与基础操作表现已经形成 Demo 闭环，S9 的增量净空、Resource Reload、Bake-only 提交和放置差异诊断也已闭环。下一轮只选择一个有业务收益的方向：文件监听、边界 component graph 或实际游戏规则；不继续无边界追加表现细节。
 
 ## 8. 可以并行但不能提前耦合的优化
 

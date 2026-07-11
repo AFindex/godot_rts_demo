@@ -128,13 +128,15 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 纯预览快照不依赖 Godot Node，也被 `ClearancePreviewSelfTest` 复用。测试只断言输入资产对应的业务输出，不读取绘制节点内部状态：22px Edge 必须显示 `SM-`，96px Edge 必须显示 `SML`。详见 `CLEARANCE_EDITOR_PREVIEW.md`。
 
+候选建筑另由纯 C# `BuildingConnectivityDiffSnapshot` 输出三档 before/after 差异；独立 Godot Control 只读取快照并显示组件数、blocked/split/disconnected 与 dirty chunks，不把放置判定或拓扑算法耦合进 UI。
+
 ## 7. 当前性能
 
 | 单位数 | 平均 Tick | P95 | 分配/Tick |
 |---:|---:|---:|---:|
-| 256 | 1.27ms | 1.73ms | 27B |
-| 512 | 3.75ms | 4.70ms | 182B |
-| 1000 | 7.90ms | 9.40ms | 461B |
+| 256 | 1.20ms | 1.76ms | 27B |
+| 512 | 3.96ms | 4.88ms | 182B |
+| 1000 | 8.45ms | 11.75ms | 461B |
 
 ## 8. 后续层
 
@@ -142,6 +144,6 @@ Small、Medium、Large、Huge 四种业务 footprint 同时合法放置，并验
 
 1. 在已有 dirty-chunk 重采样上增加边界 component graph。
 2. 在已有 Bake-only 安全提交上增加文件监听、自动触发去抖和格式迁移。
-3. Editor 中的 Portal/Choke 交互编辑、局部非法窄口定位和放置前后差异面板。
+3. Editor 中的 Portal/Choke 交互编辑、局部非法窄口定位和可交互孤岛列表。
 4. Ground、Hover、Air 等移动层，以及地形软代价和标签。
 5. 非矩形/旋转 footprint 与局部 NavMesh chunk 更新。

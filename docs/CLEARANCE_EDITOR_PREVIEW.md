@@ -55,12 +55,14 @@ Godot 黑盒场景验证正式 Demo Resource 能生成 3 档、5 条 Portal 和 
 
 `clearance-incremental-chunks` 额外验证 dirty chunks 为 `1,6`，仅重采样 512/3,080 cells；加入与移除后的拓扑都严格等于全量分析。录像以橙色覆盖层显示相同两个 chunks。
 
+`building-connectivity-diff-preview` 为一个候选 footprint 同时生成 Small/Medium/Large 的 before/after 差异。纯 C# 快照报告分量数、blocked cells、split components、disconnected cells 和 dirty chunks；独立 `RtsBuildingConnectivityDiffControl` 只负责排版与颜色。专用走廊用例中阻断候选三档均由 1 个分量变为 2 个，安全候选三档均保持连通。
+
 ## 当前边界
 
 - 这是场景内 `[Tool]` 预览基线，还没有独立 EditorPlugin Dock、点击选择或拖拽 Portal。
-- 当前能显示全局连通分量，但没有点击分量、孤岛列表或放置前后差异面板。
+- 已有放置前后差异面板；尚没有点击分量、可交互孤岛列表或 EditorPlugin Dock。
 - 已能显示受影响 chunks，并由运行时增量更新器消费同一 chunk 规划；尚没有 EditorPlugin 重烘焙按钮。
 - 障碍与建筑均按轴对齐矩形显示；尚不支持旋转和非矩形 footprint。
 - Resource 已支持 Fresh Load、原子差异、影响等级和 Bake-only 两阶段提交；Navigation/Profile 仍要求显式模拟重建。
 
-下一步是增加孤岛/放置差异面板、文件监听和边界 component graph。绘制节点继续只消费分析结果，不实现拓扑算法。
+下一步只在文件监听、边界 component graph 和可交互孤岛列表中选择一项。绘制节点继续只消费分析结果，不实现拓扑算法。

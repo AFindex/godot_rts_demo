@@ -11,7 +11,7 @@ python -m http.server 10086
 
 然后访问 `http://localhost:10086/test_videos/showcase/`。浏览器出于安全限制不能在直接打开本地 HTML 文件时读取 JSON，因此需要一个本地 HTTP 服务。
 
-仓库保留覆盖 64 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+仓库保留覆盖 65 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
@@ -49,6 +49,7 @@ python -m http.server 10086
 - `20260711_135134/`：dirty-chunk 增量 Connectivity；橙色高亮 chunks 1/6，仅重采样 512/3,080 cells，加入/移除与全量拓扑严格一致，多 revision 输入明确拒绝增量路径。
 - `20260711_141754/`：Resource Fresh Load 与原子差异；生成的 Navigation/Profile/Bake 变体整体加载，面板显示 1 个障碍、1 个单位 Profile 和 `RebuildSimulation` 策略，错配 Bake 被拒绝。
 - `20260711_144424/`：Bake-only 两阶段安全提交；8 个单位移动途中原子替换 Grid/放置守卫缓存并全部重规划，错误导航哈希候选随后被拒绝，最终 8/8 到达。
+- `20260711_145641/`：放置前后 Connectivity 差异；候选 footprint 封死唯一走廊，Small/Medium/Large 均从 1 个分量变为 2 个，面板显示 blocked/split/disconnected 与 dirty chunks，安全候选三档均保持连通。
 
 重新录制所有当前场景：
 

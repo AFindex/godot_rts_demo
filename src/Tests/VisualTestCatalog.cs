@@ -55,6 +55,7 @@ public static class VisualTestCatalog
         "clearance-incremental-chunks",
         "resource-hot-reload",
         "clearance-bake-live-commit",
+        "building-connectivity-diff-preview",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -144,6 +145,8 @@ public static class VisualTestCatalog
             hotReloadCandidate),
         "clearance-bake-live-commit" => CreateClearanceBakeLiveCommit(
             navigationMap, gameplayProfiles, clearanceBake),
+        "building-connectivity-diff-preview" =>
+            CreateBuildingConnectivityDiffPreview(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -1921,6 +1924,35 @@ public static class VisualTestCatalog
             {
                 mismatch = runtime.CommitMismatchedClearanceBake();
             });
+    }
+
+    private static VisualTestSession CreateBuildingConnectivityDiffPreview()
+    {
+        var navigation =
+            BuildingConnectivityDiffSelfTest.CreateNavigationFixture();
+        var bake = ClearanceBakeSnapshot.Build(navigation);
+        var diff = BuildingConnectivityDiffSnapshot.Create(
+            navigation,
+            BuildingConnectivityDiffSelfTest.BlockingFootprint,
+            bake);
+        var rig = MovementTestRig.CreateChokeMap(8, navigation);
+        return new VisualTestSession(
+                "building-connectivity-diff-preview",
+                "Placement before-after connectivity diff for all classes",
+                600,
+                rig,
+                [],
+                _ =>
+                {
+                    var result = BuildingConnectivityDiffSelfTest.Run();
+                    return new ScenarioResult(
+                        result.Passed && !diff.PreservedForAll,
+                        result.Summary);
+                })
+            .Highlight(
+                BuildingConnectivityDiffSelfTest.BlockingFootprint,
+                "REJECT: splits Small / Medium / Large",
+                TestDiagnosticKind.Rejected);
     }
 
     private static VisualTestSession CreateStopCommand()

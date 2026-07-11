@@ -63,6 +63,8 @@ public partial class RtsDemo : Node2D
     private RuntimeResourceSetSnapshot? _hotReloadCandidate;
     private RuntimeResourceReloadPlan? _hotReloadPlan;
     private RtsResourceReloadControl? _resourceReloadControl;
+    private BuildingConnectivityDiffSnapshot? _buildingConnectivityDiff;
+    private RtsBuildingConnectivityDiffControl? _buildingConnectivityDiffControl;
 
     public override async void _Ready()
     {
@@ -1048,6 +1050,18 @@ public partial class RtsDemo : Node2D
             _resourceReloadControl.SetPlan(_hotReloadPlan);
             _hudRoot.AddChild(_resourceReloadControl);
         }
+        if (_visualTest?.Id == "building-connectivity-diff-preview" &&
+            _buildingConnectivityDiff is not null)
+        {
+            _buildingConnectivityDiffControl =
+                new RtsBuildingConnectivityDiffControl
+                {
+                    Size = new Vector2(720f, 218f)
+                };
+            _buildingConnectivityDiffControl.SetSnapshot(
+                _buildingConnectivityDiff);
+            _hudRoot.AddChild(_buildingConnectivityDiffControl);
+        }
         UpdateHudLayout();
     }
 
@@ -1071,6 +1085,12 @@ public partial class RtsDemo : Node2D
             _resourceReloadControl.Position = new Vector2(
                 24f,
                 viewportSize.Y - _resourceReloadControl.Size.Y - 20f);
+        }
+        if (_buildingConnectivityDiffControl is not null)
+        {
+            _buildingConnectivityDiffControl.Position = new Vector2(
+                24f,
+                viewportSize.Y - _buildingConnectivityDiffControl.Size.Y - 20f);
         }
     }
 
@@ -1263,6 +1283,16 @@ public partial class RtsDemo : Node2D
         _simulation = _visualTest.Simulation;
         _routePlanner = _visualTest.RoutePlanner;
         _chokeController = _visualTest.ChokeController;
+        if (caseId == "building-connectivity-diff-preview")
+        {
+            var navigation =
+                BuildingConnectivityDiffSelfTest.CreateNavigationFixture();
+            _buildingConnectivityDiff =
+                BuildingConnectivityDiffSnapshot.Create(
+                    navigation,
+                    BuildingConnectivityDiffSelfTest.BlockingFootprint,
+                    ClearanceBakeSnapshot.Build(navigation));
+        }
         GetNodeOrNull<ClearancePreview2D>("ClearancePreview")?.SetRuntimeSnapshots(
             _navigationSnapshot,
             _gameplayProfiles,
