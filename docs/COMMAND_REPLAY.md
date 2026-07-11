@@ -57,28 +57,46 @@ Tick + OrderKind + Queued + TargetX + TargetY + UnitCount + sorted UnitIds
 
 | 场景 | Hash 平均耗时 |
 |---|---:|
-| 256 单位移动 | 0.736ms |
-| 512 单位移动 | 1.447ms |
-| 1000 单位移动 | 1.277ms |
-| 128 总单位持续战斗 | 0.167ms |
-| 256 总单位持续战斗 | 0.855ms |
+| 256 单位移动 | 0.652ms |
+| 512 单位移动 | 1.331ms |
+| 1000 单位移动 | 1.324ms |
+| 128 总单位持续战斗 | 0.151ms |
+| 256 总单位持续战斗 | 0.867ms |
 
 基准对 Hash 设置独立门槛，避免后续扩大状态覆盖时悄然引入不可接受的诊断成本。
 
-## 6. 明确未完成项
+## 6. Replay Package v1
 
-命令日志目前不包含初始世界快照、单位生成、动态建筑放置/移除或资源版本清单。因此它还不是可以脱离当前场景独立播放的 Replay 文件。
+Replay Package 在命令日志之外保存：
 
-下一阶段应先形成 Replay Package：保存地图/Profile/Bake 的格式版本与稳定 Hash、初始单位清单，并把运行时建筑变更纳入世界命令。随后再做快照保存/恢复和从中间 Tick 快速跳转。跨平台 Lockstep、服务端权威和表现插值要在这些边界稳定后再决策。
+- Navigation、Gameplay Profile、Clearance Bake 的格式版本与稳定 Hash。
+- 模拟容量、初始状态 Hash、稳定顺序的单位完整移动/战斗配置。
+- 初始动态建筑 ID、Bounds 和放置 revision。
+- 后续建筑放置/移除世界命令，以及既有单位命令日志。
 
-## 7. 验证入口
+重建时先严格匹配三类资源身份，再按清单创建建筑和单位，并要求初始状态 Hash 完全一致。每个 Tick 固定先应用世界命令、再应用单位命令，消除两类输入之间的隐式顺序。
+
+录制必须在 Tick 0、首条玩法命令之前启动。初始动态建筑允许先完成一轮连续放置，但不能在启动录制前先移除并留下 ID/revision 空洞；这种输入会明确拒绝，而不是生成无法精确重建的包。
+
+当前验收包包含 8 个单位、1 个初始建筑、2 条动态建筑命令和 2 条单位命令；规范载荷 690 字节，包 Hash `5229BB45B72D5D04`。独立重建运行至 Tick 720 后，最终状态 Hash 与原运行同为 `E6CA47E1FC090065`。
+
+## 7. 明确未完成项
+
+Replay Package 当前从 Tick 0 顺序播放，尚未保存中间模拟快照，也不能快速跳转。它记录矩形动态建筑，但尚未覆盖未来可能出现的单位生产/销毁、非矩形建筑或玩家/随机种子等玩法状态。
+
+下一阶段是版本化快照保存/恢复和中间 Tick checkpoint。跨平台 Lockstep、服务端权威和表现插值仍需在快照边界稳定后再决策。
+
+## 8. 验证入口
 
 ```powershell
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
-  --headless --path . -- --self-test-case command-log-replay
+  --headless --path . -- --visual-test command-log-replay
 
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
-  --headless --path . -- --self-test-case command-replay-divergence
+  --headless --path . -- --visual-test command-replay-divergence
+
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --visual-test replay-package-world
 ```
 
-对应规范录像位于 `test_videos/20260711_090654/`。
+对应规范录像位于 `test_videos/20260711_090654/` 和 `test_videos/20260711_094134/`。

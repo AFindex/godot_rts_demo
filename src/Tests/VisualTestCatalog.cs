@@ -27,6 +27,7 @@ public static class VisualTestCatalog
         "smart-command-sequence",
         "command-log-replay",
         "command-replay-divergence",
+        "replay-package-world",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -90,6 +91,8 @@ public static class VisualTestCatalog
         "smart-command-sequence" => CreateSmartCommandSequence(),
         "command-log-replay" => CreateCommandLogReplay(),
         "command-replay-divergence" => CreateCommandReplayDivergence(),
+        "replay-package-world" => CreateReplayPackageWorld(
+            navigationMap, gameplayProfiles, clearanceBake),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
         "opposing-streams" => CreateOpposingStreams(),
@@ -754,6 +757,60 @@ public static class VisualTestCatalog
                     $"changed={divergent.FinalHash:X16}, " +
                     $"samples={baseline.SampleCount}");
             });
+    }
+
+    private static VisualTestSession CreateReplayPackageWorld(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        var units = rig.SpawnGrid(
+            new Vector2(100f, 300f), 2, 4, 24f,
+            radius: 7.5f, maximumSpeed: 132f, acceleration: 720f);
+        rig.PlaceBuilding(new Vector2(300f, 150f), new Vector2(48f, 48f));
+        rig.StartReplayPackageRecording();
+        rig.Move(units, new Vector2(1160f, 350f));
+
+        var dynamicBuilding = default(TestBuildingId);
+        var session = new VisualTestSession(
+            "replay-package-world",
+            "Replay package rebuilds initial units, resources and dynamic world commands",
+            720,
+            rig,
+            units,
+            runtime =>
+            {
+                var package = runtime.CaptureReplayPackage();
+                var roundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var replay = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var exact = replay.FinalHash == runtime.StateHash;
+                var rejected = package.RejectsUnsupportedVersion() &&
+                               package.RejectsTruncatedPayload() &&
+                               runtime.RejectsReplayPackageResourceMismatch(package);
+                var passed = roundTrip && exact && rejected &&
+                             package.InitialUnitCount == units.Length &&
+                             package.InitialBuildingCount == 1 &&
+                             package.WorldCommandCount == 2 &&
+                             package.UnitCommandCount == 2 &&
+                             runtime.BuildingCount == 1;
+                return new ScenarioResult(
+                    passed,
+                    $"units={package.InitialUnitCount}, world={package.WorldCommandCount}, " +
+                    $"orders={package.UnitCommandCount}, bytes={package.CanonicalByteCount}, " +
+                    $"package={package.StableHash:X16}, state={runtime.StateHash:X16}, " +
+                    $"exact={exact}, rejected={rejected}");
+            });
+        session.At(90, "Place dynamic reroute building", runtime =>
+            dynamicBuilding = runtime.PlaceBuilding(
+                new Vector2(800f, 353f), new Vector2(72f, 96f)));
+        session.At(270, "Remove dynamic building", runtime =>
+            runtime.RemoveBuilding(dynamicBuilding));
+        return session.At(360, "Issue post-world command", runtime =>
+            runtime.Move(units.Take(4).ToArray(), new Vector2(1110f, 530f)));
     }
 
     private static VisualTestSession BuildReplaySession(

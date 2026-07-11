@@ -88,6 +88,53 @@ public sealed class TestCommandLog
     }
 }
 
+public sealed class TestReplayPackage
+{
+    internal TestReplayPackage(SimulationReplayPackageSnapshot snapshot)
+    {
+        Backend = snapshot;
+    }
+
+    internal SimulationReplayPackageSnapshot Backend { get; }
+    public int FormatVersion => Backend.FormatVersion;
+    public int InitialUnitCount => Backend.Units.Length;
+    public int InitialBuildingCount => Backend.Buildings.Length;
+    public int WorldCommandCount => Backend.WorldCommands.Length;
+    public int UnitCommandCount => Backend.CommandLog.Entries.Length;
+    public int CanonicalByteCount => Backend.CanonicalBytes.Length;
+    public ulong StableHash => Backend.StableHash;
+    public ulong InitialStateHash => Backend.InitialStateHash;
+
+    public bool TryCanonicalRoundTrip(out TestReplayPackage? roundTripped)
+    {
+        var succeeded = SimulationReplayPackageSnapshot.TryDeserialize(
+            Backend.CanonicalBytes, out var snapshot, out _);
+        roundTripped = succeeded && snapshot is not null
+            ? new TestReplayPackage(snapshot)
+            : null;
+        return succeeded;
+    }
+
+    public bool RejectsUnsupportedVersion()
+    {
+        var payload = Backend.CanonicalBytes.ToArray();
+        payload[4]++;
+        return !SimulationReplayPackageSnapshot.TryDeserialize(
+            payload, out _, out var validation) &&
+            validation.Code == ReplayPackageValidationCode.UnsupportedVersion;
+    }
+
+    public bool RejectsTruncatedPayload()
+    {
+        return !SimulationReplayPackageSnapshot.TryDeserialize(
+            Backend.CanonicalBytes.AsSpan(0, Backend.CanonicalBytes.Length - 1),
+            out _,
+            out var validation) &&
+            validation.Code is ReplayPackageValidationCode.InvalidCommandLog or
+                ReplayPackageValidationCode.PayloadTooShort;
+    }
+}
+
 public sealed class TestReplayTrace
 {
     internal TestReplayTrace(SimulationReplayTrace trace, ulong finalHash)
@@ -262,6 +309,8 @@ public sealed class MovementTestRig
     private readonly PortalGraphRoutePlanner? _routePlanner;
     private readonly ChokeController? _chokeController;
     private readonly NavigationMapSnapshot? _navigationMap;
+    private readonly GameplayProfileCatalogSnapshot? _gameplayProfiles;
+    private readonly ClearanceBakeSnapshot? _clearanceBake;
     private readonly ControlGroupManager _controlGroups;
 
     private MovementTestRig(
@@ -269,13 +318,17 @@ public sealed class MovementTestRig
         RtsSimulation simulation,
         PortalGraphRoutePlanner? routePlanner,
         ChokeController? chokeController,
-        NavigationMapSnapshot? navigationMap)
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles = null,
+        ClearanceBakeSnapshot? clearanceBake = null)
     {
         _world = world;
         _simulation = simulation;
         _routePlanner = routePlanner;
         _chokeController = chokeController;
         _navigationMap = navigationMap;
+        _gameplayProfiles = gameplayProfiles;
+        _clearanceBake = clearanceBake;
         _controlGroups = new ControlGroupManager(simulation.Units.Capacity);
     }
 
@@ -328,6 +381,32 @@ public sealed class MovementTestRig
             routePlanner,
             chokeController,
             navigationMap);
+    }
+
+    public static MovementTestRig CreateReplayPackageMap(
+        int capacity,
+        NavigationMapSnapshot navigationMap,
+        GameplayProfileCatalogSnapshot gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        var world = navigationMap.CreateWorld();
+        var routePlanner = navigationMap.CreateRoutePlanner(world);
+        var chokeController = navigationMap.CreateChokeController();
+        var simulation = new RtsSimulation(
+            world,
+            new GridPathProvider(world),
+            capacity,
+            routePlanner,
+            chokeController,
+            clearanceBake);
+        return new MovementTestRig(
+            world,
+            simulation,
+            routePlanner,
+            chokeController,
+            navigationMap,
+            gameplayProfiles,
+            clearanceBake);
     }
 
     public static MovementTestRig CreateClearanceChoiceMap(int capacity)
@@ -660,8 +739,96 @@ public sealed class MovementTestRig
     public void StartCommandRecording() =>
         _simulation.StartCommandRecording();
 
+    public void StartReplayPackageRecording()
+    {
+        if (_navigationMap is null || _gameplayProfiles is null)
+        {
+            throw new InvalidOperationException(
+                "Replay package recording requires versioned navigation and gameplay assets.");
+        }
+        _simulation.StartReplayPackageRecording(ReplayResourceManifest.Create(
+            _navigationMap, _gameplayProfiles, _clearanceBake));
+    }
+
     public TestCommandLog CaptureCommandLog() =>
         new(_simulation.CaptureCommandLog());
+
+    public TestReplayPackage CaptureReplayPackage() =>
+        new(_simulation.CaptureReplayPackage());
+
+    public TestReplayTrace ReplayPackage(
+        TestReplayPackage package,
+        long targetTick,
+        int hashIntervalTicks = 30)
+    {
+        if (_navigationMap is null || _gameplayProfiles is null ||
+            targetTick < 0 || hashIntervalTicks <= 0)
+        {
+            throw new InvalidOperationException(
+                "Replay package assets or arguments are invalid.");
+        }
+        if (!SimulationReplayPackageFactory.TryCreateSimulation(
+                package.Backend,
+                _navigationMap,
+                _gameplayProfiles,
+                _clearanceBake,
+                out var simulation,
+                out var validation) || simulation is null)
+        {
+            throw new InvalidOperationException(
+                $"Replay package creation failed: {validation.Code}.");
+        }
+
+        var replay = new SimulationReplayPackageRunner(package.Backend);
+        var trace = new SimulationReplayTrace();
+        trace.Add(0, simulation.ComputeStateHash());
+        while (simulation.Metrics.Tick < targetTick)
+        {
+            replay.ApplyForCurrentTick(simulation);
+            simulation.Tick(1f / 60f);
+            if (simulation.Metrics.Tick % hashIntervalTicks == 0 ||
+                simulation.Metrics.Tick == targetTick)
+            {
+                trace.Add(simulation.Metrics.Tick, simulation.ComputeStateHash());
+            }
+        }
+        if (!replay.Completed)
+        {
+            throw new InvalidOperationException(
+                "Replay package stopped before all commands were applied.");
+        }
+        var finalHash = simulation.ComputeStateHash();
+        return new TestReplayTrace(trace, finalHash);
+    }
+
+    public bool RejectsReplayPackageResourceMismatch(TestReplayPackage package)
+    {
+        if (_navigationMap is null || _gameplayProfiles is null)
+        {
+            return false;
+        }
+        var source = package.Backend;
+        var changedResources = source.Resources with
+        {
+            NavigationHash = source.Resources.NavigationHash ^ 1UL
+        };
+        var changed = new SimulationReplayPackageSnapshot(
+            source.SimulationCapacity,
+            source.InitialStateHash,
+            changedResources,
+            source.Units.ToArray(),
+            source.Buildings.ToArray(),
+            source.WorldCommands.ToArray(),
+            source.CommandLog);
+        return !SimulationReplayPackageFactory.TryCreateSimulation(
+                   changed,
+                   _navigationMap,
+                   _gameplayProfiles,
+                   _clearanceBake,
+                   out _,
+                   out var validation) &&
+               validation.Code == ReplayPackageValidationCode.ResourceMismatch;
+    }
 
     public TestReplayTrace Replay(
         TestCommandLog log,

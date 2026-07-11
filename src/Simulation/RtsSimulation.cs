@@ -45,6 +45,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private int _nextMovementGroupId = 1;
     private int _nextOrderSequenceId = 1;
     private SimulationCommandRecorder? _commandRecorder;
+    private SimulationReplayPackageRecorder? _replayPackageRecorder;
 
     public RtsSimulation(
         StaticWorld world,
@@ -103,6 +104,22 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return _commandRecorder.Capture();
     }
 
+    public void StartReplayPackageRecording(ReplayResourceManifest resources)
+    {
+        _commandRecorder = new SimulationCommandRecorder();
+        _replayPackageRecorder = new SimulationReplayPackageRecorder(this, resources);
+    }
+
+    public SimulationReplayPackageSnapshot CaptureReplayPackage()
+    {
+        if (_commandRecorder is null || _replayPackageRecorder is null)
+        {
+            throw new InvalidOperationException(
+                "Replay package recording has not been started.");
+        }
+        return _replayPackageRecorder.Capture(_commandRecorder.Capture());
+    }
+
     public void ApplyRecordedCommand(RecordedSimulationCommand command)
     {
         switch (command.Kind)
@@ -132,6 +149,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         var id = World.DynamicOccupancy.Place(footprint);
         InvalidatePathsIntersecting(footprint);
+        _replayPackageRecorder?.RecordPlace(Metrics.Tick, id, footprint);
         return id;
     }
 
@@ -165,10 +183,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public bool RemoveBuilding(DynamicFootprintId id)
     {
-        if (!World.DynamicOccupancy.Remove(id, out _))
+        if (!World.DynamicOccupancy.Remove(id, out var removedBounds))
         {
             return false;
         }
+
+        _replayPackageRecorder?.RecordRemove(Metrics.Tick, id, removedBounds);
 
         for (var unit = 0; unit < Units.Count; unit++)
         {

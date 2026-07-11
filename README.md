@@ -38,6 +38,7 @@
 - Ctrl+数字覆盖 Control Group、Shift+数字添加、数字键召回；死亡单位自动从召回结果中过滤。
 - SmartCommand 将地面/友军位置解析为 Move、敌军解析为锁定攻击，A 修饰解析为 AttackMove。
 - 版本化规范命令日志、固定 Tick 回放、精确状态 Hash 和首次分歧 Tick 定位。
+- Replay Package 保存资源版本/Hash、初始单位与建筑清单，并按固定顺序重放动态建筑世界命令。
 - 战斗状态与移动路径分离；死亡保持稳定 unit ID，但从寻路邻居、碰撞、选择和建筑占用中移除。
 - 框选、点选、右键移动、Stop、Hold，以及路径、槽位、Portal 和狭口调试显示。
 
@@ -92,7 +93,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 非战斗移动：当前线程分配不超过 1KB/Tick。
 - 活跃战斗 128/256 总单位：P95 不超过 4/8ms，分配不超过 8KB/Tick。
 
-当前机器的 Release 移动基线约为 1.93ms、5.27ms 和 9.94ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 2.00/4.94ms P95。完整状态 Hash 在 1000 单位场景平均约 1.28ms。
+当前机器的 Release 移动基线约为 1.38ms、4.63ms 和 9.18ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 3.39/7.01ms P95。完整状态 Hash 在 1000 单位场景平均约 1.32ms。
 
 ## 导航数据资产
 
@@ -135,7 +136,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 55 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层，以及命令日志精确回放和分歧定位。
+当前包含 56 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、命令日志精确回放，以及可自描述 Replay Package。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -150,4 +151,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-移动、动态地图、战斗移动、第一层操作语义，以及确定性命令日志/回放骨架已经形成可运行闭环。下一阶段先补 Replay Package 的初始状态清单与动态建筑世界命令，再做快照恢复；双击同类选择、编组双击镜头定位、相机与 Minimap 输入随后继续。
+移动、动态地图、战斗移动、第一层操作语义，以及确定性命令日志/Replay Package 已经形成可运行闭环。下一阶段做版本化快照与中间 Tick 恢复；双击同类选择、编组双击镜头定位、相机与 Minimap 输入随后继续。
