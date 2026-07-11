@@ -39,6 +39,8 @@
 - SmartCommand 将地面/友军位置解析为 Move、敌军解析为锁定攻击，A 修饰解析为 AttackMove。
 - 纯 C# SelectionFilter 支持稳定点选、友军框选和可见区域双击同类型选择。
 - 相机支持边缘/方向键滚动、光标锚定缩放和编组数字键双击定位。
+- Minimap 显示静态障碍、单位、不同 footprint 的建筑和当前视口框；左键/拖动定位，右键复用 SmartCommand。
+- Minimap 使用纯 C# 快照/坐标/交互意图、独立 Godot Control 和薄业务绑定三层结构，换皮与动效迭代不进入模拟层。
 - 版本化规范命令日志、固定 Tick 回放、精确状态 Hash 和首次分歧 Tick 定位。
 - Replay Package 保存资源版本/Hash、初始单位与建筑清单，并按固定顺序重放动态建筑世界命令。
 - 版本化 checkpoint 绑定 Package/状态 Hash，可确定性 seek 到中间 Tick 后继续精确回放。
@@ -69,6 +71,8 @@ Shift + 数字：添加到对应 Control Group
 双击数字：召回并把镜头定位到 Control Group
 鼠标滚轮：以光标为锚点缩放
 屏幕边缘/方向键：移动镜头
+Minimap 左键/拖动：定位镜头
+Minimap 右键：SmartCommand（支持 A/Shift 修饰）
 Space：全选
 S：Stop
 H：Hold Position
@@ -103,7 +107,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 非战斗移动：当前线程分配不超过 1KB/Tick。
 - 活跃战斗 128/256 总单位：P95 不超过 4/8ms，分配不超过 8KB/Tick。
 
-当前机器的 Release 移动基线约为 1.20ms、4.33ms 和 9.45ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 2.14/4.77ms P95。完整状态 Hash v2 在 1000 单位场景平均约 1.33ms。
+当前机器的 Release 移动基线约为 1.80ms、5.21ms 和 10.34ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 2.07/4.90ms P95。完整状态 Hash v2 在 1000 单位场景平均约 1.25ms。
 
 ## 导航数据资产
 
@@ -146,7 +150,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 60 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、选择/相机、命令回放、Replay Package、checkpoint 和持久化热快照。
+当前包含 61 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、选择/相机、Minimap、命令回放、Replay Package、checkpoint 和持久化热快照。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -161,4 +165,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-移动、动态地图、战斗移动、命令操作、选择/相机，以及确定性命令日志/Replay Package/checkpoint/持久化直接快照已经形成可运行闭环。下一阶段接入 Minimap 显示、视口框和 Minimap SmartCommand，不再扩张确定性基础设施。
+移动、动态地图、战斗移动、命令操作、选择/相机/Minimap，以及确定性命令日志/Replay Package/checkpoint/持久化直接快照已经形成可运行闭环。操作表现阶段到此收口；后续优先回到实际玩法需求或导航编辑工具，不继续无边界追加 UI 功能。

@@ -421,6 +421,19 @@ public readonly record struct TestOperationInteractionSnapshot(
         Vector2.Distance(FocusPosition, new Vector2(950f, 550f)) < 0.01f;
 }
 
+public readonly record struct TestMinimapInteractionSnapshot(
+    bool RoundTrip,
+    bool ViewportMapped,
+    bool FocusResolved,
+    bool CommandResolved,
+    bool OutsideRejected,
+    Vector2 CommandWorld)
+{
+    public bool Passed =>
+        RoundTrip && ViewportMapped && FocusResolved && CommandResolved &&
+        OutsideRejected && Vector2.Distance(CommandWorld, new Vector2(900f, 500f)) < 0.01f;
+}
+
 public enum TestUnitState : byte
 {
     Idle,
@@ -917,6 +930,36 @@ public sealed class MovementTestRig
             edgeMoved,
             !first && second && !consumed,
             camera.Position);
+    }
+
+    public TestMinimapInteractionSnapshot VerifyMinimapInteractions()
+    {
+        var world = new SimRect(
+            new Vector2(24f, 70f), new Vector2(1256f, 696f));
+        var panel = new MinimapPanelRect(Vector2.Zero, new Vector2(230f, 140f));
+        var transform = new MinimapTransform(world, panel);
+        var sample = new Vector2(900f, 500f);
+        var panelPoint = transform.WorldToPanel(sample);
+        var roundTrip = Vector2.Distance(
+            sample, transform.PanelToWorld(panelPoint)) < 0.01f;
+        var viewport = transform.WorldRectToPanel(new SimRect(
+            new Vector2(400f, 250f), new Vector2(800f, 550f)));
+        var viewportMapped = viewport.Size.X > 0f && viewport.Size.Y > 0f &&
+                             panel.Contains(viewport.Position) &&
+                             panel.Contains(viewport.Position + viewport.Size);
+        var focus = MinimapInteractionResolver.Resolve(
+            transform, panelPoint, primaryButton: true, secondaryButton: false);
+        var command = MinimapInteractionResolver.Resolve(
+            transform, panelPoint, primaryButton: false, secondaryButton: true);
+        var outside = MinimapInteractionResolver.Resolve(
+            transform, new Vector2(-2f, 40f), primaryButton: true, secondaryButton: false);
+        return new TestMinimapInteractionSnapshot(
+            roundTrip,
+            viewportMapped,
+            focus.Kind == MinimapInteractionKind.FocusCamera,
+            command.Kind == MinimapInteractionKind.SmartCommand,
+            outside.Kind == MinimapInteractionKind.None,
+            command.WorldPosition);
     }
 
     public void Step() => _simulation.Tick(1f / 60f);

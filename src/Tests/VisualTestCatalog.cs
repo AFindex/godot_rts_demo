@@ -26,6 +26,7 @@ public static class VisualTestCatalog
         "control-group-recall",
         "smart-command-sequence",
         "operation-selection-camera",
+        "minimap-interaction",
         "command-log-replay",
         "command-replay-divergence",
         "replay-package-world",
@@ -94,6 +95,7 @@ public static class VisualTestCatalog
         "control-group-recall" => CreateControlGroupRecall(),
         "smart-command-sequence" => CreateSmartCommandSequence(),
         "operation-selection-camera" => CreateOperationSelectionCamera(),
+        "minimap-interaction" => CreateMinimapInteraction(),
         "command-log-replay" => CreateCommandLogReplay(),
         "command-replay-divergence" => CreateCommandReplayDivergence(),
         "replay-package-world" => CreateReplayPackageWorld(
@@ -738,6 +740,33 @@ public static class VisualTestCatalog
                     $"box={result.BoxSelectionCount}, zoom={result.ZoomAnchorStable}, " +
                     $"edge={result.EdgePanMoved}, double={result.GroupDoubleTap}, " +
                     $"focus={result.FocusPosition.X:F0},{result.FocusPosition.Y:F0}");
+            });
+    }
+
+    private static VisualTestSession CreateMinimapInteraction()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 16);
+        var units = rig.SpawnGrid(new Vector2(100f, 160f), 2, 4, 24f);
+        rig.PlaceBuilding(new Vector2(360f, 100f), new Vector2(32f, 32f));
+        rig.PlaceBuilding(new Vector2(620f, 180f), new Vector2(64f, 48f));
+        rig.PlaceBuilding(new Vector2(720f, 380f), new Vector2(112f, 80f));
+        rig.PlaceBuilding(new Vector2(300f, 510f), new Vector2(160f, 120f));
+        rig.Move(units, new Vector2(980f, 520f));
+        return new VisualTestSession(
+            "minimap-interaction",
+            "Decoupled minimap transform, viewport and command intents",
+            480,
+            rig,
+            units,
+            runtime =>
+            {
+                var result = runtime.VerifyMinimapInteractions();
+                return new ScenarioResult(
+                    result.Passed,
+                    $"roundtrip={result.RoundTrip}, viewport={result.ViewportMapped}, " +
+                    $"focus={result.FocusResolved}, command={result.CommandResolved}, " +
+                    $"outside={result.OutsideRejected}, " +
+                    $"world={result.CommandWorld.X:F0},{result.CommandWorld.Y:F0}");
             });
     }
 

@@ -34,6 +34,7 @@ public partial class RtsDemo : Node2D
     private ChokeController? _chokeController;
     private VisualTestSession? _visualTest;
     private Label? _hud;
+    private Control? _hudRoot;
     private bool _navigationReady;
     private bool _dragging;
     private bool _showDebug = true;
@@ -58,6 +59,7 @@ public partial class RtsDemo : Node2D
     private OperationCameraController? _cameraController;
     private Vector2 _pointerScreen;
     private bool _doubleClickSelection;
+    private RtsMinimapControl? _minimap;
 
     public override async void _Ready()
     {
@@ -224,7 +226,7 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        if (_visualTest is null)
+        if (_visualTest is null || _visualTest.Id == "minimap-interaction")
         {
             _simulation.Tick((float)delta);
         }
@@ -251,6 +253,7 @@ public partial class RtsDemo : Node2D
 
     public override void _Process(double delta)
     {
+        UpdateHudLayout();
         if (_visualTest is null && _cameraController is not null && _camera is not null)
         {
             UpdateCamera((float)delta);
@@ -369,7 +372,7 @@ public partial class RtsDemo : Node2D
 
     private void DrawVisualTestDiagnostics()
     {
-        if (_visualTest is null)
+        if (_visualTest is null || _visualTest.Id == "minimap-interaction")
         {
             return;
         }
@@ -1000,7 +1003,40 @@ public partial class RtsDemo : Node2D
         _hud.AddThemeFontSizeOverride("font_size", 15);
         var layer = new CanvasLayer { Layer = 10 };
         AddChild(layer);
-        layer.AddChild(_hud);
+        _hudRoot = new Control
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore
+        };
+        layer.AddChild(_hudRoot);
+        _hudRoot.AddChild(_hud);
+        if (_visualTest is null || _visualTest.Id == "minimap-interaction")
+        {
+            _minimap = new RtsMinimapControl
+            {
+                Size = new Vector2(230f, 140f)
+            };
+            _minimap.FocusRequested += FocusCameraAt;
+            _minimap.SmartCommandRequested += IssueMinimapCommand;
+            _hudRoot.AddChild(_minimap);
+        }
+        UpdateHudLayout();
+    }
+
+    private void UpdateHudLayout()
+    {
+        if (_hudRoot is null)
+        {
+            return;
+        }
+        var viewportSize = GetViewportRect().Size;
+        if (_hudRoot.Size != viewportSize)
+        {
+            _hudRoot.Size = viewportSize;
+        }
+        if (_minimap is not null)
+        {
+            _minimap.Position = viewportSize - _minimap.Size - new Vector2(12f, 12f);
+        }
     }
 
     private void UpdateHud()
@@ -1078,6 +1114,80 @@ public partial class RtsDemo : Node2D
             "LMB select  RMB smart  Shift+RMB queue  A+RMB attack-move  " +
             "Ctrl+# assign  Shift+# add  # recall  Space all  S stop  H hold  " +
             "B place building  X remove building  D debug  R reset";
+        UpdateMinimap();
+    }
+
+    private void UpdateMinimap()
+    {
+        if (_minimap is null || _world is null || _simulation is null)
+        {
+            return;
+        }
+        var markers = new List<MinimapMarker>(
+            _simulation.Units.Count + _world.DynamicOccupancy.Count);
+        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        {
+            if (!_simulation.Units.Alive[unit])
+            {
+                continue;
+            }
+            markers.Add(new MinimapMarker(
+                unit,
+                MinimapMarkerKind.Unit,
+                _simulation.Combat.Teams[unit],
+                _simulation.Units.Positions[unit],
+                new NVector2(_simulation.Units.Radii[unit] * 2f),
+                _selectedUnits.Contains(unit)));
+        }
+        foreach (var footprint in _world.DynamicOccupancy.Snapshot())
+        {
+            markers.Add(new MinimapMarker(
+                footprint.Id.Value,
+                MinimapMarkerKind.Building,
+                Team: 0,
+                (footprint.Bounds.Min + footprint.Bounds.Max) * 0.5f,
+                footprint.Bounds.Max - footprint.Bounds.Min));
+        }
+        _minimap.SetSnapshot(new MinimapSnapshot(
+            _world.Bounds,
+            _cameraController?.VisibleWorld ?? _world.Bounds,
+            _world.Obstacles.ToArray(),
+            markers.ToArray()));
+    }
+
+    private void FocusCameraAt(NVector2 worldPosition)
+    {
+        if (_cameraController is null)
+        {
+            return;
+        }
+        _cameraController.Focus([worldPosition]);
+        ApplyCameraState();
+    }
+
+    private void IssueMinimapCommand(NVector2 worldPosition)
+    {
+        if (_simulation is null || !_navigationReady)
+        {
+            return;
+        }
+        var selected = SelectedLivingUnits();
+        if (selected.Length == 0)
+        {
+            return;
+        }
+        _commandMarkerAttackMove = Input.IsKeyPressed(Key.A);
+        _commandMarkerQueued = Input.IsKeyPressed(Key.Shift);
+        var target = ResolveSmartCommandTarget(selected[0], worldPosition);
+        _simulation.IssueSmartCommand(
+            selected,
+            target,
+            _commandMarkerAttackMove,
+            queued: _commandMarkerQueued);
+        _commandMarkerAttackMove |= target.Kind == SmartCommandTargetKind.EnemyUnit;
+        _commandMarker = GodotPathProvider.ToGodot(worldPosition);
+        _commandMarkerTime = 0.65f;
+        QueueRedraw();
     }
 
     private string ActiveNavigationLabel()
@@ -1126,6 +1236,13 @@ public partial class RtsDemo : Node2D
         }
 
         _navigationReady = true;
+        if (caseId == "minimap-interaction")
+        {
+            InitializeCamera();
+            _cameraController?.ZoomAt(
+                GodotPathProvider.ToNumerics(GetViewportRect().Size * 0.5f), 2);
+            ApplyCameraState();
+        }
         CreateHud();
         UpdateHud();
         QueueRedraw();
