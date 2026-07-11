@@ -11,7 +11,7 @@ python -m http.server 10086
 
 然后访问 `http://localhost:10086/test_videos/showcase/`。浏览器出于安全限制不能在直接打开本地 HTML 文件时读取 JSON，因此需要一个本地 HTTP 服务。
 
-仓库保留覆盖 66 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+仓库保留覆盖 67 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
@@ -51,6 +51,7 @@ python -m http.server 10086
 - `20260711_144424/`：Bake-only 两阶段安全提交；8 个单位移动途中原子替换 Grid/放置守卫缓存并全部重规划，错误导航哈希候选随后被拒绝，最终 8/8 到达。
 - `20260711_145641/`：放置前后 Connectivity 差异；候选 footprint 封死唯一走廊，Small/Medium/Large 均从 1 个分量变为 2 个，面板显示 blocked/split/disconnected 与 dirty chunks，安全候选三档均保持连通。
 - `20260711_151949/`：S9 文件监听闭环；2 次 Bake 写入通知经过去抖只触发 1 次 Fresh Load/原子提交，8 个移动单位全部重规划并 8/8 到达，面板显示 `Applied / Success / reloads=1`。
+- `20260711_154903/`：S11-A 双资源经济；8 个工人在三个矿脉与一个 Refinery 间实际往返，第一矿脉枯竭后自动转场，20 秒获得 105 Minerals/48 Vespene，实时显示资源、人口、工作阶段与节点余量。
 
 重新录制所有当前场景：
 

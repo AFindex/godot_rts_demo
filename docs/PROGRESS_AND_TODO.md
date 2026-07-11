@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 66 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore 或队列内部数组。
+- 67 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
-- 80 个 C# 源文件。
-- 约 21,667 行 C#（按仓库源码统计）。
-- 66 个黑盒场景。
-- 覆盖 66 个逻辑场景的规范测试录像。
-- Release 1000 单位移动 P95：约 9.78ms。
+- 83 个 C# 源文件。
+- 约 23,143 行 C#（按仓库源码统计）。
+- 67 个黑盒场景。
+- 覆盖 67 个逻辑场景的规范测试录像。
+- Release 1000 单位移动 P95：约 9.18ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -41,6 +41,7 @@
 | 操作层 | Demo 闭环完成 | Shift 队列、Control Group、SmartCommand、选择、相机、解耦 Minimap | Alt 编组、混合子组、命令卡和 UI 皮肤由实际玩法驱动 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
+| S11 实际 RTS 玩法 | A 阶段完成 | 双资源账本、人口、资源节点、Refinery 门槛、工人采集/携带/返还/枯竭转场、Hash v3、解耦经济 UI | 经济回放格式、建造、生产、科技、扩张、胜负与脚本 AI |
 
 ## 3. 已完成的运行时闭环
 
@@ -170,7 +171,7 @@
 
 ### 4.1 已有黑盒场景
 
-当前 66 个场景覆盖：
+当前 67 个场景覆盖：
 
 - 单单位移动。
 - 开放场和密集编队。
@@ -192,6 +193,7 @@
 - 生成式 Navigation/Profile/Bake 变体、Godot Fresh Load、原子资源集拒绝、逐类型差异和重建影响等级。
 - Bake-only 两阶段提交、Grid/放置守卫同时换代、活动编队重规划、录制期/错误哈希/不支持 Provider 拒绝。
 - Resource 文件事件合批、半写文件有限重试、完整资源集 Fresh Load、Bake-only 自动提交，以及 Navigation/Profile 的 `RebuildSimulation` 边界。
+- Minerals/Vespene/Supply 原子交易、失败不部分扣款、退款、矿脉互斥、Refinery 三工人采集、携带返还、节点枯竭转场和命令取消工作。
 - 候选 footprint 对 Small/Medium/Large 的放置前后 Connectivity 差异、三档安全/断路判定、dirty chunks 和独立诊断面板。
 - Godot 编辑器净空预览同时输出 3 档尺寸、5 条 Portal 和 4 档建筑，并由纯 C# 快照驱动。
 - 跨命令共享目标槽位。
@@ -240,7 +242,7 @@ Observe unit / combat / traffic / recovery / performance
 - 每段编码后校验 AV1 codec、分辨率和逐帧数量，再原子替换并删除临时 AVI。
 - 每段录像保存 WebM、Godot 日志和包含 codec/CRF/preset 的 manifest。
 - 单项失败不会中止其他录像。
-- 当前仓库包含覆盖 66 个逻辑场景的规范录像。
+- 当前仓库包含覆盖 67 个逻辑场景的规范录像。
 - WebM 使用 Git LFS；FFmpeg 下载到忽略的 `tools/.cache/`，不提交第三方二进制。
 - 85 段历史 AVI 已从 3,309,160,498 字节降到 228,515,601 字节，保留 6.91%。
 
@@ -252,16 +254,16 @@ Observe unit / combat / traffic / recovery / performance
 
 | 单位数 | 平均 Tick | P95 | Hash 平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|
-| 256 | 1.01ms | 1.36ms | 0.967ms | 4ms | 27B |
-| 512 | 4.30ms | 5.47ms | 1.558ms | 12.5ms | 182B |
-| 1000 | 7.99ms | 9.78ms | 1.637ms | 16.67ms | 461B |
+| 256 | 1.22ms | 1.81ms | 1.025ms | 4ms | 27B |
+| 512 | 4.01ms | 4.92ms | 2.245ms | 12.5ms | 182B |
+| 1000 | 7.56ms | 9.18ms | 1.283ms | 16.67ms | 461B |
 
 双方持续 AttackMove 的活跃战斗门槛：
 
 | 总单位数 | 平均 Tick | P95 | Hash 平均 | 战斗阶段平均 | 当前门槛 | 分配/Tick |
 |---:|---:|---:|---:|---:|---:|---:|
-| 128 | 1.65ms | 2.20ms | 0.195ms | 0.60ms | 4ms | 2.3KB |
-| 256 | 4.11ms | 5.69ms | 0.829ms | 2.00ms | 8ms | 4.0KB |
+| 128 | 1.69ms | 3.42ms | 0.157ms | 0.78ms | 4ms | 2.3KB |
+| 256 | 3.60ms | 4.70ms | 0.932ms | 1.74ms | 8ms | 4.0KB |
 
 活跃追击会持续生成短路径，因此单独使用 8KB/Tick 分配门槛；非战斗移动仍保持 1KB/Tick 门槛。
 
@@ -413,7 +415,30 @@ TODO：
 
 格式策略：当前三类资源均为格式 1；未知版本稳定拒绝，Generator 是规范重建入口。只有真实格式 2 规范出现后才增加显式迁移器，不维护猜测式兼容代码。
 
-### 6.4 确定性、回放和联机
+### 6.4 S11 实际 RTS 玩法
+
+已完成第一层：
+
+- `PlayerEconomyStore` 保存 Minerals、Vespene、Supply Used/Capacity。
+- 双资源和人口一次性校验、原子扣费、失败不变、退款和人口释放。
+- 资源节点保存类型、位置、余量、携带批量、采集时间和并发容量。
+- 矿脉单工人采集；Vespene 需要 Refinery，启用后容量为 3。
+- 工人执行前往、等待、采集、携带、返还和自动再次采集。
+- 节点枯竭后自动选择最近的同类节点；错误所有权和缺少 DropOff 稳定拒绝。
+- Move/Attack/Stop/Hold 等普通命令取消工作，避免后台采集抢回单位控制权。
+- 状态 Hash v3 覆盖账本、节点、DropOff、工人阶段、目标、携带量和计时。
+- 无经济工人的旧场景走快速路径；解耦 Economy Overview/Control 提供录像表现。
+
+下一步：
+
+- S11-B：经济外部命令、Replay Package、Checkpoint 和热快照格式。
+- S11-C：双资源成本、建造时间、施工策略、取消退款、Refinery 绑定。
+- S11-D：单位生产队列、人口预留、Rally 和出口阻塞恢复。
+- S11-E：科技前置、扩张、玩家失败、胜负条件和脚本 AI。
+
+详细路线见 `docs/ECONOMY_AND_PRODUCTION.md`。
+
+### 6.5 确定性、回放和联机
 
 已完成：
 
@@ -425,14 +450,14 @@ TODO：
 - 版本化 Replay Package、资源身份、初始单位/建筑清单和初始状态 Hash。
 - 动态建筑放置/移除世界命令；同 Tick 固定先世界、后单位命令。
 - 版本化 checkpoint、Package/状态 Hash 绑定和中间 Tick 确定性 seek。
-- 状态 Hash v2 补齐动态建筑 next ID 和狭口私有未来态。
+- 状态 Hash v3 在 v2 动态建筑/狭口未来态基础上加入经济状态。
 - 进程内热快照直接恢复，无需从 Tick 0 重演。
 - 版本化规范热快照载荷，可由上层保存到磁盘并跨进程重新加载。
 - 59/59 黑盒回归、六段确定性/回放录像和独立 Hash 性能门槛。
 
 TODO：
 
-- 当前 Demo 范围内无剩余确定性阻塞项；新玩法状态按需扩展格式。
+- 经济命令、初始资源和工作状态尚未写入 Replay/热快照格式；活动经济局当前明确拒绝旧格式录制。
 - 服务端权威、Lockstep 或混合方案决策。
 - 客户端表现插值与模拟状态分离。
 
@@ -497,7 +522,7 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 - 普通密集编队结果不退化。（80/80）
 - Yielding 状态必须全部有界结束，测试结束时 `activeYield=0`。（已通过）
 - 速度超车和角落混合半径场景均达到 80/80。（已通过）
-- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（9.78ms / 461B）
+- 1000 单位 P95 继续低于 16.67ms，分配低于 1KB/Tick。（9.18ms / 461B）
 
 明确收口边界：当前不会继续加入完整挤压优先级、全局 SlotDepth 场或为了减少少量 Overflow 而反复调参；这些必须由后续实际玩法需求重新驱动。
 
@@ -645,9 +670,18 @@ S9 数据工作流已经闭环。编辑器几何工具与跨 chunk component gra
 - 专用生成资产保持 Navigation/Profile 不变，只改变 Bake chunk 布局；2 次文件通知只产生 1 次提交，8 个活动单位全部重规划并到达。
 - `resource-file-watch-workflow` AV1/WebM 录像已保存；66/66 全量回归、Release 性能门槛和 91 段全仓 AV1 门禁通过。
 
+### K：S11-A 双资源经济与工人循环（已完成）
+
+- Minerals/Vespene/Supply 使用同一原子账本；资源不足和人口阻塞不产生部分扣费。
+- 三个矿脉与一个 Refinery 驱动 8 个实际移动工人；矿脉容量 1，气矿容量 3。
+- 第一矿脉耗尽后等待工人自动转场；20 秒获得 105 Minerals 和 48 Vespene。
+- 未建 Refinery、错误玩家、缺少 DropOff、枯竭节点和普通命令取消均有稳定语义。
+- 状态 Hash 升级为 v3；经济 UI 和世界节点表现只消费不可变快照。
+- `economy-dual-resource` AV1/WebM 录像已保存；67/67 全量回归、Release 性能和 92 段全仓 AV1 门禁通过。
+
 ### 下一阶段边界
 
-移动内核、基础操作表现和 S9 数据工作流均已形成 Demo 闭环。下一轮进入实际玩法规则；边界 component graph、Sector/Portal Authoring 和完整资源状态迁移只有在真实地图规模或玩法需求证明有收益时再启动，不继续无边界追加编辑器功能。
+移动内核、基础操作表现和 S9 数据工作流均已形成 Demo 闭环，S11-A 已建立双资源经济。下一轮先完成经济命令/状态的 Replay 与热快照格式，再推进建造、生产、科技、胜负和脚本 AI；导航只修复实际玩法暴露的阻塞问题。
 
 ## 8. 可以并行但不能提前耦合的优化
 

@@ -36,6 +36,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly IGroupRoutePlanner? _groupRoutePlanner;
     private readonly ChokeController? _chokeController;
     private readonly CombatSystem _combatSystem;
+    private readonly Action<int, Vector2> _economyMoveWorker;
+    private readonly Action<int> _economyStopWorker;
     private readonly int[] _collisionNeighbors = new int[64];
     private readonly int[] _orderReadyUnits;
     private readonly UnitOrder[] _orderReadyOrders;
@@ -46,6 +48,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private int _nextOrderSequenceId = 1;
     private SimulationCommandRecorder? _commandRecorder;
     private SimulationReplayPackageRecorder? _replayPackageRecorder;
+    private bool _issuingEconomyOrder;
 
     public RtsSimulation(
         StaticWorld world,
@@ -60,6 +63,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units = new UnitStore(capacity);
         Combat = new CombatStore(capacity);
         CommandQueues = new UnitCommandQueueStore(capacity);
+        Economy = new EconomySystem(capacity);
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
@@ -76,12 +80,15 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
         _combatSystem = new CombatSystem(Units, Combat, this, world);
+        _economyMoveWorker = MoveEconomyWorker;
+        _economyStopWorker = StopEconomyWorker;
     }
 
     public StaticWorld World { get; }
     public UnitStore Units { get; }
     public CombatStore Combat { get; }
     public UnitCommandQueueStore CommandQueues { get; }
+    public EconomySystem Economy { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -160,6 +167,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     internal SimulationRuntimeStateCapture CaptureRuntimeState()
     {
+        EnsureEconomyPersistenceSupported();
         var units = new UnitStore(Units.Capacity);
         units.CopyRuntimeStateFrom(Units);
         var combat = new CombatStore(Units.Capacity);
@@ -220,6 +228,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public void StartCommandRecording()
     {
+        EnsureEconomyPersistenceSupported();
         _commandRecorder = new SimulationCommandRecorder();
     }
 
@@ -234,6 +243,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public void StartReplayPackageRecording(ReplayResourceManifest resources)
     {
+        EnsureEconomyPersistenceSupported();
         if (resources.ClearanceBakeHash != ActiveClearanceBakeHash)
         {
             throw new InvalidOperationException(
@@ -375,6 +385,50 @@ public sealed class RtsSimulation : ICombatMovementDriver
             movementProfile.PhysicalRadius,
             movementProfile.MaximumSpeed,
             movementProfile.Acceleration);
+
+    public int AddWorker(
+        Vector2 position,
+        int playerId,
+        float radius = 7.5f,
+        float maxSpeed = 128f,
+        float acceleration = 720f)
+    {
+        var unit = AddUnit(
+            position,
+            playerId,
+            CombatProfileSnapshot.Standard,
+            radius,
+            maxSpeed,
+            acceleration);
+        Economy.RegisterWorker(unit, playerId);
+        return unit;
+    }
+
+    public GatherCommandResult IssueGather(
+        int issuingPlayerId,
+        int unit,
+        EconomyResourceNodeId nodeId)
+    {
+        if (_commandRecorder is not null || _replayPackageRecorder is not null)
+        {
+            throw new InvalidOperationException(
+                "Gather commands require the S11 economy replay format.");
+        }
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
+        {
+            return new GatherCommandResult(
+                GatherCommandCode.InvalidUnit, unit, nodeId);
+        }
+        var validation = Economy.ValidateGather(
+            issuingPlayerId, unit, nodeId);
+        if (!validation.Succeeded)
+        {
+            return validation;
+        }
+        Economy.BeginGather(unit, nodeId);
+        MoveEconomyWorker(unit, Economy.ObserveResourceNode(nodeId).Position);
+        return validation;
+    }
 
     public void IssueMove(
         ReadOnlySpan<int> unitIndices,
@@ -602,6 +656,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
             ValidateLivingUnit(unitIndices[index]);
         }
 
+        if (!_issuingEconomyOrder)
+        {
+            Economy.Cancel(unitIndices);
+        }
+
         _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
         order = order with { SequenceId = NextOrderSequenceId() };
         if (!queued || order.Kind is UnitOrderKind.Stop or UnitOrderKind.Hold)
@@ -722,6 +781,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _pendingNavigationInvalidations = 0;
 
         var phaseStart = Stopwatch.GetTimestamp();
+        Economy.Update(
+            delta, Units, _economyMoveWorker, _economyStopWorker);
+        Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
+
+        phaseStart = Stopwatch.GetTimestamp();
         _combatSystem.Update(delta, Metrics.Tick);
         Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -2002,4 +2066,44 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     private static double ElapsedMilliseconds(long startTimestamp) =>
         Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+
+    private void MoveEconomyWorker(int unit, Vector2 target)
+    {
+        Span<int> worker = stackalloc int[1];
+        worker[0] = unit;
+        _issuingEconomyOrder = true;
+        try
+        {
+            IssueMove(worker, target);
+        }
+        finally
+        {
+            _issuingEconomyOrder = false;
+        }
+    }
+
+    private void StopEconomyWorker(int unit)
+    {
+        Span<int> worker = stackalloc int[1];
+        worker[0] = unit;
+        _issuingEconomyOrder = true;
+        try
+        {
+            Stop(worker);
+        }
+        finally
+        {
+            _issuingEconomyOrder = false;
+        }
+    }
+
+    private void EnsureEconomyPersistenceSupported()
+    {
+        if (Economy.HasRuntimeState)
+        {
+            throw new InvalidOperationException(
+                "Economy command replay and hot snapshots require the S11 " +
+                "economy persistence format, which is not implemented yet.");
+        }
+    }
 }

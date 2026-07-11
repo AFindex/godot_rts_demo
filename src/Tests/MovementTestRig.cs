@@ -5,6 +5,66 @@ namespace RtsDemo.Tests;
 
 public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
+public readonly record struct TestResourceNodeId(int Value);
+
+public enum TestEconomyResourceKind : byte
+{
+    Minerals,
+    VespeneGas
+}
+
+public enum TestEconomyTransactionCode : byte
+{
+    Success,
+    InvalidPlayer,
+    InvalidCost,
+    InsufficientMinerals,
+    InsufficientVespeneGas,
+    SupplyBlocked
+}
+
+public enum TestGatherCommandCode : byte
+{
+    Success,
+    InvalidUnit,
+    UnitNotWorker,
+    WrongOwner,
+    InvalidNode,
+    RefineryRequired,
+    ResourceDepleted,
+    MissingDropOff
+}
+
+public enum TestWorkerEconomyState : byte
+{
+    None,
+    Idle,
+    GoingToResource,
+    WaitingForResource,
+    Gathering,
+    ReturningCargo
+}
+
+public readonly record struct TestPlayerEconomySnapshot(
+    int Minerals,
+    int VespeneGas,
+    int SupplyUsed,
+    int SupplyCapacity);
+
+public readonly record struct TestResourceNodeSnapshot(
+    TestResourceNodeId Id,
+    TestEconomyResourceKind Kind,
+    Vector2 Position,
+    int Remaining,
+    int ActiveHarvesters,
+    int HarvesterCapacity,
+    bool Operational);
+
+public readonly record struct TestWorkerEconomySnapshot(
+    TestWorkerEconomyState State,
+    TestResourceNodeId TargetNode,
+    TestEconomyResourceKind CargoKind,
+    int CargoAmount);
 
 public enum TestOrderKind : byte
 {
@@ -382,6 +442,7 @@ public readonly record struct TestRecoverySnapshot(
 
 public readonly record struct TestPerformanceSnapshot(
     double TotalMilliseconds,
+    double EconomyMilliseconds,
     double CombatMilliseconds,
     double PathMilliseconds,
     double PreferredVelocityMilliseconds,
@@ -522,6 +583,10 @@ public sealed class MovementTestRig
             null,
             null);
     }
+
+    public static MovementTestRig CreateEconomyMap(
+        Vector2 size,
+        int capacity) => CreateOpenField(size, capacity);
 
     public static MovementTestRig CreateChokeMap(
         int capacity,
@@ -668,6 +733,132 @@ public sealed class MovementTestRig
         Vector2 position,
         UnitMovementProfileSnapshot profile) =>
         new(_simulation.AddUnit(position, profile));
+
+    public void RegisterPlayer(
+        int playerId,
+        int minerals,
+        int vespeneGas,
+        int supplyCapacity,
+        int supplyUsed = 0) =>
+        _simulation.Economy.Players.RegisterPlayer(
+            playerId, minerals, vespeneGas, supplyCapacity, supplyUsed);
+
+    public TestUnitId SpawnWorker(
+        Vector2 position,
+        int playerId,
+        float radius = 7.5f,
+        float maximumSpeed = 150f,
+        float acceleration = 720f) =>
+        new(_simulation.AddWorker(
+            position, playerId, radius, maximumSpeed, acceleration));
+
+    public TestResourceNodeId AddResourceNode(
+        TestEconomyResourceKind kind,
+        Vector2 position,
+        int amount,
+        int harvestBatch,
+        float harvestSeconds,
+        int harvesterCapacity,
+        bool requiresRefinery = false,
+        bool operational = true) =>
+        new(_simulation.Economy.AddResourceNode(
+            (EconomyResourceKind)kind,
+            position,
+            amount,
+            harvestBatch,
+            harvestSeconds,
+            harvesterCapacity,
+            requiresRefinery,
+            operational).Value);
+
+    public void AddResourceDropOff(
+        int playerId,
+        Vector2 position,
+        bool acceptsMinerals = true,
+        bool acceptsVespene = true) =>
+        _simulation.Economy.AddDropOff(
+            playerId, position, acceptsMinerals, acceptsVespene);
+
+    public void SetRefineryOperational(TestResourceNodeId nodeId, bool value) =>
+        _simulation.Economy.SetRefineryOperational(
+            new EconomyResourceNodeId(nodeId.Value), value);
+
+    public TestGatherCommandCode Gather(
+        int issuingPlayerId,
+        TestUnitId worker,
+        TestResourceNodeId nodeId) =>
+        (TestGatherCommandCode)_simulation.IssueGather(
+            issuingPlayerId,
+            worker.Value,
+            new EconomyResourceNodeId(nodeId.Value)).Code;
+
+    public TestEconomyTransactionCode Spend(
+        int playerId,
+        int minerals,
+        int vespeneGas,
+        int supply = 0) =>
+        (TestEconomyTransactionCode)_simulation.Economy.Players.TrySpend(
+            playerId,
+            new EconomyCost(minerals, vespeneGas, supply)).Code;
+
+    public void Refund(
+        int playerId,
+        int minerals,
+        int vespeneGas,
+        int supply = 0,
+        float fraction = 1f) =>
+        _simulation.Economy.Players.Refund(
+            playerId,
+            new EconomyCost(minerals, vespeneGas, supply),
+            fraction);
+
+    public TestPlayerEconomySnapshot ObservePlayerEconomy(int playerId)
+    {
+        var snapshot = _simulation.Economy.Players.Snapshot(playerId);
+        return new TestPlayerEconomySnapshot(
+            snapshot.Minerals,
+            snapshot.VespeneGas,
+            snapshot.SupplyUsed,
+            snapshot.SupplyCapacity);
+    }
+
+    public TestResourceNodeSnapshot ObserveResourceNode(
+        TestResourceNodeId nodeId)
+    {
+        var snapshot = _simulation.Economy.ObserveResourceNode(
+            new EconomyResourceNodeId(nodeId.Value));
+        return new TestResourceNodeSnapshot(
+            nodeId,
+            (TestEconomyResourceKind)snapshot.Kind,
+            snapshot.Position,
+            snapshot.Remaining,
+            snapshot.ActiveHarvesters,
+            snapshot.HarvesterCapacity,
+            snapshot.Operational);
+    }
+
+    public TestWorkerEconomySnapshot ObserveWorkerEconomy(TestUnitId worker)
+    {
+        var snapshot = _simulation.Economy.Worker(worker.Value);
+        return new TestWorkerEconomySnapshot(
+            (TestWorkerEconomyState)snapshot.State,
+            new TestResourceNodeId(snapshot.TargetNode.Value),
+            (TestEconomyResourceKind)snapshot.CargoKind,
+            snapshot.CargoAmount);
+    }
+
+    public bool RejectsLegacyPersistenceForActiveEconomy()
+    {
+        try
+        {
+            _simulation.StartCommandRecording();
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return true;
+        }
+    }
 
     public TestUnitId SpawnCombat(
         Vector2 position,
@@ -895,6 +1086,7 @@ public sealed class MovementTestRig
         var metrics = _simulation.Metrics;
         return new TestPerformanceSnapshot(
             metrics.TotalMilliseconds,
+            metrics.EconomyMilliseconds,
             metrics.CombatMilliseconds,
             metrics.PathMilliseconds,
             metrics.PreferredVelocityMilliseconds,

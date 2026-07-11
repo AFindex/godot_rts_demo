@@ -181,6 +181,7 @@ public static class SimulationBenchmark
             steering += performance.SteeringMilliseconds;
             collision += performance.CollisionMilliseconds;
             other += performance.PreferredVelocityMilliseconds +
+                     performance.EconomyMilliseconds +
                      performance.ChokeMilliseconds +
                      performance.SpatialHashMilliseconds +
                      performance.IntegrateMilliseconds +

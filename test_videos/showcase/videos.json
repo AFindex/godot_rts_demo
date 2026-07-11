@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T15:20:07.8796163+08:00",
+    "generated_at":  "2026-07-11T15:49:24.9301712+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  90,
-    "case_count":  66,
+    "recording_count":  91,
+    "case_count":  67,
     "recordings":  [
+                       {
+                           "id":  "economy-dual-resource",
+                           "display_name":  "Dual-resource worker saturation, refinery and depletion loop",
+                           "batch":  "20260711_154903",
+                           "created_at":  "2026-07-11T15:49:24.6607908+08:00",
+                           "video":  "../20260711_154903/economy-dual-resource.webm",
+                           "log":  "../20260711_154903/economy-dual-resource.log",
+                           "bytes":  2325725,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-dual-resource: ticks=1200, minerals=+105, gas=+48, depleted=True, reserve=140, gasLeft=132, active=8/8, transactions=True, commands=True",
+                           "metrics":  "ticks=1200, minerals=+105, gas=+48, depleted=True, reserve=140, gasLeft=132, active=8/8, transactions=True, commands=True"
+                       },
                        {
                            "id":  "resource-file-watch-workflow",
                            "display_name":  "Debounced file watch and safe Bake-only auto commit",

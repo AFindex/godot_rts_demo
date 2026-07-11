@@ -72,6 +72,8 @@ public partial class RtsDemo : Node2D
     private ResourceReloadWorkflowSnapshot _resourceWatchStatus =
         ResourceReloadWorkflowSnapshot.Idle;
     private RtsResourceWatchControl? _resourceWatchControl;
+    private EconomyOverviewSnapshot? _economyOverview;
+    private RtsEconomyControl? _economyControl;
 
     public override async void _Ready()
     {
@@ -372,6 +374,8 @@ public partial class RtsDemo : Node2D
             DrawRect(rect, new Color("ff9b5e"), filled: false, width: 2f);
         }
 
+        DrawEconomyResources();
+
         DrawVisualTestDiagnostics();
 
         if (_showDebug)
@@ -437,6 +441,35 @@ public partial class RtsDemo : Node2D
                 ThemeDB.FallbackFont,
                 rect.Position + new Vector2(0f, -8f),
                 area.Label,
+                HorizontalAlignment.Left,
+                -1f,
+                13,
+                color);
+        }
+    }
+
+    private void DrawEconomyResources()
+    {
+        if (_economyOverview is null)
+        {
+            return;
+        }
+        foreach (var node in _economyOverview.ResourceNodes)
+        {
+            var position = GodotPathProvider.ToGodot(node.Position);
+            var color = node.Kind == EconomyResourceKind.Minerals
+                ? new Color("65c9ff")
+                : new Color("61db83");
+            if (!node.Operational)
+            {
+                color = new Color("7a8791");
+            }
+            DrawCircle(position, 19f, color with { A = 0.72f });
+            DrawArc(position, 22f, 0f, MathF.Tau, 24, color, 2f);
+            DrawString(
+                ThemeDB.FallbackFont,
+                position + new Vector2(-18f, 38f),
+                node.Remaining.ToString(),
                 HorizontalAlignment.Left,
                 -1f,
                 13,
@@ -1094,6 +1127,18 @@ public partial class RtsDemo : Node2D
             _resourceWatchControl.SetSnapshot(_resourceWatchStatus);
             _hudRoot.AddChild(_resourceWatchControl);
         }
+        if (_visualTest?.Id == "economy-dual-resource")
+        {
+            _economyControl = new RtsEconomyControl
+            {
+                Size = new Vector2(720f, 180f)
+            };
+            if (_economyOverview is not null)
+            {
+                _economyControl.SetSnapshot(_economyOverview);
+            }
+            _hudRoot.AddChild(_economyControl);
+        }
         UpdateHudLayout();
     }
 
@@ -1130,6 +1175,12 @@ public partial class RtsDemo : Node2D
                 24f,
                 viewportSize.Y - _resourceWatchControl.Size.Y - 20f);
         }
+        if (_economyControl is not null)
+        {
+            _economyControl.Position = new Vector2(
+                24f,
+                viewportSize.Y - _economyControl.Size.Y - 20f);
+        }
     }
 
     private void UpdateHud()
@@ -1140,6 +1191,12 @@ public partial class RtsDemo : Node2D
         }
 
         var metrics = _simulation.Metrics;
+        if (_simulation.Economy.Players.IsRegistered(PlayerTeam))
+        {
+            _economyOverview = _simulation.Economy.CreateOverview(
+                PlayerTeam, _simulation.Units.Count);
+            _economyControl?.SetSnapshot(_economyOverview);
+        }
         var chokeUnits = 0;
         var livingUnits = 0;
         var engagedUnits = 0;
@@ -1200,7 +1257,8 @@ public partial class RtsDemo : Node2D
             $"invalidated {metrics.NavigationInvalidations}  " +
             $"recovery {metrics.RecoveryEvents}  unreachable {metrics.UnreachableUnits}\n" +
             $"map {ActiveNavigationLabel()}  " +
-            $"tick {metrics.TotalMilliseconds:0.00}ms  path {metrics.PathMilliseconds:0.00}  " +
+            $"tick {metrics.TotalMilliseconds:0.00}ms  econ {metrics.EconomyMilliseconds:0.00}  " +
+            $"path {metrics.PathMilliseconds:0.00}  " +
             $"steer {metrics.SteeringMilliseconds:0.00}  " +
             $"collision {metrics.CollisionMilliseconds:0.00}  " +
             $"alloc {metrics.AllocatedBytes / 1024.0:0.0}KB\n" +

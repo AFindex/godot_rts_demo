@@ -27,12 +27,14 @@ public static class SimulationSelfTest
                 navigationMap, gameplayProfiles, clearanceBake);
             var placementDiffResult = BuildingConnectivityDiffSelfTest.Run();
             var watchWorkflowResult = ResourceReloadWorkflowSelfTest.Run();
+            var economyResult = EconomySelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
                          reloadResult.Passed && bakeCommitResult.Passed;
-            passed &= placementDiffResult.Passed && watchWorkflowResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 10)
+            passed &= placementDiffResult.Passed && watchWorkflowResult.Passed &&
+                      economyResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 11)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -58,7 +60,10 @@ public static class SimulationSelfTest
                 $"({placementDiffResult.Summary})",
                 $"resource-watch-workflow=" +
                 $"{(watchWorkflowResult.Passed ? "PASS" : "FAIL")}" +
-                $"({watchWorkflowResult.Summary})"
+                $"({watchWorkflowResult.Summary})",
+                $"economy-dual-resource=" +
+                $"{(economyResult.Passed ? "PASS" : "FAIL")}" +
+                $"({economyResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

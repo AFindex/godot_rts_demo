@@ -57,6 +57,7 @@ public static class VisualTestCatalog
         "clearance-bake-live-commit",
         "resource-file-watch-workflow",
         "building-connectivity-diff-preview",
+        "economy-dual-resource",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -150,6 +151,7 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "building-connectivity-diff-preview" =>
             CreateBuildingConnectivityDiffPreview(),
+        "economy-dual-resource" => CreateDualResourceEconomy(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -1985,6 +1987,34 @@ public static class VisualTestCatalog
                     workflow.Passed && arrival.Passed,
                     $"{workflow.Summary}, {arrival.Summary}");
             });
+    }
+
+    private static VisualTestSession CreateDualResourceEconomy()
+    {
+        var fixture = EconomySelfTest.CreateScenario();
+        return new VisualTestSession(
+                "economy-dual-resource",
+                "Dual-resource worker saturation, refinery and depletion loop",
+                1200,
+                fixture.Rig,
+                fixture.Workers,
+                _ =>
+                {
+                    var result = EconomySelfTest.Evaluate(fixture);
+                    return new ScenarioResult(result.Passed, result.Summary);
+                })
+            .Highlight(
+                new SimRect(
+                    new Vector2(400f, 210f),
+                    new Vector2(540f, 390f)),
+                "MINERALS: 1 active worker per patch",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(
+                    new Vector2(425f, 455f),
+                    new Vector2(515f, 545f)),
+                "VESPENE: refinery required, capacity 3",
+                TestDiagnosticKind.Accepted);
     }
 
     private static VisualTestSession CreateStopCommand()

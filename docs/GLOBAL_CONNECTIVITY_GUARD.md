@@ -52,7 +52,7 @@ StaticWorld
 - 候选分析只在低频建筑放置时运行，不进入 60Hz 单位模拟 Tick。
 - 正常寻路继续复用按 revision 缓存的 Snapshot，没有新增每 Tick 分配。
 
-静态 revision 的基线可以直接来自 Clearance Bake；动态 revision 则回退 Analyzer。当前 1000 单位基准为平均 7.99ms、P95 9.78ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
+静态 revision 的基线可以直接来自 Clearance Bake；动态 revision 则回退 Analyzer。当前 1000 单位基准为平均 7.56ms、P95 9.18ms、461B/Tick，仍低于 16.67ms 与 1KB/Tick 门槛。
 
 ## 验收与录像
 
