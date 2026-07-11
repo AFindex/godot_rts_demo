@@ -49,33 +49,54 @@ public readonly record struct BuildingTypeProfile(
 
 public static class DemoBuildingTypes
 {
-    public static readonly BuildingTypeProfile SupplyDepot = new(
+    private static readonly BuildingTypeProfile[] Definitions =
+    [
+        new(
         0, "Supply Depot", BuildingFunctionKind.Supply,
         new Vector2(48f, 48f), MovementClass.Medium,
         new EconomyCost(100, 0), 4f, 400f, 8, 0.75f,
-        ConstructionMethodKind.ContinuousWorker);
-
-    public static readonly BuildingTypeProfile Barracks = new(
+        ConstructionMethodKind.ContinuousWorker),
+        new(
         1, "Barracks", BuildingFunctionKind.Production,
         new Vector2(112f, 80f), MovementClass.Large,
         new EconomyCost(150, 0), 7f, 1000f, 0, 0.75f,
-        ConstructionMethodKind.ContinuousWorker);
-
-    public static readonly BuildingTypeProfile CommandCenter = new(
+        ConstructionMethodKind.ContinuousWorker),
+        new(
         2, "Command Center", BuildingFunctionKind.TownHall,
         new Vector2(160f, 120f), MovementClass.Large,
         new EconomyCost(400, 0), 10f, 1500f, 15, 0.75f,
-        ConstructionMethodKind.ContinuousWorker);
-
-    public static readonly BuildingTypeProfile Refinery = new(
+        ConstructionMethodKind.ContinuousWorker),
+        new(
         3, "Refinery", BuildingFunctionKind.Refinery,
         new Vector2(72f, 72f), MovementClass.Medium,
         new EconomyCost(75, 0), 5f, 500f, 0, 0.75f,
         ConstructionMethodKind.ContinuousWorker,
-        RequiresVespeneNode: true);
+        RequiresVespeneNode: true)
+    ];
 
-    public static readonly BuildingTypeProfile[] All =
-        [SupplyDepot, Barracks, CommandCenter, Refinery];
+    private static readonly BuildingTypeCatalogSnapshot Catalog = BuildCatalog();
+
+    public static BuildingTypeProfile SupplyDepot => Catalog.Type(0);
+    public static BuildingTypeProfile Barracks => Catalog.Type(1);
+    public static BuildingTypeProfile CommandCenter => Catalog.Type(2);
+    public static BuildingTypeProfile Refinery => Catalog.Type(3);
+
+    public static BuildingTypeProfile[] All => Catalog.Types.ToArray();
+    public static BuildingTypeCatalogSnapshot CreateCatalog() => Catalog;
+
+    private static BuildingTypeCatalogSnapshot BuildCatalog()
+    {
+        if (!BuildingTypeCatalogSnapshot.TryCreate(
+                BuildingTypeCatalogSnapshot.CurrentFormatVersion,
+                Definitions,
+                out var catalog,
+                out var validation) || catalog is null)
+        {
+            throw new InvalidOperationException(
+                $"Built-in building types are invalid: {validation.FirstError}.");
+        }
+        return catalog;
+    }
 }
 
 public enum BuildingLifecycleState : byte

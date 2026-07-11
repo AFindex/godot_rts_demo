@@ -14,6 +14,8 @@ public partial class RtsDemo : Node2D
         "res://data/demo_navigation_map.tres";
     private const string DemoGameplayProfilesResourcePath =
         "res://data/demo_gameplay_profiles.tres";
+    private const string DemoBuildingTypesResourcePath =
+        "res://data/demo_building_types.tres";
     private const string DemoClearanceBakeResourcePath =
         "res://data/demo_clearance_bake.tres";
 
@@ -22,6 +24,9 @@ public partial class RtsDemo : Node2D
 
     [Export]
     public RtsGameplayProfilesResource? GameplayProfilesAsset { get; set; }
+
+    [Export]
+    public RtsBuildingTypeCatalogResource? BuildingTypesAsset { get; set; }
 
     [Export]
     public RtsClearanceBakeResource? ClearanceBakeAsset { get; set; }
@@ -54,6 +59,7 @@ public partial class RtsDemo : Node2D
     private int _nextDemoBuildingClass;
     private NavigationMapSnapshot? _navigationSnapshot;
     private GameplayProfileCatalogSnapshot? _gameplayProfiles;
+    private BuildingTypeCatalogSnapshot? _buildingTypes;
     private ClearanceBakeSnapshot? _clearanceBake;
     private ControlGroupManager? _controlGroups;
     private int[] _controlGroupRecallBuffer = [];
@@ -135,6 +141,23 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-building-types"))
+        {
+            GenerateDemoBuildingTypes();
+            return;
+        }
+
+        if (userArguments.Contains("--validate-building-types"))
+        {
+            // Exercise the file-based CacheMode.Replace path, not the scene's
+            // already-instantiated Resource reference.
+            BuildingTypesAsset = null;
+            _buildingTypes = null;
+            var valid = TryLoadBuildingTypes();
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--generate-demo-clearance-bake"))
         {
             if (!TryLoadNavigationSnapshot())
@@ -174,7 +197,8 @@ public partial class RtsDemo : Node2D
             }
 
             var result = SimulationSelfTest.Run(
-                _navigationSnapshot, _gameplayProfiles, _clearanceBake);
+                _navigationSnapshot, _gameplayProfiles, _clearanceBake,
+                _buildingTypes);
             GD.Print($"RTS_SELF_TEST {(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -1456,7 +1480,8 @@ public partial class RtsDemo : Node2D
             _navigationSnapshot,
             _gameplayProfiles,
             _clearanceBake,
-            _hotReloadCandidate);
+            _hotReloadCandidate,
+            _buildingTypes);
         }
         catch (ArgumentException exception)
         {
@@ -1642,7 +1667,41 @@ public partial class RtsDemo : Node2D
     private bool TryLoadRuntimeData() =>
         TryLoadNavigationSnapshot() &&
         TryLoadGameplayProfiles() &&
+        TryLoadBuildingTypes() &&
         TryLoadClearanceBake();
+
+    private bool TryLoadBuildingTypes()
+    {
+        if (_buildingTypes is not null)
+        {
+            return true;
+        }
+
+        var resourcePath = BuildingTypesAsset?.ResourcePath ??
+                           DemoBuildingTypesResourcePath;
+        var converted = BuildingTypesAsset is not null
+            ? BuildingTypeResourceConverter.TryConvert(
+                BuildingTypesAsset, out var snapshot, out var validation)
+            : BuildingTypeResourceConverter.TryLoadSnapshot(
+                DemoBuildingTypesResourcePath, out snapshot, out validation);
+        if (converted && snapshot is not null)
+        {
+            _buildingTypes = snapshot;
+            GD.Print(
+                $"RTS_BUILDING_TYPES PASS path={resourcePath} " +
+                $"format={snapshot.FormatVersion} hash={snapshot.StableHashText} " +
+                $"types={snapshot.Types.Length}");
+            return true;
+        }
+
+        foreach (var issue in validation.Issues)
+        {
+            GD.PushError(
+                $"RTS_BUILDING_TYPES FAIL code={issue.Code} " +
+                $"index={issue.ElementIndex} message={issue.Message}");
+        }
+        return false;
+    }
 
     private bool TryLoadGameplayProfiles()
     {
@@ -1745,6 +1804,23 @@ public partial class RtsDemo : Node2D
         GD.Print(
             $"RTS_NAVIGATION_RESOURCE_GENERATE error={saveError} " +
             $"path={DemoNavigationResourcePath} hash={snapshot.StableHashText}");
+        GetTree().Quit(saveError == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateDemoBuildingTypes()
+    {
+        var snapshot = DemoBuildingTypes.CreateCatalog();
+        var resource = BuildingTypeResourceConverter.FromSnapshot(snapshot);
+        if (!EnsureDataDirectory())
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        var saveError = ResourceSaver.Save(
+            resource, DemoBuildingTypesResourcePath);
+        GD.Print(
+            $"RTS_BUILDING_TYPES_GENERATE error={saveError} " +
+            $"path={DemoBuildingTypesResourcePath} hash={snapshot.StableHashText}");
         GetTree().Quit(saveError == Error.Ok ? 0 : 1);
     }
 

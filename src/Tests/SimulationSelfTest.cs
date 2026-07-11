@@ -9,7 +9,8 @@ public static class SimulationSelfTest
     public static SelfTestResult Run(
         NavigationMapSnapshot? navigationMap = null,
         GameplayProfileCatalogSnapshot? gameplayProfiles = null,
-        ClearanceBakeSnapshot? clearanceBake = null)
+        ClearanceBakeSnapshot? clearanceBake = null,
+        BuildingTypeCatalogSnapshot? buildingTypes = null)
     {
         try
         {
@@ -28,13 +29,14 @@ public static class SimulationSelfTest
             var placementDiffResult = BuildingConnectivityDiffSelfTest.Run();
             var watchWorkflowResult = ResourceReloadWorkflowSelfTest.Run();
             var economyResult = EconomySelfTest.Run();
+            var buildingTypeResult = BuildingTypeCatalogSelfTest.Run(buildingTypes);
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
                          reloadResult.Passed && bakeCommitResult.Passed;
             passed &= placementDiffResult.Passed && watchWorkflowResult.Passed &&
-                      economyResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 11)
+                      economyResult.Passed && buildingTypeResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 12)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -63,12 +65,16 @@ public static class SimulationSelfTest
                 $"({watchWorkflowResult.Summary})",
                 $"economy-dual-resource=" +
                 $"{(economyResult.Passed ? "PASS" : "FAIL")}" +
-                $"({economyResult.Summary})"
+                $"({economyResult.Summary})",
+                $"building-type-catalog=" +
+                $"{(buildingTypeResult.Passed ? "PASS" : "FAIL")}" +
+                $"({buildingTypeResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {
                 var session = VisualTestCatalog.Create(
-                    caseId, navigationMap, gameplayProfiles, clearanceBake);
+                    caseId, navigationMap, gameplayProfiles, clearanceBake,
+                    buildingTypes: buildingTypes);
                 while (session.Rig.Tick < session.DurationTicks)
                 {
                     session.Step();

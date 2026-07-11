@@ -60,6 +60,7 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview",
         "economy-dual-resource",
         "construction-gameplay-buildings",
+        "building-type-resource-runtime",
         "construction-replay-persistence",
         "combat-attack-building",
         "shared-target-reservations",
@@ -89,7 +90,8 @@ public static class VisualTestCatalog
         NavigationMapSnapshot? navigationMap = null,
         GameplayProfileCatalogSnapshot? gameplayProfiles = null,
         ClearanceBakeSnapshot? clearanceBake = null,
-        RuntimeResourceSetSnapshot? hotReloadCandidate = null) => caseId switch
+        RuntimeResourceSetSnapshot? hotReloadCandidate = null,
+        BuildingTypeCatalogSnapshot? buildingTypes = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
@@ -159,6 +161,8 @@ public static class VisualTestCatalog
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
+        "building-type-resource-runtime" =>
+            CreateBuildingTypeResourceRuntime(buildingTypes),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "combat-attack-building" => CreateCombatAttackBuilding(
@@ -2278,6 +2282,68 @@ public static class VisualTestCatalog
             .Highlight(
                 new SimRect(new Vector2(730f, 470f), new Vector2(830f, 570f)),
                 "REFINERY: bound to Vespene node",
+                TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateBuildingTypeResourceRuntime(
+        BuildingTypeCatalogSnapshot? catalog)
+    {
+        catalog ??= DemoBuildingTypes.CreateCatalog();
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1200f, 700f), 16);
+        rig.RegisterPlayer(1, 1000, 300, 15, 4);
+        var gas = rig.AddResourceNode(
+            TestEconomyResourceKind.VespeneGas,
+            new Vector2(800f, 520f), 1000, 4, 0.5f, 3,
+            requiresRefinery: true, operational: false);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(160f, 170f), 1),
+            rig.SpawnWorker(new Vector2(400f, 180f), 1),
+            rig.SpawnWorker(new Vector2(820f, 180f), 1),
+            rig.SpawnWorker(new Vector2(680f, 520f), 1)
+        };
+        var orders = new[]
+        {
+            rig.Build(1, workers[0], catalog.Type(0), new Vector2(280f, 170f)),
+            rig.Build(1, workers[1], catalog.Type(1), new Vector2(520f, 180f)),
+            rig.Build(1, workers[2], catalog.Type(2), new Vector2(950f, 180f)),
+            rig.Build(1, workers[3], catalog.Type(3), Vector2.Zero, gas)
+        };
+        return new VisualTestSession(
+                "building-type-resource-runtime",
+                "Versioned building catalog drives four real construction lifecycles",
+                900,
+                rig,
+                workers,
+                runtime =>
+                {
+                    var buildings = orders.Select(order =>
+                        runtime.ObserveGameplayBuilding(order.BuildingId)).ToArray();
+                    var completed = buildings.All(value =>
+                        value.State == TestBuildingLifecycleState.Completed);
+                    var distinctSizes = buildings.Select(value => value.Size)
+                        .Distinct().Count();
+                    var economy = runtime.ObservePlayerEconomy(1);
+                    var refinery = runtime.ObserveResourceNode(gas);
+                    var passed = orders.All(order => order.Succeeded) && completed &&
+                                 distinctSizes == 4 && catalog.FormatVersion == 1 &&
+                                 catalog.StableHash != 0UL && economy.Minerals == 275 &&
+                                 economy.SupplyCapacity == 38 && refinery.Operational;
+                    return new ScenarioResult(
+                        passed,
+                        $"catalog=f{catalog.FormatVersion}/{catalog.StableHashText}, " +
+                        $"types={catalog.Types.Length}, completed={completed}, " +
+                        $"sizes={distinctSizes}, minerals={economy.Minerals}, " +
+                        $"supply={economy.SupplyCapacity}, refinery={refinery.Operational}");
+                })
+            .Highlight(
+                new SimRect(new Vector2(245f, 100f), new Vector2(1050f, 250f)),
+                "RESOURCE TYPES: 48 / 112 / 160 width",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(750f, 470f), new Vector2(850f, 570f)),
+                "RESOURCE CONTRACT: refinery binds gas node",
                 TestDiagnosticKind.Accepted);
     }
 

@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="RtsBuildingTypeCatalogResource" format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/BuildingTypeProfileResource.cs" id="1_type"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsBuildingTypeCatalogResource.cs" id="2_catalog"]
+
+[sub_resource type="Resource" id="Resource_rnpfl"]
+script = ExtResource("1_type")
+DisplayName = "Supply Depot"
+MineralCost = 100
+BuildSeconds = 4.0
+MaximumHealth = 400.0
+SupplyProvided = 8
+
+[sub_resource type="Resource" id="Resource_qrs4f"]
+script = ExtResource("1_type")
+Id = 1
+DisplayName = "Barracks"
+Function = 1
+Size = Vector2(112, 80)
+MinimumPassageClass = 2
+MineralCost = 150
+BuildSeconds = 7.0
+MaximumHealth = 1000.0
+
+[sub_resource type="Resource" id="Resource_qbl0u"]
+script = ExtResource("1_type")
+Id = 2
+DisplayName = "Command Center"
+Function = 2
+Size = Vector2(160, 120)
+MinimumPassageClass = 2
+MineralCost = 400
+BuildSeconds = 10.0
+MaximumHealth = 1500.0
+SupplyProvided = 15
+
+[sub_resource type="Resource" id="Resource_3emw1"]
+script = ExtResource("1_type")
+Id = 3
+DisplayName = "Refinery"
+Function = 3
+Size = Vector2(72, 72)
+MineralCost = 75
+BuildSeconds = 5.0
+MaximumHealth = 500.0
+RequiresVespeneNode = true
+
+[resource]
+script = ExtResource("2_catalog")
+Types = Array[ExtResource("1_type")]([SubResource("Resource_rnpfl"), SubResource("Resource_qrs4f"), SubResource("Resource_qbl0u"), SubResource("Resource_3emw1")])

@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T18:23:49.4919563+08:00",
+    "generated_at":  "2026-07-11T18:44:16.4699349+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  95,
-    "case_count":  71,
+    "recording_count":  96,
+    "case_count":  72,
     "recordings":  [
+                       {
+                           "id":  "building-type-resource-runtime",
+                           "display_name":  "Versioned building catalog drives four real construction lifecycles",
+                           "batch":  "20260711_184359",
+                           "created_at":  "2026-07-11T18:44:16.1222179+08:00",
+                           "video":  "../20260711_184359/building-type-resource-runtime.webm",
+                           "log":  "../20260711_184359/building-type-resource-runtime.log",
+                           "bytes":  334605,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS building-type-resource-runtime: ticks=900, catalog=f1/8862BE2D31947235, types=4, completed=True, sizes=4, minerals=275, supply=38, refinery=True",
+                           "metrics":  "ticks=900, catalog=f1/8862BE2D31947235, types=4, completed=True, sizes=4, minerals=275, supply=38, refinery=True"
+                       },
                        {
                            "id":  "combat-attack-building",
                            "display_name":  "Explicit building target chase, perimeter attack, destruction and replay",
