@@ -185,7 +185,9 @@ S11-E2a 正式研究运行时已完成：
 - `technology-research-upgrades` 覆盖取消重排、1→2 级、前置拒绝、排队/完成态互斥、最大等级、研究中热恢复与完整回放。
 - 78/78 黑盒回归通过；录像位于 `test_videos/20260711_211332/`。
 
-下一段 E2b 只做 Technology Godot Resource 数据工作流与跨目录编辑时诊断，然后再进入扩张规则。
+S11-E2b Technology Resource 数据工作流已完成：Inspector 子资源、不可变转换、稳定 Hash、Fresh Load、生成/验证脚本，以及 Researcher/Building/Technology 无环依赖的跨目录诊断全部进入门禁。资源驱动研究录像位于 `test_videos/20260711_213803/`。
+
+下一段进入扩张、基地 DropOff、资源饱和度和工人转场。
 
 ### S11-E：科技、扩张和胜负
 

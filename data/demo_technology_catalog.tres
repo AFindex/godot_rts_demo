@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="RtsTechnologyCatalogResource" format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/TechnologyProfileResource.cs" id="1_8fevw"]
+[ext_resource type="Script" path="res://src/Godot/Resources/TechnologyRequirementProfileResource.cs" id="2_kbwwc"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsTechnologyCatalogResource.cs" id="3_hv3x0"]
+
+[sub_resource type="Resource" id="Resource_o0eva"]
+script = ExtResource("2_kbwwc")
+TargetId = 4
+
+[sub_resource type="Resource" id="Resource_35gk2"]
+script = ExtResource("1_8fevw")
+DisplayName = "Infantry Weapons"
+ResearcherBuildingTypeId = 4
+MineralCost = 100
+VespeneCost = 100
+ResearchSeconds = 4.0
+MaximumLevel = 3
+Requirements = Array[ExtResource("2_kbwwc")]([SubResource("Resource_o0eva")])
+
+[sub_resource type="Resource" id="Resource_h3vlh"]
+script = ExtResource("2_kbwwc")
+Kind = 1
+
+[sub_resource type="Resource" id="Resource_j34j0"]
+script = ExtResource("1_8fevw")
+Id = 1
+DisplayName = "Assault Doctrine"
+ResearcherBuildingTypeId = 4
+MineralCost = 150
+VespeneCost = 100
+ResearchSeconds = 5.0
+ExclusiveGroupId = 1
+Requirements = Array[ExtResource("2_kbwwc")]([SubResource("Resource_h3vlh")])
+
+[sub_resource type="Resource" id="Resource_mgd52"]
+script = ExtResource("2_kbwwc")
+Kind = 1
+
+[sub_resource type="Resource" id="Resource_3552u"]
+script = ExtResource("1_8fevw")
+Id = 2
+DisplayName = "Fortification Doctrine"
+ResearcherBuildingTypeId = 4
+MineralCost = 150
+VespeneCost = 100
+ResearchSeconds = 5.0
+ExclusiveGroupId = 1
+Requirements = Array[ExtResource("2_kbwwc")]([SubResource("Resource_mgd52")])
+
+[resource]
+script = ExtResource("3_hv3x0")
+Technologies = Array[ExtResource("1_8fevw")]([SubResource("Resource_35gk2"), SubResource("Resource_j34j0"), SubResource("Resource_3552u")])

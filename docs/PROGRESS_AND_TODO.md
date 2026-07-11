@@ -17,7 +17,7 @@
 当前规模：
 
 - 85 个 C# 源文件。
-- 约 28,700 行 C#（按 `src/**/*.cs` 统计）。
+- 约 29,000 行 C#（按 `src/**/*.cs` 统计）。
 - 78 个黑盒场景。
 - 覆盖 78 个逻辑场景的规范测试录像。
 - Release 1000 单位移动 P95：约 8.26ms。
@@ -825,7 +825,20 @@ S11-D 已整体收口。
 
 ### 下一阶段边界
 
-下一段 S11-E2b 只补 Technology Godot Resource、Fresh Load、生成/验证工具和跨 Technology/Building Catalog 编辑时诊断。完成后进入扩张与基地经济规则。AttackMove 自动索建筑仍延后到可见性和目标优先级阶段。
+### W：S11-E2b Technology Resource 数据工作流（已完成）
+
+- 新增 Technology/Requirement/RtsTechnologyCatalog 三层 Godot Resource 与纯 C# 转换器。
+- 主场景绑定 `data/demo_technology_catalog.tres`；格式 v1、稳定 Hash `8F9990031AA55B5E`、3 项科技。
+- 转换后条件使用 `ImmutableArray`；严格拒绝 null 子资源、非法字段、重复条件和目录结构错误。
+- 与 Building Catalog 交叉校验 Researcher 必须为 Research 建筑、Building 前置不越界；科技前置只能指向更小 ID，静态保证无环。
+- `--generate-demo-technology-catalog` / `--validate-technology-catalog` 及 PowerShell 包装脚本覆盖引擎保存和 `CacheMode.Replace` Fresh Load。
+- Simulation SelfTest 与 `technology-research-upgrades` 均注入加载后的科技快照，并校验与规范 Hash 一致。
+- 78/78 全量回归通过；更新后的 22 秒 AV1/WebM 位于 `test_videos/20260711_213803/`。
+- 全库录像验证通过 104 个视频、52 个 manifest、103 个场景引用，编码均为 AV1。
+
+### 下一阶段边界
+
+S11-E 已收口。下一段进入 S11-F：扩张、基地 DropOff、资源饱和度和工人转场；之后再做胜负条件与脚本 AI。AttackMove 自动索建筑仍延后到可见性和目标优先级阶段。
 
 ## 8. 可以并行但不能提前耦合的优化
 

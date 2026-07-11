@@ -18,6 +18,8 @@ public partial class RtsDemo : Node2D
         "res://data/demo_building_types.tres";
     private const string DemoProductionCatalogResourcePath =
         "res://data/demo_production_catalog.tres";
+    private const string DemoTechnologyCatalogResourcePath =
+        "res://data/demo_technology_catalog.tres";
     private const string DemoClearanceBakeResourcePath =
         "res://data/demo_clearance_bake.tres";
 
@@ -32,6 +34,9 @@ public partial class RtsDemo : Node2D
 
     [Export]
     public RtsProductionCatalogResource? ProductionCatalogAsset { get; set; }
+
+    [Export]
+    public RtsTechnologyCatalogResource? TechnologyCatalogAsset { get; set; }
 
     [Export]
     public RtsClearanceBakeResource? ClearanceBakeAsset { get; set; }
@@ -66,6 +71,7 @@ public partial class RtsDemo : Node2D
     private GameplayProfileCatalogSnapshot? _gameplayProfiles;
     private BuildingTypeCatalogSnapshot? _buildingTypes;
     private ProductionCatalogSnapshot? _productionCatalog;
+    private TechnologyCatalogSnapshot? _technologyCatalog;
     private ClearanceBakeSnapshot? _clearanceBake;
     private ControlGroupManager? _controlGroups;
     private int[] _controlGroupRecallBuffer = [];
@@ -179,6 +185,21 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-technology-catalog"))
+        {
+            GenerateDemoTechnologyCatalog();
+            return;
+        }
+
+        if (userArguments.Contains("--validate-technology-catalog"))
+        {
+            TechnologyCatalogAsset = null;
+            _technologyCatalog = null;
+            var valid = TryLoadTechnologyCatalog();
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--generate-demo-clearance-bake"))
         {
             if (!TryLoadNavigationSnapshot())
@@ -219,7 +240,7 @@ public partial class RtsDemo : Node2D
 
             var result = SimulationSelfTest.Run(
                 _navigationSnapshot, _gameplayProfiles, _clearanceBake,
-                _buildingTypes, _productionCatalog);
+                _buildingTypes, _productionCatalog, _technologyCatalog);
             GD.Print($"RTS_SELF_TEST {(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -1655,7 +1676,8 @@ public partial class RtsDemo : Node2D
             _clearanceBake,
             _hotReloadCandidate,
             _buildingTypes,
-            _productionCatalog);
+            _productionCatalog,
+            _technologyCatalog);
         }
         catch (ArgumentException exception)
         {
@@ -1843,6 +1865,7 @@ public partial class RtsDemo : Node2D
         TryLoadGameplayProfiles() &&
         TryLoadBuildingTypes() &&
         TryLoadProductionCatalog() &&
+        TryLoadTechnologyCatalog() &&
         TryLoadClearanceBake();
 
     private bool TryLoadProductionCatalog()
@@ -1903,6 +1926,34 @@ public partial class RtsDemo : Node2D
                 $"RTS_BUILDING_TYPES FAIL code={issue.Code} " +
                 $"index={issue.ElementIndex} message={issue.Message}");
         }
+        return false;
+    }
+
+    private bool TryLoadTechnologyCatalog()
+    {
+        if (_technologyCatalog is not null) return true;
+        if (_buildingTypes is null && !TryLoadBuildingTypes()) return false;
+        var resourcePath = TechnologyCatalogAsset?.ResourcePath ??
+                           DemoTechnologyCatalogResourcePath;
+        var converted = TechnologyCatalogAsset is not null
+            ? TechnologyCatalogResourceConverter.TryConvert(
+                TechnologyCatalogAsset, _buildingTypes!,
+                out var snapshot, out var validation)
+            : TechnologyCatalogResourceConverter.TryLoadSnapshot(
+                DemoTechnologyCatalogResourcePath, _buildingTypes!,
+                out snapshot, out validation);
+        if (converted && snapshot is not null)
+        {
+            _technologyCatalog = snapshot;
+            GD.Print(
+                $"RTS_TECHNOLOGY_CATALOG PASS path={resourcePath} " +
+                $"format={snapshot.FormatVersion} hash={snapshot.StableHashText} " +
+                $"technologies={snapshot.Technologies.Length}");
+            return true;
+        }
+        GD.PushError(
+            $"RTS_TECHNOLOGY_CATALOG FAIL code={validation.Code} " +
+            $"index={validation.Index} message={validation.Message}");
         return false;
     }
 
@@ -2041,6 +2092,24 @@ public partial class RtsDemo : Node2D
         GD.Print(
             $"RTS_PRODUCTION_CATALOG_GENERATE error={error} " +
             $"path={DemoProductionCatalogResourcePath} " +
+            $"hash={snapshot.StableHashText}");
+        GetTree().Quit(error == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateDemoTechnologyCatalog()
+    {
+        var snapshot = DemoTechnologies.CreateCatalog();
+        var resource = TechnologyCatalogResourceConverter.FromSnapshot(snapshot);
+        if (!EnsureDataDirectory())
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        var error = ResourceSaver.Save(
+            resource, DemoTechnologyCatalogResourcePath);
+        GD.Print(
+            $"RTS_TECHNOLOGY_CATALOG_GENERATE error={error} " +
+            $"path={DemoTechnologyCatalogResourcePath} " +
             $"hash={snapshot.StableHashText}");
         GetTree().Quit(error == Error.Ok ? 0 : 1);
     }

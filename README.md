@@ -1,6 +1,6 @@
 # Godot 4.7 .NET RTS movement demo
 
-完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。实际玩法见 [S11 经济、建造与生产](docs/ECONOMY_AND_PRODUCTION.md)，战斗移动见 [AttackMove 与战斗占位](docs/ATTACK_MOVE.md)，操作层见 [命令队列、编组与 SmartCommand](docs/OPERATION_LAYER.md)，确定性基础见 [命令日志与回放](docs/COMMAND_REPLAY.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，资源更新见 [Resource 热重载与差异诊断](docs/RESOURCE_HOT_RELOAD.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
+完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。实际玩法见 [S11 经济、建造与生产](docs/ECONOMY_AND_PRODUCTION.md)，科技数据见 [Technology Catalog Resource](docs/TECHNOLOGY_RESOURCE.md)，战斗移动见 [AttackMove 与战斗占位](docs/ATTACK_MOVE.md)，操作层见 [命令队列、编组与 SmartCommand](docs/OPERATION_LAYER.md)，确定性基础见 [命令日志与回放](docs/COMMAND_REPLAY.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，资源更新见 [Resource 热重载与差异诊断](docs/RESOURCE_HOT_RELOAD.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
@@ -197,8 +197,12 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 S11-E2a 已完成：新增 Academy、纯 C# Technology Catalog、正式研究队列、玩家科技等级、多级升级、取消退款、科技前置、重复研究与互斥 Doctrine。设施日志 v4、Replay Package/Hot Snapshot v8 与状态 Hash v9 已同步升级。
 
-下一段进入 S11-E2b：Technology Godot Resource、Fresh Load、跨 Technology/Building Catalog 编辑时校验。
+S11-E2b 已完成：Technology Godot Resource、Fresh Load、生成/验证脚本和 Technology/Building 跨目录诊断已闭环；当前 v1 Hash 为 `8F9990031AA55B5E`。
+
+下一段进入 S11-F：扩张、基地 DropOff、资源饱和度与工人转场。
 
 生产目录资产说明见 [Production Catalog Resource](docs/PRODUCTION_CATALOG_RESOURCE.md)。
+
+科技目录资产说明见 [Technology Catalog Resource](docs/TECHNOLOGY_RESOURCE.md)。
 
 建筑类型资产的字段、校验和生成流程见 [Building Type Resource](docs/BUILDING_TYPE_RESOURCE.md)。

@@ -98,7 +98,8 @@ public static class VisualTestCatalog
         ClearanceBakeSnapshot? clearanceBake = null,
         RuntimeResourceSetSnapshot? hotReloadCandidate = null,
         BuildingTypeCatalogSnapshot? buildingTypes = null,
-        ProductionCatalogSnapshot? productionCatalog = null) => caseId switch
+        ProductionCatalogSnapshot? productionCatalog = null,
+        TechnologyCatalogSnapshot? technologyCatalog = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
@@ -183,7 +184,8 @@ public static class VisualTestCatalog
                 navigationMap, gameplayProfiles, clearanceBake),
         "technology-research-upgrades" =>
             CreateTechnologyResearchUpgrades(
-                navigationMap, gameplayProfiles, clearanceBake),
+                navigationMap, gameplayProfiles, clearanceBake,
+                technologyCatalog),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "combat-attack-building" => CreateCombatAttackBuilding(
@@ -2994,20 +2996,22 @@ public static class VisualTestCatalog
     private static VisualTestSession CreateTechnologyResearchUpgrades(
         NavigationMapSnapshot? navigationMap,
         GameplayProfileCatalogSnapshot? gameplayProfiles,
-        ClearanceBakeSnapshot? clearanceBake)
+        ClearanceBakeSnapshot? clearanceBake,
+        TechnologyCatalogSnapshot? technologyCatalog)
     {
         navigationMap ??= DemoMapDefinition.CreateSnapshot();
         gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
-        var weapon = DemoTechnologies.InfantryWeapons with
+        technologyCatalog ??= DemoTechnologies.CreateCatalog();
+        var weapon = technologyCatalog.Technology(0) with
         {
             ResearchSeconds = 1f,
             MaximumLevel = 2
         };
-        var assault = DemoTechnologies.AssaultDoctrine with
+        var assault = technologyCatalog.Technology(1) with
         {
             ResearchSeconds = 1f
         };
-        var fortification = DemoTechnologies.FortificationDoctrine with
+        var fortification = technologyCatalog.Technology(2) with
         {
             ResearchSeconds = 1f
         };
@@ -3074,9 +3078,14 @@ public static class VisualTestCatalog
                              decodedLog!.StableHash == log.StableHash &&
                              package.FormatVersion == 8 && hot.FormatVersion == 8 &&
                              package.ConstructionCommandCount == 1 &&
-                             package.ProductionCommandCount == 5 && exact && rejected;
+                             package.ProductionCommandCount == 5 &&
+                             technologyCatalog.StableHash ==
+                                 DemoTechnologies.CreateCatalog().StableHash &&
+                             exact && rejected;
                 return new ScenarioResult(
                     passed,
+                    $"catalog=f{technologyCatalog.FormatVersion}/" +
+                    $"{technologyCatalog.StableHashText}, " +
                     $"levels=weapon{runtime.TechnologyLevel(1, weapon.Id)}/" +
                     $"assault{runtime.TechnologyLevel(1, assault.Id)}/" +
                     $"fort{runtime.TechnologyLevel(1, fortification.Id)}, " +

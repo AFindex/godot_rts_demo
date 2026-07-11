@@ -4,12 +4,13 @@ namespace RtsDemo.Tests;
 
 public static class TechnologyCatalogSelfTest
 {
-    public static SelfTestResult Run()
+    public static SelfTestResult Run(TechnologyCatalogSnapshot? loaded = null)
     {
         var catalog = DemoTechnologies.CreateCatalog();
+        loaded ??= catalog;
         var roundTrip = TechnologyCatalogSnapshot.TryCreate(
-            catalog.FormatVersion,
-            catalog.Technologies,
+            loaded.FormatVersion,
+            loaded.Technologies,
             out var repeated,
             out _);
         var invalid = catalog.Technologies.ToArray();
@@ -25,18 +26,31 @@ public static class TechnologyCatalogSelfTest
             catalog.FormatVersion, invalid, out _, out _);
         var dependenciesValid = TechnologyCatalogDependencyValidator.TryValidate(
             catalog, DemoBuildingTypes.CreateCatalog(), out _);
+        var cyclicValues = catalog.Technologies.ToArray();
+        cyclicValues[1] = cyclicValues[1] with
+        {
+            Requirements =
+            [new(TechnologyRequirementKind.TechnologyLevel, 2, 1)]
+        };
+        var cyclicCreated = TechnologyCatalogSnapshot.TryCreate(
+            catalog.FormatVersion, cyclicValues, out var cyclic, out _);
+        var cyclicRejected = cyclicCreated && cyclic is not null &&
+            !TechnologyCatalogDependencyValidator.TryValidate(
+                cyclic, DemoBuildingTypes.CreateCatalog(), out _);
         var passed = roundTrip && repeated is not null &&
-                     repeated.StableHash == catalog.StableHash &&
+                     repeated.StableHash == loaded.StableHash &&
                      repeated.CanonicalBytes.Span.SequenceEqual(
-                         catalog.CanonicalBytes.Span) &&
+                         loaded.CanonicalBytes.Span) &&
+                     loaded.StableHash == catalog.StableHash &&
                      catalog.Technologies.Length == 3 &&
                      catalog.Technology(0).MaximumLevel == 3 &&
                      catalog.Technology(1).ExclusiveGroupId ==
                          catalog.Technology(2).ExclusiveGroupId &&
-                     !invalidAccepted && dependenciesValid;
+                     !invalidAccepted && dependenciesValid && cyclicRejected;
         return new SelfTestResult(
             passed,
-            $"format={catalog.FormatVersion}, hash={catalog.StableHashText}, " +
-            $"technologies={catalog.Technologies.Length}, invalid={!invalidAccepted}");
+            $"format={loaded.FormatVersion}, hash={loaded.StableHashText}, " +
+            $"technologies={catalog.Technologies.Length}, " +
+            $"invalid={!invalidAccepted}, cyclic={cyclicRejected}");
     }
 }
