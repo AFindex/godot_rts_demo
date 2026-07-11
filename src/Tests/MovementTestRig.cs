@@ -6,6 +6,54 @@ namespace RtsDemo.Tests;
 public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
 public readonly record struct TestResourceNodeId(int Value);
+public readonly record struct TestGameplayBuildingId(int Value);
+
+public enum TestBuildingLifecycleState : byte
+{
+    Approaching,
+    Constructing,
+    WaitingForBuilder,
+    Completed,
+    Canceled,
+    Destroyed
+}
+
+public enum TestConstructionCommandCode : byte
+{
+    Success,
+    InvalidPlayer,
+    InvalidBuilder,
+    WrongOwner,
+    BuilderBusy,
+    InvalidProfile,
+    InsufficientMinerals,
+    InsufficientVespeneGas,
+    SupplyBlocked,
+    PlacementRejected,
+    RefineryNodeRequired,
+    InvalidRefineryNode,
+    RefineryAlreadyBound
+}
+
+public readonly record struct TestConstructionResult(
+    TestConstructionCommandCode Code,
+    TestGameplayBuildingId BuildingId,
+    TestBuildingPlacementCode PlacementCode)
+{
+    public bool Succeeded => Code == TestConstructionCommandCode.Success;
+}
+
+public readonly record struct TestGameplayBuildingSnapshot(
+    TestGameplayBuildingId Id,
+    int TypeId,
+    string Name,
+    Vector2 Size,
+    TestBuildingId FootprintId,
+    TestBuildingLifecycleState State,
+    float Progress,
+    float Health,
+    float MaximumHealth,
+    TestResourceNodeId RefineryNode);
 
 public enum TestEconomyResourceKind : byte
 {
@@ -604,6 +652,7 @@ public sealed class MovementTestRig
     public Vector2 WorldMaximum => _world.Bounds.Max;
     public int NavigationRevision => _world.NavigationRevision;
     public int BuildingCount => _world.DynamicOccupancy.Count;
+    public int GameplayBuildingCount => _simulation.Construction.Count;
     public int NavigationFormatVersion => _navigationMap?.FormatVersion ?? 0;
     public ulong NavigationDataHash => _navigationMap?.StableHash ?? 0UL;
     public int LastNavigationInvalidations =>
@@ -890,6 +939,64 @@ public sealed class MovementTestRig
             new TestResourceNodeId(snapshot.TargetNode.Value),
             (TestEconomyResourceKind)snapshot.CargoKind,
             snapshot.CargoAmount);
+    }
+
+    public TestConstructionResult Build(
+        int playerId,
+        TestUnitId worker,
+        BuildingTypeProfile profile,
+        Vector2 center,
+        TestResourceNodeId? refineryNode = null)
+    {
+        var result = _simulation.IssueConstruction(
+            playerId,
+            worker.Value,
+            profile,
+            center,
+            refineryNode.HasValue
+                ? new EconomyResourceNodeId(refineryNode.Value.Value)
+                : new EconomyResourceNodeId(-1));
+        return new TestConstructionResult(
+            (TestConstructionCommandCode)result.Code,
+            new TestGameplayBuildingId(result.BuildingId.Value),
+            (TestBuildingPlacementCode)result.PlacementCode);
+    }
+
+    public bool CancelConstruction(
+        int playerId,
+        TestGameplayBuildingId building) =>
+        _simulation.CancelConstruction(
+            playerId, new GameplayBuildingId(building.Value));
+
+    public bool ResumeConstruction(
+        int playerId,
+        TestGameplayBuildingId building,
+        TestUnitId worker) =>
+        _simulation.ResumeConstruction(
+            playerId,
+            new GameplayBuildingId(building.Value),
+            worker.Value);
+
+    public bool DamageBuilding(TestGameplayBuildingId building, float damage) =>
+        _simulation.DamageBuilding(
+            new GameplayBuildingId(building.Value), damage);
+
+    public TestGameplayBuildingSnapshot ObserveGameplayBuilding(
+        TestGameplayBuildingId building)
+    {
+        var value = _simulation.Construction.Observe(
+            new GameplayBuildingId(building.Value));
+        return new TestGameplayBuildingSnapshot(
+            building,
+            value.Type.Id,
+            value.Type.Name,
+            value.Type.Size,
+            new TestBuildingId(value.FootprintId.Value),
+            (TestBuildingLifecycleState)value.State,
+            value.Progress,
+            value.Health,
+            value.MaximumHealth,
+            new TestResourceNodeId(value.RefineryNode.Value));
     }
 
 

@@ -59,6 +59,7 @@ public static class VisualTestCatalog
         "resource-file-watch-workflow",
         "building-connectivity-diff-preview",
         "economy-dual-resource",
+        "construction-gameplay-buildings",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -155,6 +156,7 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview" =>
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
+        "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -2126,6 +2128,150 @@ public static class VisualTestCatalog
                     new Vector2(425f, 455f),
                     new Vector2(515f, 545f)),
                 "VESPENE: refinery required, capacity 3",
+                TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateConstructionGameplayBuildings()
+    {
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1200f, 700f), 32);
+        rig.RegisterPlayer(1, 1000, 300, 15, 6);
+        rig.RegisterPlayer(2, 50, 0, 10, 1);
+        var gas = rig.AddResourceNode(
+            TestEconomyResourceKind.VespeneGas,
+            new Vector2(780f, 520f),
+            1000,
+            4,
+            0.5f,
+            3,
+            requiresRefinery: true,
+            operational: false);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(160f, 170f), 1),
+            rig.SpawnWorker(new Vector2(390f, 180f), 1),
+            rig.SpawnWorker(new Vector2(780f, 180f), 1),
+            rig.SpawnWorker(new Vector2(620f, 520f), 1),
+            rig.SpawnWorker(new Vector2(180f, 520f), 1),
+            rig.SpawnWorker(new Vector2(100f, 600f), 1),
+            rig.SpawnWorker(new Vector2(100f, 650f), 2)
+        };
+        var supply = rig.Build(
+            1, workers[0], DemoBuildingTypes.SupplyDepot,
+            new Vector2(280f, 170f));
+        var barracks = rig.Build(
+            1, workers[1], DemoBuildingTypes.Barracks,
+            new Vector2(520f, 180f));
+        var commandCenter = rig.Build(
+            1, workers[2], DemoBuildingTypes.CommandCenter,
+            new Vector2(950f, 180f));
+        var refinery = rig.Build(
+            1, workers[3], DemoBuildingTypes.Refinery,
+            new Vector2(0f, 0f), gas);
+        var canceled = rig.Build(
+            1, workers[4], DemoBuildingTypes.SupplyDepot,
+            new Vector2(320f, 520f));
+        var insufficient = rig.Build(
+            2, workers[6], DemoBuildingTypes.Barracks,
+            new Vector2(520f, 620f));
+        var wrongOwner = rig.Build(
+            1, workers[6], DemoBuildingTypes.SupplyDepot,
+            new Vector2(500f, 600f));
+        var missingRefineryNode = rig.Build(
+            1, workers[5], DemoBuildingTypes.Refinery,
+            new Vector2(600f, 500f));
+        var busyBuilder = rig.Build(
+            1, workers[0], DemoBuildingTypes.SupplyDepot,
+            new Vector2(160f, 350f));
+        var rawRemovalRejected = !rig.RemoveBuilding(
+            rig.ObserveGameplayBuilding(supply.BuildingId).FootprintId);
+        var commandRules =
+            supply.Succeeded && barracks.Succeeded && commandCenter.Succeeded &&
+            refinery.Succeeded && canceled.Succeeded &&
+            insufficient.Code == TestConstructionCommandCode.InsufficientMinerals &&
+            wrongOwner.Code == TestConstructionCommandCode.WrongOwner &&
+            missingRefineryNode.Code ==
+                TestConstructionCommandCode.RefineryNodeRequired &&
+            busyBuilder.Code == TestConstructionCommandCode.BuilderBusy &&
+            rawRemovalRejected;
+
+        var canceledSuccessfully = false;
+        var interrupted = false;
+        var resumed = false;
+        var damaged = false;
+        var completedBeforeDestruction = false;
+        var destroyed = false;
+        var session = new VisualTestSession(
+            "construction-gameplay-buildings",
+            "Owned buildings with costs, builders, progress, refund and refinery binding",
+            960,
+            rig,
+            workers,
+            runtime =>
+            {
+                var supplyState = runtime.ObserveGameplayBuilding(supply.BuildingId);
+                var barracksState = runtime.ObserveGameplayBuilding(barracks.BuildingId);
+                var commandState = runtime.ObserveGameplayBuilding(commandCenter.BuildingId);
+                var refineryState = runtime.ObserveGameplayBuilding(refinery.BuildingId);
+                var canceledState = runtime.ObserveGameplayBuilding(canceled.BuildingId);
+                var economy = runtime.ObservePlayerEconomy(1);
+                var gasState = runtime.ObserveResourceNode(gas);
+                var liveCompleted = new[]
+                {
+                    supplyState, commandState, refineryState
+                }.All(value => value.State == TestBuildingLifecycleState.Completed);
+                var sizes = new[]
+                {
+                    supplyState.Size, barracksState.Size,
+                    commandState.Size, refineryState.Size
+                }.Distinct().Count() == 4;
+                var passed = commandRules && canceledSuccessfully && interrupted &&
+                             resumed && damaged && liveCompleted &&
+                             completedBeforeDestruction && destroyed && sizes &&
+                             barracksState.State == TestBuildingLifecycleState.Destroyed &&
+                             canceledState.State == TestBuildingLifecycleState.Canceled &&
+                             runtime.GameplayBuildingCount == 3 &&
+                             runtime.BuildingCount == 3 &&
+                             economy.Minerals == 250 && economy.VespeneGas == 300 &&
+                             economy.SupplyCapacity == 38 &&
+                             gasState.Operational && supplyState.Health == 300f;
+                return new ScenarioResult(
+                    passed,
+                    $"completed={liveCompleted}+destroyed, active={runtime.GameplayBuildingCount}, " +
+                    $"sizes={sizes}, resources={economy.Minerals}/{economy.VespeneGas}, " +
+                    $"supply={economy.SupplyUsed}/{economy.SupplyCapacity}, " +
+                    $"refund={canceledSuccessfully}, pause/resume={interrupted}/{resumed}, " +
+                    $"refinery={gasState.Operational}, hp={supplyState.Health:0}");
+            });
+        session.At(120, "Cancel unfinished building and refund 75%", runtime =>
+            canceledSuccessfully = runtime.CancelConstruction(
+                1, canceled.BuildingId));
+        session.At(180, "Player order interrupts continuous construction", runtime =>
+        {
+            runtime.Move([workers[1]], new Vector2(390f, 330f));
+            interrupted = runtime.ObserveGameplayBuilding(barracks.BuildingId).State ==
+                          TestBuildingLifecycleState.WaitingForBuilder;
+        });
+        session.At(240, "Resume construction with the same worker", runtime =>
+            resumed = runtime.ResumeConstruction(
+                1, barracks.BuildingId, workers[1]));
+        session.At(720, "Damage a completed supply building", runtime =>
+            damaged = runtime.DamageBuilding(supply.BuildingId, 100f));
+        session.At(840, "Destroy a completed production building", runtime =>
+        {
+            completedBeforeDestruction =
+                runtime.ObserveGameplayBuilding(barracks.BuildingId).State ==
+                TestBuildingLifecycleState.Completed;
+            destroyed = runtime.DamageBuilding(barracks.BuildingId, 2000f);
+        });
+        return session
+            .Highlight(
+                new SimRect(new Vector2(245f, 135f), new Vector2(1050f, 250f)),
+                "SUPPLY / PRODUCTION / TOWN HALL: distinct gameplay entities",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(730f, 470f), new Vector2(830f, 570f)),
+                "REFINERY: bound to Vespene node",
                 TestDiagnosticKind.Accepted);
     }
 

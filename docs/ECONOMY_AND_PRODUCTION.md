@@ -52,7 +52,7 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v3 已加入玩家账本、节点余量/占用、DropOff、工人阶段、目标、携带物和工作计时。无经济工人的场景走零成本快速路径，不在每 Tick 扫描所有单位。
+状态 Hash v4 已加入玩家账本、节点余量/占用、工人阶段，以及正式建筑的类型、所有权、施工进度、生命与 Refinery 绑定。无经济工人的旧场景仍走零成本快速路径。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
@@ -87,13 +87,23 @@ Idle
 
 Build/Cancel、Train/Rally 不做没有实体语义的占位命令；它们分别随 S11-C 建造和 S11-D 生产进入同一版本化边界。
 
-### S11-C：建造系统
+### S11-C：建造系统（第一层已完成）
 
-- 建筑 Type Profile：双资源成本、建造时间、生命、Footprint、Supply、前置科技。
-- Placement 成功后原子扣费，创建 UnderConstruction 实体。
-- 建造进度、受击、取消、退款、工人死亡和建筑完成。
-- Refinery 必须绑定 Vespene 节点。
-- 通用建造策略接口承载 SCV 持续施工、Probe 启动后离开、Drone 消耗自身等差异。
+已完成：
+
+- `BuildingTypeProfile` 声明类型、功能、尺寸、双资源成本、建造时间、最大生命、人口贡献、退款率、施工方法和 Refinery 约束。
+- Supply Depot、Barracks、Command Center、Refinery 使用 48×48、112×80、160×120、72×72 四种实际尺寸。
+- 事务顺序为命令/所有权/资源/放置预检 → 创建导航占用 → 原子扣费 → 创建正式建筑实体；异常提交会回滚 Footprint。
+- 工人走到建筑外缘施工点后才开始进度；`ContinuousWorker` 必须持续在场，普通 Move/Gather 会暂停，可重新指派续建。
+- `StartAndRelease` 策略边界已经存在，后续种族 Profile 可以选择，不把种族逻辑写进账本。
+- 未完工取消移除占用并按 Profile 返还 75%；受击可摧毁，完工人口建筑增加上限，摧毁后安全扣回但不低于已用人口。
+- Refinery 必须绑定有效且未占用的 Vespene 节点，完成后节点才 operational，取消/摧毁重新关闭。
+- 旧的直接 Footprint 删除接口不能绕过正式建筑生命周期。
+- Godot 根据不可变 `GameplayBuildingSnapshot` 绘制类型配色、名称和施工进度，不把资源点或导航矩形伪装成建筑。
+- `construction-gameplay-buildings` 在 960 Tick 验证四建筑完工、第五建筑取消、资源精确为 250/300、人口 6/38、暂停续建、生命伤害与 Refinery 启用。
+- AV1/WebM 录像位于 `test_videos/20260711_170403/`。
+
+下一段：Build/Cancel/Resume 命令格式、建筑初始清单和施工热快照；建筑成为战斗目标；Godot Resource 化 Building Type Catalog。当前活动施工会明确拒绝旧 Replay/热快照入口，不生成缺失未来态的文件。
 
 ### S11-D：生产与人口
 

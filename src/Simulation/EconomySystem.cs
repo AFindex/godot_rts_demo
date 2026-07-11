@@ -90,6 +90,19 @@ public sealed class PlayerEconomyStore
 
     public EconomyTransactionResult TrySpend(int playerId, EconomyCost cost)
     {
+        var validation = ValidateSpend(playerId, cost);
+        if (!validation.Succeeded)
+        {
+            return validation;
+        }
+        _minerals[playerId] -= cost.Minerals;
+        _vespene[playerId] -= cost.VespeneGas;
+        _supplyUsed[playerId] += cost.Supply;
+        return new EconomyTransactionResult(EconomyTransactionCode.Success, cost);
+    }
+
+    public EconomyTransactionResult ValidateSpend(int playerId, EconomyCost cost)
+    {
         if (!IsRegistered(playerId))
         {
             return new EconomyTransactionResult(
@@ -115,9 +128,6 @@ public sealed class PlayerEconomyStore
             return new EconomyTransactionResult(
                 EconomyTransactionCode.SupplyBlocked, cost);
         }
-        _minerals[playerId] -= cost.Minerals;
-        _vespene[playerId] -= cost.VespeneGas;
-        _supplyUsed[playerId] += cost.Supply;
         return new EconomyTransactionResult(EconomyTransactionCode.Success, cost);
     }
 
@@ -166,6 +176,17 @@ public sealed class PlayerEconomyStore
             throw new ArgumentOutOfRangeException(nameof(amount));
         }
         _supplyCapacity[playerId] = checked(_supplyCapacity[playerId] + amount);
+    }
+
+    public void RemoveSupplyCapacity(int playerId, int amount)
+    {
+        ValidateRegistered(playerId);
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount));
+        }
+        _supplyCapacity[playerId] = Math.Max(
+            _supplyUsed[playerId], _supplyCapacity[playerId] - amount);
     }
 
     internal void AppendStateHash(ref StableHash64 hash)
@@ -391,6 +412,19 @@ public sealed class EconomySystem
     public bool HasRuntimeState =>
         Players.HasRegisteredPlayers || _nodes.Count > 0 || _dropOffs.Count > 0 ||
         _workers.Any(value => value);
+
+    public bool IsWorker(int unit) =>
+        (uint)unit < (uint)_workers.Length && _workers[unit];
+
+    public bool IsWorkerOwnedBy(int unit, int playerId) =>
+        IsWorker(unit) && _workerPlayers[unit] == playerId;
+
+    public bool IsVespeneNode(EconomyResourceNodeId id) =>
+        (uint)id.Value < (uint)_nodes.Count &&
+        _nodes[id.Value].Kind == EconomyResourceKind.VespeneGas &&
+        _nodes[id.Value].RequiresRefinery;
+
+    public Vector2 ResourceNodePosition(EconomyResourceNodeId id) => Node(id).Position;
 
     public EconomyResourceNodeId AddResourceNode(
         EconomyResourceKind kind,

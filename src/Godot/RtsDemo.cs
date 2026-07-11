@@ -375,6 +375,7 @@ public partial class RtsDemo : Node2D
         }
 
         DrawEconomyResources();
+        DrawGameplayBuildings();
 
         DrawVisualTestDiagnostics();
 
@@ -474,6 +475,47 @@ public partial class RtsDemo : Node2D
                 -1f,
                 13,
                 color);
+        }
+    }
+
+    private void DrawGameplayBuildings()
+    {
+        if (_simulation is null)
+        {
+            return;
+        }
+        foreach (var building in _simulation.Construction.CreateOverview())
+        {
+            if (building.IsTerminal)
+            {
+                continue;
+            }
+            var rect = ToRect2(building.Bounds);
+            var color = building.Type.Function switch
+            {
+                BuildingFunctionKind.Supply => new Color("e3c65f"),
+                BuildingFunctionKind.Production => new Color("e58b52"),
+                BuildingFunctionKind.TownHall => new Color("5b9fe8"),
+                BuildingFunctionKind.Refinery => new Color("63d68b"),
+                _ => new Color("d6d6d6")
+            };
+            var completed = building.State == BuildingLifecycleState.Completed;
+            DrawRect(rect, color with { A = completed ? 0.88f : 0.46f }, true);
+            DrawRect(rect, completed ? color.Lightened(0.25f) : color, false, 3f);
+
+            var progressWidth = rect.Size.X * Math.Clamp(building.Progress, 0f, 1f);
+            var progressRect = new Rect2(
+                rect.Position + new Vector2(0f, rect.Size.Y - 7f),
+                new Vector2(progressWidth, 7f));
+            DrawRect(progressRect, new Color("8dff9b"), true);
+            DrawString(
+                ThemeDB.FallbackFont,
+                rect.Position + new Vector2(5f, 17f),
+                $"{building.Type.Name}  {building.Progress:P0}",
+                HorizontalAlignment.Left,
+                rect.Size.X - 10f,
+                12,
+                new Color("f5f7fa"));
         }
     }
 

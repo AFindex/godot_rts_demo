@@ -38,6 +38,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly CombatSystem _combatSystem;
     private readonly Action<int, Vector2> _economyMoveWorker;
     private readonly Action<int> _economyStopWorker;
+    private readonly Action<int, Vector2> _constructionMoveWorker;
+    private readonly Action<int> _constructionStopWorker;
     private readonly int[] _collisionNeighbors = new int[64];
     private readonly int[] _orderReadyUnits;
     private readonly UnitOrder[] _orderReadyOrders;
@@ -49,7 +51,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private SimulationCommandRecorder? _commandRecorder;
     private EconomyCommandRecorder? _economyCommandRecorder;
     private SimulationReplayPackageRecorder? _replayPackageRecorder;
-    private bool _issuingEconomyOrder;
+    private bool _issuingSystemOrder;
 
     public RtsSimulation(
         StaticWorld world,
@@ -65,6 +67,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Combat = new CombatStore(capacity);
         CommandQueues = new UnitCommandQueueStore(capacity);
         Economy = new EconomySystem(capacity);
+        Construction = new ConstructionSystem();
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
@@ -83,6 +86,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _combatSystem = new CombatSystem(Units, Combat, this, world);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
+        _constructionMoveWorker = MoveConstructionWorker;
+        _constructionStopWorker = StopConstructionWorker;
     }
 
     public StaticWorld World { get; }
@@ -90,6 +95,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public CombatStore Combat { get; }
     public UnitCommandQueueStore CommandQueues { get; }
     public EconomySystem Economy { get; }
+    public ConstructionSystem Construction { get; }
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -168,6 +174,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     internal SimulationRuntimeStateCapture CaptureRuntimeState()
     {
+        EnsureConstructionPersistenceSupported();
         var units = new UnitStore(Units.Capacity);
         units.CopyRuntimeStateFrom(Units);
         var combat = new CombatStore(Units.Capacity);
@@ -255,6 +262,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public void StartReplayPackageRecording(ReplayResourceManifest resources)
     {
+        EnsureConstructionPersistenceSupported();
         if (!Economy.CanStartReplayRecording(Units.Count))
         {
             throw new InvalidOperationException(
@@ -372,6 +380,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public bool RemoveBuilding(DynamicFootprintId id)
     {
+        if (Construction.OwnsActiveFootprint(id))
+        {
+            return false;
+        }
+        return RemoveDynamicFootprint(id);
+    }
+
+    private bool RemoveGameplayBuildingFootprint(DynamicFootprintId id) =>
+        RemoveDynamicFootprint(id);
+
+    private bool RemoveDynamicFootprint(DynamicFootprintId id)
+    {
         if (!World.DynamicOccupancy.Remove(id, out var removedBounds))
         {
             return false;
@@ -468,6 +488,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         _economyCommandRecorder?.RecordGather(
             Metrics.Tick, issuingPlayerId, unit, nodeId.Value);
+        Span<int> gatheringWorker = stackalloc int[1];
+        gatheringWorker[0] = unit;
+        Construction.InterruptBuilders(gatheringWorker);
         Economy.BeginGather(unit, nodeId);
         MoveEconomyWorker(unit, Economy.ObserveResourceNode(nodeId).Position);
         return validation;
@@ -486,6 +509,95 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _economyCommandRecorder?.RecordRefinery(
             Metrics.Tick, issuingPlayerId, nodeId.Value, operational);
     }
+
+    public ConstructionCommandResult IssueConstruction(
+        int issuingPlayerId,
+        int builderUnit,
+        BuildingTypeProfile profile,
+        Vector2 center,
+        EconomyResourceNodeId refineryNode = default)
+    {
+        if (_commandRecorder is not null || _replayPackageRecorder is not null)
+        {
+            throw new InvalidOperationException(
+                "Construction recording is introduced with the S11-C persistence format.");
+        }
+        if (!profile.RequiresVespeneNode && refineryNode == default)
+        {
+            refineryNode = new EconomyResourceNodeId(-1);
+        }
+        var validation = Construction.ValidateRequest(
+            Economy, Units, issuingPlayerId, builderUnit, profile, refineryNode);
+        if (!validation.Succeeded)
+        {
+            return validation;
+        }
+        var spend = Economy.Players.ValidateSpend(issuingPlayerId, profile.Cost);
+        if (!spend.Succeeded)
+        {
+            return new ConstructionCommandResult(
+                spend.Code switch
+                {
+                    EconomyTransactionCode.InsufficientMinerals =>
+                        ConstructionCommandCode.InsufficientMinerals,
+                    EconomyTransactionCode.InsufficientVespeneGas =>
+                        ConstructionCommandCode.InsufficientVespeneGas,
+                    EconomyTransactionCode.SupplyBlocked =>
+                        ConstructionCommandCode.SupplyBlocked,
+                    _ => ConstructionCommandCode.InvalidPlayer
+                },
+                default);
+        }
+        if (profile.RequiresVespeneNode)
+        {
+            center = Economy.ResourceNodePosition(refineryNode);
+        }
+        var placement = TryPlaceBuilding(center, profile.PlacementProfile);
+        if (!placement.Succeeded)
+        {
+            return new ConstructionCommandResult(
+                ConstructionCommandCode.PlacementRejected,
+                default,
+                placement.Code);
+        }
+        var charged = Economy.Players.TrySpend(issuingPlayerId, profile.Cost);
+        if (!charged.Succeeded)
+        {
+            RemoveBuilding(placement.FootprintId);
+            throw new InvalidOperationException(
+                "Construction cost changed between validation and commit.");
+        }
+        Economy.Cancel([builderUnit]);
+        var halfSize = profile.Size * 0.5f;
+        var id = Construction.Add(
+            issuingPlayerId,
+            builderUnit,
+            profile,
+            new SimRect(center - halfSize, center + halfSize),
+            placement.FootprintId,
+            refineryNode,
+            Units.Positions[builderUnit],
+            Units.Radii[builderUnit]);
+        MoveConstructionWorker(builderUnit, Construction.BuilderAccessPoint(id));
+        return new ConstructionCommandResult(
+            ConstructionCommandCode.Success, id);
+    }
+
+    public bool CancelConstruction(int playerId, GameplayBuildingId buildingId) =>
+        Construction.Cancel(
+            buildingId, playerId, Economy, RemoveGameplayBuildingFootprint);
+
+    public bool ResumeConstruction(
+        int playerId,
+        GameplayBuildingId buildingId,
+        int builderUnit) =>
+        Construction.Resume(
+            buildingId, playerId, builderUnit, Economy, Units,
+            _constructionMoveWorker);
+
+    public bool DamageBuilding(GameplayBuildingId buildingId, float damage) =>
+        Construction.ApplyDamage(
+            buildingId, damage, Economy, RemoveGameplayBuildingFootprint);
 
     public void IssueMove(
         ReadOnlySpan<int> unitIndices,
@@ -713,12 +825,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
             ValidateLivingUnit(unitIndices[index]);
         }
 
-        if (!_issuingEconomyOrder)
+        if (!_issuingSystemOrder)
         {
             Economy.Cancel(unitIndices);
+            Construction.InterruptBuilders(unitIndices);
         }
 
-        if (!_issuingEconomyOrder)
+        if (!_issuingSystemOrder)
         {
             _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
         }
@@ -841,6 +954,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _pendingNavigationInvalidations = 0;
 
         var phaseStart = Stopwatch.GetTimestamp();
+        Construction.Update(
+            delta,
+            Units,
+            Economy,
+            _constructionMoveWorker,
+            _constructionStopWorker);
         Economy.Update(
             delta, Units, _economyMoveWorker, _economyStopWorker);
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
@@ -2131,14 +2250,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         Span<int> worker = stackalloc int[1];
         worker[0] = unit;
-        _issuingEconomyOrder = true;
+        _issuingSystemOrder = true;
         try
         {
             IssueMove(worker, target);
         }
         finally
         {
-            _issuingEconomyOrder = false;
+            _issuingSystemOrder = false;
         }
     }
 
@@ -2146,14 +2265,53 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         Span<int> worker = stackalloc int[1];
         worker[0] = unit;
-        _issuingEconomyOrder = true;
+        _issuingSystemOrder = true;
         try
         {
             Stop(worker);
         }
         finally
         {
-            _issuingEconomyOrder = false;
+            _issuingSystemOrder = false;
+        }
+    }
+
+    private void MoveConstructionWorker(int unit, Vector2 target)
+    {
+        Span<int> worker = stackalloc int[1];
+        worker[0] = unit;
+        _issuingSystemOrder = true;
+        try
+        {
+            IssueMove(worker, target);
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
+    }
+
+    private void StopConstructionWorker(int unit)
+    {
+        Span<int> worker = stackalloc int[1];
+        worker[0] = unit;
+        _issuingSystemOrder = true;
+        try
+        {
+            Stop(worker);
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
+    }
+
+    private void EnsureConstructionPersistenceSupported()
+    {
+        if (Construction.HasRuntimeState)
+        {
+            throw new InvalidOperationException(
+                "Active construction requires the S11-C replay/hot-snapshot format.");
         }
     }
 
