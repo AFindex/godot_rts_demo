@@ -52,6 +52,12 @@ public partial class RtsDemo : Node2D
     private ClearanceBakeSnapshot? _clearanceBake;
     private ControlGroupManager? _controlGroups;
     private int[] _controlGroupRecallBuffer = [];
+    private int[] _selectionTypeIds = [];
+    private readonly ControlGroupRecallTracker _controlGroupRecallTracker = new();
+    private Camera2D? _camera;
+    private OperationCameraController? _cameraController;
+    private Vector2 _pointerScreen;
+    private bool _doubleClickSelection;
 
     public override async void _Ready()
     {
@@ -182,6 +188,7 @@ public partial class RtsDemo : Node2D
             chokeController: _chokeController,
             clearanceBake: _clearanceBake);
         InitializeOperationState();
+        InitializeCamera();
         CreateHud();
         SpawnDemoUnits();
 
@@ -244,6 +251,10 @@ public partial class RtsDemo : Node2D
 
     public override void _Process(double delta)
     {
+        if (_visualTest is null && _cameraController is not null && _camera is not null)
+        {
+            UpdateCamera((float)delta);
+        }
         if (_visualTestFinishFrames < 0)
         {
             return;
@@ -263,11 +274,15 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        if (inputEvent is InputEventMouseMotion motion && _dragging)
+        if (inputEvent is InputEventMouseMotion motion)
         {
-            _dragCurrent = motion.Position;
-            QueueRedraw();
-            return;
+            _pointerScreen = motion.Position;
+            if (_dragging)
+            {
+                _dragCurrent = ScreenToWorld(motion.Position);
+                QueueRedraw();
+                return;
+            }
         }
 
         if (inputEvent is InputEventMouseButton mouse)
@@ -393,17 +408,26 @@ public partial class RtsDemo : Node2D
             if (mouse.Pressed)
             {
                 _dragging = true;
-                _dragStart = mouse.Position;
-                _dragCurrent = mouse.Position;
+                _doubleClickSelection = mouse.DoubleClick;
+                _dragStart = ScreenToWorld(mouse.Position);
+                _dragCurrent = _dragStart;
             }
             else if (_dragging)
             {
                 _dragging = false;
                 SelectInRect(
-                    MakeRect(_dragStart, mouse.Position),
-                    additive: Input.IsKeyPressed(Key.Shift));
+                    MakeRect(_dragStart, ScreenToWorld(mouse.Position)),
+                    additive: Input.IsKeyPressed(Key.Shift),
+                    sameType: _doubleClickSelection);
                 QueueRedraw();
             }
+        }
+        else if (mouse.Pressed && mouse.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
+        {
+            _cameraController?.ZoomAt(
+                GodotPathProvider.ToNumerics(mouse.Position),
+                mouse.ButtonIndex == MouseButton.WheelUp ? 1 : -1);
+            ApplyCameraState();
         }
         else if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed &&
                  _selectedUnits.Count > 0 && _navigationReady)
@@ -415,15 +439,16 @@ public partial class RtsDemo : Node2D
             }
             _commandMarkerAttackMove = Input.IsKeyPressed(Key.A);
             _commandMarkerQueued = Input.IsKeyPressed(Key.Shift);
+            var worldPosition = ScreenToWorld(mouse.Position);
             var target = ResolveSmartCommandTarget(
-                selected[0], GodotPathProvider.ToNumerics(mouse.Position));
+                selected[0], GodotPathProvider.ToNumerics(worldPosition));
             _simulation.IssueSmartCommand(
                 selected,
                 target,
                 _commandMarkerAttackMove,
                 queued: _commandMarkerQueued);
             _commandMarkerAttackMove |= target.Kind == SmartCommandTargetKind.EnemyUnit;
-            _commandMarker = mouse.Position;
+            _commandMarker = worldPosition;
             _commandMarkerTime = 0.65f;
             QueueRedraw();
         }
@@ -487,6 +512,97 @@ public partial class RtsDemo : Node2D
         }
         _controlGroups = new ControlGroupManager(_simulation.Units.Capacity);
         _controlGroupRecallBuffer = new int[_simulation.Units.Capacity];
+        _selectionTypeIds = Enumerable.Repeat(-1, _simulation.Units.Capacity).ToArray();
+    }
+
+    private void InitializeCamera()
+    {
+        if (_world is null)
+        {
+            return;
+        }
+        var viewport = GetViewportRect().Size;
+        _cameraController = new OperationCameraController(
+            _world.Bounds,
+            GodotPathProvider.ToNumerics(viewport));
+        _camera ??= new Camera2D { Enabled = true };
+        if (_camera.GetParent() is null)
+        {
+            AddChild(_camera);
+        }
+        _pointerScreen = viewport * 0.5f;
+        ApplyCameraState();
+    }
+
+    private void UpdateCamera(float delta)
+    {
+        if (_cameraController is null)
+        {
+            return;
+        }
+        var viewport = GetViewportRect().Size;
+        _cameraController.Resize(GodotPathProvider.ToNumerics(viewport));
+        var keyboard = NVector2.Zero;
+        if (Input.IsKeyPressed(Key.Left)) keyboard.X -= 1f;
+        if (Input.IsKeyPressed(Key.Right)) keyboard.X += 1f;
+        if (Input.IsKeyPressed(Key.Up)) keyboard.Y -= 1f;
+        if (Input.IsKeyPressed(Key.Down)) keyboard.Y += 1f;
+        _cameraController.Pan(keyboard, delta);
+        _cameraController.PanFromEdges(
+            GodotPathProvider.ToNumerics(_pointerScreen), delta);
+        ApplyCameraState();
+    }
+
+    private void ApplyCameraState()
+    {
+        if (_camera is null || _cameraController is null)
+        {
+            return;
+        }
+        _camera.Position = GodotPathProvider.ToGodot(_cameraController.Position);
+        _camera.Zoom = new Vector2(_cameraController.Zoom, _cameraController.Zoom);
+    }
+
+    private Vector2 ScreenToWorld(Vector2 screenPosition) =>
+        _cameraController is null
+            ? screenPosition
+            : GodotPathProvider.ToGodot(_cameraController.ScreenToWorld(
+                GodotPathProvider.ToNumerics(screenPosition)));
+
+    private void FocusCameraOnSelection()
+    {
+        if (_simulation is null || _cameraController is null)
+        {
+            return;
+        }
+        var selected = SelectedLivingUnits();
+        var positions = new NVector2[selected.Length];
+        for (var index = 0; index < selected.Length; index++)
+        {
+            positions[index] = _simulation.Units.Positions[selected[index]];
+        }
+        _cameraController.Focus(positions);
+        ApplyCameraState();
+    }
+
+    private SelectionCandidate[] BuildSelectionCandidates()
+    {
+        if (_simulation is null)
+        {
+            return [];
+        }
+        var result = new SelectionCandidate[_simulation.Units.Count];
+        for (var unit = 0; unit < result.Length; unit++)
+        {
+            result[unit] = new SelectionCandidate(
+                unit,
+                _selectionTypeIds[unit],
+                _simulation.Combat.Teams[unit],
+                _simulation.Units.Alive[unit],
+                _simulation.Units.Positions[unit],
+                _simulation.Units.Radii[unit]);
+        }
+        return result;
     }
 
     private void HandleControlGroup(int group, bool assign, bool add)
@@ -520,6 +636,11 @@ public partial class RtsDemo : Node2D
             {
                 _selectedUnits.Add(unit);
             }
+        }
+        if (_controlGroupRecallTracker.Register(
+                group, Time.GetTicksMsec() / 1000.0) && count > 0)
+        {
+            FocusCameraOnSelection();
         }
     }
 
@@ -592,7 +713,7 @@ public partial class RtsDemo : Node2D
         return new SmartCommandTarget(kind, _simulation.Units.Positions[best], best);
     }
 
-    private void SelectInRect(Rect2 rect, bool additive)
+    private void SelectInRect(Rect2 rect, bool additive, bool sameType)
     {
         if (_simulation is null)
         {
@@ -607,44 +728,39 @@ public partial class RtsDemo : Node2D
         if (rect.Size.LengthSquared() < 5f * 5f)
         {
             var click = rect.Position + rect.Size * 0.5f;
-            var best = -1;
-            var bestDistance = 15f * 15f;
-            for (var unit = 0; unit < _simulation.Units.Count; unit++)
-            {
-                if (!_simulation.Units.Alive[unit] ||
-                    _simulation.Combat.Teams[unit] != PlayerTeam)
-                {
-                    continue;
-                }
-                var position = GodotPathProvider.ToGodot(_simulation.Units.Positions[unit]);
-                var distance = position.DistanceSquaredTo(click);
-                if (distance < bestDistance)
-                {
-                    bestDistance = distance;
-                    best = unit;
-                }
-            }
+            var candidates = BuildSelectionCandidates();
+            var best = SelectionFilter.SelectPoint(
+                candidates,
+                GodotPathProvider.ToNumerics(click),
+                PlayerTeam);
 
             if (best >= 0)
             {
-                _selectedUnits.Add(best);
+                var selected = sameType && _cameraController is not null
+                    ? SelectionFilter.SelectVisibleSameType(
+                        candidates,
+                        best,
+                        _cameraController.VisibleWorld,
+                        PlayerTeam)
+                    : [best];
+                foreach (var unit in selected)
+                {
+                    _selectedUnits.Add(unit);
+                }
             }
 
             return;
         }
 
-        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        var selectedInBox = SelectionFilter.SelectBox(
+            BuildSelectionCandidates(),
+            new SimRect(
+                GodotPathProvider.ToNumerics(rect.Position),
+                GodotPathProvider.ToNumerics(rect.End)),
+            PlayerTeam);
+        for (var index = 0; index < selectedInBox.Length; index++)
         {
-            if (!_simulation.Units.Alive[unit] ||
-                _simulation.Combat.Teams[unit] != PlayerTeam)
-            {
-                continue;
-            }
-            var position = GodotPathProvider.ToGodot(_simulation.Units.Positions[unit]);
-            if (rect.HasPoint(position))
-            {
-                _selectedUnits.Add(unit);
-            }
+            _selectedUnits.Add(selectedInBox[index]);
         }
     }
 
@@ -882,7 +998,9 @@ public partial class RtsDemo : Node2D
             Modulate = new Color("d8e7f3")
         };
         _hud.AddThemeFontSizeOverride("font_size", 15);
-        AddChild(_hud);
+        var layer = new CanvasLayer { Layer = 10 };
+        AddChild(layer);
+        layer.AddChild(_hud);
     }
 
     private void UpdateHud()
@@ -1231,12 +1349,14 @@ public partial class RtsDemo : Node2D
         {
             for (var column = 0; column < 12; column++)
             {
+                var profile = _gameplayProfiles.Unit((row + column) %
+                    _gameplayProfiles.UnitProfiles.Length);
                 var unit = _simulation.AddUnit(
                     new NVector2(105f + column * 20f, 160f + row * 20f),
-                    _gameplayProfiles.Unit((row + column) %
-                                           _gameplayProfiles.UnitProfiles.Length),
+                    profile,
                     team: 1,
                     CombatProfileSnapshot.Standard);
+                _selectionTypeIds[unit] = profile.Id;
                 _selectedUnits.Add(unit);
             }
         }
@@ -1245,12 +1365,14 @@ public partial class RtsDemo : Node2D
         {
             for (var column = 0; column < 8; column++)
             {
-                _simulation.AddUnit(
+                var profile = _gameplayProfiles.Unit((row + column) %
+                    _gameplayProfiles.UnitProfiles.Length);
+                var unit = _simulation.AddUnit(
                     new NVector2(1030f + column * 20f, 510f + row * 20f),
-                    _gameplayProfiles.Unit((row + column) %
-                                           _gameplayProfiles.UnitProfiles.Length),
+                    profile,
                     team: 2,
                     CombatProfileSnapshot.Standard);
+                _selectionTypeIds[unit] = profile.Id;
             }
         }
     }

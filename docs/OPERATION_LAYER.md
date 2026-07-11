@@ -24,9 +24,26 @@ Control Group 只保存选择集合，不持有共享命令。命令始终进入
 - Ctrl+0～9：覆盖对应组。
 - Shift+0～9：把当前选择添加到对应组，不改变当前选择。
 - 0～9：召回仍存活的成员，按稳定 unit ID 排序。
+- 0～9 在 0.35 秒内再次召回同一组：把镜头定位到当前存活成员的中心。
 - 编组内部为固定容量布尔索引，没有 HashSet、Node 或 Godot 对象。
 
-尚未实现数字键双击镜头定位、Alt 移出/窃取编组和建筑/单位混合子组。
+尚未实现 Alt 移出/窃取编组和建筑/单位混合子组。
+
+## 选择过滤与双击
+
+- `SelectionFilter` 只接收稳定候选快照，不读取 Godot Node、UnitStore 或选择框状态。
+- 点选按命中距离选择友军；同距离使用稳定 Unit ID。
+- 框选过滤死亡单位和非玩家阵营，结果按 Unit ID 排序。
+- 双击单位会选择当前相机可见区域内相同 `TypeId` 的存活友军。
+- `TypeId` 由上层实体/Gameplay Profile 提供；选择系统不使用半径或速度猜测单位类型。
+
+## 相机
+
+- 屏幕四边 18px 边缘滚动；方向键提供等价键盘移动。
+- 滚轮缩放范围 1.0～2.4，缩放前后的光标世界坐标保持不变。
+- 平移速度按缩放反比调整，并在世界边界内夹紧。
+- 编组双击以存活成员平均位置定位，不改变当前缩放。
+- `OperationCameraController` 使用纯 `System.Numerics`，Godot `Camera2D` 只做显示适配。
 
 ## SmartCommand
 
@@ -48,14 +65,8 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 - `queued-capacity-limit`：16/16 待执行，额外两条得到 2 次显式 overflow。
 - `control-group-recall`：Ctrl 覆盖 4 人、Shift 添加 2 人、召回 6 人并全部到达。
 - `smart-command-sequence`：友军位置 Move → 敌军 AttackTarget → 地面 Move，目标死亡且两个 Shift 命令完成。
+- `operation-selection-camera`：稳定点选、可见同类型双击、友军框选、光标锚定缩放、边缘滚动和编组双击定位全部通过。
 
 ## 下一阶段
 
-下一层建立确定性基础设施：
-
-1. 版本化输入命令日志。
-2. 从相同初始状态进行固定 Tick 回放。
-3. 周期状态 Hash 与首次分歧 Tick。
-4. 相同输入重复执行一致性测试。
-
-完成后再继续双击同类选择、编组双击镜头定位、相机和 Minimap 命令。
+接入 Minimap 世界缩略图、当前视口框、点击定位和 Minimap SmartCommand；Minimap 继续复用现有相机控制器与 SmartCommand，不建立第二套选择或命令语义。

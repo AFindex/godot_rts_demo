@@ -25,6 +25,7 @@ public static class VisualTestCatalog
         "queued-capacity-limit",
         "control-group-recall",
         "smart-command-sequence",
+        "operation-selection-camera",
         "command-log-replay",
         "command-replay-divergence",
         "replay-package-world",
@@ -92,6 +93,7 @@ public static class VisualTestCatalog
         "queued-capacity-limit" => CreateQueuedCapacityLimit(),
         "control-group-recall" => CreateControlGroupRecall(),
         "smart-command-sequence" => CreateSmartCommandSequence(),
+        "operation-selection-camera" => CreateOperationSelectionCamera(),
         "command-log-replay" => CreateCommandLogReplay(),
         "command-replay-divergence" => CreateCommandReplayDivergence(),
         "replay-package-world" => CreateReplayPackageWorld(
@@ -707,6 +709,35 @@ public static class VisualTestCatalog
                     $"enemy_alive={enemySnapshot.Alive}, " +
                     $"position={attackerSnapshot.Position.X:F1},{attackerSnapshot.Position.Y:F1}, " +
                     $"completed={orders.CompletedQueuedOrders}");
+            });
+    }
+
+    private static VisualTestSession CreateOperationSelectionCamera()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 16);
+        var units = new[]
+        {
+            rig.Spawn(new Vector2(120f, 120f), radius: 8f),
+            rig.Spawn(new Vector2(260f, 180f), radius: 8f),
+            rig.Spawn(new Vector2(360f, 260f), radius: 10f),
+            rig.Spawn(new Vector2(900f, 500f), radius: 8f)
+        };
+        rig.Move(units, new Vector2(950f, 550f));
+        return new VisualTestSession(
+            "operation-selection-camera",
+            "Same-type selection, edge pan, cursor zoom and group focus",
+            360,
+            rig,
+            units,
+            runtime =>
+            {
+                var result = runtime.VerifyOperationInteractions();
+                return new ScenarioResult(
+                    result.Passed,
+                    $"point={result.PointSelection}, same={result.SameTypeCount}, " +
+                    $"box={result.BoxSelectionCount}, zoom={result.ZoomAnchorStable}, " +
+                    $"edge={result.EdgePanMoved}, double={result.GroupDoubleTap}, " +
+                    $"focus={result.FocusPosition.X:F0},{result.FocusPosition.Y:F0}");
             });
     }
 

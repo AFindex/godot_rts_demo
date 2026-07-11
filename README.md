@@ -37,6 +37,8 @@
 - 每单位固定 16 条 Shift 命令队列；同序列、同 Tick 到期的单位重新批量进入群组寻路。
 - Ctrl+数字覆盖 Control Group、Shift+数字添加、数字键召回；死亡单位自动从召回结果中过滤。
 - SmartCommand 将地面/友军位置解析为 Move、敌军解析为锁定攻击，A 修饰解析为 AttackMove。
+- 纯 C# SelectionFilter 支持稳定点选、友军框选和可见区域双击同类型选择。
+- 相机支持边缘/方向键滚动、光标锚定缩放和编组数字键双击定位。
 - 版本化规范命令日志、固定 Tick 回放、精确状态 Hash 和首次分歧 Tick 定位。
 - Replay Package 保存资源版本/Hash、初始单位与建筑清单，并按固定顺序重放动态建筑世界命令。
 - 版本化 checkpoint 绑定 Package/状态 Hash，可确定性 seek 到中间 Tick 后继续精确回放。
@@ -57,12 +59,16 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64.exe `
 
 ```text
 左键/框选：选择单位
+双击单位：选择当前视野内同类型友军
 右键：SmartCommand（地面/友军位置移动，敌军锁定攻击）
 A + 右键：AttackMove 到目标区域
 Shift + 右键：追加 SmartCommand 到每单位命令队列
 Ctrl + 数字：覆盖对应 Control Group
 Shift + 数字：添加到对应 Control Group
 数字：召回 Control Group
+双击数字：召回并把镜头定位到 Control Group
+鼠标滚轮：以光标为锚点缩放
+屏幕边缘/方向键：移动镜头
 Space：全选
 S：Stop
 H：Hold Position
@@ -97,7 +103,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 - 非战斗移动：当前线程分配不超过 1KB/Tick。
 - 活跃战斗 128/256 总单位：P95 不超过 4/8ms，分配不超过 8KB/Tick。
 
-当前机器的 Release 移动基线约为 1.75ms、4.65ms 和 10.62ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 1.86/5.49ms P95。完整状态 Hash v2 在 1000 单位场景平均约 1.66ms。
+当前机器的 Release 移动基线约为 1.20ms、4.33ms 和 9.45ms P95；1000 单位主要耗时为 Steering，其次为动态碰撞。双方持续 AttackMove 的 128/256 总单位基准为 2.14/4.77ms P95。完整状态 Hash v2 在 1000 单位场景平均约 1.33ms。
 
 ## 导航数据资产
 
@@ -140,7 +146,7 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 .\tools\record_tests.ps1 -Case portal-choke -Fps 30
 ```
 
-当前包含 59 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、命令日志精确回放、Replay Package、checkpoint seek 和直接热快照恢复。
+当前包含 60 个黑盒业务场景，并覆盖 Gameplay Profile Resource、Clearance Bake Resource、建筑/净空、群体终点、动态地图、Portal/狭口、AttackMove、战斗占位、操作层、选择/相机、命令回放、Replay Package、checkpoint 和持久化热快照。
 
 场景只通过稳定的测试业务接口生成单位、发送 `Move / Stop / Hold`、推进时间并读取位置和业务状态，不读取 `UnitStore`、路径点、Steering、Portal 或狭口状态机。底层实现变化时只需要维护 `MovementTestRig` 适配器。
 
@@ -155,4 +161,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 ## 当前边界与下一阶段
 
-移动、动态地图、战斗移动、第一层操作语义，以及确定性命令日志/Replay Package/checkpoint/持久化直接快照已经形成可运行闭环。确定性基础设施到此收口；下一阶段返回双击同类选择、选择过滤、相机和编组镜头定位，Minimap 随后接入。
+移动、动态地图、战斗移动、命令操作、选择/相机，以及确定性命令日志/Replay Package/checkpoint/持久化直接快照已经形成可运行闭环。下一阶段接入 Minimap 显示、视口框和 Minimap SmartCommand，不再扩张确定性基础设施。

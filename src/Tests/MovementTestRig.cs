@@ -406,6 +406,21 @@ public readonly record struct TestMovementDiagnostics(
     long DestinationYieldEvents,
     int ActiveDestinationYields);
 
+public readonly record struct TestOperationInteractionSnapshot(
+    int PointSelection,
+    int SameTypeCount,
+    int BoxSelectionCount,
+    bool ZoomAnchorStable,
+    bool EdgePanMoved,
+    bool GroupDoubleTap,
+    Vector2 FocusPosition)
+{
+    public bool Passed =>
+        PointSelection == 0 && SameTypeCount == 2 && BoxSelectionCount == 3 &&
+        ZoomAnchorStable && EdgePanMoved && GroupDoubleTap &&
+        Vector2.Distance(FocusPosition, new Vector2(950f, 550f)) < 0.01f;
+}
+
 public enum TestUnitState : byte
 {
     Idle,
@@ -856,6 +871,52 @@ public sealed class MovementTestRig
             metrics.MaximumDestinationNearTicks,
             metrics.DestinationYieldEvents,
             metrics.ActiveDestinationYields);
+    }
+
+    public TestOperationInteractionSnapshot VerifyOperationInteractions()
+    {
+        SelectionCandidate[] candidates =
+        [
+            new(0, 10, 1, true, new Vector2(120f, 120f), 8f),
+            new(1, 10, 1, true, new Vector2(260f, 180f), 8f),
+            new(2, 20, 1, true, new Vector2(360f, 260f), 10f),
+            new(3, 10, 1, true, new Vector2(900f, 500f), 8f),
+            new(4, 10, 2, true, new Vector2(180f, 140f), 8f),
+            new(5, 10, 1, false, new Vector2(220f, 160f), 8f)
+        ];
+        var visible = new SimRect(Vector2.Zero, new Vector2(600f, 400f));
+        var point = SelectionFilter.SelectPoint(
+            candidates, new Vector2(122f, 121f), playerTeam: 1);
+        var sameType = SelectionFilter.SelectVisibleSameType(
+            candidates, point, visible, playerTeam: 1);
+        var box = SelectionFilter.SelectBox(
+            candidates, visible, playerTeam: 1);
+
+        var camera = new OperationCameraController(
+            new SimRect(Vector2.Zero, new Vector2(1200f, 700f)),
+            new Vector2(400f, 300f));
+        var pointer = new Vector2(100f, 100f);
+        var beforeZoom = camera.ScreenToWorld(pointer);
+        camera.ZoomAt(pointer, 2);
+        var zoomStable = Vector2.Distance(
+            beforeZoom, camera.ScreenToWorld(pointer)) < 0.01f;
+        var beforePan = camera.Position;
+        camera.PanFromEdges(new Vector2(399f, 150f), 0.25f);
+        var edgeMoved = camera.Position.X > beforePan.X;
+        camera.Focus([new Vector2(900f, 500f), new Vector2(1000f, 600f)]);
+
+        var tracker = new ControlGroupRecallTracker();
+        var first = tracker.Register(1, 10.0);
+        var second = tracker.Register(1, 10.2);
+        var consumed = tracker.Register(1, 10.3);
+        return new TestOperationInteractionSnapshot(
+            point,
+            sameType.Length,
+            box.Length,
+            zoomStable,
+            edgeMoved,
+            !first && second && !consumed,
+            camera.Position);
     }
 
     public void Step() => _simulation.Tick(1f / 60f);
