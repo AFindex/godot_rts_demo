@@ -391,7 +391,11 @@ public sealed class ConstructionSystem
         building.PlayerId == playerId &&
         building.State == BuildingLifecycleState.WaitingForBuilder &&
         (uint)builderUnit < (uint)units.Count && units.Alive[builderUnit] &&
-        economy.IsWorkerOwnedBy(builderUnit, playerId);
+        economy.IsWorkerOwnedBy(builderUnit, playerId) &&
+        !_buildings.Any(value =>
+            value.Id != buildingId && value.BuilderUnit == builderUnit &&
+            value.State is BuildingLifecycleState.Approaching or
+                BuildingLifecycleState.Constructing);
 
     public bool Cancel(
         GameplayBuildingId id,

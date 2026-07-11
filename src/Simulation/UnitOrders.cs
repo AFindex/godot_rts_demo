@@ -10,7 +10,9 @@ public enum UnitOrderKind : byte
     AttackTarget,
     AttackBuilding,
     Stop,
-    Hold
+    Hold,
+    GatherResource,
+    ResumeConstruction
 }
 
 public readonly record struct UnitOrder(
@@ -18,7 +20,27 @@ public readonly record struct UnitOrder(
     Vector2 TargetPosition,
     int TargetUnit = -1,
     int TargetBuilding = -1,
+    int TargetResourceNode = -1,
     int SequenceId = 0);
+
+public static class UnitOrderContract
+{
+    public static bool IsStructurallyValid(UnitOrder order) =>
+        Enum.IsDefined(order.Kind) && order.Kind != UnitOrderKind.None &&
+        float.IsFinite(order.TargetPosition.X) &&
+        float.IsFinite(order.TargetPosition.Y) &&
+        (order.Kind == UnitOrderKind.AttackTarget
+            ? order.TargetUnit >= 0
+            : order.TargetUnit == -1) &&
+        (order.Kind is UnitOrderKind.AttackBuilding or
+            UnitOrderKind.ResumeConstruction
+            ? order.TargetBuilding >= 0
+            : order.TargetBuilding == -1) &&
+        (order.Kind == UnitOrderKind.GatherResource
+            ? order.TargetResourceNode >= 0
+            : order.TargetResourceNode == -1) &&
+        order.SequenceId >= 0;
+}
 
 /// <summary>
 /// Fixed-capacity per-unit command queues. Control groups never own commands;
@@ -32,6 +54,7 @@ public sealed class UnitCommandQueueStore
     private readonly Vector2[] _pendingPositions;
     private readonly int[] _pendingTargetUnits;
     private readonly int[] _pendingTargetBuildings;
+    private readonly int[] _pendingTargetResourceNodes;
     private readonly int[] _pendingSequenceIds;
     private readonly byte[] _heads;
 
@@ -42,6 +65,7 @@ public sealed class UnitCommandQueueStore
         ActivePositions = new Vector2[capacity];
         ActiveTargetUnits = new int[capacity];
         ActiveTargetBuildings = new int[capacity];
+        ActiveTargetResourceNodes = new int[capacity];
         ActiveSequenceIds = new int[capacity];
         HasActiveOrders = new bool[capacity];
         ActiveOrdersWereQueued = new bool[capacity];
@@ -52,11 +76,14 @@ public sealed class UnitCommandQueueStore
         _pendingPositions = new Vector2[capacity * MaximumPendingOrders];
         _pendingTargetUnits = new int[capacity * MaximumPendingOrders];
         _pendingTargetBuildings = new int[capacity * MaximumPendingOrders];
+        _pendingTargetResourceNodes = new int[capacity * MaximumPendingOrders];
         _pendingSequenceIds = new int[capacity * MaximumPendingOrders];
         Array.Fill(ActiveTargetUnits, -1);
         Array.Fill(_pendingTargetUnits, -1);
         Array.Fill(ActiveTargetBuildings, -1);
         Array.Fill(_pendingTargetBuildings, -1);
+        Array.Fill(ActiveTargetResourceNodes, -1);
+        Array.Fill(_pendingTargetResourceNodes, -1);
     }
 
     public byte[] PendingCounts { get; }
@@ -64,6 +91,7 @@ public sealed class UnitCommandQueueStore
     public Vector2[] ActivePositions { get; }
     public int[] ActiveTargetUnits { get; }
     public int[] ActiveTargetBuildings { get; }
+    public int[] ActiveTargetResourceNodes { get; }
     public int[] ActiveSequenceIds { get; }
     public bool[] HasActiveOrders { get; }
     public bool[] ActiveOrdersWereQueued { get; }
@@ -76,6 +104,7 @@ public sealed class UnitCommandQueueStore
         ActivePositions[unit] = order.TargetPosition;
         ActiveTargetUnits[unit] = order.TargetUnit;
         ActiveTargetBuildings[unit] = order.TargetBuilding;
+        ActiveTargetResourceNodes[unit] = order.TargetResourceNode;
         ActiveSequenceIds[unit] = order.SequenceId;
         HasActiveOrders[unit] = true;
         ActiveOrdersWereQueued[unit] = wasQueued;
@@ -102,6 +131,7 @@ public sealed class UnitCommandQueueStore
         _pendingPositions[index] = order.TargetPosition;
         _pendingTargetUnits[index] = order.TargetUnit;
         _pendingTargetBuildings[index] = order.TargetBuilding;
+        _pendingTargetResourceNodes[index] = order.TargetResourceNode;
         _pendingSequenceIds[index] = order.SequenceId;
         PendingCounts[unit]++;
         return true;
@@ -122,9 +152,11 @@ public sealed class UnitCommandQueueStore
             _pendingPositions[index],
             _pendingTargetUnits[index],
             _pendingTargetBuildings[index],
+            _pendingTargetResourceNodes[index],
             _pendingSequenceIds[index]);
         _pendingTargetUnits[index] = -1;
         _pendingTargetBuildings[index] = -1;
+        _pendingTargetResourceNodes[index] = -1;
         _heads[unit] = (byte)((head + 1) % MaximumPendingOrders);
         PendingCounts[unit]--;
         return true;
@@ -139,6 +171,7 @@ public sealed class UnitCommandQueueStore
             hash.Add(ActivePositions[unit]);
             hash.Add(ActiveTargetUnits[unit]);
             hash.Add(ActiveTargetBuildings[unit]);
+            hash.Add(ActiveTargetResourceNodes[unit]);
             hash.Add(ActiveSequenceIds[unit]);
             hash.Add(ActiveOrdersWereQueued[unit]);
             hash.Add(PendingCounts[unit]);
@@ -153,6 +186,7 @@ public sealed class UnitCommandQueueStore
                 hash.Add(_pendingPositions[index]);
                 hash.Add(_pendingTargetUnits[index]);
                 hash.Add(_pendingTargetBuildings[index]);
+                hash.Add(_pendingTargetResourceNodes[index]);
                 hash.Add(_pendingSequenceIds[index]);
             }
         }
@@ -169,6 +203,7 @@ public sealed class UnitCommandQueueStore
         Copy(source.ActivePositions, ActivePositions);
         Copy(source.ActiveTargetUnits, ActiveTargetUnits);
         Copy(source.ActiveTargetBuildings, ActiveTargetBuildings);
+        Copy(source.ActiveTargetResourceNodes, ActiveTargetResourceNodes);
         Copy(source.ActiveSequenceIds, ActiveSequenceIds);
         Copy(source.HasActiveOrders, HasActiveOrders);
         Copy(source.ActiveOrdersWereQueued, ActiveOrdersWereQueued);
@@ -179,6 +214,7 @@ public sealed class UnitCommandQueueStore
         Copy(source._pendingPositions, _pendingPositions);
         Copy(source._pendingTargetUnits, _pendingTargetUnits);
         Copy(source._pendingTargetBuildings, _pendingTargetBuildings);
+        Copy(source._pendingTargetResourceNodes, _pendingTargetResourceNodes);
         Copy(source._pendingSequenceIds, _pendingSequenceIds);
     }
 
@@ -195,6 +231,7 @@ public sealed class UnitCommandQueueStore
             _pendingPositions[index],
             _pendingTargetUnits[index],
             _pendingTargetBuildings[index],
+            _pendingTargetResourceNodes[index],
             _pendingSequenceIds[index]);
     }
 

@@ -375,6 +375,24 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     new GameplayBuildingId(command.TargetBuilding),
                     command.Queued);
                 break;
+            case UnitOrderKind.GatherResource:
+                IssueDeferredWorkerOrder(
+                    command.Units,
+                    new UnitOrder(
+                        UnitOrderKind.GatherResource,
+                        command.TargetPosition,
+                        TargetResourceNode: command.TargetResourceNode),
+                    command.Queued);
+                break;
+            case UnitOrderKind.ResumeConstruction:
+                IssueDeferredWorkerOrder(
+                    command.Units,
+                    new UnitOrder(
+                        UnitOrderKind.ResumeConstruction,
+                        command.TargetPosition,
+                        TargetBuilding: command.TargetBuilding),
+                    command.Queued);
+                break;
             case UnitOrderKind.Stop:
                 Stop(command.Units);
                 break;
@@ -683,6 +701,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Construction.InterruptBuilders(gatheringWorker);
         Economy.BeginGather(unit, nodeId);
         MoveEconomyWorker(unit, Economy.ObserveResourceNode(nodeId).Position);
+        CommandQueues.Begin(
+            unit,
+            new UnitOrder(
+                UnitOrderKind.GatherResource,
+                Economy.ResourceNodePosition(nodeId),
+                TargetResourceNode: nodeId.Value,
+                SequenceId: NextOrderSequenceId()),
+            wasQueued: false);
         return validation;
     }
 
@@ -803,6 +829,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 "Construction cost changed between validation and commit.");
         }
         Economy.Cancel([builderUnit]);
+        CommandQueues.ClearPending(builderUnit);
+        CommandQueues.HasActiveOrders[builderUnit] = false;
         var halfSize = profile.Size * 0.5f;
         var id = Construction.Add(
             issuingPlayerId,
@@ -837,7 +865,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public bool ResumeConstruction(
         int playerId,
         GameplayBuildingId buildingId,
-        int builderUnit)
+        int builderUnit) =>
+        TryResumeConstruction(
+            playerId, buildingId, builderUnit,
+            replaceUnitOrders: true, recordCommand: true);
+
+    private bool TryResumeConstruction(
+        int playerId,
+        GameplayBuildingId buildingId,
+        int builderUnit,
+        bool replaceUnitOrders,
+        bool recordCommand)
     {
         if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
             return false;
@@ -847,15 +885,30 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Span<int> builder = stackalloc int[1];
         builder[0] = builderUnit;
         Economy.Cancel(builder);
-        CommandQueues.ClearPending(builderUnit);
-        CommandQueues.HasActiveOrders[builderUnit] = false;
+        if (replaceUnitOrders)
+        {
+            CommandQueues.ClearPending(builderUnit);
+            CommandQueues.HasActiveOrders[builderUnit] = false;
+        }
         var succeeded = Construction.Resume(
             buildingId, playerId, builderUnit, Economy, Units,
             _constructionMoveWorker);
-        if (succeeded)
+        if (succeeded && recordCommand)
         {
             _constructionCommandRecorder?.RecordResume(
                 Metrics.Tick, playerId, buildingId, builderUnit);
+        }
+        if (succeeded && replaceUnitOrders)
+        {
+            var building = Construction.Observe(buildingId);
+            CommandQueues.Begin(
+                builderUnit,
+                new UnitOrder(
+                    UnitOrderKind.ResumeConstruction,
+                    (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                    TargetBuilding: buildingId.Value,
+                    SequenceId: NextOrderSequenceId()),
+                wasQueued: false);
         }
         return succeeded;
     }
@@ -1162,14 +1215,24 @@ public sealed class RtsSimulation : ICombatMovementDriver
             IssueMove(units, target.Position, queued);
             return new(PlayerOrderCommandCode.Success);
         }
-        if (queued)
-            return new(PlayerOrderCommandCode.QueuedContextCommandUnsupported);
-
         var resource = new EconomyResourceNodeId(target.ResourceNode);
         for (var index = 0; index < workers.Count; index++)
         {
             if (!Economy.ValidateGather(playerId, workers[index], resource).Succeeded)
                 return new(PlayerOrderCommandCode.ContextActionUnavailable);
+        }
+        if (queued)
+        {
+            IssueDeferredWorkerOrder(
+                workers.ToArray(),
+                new UnitOrder(
+                    UnitOrderKind.GatherResource,
+                    target.Position,
+                    TargetResourceNode: target.ResourceNode),
+                queued: true);
+            if (movers.Count > 0)
+                IssueMove(movers.ToArray(), target.Position, queued: true);
+            return new(PlayerOrderCommandCode.Success);
         }
         for (var index = 0; index < workers.Count; index++)
             IssueGather(playerId, workers[index], resource);
@@ -1202,22 +1265,70 @@ public sealed class RtsSimulation : ICombatMovementDriver
             IssueMove(units, target.Position, queued);
             return new(PlayerOrderCommandCode.Success);
         }
-        if (queued)
-            return new(PlayerOrderCommandCode.QueuedContextCommandUnsupported);
         if (!Construction.CanResume(
                 buildingId, playerId, builder, Economy, Units))
             return new(PlayerOrderCommandCode.ContextActionUnavailable);
-        if (!ResumeConstruction(playerId, buildingId, builder))
-            return new(PlayerOrderCommandCode.ContextActionUnavailable);
-
         var movers = new List<int>(units.Length - 1);
         for (var index = 0; index < units.Length; index++)
         {
             if (units[index] != builder) movers.Add(units[index]);
         }
+        if (queued)
+        {
+            IssueDeferredWorkerOrder(
+                [builder],
+                new UnitOrder(
+                    UnitOrderKind.ResumeConstruction,
+                    target.Position,
+                    TargetBuilding: target.Building),
+                queued: true);
+            if (movers.Count > 0)
+                IssueMove(movers.ToArray(), target.Position, queued: true);
+            return new(PlayerOrderCommandCode.Success);
+        }
+        if (!ResumeConstruction(playerId, buildingId, builder))
+            return new(PlayerOrderCommandCode.ContextActionUnavailable);
         if (movers.Count > 0)
             IssueMove(movers.ToArray(), target.Position);
         return new(PlayerOrderCommandCode.Success);
+    }
+
+    private void IssueDeferredWorkerOrder(
+        ReadOnlySpan<int> unitIndices,
+        UnitOrder order,
+        bool queued)
+    {
+        if (!UnitOrderContract.IsStructurallyValid(order) || unitIndices.IsEmpty)
+            throw new ArgumentException("Deferred worker order is invalid.", nameof(order));
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            ValidateUnitIndex(unitIndices[index]);
+            ValidateLivingUnit(unitIndices[index]);
+        }
+        _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
+        order = order with { SequenceId = NextOrderSequenceId() };
+        if (!queued)
+        {
+            ExecuteOrderGroup(unitIndices, order, wasQueued: false);
+            return;
+        }
+        var immediateCount = 0;
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            if (CommandQueues.PendingCounts[unit] == 0 &&
+                IsActiveOrderComplete(unit))
+                _orderDispatchUnits[immediateCount++] = unit;
+            else
+                CommandQueues.TryEnqueue(unit, order);
+        }
+        if (immediateCount > 0)
+        {
+            ExecuteOrderGroup(
+                _orderDispatchUnits.AsSpan(0, immediateCount),
+                order,
+                wasQueued: true);
+        }
     }
 
     public void IssueMove(
@@ -1601,6 +1712,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
             case UnitOrderKind.AttackBuilding:
                 ExecuteAttackBuilding(unitIndices, order.TargetBuilding);
                 break;
+            case UnitOrderKind.GatherResource:
+                ExecuteGatherResourceTask(
+                    unitIndices, order.TargetResourceNode);
+                break;
+            case UnitOrderKind.ResumeConstruction:
+                ExecuteResumeConstructionTask(
+                    unitIndices, order.TargetBuilding);
+                break;
             case UnitOrderKind.Stop:
                 ExecuteStop(unitIndices);
                 break;
@@ -1614,10 +1733,43 @@ public sealed class RtsSimulation : ICombatMovementDriver
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
-            if (Units.Alive[unit])
+            if (Units.Alive[unit] && !_issuingSystemOrder)
             {
                 CommandQueues.Begin(unit, order, wasQueued);
             }
+        }
+    }
+
+    private void ExecuteGatherResourceTask(
+        ReadOnlySpan<int> unitIndices,
+        int targetResourceNode)
+    {
+        var resource = new EconomyResourceNodeId(targetResourceNode);
+        Span<int> worker = stackalloc int[1];
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            var playerId = Combat.Teams[unit];
+            if (!Economy.ValidateGather(playerId, unit, resource).Succeeded)
+                continue;
+            worker[0] = unit;
+            Construction.InterruptBuilders(worker);
+            Economy.BeginGather(unit, resource);
+            MoveEconomyWorker(unit, Economy.ResourceNodePosition(resource));
+        }
+    }
+
+    private void ExecuteResumeConstructionTask(
+        ReadOnlySpan<int> unitIndices,
+        int targetBuilding)
+    {
+        var building = new GameplayBuildingId(targetBuilding);
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            TryResumeConstruction(
+                Combat.Teams[unit], building, unit,
+                replaceUnitOrders: false, recordCommand: false);
         }
     }
 
@@ -2930,9 +3082,35 @@ public sealed class RtsSimulation : ICombatMovementDriver
             UnitOrderKind.AttackBuilding =>
                 !Construction.IsAlive(new GameplayBuildingId(
                     CommandQueues.ActiveTargetBuildings[unit])),
+            UnitOrderKind.GatherResource =>
+                IsGatherResourceOrderComplete(unit),
+            UnitOrderKind.ResumeConstruction =>
+                IsResumeConstructionOrderComplete(unit),
             UnitOrderKind.Stop or UnitOrderKind.Hold => true,
             _ => true
         };
+    }
+
+    private bool IsGatherResourceOrderComplete(int unit)
+    {
+        if (!Economy.IsWorker(unit)) return true;
+        var worker = Economy.Worker(unit);
+        return worker.State is WorkerEconomyState.None or WorkerEconomyState.Idle ||
+               worker.TargetNode.Value !=
+               CommandQueues.ActiveTargetResourceNodes[unit];
+    }
+
+    private bool IsResumeConstructionOrderComplete(int unit)
+    {
+        var buildingId = new GameplayBuildingId(
+            CommandQueues.ActiveTargetBuildings[unit]);
+        if (!Construction.IsAlive(buildingId)) return true;
+        var building = Construction.Observe(buildingId);
+        return building.BuilderUnit != unit ||
+               building.State is BuildingLifecycleState.WaitingForBuilder or
+                   BuildingLifecycleState.Completed or
+                   BuildingLifecycleState.Canceled or
+                   BuildingLifecycleState.Destroyed;
     }
 
     private int NextOrderSequenceId()

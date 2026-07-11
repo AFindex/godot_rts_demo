@@ -1038,6 +1038,7 @@ internal static class RuntimeHotSnapshotCodec
             WriteVector(writer, queues.ActivePositions[unit]);
             writer.Write(queues.ActiveTargetUnits[unit]);
             writer.Write(queues.ActiveTargetBuildings[unit]);
+            writer.Write(queues.ActiveTargetResourceNodes[unit]);
             writer.Write(queues.ActiveSequenceIds[unit]);
             writer.Write(queues.ActiveOrdersWereQueued[unit]);
             writer.Write(queues.CompletedQueuedOrders[unit]);
@@ -1050,6 +1051,7 @@ internal static class RuntimeHotSnapshotCodec
                 WriteVector(writer, order.TargetPosition);
                 writer.Write(order.TargetUnit);
                 writer.Write(order.TargetBuilding);
+                writer.Write(order.TargetResourceNode);
                 writer.Write(order.SequenceId);
             }
         }
@@ -1090,10 +1092,22 @@ internal static class RuntimeHotSnapshotCodec
             queues.ActivePositions[unit] = ReadVector(reader);
             queues.ActiveTargetUnits[unit] = reader.ReadInt32();
             queues.ActiveTargetBuildings[unit] = reader.ReadInt32();
+            queues.ActiveTargetResourceNodes[unit] = reader.ReadInt32();
             queues.ActiveSequenceIds[unit] = reader.ReadInt32();
             queues.ActiveOrdersWereQueued[unit] = reader.ReadBoolean();
             queues.CompletedQueuedOrders[unit] = reader.ReadInt32();
             queues.QueueOverflowCounts[unit] = reader.ReadInt32();
+            if (queues.HasActiveOrders[unit] &&
+                !UnitOrderContract.IsStructurallyValid(new UnitOrder(
+                    queues.ActiveKinds[unit],
+                    queues.ActivePositions[unit],
+                    queues.ActiveTargetUnits[unit],
+                    queues.ActiveTargetBuildings[unit],
+                    queues.ActiveTargetResourceNodes[unit],
+                    queues.ActiveSequenceIds[unit])))
+            {
+                throw new InvalidDataException();
+            }
             var pendingCount = reader.ReadByte();
             if (pendingCount > UnitCommandQueueStore.MaximumPendingOrders)
             {
@@ -1106,8 +1120,10 @@ internal static class RuntimeHotSnapshotCodec
                     ReadVector(reader),
                     reader.ReadInt32(),
                     reader.ReadInt32(),
+                    reader.ReadInt32(),
                     reader.ReadInt32());
-                if (!queues.TryEnqueue(unit, order))
+                if (!UnitOrderContract.IsStructurallyValid(order) ||
+                    !queues.TryEnqueue(unit, order))
                 {
                     throw new InvalidDataException();
                 }

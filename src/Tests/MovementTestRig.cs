@@ -264,7 +264,6 @@ public enum TestPlayerOrderCommandCode : byte
     PlayerDefeated,
     MatchCompleted,
     NotParticipant,
-    QueuedContextCommandUnsupported,
     ContextActionUnavailable
 }
 
@@ -356,7 +355,9 @@ public enum TestOrderKind : byte
     AttackTarget,
     AttackBuilding,
     Stop,
-    Hold
+    Hold,
+    GatherResource,
+    ResumeConstruction
 }
 
 public readonly record struct TestOrderSnapshot(
@@ -2278,6 +2279,7 @@ public sealed partial class MovementTestRig
                     UnitOrderKind.Hold,
                     false,
                     Vector2.Zero,
+                    -1,
                     -1,
                     -1,
                     [0])).ToArray()));

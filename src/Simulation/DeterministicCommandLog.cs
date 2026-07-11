@@ -10,6 +10,7 @@ public readonly record struct RecordedSimulationCommand(
     Vector2 TargetPosition,
     int TargetUnit,
     int TargetBuilding,
+    int TargetResourceNode,
     int[] Units);
 
 public enum CommandLogValidationCode : byte
@@ -37,9 +38,9 @@ public readonly record struct CommandLogValidationResult(
 public sealed class SimulationCommandLogSnapshot
 {
     private const uint Magic = 0x434D5452; // RTMC in little-endian bytes.
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
     private const int HeaderBytes = 12;
-    private const int EntryFixedBytes = 30;
+    private const int EntryFixedBytes = 34;
     private const int MaximumEntries = 1_000_000;
 
     public SimulationCommandLogSnapshot(RecordedSimulationCommand[] entries)
@@ -109,6 +110,7 @@ public sealed class SimulationCommandLogSnapshot
             var targetY = BitConverter.Int32BitsToSingle(ReadInt32(payload, ref offset));
             var targetUnit = ReadInt32(payload, ref offset);
             var targetBuilding = ReadInt32(payload, ref offset);
+            var targetResourceNode = ReadInt32(payload, ref offset);
             var unitCount = ReadInt32(payload, ref offset);
             if (tick < previousTick)
             {
@@ -116,25 +118,19 @@ public sealed class SimulationCommandLogSnapshot
                     CommandLogValidationCode.InvalidTickOrder, entryIndex);
                 return false;
             }
-            if (!Enum.IsDefined(kind) || kind == UnitOrderKind.None)
+            var order = new UnitOrder(
+                kind,
+                new Vector2(targetX, targetY),
+                targetUnit,
+                targetBuilding,
+                targetResourceNode);
+            if (!UnitOrderContract.IsStructurallyValid(order))
             {
                 validation = new CommandLogValidationResult(
-                    CommandLogValidationCode.InvalidOrderKind, entryIndex);
-                return false;
-            }
-            if (!float.IsFinite(targetX) || !float.IsFinite(targetY))
-            {
-                validation = new CommandLogValidationResult(
-                    CommandLogValidationCode.InvalidTarget, entryIndex);
-                return false;
-            }
-            if (kind == UnitOrderKind.AttackTarget && targetUnit < 0 ||
-                kind != UnitOrderKind.AttackTarget && targetUnit != -1 ||
-                kind == UnitOrderKind.AttackBuilding && targetBuilding < 0 ||
-                kind != UnitOrderKind.AttackBuilding && targetBuilding != -1)
-            {
-                validation = new CommandLogValidationResult(
-                    CommandLogValidationCode.InvalidTarget, entryIndex);
+                    Enum.IsDefined(kind) && kind != UnitOrderKind.None
+                        ? CommandLogValidationCode.InvalidTarget
+                        : CommandLogValidationCode.InvalidOrderKind,
+                    entryIndex);
                 return false;
             }
             if (unitCount <= 0 || unitCount > ushort.MaxValue ||
@@ -167,6 +163,7 @@ public sealed class SimulationCommandLogSnapshot
                 new Vector2(targetX, targetY),
                 targetUnit,
                 targetBuilding,
+                targetResourceNode,
                 units);
             previousTick = tick;
         }
@@ -209,6 +206,7 @@ public sealed class SimulationCommandLogSnapshot
                 payload, ref offset, BitConverter.SingleToInt32Bits(entry.TargetPosition.Y));
             WriteInt32(payload, ref offset, entry.TargetUnit);
             WriteInt32(payload, ref offset, entry.TargetBuilding);
+            WriteInt32(payload, ref offset, entry.TargetResourceNode);
             WriteInt32(payload, ref offset, entry.Units.Length);
             for (var unitIndex = 0; unitIndex < entry.Units.Length; unitIndex++)
             {
@@ -285,6 +283,7 @@ public sealed class SimulationCommandRecorder
             order.TargetPosition,
             order.TargetUnit,
             order.TargetBuilding,
+            order.TargetResourceNode,
             canonicalUnits));
     }
 

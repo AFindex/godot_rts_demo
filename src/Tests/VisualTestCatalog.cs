@@ -27,6 +27,7 @@ public static class VisualTestCatalog
         "control-group-recall",
         "smart-command-sequence",
         "smart-command-gameplay-context",
+        "smart-command-shift-worker-tasks",
         "operation-selection-camera",
         "minimap-interaction",
         "command-log-replay",
@@ -124,6 +125,8 @@ public static class VisualTestCatalog
         "control-group-recall" => CreateControlGroupRecall(),
         "smart-command-sequence" => CreateSmartCommandSequence(),
         "smart-command-gameplay-context" => CreateSmartCommandGameplayContext(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "smart-command-shift-worker-tasks" => CreateSmartCommandShiftWorkerTasks(
             navigationMap, gameplayProfiles, clearanceBake),
         "operation-selection-camera" => CreateOperationSelectionCamera(),
         "minimap-interaction" => CreateMinimapInteraction(),
@@ -838,7 +841,7 @@ public static class VisualTestCatalog
                     marineState.Position, new Vector2(400f, 260f)) < 45f;
                 var passed = supply.Succeeded && interrupted &&
                              gatherResult == TestPlayerOrderCommandCode.Success &&
-                             queuedResult == TestPlayerOrderCommandCode.QueuedContextCommandUnsupported &&
+                             queuedResult == TestPlayerOrderCommandCode.Success &&
                              resumeResult == TestPlayerOrderCommandCode.Success &&
                              building.State == TestBuildingLifecycleState.Completed &&
                              building.BuilderUnit == firstWorker &&
@@ -868,7 +871,7 @@ public static class VisualTestCatalog
             .At(45, "Right-click mineral: workers gather, marine moves", runtime =>
                 gatherResult = runtime.PlayerSmartResource(
                     1, [firstWorker, secondWorker, marine], mineral))
-            .At(90, "Queued cross-domain context is explicitly rejected", runtime =>
+            .At(90, "Queued resource task is accepted", runtime =>
                 queuedResult = runtime.PlayerSmartResource(
                     1, [secondWorker], mineral, queued: true))
             .At(120, "Observe mixed-selection context split", runtime =>
@@ -887,6 +890,129 @@ public static class VisualTestCatalog
             .At(150, "Unordered mixed selection deterministically resumes lowest worker", runtime =>
                 resumeResult = runtime.PlayerSmartFriendlyBuilding(
                     1, [secondWorker, marine, firstWorker], supply.BuildingId));
+    }
+
+    private static VisualTestSession CreateSmartCommandShiftWorkerTasks(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            20, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1200, 0, 15, 4);
+        var durableMineral = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(330f, 380f), 2000, 5, 0.25f, 2);
+        var expiringMineral = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(330f, 500f), 5, 5, 0.1f, 1);
+        rig.AddResourceDropOff(1, new Vector2(230f, 420f));
+        var gatherWorker = rig.SpawnWorker(new Vector2(120f, 150f), 1);
+        var builderWorker = rig.SpawnWorker(new Vector2(230f, 260f), 1);
+        var failureWorker = rig.SpawnWorker(new Vector2(100f, 500f), 1);
+        var depletionWorker = rig.SpawnWorker(new Vector2(300f, 500f), 1);
+        rig.StartReplayPackageRecording();
+
+        var supply = default(TestConstructionResult);
+        var resourceQueued = TestPlayerOrderCommandCode.InvalidTarget;
+        var resumeQueued = TestPlayerOrderCommandCode.InvalidTarget;
+        var failureQueued = TestPlayerOrderCommandCode.InvalidTarget;
+        var pendingCaptured = false;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 60;
+        return new VisualTestSession(
+            "smart-command-shift-worker-tasks",
+            "Versioned worker tasks queue Move to Gather/Resume and skip stale targets",
+            900,
+            rig,
+            [gatherWorker, builderWorker, failureWorker, depletionWorker],
+            runtime =>
+            {
+                var building = runtime.ObserveGameplayBuilding(supply.BuildingId);
+                var gatherState = runtime.ObserveWorkerEconomy(gatherWorker);
+                var gatherOrders = runtime.ObserveOrders(gatherWorker);
+                var builderOrders = runtime.ObserveOrders(builderWorker);
+                var failureOrders = runtime.ObserveOrders(failureWorker);
+                var failurePosition = runtime.Observe(failureWorker).Position;
+                var expired = runtime.ObserveResourceNode(expiringMineral).Remaining == 0;
+                var package = runtime.CaptureReplayPackage();
+                var commandLog = runtime.CaptureCommandLog();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decodedPackage);
+                var logRoundTrip = commandLog.TryCanonicalRoundTrip(out var decodedLog);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var replay = runtime.ReplayPackage(decodedPackage!, runtime.Tick);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = replay.FinalHash == runtime.StateHash &&
+                            resumed.FinalHash == runtime.StateHash &&
+                            replay.MatchesFrom(resumed, hotTick);
+                var gatherActive = gatherOrders.ActiveOrder ==
+                                       TestOrderKind.GatherResource &&
+                                   gatherState.TargetNode == durableMineral &&
+                                   gatherState.State is not TestWorkerEconomyState.None and
+                                       not TestWorkerEconomyState.Idle;
+                var failedTaskSkipped = expired &&
+                    Vector2.Distance(failurePosition, new Vector2(900f, 500f)) < 18f &&
+                    failureOrders.PendingOrders == 0 &&
+                    failureOrders.CompletedQueuedOrders == 2;
+                var passed = supply.Succeeded && pendingCaptured &&
+                             resourceQueued == TestPlayerOrderCommandCode.Success &&
+                             resumeQueued == TestPlayerOrderCommandCode.Success &&
+                             failureQueued == TestPlayerOrderCommandCode.Success &&
+                             building.State == TestBuildingLifecycleState.Completed &&
+                             builderOrders.PendingOrders == 0 &&
+                             builderOrders.CompletedQueuedOrders == 1 &&
+                             gatherActive && failedTaskSkipped &&
+                             commandLog.FormatVersion == 3 &&
+                             package.FormatVersion == 12 && hot.FormatVersion == 12 &&
+                             packageRoundTrip && logRoundTrip && hotRoundTrip &&
+                             decodedLog!.StableHash == commandLog.StableHash && exact;
+                return new ScenarioResult(
+                    passed,
+                    $"queued={resourceQueued}/{resumeQueued}/{failureQueued}, " +
+                    $"pendingCapture={pendingCaptured}, gather={gatherOrders.ActiveOrder}/" +
+                    $"{gatherState.State}@{gatherState.TargetNode.Value}, " +
+                    $"build={building.State}/q{builderOrders.CompletedQueuedOrders}, " +
+                    $"stale={expired}/{failureOrders.CompletedQueuedOrders}/" +
+                    $"{failurePosition.X:F0},{failurePosition.Y:F0}, " +
+                    $"versions=log{commandLog.FormatVersion}/package{package.FormatVersion}/" +
+                    $"hot{hot.FormatVersion}, commands=e{package.EconomyCommandCount}/" +
+                    $"b{package.ConstructionCommandCount}/u{package.UnitCommandCount}, " +
+                    $"exact={exact}");
+            })
+            .At(1, "Place construction target", runtime =>
+                supply = runtime.Build(
+                    1, builderWorker,
+                    DemoBuildingTypes.SupplyDepot with { BuildSeconds = 4f },
+                    new Vector2(400f, 260f)))
+            .At(30, "Interrupt builder with an immediate Move", runtime =>
+                runtime.PlayerMove(
+                    1, [builderWorker], new Vector2(180f, 430f)))
+            .At(45, "Queue Move to Gather and Move to Resume", runtime =>
+            {
+                runtime.Gather(1, depletionWorker, expiringMineral);
+                runtime.PlayerMove(1, [gatherWorker], new Vector2(650f, 380f));
+                resourceQueued = runtime.PlayerSmartResource(
+                    1, [gatherWorker], durableMineral, queued: true);
+                resumeQueued = runtime.PlayerSmartFriendlyBuilding(
+                    1, [builderWorker], supply.BuildingId, queued: true);
+
+                runtime.PlayerMove(1, [failureWorker], new Vector2(650f, 500f));
+                failureQueued = runtime.PlayerSmartResource(
+                    1, [failureWorker], expiringMineral, queued: true);
+                runtime.PlayerMove(
+                    1, [failureWorker], new Vector2(900f, 500f), queued: true);
+            })
+            .At(hotTick, "Capture three pending cross-domain tasks", runtime =>
+            {
+                pendingCaptured = runtime.ObserveOrders(gatherWorker).PendingOrders == 1 &&
+                                  runtime.ObserveOrders(builderWorker).PendingOrders == 1 &&
+                                  runtime.ObserveOrders(failureWorker).PendingOrders == 2;
+                hotCapture = runtime.CaptureRuntimeState();
+            });
     }
 
     private static VisualTestSession CreateOperationSelectionCamera()
@@ -1230,7 +1356,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 11 &&
+                    exact && rejected && hot.FormatVersion == 12 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1324,7 +1450,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
+                             package.FormatVersion == 12 && hot.FormatVersion == 12 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -2453,8 +2579,8 @@ public static class VisualTestCatalog
                 var exact = replay.FinalHash == runtime.StateHash &&
                             resumed.FinalHash == runtime.StateHash &&
                             replay.MatchesFrom(resumed, hotTick);
-                var versions = package.FormatVersion == 11 &&
-                               hot.FormatVersion == 11;
+                var versions = package.FormatVersion == 12 &&
+                               hot.FormatVersion == 12;
                 var passed = enemyBarracks.Succeeded && initialBoundary &&
                              ownershipRejected && hiddenTargetRejected &&
                              visibleResourceObserved &&
@@ -2606,7 +2732,7 @@ public static class VisualTestCatalog
                              defeatedCommandRejected && matchCompleted &&
                              completedCommandRejected && winner &&
                              packageRoundTrip && hotRoundTrip && exact &&
-                             package.FormatVersion == 11 && hot.FormatVersion == 11;
+                             package.FormatVersion == 12 && hot.FormatVersion == 12;
                 return new ScenarioResult(
                     passed,
                     $"build={playerOneBase.Code}/{playerTwoBase.Code}/" +
@@ -3375,9 +3501,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 11 &&
-                             producingHot.FormatVersion == 11 &&
-                             waitingHot.FormatVersion == 11 &&
+                             package.FormatVersion == 12 &&
+                             producingHot.FormatVersion == 12 &&
+                             waitingHot.FormatVersion == 12 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -3593,7 +3719,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
+                             package.FormatVersion == 12 && hot.FormatVersion == 12 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -3733,7 +3859,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
+                             package.FormatVersion == 12 && hot.FormatVersion == 12 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -3861,7 +3987,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
+                             package.FormatVersion == 12 && hot.FormatVersion == 12 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -4018,7 +4144,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 11 && hot.FormatVersion == 11 &&
+                             package.FormatVersion == 12 && hot.FormatVersion == 12 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -4132,7 +4258,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 11 && exact;
+                             hotRoundTrip && hot.FormatVersion == 12 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

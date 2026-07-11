@@ -52,11 +52,11 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v9 已覆盖经济、施工、战斗、生产、Rally、配方前置、科技等级和研究队列未来态。
+状态 Hash v13 已覆盖经济、施工、战斗、生产、Rally、配方前置、科技等级、研究队列和跨域工人任务未来态。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造、建筑战斗、生产和研究现已纳入 Replay Package v8 与持久化热快照 v8。Research/CancelResearch 使用设施命令日志独立语义。
+经济、建造、建筑战斗、生产、研究和 Shift 工人任务现已纳入 Replay Package v12 与持久化热快照 v12。Research/CancelResearch 使用设施命令日志独立语义。
 
 ## 黑盒验收
 

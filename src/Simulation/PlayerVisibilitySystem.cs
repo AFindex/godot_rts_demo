@@ -29,7 +29,6 @@ public enum PlayerOrderCommandCode : byte
     PlayerDefeated,
     MatchCompleted,
     NotParticipant,
-    QueuedContextCommandUnsupported,
     ContextActionUnavailable
 }
 
