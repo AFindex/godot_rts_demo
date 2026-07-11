@@ -87,8 +87,76 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
     public ChokeController? ChokeController => _chokeController;
     public int PathBudgetPerTick { get; set; } = 24;
+    public ulong ActiveClearanceBakeHash =>
+        _buildingConnectivityGuard.ClearanceBakeHash;
 
     public ulong ComputeStateHash() => SimulationStateHasher.Compute(this);
+
+    public ClearanceBakeCommitResult TryCommitClearanceBake(
+        ClearanceBakeSnapshot candidate)
+    {
+        var previousHash = _buildingConnectivityGuard.ClearanceBakeHash;
+        if (_commandRecorder is not null || _replayPackageRecorder is not null)
+        {
+            return new ClearanceBakeCommitResult(
+                ClearanceBakeCommitCode.RecordingActive,
+                previousHash,
+                candidate.StableHash,
+                0);
+        }
+        if (_pathProvider is not IClearanceBakeReloadTarget pathTarget)
+        {
+            return new ClearanceBakeCommitResult(
+                ClearanceBakeCommitCode.UnsupportedPathProvider,
+                previousHash,
+                candidate.StableHash,
+                0);
+        }
+
+        var pathValidation = pathTarget.ValidateClearanceBake(candidate);
+        if (!pathValidation.Succeeded)
+        {
+            return new ClearanceBakeCommitResult(
+                pathValidation.Code,
+                previousHash,
+                candidate.StableHash,
+                0);
+        }
+        var guardValidation =
+            _buildingConnectivityGuard.ValidateClearanceBake(candidate);
+        if (!guardValidation.Succeeded)
+        {
+            return new ClearanceBakeCommitResult(
+                guardValidation.Code,
+                previousHash,
+                candidate.StableHash,
+                0);
+        }
+
+        pathTarget.CommitClearanceBake(candidate);
+        _buildingConnectivityGuard.CommitClearanceBake(candidate);
+        var affectedUnits = new List<int>();
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (Units.Alive[unit] &&
+                Units.Modes[unit] is UnitMoveMode.Moving or
+                    UnitMoveMode.WaitingForPath)
+            {
+                affectedUnits.Add(unit);
+            }
+        }
+        if (affectedUnits.Count > 0)
+        {
+            _pendingNavigationInvalidations += affectedUnits.Count;
+            ReplanInvalidatedGroups(affectedUnits);
+        }
+        Metrics.ClearanceBakeReloads++;
+        return new ClearanceBakeCommitResult(
+            ClearanceBakeCommitCode.Success,
+            previousHash,
+            candidate.StableHash,
+            affectedUnits.Count);
+    }
 
     internal SimulationRuntimeStateCapture CaptureRuntimeState()
     {
@@ -166,6 +234,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public void StartReplayPackageRecording(ReplayResourceManifest resources)
     {
+        if (resources.ClearanceBakeHash != ActiveClearanceBakeHash)
+        {
+            throw new InvalidOperationException(
+                "Replay manifest must reference the active Clearance Bake.");
+        }
         _commandRecorder = new SimulationCommandRecorder();
         _replayPackageRecorder = new SimulationReplayPackageRecorder(this, resources);
     }

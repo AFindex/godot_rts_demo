@@ -434,6 +434,16 @@ public readonly record struct TestMinimapInteractionSnapshot(
         OutsideRejected && Vector2.Distance(CommandWorld, new Vector2(900f, 500f)) < 0.01f;
 }
 
+public readonly record struct TestClearanceBakeCommitSnapshot(
+    ClearanceBakeCommitCode Code,
+    ulong PreviousHash,
+    ulong CandidateHash,
+    int ReplannedUnits,
+    int ReloadCount)
+{
+    public bool Succeeded => Code == ClearanceBakeCommitCode.Success;
+}
+
 public enum TestUnitState : byte
 {
     Idle,
@@ -547,6 +557,34 @@ public sealed class MovementTestRig
         var simulation = new RtsSimulation(
             world,
             new GridPathProvider(world),
+            capacity,
+            routePlanner,
+            chokeController,
+            clearanceBake);
+        return new MovementTestRig(
+            world,
+            simulation,
+            routePlanner,
+            chokeController,
+            navigationMap,
+            gameplayProfiles,
+            clearanceBake);
+    }
+
+    public static MovementTestRig CreateBakeReloadMap(
+        int capacity,
+        NavigationMapSnapshot navigationMap,
+        GameplayProfileCatalogSnapshot gameplayProfiles,
+        ClearanceBakeSnapshot clearanceBake)
+    {
+        var world = navigationMap.CreateWorld();
+        var routePlanner = navigationMap.CreateRoutePlanner(world);
+        var chokeController = navigationMap.CreateChokeController();
+        var provider = new GridPathProvider(
+            world, clearanceBake.CellSize, clearanceBake);
+        var simulation = new RtsSimulation(
+            world,
+            provider,
             capacity,
             routePlanner,
             chokeController,
@@ -960,6 +998,45 @@ public sealed class MovementTestRig
             command.Kind == MinimapInteractionKind.SmartCommand,
             outside.Kind == MinimapInteractionKind.None,
             command.WorldPosition);
+    }
+
+    public TestClearanceBakeCommitSnapshot CommitClearanceBakeVariant(
+        int chunkSizeCells = 8)
+    {
+        if (_navigationMap is null || _clearanceBake is null)
+        {
+            return new TestClearanceBakeCommitSnapshot(
+                ClearanceBakeCommitCode.MissingBaseline, 0UL, 0UL, 0, 0);
+        }
+        var candidate = ClearanceBakeSnapshot.Build(
+            _navigationMap,
+            _clearanceBake.CellSize,
+            chunkSizeCells);
+        var result = _simulation.TryCommitClearanceBake(candidate);
+        return new TestClearanceBakeCommitSnapshot(
+            result.Code,
+            result.PreviousBakeHash,
+            result.CandidateBakeHash,
+            result.ReplannedUnits,
+            _simulation.Metrics.ClearanceBakeReloads);
+    }
+
+    public TestClearanceBakeCommitSnapshot CommitMismatchedClearanceBake()
+    {
+        if (_navigationMap is null)
+        {
+            return new TestClearanceBakeCommitSnapshot(
+                ClearanceBakeCommitCode.MissingBaseline, 0UL, 0UL, 0, 0);
+        }
+        var candidate = ClearanceBakeSnapshot.Build(
+            DemoResourceVariantFactory.CreateNavigationVariant(_navigationMap));
+        var result = _simulation.TryCommitClearanceBake(candidate);
+        return new TestClearanceBakeCommitSnapshot(
+            result.Code,
+            result.PreviousBakeHash,
+            result.CandidateBakeHash,
+            result.ReplannedUnits,
+            _simulation.Metrics.ClearanceBakeReloads);
     }
 
     public void Step() => _simulation.Tick(1f / 60f);

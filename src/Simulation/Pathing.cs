@@ -34,7 +34,9 @@ public sealed class StraightLinePathProvider : IPathProvider
         float navigationRadius) => [start, goal];
 }
 
-public sealed class ValidatingFallbackPathProvider : IPathProvider
+public sealed class ValidatingFallbackPathProvider :
+    IPathProvider,
+    IClearanceBakeReloadTarget
 {
     private readonly IPathProvider _primary;
     private readonly IPathProvider _fallback;
@@ -84,14 +86,28 @@ public sealed class ValidatingFallbackPathProvider : IPathProvider
 
         return true;
     }
+
+    ClearanceBakeCommitValidation IClearanceBakeReloadTarget.ValidateClearanceBake(
+        ClearanceBakeSnapshot candidate) =>
+        _fallback is IClearanceBakeReloadTarget target
+            ? target.ValidateClearanceBake(candidate)
+            : new ClearanceBakeCommitValidation(
+                ClearanceBakeCommitCode.UnsupportedPathProvider,
+                "Fallback provider does not support Bake replacement.");
+
+    void IClearanceBakeReloadTarget.CommitClearanceBake(
+        ClearanceBakeSnapshot candidate)
+    {
+        ((IClearanceBakeReloadTarget)_fallback).CommitClearanceBake(candidate);
+    }
 }
 
-public sealed class GridPathProvider : IPathProvider
+public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
 {
     private readonly StaticWorld _world;
     private readonly NavigationConnectivityAnalyzer _connectivityAnalyzer;
-    private readonly ClearanceBakeSnapshot? _staticBake;
-    private readonly IncrementalNavigationConnectivityUpdater? _incrementalUpdater;
+    private ClearanceBakeSnapshot? _staticBake;
+    private IncrementalNavigationConnectivityUpdater? _incrementalUpdater;
     private readonly NavigationConnectivitySnapshot?[] _snapshots =
         new NavigationConnectivitySnapshot?[3];
 
@@ -115,6 +131,8 @@ public sealed class GridPathProvider : IPathProvider
     public bool IsReady => true;
     public int IncrementalConnectivityUpdates { get; private set; }
     public int IncrementalConnectivityResampledCells { get; private set; }
+    public int ClearanceBakeReloads { get; private set; }
+    public ulong ClearanceBakeHash => _staticBake?.StableHash ?? 0UL;
 
     public Vector2[] FindPath(
         Vector2 start,
@@ -339,6 +357,24 @@ public sealed class GridPathProvider : IPathProvider
         var deltaRow = Math.Abs(fromRow - toRow);
         var diagonal = Math.Min(deltaColumn, deltaRow);
         return diagonal * 1.41421356f + Math.Abs(deltaColumn - deltaRow);
+    }
+
+    ClearanceBakeCommitValidation IClearanceBakeReloadTarget.ValidateClearanceBake(
+        ClearanceBakeSnapshot candidate) =>
+        ClearanceBakeReloadValidator.Validate(
+            _staticBake,
+            candidate,
+            _world,
+            _connectivityAnalyzer.CellSize);
+
+    void IClearanceBakeReloadTarget.CommitClearanceBake(
+        ClearanceBakeSnapshot candidate)
+    {
+        _staticBake = candidate;
+        _incrementalUpdater = new IncrementalNavigationConnectivityUpdater(
+            _world, candidate);
+        Array.Clear(_snapshots);
+        ClearanceBakeReloads++;
     }
 
 }

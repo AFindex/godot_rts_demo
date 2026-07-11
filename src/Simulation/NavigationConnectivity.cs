@@ -501,7 +501,7 @@ public sealed class BuildingConnectivityGuard
 {
     private readonly StaticWorld _world;
     private readonly NavigationConnectivityAnalyzer _analyzer;
-    private readonly ClearanceBakeSnapshot? _staticBake;
+    private ClearanceBakeSnapshot? _staticBake;
     private readonly NavigationConnectivitySnapshot?[] _baselineByClass =
         new NavigationConnectivitySnapshot?[3];
 
@@ -514,6 +514,8 @@ public sealed class BuildingConnectivityGuard
         _analyzer = new NavigationConnectivityAnalyzer(world, cellSize);
         _staticBake = staticBake;
     }
+
+    internal ulong ClearanceBakeHash => _staticBake?.StableHash ?? 0UL;
 
     public ConnectivityPreservationReport Evaluate(
         SimRect footprint,
@@ -540,5 +542,19 @@ public sealed class BuildingConnectivityGuard
         var candidate = _analyzer.Analyze(
             clearance.NavigationRadius, footprint);
         return NavigationConnectivityComparer.Compare(baseline, candidate);
+    }
+
+    internal ClearanceBakeCommitValidation ValidateClearanceBake(
+        ClearanceBakeSnapshot candidate) =>
+        ClearanceBakeReloadValidator.Validate(
+            _staticBake,
+            candidate,
+            _world,
+            _analyzer.CellSize);
+
+    internal void CommitClearanceBake(ClearanceBakeSnapshot candidate)
+    {
+        _staticBake = candidate;
+        Array.Clear(_baselineByClass);
     }
 }

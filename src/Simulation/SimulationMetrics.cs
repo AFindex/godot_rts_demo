@@ -14,6 +14,7 @@ public sealed class SimulationMetrics
     public int RepathRequests { get; internal set; }
     public int NavigationRevision { get; internal set; }
     public int NavigationInvalidations { get; internal set; }
+    public int ClearanceBakeReloads { get; internal set; }
     public int RecoveryEvents { get; internal set; }
     public int UnreachableUnits { get; internal set; }
     public long GroupRoutePlans { get; internal set; }

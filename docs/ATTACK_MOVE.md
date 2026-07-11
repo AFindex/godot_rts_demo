@@ -41,7 +41,7 @@ AttackMove 路线
 - 攻击、伤害和死亡都发生在 60Hz 固定 Tick。
 - 死亡不压缩数组、不改变 unit ID；`Alive=false` 的单位从 SpatialHash、Steering、积分、碰撞、选择和建筑占用检查中排除。
 - 无 AttackMove 单位的 1000 单位基准为 9.17ms P95、约 461B/Tick。
-- 双方持续 AttackMove 时，128/256 总单位为 1.88/3.99ms P95；战斗阶段平均 0.54/1.42ms，平均分配约 2.3/4.0KB/Tick，门槛为 8KB/Tick。
+- 双方持续 AttackMove 时，128/256 总单位为 1.57/4.90ms P95；战斗阶段平均 0.44/1.62ms，平均分配约 2.3/4.0KB/Tick，门槛为 8KB/Tick。
 
 ## 当前命令语义
 

@@ -54,6 +54,7 @@ public static class VisualTestCatalog
         "clearance-editor-preview",
         "clearance-incremental-chunks",
         "resource-hot-reload",
+        "clearance-bake-live-commit",
         "shared-target-reservations",
         "stop-command",
         "hold-command",
@@ -141,6 +142,8 @@ public static class VisualTestCatalog
             gameplayProfiles,
             clearanceBake,
             hotReloadCandidate),
+        "clearance-bake-live-commit" => CreateClearanceBakeLiveCommit(
+            navigationMap, gameplayProfiles, clearanceBake),
         "shared-target-reservations" => CreateSharedTargetReservations(),
         "stop-command" => CreateStopCommand(),
         "hold-command" => CreateHoldCommand(),
@@ -1866,6 +1869,57 @@ public static class VisualTestCatalog
                     clearanceBake,
                     generatedCandidate);
                 return new ScenarioResult(result.Passed, result.Summary);
+            });
+    }
+
+    private static VisualTestSession CreateClearanceBakeLiveCommit(
+        NavigationMapSnapshot? navigation,
+        GameplayProfileCatalogSnapshot? profiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigation ??= DemoMapDefinition.CreateSnapshot();
+        profiles ??= DemoGameplayProfiles.CreateSnapshot();
+        clearanceBake ??= ClearanceBakeSnapshot.Build(navigation);
+        var rig = MovementTestRig.CreateBakeReloadMap(
+            32, navigation, profiles, clearanceBake);
+        var units = rig.SpawnGrid(new Vector2(100f, 300f), 2, 4, 22f);
+        rig.Move(units, new Vector2(1160f, 353f));
+        var committed = new TestClearanceBakeCommitSnapshot(
+            ClearanceBakeCommitCode.MissingBaseline, 0UL, 0UL, 0, 0);
+        var mismatch = committed;
+        return new VisualTestSession(
+                "clearance-bake-live-commit",
+                "Atomic Bake-only cache commit while units are moving",
+                900,
+                rig,
+                units,
+                runtime =>
+                {
+                    var arrival = EvaluateArrival(
+                        runtime, units, units.Length, 14f, 1f, 0, 0);
+                    var reloadValid = committed.Succeeded &&
+                                      committed.PreviousHash !=
+                                          committed.CandidateHash &&
+                                      committed.ReplannedUnits == units.Length &&
+                                      committed.ReloadCount == 1;
+                    var rejectionValid =
+                        mismatch.Code ==
+                            ClearanceBakeCommitCode.NavigationMismatch &&
+                        mismatch.PreviousHash == committed.CandidateHash &&
+                        mismatch.ReloadCount == 1;
+                    return new ScenarioResult(
+                        arrival.Passed && reloadValid && rejectionValid,
+                        $"commit={committed.Code}, replanned=" +
+                        $"{committed.ReplannedUnits}, reloads={committed.ReloadCount}, " +
+                        $"mismatch={mismatch.Code}, " + arrival.Summary);
+                })
+            .At(120, "Commit Bake-only candidate", runtime =>
+            {
+                committed = runtime.CommitClearanceBakeVariant();
+            })
+            .At(180, "Reject mismatched Bake", runtime =>
+            {
+                mismatch = runtime.CommitMismatchedClearanceBake();
             });
     }
 
