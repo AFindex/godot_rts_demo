@@ -149,7 +149,13 @@ S11-D2 已完成：
 - Production Log、Package 和三份 Hot Snapshot 的未知版本及截断载荷均稳定拒绝。
 - 专用 9 秒 AV1/WebM 录像位于 `test_videos/20260711_194814/`。
 
-下一段：Rally SmartCommand（资源/单位目标）和 Unit/Recipe Godot Resource 数据工作流。
+S11-D3a Production Catalog 数据工作流已完成：Unit Type/Recipe 使用独立 Godot
+Resource、Fresh Load 和逐类型差异，运行时仍只消费 Hash `88CB72E34880A0B7` 的纯 C#
+快照。`production-catalog-resource-runtime` 从加载资产生产 Marine、Marauder、SCV，
+验证战斗 Profile、Worker 注册、资源和人口结果。
+专用 22 秒 AV1/WebM 录像位于 `test_videos/20260711_200053/`。
+
+下一段：Rally SmartCommand 的资源节点和友军单位目标协议。
 
 ### S11-E：科技、扩张和胜负
 

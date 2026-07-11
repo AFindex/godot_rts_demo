@@ -63,6 +63,7 @@ public static class VisualTestCatalog
         "building-type-resource-runtime",
         "production-queue-exit-rally",
         "production-replay-persistence",
+        "production-catalog-resource-runtime",
         "construction-replay-persistence",
         "combat-attack-building",
         "shared-target-reservations",
@@ -93,7 +94,8 @@ public static class VisualTestCatalog
         GameplayProfileCatalogSnapshot? gameplayProfiles = null,
         ClearanceBakeSnapshot? clearanceBake = null,
         RuntimeResourceSetSnapshot? hotReloadCandidate = null,
-        BuildingTypeCatalogSnapshot? buildingTypes = null) => caseId switch
+        BuildingTypeCatalogSnapshot? buildingTypes = null,
+        ProductionCatalogSnapshot? productionCatalog = null) => caseId switch
     {
         "single-unit" => CreateSingleUnit(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
@@ -168,6 +170,8 @@ public static class VisualTestCatalog
         "production-queue-exit-rally" => CreateProductionQueueExitRally(),
         "production-replay-persistence" => CreateProductionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
+        "production-catalog-resource-runtime" =>
+            CreateProductionCatalogResourceRuntime(productionCatalog),
         "construction-replay-persistence" => CreateConstructionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "combat-attack-building" => CreateCombatAttackBuilding(
@@ -2637,6 +2641,71 @@ public static class VisualTestCatalog
                 new SimRect(new Vector2(590f, 340f), new Vector2(710f, 470f)),
                 "REPLAYED RALLY FUTURE STATE",
                 TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateProductionCatalogResourceRuntime(
+        ProductionCatalogSnapshot? catalog)
+    {
+        catalog ??= DemoProductionCatalog.CreateSnapshot();
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1200f, 700f), 16);
+        rig.RegisterPlayer(1, 2000, 500, 20, 0);
+        var barracksBuilder = rig.SpawnWorker(new Vector2(400f, 180f), 1);
+        var townHallBuilder = rig.SpawnWorker(new Vector2(820f, 180f), 1);
+        var barracks = rig.Build(
+            1, barracksBuilder, DemoBuildingTypes.Barracks,
+            new Vector2(520f, 180f));
+        var townHall = rig.Build(
+            1, townHallBuilder, DemoBuildingTypes.CommandCenter,
+            new Vector2(950f, 180f));
+        var issued = false;
+        var session = new VisualTestSession(
+            "production-catalog-resource-runtime",
+            "Loaded Unit/Recipe Resource drives combat and worker production",
+            1320,
+            rig,
+            [barracksBuilder, townHallBuilder],
+            runtime =>
+            {
+                var economy = runtime.ObservePlayerEconomy(1);
+                var unitTypes = runtime.UnitCount == 5 &&
+                    runtime.ObserveCombat(new TestUnitId(2)).MaximumHealth ==
+                        catalog.UnitType(0).Combat.MaximumHealth &&
+                    runtime.ObserveCombat(new TestUnitId(4)).MaximumHealth ==
+                        catalog.UnitType(1).Combat.MaximumHealth;
+                var worker = runtime.UnitCount == 5 &&
+                    runtime.ObserveWorkerEconomy(new TestUnitId(3)).State ==
+                        TestWorkerEconomyState.Idle;
+                var passed = barracks.Succeeded && townHall.Succeeded && issued &&
+                             catalog.StableHash ==
+                                 DemoProductionCatalog.CreateSnapshot().StableHash &&
+                             unitTypes && worker && economy.Minerals == 1250 &&
+                             economy.VespeneGas == 475 && economy.SupplyUsed == 4;
+                return new ScenarioResult(
+                    passed,
+                    $"catalog=f{catalog.FormatVersion}/{catalog.StableHashText}, " +
+                    $"units={runtime.UnitCount}, profiles={unitTypes}, " +
+                    $"worker={worker}, resources={economy.Minerals}/" +
+                    $"{economy.VespeneGas}, supply={economy.SupplyUsed}/" +
+                    $"{economy.SupplyCapacity}");
+            });
+        session.At(720, "Train every loaded recipe from matching producers", runtime =>
+        {
+            runtime.SetRallyPoint(1, barracks.BuildingId, new Vector2(700f, 400f));
+            runtime.SetRallyPoint(1, townHall.BuildingId, new Vector2(1050f, 400f));
+            issued = runtime.Train(1, barracks.BuildingId, catalog.Recipe(0)).Succeeded &&
+                     runtime.Train(1, barracks.BuildingId, catalog.Recipe(1)).Succeeded &&
+                     runtime.Train(1, townHall.BuildingId, catalog.Recipe(2)).Succeeded;
+        });
+        return session
+            .Highlight(
+                new SimRect(new Vector2(450f, 120f), new Vector2(1050f, 260f)),
+                "RESOURCE RECIPES: Barracks + Command Center",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(650f, 330f), new Vector2(1100f, 460f)),
+                "RESOURCE UNIT TYPES: combat + worker semantics",
+                TestDiagnosticKind.Info);
     }
 
     private static VisualTestSession CreateConstructionReplayPersistence(

@@ -4,13 +4,14 @@ namespace RtsDemo.Tests;
 
 public static class ProductionCatalogSelfTest
 {
-    public static SelfTestResult Run()
+    public static SelfTestResult Run(ProductionCatalogSnapshot? loaded = null)
     {
         var catalog = DemoProductionCatalog.CreateSnapshot();
+        loaded ??= catalog;
         var repeated = ProductionCatalogSnapshot.TryCreate(
-            catalog.FormatVersion,
-            catalog.UnitTypes,
-            catalog.Recipes,
+            loaded.FormatVersion,
+            loaded.UnitTypes,
+            loaded.Recipes,
             out var roundTrip,
             out var roundTripValidation);
         var invalidRecipes = catalog.Recipes.ToArray();
@@ -24,20 +25,34 @@ public static class ProductionCatalogSelfTest
             invalidRecipes,
             out _,
             out var invalidValidation);
+        var changedRecipes = loaded.Recipes.ToArray();
+        changedRecipes[0] = changedRecipes[0] with
+        {
+            ProductionSeconds = changedRecipes[0].ProductionSeconds + 1f
+        };
+        var changedCreated = ProductionCatalogSnapshot.TryCreate(
+            loaded.FormatVersion, loaded.UnitTypes, changedRecipes,
+            out var changed, out _);
+        var diff = changedCreated && changed is not null
+            ? ProductionCatalogDiff.Compare(loaded, changed)
+            : default;
         var passed = repeated && roundTrip is not null &&
                      roundTripValidation.IsValid &&
-                     roundTrip.StableHash == catalog.StableHash &&
+                     roundTrip.StableHash == loaded.StableHash &&
                      roundTrip.CanonicalBytes.Span.SequenceEqual(
-                         catalog.CanonicalBytes.Span) &&
-                     catalog.UnitTypes.Length == 3 &&
-                     catalog.Recipes.Length == 3 &&
+                         loaded.CanonicalBytes.Span) &&
+                     loaded.UnitTypes.SequenceEqual(catalog.UnitTypes) &&
+                     loaded.Recipes.SequenceEqual(catalog.Recipes) &&
+                     diff is { Changed: true, ChangedUnitTypes: 0,
+                         ChangedRecipes: 1 } &&
                      !invalidAccepted &&
                      invalidValidation.Code ==
                          ProductionCatalogErrorCode.InvalidRecipe;
         return new SelfTestResult(
             passed,
-            $"format={catalog.FormatVersion}, hash={catalog.StableHashText}, " +
-            $"units={catalog.UnitTypes.Length}, recipes={catalog.Recipes.Length}, " +
+            $"format={loaded.FormatVersion}, hash={loaded.StableHashText}, " +
+            $"units={loaded.UnitTypes.Length}, recipes={loaded.Recipes.Length}, " +
+            $"changed={diff.ChangedUnitTypes}/{diff.ChangedRecipes}, " +
             $"invalid={invalidValidation.Code}");
     }
 }

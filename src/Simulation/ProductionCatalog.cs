@@ -29,7 +29,9 @@ public enum ProductionCatalogErrorCode
     InvalidUnitType,
     InvalidRecipe,
     DuplicateName,
-    RecipeUnitMismatch
+    RecipeUnitMismatch,
+    MissingResourceAsset,
+    NullResourceElement
 }
 
 public readonly record struct ProductionCatalogValidationResult(
@@ -187,7 +189,14 @@ public sealed class ProductionCatalogSnapshot
     internal static bool ValidUnitProfile(UnitTypeProfile unit) =>
         !string.IsNullOrWhiteSpace(unit.Name) &&
         unit.Movement.Id == unit.Id &&
+        unit.Movement.Name == unit.Name &&
         Positive(unit.Movement.PhysicalRadius) &&
+        unit.Movement.MovementClass ==
+            MovementClearance.FromPhysicalRadius(
+                unit.Movement.PhysicalRadius).Class &&
+        unit.Movement.NavigationRadius ==
+            MovementClearance.FromPhysicalRadius(
+                unit.Movement.PhysicalRadius).NavigationRadius &&
         Positive(unit.Movement.MaximumSpeed) &&
         Positive(unit.Movement.Acceleration) &&
         Positive(unit.Combat.MaximumHealth) &&
@@ -215,6 +224,29 @@ public sealed class ProductionCatalogSnapshot
         new(code, index, message);
 }
 
+public readonly record struct ProductionCatalogDiff(
+    bool Changed,
+    int ChangedUnitTypes,
+    int ChangedRecipes)
+{
+    public static ProductionCatalogDiff Compare(
+        ProductionCatalogSnapshot current,
+        ProductionCatalogSnapshot candidate) => new(
+        current.StableHash != candidate.StableHash,
+        CountChanged(current.UnitTypes, candidate.UnitTypes),
+        CountChanged(current.Recipes, candidate.Recipes));
+
+    private static int CountChanged<T>(ReadOnlySpan<T> current, ReadOnlySpan<T> candidate)
+        where T : IEquatable<T>
+    {
+        var shared = Math.Min(current.Length, candidate.Length);
+        var changed = Math.Abs(current.Length - candidate.Length);
+        for (var index = 0; index < shared; index++)
+            changed += current[index].Equals(candidate[index]) ? 0 : 1;
+        return changed;
+    }
+}
+
 public static class DemoProductionCatalog
 {
     private static readonly ProductionCatalogSnapshot Snapshot = Build();
@@ -225,7 +257,7 @@ public static class DemoProductionCatalog
         var marine = new UnitTypeProfile(
             0, "Marine",
             new UnitMovementProfileSnapshot(0, "Marine", 7.5f, 128f, 720f,
-                MovementClass.Medium, 9.5f),
+                MovementClass.Medium, 8f),
             new CombatProfileSnapshot(100f, 12f, 90f, 220f, 0.75f, 0.1f, 500f,
                 CombatPositioningKind.Ranged), false);
         var marauder = new UnitTypeProfile(
@@ -237,7 +269,7 @@ public static class DemoProductionCatalog
         var worker = new UnitTypeProfile(
             2, "SCV",
             new UnitMovementProfileSnapshot(2, "SCV", 7.5f, 128f, 720f,
-                MovementClass.Medium, 9.5f),
+                MovementClass.Medium, 8f),
             CombatProfileSnapshot.Standard, true);
         if (!ProductionCatalogSnapshot.TryCreate(
                 ProductionCatalogSnapshot.CurrentFormatVersion,

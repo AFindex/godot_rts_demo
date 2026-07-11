@@ -1,0 +1,41 @@
+# Production Catalog Resource
+
+`data/demo_production_catalog.tres` 是 Unit Type 和 Production Recipe 的编辑时来源。
+Godot 层只负责把 `RtsProductionCatalogResource` 转成不可变纯 C#
+`ProductionCatalogSnapshot`；生产队列、回放、热快照和状态 Hash 不引用 Godot 对象。
+
+## v1 数据
+
+Unit Type 声明稳定连续 ID、名称、半径、速度、加速度、完整战斗 Profile 和 Worker
+语义。Recipe 通过 Unit Type ID 引用目录中的单位，并声明合法 Producer Building Type、
+Minerals/Vespene/Supply 成本、生产时间和取消退款率。
+
+当前 Demo 包含：
+
+- Marine：Barracks，50 Minerals，1 Supply，3 秒。
+- Marauder：Barracks，100 Minerals / 25 Vespene，2 Supply，5 秒。
+- SCV：Command Center，50 Minerals，1 Supply，3.5 秒，并注册为经济工人。
+
+转换器根据物理半径重新推导 Movement Class 和 Navigation Radius，不允许编辑资产写入
+互相矛盾的派生净空数据。Recipe 的 Unit Type ID 必须落在目录内，最终快照还会验证连续
+ID、重复名称、移动/战斗约束、Producer、成本、人口、工期和退款率。
+
+当前规范 Hash 为 `88CB72E34880A0B7`。`ProductionCatalogDiff` 分别统计 Unit Type
+和 Recipe 变化数量；单独修改一个生产时间稳定报告 `0/1`。
+
+## 工作流
+
+主场景通过 `ProductionCatalogAsset` 绑定独立 `.tres`。正常启动使用场景引用，验证命令
+故意清除该引用并通过 `CacheMode.Replace` 重新读取文件，覆盖 Fresh Load 路径。
+
+```powershell
+.\tools\validate_production_catalog.ps1
+.\tools\generate_demo_production_catalog.ps1
+```
+
+生成命令会用纯 C# Demo 目录覆盖示例资产；日常平衡调整应在 Inspector 修改 Resource。
+`production-catalog-resource-runtime` 黑盒场景只消费加载快照，从 Barracks 和 Command
+Center 生产三种单位，验证战斗 Profile、Worker 注册、双资源和人口结果。
+
+Replay Package v5 的 Train 命令保存当时解析后的完整 Recipe/Unit Type，因此之后修改
+Resource 不会篡改已有录像。

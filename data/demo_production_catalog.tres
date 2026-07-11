@@ -1,0 +1,69 @@
+[gd_resource type="Resource" script_class="RtsProductionCatalogResource" format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/ProductionRecipeProfileResource.cs" id="1_stt7f"]
+[ext_resource type="Script" path="res://src/Godot/Resources/UnitTypeProfileResource.cs" id="2_wxyxp"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsProductionCatalogResource.cs" id="3_u7x0v"]
+
+[sub_resource type="Resource" id="Resource_6y3cf"]
+script = ExtResource("1_stt7f")
+DisplayName = "Train Marine"
+ProducerBuildingTypeId = 1
+MineralCost = 50
+ProductionSeconds = 3.0
+
+[sub_resource type="Resource" id="Resource_bfokk"]
+script = ExtResource("1_stt7f")
+Id = 1
+DisplayName = "Train Marauder"
+ProducerBuildingTypeId = 1
+UnitTypeId = 1
+MineralCost = 100
+VespeneCost = 25
+SupplyCost = 2
+ProductionSeconds = 5.0
+
+[sub_resource type="Resource" id="Resource_m8e84"]
+script = ExtResource("1_stt7f")
+Id = 2
+DisplayName = "Train SCV"
+ProducerBuildingTypeId = 2
+UnitTypeId = 2
+MineralCost = 50
+ProductionSeconds = 3.5
+
+[sub_resource type="Resource" id="Resource_djvlx"]
+script = ExtResource("2_wxyxp")
+DisplayName = "Marine"
+MaximumHealth = 100.0
+AttackDamage = 12.0
+AttackRange = 90.0
+AcquisitionRange = 220.0
+AttackCooldownSeconds = 0.75
+AttackWindupSeconds = 0.1
+LeashDistance = 500.0
+
+[sub_resource type="Resource" id="Resource_wj7fp"]
+script = ExtResource("2_wxyxp")
+Id = 1
+DisplayName = "Marauder"
+PhysicalRadius = 10.0
+MaximumSpeed = 105.0
+Acceleration = 600.0
+MaximumHealth = 180.0
+AttackDamage = 22.0
+AttackRange = 80.0
+AcquisitionRange = 210.0
+AttackCooldownSeconds = 1.1
+AttackWindupSeconds = 0.15
+LeashDistance = 500.0
+
+[sub_resource type="Resource" id="Resource_hyt0c"]
+script = ExtResource("2_wxyxp")
+Id = 2
+DisplayName = "SCV"
+IsWorker = true
+
+[resource]
+script = ExtResource("3_u7x0v")
+UnitTypes = Array[ExtResource("2_wxyxp")]([SubResource("Resource_djvlx"), SubResource("Resource_wj7fp"), SubResource("Resource_hyt0c")])
+Recipes = Array[ExtResource("1_stt7f")]([SubResource("Resource_6y3cf"), SubResource("Resource_bfokk"), SubResource("Resource_m8e84")])

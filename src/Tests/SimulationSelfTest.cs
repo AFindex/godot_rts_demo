@@ -10,7 +10,8 @@ public static class SimulationSelfTest
         NavigationMapSnapshot? navigationMap = null,
         GameplayProfileCatalogSnapshot? gameplayProfiles = null,
         ClearanceBakeSnapshot? clearanceBake = null,
-        BuildingTypeCatalogSnapshot? buildingTypes = null)
+        BuildingTypeCatalogSnapshot? buildingTypes = null,
+        ProductionCatalogSnapshot? productionCatalog = null)
     {
         try
         {
@@ -30,7 +31,8 @@ public static class SimulationSelfTest
             var watchWorkflowResult = ResourceReloadWorkflowSelfTest.Run();
             var economyResult = EconomySelfTest.Run();
             var buildingTypeResult = BuildingTypeCatalogSelfTest.Run(buildingTypes);
-            var productionCatalogResult = ProductionCatalogSelfTest.Run();
+            var productionCatalogResult = ProductionCatalogSelfTest.Run(
+                productionCatalog);
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
@@ -79,7 +81,8 @@ public static class SimulationSelfTest
             {
                 var session = VisualTestCatalog.Create(
                     caseId, navigationMap, gameplayProfiles, clearanceBake,
-                    buildingTypes: buildingTypes);
+                    buildingTypes: buildingTypes,
+                    productionCatalog: productionCatalog);
                 while (session.Rig.Tick < session.DurationTicks)
                 {
                     session.Step();

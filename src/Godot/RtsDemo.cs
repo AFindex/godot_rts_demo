@@ -16,6 +16,8 @@ public partial class RtsDemo : Node2D
         "res://data/demo_gameplay_profiles.tres";
     private const string DemoBuildingTypesResourcePath =
         "res://data/demo_building_types.tres";
+    private const string DemoProductionCatalogResourcePath =
+        "res://data/demo_production_catalog.tres";
     private const string DemoClearanceBakeResourcePath =
         "res://data/demo_clearance_bake.tres";
 
@@ -27,6 +29,9 @@ public partial class RtsDemo : Node2D
 
     [Export]
     public RtsBuildingTypeCatalogResource? BuildingTypesAsset { get; set; }
+
+    [Export]
+    public RtsProductionCatalogResource? ProductionCatalogAsset { get; set; }
 
     [Export]
     public RtsClearanceBakeResource? ClearanceBakeAsset { get; set; }
@@ -60,6 +65,7 @@ public partial class RtsDemo : Node2D
     private NavigationMapSnapshot? _navigationSnapshot;
     private GameplayProfileCatalogSnapshot? _gameplayProfiles;
     private BuildingTypeCatalogSnapshot? _buildingTypes;
+    private ProductionCatalogSnapshot? _productionCatalog;
     private ClearanceBakeSnapshot? _clearanceBake;
     private ControlGroupManager? _controlGroups;
     private int[] _controlGroupRecallBuffer = [];
@@ -158,6 +164,21 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-production-catalog"))
+        {
+            GenerateDemoProductionCatalog();
+            return;
+        }
+
+        if (userArguments.Contains("--validate-production-catalog"))
+        {
+            ProductionCatalogAsset = null;
+            _productionCatalog = null;
+            var valid = TryLoadProductionCatalog();
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--generate-demo-clearance-bake"))
         {
             if (!TryLoadNavigationSnapshot())
@@ -198,7 +219,7 @@ public partial class RtsDemo : Node2D
 
             var result = SimulationSelfTest.Run(
                 _navigationSnapshot, _gameplayProfiles, _clearanceBake,
-                _buildingTypes);
+                _buildingTypes, _productionCatalog);
             GD.Print($"RTS_SELF_TEST {(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -1503,7 +1524,8 @@ public partial class RtsDemo : Node2D
             _gameplayProfiles,
             _clearanceBake,
             _hotReloadCandidate,
-            _buildingTypes);
+            _buildingTypes,
+            _productionCatalog);
         }
         catch (ArgumentException exception)
         {
@@ -1690,7 +1712,33 @@ public partial class RtsDemo : Node2D
         TryLoadNavigationSnapshot() &&
         TryLoadGameplayProfiles() &&
         TryLoadBuildingTypes() &&
+        TryLoadProductionCatalog() &&
         TryLoadClearanceBake();
+
+    private bool TryLoadProductionCatalog()
+    {
+        if (_productionCatalog is not null) return true;
+        var resourcePath = ProductionCatalogAsset?.ResourcePath ??
+                           DemoProductionCatalogResourcePath;
+        var converted = ProductionCatalogAsset is not null
+            ? ProductionCatalogResourceConverter.TryConvert(
+                ProductionCatalogAsset, out var snapshot, out var validation)
+            : ProductionCatalogResourceConverter.TryLoadSnapshot(
+                DemoProductionCatalogResourcePath, out snapshot, out validation);
+        if (converted && snapshot is not null)
+        {
+            _productionCatalog = snapshot;
+            GD.Print(
+                $"RTS_PRODUCTION_CATALOG PASS path={resourcePath} " +
+                $"format={snapshot.FormatVersion} hash={snapshot.StableHashText} " +
+                $"units={snapshot.UnitTypes.Length} recipes={snapshot.Recipes.Length}");
+            return true;
+        }
+        GD.PushError(
+            $"RTS_PRODUCTION_CATALOG FAIL code={validation.Code} " +
+            $"index={validation.Index} message={validation.Message}");
+        return false;
+    }
 
     private bool TryLoadBuildingTypes()
     {
@@ -1844,6 +1892,24 @@ public partial class RtsDemo : Node2D
             $"RTS_BUILDING_TYPES_GENERATE error={saveError} " +
             $"path={DemoBuildingTypesResourcePath} hash={snapshot.StableHashText}");
         GetTree().Quit(saveError == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateDemoProductionCatalog()
+    {
+        var snapshot = DemoProductionCatalog.CreateSnapshot();
+        var resource = ProductionCatalogResourceConverter.FromSnapshot(snapshot);
+        if (!EnsureDataDirectory())
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        var error = ResourceSaver.Save(
+            resource, DemoProductionCatalogResourcePath);
+        GD.Print(
+            $"RTS_PRODUCTION_CATALOG_GENERATE error={error} " +
+            $"path={DemoProductionCatalogResourcePath} " +
+            $"hash={snapshot.StableHashText}");
+        GetTree().Quit(error == Error.Ok ? 0 : 1);
     }
 
     private void GenerateDemoClearanceBake()

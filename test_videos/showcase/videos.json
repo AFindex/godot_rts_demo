@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-11T19:48:28.5506631+08:00",
+    "generated_at":  "2026-07-11T20:01:13.9435291+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  98,
-    "case_count":  74,
+    "recording_count":  99,
+    "case_count":  75,
     "recordings":  [
+                       {
+                           "id":  "production-catalog-resource-runtime",
+                           "display_name":  "Loaded Unit/Recipe Resource drives combat and worker production",
+                           "batch":  "20260711_200053",
+                           "created_at":  "2026-07-11T20:01:13.6646880+08:00",
+                           "video":  "../20260711_200053/production-catalog-resource-runtime.webm",
+                           "log":  "../20260711_200053/production-catalog-resource-runtime.log",
+                           "bytes":  498596,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS production-catalog-resource-runtime: ticks=1320, catalog=f1/88CB72E34880A0B7, units=5, profiles=True, worker=True, resources=1250/475, supply=4/35",
+                           "metrics":  "ticks=1320, catalog=f1/88CB72E34880A0B7, units=5, profiles=True, worker=True, resources=1250/475, supply=4/35"
+                       },
                        {
                            "id":  "production-replay-persistence",
                            "display_name":  "Train/Cancel/Rally replay with producing and blocked-exit hot restore",
