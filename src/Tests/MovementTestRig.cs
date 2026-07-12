@@ -166,6 +166,18 @@ public readonly record struct TestProductionQueueSnapshot(
     float ActiveProgress,
     Vector2? RallyPoint);
 
+public readonly record struct TestProductionBatchResult(
+    int Producers,
+    int Planned,
+    int Succeeded,
+    TestProductionCommandCode[] Results);
+
+public readonly record struct TestProductionGroupSnapshot(
+    int Producers,
+    int TotalOrders,
+    int ActiveProducers,
+    int[] QueueLengths);
+
 public enum TestBuildingLifecycleState : byte
 {
     Approaching,
@@ -1513,6 +1525,64 @@ public sealed partial class MovementTestRig
             (TestProductionCommandCode)result.Code,
             new TestProductionOrderId(result.OrderId.Value));
     }
+
+    public TestProductionBatchResult TrainBatch(
+        int playerId,
+        IReadOnlyList<TestGameplayBuildingId> producers,
+        ProductionRecipeProfile recipe)
+    {
+        var group = BuildProductionGroup(producers);
+        var availability = group.Producers.Select(producer =>
+        {
+            var value = _simulation.Production.ObserveAvailability(
+                playerId, new GameplayBuildingId(producer.BuildingId), recipe,
+                _simulation.Construction, _simulation.Economy.Players);
+            return new ProductionBatchAvailability(
+                producer.BuildingId, value.Available, value.Code.ToString());
+        });
+        var plan = ProductionBatchPlanner.PlanTrain(group, availability);
+        var results = plan.ProducerIds.Select(value => _simulation.IssueProduction(
+                playerId, new GameplayBuildingId(value), recipe))
+            .ToArray();
+        return new TestProductionBatchResult(
+            group.ProducerCount,
+            plan.ProducerIds.Length,
+            results.Count(value => value.Succeeded),
+            results.Select(value => (TestProductionCommandCode)value.Code).ToArray());
+    }
+
+    public int CancelNewestProductionBatch(
+        int playerId,
+        IReadOnlyList<TestGameplayBuildingId> producers,
+        int recipeId)
+    {
+        var group = BuildProductionGroup(producers);
+        return group.NewestMatchingOrders(recipeId).Count(order =>
+            _simulation.CancelProduction(playerId, new ProductionOrderId(order)));
+    }
+
+    public TestProductionGroupSnapshot ObserveProductionGroup(
+        IReadOnlyList<TestGameplayBuildingId> producers)
+    {
+        var group = BuildProductionGroup(producers);
+        return new TestProductionGroupSnapshot(
+            group.ProducerCount,
+            group.TotalOrders,
+            group.ActiveProducerCount,
+            group.Producers.Select(value => value.Orders.Length).ToArray());
+    }
+
+    private ProductionGroupSnapshot BuildProductionGroup(
+        IReadOnlyList<TestGameplayBuildingId> producers) =>
+        ProductionGroupSnapshot.Create(producers.Select(value =>
+        {
+            var queue = _simulation.Production.Observe(
+                new GameplayBuildingId(value.Value));
+            return new ProductionGroupProducerSnapshot(
+                value.Value,
+                queue.Orders.Select(order => new ProductionGroupOrderEntry(
+                    order.Id.Value, order.Recipe.Id, order.Progress)).ToArray());
+        }));
 
     public TestProductionAvailabilitySnapshot ObserveProductionAvailability(
         int playerId,

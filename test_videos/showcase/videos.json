@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-12T04:04:01.1909171+08:00",
+    "generated_at":  "2026-07-12T11:45:52.1601757+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  115,
-    "case_count":  89,
+    "recording_count":  116,
+    "case_count":  90,
     "recordings":  [
+                       {
+                           "id":  "operation-production-group-batch",
+                           "display_name":  "Three Barracks fan out Train and cancel the newest order per producer",
+                           "batch":  "20260712_114535",
+                           "created_at":  "2026-07-12T11:45:50.3750796+08:00",
+                           "video":  "../20260712_114535/operation-production-group-batch.webm",
+                           "log":  "../20260712_114535/operation-production-group-batch.log",
+                           "bytes":  289259,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS operation-production-group-batch: ticks=600, batch=3/3, queued=6-\u003e3-\u003e0, cancel=3, spawned=3",
+                           "metrics":  "ticks=600, batch=3/3, queued=6-\u003e3-\u003e0, cancel=3, spawned=3"
+                       },
                        {
                            "id":  "operation-build-placement-mode",
                            "display_name":  "Build target preview rejects invalid ground and commits with the nearest worker",

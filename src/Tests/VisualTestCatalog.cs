@@ -33,6 +33,7 @@ public static class VisualTestCatalog
         "operation-mixed-command-card",
         "operation-target-command-mode",
         "operation-build-placement-mode",
+        "operation-production-group-batch",
         "minimap-interaction",
         "command-log-replay",
         "command-replay-divergence",
@@ -140,6 +141,8 @@ public static class VisualTestCatalog
         "operation-target-command-mode" => CreateOperationTargetCommandMode(
             navigationMap, gameplayProfiles, clearanceBake),
         "operation-build-placement-mode" => CreateOperationBuildPlacementMode(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "operation-production-group-batch" => CreateOperationProductionGroupBatch(
             navigationMap, gameplayProfiles, clearanceBake),
         "minimap-interaction" => CreateMinimapInteraction(),
         "command-log-replay" => CreateCommandLogReplay(),
@@ -1373,6 +1376,83 @@ public static class VisualTestCatalog
             {
                 validIssue = runtime.ResolveTargetCommand(
                     request, validCenter, shiftPressed: false);
+            });
+    }
+
+    private static VisualTestSession CreateOperationProductionGroupBatch(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            24, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 4000, 1000, 30, 3);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(100f, 150f), 1),
+            rig.SpawnWorker(new Vector2(100f, 350f), 1),
+            rig.SpawnWorker(new Vector2(280f, 550f), 1)
+        };
+        var profile = DemoBuildingTypes.Barracks with { BuildSeconds = 0.5f };
+        var builds = new[]
+        {
+            rig.Build(1, workers[0], profile, new Vector2(300f, 150f)),
+            rig.Build(1, workers[1], profile, new Vector2(300f, 350f)),
+            rig.Build(1, workers[2], profile, new Vector2(420f, 550f))
+        };
+        var producers = builds.Select(value => value.BuildingId).ToArray();
+        var recipe = DemoProductionCatalog.CreateSnapshot().Recipe(0) with
+        {
+            ProductionSeconds = 2f
+        };
+        var initialUnits = rig.UnitCount;
+        var first = default(TestProductionBatchResult);
+        var second = default(TestProductionBatchResult);
+        var afterSecond = default(TestProductionGroupSnapshot);
+        var canceled = -1;
+        var afterCancel = default(TestProductionGroupSnapshot);
+        return new VisualTestSession(
+            "operation-production-group-batch",
+            "Three Barracks fan out Train and cancel the newest order per producer",
+            600,
+            rig,
+            workers,
+            runtime =>
+            {
+                var finalGroup = runtime.ObserveProductionGroup(producers);
+                var passed = builds.All(value => value.Succeeded) &&
+                             first.Producers == 3 && first.Planned == 3 &&
+                             first.Succeeded == 3 &&
+                             second.Planned == 3 && second.Succeeded == 3 &&
+                             afterSecond.TotalOrders == 6 &&
+                             afterSecond.QueueLengths.SequenceEqual([2, 2, 2]) &&
+                             canceled == 3 && afterCancel.TotalOrders == 3 &&
+                             afterCancel.QueueLengths.SequenceEqual([1, 1, 1]) &&
+                             finalGroup.TotalOrders == 0 &&
+                             runtime.UnitCount == initialUnits + 3;
+                return new ScenarioResult(
+                    passed,
+                    $"batch={first.Succeeded}/{second.Succeeded}, " +
+                    $"queued={afterSecond.TotalOrders}->{afterCancel.TotalOrders}->" +
+                    $"{finalGroup.TotalOrders}, cancel={canceled}, " +
+                    $"spawned={runtime.UnitCount - initialUnits}");
+            })
+            .SelectBuildings(producers)
+            .RenderSpawnedUnits()
+            .At(120, "Train Marine fans out to all three Barracks", runtime =>
+                first = runtime.TrainBatch(1, producers, recipe))
+            .At(150, "Second click appends one Marine to every queue", runtime =>
+            {
+                second = runtime.TrainBatch(1, producers, recipe);
+                afterSecond = runtime.ObserveProductionGroup(producers);
+            })
+            .At(180, "Cancel newest removes one matching order per Barracks", runtime =>
+            {
+                canceled = runtime.CancelNewestProductionBatch(
+                    1, producers, recipe.Id);
+                afterCancel = runtime.ObserveProductionGroup(producers);
             });
     }
 

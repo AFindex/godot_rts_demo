@@ -79,6 +79,7 @@ public enum CommandCardActionKind : byte
     Hold,
     Train,
     CancelProduction,
+    CancelProductionBatch,
     Research,
     CancelResearch,
     CancelConstruction

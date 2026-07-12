@@ -1601,6 +1601,7 @@ public partial class RtsDemo : Node2D
                 "operation-mixed-command-card" or
                 "operation-target-command-mode" or
                 "operation-build-placement-mode" or
+                "operation-production-group-batch" or
                 "minimap-interaction")
         {
             _commandCard = new RtsCommandCardControl
@@ -1940,75 +1941,119 @@ public partial class RtsDemo : Node2D
             return result;
         }
 
-        var buildingId = new GameplayBuildingId(active.Members[0].EntityId);
-        var building = _simulation.Construction.Observe(buildingId);
-        if (building.State != BuildingLifecycleState.Completed)
+        var buildings = active.Members
+            .Select(value => new GameplayBuildingId(value.EntityId))
+            .Where(value => _simulation.Construction.IsAlive(value))
+            .Select(value => _simulation.Construction.Observe(value))
+            .Where(value => value.PlayerId == PlayerTeam)
+            .OrderBy(value => value.Id.Value)
+            .ToArray();
+        if (buildings.Length == 0) return result;
+        var unfinished = buildings
+            .Where(value => value.State != BuildingLifecycleState.Completed)
+            .ToArray();
+        if (unfinished.Length > 0)
         {
             result.Add(new(key, CommandCardActionKind.CancelConstruction,
-                buildingId.Value, -1, "Cancel Construction", true,
-                $"{building.Progress:P0}", 5));
+                unfinished.Length == 1 ? unfinished[0].Id.Value : -1,
+                -1, $"Cancel Construction ×{unfinished.Length}", true,
+                $"avg {unfinished.Average(value => value.Progress):P0}", 4));
+        }
+        var representative = buildings.FirstOrDefault(value =>
+            value.State == BuildingLifecycleState.Completed);
+        if (representative.State != BuildingLifecycleState.Completed)
             return result;
-        }
         if (_productionCatalog is not null)
-        {
-            var canProduce = false;
-            foreach (var recipe in _productionCatalog.Recipes)
-            {
-                if (recipe.ProducerBuildingTypeId == building.Type.Id)
-                {
-                    canProduce = true;
-                    break;
-                }
-            }
-            if (canProduce)
-            {
-                result.Add(new(key, CommandCardActionKind.Rally,
-                    buildingId.Value, -1, "Set Rally", true,
-                    "Ground / Resource / Unit", 5));
-            }
-            foreach (var recipe in _productionCatalog.Recipes)
-            {
-                if (recipe.ProducerBuildingTypeId != building.Type.Id) continue;
-                var availability = _simulation.Production.ObserveAvailability(
-                    PlayerTeam, buildingId, recipe,
-                    _simulation.Construction, _simulation.Economy.Players);
-                result.Add(new(key, CommandCardActionKind.Train,
-                    buildingId.Value, recipe.Id, $"Train {recipe.UnitType.Name}",
-                    availability.Available, availability.Code.ToString(), 20 + recipe.Id));
-            }
-            var queue = _simulation.Production.Observe(buildingId);
-            if (queue.Orders.Length > 0)
-            {
-                result.Add(new(key, CommandCardActionKind.CancelProduction,
-                    buildingId.Value, queue.Orders[0].Id.Value,
-                    "Cancel Production", true,
-                    $"{queue.Orders[0].Progress:P0}", 80));
-            }
-        }
+            AddProductionGroupCandidates(result, key, buildings, representative.Type.Id);
         if (_technologyCatalog is not null)
         {
+            var researcher = representative.Id;
             foreach (var technology in _technologyCatalog.Technologies)
             {
-                if (technology.ResearcherBuildingTypeId != building.Type.Id) continue;
+                if (technology.ResearcherBuildingTypeId != representative.Type.Id) continue;
                 var availability = _simulation.Technology.ObserveAvailability(
-                    PlayerTeam, buildingId, technology,
+                    PlayerTeam, researcher, technology,
                     _simulation.Construction, _simulation.Economy.Players);
                 result.Add(new(key, CommandCardActionKind.Research,
-                    buildingId.Value, technology.Id,
+                    researcher.Value, technology.Id,
                     $"Research {technology.Name}", availability.Available,
                     $"L{availability.CurrentLevel} {availability.Code}",
                     30 + technology.Id));
             }
-            var queue = _simulation.Technology.Observe(buildingId);
+            var queue = _simulation.Technology.Observe(researcher);
             if (queue.Orders.Length > 0)
             {
                 result.Add(new(key, CommandCardActionKind.CancelResearch,
-                    buildingId.Value, queue.Orders[0].Id.Value,
+                    researcher.Value, queue.Orders[0].Id.Value,
                     "Cancel Research", true,
                     $"{queue.Orders[0].Progress:P0}", 90));
             }
         }
         return result;
+    }
+
+    private void AddProductionGroupCandidates(
+        List<CommandCardActionCandidate> result,
+        SelectionSubgroupKey key,
+        IReadOnlyList<GameplayBuildingSnapshot> buildings,
+        int buildingTypeId)
+    {
+        if (_simulation is null || _productionCatalog is null) return;
+        var group = BuildProductionGroupSnapshot(
+            buildings.Select(value => value.Id.Value));
+        var recipes = new List<ProductionRecipeProfile>();
+        foreach (var recipe in _productionCatalog.Recipes)
+        {
+            if (recipe.ProducerBuildingTypeId == buildingTypeId)
+                recipes.Add(recipe);
+        }
+        if (recipes.Count > 0)
+        {
+            result.Add(new(key, CommandCardActionKind.Rally,
+                -1, -1, $"Set Rally ×{group.ProducerCount}", true,
+                "Ground / Resource / Unit", 5));
+        }
+        foreach (var recipe in recipes)
+        {
+            var availability = group.Producers.Select(producer =>
+            {
+                var value = _simulation.Production.ObserveAvailability(
+                    PlayerTeam, new GameplayBuildingId(producer.BuildingId), recipe,
+                    _simulation.Construction, _simulation.Economy.Players);
+                return new ProductionBatchAvailability(
+                    producer.BuildingId, value.Available, value.Code.ToString());
+            });
+            var plan = ProductionBatchPlanner.PlanTrain(group, availability);
+            result.Add(new(key, CommandCardActionKind.Train,
+                -1, recipe.Id,
+                $"Train {recipe.UnitType.Name} ×{group.ProducerCount}",
+                plan.CanIssue, plan.Status, 20 + recipe.Id));
+
+            var cancelOrders = group.NewestMatchingOrders(recipe.Id);
+            if (cancelOrders.Length > 0)
+            {
+                result.Add(new(key, CommandCardActionKind.CancelProductionBatch,
+                    -1, recipe.Id,
+                    $"Cancel {recipe.UnitType.Name} ×{cancelOrders.Length}",
+                    true, $"newest per producer · queued {group.TotalOrders}",
+                    80 + recipe.Id));
+            }
+        }
+    }
+
+    private ProductionGroupSnapshot BuildProductionGroupSnapshot(
+        IEnumerable<int> buildingIds)
+    {
+        if (_simulation is null) return ProductionGroupSnapshot.Create([]);
+        return ProductionGroupSnapshot.Create(buildingIds.Select(value =>
+        {
+            var queue = _simulation.Production.Observe(
+                new GameplayBuildingId(value));
+            return new ProductionGroupProducerSnapshot(
+                value,
+                queue.Orders.Select(order => new ProductionGroupOrderEntry(
+                    order.Id.Value, order.Recipe.Id, order.Progress)).ToArray());
+        }));
     }
 
     private void CycleSelectionSubgroup(int direction)
@@ -2050,13 +2095,14 @@ public partial class RtsDemo : Node2D
                 _simulation.IssuePlayerHold(PlayerTeam, activeUnits);
                 break;
             case CommandCardActionKind.Train when _productionCatalog is not null:
-                _simulation.IssueProduction(
-                    PlayerTeam, new GameplayBuildingId(action.TargetEntityId),
-                    _productionCatalog.Recipe(action.DataId));
+                ExecuteProductionBatch(_productionCatalog.Recipe(action.DataId));
                 break;
             case CommandCardActionKind.CancelProduction:
                 _simulation.CancelProduction(
                     PlayerTeam, new ProductionOrderId(action.DataId));
+                break;
+            case CommandCardActionKind.CancelProductionBatch:
+                CancelNewestProductionBatch(action.DataId);
                 break;
             case CommandCardActionKind.Research when _technologyCatalog is not null:
                 _simulation.IssueResearch(
@@ -2068,14 +2114,65 @@ public partial class RtsDemo : Node2D
                     PlayerTeam, new ResearchOrderId(action.DataId));
                 break;
             case CommandCardActionKind.CancelConstruction:
-                _simulation.CancelConstruction(
-                    PlayerTeam, new GameplayBuildingId(action.TargetEntityId));
-                _selectedBuildings.Remove(action.TargetEntityId);
+                if (action.TargetEntityId >= 0)
+                {
+                    _simulation.CancelConstruction(
+                        PlayerTeam, new GameplayBuildingId(action.TargetEntityId));
+                    _selectedBuildings.Remove(action.TargetEntityId);
+                }
+                else
+                {
+                    foreach (var member in _selectionSnapshot.ActiveSubgroup?.Members ?? [])
+                    {
+                        var id = new GameplayBuildingId(member.EntityId);
+                        if (!_simulation.Construction.IsAlive(id) ||
+                            _simulation.Construction.Observe(id).State ==
+                                BuildingLifecycleState.Completed) continue;
+                        if (_simulation.CancelConstruction(PlayerTeam, id))
+                            _selectedBuildings.Remove(id.Value);
+                    }
+                }
                 break;
         }
         UpdateCommandCard();
         QueueRedraw();
     }
+
+    private void ExecuteProductionBatch(ProductionRecipeProfile recipe)
+    {
+        if (_simulation is null) return;
+        var buildingIds = ActiveBuildingIds();
+        var group = BuildProductionGroupSnapshot(buildingIds);
+        var availability = group.Producers.Select(producer =>
+        {
+            var value = _simulation.Production.ObserveAvailability(
+                PlayerTeam, new GameplayBuildingId(producer.BuildingId), recipe,
+                _simulation.Construction, _simulation.Economy.Players);
+            return new ProductionBatchAvailability(
+                producer.BuildingId, value.Available, value.Code.ToString());
+        });
+        var plan = ProductionBatchPlanner.PlanTrain(group, availability);
+        foreach (var building in plan.ProducerIds)
+        {
+            _simulation.IssueProduction(
+                PlayerTeam, new GameplayBuildingId(building), recipe);
+        }
+    }
+
+    private void CancelNewestProductionBatch(int recipeId)
+    {
+        if (_simulation is null) return;
+        var group = BuildProductionGroupSnapshot(ActiveBuildingIds());
+        foreach (var order in group.NewestMatchingOrders(recipeId))
+            _simulation.CancelProduction(PlayerTeam, new ProductionOrderId(order));
+    }
+
+    private int[] ActiveBuildingIds() =>
+        _selectionSnapshot.ActiveSubgroup?.Members
+            .Where(value => value.Kind == GameplaySelectionKind.Building)
+            .Select(value => value.EntityId)
+            .Order()
+            .ToArray() ?? [];
 
     private void BeginTargetCommand(
         TargetCommandKind kind,
@@ -2449,7 +2546,8 @@ public partial class RtsDemo : Node2D
                 _visualTest.TargetCommandPreviewPointer.Value)
             : GetViewportRect().Size * 0.5f;
         _targetCommand = _visualTest.TargetCommandPreview;
-        if (caseId == "operation-mixed-command-card" &&
+        if ((caseId is "operation-mixed-command-card" or
+                "operation-production-group-batch") &&
             _selectedBuildings.Count > 0)
         {
             var selected = _simulation.Construction.Observe(

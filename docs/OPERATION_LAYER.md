@@ -87,6 +87,14 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 - `BuildTargetPreviewSnapshot` 只向 Overlay 提供 bounds、builder、resource、CanPlace 和稳定状态；Overlay 绿色显示 Success，红色显示具体 Construction/Placement Code。
 - 左键只在最新正式预览通过时调用 `IssueConstruction`；失败保留目标模式以便改位置，成功退出。右键/Escape 始终无副作用取消。
 
+### 同类型多建筑生产
+
+- 语义参考 [Blizzard Buildings Guide](https://news.blizzard.com/en-us/article/4488317/game-guide-buildings)：同类型生产建筑组成活动子组后，一次 Train 意图会扇出到所有当前可用生产者。
+- `ProductionGroupSnapshot` 是纯 C# 聚合合同，只保存稳定 Building/Order ID、Recipe ID 和进度；UI 不读取 `ProductionSystem` 内部队列。
+- `ProductionBatchPlanner` 按 Building ID 生成确定性计划并汇总 `ready X/N · queued Q`。执行阶段逐个调用正式 `IssueProduction`，共享资源、人口、前置和队列容量仍由业务层重新验证。
+- 一次批量取消对每座生产建筑只撤销最新一条匹配配方订单；不同配方不会被误删，也不依赖命令卡当前布局或按钮索引。
+- Rally 继续作用于活动同类型建筑子组；未完成建筑则聚合为 Cancel Construction，不参与 Train。
+
 ## Minimap 与 UI 解耦
 
 Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效，而不修改模拟和命令语义：
@@ -112,7 +120,8 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `operation-mixed-command-card`：2 Worker、1 Combat Unit、1 Barracks 形成 3 个子组；快照命令卡完成生产、取消和重新生产，最终出生单位。
 - `operation-target-command-mode`：两段 Shift Move、右键取消、Ground Rally、Attack Move 全部通过稳定测试 Facade，目标模式保持/退出状态正确且 3/3 单位到达。
 - `operation-build-placement-mode`：静态障碍返回 `StaticObstacleOverlap`、不修改世界并保持目标模式；合法预览选择最近 worker 1，提交后 Supply Depot 完成。
+- `operation-production-group-batch`：3 座 Barracks 两次批量 Train 得到 6 个订单；每建筑取消最新订单后剩 3 个，最终出生 3 个 Marine。
 
 ## 当前收口
 
-操作表现已覆盖选择、混合子组、快照命令卡、Move/AttackMove/Rally/Build 目标模式、相机、混合编组/Alt 抢组、编组定位和 Minimap。J2b2b 仍包括多建筑批量动作、队列聚合、图标/tooltip、皮肤与动画。
+操作表现已覆盖选择、混合子组、快照命令卡、Move/AttackMove/Rally/Build 目标模式、同类型多建筑批量生产/取消/队列聚合、相机、混合编组/Alt 抢组、编组定位和 Minimap。图标、tooltip、可重映射热键、皮肤与动画属于后续表现增强，不阻塞玩法闭环。
