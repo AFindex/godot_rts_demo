@@ -120,6 +120,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public int PathBudgetPerTick { get; set; } = 24;
     public int CombatWeaponUpgradeTechnologyId { get; set; } =
         DemoTechnologies.InfantryWeapons.Id;
+    public int CombatBuildingArmorTechnologyId { get; set; } =
+        DemoTechnologies.FortificationDoctrine.Id;
     public ulong ActiveClearanceBakeHash =>
         _buildingConnectivityGuard.ClearanceBakeHash;
 
@@ -127,6 +129,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     public CombatDamageResult PreviewCombatDamage(int attacker, int target) =>
         _combatSystem.PreviewDamage(attacker, target);
+
+    public CombatDamageResult PreviewCombatDamage(
+        int attacker,
+        GameplayBuildingId building)
+    {
+        if ((uint)attacker >= (uint)Units.Count || !Units.Alive[attacker] ||
+            !Construction.IsAlive(building))
+            throw new ArgumentOutOfRangeException();
+        var target = Construction.Observe(building);
+        return CombatDamageResolver.Resolve(
+            CombatWeapon(attacker), BuildingDefense(target), target.Health);
+    }
 
     public ClearanceBakeCommitResult TryCommitClearanceBake(
         ClearanceBakeSnapshot candidate)
@@ -3264,10 +3278,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         if (!Construction.IsAlive(building)) return default;
         var before = Construction.Observe(building).Health;
+        var target = Construction.Observe(building);
         var damage = CombatDamageResolver.Resolve(
-            weapon,
-            new CombatDefenseSnapshot(0f, CombatAttribute.Structure),
-            before);
+            weapon, BuildingDefense(target), before);
         if (!DamageBuilding(building, damage.TotalDamage)) return default;
         var after = Construction.Observe(building);
         var remaining = MathF.Max(0f, after.Health);
@@ -3285,6 +3298,23 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CombatWeaponUpgradeTechnologyId < 0
             ? 0
             : Technology.Level(team, CombatWeaponUpgradeTechnologyId);
+
+    private CombatWeaponDamageSnapshot CombatWeapon(int attacker) => new(
+        Combat.AttackDamage[attacker], Combat.AttacksPerVolley[attacker],
+        Combat.BonusVs[attacker], Combat.BonusDamage[attacker],
+        ((ICombatMovementDriver)this).WeaponUpgradeLevel(Combat.Teams[attacker]),
+        Combat.BaseUpgradeDamage[attacker], Combat.BonusUpgradeDamage[attacker]);
+
+    private CombatDefenseSnapshot BuildingDefense(GameplayBuildingSnapshot building)
+    {
+        var level = CombatBuildingArmorTechnologyId < 0
+            ? 0
+            : Technology.Level(
+                building.PlayerId, CombatBuildingArmorTechnologyId);
+        return new CombatDefenseSnapshot(
+            building.Type.Armor + level * building.Type.ArmorUpgradePerLevel,
+            building.Type.Attributes);
+    }
 
     private void SetCombatDestination(int unit, Vector2 target)
     {

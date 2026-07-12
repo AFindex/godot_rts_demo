@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-12T14:30:56.7697787+08:00",
+    "generated_at":  "2026-07-12T14:54:43.8100614+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  119,
-    "case_count":  92,
+    "recording_count":  120,
+    "case_count":  93,
     "recordings":  [
+                       {
+                           "id":  "combat-building-defense",
+                           "display_name":  "Building armor, size and Fortification share formal damage rules",
+                           "batch":  "20260712_145433",
+                           "created_at":  "2026-07-12T14:54:43.3953126+08:00",
+                           "video":  "../20260712_145433/combat-building-defense.webm",
+                           "log":  "../20260712_145433/combat-building-defense.log",
+                           "bytes":  226005,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS combat-building-defense: ticks=360, armor=0,1,2/0,1,2, damage=30,29,28-\u003e29,28,27, fort=1, impact=29, hp=371, catalog=8706BAAF85DDD1B7",
+                           "metrics":  "ticks=360, armor=0,1,2/0,1,2, damage=30,29,28-\u003e29,28,27, fort=1, impact=29, hp=371, catalog=8706BAAF85DDD1B7"
+                       },
                        {
                            "id":  "combat-damage-matrix",
                            "display_name":  "Catalog armor, attributes, bonus damage and multi-hit matrix",

@@ -31,7 +31,10 @@ public readonly record struct BuildingTypeProfile(
     int SupplyProvided,
     float CancelRefundFraction,
     ConstructionMethodKind ConstructionMethod,
-    bool RequiresVespeneNode = false)
+    bool RequiresVespeneNode = false,
+    float Armor = 0f,
+    CombatAttribute Attributes = CombatAttribute.Structure | CombatAttribute.Mechanical,
+    float ArmorUpgradePerLevel = 0f)
 {
     public BuildingFootprintProfileSnapshot PlacementProfile => new(
         Id,
@@ -56,28 +59,33 @@ public static class DemoBuildingTypes
         0, "Supply Depot", BuildingFunctionKind.Supply,
         new Vector2(48f, 48f), MovementClass.Medium,
         new EconomyCost(100, 0), 4f, 400f, 8, 0.75f,
-        ConstructionMethodKind.ContinuousWorker),
+        ConstructionMethodKind.ContinuousWorker,
+        Armor: 0f, ArmorUpgradePerLevel: 1f),
         new(
         1, "Barracks", BuildingFunctionKind.Production,
         new Vector2(112f, 80f), MovementClass.Large,
         new EconomyCost(150, 0), 7f, 1000f, 0, 0.75f,
-        ConstructionMethodKind.ContinuousWorker),
+        ConstructionMethodKind.ContinuousWorker,
+        Armor: 1f, ArmorUpgradePerLevel: 1f),
         new(
         2, "Command Center", BuildingFunctionKind.TownHall,
         new Vector2(160f, 120f), MovementClass.Large,
         new EconomyCost(400, 0), 10f, 1500f, 15, 0.75f,
-        ConstructionMethodKind.ContinuousWorker),
+        ConstructionMethodKind.ContinuousWorker,
+        Armor: 2f, ArmorUpgradePerLevel: 1f),
         new(
         3, "Refinery", BuildingFunctionKind.Refinery,
         new Vector2(72f, 72f), MovementClass.Medium,
         new EconomyCost(75, 0), 5f, 500f, 0, 0.75f,
         ConstructionMethodKind.ContinuousWorker,
-        RequiresVespeneNode: true),
+        RequiresVespeneNode: true,
+        Armor: 1f, ArmorUpgradePerLevel: 1f),
         new(
         4, "Academy", BuildingFunctionKind.Research,
         new Vector2(96f, 72f), MovementClass.Large,
         new EconomyCost(150, 100), 6f, 850f, 0, 0.75f,
-        ConstructionMethodKind.ContinuousWorker)
+        ConstructionMethodKind.ContinuousWorker,
+        Armor: 1f, ArmorUpgradePerLevel: 1f)
     ];
 
     private static readonly BuildingTypeCatalogSnapshot Catalog = BuildCatalog();
@@ -595,6 +603,9 @@ public sealed class ConstructionSystem
             hash.Add(value.Type.CancelRefundFraction);
             hash.Add((byte)value.Type.ConstructionMethod);
             hash.Add(value.Type.RequiresVespeneNode);
+            hash.Add(value.Type.Armor);
+            hash.Add((ushort)value.Type.Attributes);
+            hash.Add(value.Type.ArmorUpgradePerLevel);
             hash.Add(value.Bounds.Min);
             hash.Add(value.Bounds.Max);
             hash.Add(value.FootprintId.Value);
@@ -648,6 +659,11 @@ public sealed class ConstructionSystem
         float.IsFinite(profile.Size.Y) && profile.Size.Y > 0f &&
         float.IsFinite(profile.BuildSeconds) && profile.BuildSeconds > 0f &&
         float.IsFinite(profile.MaximumHealth) && profile.MaximumHealth > 0f &&
+        float.IsFinite(profile.Armor) && profile.Armor >= 0f &&
+        (profile.Attributes & ~CombatAttribute.All) == 0 &&
+        (profile.Attributes & CombatAttribute.Structure) != 0 &&
+        float.IsFinite(profile.ArmorUpgradePerLevel) &&
+        profile.ArmorUpgradePerLevel >= 0f &&
         profile.SupplyProvided >= 0 &&
         float.IsFinite(profile.CancelRefundFraction) &&
         profile.CancelRefundFraction is >= 0f and <= 1f;

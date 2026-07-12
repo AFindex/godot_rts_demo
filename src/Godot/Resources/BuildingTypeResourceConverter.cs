@@ -30,7 +30,10 @@ public static class BuildingTypeResourceConverter
                 SupplyProvided = source.SupplyProvided,
                 CancelRefundFraction = source.CancelRefundFraction,
                 ConstructionMethod = source.ConstructionMethod,
-                RequiresVespeneNode = source.RequiresVespeneNode
+                RequiresVespeneNode = source.RequiresVespeneNode,
+                Armor = source.Armor,
+                Attributes = source.Attributes,
+                ArmorUpgradePerLevel = source.ArmorUpgradePerLevel
             });
         }
         return resource;
@@ -86,7 +89,10 @@ public static class BuildingTypeResourceConverter
                 source.SupplyProvided,
                 source.CancelRefundFraction,
                 source.ConstructionMethod,
-                source.RequiresVespeneNode);
+                source.RequiresVespeneNode,
+                source.Armor,
+                source.Attributes,
+                source.ArmorUpgradePerLevel);
         }
         return BuildingTypeCatalogSnapshot.TryCreate(
             resource.FormatVersion, types, out snapshot, out validation);

@@ -5,7 +5,7 @@
 `BuildingTypeCatalogSnapshot`；`ConstructionSystem`、回放和状态 Hash 不引用 Godot
 对象。
 
-## v1 字段
+## v2 字段
 
 每个类型具有稳定、从 0 连续的 ID，并声明名称、功能、尺寸、最小通行等级、双资源/
 人口成本、施工时间、最大生命、完工人口、取消退款率、施工策略和气矿节点约束。
@@ -18,7 +18,9 @@
 
 验证器会拒绝未知版本、空目录、非连续 ID、重复名称、无效数值/枚举和不一致的功能
 契约。规范二进制使用固定字段顺序和 little-endian 基础类型，FNV-1a 64-bit Hash 用于
-确定性比较；当前五类 Demo 建筑新增 Academy/Research，Hash 为 `57DB7C4B43C00E8E`。
+确定性比较。v2 新增 Armor、Attributes 和 ArmorUpgradePerLevel；Attributes 必须包含 Structure，可与 Mechanical 等属性组合。当前五类 Demo 建筑覆盖 0/1/2 基础护甲和每级 +1 Fortification，Hash 为 `8706BAAF85DDD1B7`。
+
+Construction Command Log v2 保存解析后的完整建筑 Profile；Replay Package/Hot Snapshot v14 与 State Hash v15 保存并验证建筑防御未来态，因此资产调参不会篡改已有录像。
 `BuildingTypeCatalogDiff` 以稳定 Hash 判断是否变化，并给出逐类型变化数量；单项造价
 修改会稳定报告一个 Changed Type，供后续生产队列的安全重建策略消费。
 

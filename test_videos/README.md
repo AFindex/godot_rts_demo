@@ -11,7 +11,7 @@ python -m http.server 10086
 
 然后访问 `http://localhost:10086/test_videos/showcase/`。浏览器出于安全限制不能在直接打开本地 HTML 文件时读取 JSON，因此需要一个本地 HTTP 服务。
 
-仓库保留覆盖 92 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+仓库保留覆盖 93 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
@@ -68,6 +68,7 @@ python -m http.server 10086
 - `20260712_114535/`：S11-J2b2b 同类型多建筑生产；3 座 Barracks 连续两次批量 Train 聚合为 6 个订单，按每建筑最新匹配订单取消后剩 3 个并最终出生 3 个 Marine。
 - `20260712_125206/`：S8-E1 确定性战斗事件流；3 次攻击产生 3 个 AttackStarted、3 个 Impact（12/12/1）和 1 个 TargetDestroyed，固定容量事件读取无丢失。
 - `20260712_143026/`：S8-E2a 资源驱动伤害矩阵与科技重录；展示 Light/Armored 护甲差异、属性加成、`x2` 多段结算，以及 Infantry Weapons 两级后的 13 点正式伤害预览。
+- `20260712_145433/`：S8-E2b 建筑防御矩阵；Supply/Barracks/Command Center 的 0/1/2 护甲将 30 伤害降为 30/29/28，Fortification 后进一步变为 29/28/27，正式攻击 Supply 结算 29 点。
 
 重新录制所有当前场景：
 

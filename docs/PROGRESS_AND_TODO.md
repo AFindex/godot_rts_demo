@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 92 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 93 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove。
 
 当前规模：
 
 - 128 个 C# 源文件。
-- 约 40,000 行 C#（按 `src/**/*.cs` 统计）。
-- 92 个黑盒场景。
-- AV1/WebM 规范录像覆盖全部 92 个当前逻辑场景。
-- Release 1000 单位移动 P95：约 8.53ms。
+- 约 40,200 行 C#（按 `src/**/*.cs` 统计）。
+- 93 个黑盒场景。
+- AV1/WebM 规范录像覆盖全部 93 个当前逻辑场景。
+- Release 1000 单位移动 P95：约 8.21ms。
 - Release 1000 单位当前线程分配：约 461B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -37,11 +37,11 @@
 | S5 碰撞与约束 | 运行时闭环完成 | 圆碰撞、动态占用、三档净空、四档建筑、Profile Resource、局部净空与全局 Connectivity Guard | 具名关键锚点、多移动层、非矩形 footprint |
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
-| S8 战斗移动 | E2a 单位伤害完成 | AttackMove、战斗占位、事件流、单位护甲/属性加成/多段攻击/武器科技修正、资源数据 | E2b 建筑防御、弹道、移动射击、复杂目标权重和推挤优先级 |
+| S8 战斗移动 | E2b 统一伤害完成 | AttackMove、占位、事件流、单位/建筑护甲与属性、多段/Bonus、武器与防御科技、资源数据 | 确定性弹道、移动射击、复杂目标权重和推挤优先级 |
 | 操作层 | J2b2b 完成 | Shift 跨域任务、混合选择/编组、快照命令卡、Move/AttackMove/Rally/Build 目标模式、同类型多建筑生产/取消/队列聚合、SmartCommand、相机、Minimap | 图标、tooltip、热键重映射和最终皮肤 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | J2b2b + S8-E2a 完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、双 AI、完整操作、单位伤害、Package/Hot v13、Hash v14 | S8-E2b 建筑防御与后续战斗 |
+| S11 实际 RTS 玩法 | J2b2b + S8-E2b 完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、双 AI、完整操作、统一伤害、Package/Hot v14、Hash v15 | 确定性弹道与后续战斗 |
 
 ## 3. 已完成的运行时闭环
 
@@ -359,7 +359,7 @@ TODO：
 - 稳定 unit ID 死亡清理、九个业务黑盒场景/录像和 128/256 活跃战斗基准。
 - 固定容量 `CombatEventStream` 按 Tick/Sequence 发布单位与建筑共用的 AttackStarted、Impact、TargetDestroyed；溢出显式报告，热恢复清空派生事件。
 
-单位真实伤害、护甲、属性加成、多段攻击和武器科技修正已在 S8-E2a 完成。后续顺序为 E2b 建筑防御，再进入弹道；移动射击、复杂仇恨权重和友军/敌军推挤优先级继续由实际玩法决定。
+单位与建筑真实伤害、护甲、属性加成、多段攻击以及攻防科技已在 S8-E2a/E2b 完成。后续进入确定性弹道；移动射击、复杂仇恨权重和友军/敌军推挤优先级继续由实际玩法决定。
 
 ### 6.2 操作层
 
@@ -1017,7 +1017,19 @@ S8-E2a 完成情况如下。
 - AV1/WebM 位于 `test_videos/20260712_143026/`：伤害矩阵 159,587 字节，科技重录 474,837 字节。
 - 92/92 全量黑盒回归通过；Release 256/512/1000 移动 P95 为 2.38/4.60/8.53ms，128/256 活跃战斗 P95 为 1.36/5.10ms，战斗分配约 2.3/4.0KB/Tick。录像门禁通过 120 个视频、66 个 manifest、119 个场景引用，编码均为 AV1。
 
-下一段 S8-E2b：Building Type 增加自身 Armor/Attributes，Fortification Doctrine 进入建筑防御修正；完成单位与建筑统一伤害合同后再做弹道。
+S8-E2b 完成情况如下。
+
+### AM：S8-E2b 建筑防御与统一伤害合同（已完成）
+
+- Building Type Profile/Catalog v2 增加 Armor、Attributes、ArmorUpgradePerLevel；所有建筑必须包含 Structure，Demo 五类建筑使用 Structure|Mechanical。
+- Supply Depot/Barracks/Command Center 提供 0/1/2 护甲测试梯度，Refinery/Academy 为 1；全部每级 Fortification +1。生成资产 Hash 为 `8706BAAF85DDD1B7`。
+- `BuildingDefense` 从正式 TechnologySystem 读取 Fortification Doctrine；`PreviewCombatDamage(unit, building)` 与正式 AttackBuilding 共用 Weapon/Defense/Health 和 `CombatDamageResolver`。
+- Construction Command Log 升级 v2；Replay Package/Hot Snapshot 升级 v14，State Hash 升级 v15，完整保存建筑 Armor/Attributes/升级量。
+- `combat-building-defense` 用 48×48、112×80、160×120 三种尺寸验证 30/29/28 基础伤害、Fortification 后 29/28/27，并用正式攻击把 Supply Depot 400 HP 降到 371。
+- 6 秒 AV1/WebM 位于 `test_videos/20260712_145433/`，226,005 字节。
+- 93/93 全量黑盒回归通过；Release 256/512/1000 移动 P95 为 1.44/4.50/8.21ms，128/256 活跃战斗 P95 为 1.45/5.89ms，战斗分配保持约 2.3/4.0KB/Tick。录像门禁通过 121 个视频、67 个 manifest、120 个场景引用，编码均为 AV1。
+
+单位/建筑统一伤害阶段至此收口。下一段 S8-E3 为确定性弹道：投射物运行时、发射/命中时目标规则、事件与表现快照、存档/回放和高密度性能门禁。
 
 ## 8. 可以并行但不能提前耦合的优化
 

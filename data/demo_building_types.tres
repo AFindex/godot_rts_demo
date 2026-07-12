@@ -10,6 +10,7 @@ MineralCost = 100
 BuildSeconds = 4.0
 MaximumHealth = 400.0
 SupplyProvided = 8
+ArmorUpgradePerLevel = 1.0
 
 [sub_resource type="Resource" id="Resource_qrs4f"]
 script = ExtResource("1_type")
@@ -21,6 +22,8 @@ MinimumPassageClass = 2
 MineralCost = 150
 BuildSeconds = 7.0
 MaximumHealth = 1000.0
+Armor = 1.0
+ArmorUpgradePerLevel = 1.0
 
 [sub_resource type="Resource" id="Resource_qbl0u"]
 script = ExtResource("1_type")
@@ -33,6 +36,8 @@ MineralCost = 400
 BuildSeconds = 10.0
 MaximumHealth = 1500.0
 SupplyProvided = 15
+Armor = 2.0
+ArmorUpgradePerLevel = 1.0
 
 [sub_resource type="Resource" id="Resource_3emw1"]
 script = ExtResource("1_type")
@@ -44,6 +49,8 @@ MineralCost = 75
 BuildSeconds = 5.0
 MaximumHealth = 500.0
 RequiresVespeneNode = true
+Armor = 1.0
+ArmorUpgradePerLevel = 1.0
 
 [sub_resource type="Resource" id="Resource_w31p3"]
 script = ExtResource("1_type")
@@ -56,6 +63,8 @@ MineralCost = 150
 VespeneCost = 100
 BuildSeconds = 6.0
 MaximumHealth = 850.0
+Armor = 1.0
+ArmorUpgradePerLevel = 1.0
 
 [resource]
 script = ExtResource("2_catalog")

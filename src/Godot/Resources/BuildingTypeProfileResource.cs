@@ -28,4 +28,10 @@ public partial class BuildingTypeProfileResource : Resource
     public float CancelRefundFraction { get; set; } = 0.75f;
     [Export] public ConstructionMethodKind ConstructionMethod { get; set; }
     [Export] public bool RequiresVespeneNode { get; set; }
+    [Export(PropertyHint.Range, "0,100,0.5,or_greater")]
+    public float Armor { get; set; }
+    [Export] public CombatAttribute Attributes { get; set; } =
+        CombatAttribute.Structure | CombatAttribute.Mechanical;
+    [Export(PropertyHint.Range, "0,100,0.5,or_greater")]
+    public float ArmorUpgradePerLevel { get; set; }
 }

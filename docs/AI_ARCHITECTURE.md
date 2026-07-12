@@ -73,6 +73,6 @@ AI 配置已经进入版本化 `AiConfigurationCatalogSnapshot v1` 和 Godot Res
 
 `RtsAiRuntimeState` 将 Simulation process-local hot state 与 `RtsAiDirectorSnapshot` 绑定在同一 Tick。`ai-dual-runtime-replay` 在 Tick 1,200 捕获两个 AI 的 Blackboard/调度 future，恢复后重新运行策略到 Tick 4,200，最终 Hash 与连续局一致。
 
-同一场景还保存完整 Replay Package（当前格式 v12），并从 Tick 0 按 Construction→Production/Research→Economy→Unit 的协议顺序重放 31/10/51/130 条正式命令。重放过程不创建 Director 或 Policy，最终 Hash 同样一致。为此 Director 在执行边界按相同域顺序稳定排序已被仲裁选中的意图；战略优先级决定选什么，回放协议决定跨域执行次序。
+同一场景还保存完整 Replay Package（当前格式 v14），并从 Tick 0 按 Construction→Production/Research→Economy→Unit 的协议顺序重放正式命令。重放过程不创建 Director 或 Policy，最终 Hash 同样一致。为此 Director 在执行边界按相同域顺序稳定排序已被仲裁选中的意图；战略优先级决定选什么，回放协议决定跨域执行次序。
 
 H2 至此收口。撤退、目标价值和更细防守只在以后有明确失败用例时推进，不作为当前无限优化项。

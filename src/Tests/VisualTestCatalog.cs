@@ -16,6 +16,7 @@ public static class VisualTestCatalog
         "attack-move-engage-resume",
         "combat-event-stream",
         "combat-damage-matrix",
+        "combat-building-defense",
         "attack-move-leash-resume",
         "attack-move-command-isolation",
         "attack-move-cancel",
@@ -121,6 +122,9 @@ public static class VisualTestCatalog
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
         "combat-event-stream" => CreateCombatEventStream(),
         "combat-damage-matrix" => CreateCombatDamageMatrix(productionCatalog),
+        "combat-building-defense" => CreateCombatBuildingDefense(
+            navigationMap, gameplayProfiles, clearanceBake,
+            buildingTypes, technologyCatalog),
         "attack-move-leash-resume" => CreateAttackMoveLeashResume(),
         "attack-move-command-isolation" => CreateAttackMoveCommandIsolation(),
         "attack-move-cancel" => CreateAttackMoveCancel(),
@@ -421,6 +425,114 @@ public static class VisualTestCatalog
                     $"damage={string.Join(',', impacts.Select(value => value.Damage))}, " +
                     $"catalog={productionCatalog.StableHashText}");
             });
+    }
+
+    private static VisualTestSession CreateCombatBuildingDefense(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake,
+        BuildingTypeCatalogSnapshot? buildingTypes,
+        TechnologyCatalogSnapshot? technologies)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        buildingTypes ??= DemoBuildingTypes.CreateCatalog();
+        technologies ??= DemoTechnologies.CreateCatalog();
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1200f, 700f), 24);
+        rig.RegisterPlayer(2, 5000, 3000, 30, 4);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(700f, 140f), 2),
+            rig.SpawnWorker(new Vector2(680f, 310f), 2),
+            rig.SpawnWorker(new Vector2(610f, 500f), 2),
+            rig.SpawnWorker(new Vector2(350f, 500f), 2)
+        };
+        var supply = rig.Build(2, workers[0],
+            buildingTypes.Type(0) with { BuildSeconds = 0.5f },
+            new Vector2(760f, 140f));
+        var barracks = rig.Build(2, workers[1],
+            buildingTypes.Type(1) with { BuildSeconds = 0.5f },
+            new Vector2(760f, 310f));
+        var commandCenter = rig.Build(2, workers[2],
+            buildingTypes.Type(2) with { BuildSeconds = 0.5f },
+            new Vector2(720f, 500f));
+        var academy = rig.Build(2, workers[3],
+            buildingTypes.Type(4) with { BuildSeconds = 0.5f },
+            new Vector2(430f, 500f));
+        var attacker = rig.SpawnCombat(
+            new Vector2(650f, 140f), 1,
+            new TestCombatProfile(
+                100f, 20f, 100f, 240f, 10f, 0.1f, 400f,
+                BonusVs: CombatAttribute.Structure,
+                BonusDamage: 10f));
+        var targets = new[]
+        {
+            supply.BuildingId, barracks.BuildingId, commandCenter.BuildingId
+        };
+        float[] before = [];
+        float[] after = [];
+        var weapon = technologies.Technology(0) with { ResearchSeconds = 0.5f };
+        var fortification = technologies.Technology(2) with
+        {
+            ResearchSeconds = 0.5f
+        };
+        return new VisualTestSession(
+            "combat-building-defense",
+            "Building armor, size and Fortification share formal damage rules",
+            360,
+            rig,
+            [.. workers, attacker],
+            runtime =>
+            {
+                var impact = runtime.ObserveCombatEvents().Events
+                    .LastOrDefault(value => value.Kind == CombatEventKind.Impact &&
+                                            value.TargetKind ==
+                                                CombatTargetKind.Building);
+                var supplyHealth = runtime.ObserveGameplayBuilding(
+                    supply.BuildingId).Health;
+                var observedArmor = targets.Select(value =>
+                    runtime.ObserveGameplayBuilding(value).Armor).ToArray();
+                var catalogArmor = new[]
+                {
+                    buildingTypes.Type(0).Armor,
+                    buildingTypes.Type(1).Armor,
+                    buildingTypes.Type(2).Armor
+                };
+                var passed = new[] { supply, barracks, commandCenter, academy }
+                                 .All(value => value.Succeeded) &&
+                             before.SequenceEqual([30f, 29f, 28f]) &&
+                             after.SequenceEqual([29f, 28f, 27f]) &&
+                             runtime.TechnologyLevel(2, fortification.Id) == 1 &&
+                             impact.Damage == 29f && impact.BonusApplied &&
+                             supplyHealth == 371f;
+                return new ScenarioResult(
+                    passed,
+                    $"armor={string.Join(',', catalogArmor)}/" +
+                    $"{string.Join(',', observedArmor)}, damage=" +
+                    $"{string.Join(',', before)}->" +
+                    $"{string.Join(',', after)}, fort=" +
+                    $"{runtime.TechnologyLevel(2, fortification.Id)}, " +
+                    $"impact={impact.Damage}, hp={supplyHealth}, " +
+                    $"catalog={buildingTypes.StableHashText}");
+            })
+            .SelectBuildings(targets)
+            .At(120, "Capture base structure armor and research weapon prerequisite",
+                runtime =>
+                {
+                    before = targets.Select(value =>
+                        runtime.PreviewCombatDamage(attacker, value).TotalDamage)
+                        .ToArray();
+                    runtime.Research(2, academy.BuildingId, weapon);
+                })
+            .At(160, "Research Fortification Doctrine", runtime =>
+                runtime.Research(2, academy.BuildingId, fortification))
+            .At(210, "Capture upgraded armor", runtime =>
+                after = targets.Select(value =>
+                    runtime.PreviewCombatDamage(attacker, value).TotalDamage)
+                    .ToArray())
+            .At(220, "Formal attack uses upgraded Supply Depot defense", runtime =>
+                runtime.AttackBuilding([attacker], supply.BuildingId));
     }
 
     private static VisualTestSession CreateAttackMoveLeashResume()
@@ -1185,7 +1297,7 @@ public static class VisualTestCatalog
                              builderOrders.CompletedQueuedOrders == 1 &&
                              gatherActive && failedTaskSkipped &&
                              commandLog.FormatVersion == 3 &&
-                             package.FormatVersion == 13 && hot.FormatVersion == 13 &&
+                             package.FormatVersion == 14 && hot.FormatVersion == 14 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == commandLog.StableHash && exact;
                 return new ScenarioResult(
@@ -1904,7 +2016,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 13 &&
+                    exact && rejected && hot.FormatVersion == 14 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -1998,7 +2110,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 13 && hot.FormatVersion == 13 &&
+                             package.FormatVersion == 14 && hot.FormatVersion == 14 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -3127,8 +3239,8 @@ public static class VisualTestCatalog
                 var exact = replay.FinalHash == runtime.StateHash &&
                             resumed.FinalHash == runtime.StateHash &&
                             replay.MatchesFrom(resumed, hotTick);
-                var versions = package.FormatVersion == 13 &&
-                               hot.FormatVersion == 13;
+                var versions = package.FormatVersion == 14 &&
+                               hot.FormatVersion == 14;
                 var passed = enemyBarracks.Succeeded && initialBoundary &&
                              ownershipRejected && hiddenTargetRejected &&
                              visibleResourceObserved &&
@@ -3280,7 +3392,7 @@ public static class VisualTestCatalog
                              defeatedCommandRejected && matchCompleted &&
                              completedCommandRejected && winner &&
                              packageRoundTrip && hotRoundTrip && exact &&
-                             package.FormatVersion == 13 && hot.FormatVersion == 13;
+                             package.FormatVersion == 14 && hot.FormatVersion == 14;
                 return new ScenarioResult(
                     passed,
                     $"build={playerOneBase.Code}/{playerTwoBase.Code}/" +
@@ -3809,7 +3921,7 @@ public static class VisualTestCatalog
                     var economy = runtime.ObservePlayerEconomy(1);
                     var refinery = runtime.ObserveResourceNode(gas);
                     var passed = orders.All(order => order.Succeeded) && completed &&
-                                 distinctSizes == 4 && catalog.FormatVersion == 1 &&
+                                 distinctSizes == 4 && catalog.FormatVersion == 2 &&
                                  catalog.StableHash != 0UL && economy.Minerals == 275 &&
                                  economy.SupplyCapacity == 38 && refinery.Operational;
                     return new ScenarioResult(
@@ -4049,9 +4161,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 13 &&
-                             producingHot.FormatVersion == 13 &&
-                             waitingHot.FormatVersion == 13 &&
+                             package.FormatVersion == 14 &&
+                             producingHot.FormatVersion == 14 &&
+                             waitingHot.FormatVersion == 14 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -4267,7 +4379,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 13 && hot.FormatVersion == 13 &&
+                             package.FormatVersion == 14 && hot.FormatVersion == 14 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -4407,7 +4519,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 13 && hot.FormatVersion == 13 &&
+                             package.FormatVersion == 14 && hot.FormatVersion == 14 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -4548,7 +4660,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 13 && hot.FormatVersion == 13 &&
+                             package.FormatVersion == 14 && hot.FormatVersion == 14 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -4708,7 +4820,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 13 && hot.FormatVersion == 13 &&
+                             package.FormatVersion == 14 && hot.FormatVersion == 14 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -4822,7 +4934,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 13 && exact;
+                             hotRoundTrip && hot.FormatVersion == 14 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

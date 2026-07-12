@@ -43,6 +43,12 @@ public static class BuildingTypeCatalogSelfTest
                     loaded.Type(0).Size.X == 48f &&
                     loaded.Type(1).Size.X == 112f &&
                     loaded.Type(2).Size.X == 160f &&
+                    loaded.Type(0).Armor == 0f &&
+                    loaded.Type(1).Armor == 1f &&
+                    loaded.Type(2).Armor == 2f &&
+                    loaded.Types.ToArray().All(value =>
+                        (value.Attributes & CombatAttribute.Structure) != 0 &&
+                        value.ArmorUpgradePerLevel == 1f) &&
                     loaded.Type(3).RequiresVespeneNode &&
                     loaded.Type(4).Function == BuildingFunctionKind.Research &&
                     !invalidAccepted &&

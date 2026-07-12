@@ -20,7 +20,7 @@ S11-G 将胜负从 UI 或关卡脚本中的临时判断收敛为纯 C# `MatchSys
 
 ## 持久化
 
-Replay Package v13 保存 Tick 0 比赛清单；Hot Snapshot v13 保存阶段、参赛者、建立存在标记、失败 Tick、结束 Tick和胜者；State Hash v14 覆盖全部比赛与单位伤害未来态。载荷读取会严格验证排序、玩家注册、状态组合和胜者唯一性。
+Replay Package v14 保存 Tick 0 比赛清单；Hot Snapshot v14 保存阶段、参赛者、建立存在标记、失败 Tick、结束 Tick和胜者；State Hash v15 覆盖全部比赛以及单位/建筑伤害未来态。载荷读取会严格验证排序、玩家注册、状态组合和胜者唯一性。
 
 `match-capability-elimination` 黑盒场景使用三名玩家和不同功能建筑，验证：
 

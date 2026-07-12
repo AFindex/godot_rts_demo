@@ -226,6 +226,9 @@ public readonly record struct TestGameplayBuildingSnapshot(
     float Progress,
     float Health,
     float MaximumHealth,
+    float Armor,
+    CombatAttribute Attributes,
+    float ArmorUpgradePerLevel,
     TestResourceNodeId RefineryNode,
     TestUnitId BuilderUnit);
 
@@ -1532,6 +1535,9 @@ public sealed partial class MovementTestRig
             value.Progress,
             value.Health,
             value.MaximumHealth,
+            value.Type.Armor,
+            value.Type.Attributes,
+            value.Type.ArmorUpgradePerLevel,
             new TestResourceNodeId(value.RefineryNode.Value),
             new TestUnitId(value.BuilderUnit));
     }
@@ -2739,6 +2745,17 @@ public sealed partial class MovementTestRig
         TestUnitId target)
     {
         var value = _simulation.PreviewCombatDamage(attacker.Value, target.Value);
+        return new TestCombatDamagePreview(
+            value.DamagePerAttack, value.TotalDamage,
+            value.AttacksApplied, value.BonusApplied);
+    }
+
+    public TestCombatDamagePreview PreviewCombatDamage(
+        TestUnitId attacker,
+        TestGameplayBuildingId target)
+    {
+        var value = _simulation.PreviewCombatDamage(
+            attacker.Value, new GameplayBuildingId(target.Value));
         return new TestCombatDamagePreview(
             value.DamagePerAttack, value.TotalDamage,
             value.AttacksApplied, value.BonusApplied);
