@@ -6,6 +6,22 @@
 
 这是一个纯 C# 的 RTS 移动原型。模拟层不依赖 Godot Node/PhysicsBody，Godot 层只负责输入、绘制和 `NavigationServer2D` 路径查询。
 
+## 首次克隆环境
+
+- 使用 Godot 4.7 stable .NET/Mono 版本；普通非 .NET 版本不能加载本工程的 C# 脚本。
+- 安装 x64 .NET 9 SDK；`global.json` 接受当前机器上最新的稳定 .NET 9 feature band。
+- `NuGet.Config` 只引用公开 NuGet v3 源，不包含开发机器上的 Godot 安装绝对路径。
+
+首次打开 Godot 前建议在仓库根目录执行：
+
+```powershell
+dotnet --list-sdks
+dotnet restore
+dotnet build
+```
+
+如果 Godot 曾在 C# 编译失败时导入过工程，关闭编辑器、删除本地 `.godot/` 后重新执行以上命令。大量 `Cannot instantiate C# script` 往往是程序集编译失败的后续错误，应优先查看 `dotnet build` 输出的第一条错误。
+
 当前包含：
 
 - 60 Hz 固定 Tick、SoA 单位数据和命令版本隔离。

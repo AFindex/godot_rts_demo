@@ -1118,6 +1118,13 @@ H3 提供后续复杂玩法的集成基线。新单位、技能、科技或 AI P
 - `TestShowcaseCatalogSelfTest` 强制每个可执行 case 都有唯一中文说明，验证分类、搜索和未知 case 拒绝；新增 `frontend-test-browser` 黑盒场景走同一全量回归与录像入口。
 - 100/100 全量回归通过。专用 AV1/WebM 位于 `test_videos/20260712_203124/`；全仓录像门禁通过 129 个视频、74 个 manifest、128 个场景引用，编码均为 AV1。
 
+### AU：跨电脑 C# 首次还原（已修复）
+
+- 删除 `NuGet.Config` 中开发机 `F:\my_work\...\GodotSharp\Tools\nupkgs` 绝对路径，稳定版 `Godot.NET.Sdk/4.7.0` 只从公开 NuGet v3 源还原。
+- 新增 `global.json`：最低选择 .NET SDK 9.0.100，并通过 `latestFeature` 接受机器上更新的稳定 .NET 9 feature band，不会意外滚动到 .NET 10。
+- README 明确 Godot 4.7 .NET/Mono、x64 .NET 9 SDK、首次 `restore/build` 和失败缓存清理流程。
+- 使用全新空 NuGet 包目录和 `--no-cache` 实测下载 `godot.sourcegenerators`、`godotsharp`、`godotsharpeditor` 后 Release 编译通过，0 错误/0 警告；恢复常规包目录后 Debug 编译和 100/100 Godot 全量回归通过。
+
 ## 8. 可以并行但不能提前耦合的优化
 
 - Steering 预计算候选方向。
