@@ -1,5 +1,6 @@
 using System.Numerics;
 using RtsDemo.AI;
+using RtsDemo.Presentation;
 using RtsDemo.Simulation;
 
 namespace RtsDemo.Tests;
@@ -12,6 +13,7 @@ public static class VisualTestCatalog
 {
     public static readonly string[] CaseIds =
     [
+        "frontend-test-browser",
         "single-unit",
         "attack-move-engage-resume",
         "combat-event-stream",
@@ -124,6 +126,7 @@ public static class VisualTestCatalog
         TechnologyCatalogSnapshot? technologyCatalog = null,
         AiConfigurationCatalogSnapshot? aiConfigurations = null) => caseId switch
     {
+        "frontend-test-browser" => CreateFrontendTestBrowser(),
         "single-unit" => CreateSingleUnit(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
         "combat-event-stream" => CreateCombatEventStream(),
@@ -275,6 +278,29 @@ public static class VisualTestCatalog
             $"Unknown visual test '{caseId}'. Expected: {string.Join(", ", CaseIds)}.",
             nameof(caseId))
     };
+
+    private static VisualTestSession CreateFrontendTestBrowser()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(1200f, 700f), 8);
+        return new VisualTestSession(
+            "frontend-test-browser",
+            "Launch screen test browser and Chinese descriptions",
+            240,
+            rig,
+            [],
+            _ =>
+            {
+                var entries = TestShowcaseCatalog.Build(CaseIds);
+                var categories = TestShowcaseCatalog.Categories(entries);
+                var filtered = TestShowcaseCatalog.Filter(
+                    entries, "寻路", TestShowcaseCatalog.AllCategories);
+                return new ScenarioResult(
+                    entries.Length == CaseIds.Length &&
+                    categories.Length >= 6 && filtered.Length > 0,
+                    $"entries={entries.Length}, categories={categories.Length}, " +
+                    $"pathfinding-results={filtered.Length}");
+            });
+    }
 
     private static VisualTestSession CreateSingleUnit()
     {

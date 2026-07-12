@@ -10,16 +10,16 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 99 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 100 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
 当前规模：
 
-- 136 个 C# 源文件。
-- 约 42,877 行 C#（按 `src/**/*.cs` 统计）。
-- 99 个黑盒场景。
-- AV1/WebM 规范录像覆盖全部 99 个当前逻辑场景。
+- 139 个 C# 源文件。
+- 约 43,649 行 C#（按 `src/**/*.cs` 统计）。
+- 100 个黑盒场景。
+- AV1/WebM 规范录像覆盖全部 100 个当前逻辑场景。
 - Release 1000 单位移动 P95：约 10.07ms。
 - Release 1000 单位当前线程分配：约 685B/Tick。
 
@@ -1108,6 +1108,15 @@ E5a 至此收口。为避免无穷调参，暂不自动开启 E5b：只有新的
 - 60 秒 AV1/WebM 位于 `test_videos/20260712_195411/`，4,999,986 字节。全仓录像门禁通过 128 个视频、73 个 manifest、127 个场景引用，编码均为 AV1。
 
 H3 提供后续复杂玩法的集成基线。新单位、技能、科技或 AI Planner 应优先接入该关卡的数据定义和公开遥测；不得为了关卡结果在底层系统加入固定 Tick 特判。
+
+### AT：启动页与解耦测试中心（已完成）
+
+- 正常启动增加中文入口页；默认 RTS 演示在后台完成导航同步后暂停，用户选择进入时原样继续。
+- 测试中心展示全部 100 个 `VisualTestCatalog` 场景，支持分类、case id/中文说明搜索、详情查看和直接运行；运行中可手动返回，完成后自动带通过/失败摘要返回。
+- 纯 C# `TestShowcaseCatalog` 只维护展示元数据，Godot `RtsLaunchScreen` 只绘制快照并发出 case id，不读取 `MovementTestRig`、Store 或测试场景内部状态。
+- 默认演示运行时与测试运行时隔离保存；反复切换时销毁并重建 HUD，避免控件、事件和选择状态叠加。
+- `TestShowcaseCatalogSelfTest` 强制每个可执行 case 都有唯一中文说明，验证分类、搜索和未知 case 拒绝；新增 `frontend-test-browser` 黑盒场景走同一全量回归与录像入口。
+- 100/100 全量回归通过。专用 AV1/WebM 位于 `test_videos/20260712_203124/`；全仓录像门禁通过 129 个视频、74 个 manifest、128 个场景引用，编码均为 AV1。
 
 ## 8. 可以并行但不能提前耦合的优化
 

@@ -1,5 +1,6 @@
 using Godot;
 using RtsDemo.AI;
+using RtsDemo.Presentation;
 using RtsDemo.Simulation;
 using RtsDemo.Tests;
 using RtsDemo.GodotRuntime.Resources;
@@ -65,6 +66,18 @@ public partial class RtsDemo : Node2D
     private AiConfigurationCatalogSnapshot? _aiConfigurations;
     private Label? _hud;
     private Control? _hudRoot;
+    private CanvasLayer? _hudLayer;
+    private RtsLaunchScreen? _launchScreen;
+    private bool _frontEndBlocking;
+    private bool _interactiveVisualTest;
+    private string _interactiveTestStatus = "";
+    private TestShowcaseEntry[] _testShowcaseEntries = [];
+    private StaticWorld? _defaultWorld;
+    private GodotPathProvider? _defaultPathProvider;
+    private IPathProvider? _defaultSimulationPathProvider;
+    private RtsSimulation? _defaultSimulation;
+    private PortalGraphRoutePlanner? _defaultRoutePlanner;
+    private ChokeController? _defaultChokeController;
     private bool _navigationReady;
     private bool _dragging;
     private bool _showDebug = true;
@@ -348,6 +361,8 @@ public partial class RtsDemo : Node2D
         }
         UpdateHud();
         QueueRedraw();
+        RememberDefaultRuntime();
+        CreateLaunchScreen();
 
         if (userArguments.Contains("--capture"))
         {
@@ -363,7 +378,7 @@ public partial class RtsDemo : Node2D
 
     public override void _PhysicsProcess(double delta)
     {
-        if (!_navigationReady || _simulation is null)
+        if (_frontEndBlocking || !_navigationReady || _simulation is null)
         {
             return;
         }
@@ -401,6 +416,9 @@ public partial class RtsDemo : Node2D
                            $"replanned={_resourceWatchStatus.ReplannedUnits}";
             }
             _visualTestExitCode = passed ? 0 : 1;
+            _interactiveTestStatus = passed
+                ? $"测试通过：{_visualTest.Id}。{summary}"
+                : $"测试失败：{_visualTest.Id}。{summary}";
             GD.Print(
                 $"RTS_VISUAL_TEST_{(passed ? "PASS" : "FAIL")} {_visualTest.Id}: " +
                 $"ticks={_simulation.Metrics.Tick}, {summary}");
@@ -413,7 +431,8 @@ public partial class RtsDemo : Node2D
         if (_visualTest?.TargetCommandPreviewPointer is { } previewPointer)
             _pointerScreen = GodotPathProvider.ToGodot(previewPointer);
         UpdateTargetCommandOverlay();
-        if (_visualTest is null && _cameraController is not null && _camera is not null)
+        if (!_frontEndBlocking && _visualTest is null &&
+            _cameraController is not null && _camera is not null)
         {
             UpdateCamera((float)delta);
         }
@@ -425,13 +444,16 @@ public partial class RtsDemo : Node2D
         _visualTestFinishFrames--;
         if (_visualTestFinishFrames == 0)
         {
-            GetTree().Quit(_visualTestExitCode);
+            if (_interactiveVisualTest)
+                ReturnToTestBrowser(_interactiveTestStatus);
+            else
+                GetTree().Quit(_visualTestExitCode);
         }
     }
 
     public override void _UnhandledInput(InputEvent inputEvent)
     {
-        if (_simulation is null)
+        if (_frontEndBlocking || _simulation is null)
         {
             return;
         }
@@ -1575,6 +1597,7 @@ public partial class RtsDemo : Node2D
 
     private void CreateHud()
     {
+        DestroyHud();
         _targetCommandOverlay ??= new RtsTargetCommandOverlay();
         if (_targetCommandOverlay.GetParent() is null)
             AddChild(_targetCommandOverlay);
@@ -1585,13 +1608,13 @@ public partial class RtsDemo : Node2D
             Modulate = new Color("d8e7f3")
         };
         _hud.AddThemeFontSizeOverride("font_size", 15);
-        var layer = new CanvasLayer { Layer = 10 };
-        AddChild(layer);
+        _hudLayer = new CanvasLayer { Layer = 10 };
+        AddChild(_hudLayer);
         _hudRoot = new Control
         {
             MouseFilter = Control.MouseFilterEnum.Ignore
         };
-        layer.AddChild(_hudRoot);
+        _hudLayer.AddChild(_hudRoot);
         _hudRoot.AddChild(_hud);
         if (_visualTest is null || _visualTest.Id == "minimap-interaction")
         {
@@ -1661,6 +1684,21 @@ public partial class RtsDemo : Node2D
             _hudRoot.AddChild(_economyControl);
         }
         UpdateHudLayout();
+    }
+
+    private void DestroyHud()
+    {
+        if (_hudLayer is not null && GodotObject.IsInstanceValid(_hudLayer))
+            _hudLayer.QueueFree();
+        _hudLayer = null;
+        _hudRoot = null;
+        _hud = null;
+        _minimap = null;
+        _commandCard = null;
+        _resourceReloadControl = null;
+        _buildingConnectivityDiffControl = null;
+        _resourceWatchControl = null;
+        _economyControl = null;
     }
 
     private void UpdateTargetCommandOverlay()
@@ -2483,6 +2521,118 @@ public partial class RtsDemo : Node2D
             : $"f{_navigationSnapshot.FormatVersion} {_navigationSnapshot.StableHashText}";
     }
 
+    private void RememberDefaultRuntime()
+    {
+        _defaultWorld = _world;
+        _defaultPathProvider = _pathProvider;
+        _defaultSimulationPathProvider = _simulationPathProvider;
+        _defaultSimulation = _simulation;
+        _defaultRoutePlanner = _routePlanner;
+        _defaultChokeController = _chokeController;
+    }
+
+    private void CreateLaunchScreen()
+    {
+        _testShowcaseEntries = TestShowcaseCatalog.Build(
+            VisualTestCatalog.CaseIds);
+        var layer = new CanvasLayer { Layer = 100 };
+        AddChild(layer);
+        _launchScreen = new RtsLaunchScreen();
+        _launchScreen.DemoRequested += EnterDefaultDemo;
+        _launchScreen.TestRequested += StartInteractiveVisualTest;
+        _launchScreen.TestBrowserRequested += () =>
+            ReturnToTestBrowser("已停止当前测试，可选择其他场景。 ");
+        layer.AddChild(_launchScreen);
+        _launchScreen.Initialize(_testShowcaseEntries);
+        SetFrontEndBlocking(true);
+    }
+
+    private void EnterDefaultDemo()
+    {
+        if (_defaultWorld is null || _defaultSimulation is null)
+            return;
+        _world = _defaultWorld;
+        _pathProvider = _defaultPathProvider;
+        _simulationPathProvider = _defaultSimulationPathProvider;
+        _simulation = _defaultSimulation;
+        _routePlanner = _defaultRoutePlanner;
+        _chokeController = _defaultChokeController;
+        _visualTest = null;
+        _interactiveVisualTest = false;
+        _visualTestFinishFrames = -1;
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        _activeSelectionSubgroup = null;
+        _combatPresentation.Reset();
+        _combatProjectileLayer?.SetFrame(CombatPresentationFrame.Empty);
+        InitializeOperationState();
+        InitializeCamera();
+        InitializeResourceFileWatcher(EnableResourceFileWatcher);
+        CreateHud();
+        _navigationReady = _defaultPathProvider?.IsReady ?? true;
+        _launchScreen?.HideScreen();
+        SetFrontEndBlocking(false);
+        UpdateHud();
+        QueueRedraw();
+    }
+
+    private void StartInteractiveVisualTest(string caseId)
+    {
+        var entry = _testShowcaseEntries.FirstOrDefault(value =>
+            string.Equals(value.Id, caseId, StringComparison.Ordinal));
+        if (entry is null)
+            return;
+        if (caseId == "resource-hot-reload" &&
+            !TryPrepareHotReloadCandidate())
+        {
+            ReturnToTestBrowser("测试资源准备失败，请查看控制台错误。 ");
+            return;
+        }
+        _interactiveVisualTest = true;
+        _interactiveTestStatus = "";
+        _visualTestFinishFrames = -1;
+        _launchScreen?.ShowRunning(entry);
+        SetFrontEndBlocking(false);
+        StartVisualTest(caseId);
+    }
+
+    private void ReturnToTestBrowser(string status)
+    {
+        _navigationReady = false;
+        _visualTestFinishFrames = -1;
+        _interactiveVisualTest = false;
+        _resourceFileWatcher?.Stop();
+        _resourceFileWatcher = null;
+        DestroyHud();
+        _targetCommand = null;
+        _buildTargetPreview = null;
+        _combatPresentation.Reset();
+        _combatProjectileLayer?.SetFrame(CombatPresentationFrame.Empty);
+        _launchScreen?.ShowBrowser(status);
+        SetFrontEndBlocking(true);
+        QueueRedraw();
+    }
+
+    private void SetFrontEndBlocking(bool blocking)
+    {
+        _frontEndBlocking = blocking;
+        if (_hudRoot is not null)
+            _hudRoot.Visible = !blocking;
+        if (_targetCommandOverlay is not null)
+            _targetCommandOverlay.Visible = !blocking;
+    }
+
+    private void ShowTestBrowserPreview()
+    {
+        var entries = TestShowcaseCatalog.Build(VisualTestCatalog.CaseIds);
+        var layer = new CanvasLayer { Layer = 100 };
+        AddChild(layer);
+        var preview = new RtsLaunchScreen();
+        layer.AddChild(preview);
+        preview.Initialize(entries);
+        preview.ShowBrowser("自动录像：测试目录、分类、搜索与中文说明。 ");
+    }
+
     private void StartVisualTest(string caseId)
     {
         try
@@ -2501,7 +2651,10 @@ public partial class RtsDemo : Node2D
         catch (ArgumentException exception)
         {
             GD.PushError(exception.Message);
-            GetTree().Quit(2);
+            if (_interactiveVisualTest)
+                ReturnToTestBrowser($"无法启动测试：{exception.Message}");
+            else
+                GetTree().Quit(2);
             return;
         }
 
@@ -2573,6 +2726,8 @@ public partial class RtsDemo : Node2D
             ApplyCameraState();
         }
         CreateHud();
+        if (caseId == "frontend-test-browser" && !_interactiveVisualTest)
+            ShowTestBrowserPreview();
         UpdateHud();
         QueueRedraw();
         GD.Print(
