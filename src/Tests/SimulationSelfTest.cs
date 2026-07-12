@@ -50,6 +50,8 @@ public static class SimulationSelfTest
             var combatProjectileResult = CombatProjectileSelfTest.Run();
             var combatPresentationResult = CombatPresentationSelfTest.Run();
             var testShowcaseResult = TestShowcaseCatalogSelfTest.Run();
+            var playableSkirmishResult = PlayableSkirmishScenarioSelfTest.Run(
+                buildingTypes, productionCatalog, technologyCatalog);
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
@@ -63,7 +65,8 @@ public static class SimulationSelfTest
             passed &= operationPresentationResult.Passed && controlGroupResult.Passed &&
                       productionGroupResult.Passed && combatEventResult.Passed &&
                       combatDamageResult.Passed && combatProjectileResult.Passed &&
-                      combatPresentationResult.Passed && testShowcaseResult.Passed;
+                      combatPresentationResult.Passed && testShowcaseResult.Passed &&
+                      playableSkirmishResult.Passed;
             var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 24)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
@@ -133,7 +136,10 @@ public static class SimulationSelfTest
                 $"({combatPresentationResult.Summary})",
                 $"test-showcase=" +
                 $"{(testShowcaseResult.Passed ? "PASS" : "FAIL")}" +
-                $"({testShowcaseResult.Summary})"
+                $"({testShowcaseResult.Summary})",
+                $"playable-skirmish=" +
+                $"{(playableSkirmishResult.Passed ? "PASS" : "FAIL")}" +
+                $"({playableSkirmishResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

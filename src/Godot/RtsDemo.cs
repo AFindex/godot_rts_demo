@@ -1,6 +1,7 @@
 using Godot;
 using RtsDemo.AI;
 using RtsDemo.Presentation;
+using RtsDemo.Scenarios;
 using RtsDemo.Simulation;
 using RtsDemo.Tests;
 using RtsDemo.GodotRuntime.Resources;
@@ -60,6 +61,7 @@ public partial class RtsDemo : Node2D
     private GodotPathProvider? _pathProvider;
     private IPathProvider? _simulationPathProvider;
     private RtsSimulation? _simulation;
+    private RtsAiDirector? _aiDirector;
     private PortalGraphRoutePlanner? _routePlanner;
     private ChokeController? _chokeController;
     private VisualTestSession? _visualTest;
@@ -76,6 +78,7 @@ public partial class RtsDemo : Node2D
     private GodotPathProvider? _defaultPathProvider;
     private IPathProvider? _defaultSimulationPathProvider;
     private RtsSimulation? _defaultSimulation;
+    private RtsAiDirector? _defaultAiDirector;
     private PortalGraphRoutePlanner? _defaultRoutePlanner;
     private ChokeController? _defaultChokeController;
     private bool _navigationReady;
@@ -95,14 +98,14 @@ public partial class RtsDemo : Node2D
     private long _buildPreviewTick = long.MinValue;
     private int _visualTestFinishFrames = -1;
     private int _visualTestExitCode;
-    private readonly Stack<DynamicFootprintId> _demoBuildings = new();
-    private int _nextDemoBuildingClass;
     private NavigationMapSnapshot? _navigationSnapshot;
+    private NavigationMapSnapshot? _playableNavigationSnapshot;
     private GameplayProfileCatalogSnapshot? _gameplayProfiles;
     private BuildingTypeCatalogSnapshot? _buildingTypes;
     private ProductionCatalogSnapshot? _productionCatalog;
     private TechnologyCatalogSnapshot? _technologyCatalog;
     private ClearanceBakeSnapshot? _clearanceBake;
+    private ClearanceBakeSnapshot? _playableClearanceBake;
     private ControlGroupManager? _controlGroups;
     private int[] _selectionTypeIds = [];
     private readonly ControlGroupRecallTracker _controlGroupRecallTracker = new();
@@ -128,6 +131,8 @@ public partial class RtsDemo : Node2D
     private RtsEconomyControl? _economyControl;
     private readonly CombatPresentationComposer _combatPresentation = new();
     private RtsCombatProjectileLayer? _combatProjectileLayer;
+    private bool _playableDemoSmoke;
+    private long _playableDemoSmokeEndTick;
 
     public override async void _Ready()
     {
@@ -325,28 +330,31 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        _world = _navigationSnapshot.CreateWorld();
-        _routePlanner = _navigationSnapshot.CreateRoutePlanner(_world);
-        _chokeController = _navigationSnapshot.CreateChokeController();
+        _playableNavigationSnapshot =
+            PlayableSkirmishScenario.CreateNavigationSnapshot();
+        _playableClearanceBake =
+            ClearanceBakeSnapshot.Build(_playableNavigationSnapshot);
+        _world = _playableNavigationSnapshot.CreateWorld();
+        _routePlanner = _playableNavigationSnapshot.CreateRoutePlanner(_world);
+        _chokeController = _playableNavigationSnapshot.CreateChokeController();
         _pathProvider = new GodotPathProvider(this, _world, navigationRadius: 8f);
         _simulationPathProvider = new ValidatingFallbackPathProvider(
             _pathProvider,
-            new GridPathProvider(_world, staticBake: _clearanceBake),
+            new GridPathProvider(_world, staticBake: _playableClearanceBake),
             _world);
         _simulation = new RtsSimulation(
             _world,
             _simulationPathProvider,
-            capacity: 256,
+            capacity: PlayableSkirmishScenario.SimulationCapacity,
             groupRoutePlanner: _routePlanner,
             chokeController: _chokeController,
-            clearanceBake: _clearanceBake);
+            clearanceBake: _playableClearanceBake);
         _combatPresentation.Reset();
-        InitializeResourceFileWatcher(enableFileSystemWatchers:
-            EnableResourceFileWatcher);
         InitializeOperationState();
+        PreparePlayableSkirmish();
         InitializeCamera();
+        FocusCameraAt(PlayableSkirmishScenario.PlayerHome);
         CreateHud();
-        SpawnDemoUnits();
 
         for (var attempt = 0; attempt < 120 && !_pathProvider.IsReady; attempt++)
         {
@@ -363,6 +371,14 @@ public partial class RtsDemo : Node2D
         QueueRedraw();
         RememberDefaultRuntime();
         CreateLaunchScreen();
+
+        if (userArguments.Contains("--playable-demo-smoke"))
+        {
+            _playableDemoSmoke = true;
+            _playableDemoSmokeEndTick =
+                _simulation.Metrics.Tick + 1_800;
+            EnterDefaultDemo();
+        }
 
         if (userArguments.Contains("--capture"))
         {
@@ -385,6 +401,8 @@ public partial class RtsDemo : Node2D
 
         if (_visualTest is null || _visualTest.Id == "minimap-interaction")
         {
+            if (_visualTest is null)
+                _aiDirector?.Update(_simulation.Metrics.Tick);
             _simulation.Tick((float)delta);
         }
         else
@@ -396,6 +414,13 @@ public partial class RtsDemo : Node2D
         UpdateHud();
         SyncWorldPresentationLayers();
         QueueRedraw();
+
+        if (_playableDemoSmoke &&
+            _simulation.Metrics.Tick >= _playableDemoSmokeEndTick)
+        {
+            FinishPlayableDemoSmoke();
+            return;
+        }
 
         if (_visualTest is not null &&
             _simulation.Metrics.Tick >= _visualTest.DurationTicks)
@@ -989,10 +1014,7 @@ public partial class RtsDemo : Node2D
                 ResetDemoUnits();
                 break;
             case Key.B:
-                PlaceDemoBuilding();
-                break;
-            case Key.X:
-                RemoveLastDemoBuilding();
+                BeginQuickSupplyBuild();
                 break;
         }
 
@@ -1962,7 +1984,7 @@ public partial class RtsDemo : Node2D
         }
 
         var title = _visualTest is null
-            ? "Godot 4.7 .NET RTS movement demo"
+            ? "Godot 4.7 .NET RTS · Player vs AI Skirmish"
             : $"REC  {_visualTest.DisplayName}  " +
               $"{metrics.Tick / 60f:0.0}/{_visualTest.DurationTicks / 60f:0.0}s  " +
               $"[{_visualTest.Phase}]";
@@ -2054,7 +2076,7 @@ public partial class RtsDemo : Node2D
             $"{trafficText}\n" +
             "LMB select  RMB smart  Shift+RMB queue  A+RMB attack-move  " +
             "Ctrl+# assign  Shift+# add  Alt+# steal  # recall  Space all  S stop  H hold  " +
-            "B place building  X remove building  D debug  R reset";
+            "B build Supply Depot  D debug  R restart skirmish";
         UpdateMinimap();
     }
 
@@ -2466,7 +2488,10 @@ public partial class RtsDemo : Node2D
         {
             var node = _economyOverview.ResourceNodes
                 .Where(value => value.Kind == EconomyResourceKind.VespeneGas &&
-                                value.Operational &&
+                                value.RequiresRefinery &&
+                                !value.Operational &&
+                                (_playerView is null ||
+                                 _visibleResources.ContainsKey(value.Id.Value)) &&
                                 NVector2.DistanceSquared(value.Position, pointer) <=
                                 32f * 32f)
                 .OrderBy(value => NVector2.DistanceSquared(value.Position, pointer))
@@ -2668,9 +2693,12 @@ public partial class RtsDemo : Node2D
                   _visualTest.Rig.NavigationDataHash.ToString("X16");
         }
 
-        return _navigationSnapshot is null
+        var navigation = _visualTest is null
+            ? _playableNavigationSnapshot
+            : _navigationSnapshot;
+        return navigation is null
             ? "none"
-            : $"f{_navigationSnapshot.FormatVersion} {_navigationSnapshot.StableHashText}";
+            : $"f{navigation.FormatVersion} {navigation.StableHashText}";
     }
 
     private void RememberDefaultRuntime()
@@ -2679,6 +2707,7 @@ public partial class RtsDemo : Node2D
         _defaultPathProvider = _pathProvider;
         _defaultSimulationPathProvider = _simulationPathProvider;
         _defaultSimulation = _simulation;
+        _defaultAiDirector = _aiDirector;
         _defaultRoutePlanner = _routePlanner;
         _defaultChokeController = _chokeController;
     }
@@ -2707,6 +2736,7 @@ public partial class RtsDemo : Node2D
         _pathProvider = _defaultPathProvider;
         _simulationPathProvider = _defaultSimulationPathProvider;
         _simulation = _defaultSimulation;
+        _aiDirector = _defaultAiDirector;
         _routePlanner = _defaultRoutePlanner;
         _chokeController = _defaultChokeController;
         _visualTest = null;
@@ -2719,7 +2749,10 @@ public partial class RtsDemo : Node2D
         _combatProjectileLayer?.SetFrame(CombatPresentationFrame.Empty);
         InitializeOperationState();
         InitializeCamera();
-        InitializeResourceFileWatcher(EnableResourceFileWatcher);
+        FocusCameraAt(PlayableSkirmishScenario.PlayerHome);
+        _resourceFileWatcher?.Stop();
+        _resourceFileWatcher = null;
+        _resourceWatchStatus = ResourceReloadWorkflowSnapshot.Idle;
         CreateHud();
         _navigationReady = _defaultPathProvider?.IsReady ?? true;
         _launchScreen?.HideScreen();
@@ -2727,6 +2760,31 @@ public partial class RtsDemo : Node2D
         UpdateHud();
         SyncWorldPresentationLayers();
         QueueRedraw();
+    }
+
+    private void FinishPlayableDemoSmoke()
+    {
+        if (_simulation is null)
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        _playableDemoSmoke = false;
+        var player = _simulation.Economy.Players.Snapshot(PlayerTeam);
+        var enemyFacilities = _simulation.Construction.CreateOverview()
+            .Count(value => !value.IsTerminal &&
+                value.PlayerId == PlayableSkirmishScenario.EnemyId);
+        var match = _simulation.Match.CreateSnapshot(
+            _simulation.Construction, _simulation.Economy,
+            _simulation.Units, _simulation.Combat);
+        var passed = player.Minerals > 1_800 && enemyFacilities >= 3 &&
+                     match.Phase == MatchPhase.Running;
+        GD.Print(
+            $"RTS_PLAYABLE_DEMO_{(passed ? "PASS" : "FAIL")} " +
+            $"ticks={_simulation.Metrics.Tick}, " +
+            $"bank={player.Minerals}/{player.VespeneGas}, " +
+            $"enemyFacilities={enemyFacilities}, match={match.Phase}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private void StartInteractiveVisualTest(string caseId)
@@ -2788,6 +2846,7 @@ public partial class RtsDemo : Node2D
 
     private void StartVisualTest(string caseId)
     {
+        _aiDirector = null;
         try
         {
         _visualTest = VisualTestCatalog.Create(
@@ -3443,43 +3502,20 @@ public partial class RtsDemo : Node2D
         return false;
     }
 
-    private void SpawnDemoUnits()
+    private void PreparePlayableSkirmish()
     {
-        if (_simulation is null || _gameplayProfiles is null)
+        if (_simulation is null || _buildingTypes is null ||
+            _productionCatalog is null || _technologyCatalog is null)
         {
             return;
         }
-
-        for (var row = 0; row < 8; row++)
-        {
-            for (var column = 0; column < 12; column++)
-            {
-                var profile = _gameplayProfiles.Unit((row + column) %
-                    _gameplayProfiles.UnitProfiles.Length);
-                var unit = _simulation.AddUnit(
-                    new NVector2(105f + column * 20f, 160f + row * 20f),
-                    profile,
-                    team: 1,
-                    CombatProfileSnapshot.Standard);
-                _selectionTypeIds[unit] = profile.Id;
-                _selectedUnits.Add(unit);
-            }
-        }
-
-        for (var row = 0; row < 5; row++)
-        {
-            for (var column = 0; column < 8; column++)
-            {
-                var profile = _gameplayProfiles.Unit((row + column) %
-                    _gameplayProfiles.UnitProfiles.Length);
-                var unit = _simulation.AddUnit(
-                    new NVector2(1030f + column * 20f, 510f + row * 20f),
-                    profile,
-                    team: 2,
-                    CombatProfileSnapshot.Standard);
-                _selectionTypeIds[unit] = profile.Id;
-            }
-        }
+        var runtime = PlayableSkirmishScenario.Prepare(
+            _simulation, _buildingTypes, _productionCatalog,
+            _technologyCatalog);
+        _aiDirector = runtime.AiDirector;
+        _selectedUnits.Clear();
+        foreach (var worker in runtime.PlayerWorkers)
+            _selectedUnits.Add(worker);
     }
 
     private void ResetDemoUnits()
@@ -3489,58 +3525,45 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        foreach (var footprint in _world.DynamicOccupancy.Snapshot())
+            _world.DynamicOccupancy.Remove(footprint.Id, out _);
+
         _simulation = new RtsSimulation(
             _world,
             _simulationPathProvider,
-            capacity: 256,
+            capacity: PlayableSkirmishScenario.SimulationCapacity,
             groupRoutePlanner: _routePlanner,
             chokeController: _chokeController,
-            clearanceBake: _clearanceBake);
+            clearanceBake: _playableClearanceBake);
         InitializeOperationState();
         _selectedUnits.Clear();
-        SpawnDemoUnits();
+        _selectedBuildings.Clear();
+        PreparePlayableSkirmish();
+        _defaultSimulation = _simulation;
+        _defaultAiDirector = _aiDirector;
+        FocusCameraAt(PlayableSkirmishScenario.PlayerHome);
         _commandMarkerTime = 0f;
     }
 
-    private void PlaceDemoBuilding()
+    private void BeginQuickSupplyBuild()
     {
-        if (_world is null || _simulation is null || _gameplayProfiles is null ||
+        if (_simulation is null || _buildingTypes is null ||
             _visualTest is not null)
         {
             return;
         }
-
-        var profile = _gameplayProfiles.Building(
-            _nextDemoBuildingClass % _gameplayProfiles.BuildingProfiles.Length);
-        var size = profile.Size;
-        var halfSize = size * 0.5f;
-        var allowedCenters = _world.Bounds.Inset(MathF.Max(halfSize.X, halfSize.Y));
-        var center = allowedCenters.Clamp(
-            GodotPathProvider.ToNumerics(GetGlobalMousePosition()));
-        var result = _simulation.TryPlaceBuilding(center, profile);
-        if (!result.Succeeded)
-        {
-            GD.Print($"RTS_BUILDING_REJECT profile={profile.Name} " +
-                     $"code={result.Code} conflict={result.ConflictId}");
-            return;
-        }
-
-        _demoBuildings.Push(result.FootprintId);
-        _nextDemoBuildingClass++;
-        GD.Print($"RTS_BUILDING_PLACED profile={profile.Name} " +
-                 $"size={size} id={result.FootprintId.Value}");
-        QueueRedraw();
-    }
-
-    private void RemoveLastDemoBuilding()
-    {
-        if (_simulation is null || _demoBuildings.Count == 0 || _visualTest is not null)
-        {
-            return;
-        }
-
-        _simulation.RemoveBuilding(_demoBuildings.Pop());
-        QueueRedraw();
+        var workers = SelectedLivingUnits()
+            .Where(unit => _simulation.Economy.IsWorkerOwnedBy(unit, PlayerTeam))
+            .ToArray();
+        if (workers.Length == 0) return;
+        _targetCommand = TargetCommandRequest.Create(
+            TargetCommandKind.Build,
+            workers,
+            [],
+            "Build Supply Depot",
+            DemoBuildingTypes.SupplyDepot.Id);
+        _buildPreviewRequest = null;
+        _buildTargetPreview = null;
     }
 
     private async Task CaptureDemoFrame()

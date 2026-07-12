@@ -54,8 +54,8 @@ public partial class RtsLaunchScreen : Control
             new Color("a9c9df")));
         content.AddChild(Spacer(14));
         content.AddChild(ActionButton(
-            "进入 RTS 演示",
-            "进入可操作的默认场景，体验选择、移动、建造和命令卡。",
+            "进入大型 RTS 对局",
+            "12 农民开局，对抗会采矿、扩张、攀科技和持续进攻的敌方 AI。",
             () => DemoRequested?.Invoke()));
         content.AddChild(ActionButton(
             $"打开测试中心  ·  {_entries.Count} 项",

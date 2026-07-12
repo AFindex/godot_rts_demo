@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T00:33:19.0203836+08:00",
+    "generated_at":  "2026-07-13T01:28:23.2177529+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  130,
-    "case_count":  101,
+    "recording_count":  131,
+    "case_count":  102,
     "recordings":  [
+                       {
+                           "id":  "playable-skirmish-demo",
+                           "display_name":  null,
+                           "batch":  "20260713_012005",
+                           "created_at":  "2026-07-13T01:20:05+08:00",
+                           "video":  "../20260713_012005/playable-skirmish-demo.webm",
+                           "log":  "../20260713_012005/playable-skirmish-demo.log",
+                           "bytes":  3474746,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_PLAYABLE_DEMO_PASS ticks=1816, bank=2166/600, enemyFacilities=6, match=Running",
+                           "metrics":  "RTS_PLAYABLE_DEMO_PASS ticks=1816, bank=2166/600, enemyFacilities=6, match=Running"
+                       },
                        {
                            "id":  "ai-continuous-encounter",
                            "display_name":  null,

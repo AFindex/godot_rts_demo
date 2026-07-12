@@ -1129,6 +1129,20 @@ H3 提供后续复杂玩法的集成基线。新单位、技能、科技或 AI P
 - README 明确 Godot 4.7 .NET/Mono、x64 .NET 9 SDK、首次 `restore/build` 和失败缓存清理流程。
 - 使用全新空 NuGet 包目录和 `--no-cache` 实测下载 `godot.sourcegenerators`、`godotsharp`、`godotsharpeditor` 后 Release 编译通过，0 错误/0 警告；恢复常规包目录后 Debug 编译和 100/100 Godot 全量回归通过。
 
+### AV：默认大型 Player vs AI 可玩对局（已完成）
+
+- 默认入口从 96/40 个预生成测试单位改为正式玩法对局；`PlayableSkirmishScenario` 是无 Godot 依赖的组合根，地图/资源/开局/AI 配置不进入模拟内核，也不复制玩法实现。
+- 地图扩大为 3120×1720，中央上下双通道、四处外围扩张和两组中央富矿；共 78 个资源节点，矿物单点 6500～10000、气矿单点 6000。
+- 双方各以 Command Center、12 SCV、1800 Minerals、600 Vespene 开局，初始 SCV 自动采主矿；没有预生成军队、科技或生产设施。
+- P2 挂载正式模块化 AI，目标 24 农民、10 人军队出击；建设、采气、生产、科技、扩张、侦察、防守和进攻均通过正式意图执行器与玩家命令完成。
+- 正常玩家视角启用迷雾，镜头从 P1 主基地开始；方向键/边缘滚屏、滚轮、小地图、选择、SmartCommand、编组、命令卡、Rally 与建筑/生产/科技流程全部沿用正式交互。
+- 删除遗留 `B/X` 直接增删动态 Footprint 调试路径；`B` 现在使用选中农民进入正式 Supply Depot 放置，气矿放置也改为选择可见、未启用且要求 Refinery 的节点。
+- `GodotPathProvider` 的同步探针不再固定使用世界中心，而是确定性搜索最近合法点，支持中心被障碍占据的地图；新图烘焙得到 18 个 Godot NavMesh 多边形并同步成功。
+- 纯 C# 1800 Tick 验收通过：玩家矿量 1800→2166、敌方发展到 6 座设施、比赛 Running；101 项既有视觉黑盒与新增场景烟测全量通过。
+- 30 秒玩家视角 AV1/WebM 位于 `test_videos/20260713_012005/`，1280×720、903 帧、CRF32/preset8。
+
+详细配置见 [默认可玩对局](PLAYABLE_SKIRMISH_DEMO.md)。后续对该 Demo 的扩展应继续修改场景数据或正式系统能力，不在 `RtsDemo` 中增加固定 Tick 玩法脚本。
+
 ## 8. 可以并行但不能提前耦合的优化
 
 - Steering 预计算候选方向。

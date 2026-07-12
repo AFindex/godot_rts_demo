@@ -1,0 +1,27 @@
+{
+  "created_at": "2026-07-13T01:20:05+08:00",
+  "fps": 30,
+  "codec": "AV1 (libsvtav1)",
+  "container": "WebM",
+  "crf": 32,
+  "preset": 8,
+  "godot_executable": "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+  "requested_cases": ["playable-skirmish-demo"],
+  "available_cases": [],
+  "cases": [
+    {
+      "id": "playable-skirmish-demo",
+      "file": "playable-skirmish-demo.webm",
+      "log": "playable-skirmish-demo.log",
+      "bytes": 3474746,
+      "source_bytes": 73902576,
+      "codec": "av1",
+      "container": "webm",
+      "crf": 32,
+      "preset": 8,
+      "exit_code": 0,
+      "encode_error": null,
+      "result": "RTS_PLAYABLE_DEMO_PASS ticks=1816, bank=2166/600, enemyFacilities=6, match=Running"
+    }
+  ]
+}

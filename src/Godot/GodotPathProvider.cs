@@ -17,7 +17,7 @@ public sealed class GodotPathProvider : IPathProvider, IDisposable
     public GodotPathProvider(Node2D parent, StaticWorld world, float navigationRadius)
     {
         var polygon = BuildPolygon(world, navigationRadius);
-        _probePoint = ToGodot((world.Bounds.Min + world.Bounds.Max) * 0.5f);
+        _probePoint = ToGodot(FindSynchronizationProbe(world, navigationRadius));
         _polygonCount = polygon.GetPolygonCount();
         var vertices = polygon.GetVertices();
         if (vertices.Length > 0)
@@ -151,6 +151,37 @@ public sealed class GodotPathProvider : IPathProvider, IDisposable
 
         NavigationServer2D.BakeFromSourceGeometryData(polygon, sourceGeometry);
         return polygon;
+    }
+
+    private static NVector2 FindSynchronizationProbe(
+        StaticWorld world,
+        float navigationRadius)
+    {
+        var center = (world.Bounds.Min + world.Bounds.Max) * 0.5f;
+        if (world.IsDiscFree(center, navigationRadius))
+            return center;
+
+        const float spacing = 48f;
+        var inset = world.Bounds.Inset(navigationRadius + 4f);
+        var best = inset.Min;
+        var bestDistance = float.PositiveInfinity;
+        for (var y = inset.Min.Y; y <= inset.Max.Y; y += spacing)
+        {
+            for (var x = inset.Min.X; x <= inset.Max.X; x += spacing)
+            {
+                var candidate = new NVector2(x, y);
+                if (!world.IsDiscFree(candidate, navigationRadius))
+                    continue;
+                var distance = NVector2.DistanceSquared(center, candidate);
+                if (distance >= bestDistance) continue;
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+        if (!float.IsFinite(bestDistance))
+            throw new InvalidOperationException(
+                "Navigation world has no valid synchronization probe point.");
+        return best;
     }
 
     public static NVector2 ToNumerics(Vector2 value) => new(value.X, value.Y);
