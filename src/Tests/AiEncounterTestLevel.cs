@@ -173,7 +173,8 @@ public readonly record struct AiEncounterWorkerSignal(
     int UnitId,
     TestWorkerEconomyState State,
     TestEconomyResourceKind CargoKind,
-    int CargoAmount);
+    int CargoAmount,
+    bool UsesNearestDropOffEdge);
 
 public interface IAiEncounterLevelRuntime
 {
@@ -350,6 +351,8 @@ public sealed class AiEncounterTelemetry
         public bool SawGoingToResource { get; private set; }
         public bool SawGathering { get; private set; }
         public bool SawReturningCargo { get; private set; }
+        public int ReturningApproachSamples { get; private set; }
+        public int InvalidReturningApproaches { get; private set; }
         public AiEncounterSideSnapshot Latest { get; private set; }
 
         public void Observe(AiEncounterSideSnapshot value, long tick)
@@ -389,13 +392,24 @@ public sealed class AiEncounterTelemetry
         {
             foreach (var worker in workers)
             {
+                var hasPrevious = _workers.TryGetValue(
+                    worker.UnitId, out var previous);
                 SawGoingToResource |=
                     worker.State == TestWorkerEconomyState.GoingToResource;
                 SawGathering |= worker.State == TestWorkerEconomyState.Gathering;
                 SawReturningCargo |=
                     worker.State == TestWorkerEconomyState.ReturningCargo &&
                     worker.CargoAmount > 0;
-                if (_workers.TryGetValue(worker.UnitId, out var previous) &&
+                if (worker.State == TestWorkerEconomyState.ReturningCargo &&
+                    worker.CargoAmount > 0 &&
+                    (!hasPrevious || previous.State !=
+                        TestWorkerEconomyState.ReturningCargo))
+                {
+                    ReturningApproachSamples++;
+                    if (!worker.UsesNearestDropOffEdge)
+                        InvalidReturningApproaches++;
+                }
+                if (hasPrevious &&
                     previous.State == TestWorkerEconomyState.ReturningCargo &&
                     previous.CargoAmount > 0 &&
                     worker.State == TestWorkerEconomyState.GoingToResource &&
@@ -422,6 +436,8 @@ public sealed class AiEncounterTelemetry
             SawGoingToResource,
             SawGathering,
             SawReturningCargo,
+            ReturningApproachSamples,
+            InvalidReturningApproaches,
             Latest);
     }
 }
@@ -441,6 +457,8 @@ public readonly record struct AiEncounterTelemetrySnapshot(
     bool SawGoingToResource,
     bool SawGathering,
     bool SawReturningCargo,
+    int ReturningApproachSamples,
+    int InvalidReturningApproaches,
     AiEncounterSideSnapshot Latest);
 
 public sealed class MovementTestRigAiEncounterRuntime(
@@ -530,11 +548,31 @@ public sealed class MovementTestRigAiEncounterRuntime(
 
     public AiEncounterWorkerSignal[] ObserveWorkers(int playerId) =>
         rig.ObservePlayerWorkers(playerId).Select(value =>
-            new AiEncounterWorkerSignal(
+        {
+            var nearest = rig.PreviewDropOffApproach(
+                playerId, value.CargoKind, value.Unit);
+            var delta = Vector2.Abs(value.MovementGoal - nearest.Center);
+            var onVerticalEdge = MathF.Abs(
+                    delta.X - nearest.InteractionHalfExtents.X) <= 0.25f &&
+                delta.Y <= nearest.InteractionHalfExtents.Y + 0.25f;
+            var onHorizontalEdge = MathF.Abs(
+                    delta.Y - nearest.InteractionHalfExtents.Y) <= 0.25f &&
+                delta.X <= nearest.InteractionHalfExtents.X + 0.25f;
+            var usesNearestEdge = value.State !=
+                                      TestWorkerEconomyState.ReturningCargo ||
+                                  nearest.Found &&
+                                  nearest.HalfExtents.X > 0f &&
+                                  nearest.HalfExtents.Y > 0f &&
+                                  (onVerticalEdge || onHorizontalEdge) &&
+                                  Vector2.DistanceSquared(
+                                      value.MovementGoal, nearest.Center) > 1f;
+            return new AiEncounterWorkerSignal(
                 value.Unit.Value,
                 value.State,
                 value.CargoKind,
-                value.CargoAmount)).ToArray();
+                value.CargoAmount,
+                usesNearestEdge);
+        }).ToArray();
 
     public AiEncounterCombatSignal[] ObserveCombatSignals(ulong afterSequence)
     {

@@ -53,7 +53,7 @@ MovementTestRigAiEncounterRuntime
 
 ## 采集循环与 Mineral Walk
 
-此前 Town Hall 把 DropOff 注册在建筑中心，而 160×120 的实体碰撞会让工人无法进入固定的 52px 入账圈。现在 DropOff 合同持久化 `ArrivalRadius`：普通投递点保持默认半径，Town Hall 按实际建筑长边半径加交互余量注册。农民无需进入建筑碰撞体即可完成入账，且不同尺寸基地不再依赖魔法常量。
+此前 Town Hall 把 DropOff 注册在建筑中心，而 160×120 的实体碰撞会迫使工人绕向建筑两侧。现在 DropOff 合同持久化建筑中心与矩形半尺寸；每次返矿都从农民当前位置求扩张后矩形四条边上的最近点，并把该点作为移动目标。农民因此走向基地最近的一侧，而不是绕到中心或固定入口；到达判定也消费同一几何合同。点状 DropOff 仍保持兼容，不同尺寸基地不依赖魔法常量。
 
 `WorkerCollisionPolicy` 只在 `GoingToResource` 和 `ReturningCargo` 两段关闭单位—单位碰撞，Steering 与最终圆碰撞解算消费同一个瞬时掩码；`WaitingForResource`、`Gathering`、Idle、施工、普通移动和战斗不享受穿行。静态障碍与建筑仍由 `StaticWorld.ConstrainDisc` 约束，因此采矿工人可以穿过单位，但不能穿过建筑。
 
@@ -76,10 +76,11 @@ MovementTestRigAiEncounterRuntime
 - 最大军队到战损低点：13→2 / 5→1；
 - 累计科技等级：4 / 4；
 - 最终基地：2 / 2，比赛仍在进行；
-- 完整采集循环：114 / 96，双方均覆盖去程、采集、携货返程和再次出发；
-- 正式命令：经济 32、建造 12、生产/研究 54、单位 166；
-- Replay Package v18 / Hot Snapshot v18 可规范往返，State Hash v19。
+- 完整采集循环：77 / 79，双方均覆盖去程、采集、携货返程和再次出发；
+- 最近基地边缘采样：82:0 / 86:0（有效:无效），不存在返回建筑中心或错误边缘；
+- 正式命令：经济 30、建造 12、生产/研究 52、单位 155；
+- Replay Package v19 / Hot Snapshot v19 可规范往返，State Hash v20。
 
-录像位于 `test_videos/20260712_233934/ai-continuous-encounter.webm`，AV1/WebM、1802 帧、32,562,443 字节；包含总览、自动平滑镜头巡视以及镜头变换后的正确弹道和命中特效。
+录像位于 `test_videos/20260713_002852/ai-continuous-encounter.webm`，AV1/WebM、1802 帧、30,265,782 字节；包含总览、自动平滑镜头巡视、最近基地边缘返矿，以及镜头变换后的正确弹道和命中特效。
 
 这个关卡已经形成后续复杂玩法的集成入口。新增单位、技能、科技或 AI Planner 时，应扩展数据定义和公开遥测，而不是在关卡里直接调用底层系统或为某个固定 Tick 写作弊脚本。

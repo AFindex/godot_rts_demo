@@ -1,23 +1,38 @@
 ﻿{
-    "generated_at":  "2026-07-12T23:41:29.8312547+08:00",
+    "generated_at":  "2026-07-13T00:33:19.0203836+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  129,
-    "case_count":  100,
+    "recording_count":  130,
+    "case_count":  101,
     "recordings":  [
                        {
                            "id":  "ai-continuous-encounter",
                            "display_name":  null,
-                           "batch":  "20260712_233934",
-                           "created_at":  "2026-07-12T23:40:55.5631510+08:00",
-                           "video":  "../20260712_233934/ai-continuous-encounter.webm",
-                           "log":  "../20260712_233934/ai-continuous-encounter.log",
-                           "bytes":  32562443,
+                           "batch":  "20260713_002852",
+                           "created_at":  "2026-07-13T00:30:13.7342258+08:00",
+                           "video":  "../20260713_002852/ai-continuous-encounter.webm",
+                           "log":  "../20260713_002852/ai-continuous-encounter.log",
+                           "bytes":  30265782,
                            "fps":  30,
                            "codec":  "AV1 (libsvtav1)",
                            "crf":  32,
                            "status":  "passed",
-                           "result":  "RTS_VISUAL_TEST_PASS ai-continuous-encounter: ticks=3600, milestones=L[570/660/1140/690] R[630/870/1230/750], attacks=51/83, impacts=84/30, army=13-\u003e2/5-\u003e1, tech=4/4, bases=2/2, gatherLoops=114/96, commands=e32/b12/p54/u166, running=True, package=18/True",
-                           "metrics":  "ticks=3600, milestones=L[570/660/1140/690] R[630/870/1230/750], attacks=51/83, impacts=84/30, army=13-\u003e2/5-\u003e1, tech=4/4, bases=2/2, gatherLoops=114/96, commands=e32/b12/p54/u166, running=True, package=18/True"
+                           "result":  "RTS_VISUAL_TEST_PASS ai-continuous-encounter: ticks=3600, milestones=L[570/690/1140/690] R[630/870/1230/750], attacks=47/83, impacts=72/40, army=11-\u003e2/6-\u003e1, tech=4/4, bases=2/2, gatherLoops=77/79, dropOffEdges=82:0/86:0, commands=e30/b12/p52/u155, running=True, package=19/True",
+                           "metrics":  "ticks=3600, milestones=L[570/690/1140/690] R[630/870/1230/750], attacks=47/83, impacts=72/40, army=11-\u003e2/6-\u003e1, tech=4/4, bases=2/2, gatherLoops=77/79, dropOffEdges=82:0/86:0, commands=e30/b12/p52/u155, running=True, package=19/True"
+                       },
+                       {
+                           "id":  "economy-mass-mining",
+                           "display_name":  "96 workers continuously mine 32 mineral fields into four bases",
+                           "batch":  "20260713_002852",
+                           "created_at":  "2026-07-13T00:30:13.7342258+08:00",
+                           "video":  "../20260713_002852/economy-mass-mining.webm",
+                           "log":  "../20260713_002852/economy-mass-mining.log",
+                           "bytes":  6187939,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-mass-mining: ticks=600, workers=96, nodes=32, bases=4/True, cycles=172, mined=4032, phases=96/96/96, edges=456:0, unreachable=0",
+                           "metrics":  "ticks=600, workers=96, nodes=32, bases=4/True, cycles=172, mined=4032, phases=96/96/96, edges=456:0, unreachable=0"
                        },
                        {
                            "id":  "frontend-test-browser",

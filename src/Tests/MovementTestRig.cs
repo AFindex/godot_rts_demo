@@ -300,7 +300,16 @@ public readonly record struct TestWorkerCycleSnapshot(
     TestWorkerEconomyState State,
     TestResourceNodeId TargetNode,
     TestEconomyResourceKind CargoKind,
-    int CargoAmount);
+    int CargoAmount,
+    Vector2 MovementGoal);
+
+public readonly record struct TestDropOffApproachSnapshot(
+    bool Found,
+    Vector2 Center,
+    Vector2 HalfExtents,
+    Vector2 InteractionHalfExtents,
+    Vector2 Target,
+    float DistanceSquared);
 
 public enum TestMapVisibility : byte
 {
@@ -1432,9 +1441,30 @@ public sealed partial class MovementTestRig
                 (TestWorkerEconomyState)snapshot.State,
                 new TestResourceNodeId(snapshot.TargetNode.Value),
                 (TestEconomyResourceKind)snapshot.CargoKind,
-                snapshot.CargoAmount));
+                snapshot.CargoAmount,
+                _simulation.Units.MoveGoals[unit]));
         }
         return workers.ToArray();
+    }
+
+    public TestDropOffApproachSnapshot PreviewDropOffApproach(
+        int playerId,
+        TestEconomyResourceKind kind,
+        TestUnitId worker)
+    {
+        var unit = Observe(worker);
+        var snapshot = _simulation.Economy.PreviewDropOffApproach(
+            playerId,
+            (EconomyResourceKind)kind,
+            unit.Position,
+            unit.Radius);
+        return new TestDropOffApproachSnapshot(
+            snapshot.Found,
+            snapshot.Center,
+            snapshot.HalfExtents,
+            snapshot.InteractionHalfExtents,
+            snapshot.Target,
+            snapshot.DistanceSquared);
     }
 
     public TestPlayerViewSnapshot ObservePlayerView(int playerId)

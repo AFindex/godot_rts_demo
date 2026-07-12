@@ -1,5 +1,5 @@
 ﻿{
-    "created_at":  "2026-07-12T23:40:55.5631510+08:00",
+    "created_at":  "2026-07-13T00:30:13.7342258+08:00",
     "fps":  30,
     "codec":  "AV1 (libsvtav1)",
     "container":  "WebM",
@@ -7,7 +7,8 @@
     "preset":  8,
     "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
     "requested_cases":  [
-                            "ai-continuous-encounter"
+                            "ai-continuous-encounter",
+                            "economy-mass-mining"
                         ],
     "available_cases":  [
                             "frontend-test-browser",
@@ -74,6 +75,7 @@
                             "resource-file-watch-workflow",
                             "building-connectivity-diff-preview",
                             "economy-dual-resource",
+                            "economy-mass-mining",
                             "economy-expansion-saturation",
                             "player-visibility-authority",
                             "match-capability-elimination",
@@ -116,15 +118,29 @@
                       "id":  "ai-continuous-encounter",
                       "file":  "ai-continuous-encounter.webm",
                       "log":  "ai-continuous-encounter.log",
-                      "bytes":  32562443,
-                      "source_bytes":  182619040,
+                      "bytes":  30265782,
+                      "source_bytes":  180975240,
                       "codec":  "av1",
                       "container":  "webm",
                       "crf":  32,
                       "preset":  8,
                       "exit_code":  0,
                       "encode_error":  null,
-                      "result":  "RTS_VISUAL_TEST_PASS ai-continuous-encounter: ticks=3600, milestones=L[570/660/1140/690] R[630/870/1230/750], attacks=51/83, impacts=84/30, army=13-\u003e2/5-\u003e1, tech=4/4, bases=2/2, gatherLoops=114/96, commands=e32/b12/p54/u166, running=True, package=18/True"
+                      "result":  "RTS_VISUAL_TEST_PASS ai-continuous-encounter: ticks=3600, milestones=L[570/690/1140/690] R[630/870/1230/750], attacks=47/83, impacts=72/40, army=11-\u003e2/6-\u003e1, tech=4/4, bases=2/2, gatherLoops=77/79, dropOffEdges=82:0/86:0, commands=e30/b12/p52/u155, running=True, package=19/True"
+                  },
+                  {
+                      "id":  "economy-mass-mining",
+                      "file":  "economy-mass-mining.webm",
+                      "log":  "economy-mass-mining.log",
+                      "bytes":  6187939,
+                      "source_bytes":  27490638,
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8,
+                      "exit_code":  0,
+                      "encode_error":  null,
+                      "result":  "RTS_VISUAL_TEST_PASS economy-mass-mining: ticks=600, workers=96, nodes=32, bases=4/True, cycles=172, mined=4032, phases=96/96/96, edges=456:0, unreachable=0"
                   }
               ]
 }

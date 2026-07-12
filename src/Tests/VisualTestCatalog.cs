@@ -77,6 +77,7 @@ public static class VisualTestCatalog
         "resource-file-watch-workflow",
         "building-connectivity-diff-preview",
         "economy-dual-resource",
+        "economy-mass-mining",
         "economy-expansion-saturation",
         "player-visibility-authority",
         "match-capability-elimination",
@@ -222,6 +223,7 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview" =>
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
+        "economy-mass-mining" => CreateMassMiningEconomy(),
         "economy-expansion-saturation" => CreateExpansionSaturation(),
         "player-visibility-authority" => CreatePlayerVisibilityAuthority(
             navigationMap, gameplayProfiles, clearanceBake),
@@ -3802,6 +3804,207 @@ public static class VisualTestCatalog
                 TestDiagnosticKind.Accepted);
     }
 
+    private static VisualTestSession CreateMassMiningEconomy()
+    {
+        const int baseCount = 4;
+        const int workersPerBase = 24;
+        const int nodesPerBase = 8;
+        const int startingNodeAmount = 10_000;
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1500f, 900f), 160);
+        rig.RegisterPlayer(1, 12_000, 0, 200, baseCount * workersPerBase);
+        Vector2[] baseCenters =
+        [
+            new(250f, 250f), new(1250f, 250f),
+            new(250f, 650f), new(1250f, 650f)
+        ];
+        var resources = new List<TestResourceNodeId>(baseCount * nodesPerBase);
+        var workers = new List<TestUnitId>(baseCount * workersPerBase);
+        var buildings = new List<TestConstructionResult>(baseCount);
+        var clusterWorkers = new TestUnitId[baseCount][];
+        var clusterResources = new TestResourceNodeId[baseCount][];
+        var townHall = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 0.25f,
+            MaximumHealth = 12_000f,
+            SupplyProvided = 0
+        };
+
+        for (var cluster = 0; cluster < baseCount; cluster++)
+        {
+            var center = baseCenters[cluster];
+            var nodes = new TestResourceNodeId[nodesPerBase];
+            for (var node = 0; node < nodesPerBase; node++)
+            {
+                var angle = node * MathF.Tau / nodesPerBase;
+                var position = center + new Vector2(
+                    MathF.Cos(angle), MathF.Sin(angle)) * 155f;
+                nodes[node] = rig.AddResourceNode(
+                    TestEconomyResourceKind.Minerals,
+                    position,
+                    startingNodeAmount,
+                    harvestBatch: 6,
+                    harvestSeconds: 0.35f,
+                    harvesterCapacity: 3);
+                resources.Add(nodes[node]);
+            }
+            clusterResources[cluster] = nodes;
+
+            var members = new TestUnitId[workersPerBase];
+            members[0] = rig.SpawnWorker(center + new Vector2(0f, 125f), 1);
+            buildings.Add(rig.Build(1, members[0], townHall, center));
+            clusterWorkers[cluster] = members;
+            workers.Add(members[0]);
+        }
+        var previous = new Dictionary<int, TestWorkerCycleSnapshot>();
+        var sawGoing = new HashSet<int>();
+        var sawGathering = new HashSet<int>();
+        var sawReturning = new HashSet<int>();
+        var cycles = 0;
+        var approachSamples = 0;
+        var invalidApproaches = 0;
+        var acceptedGatherCommands = 0;
+
+        var session = new VisualTestSession(
+            "economy-mass-mining",
+            "96 workers continuously mine 32 mineral fields into four bases",
+            600,
+            rig,
+            workers.ToArray(),
+            runtime =>
+            {
+                var totalMined = resources.Sum(node =>
+                    startingNodeAmount - runtime.ObserveResourceNode(node).Remaining);
+                var recovery = runtime.ObserveRecovery(workers);
+                var basesCompleted = buildings.All(building =>
+                    building.Succeeded &&
+                    runtime.ObserveGameplayBuilding(building.BuildingId).State ==
+                    TestBuildingLifecycleState.Completed);
+                var passed = basesCompleted &&
+                             acceptedGatherCommands == workers.Count &&
+                             sawGoing.Count == workers.Count &&
+                             sawGathering.Count == workers.Count &&
+                             sawReturning.Count == workers.Count &&
+                             cycles >= 150 && approachSamples >= 200 &&
+                             invalidApproaches == 0 &&
+                             totalMined >= cycles * 6 &&
+                             recovery.UnreachableUnits == 0;
+                return new ScenarioResult(
+                    passed,
+                    $"workers={workers.Count}, nodes={resources.Count}, " +
+                    $"bases={buildings.Count}/{basesCompleted}, " +
+                    $"cycles={cycles}, mined={totalMined}, " +
+                    $"phases={sawGoing.Count}/{sawGathering.Count}/" +
+                    $"{sawReturning.Count}, edges={approachSamples}:" +
+                    $"{invalidApproaches}, unreachable=" +
+                    $"{recovery.UnreachableUnits}");
+            })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(750f, 450f), 0.68f)
+            .CameraKeyframe(90, new Vector2(750f, 450f), 0.68f)
+            .CameraKeyframe(180, baseCenters[0], 1.05f)
+            .CameraKeyframe(270, baseCenters[1], 1.05f)
+            .CameraKeyframe(360, baseCenters[2], 1.05f)
+            .CameraKeyframe(450, baseCenters[3], 1.05f)
+            .CameraKeyframe(570, new Vector2(750f, 450f), 0.68f);
+
+        for (var cluster = 0; cluster < baseCount; cluster++)
+        {
+            var captureCluster = cluster;
+            session.Highlight(
+                new SimRect(
+                    baseCenters[cluster] - new Vector2(220f, 210f),
+                    baseCenters[cluster] + new Vector2(220f, 210f)),
+                $"MINING BASE {cluster + 1}: 24 workers / 8 patches",
+                cluster % 2 == 0
+                    ? TestDiagnosticKind.Info
+                    : TestDiagnosticKind.Accepted);
+            session.At(75, $"Spawn and start mining cluster {cluster + 1}", runtime =>
+            {
+                var center = baseCenters[captureCluster];
+                for (var worker = 1; worker < workersPerBase; worker++)
+                {
+                    var node = worker % nodesPerBase;
+                    var nodePosition = center + new Vector2(
+                        MathF.Cos(node * MathF.Tau / nodesPerBase),
+                        MathF.Sin(node * MathF.Tau / nodesPerBase)) * 125f;
+                    var lane = worker / nodesPerBase;
+                    clusterWorkers[captureCluster][worker] = runtime.SpawnWorker(
+                        nodePosition + new Vector2(
+                            (lane - 1) * 13f, lane * 7f), 1);
+                    workers.Add(clusterWorkers[captureCluster][worker]);
+                }
+                for (var worker = 0; worker < workersPerBase; worker++)
+                {
+                    var result = runtime.Gather(
+                        1,
+                        clusterWorkers[captureCluster][worker],
+                        clusterResources[captureCluster][worker % nodesPerBase]);
+                    if (result == TestGatherCommandCode.Success)
+                        acceptedGatherCommands++;
+                }
+            });
+        }
+
+        for (var tick = 75; tick < session.DurationTicks; tick += 2)
+        {
+            session.At(tick, "Observe mass-mining business telemetry", runtime =>
+            {
+                foreach (var worker in runtime.ObservePlayerWorkers(1))
+                {
+                    sawGoing.UnionWith(worker.State ==
+                        TestWorkerEconomyState.GoingToResource
+                            ? [worker.Unit.Value]
+                            : []);
+                    sawGathering.UnionWith(worker.State ==
+                        TestWorkerEconomyState.Gathering
+                            ? [worker.Unit.Value]
+                            : []);
+                    sawReturning.UnionWith(worker.State ==
+                        TestWorkerEconomyState.ReturningCargo
+                            ? [worker.Unit.Value]
+                            : []);
+                    var hadPrevious = previous.TryGetValue(
+                        worker.Unit.Value, out var prior);
+                    if (worker.State == TestWorkerEconomyState.ReturningCargo &&
+                        (!hadPrevious || prior.State !=
+                            TestWorkerEconomyState.ReturningCargo))
+                    {
+                        approachSamples++;
+                        var expected = runtime.PreviewDropOffApproach(
+                            1, worker.CargoKind, worker.Unit);
+                        var assigned = worker.MovementGoal;
+                        var delta = Vector2.Abs(assigned - expected.Center);
+                        var onVerticalEdge = MathF.Abs(
+                                delta.X - expected.InteractionHalfExtents.X) <=
+                            0.25f &&
+                            delta.Y <= expected.InteractionHalfExtents.Y + 0.25f;
+                        var onHorizontalEdge = MathF.Abs(
+                                delta.Y - expected.InteractionHalfExtents.Y) <=
+                            0.25f &&
+                            delta.X <= expected.InteractionHalfExtents.X + 0.25f;
+                        if (!expected.Found ||
+                            expected.HalfExtents.X <= 0f ||
+                            expected.HalfExtents.Y <= 0f ||
+                            !onVerticalEdge && !onHorizontalEdge ||
+                            Vector2.DistanceSquared(
+                                assigned, expected.Center) <= 1f)
+                            invalidApproaches++;
+                    }
+                    if (hadPrevious &&
+                        prior.State == TestWorkerEconomyState.ReturningCargo &&
+                        prior.CargoAmount > 0 &&
+                        worker.State == TestWorkerEconomyState.GoingToResource &&
+                        worker.CargoAmount == 0)
+                        cycles++;
+                    previous[worker.Unit.Value] = worker;
+                }
+            });
+        }
+        return session;
+    }
+
     private static VisualTestSession CreateExpansionSaturation()
     {
         var rig = MovementTestRig.CreateEconomyMap(
@@ -4535,9 +4738,15 @@ public static class VisualTestCatalog
                                     left.SawGoingToResource && right.SawGoingToResource &&
                                     left.SawGathering && right.SawGathering &&
                                     left.SawReturningCargo && right.SawReturningCargo;
+                var nearestDropOffEdges =
+                    left.ReturningApproachSamples > 0 &&
+                    right.ReturningApproachSamples > 0 &&
+                    left.InvalidReturningApproaches == 0 &&
+                    right.InvalidReturningApproaches == 0;
                 var passed = aiAttached && infrastructure && technology &&
                              expansion && continuousAttack && mutualCombat &&
-                             attrition && gatheringLoop && commandCoverage &&
+                             attrition && gatheringLoop && nearestDropOffEdges &&
+                             commandCoverage &&
                              packageRoundTrip &&
                              match.Phase == TestMatchPhase.Running;
                 return new ScenarioResult(
@@ -4555,6 +4764,10 @@ public static class VisualTestCatalog
                     $"{left.Latest.TownHalls}/{right.Latest.TownHalls}, " +
                     $"gatherLoops={left.CompletedGatherCycles}/" +
                     $"{right.CompletedGatherCycles}, " +
+                    $"dropOffEdges={left.ReturningApproachSamples}:" +
+                    $"{left.InvalidReturningApproaches}/" +
+                    $"{right.ReturningApproachSamples}:" +
+                    $"{right.InvalidReturningApproaches}, " +
                     $"commands=e{package.EconomyCommandCount}/" +
                     $"b{package.ConstructionCommandCount}/" +
                     $"p{package.ProductionCommandCount}/u" +

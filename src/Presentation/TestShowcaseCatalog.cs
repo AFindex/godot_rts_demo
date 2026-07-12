@@ -122,6 +122,7 @@ public static class TestShowcaseCatalog
             M("resource-file-watch-workflow", "资源文件监听", "数据工作流", "验证写入风暴去抖、有限重试和安全自动提交。"),
             M("building-connectivity-diff-preview", "放置连通差异面板", "数据工作流", "展示建筑放置前三档拓扑变化与受影响 Chunk。"),
             M("economy-dual-resource", "双资源采集", "经济玩法", "验证矿物、瓦斯、Refinery、容量、枯竭和再次采集。"),
+            M("economy-mass-mining", "大规模多基地采矿", "经济玩法", "96 个农民在四个基地与 32 片矿之间持续往返，验证最近投递边界、完整循环和高密度穿行。"),
             M("economy-expansion-saturation", "扩张与饱和度", "经济玩法", "验证双基地归属、工人转场、饱和度和基地摧毁。"),
             M("player-visibility-authority", "视野与命令权限", "比赛规则", "验证战争迷雾、探索记忆和不可见目标权限。"),
             M("match-capability-elimination", "比赛失败与终局", "比赛规则", "验证建立存在、基地损失、玩家失败和胜负锁定。"),
