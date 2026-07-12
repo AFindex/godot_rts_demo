@@ -41,7 +41,14 @@ public readonly record struct CombatProfileSnapshot(
     float AttackCooldownSeconds,
     float AttackWindupSeconds,
     float LeashDistance,
-    CombatPositioningKind Positioning = CombatPositioningKind.Ranged)
+    CombatPositioningKind Positioning = CombatPositioningKind.Ranged,
+    float Armor = 0f,
+    CombatAttribute Attributes = CombatAttribute.Biological,
+    int AttacksPerVolley = 1,
+    CombatAttribute BonusVs = CombatAttribute.None,
+    float BonusDamage = 0f,
+    float BaseUpgradeDamage = 0f,
+    float BonusUpgradeDamage = 0f)
 {
     public static CombatProfileSnapshot Standard => new(
         MaximumHealth: 45f,
@@ -62,7 +69,13 @@ public readonly record struct CombatProfileSnapshot(
             !float.IsFinite(AttackWindupSeconds) || AttackWindupSeconds < 0f ||
             AttackWindupSeconds > AttackCooldownSeconds ||
             !float.IsFinite(LeashDistance) || LeashDistance < AcquisitionRange ||
-            !Enum.IsDefined(Positioning))
+            !Enum.IsDefined(Positioning) || !float.IsFinite(Armor) || Armor < 0f ||
+            (Attributes & ~CombatAttribute.All) != 0 ||
+            (BonusVs & ~CombatAttribute.All) != 0 ||
+            AttacksPerVolley is < 1 or > 32 ||
+            !float.IsFinite(BonusDamage) || BonusDamage < 0f ||
+            !float.IsFinite(BaseUpgradeDamage) || BaseUpgradeDamage < 0f ||
+            !float.IsFinite(BonusUpgradeDamage) || BonusUpgradeDamage < 0f)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(CombatProfileSnapshot),
@@ -83,6 +96,13 @@ public sealed class CombatStore
         Health = new float[capacity];
         MaximumHealth = new float[capacity];
         AttackDamage = new float[capacity];
+        Armor = new float[capacity];
+        Attributes = new CombatAttribute[capacity];
+        AttacksPerVolley = new int[capacity];
+        BonusVs = new CombatAttribute[capacity];
+        BonusDamage = new float[capacity];
+        BaseUpgradeDamage = new float[capacity];
+        BonusUpgradeDamage = new float[capacity];
         AttackRanges = new float[capacity];
         AcquisitionRanges = new float[capacity];
         AttackCooldownDurations = new float[capacity];
@@ -112,6 +132,13 @@ public sealed class CombatStore
     public float[] Health { get; }
     public float[] MaximumHealth { get; }
     public float[] AttackDamage { get; }
+    public float[] Armor { get; }
+    public CombatAttribute[] Attributes { get; }
+    public int[] AttacksPerVolley { get; }
+    public CombatAttribute[] BonusVs { get; }
+    public float[] BonusDamage { get; }
+    public float[] BaseUpgradeDamage { get; }
+    public float[] BonusUpgradeDamage { get; }
     public float[] AttackRanges { get; }
     public float[] AcquisitionRanges { get; }
     public float[] AttackCooldownDurations { get; }
@@ -141,6 +168,13 @@ public sealed class CombatStore
         Health[unit] = profile.MaximumHealth;
         MaximumHealth[unit] = profile.MaximumHealth;
         AttackDamage[unit] = profile.AttackDamage;
+        Armor[unit] = profile.Armor;
+        Attributes[unit] = profile.Attributes;
+        AttacksPerVolley[unit] = profile.AttacksPerVolley;
+        BonusVs[unit] = profile.BonusVs;
+        BonusDamage[unit] = profile.BonusDamage;
+        BaseUpgradeDamage[unit] = profile.BaseUpgradeDamage;
+        BonusUpgradeDamage[unit] = profile.BonusUpgradeDamage;
         AttackRanges[unit] = profile.AttackRange;
         AcquisitionRanges[unit] = profile.AcquisitionRange;
         AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
@@ -168,6 +202,13 @@ public sealed class CombatStore
         Copy(source.Health, Health);
         Copy(source.MaximumHealth, MaximumHealth);
         Copy(source.AttackDamage, AttackDamage);
+        Copy(source.Armor, Armor);
+        Copy(source.Attributes, Attributes);
+        Copy(source.AttacksPerVolley, AttacksPerVolley);
+        Copy(source.BonusVs, BonusVs);
+        Copy(source.BonusDamage, BonusDamage);
+        Copy(source.BaseUpgradeDamage, BaseUpgradeDamage);
+        Copy(source.BonusUpgradeDamage, BonusUpgradeDamage);
         Copy(source.AttackRanges, AttackRanges);
         Copy(source.AcquisitionRanges, AcquisitionRanges);
         Copy(source.AttackCooldownDurations, AttackCooldownDurations);

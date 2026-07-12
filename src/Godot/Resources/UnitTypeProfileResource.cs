@@ -30,5 +30,18 @@ public partial class UnitTypeProfileResource : Resource
     public float LeashDistance { get; set; } = 260f;
     [Export] public CombatPositioningKind Positioning { get; set; } =
         CombatPositioningKind.Ranged;
+    [Export(PropertyHint.Range, "0,100,0.5,or_greater")]
+    public float Armor { get; set; }
+    [Export] public CombatAttribute Attributes { get; set; } =
+        CombatAttribute.Biological;
+    [Export(PropertyHint.Range, "1,32,1")]
+    public int AttacksPerVolley { get; set; } = 1;
+    [Export] public CombatAttribute BonusVs { get; set; }
+    [Export(PropertyHint.Range, "0,10000,0.5,or_greater")]
+    public float BonusDamage { get; set; }
+    [Export(PropertyHint.Range, "0,1000,0.5,or_greater")]
+    public float BaseUpgradeDamage { get; set; }
+    [Export(PropertyHint.Range, "0,1000,0.5,or_greater")]
+    public float BonusUpgradeDamage { get; set; }
     [Export] public bool IsWorker { get; set; }
 }

@@ -788,7 +788,14 @@ public readonly record struct TestCombatProfile(
     float AttackCooldownSeconds = 0.72f,
     float AttackWindupSeconds = 0.18f,
     float LeashDistance = 260f,
-    TestCombatPositioning Positioning = TestCombatPositioning.Ranged)
+    TestCombatPositioning Positioning = TestCombatPositioning.Ranged,
+    float Armor = 0f,
+    CombatAttribute Attributes = CombatAttribute.Biological,
+    int AttacksPerVolley = 1,
+    CombatAttribute BonusVs = CombatAttribute.None,
+    float BonusDamage = 0f,
+    float BaseUpgradeDamage = 0f,
+    float BonusUpgradeDamage = 0f)
 {
     public static TestCombatProfile Standard => new(
         45f, 8f, 34f, 155f, 0.72f, 0.18f, 260f);
@@ -828,12 +835,21 @@ public readonly record struct TestCombatEvent(
     CombatTargetKind TargetKind,
     int TargetId,
     float Damage,
-    float RemainingHealth);
+    float RemainingHealth,
+    float DamagePerAttack,
+    int AttacksApplied,
+    bool BonusApplied);
 
 public readonly record struct TestCombatEventBatch(
     TestCombatEvent[] Events,
     ulong LatestSequence,
     int LostEvents);
+
+public readonly record struct TestCombatDamagePreview(
+    float DamagePerAttack,
+    float TotalDamage,
+    int AttacksApplied,
+    bool BonusApplied);
 
 public enum TestBuildingFootprintClass : byte
 {
@@ -1744,7 +1760,14 @@ public sealed partial class MovementTestRig
             resolvedProfile.AttackCooldownSeconds,
             resolvedProfile.AttackWindupSeconds,
             resolvedProfile.LeashDistance,
-            (CombatPositioningKind)resolvedProfile.Positioning);
+            (CombatPositioningKind)resolvedProfile.Positioning,
+            resolvedProfile.Armor,
+            resolvedProfile.Attributes,
+            resolvedProfile.AttacksPerVolley,
+            resolvedProfile.BonusVs,
+            resolvedProfile.BonusDamage,
+            resolvedProfile.BaseUpgradeDamage,
+            resolvedProfile.BonusUpgradeDamage);
         return new TestUnitId(_simulation.AddUnit(
             position, team, backendProfile, radius, maximumSpeed, acceleration));
     }
@@ -2704,9 +2727,21 @@ public sealed partial class MovementTestRig
             batch.Events.Select(value => new TestCombatEvent(
                 value.Tick, value.Sequence, value.Kind,
                 new TestUnitId(value.AttackerUnit), value.TargetKind,
-                value.TargetId, value.Damage, value.RemainingHealth)).ToArray(),
+                value.TargetId, value.Damage, value.RemainingHealth,
+                value.DamagePerAttack, value.AttacksApplied,
+                value.BonusApplied)).ToArray(),
             batch.LatestSequence,
             batch.LostEvents);
+    }
+
+    public TestCombatDamagePreview PreviewCombatDamage(
+        TestUnitId attacker,
+        TestUnitId target)
+    {
+        var value = _simulation.PreviewCombatDamage(attacker.Value, target.Value);
+        return new TestCombatDamagePreview(
+            value.DamagePerAttack, value.TotalDamage,
+            value.AttacksApplied, value.BonusApplied);
     }
 
     public TestOrderSnapshot ObserveOrders(TestUnitId unit)

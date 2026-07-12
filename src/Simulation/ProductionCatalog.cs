@@ -58,7 +58,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;
@@ -207,6 +207,13 @@ public sealed class ProductionCatalogSnapshot
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.AttackWindupSeconds));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.LeashDistance));
         writer.Write((byte)unit.Combat.Positioning);
+        writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.Armor));
+        writer.Write((ushort)unit.Combat.Attributes);
+        writer.Write(unit.Combat.AttacksPerVolley);
+        writer.Write((ushort)unit.Combat.BonusVs);
+        writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BonusDamage));
+        writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BaseUpgradeDamage));
+        writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BonusUpgradeDamage));
         writer.Write(unit.IsWorker);
     }
 
@@ -234,7 +241,16 @@ public sealed class ProductionCatalogSnapshot
         unit.Combat.AttackWindupSeconds <= unit.Combat.AttackCooldownSeconds &&
         Positive(unit.Combat.LeashDistance) &&
         unit.Combat.LeashDistance >= unit.Combat.AcquisitionRange &&
-        Enum.IsDefined(unit.Combat.Positioning);
+        Enum.IsDefined(unit.Combat.Positioning) &&
+        unit.Combat.Armor >= 0f && float.IsFinite(unit.Combat.Armor) &&
+        (unit.Combat.Attributes & ~CombatAttribute.All) == 0 &&
+        unit.Combat.AttacksPerVolley is >= 1 and <= 32 &&
+        (unit.Combat.BonusVs & ~CombatAttribute.All) == 0 &&
+        unit.Combat.BonusDamage >= 0f && float.IsFinite(unit.Combat.BonusDamage) &&
+        unit.Combat.BaseUpgradeDamage >= 0f &&
+        float.IsFinite(unit.Combat.BaseUpgradeDamage) &&
+        unit.Combat.BonusUpgradeDamage >= 0f &&
+        float.IsFinite(unit.Combat.BonusUpgradeDamage);
 
     internal static bool ValidRequirements(
         ImmutableArray<ProductionRequirementProfile> requirements)
@@ -365,18 +381,31 @@ public static class DemoProductionCatalog
             new UnitMovementProfileSnapshot(0, "Marine", 7.5f, 128f, 720f,
                 MovementClass.Medium, 8f),
             new CombatProfileSnapshot(100f, 12f, 90f, 220f, 0.75f, 0.1f, 500f,
-                CombatPositioningKind.Ranged), false);
+                CombatPositioningKind.Ranged,
+                Attributes: CombatAttribute.Light | CombatAttribute.Biological,
+                BaseUpgradeDamage: 1f), false);
         var marauder = new UnitTypeProfile(
             1, "Marauder",
             new UnitMovementProfileSnapshot(1, "Marauder", 10f, 105f, 600f,
                 MovementClass.Large, 12f),
             new CombatProfileSnapshot(180f, 22f, 80f, 210f, 1.1f, 0.15f, 500f,
-                CombatPositioningKind.Ranged), false);
+                CombatPositioningKind.Ranged,
+                Armor: 1f,
+                Attributes: CombatAttribute.Armored | CombatAttribute.Biological,
+                BonusVs: CombatAttribute.Armored,
+                BonusDamage: 10f,
+                BaseUpgradeDamage: 1f,
+                BonusUpgradeDamage: 1f), false);
         var worker = new UnitTypeProfile(
             2, "SCV",
             new UnitMovementProfileSnapshot(2, "SCV", 7.5f, 128f, 720f,
                 MovementClass.Medium, 8f),
-            CombatProfileSnapshot.Standard, true);
+            CombatProfileSnapshot.Standard with
+            {
+                Attributes = CombatAttribute.Light | CombatAttribute.Biological |
+                             CombatAttribute.Mechanical,
+                BaseUpgradeDamage = 1f
+            }, true);
         if (!ProductionCatalogSnapshot.TryCreate(
                 ProductionCatalogSnapshot.CurrentFormatVersion,
                 [marine, marauder, worker],

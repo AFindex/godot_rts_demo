@@ -52,7 +52,7 @@ Idle
 
 ### 确定性与表现边界
 
-状态 Hash v13 已覆盖经济、施工、战斗、生产、Rally、配方前置、科技等级、研究队列和跨域工人任务未来态。
+状态 Hash v14 已覆盖经济、施工、战斗伤害字段、生产、Rally、配方前置、科技等级、研究队列和跨域工人任务未来态。
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
@@ -149,8 +149,8 @@ S11-D2 已完成：
 - Production Log、Package 和三份 Hot Snapshot 的未知版本及截断载荷均稳定拒绝。
 - 专用 9 秒 AV1/WebM 录像位于 `test_videos/20260711_194814/`。
 
-S11-D3a Production Catalog 数据工作流已完成并在 E1 升级到 v2：Unit Type/Recipe 使用独立 Godot
-Resource、Fresh Load 和逐类型差异，运行时消费 Hash `DE89CDDC5527EF18` 的纯 C#
+S11-D3a Production Catalog 数据工作流已完成并在 S8-E2a 升级到 v3：Unit Type/Recipe 使用独立 Godot
+Resource、Fresh Load 和逐类型差异，运行时消费 Hash `BC15AFA55BA3455E` 的纯 C#
 快照。`production-catalog-resource-runtime` 从加载资产生产 Marine、Marauder、SCV，
 验证战斗 Profile、Worker 注册、资源和人口结果。
 专用 22 秒 AV1/WebM 录像位于 `test_videos/20260711_200053/`。
@@ -169,7 +169,7 @@ Rally 本阶段已收口；当前后续是 S11-E2 正式研究/升级队列。
 
 S11-E1 建筑前置与生产可用性已完成：
 
-- Production Catalog v2 的每条 Recipe 可声明多个 `CompletedBuilding(TypeId, Count)` 条件；转换时深拷贝条件数组，并与 Building Type Catalog 交叉校验。
+- Production Catalog v3 的每条 Recipe 可声明多个 `CompletedBuilding(TypeId, Count)` 条件；Unit Type 还声明护甲、属性、属性加成、多段攻击和武器升级量。转换时深拷贝条件数组，并与 Building Type Catalog 交叉校验。
 - `ProductionAvailabilitySnapshot` 同时给出稳定结果码和逐条件 `CurrentCount/RequiredCount`，Godot 选择生产建筑后只读取该快照显示 READY、资源不足或 `MissingPrerequisite`。
 - 条件在新订单入队时检查。已入队订单保存解析后的完整条件，不会因表现层刷新或 Resource 改动改变历史结果。
 - Production Log v3、Replay Package/Hot Snapshot v7、State Hash v8 保存并验证条件未来态。

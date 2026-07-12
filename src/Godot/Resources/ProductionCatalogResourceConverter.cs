@@ -30,6 +30,13 @@ public static class ProductionCatalogResourceConverter
                 AttackWindupSeconds = type.Combat.AttackWindupSeconds,
                 LeashDistance = type.Combat.LeashDistance,
                 Positioning = type.Combat.Positioning,
+                Armor = type.Combat.Armor,
+                Attributes = type.Combat.Attributes,
+                AttacksPerVolley = type.Combat.AttacksPerVolley,
+                BonusVs = type.Combat.BonusVs,
+                BonusDamage = type.Combat.BonusDamage,
+                BaseUpgradeDamage = type.Combat.BaseUpgradeDamage,
+                BonusUpgradeDamage = type.Combat.BonusUpgradeDamage,
                 IsWorker = type.IsWorker
             });
         }
@@ -102,7 +109,9 @@ public static class ProductionCatalogResourceConverter
                 source.MaximumHealth, source.AttackDamage, source.AttackRange,
                 source.AcquisitionRange, source.AttackCooldownSeconds,
                 source.AttackWindupSeconds, source.LeashDistance,
-                source.Positioning);
+                source.Positioning, source.Armor, source.Attributes,
+                source.AttacksPerVolley, source.BonusVs, source.BonusDamage,
+                source.BaseUpgradeDamage, source.BonusUpgradeDamage);
             units[index] = new UnitTypeProfile(
                 source.Id, source.DisplayName ?? string.Empty,
                 movement, combat, source.IsWorker);

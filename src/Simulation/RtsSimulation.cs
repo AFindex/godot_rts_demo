@@ -118,10 +118,15 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
     public ChokeController? ChokeController => _chokeController;
     public int PathBudgetPerTick { get; set; } = 24;
+    public int CombatWeaponUpgradeTechnologyId { get; set; } =
+        DemoTechnologies.InfantryWeapons.Id;
     public ulong ActiveClearanceBakeHash =>
         _buildingConnectivityGuard.ClearanceBakeHash;
 
     public ulong ComputeStateHash() => SimulationStateHasher.Compute(this);
+
+    public CombatDamageResult PreviewCombatDamage(int attacker, int target) =>
+        _combatSystem.PreviewDamage(attacker, target);
 
     public ClearanceBakeCommitResult TryCommitClearanceBake(
         ClearanceBakeSnapshot candidate)
@@ -3255,19 +3260,31 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     CombatBuildingDamageResult ICombatMovementDriver.DamageBuilding(
         GameplayBuildingId building,
-        float damage)
+        CombatWeaponDamageSnapshot weapon)
     {
         if (!Construction.IsAlive(building)) return default;
         var before = Construction.Observe(building).Health;
-        if (!DamageBuilding(building, damage)) return default;
+        var damage = CombatDamageResolver.Resolve(
+            weapon,
+            new CombatDefenseSnapshot(0f, CombatAttribute.Structure),
+            before);
+        if (!DamageBuilding(building, damage.TotalDamage)) return default;
         var after = Construction.Observe(building);
         var remaining = MathF.Max(0f, after.Health);
         return new CombatBuildingDamageResult(
             true,
             after.State == BuildingLifecycleState.Destroyed,
             MathF.Max(0f, before - remaining),
-            remaining);
+            remaining,
+            damage.DamagePerAttack,
+            damage.AttacksApplied,
+            damage.BonusApplied);
     }
+
+    int ICombatMovementDriver.WeaponUpgradeLevel(int team) =>
+        CombatWeaponUpgradeTechnologyId < 0
+            ? 0
+            : Technology.Level(team, CombatWeaponUpgradeTechnologyId);
 
     private void SetCombatDestination(int unit, Vector2 target)
     {

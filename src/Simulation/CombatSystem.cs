@@ -6,7 +6,10 @@ public readonly record struct CombatBuildingDamageResult(
     bool Applied,
     bool Destroyed,
     float AppliedDamage,
-    float RemainingHealth);
+    float RemainingHealth,
+    float DamagePerAttack,
+    int AttacksApplied,
+    bool BonusApplied);
 
 public interface ICombatMovementDriver
 {
@@ -18,7 +21,8 @@ public interface ICombatMovementDriver
     bool IsBuildingTargetValid(int attacker, GameplayBuildingId building);
     SimRect BuildingTargetBounds(GameplayBuildingId building);
     CombatBuildingDamageResult DamageBuilding(
-        GameplayBuildingId building, float damage);
+        GameplayBuildingId building, CombatWeaponDamageSnapshot weapon);
+    int WeaponUpgradeLevel(int team);
 }
 
 /// <summary>
@@ -213,10 +217,12 @@ public sealed class CombatSystem
     {
         _combat.CooldownRemaining[attacker] =
             _combat.AttackCooldownDurations[attacker];
-        var damage = MathF.Min(_combat.Health[target], _combat.AttackDamage[attacker]);
-        _combat.Health[target] = MathF.Max(0f, _combat.Health[target] - damage);
+        var result = PreviewDamage(attacker, target);
+        var damage = result.TotalDamage;
+        _combat.Health[target] = result.RemainingHealth;
         _events.Publish(tick, CombatEventKind.Impact, attacker,
-            CombatTargetKind.Unit, target, damage, _combat.Health[target]);
+            CombatTargetKind.Unit, target, damage, _combat.Health[target],
+            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied);
         if (_combat.Health[target] > 0f)
         {
             return;
@@ -388,8 +394,7 @@ public sealed class CombatSystem
     {
         _combat.CooldownRemaining[attacker] =
             _combat.AttackCooldownDurations[attacker];
-        var result = _movement.DamageBuilding(
-            building, _combat.AttackDamage[attacker]);
+        var result = _movement.DamageBuilding(building, Weapon(attacker));
         if (!result.Applied)
         {
             Disengage(attacker);
@@ -397,7 +402,8 @@ public sealed class CombatSystem
         }
         _events.Publish(tick, CombatEventKind.Impact, attacker,
             CombatTargetKind.Building, building.Value,
-            result.AppliedDamage, result.RemainingHealth);
+            result.AppliedDamage, result.RemainingHealth,
+            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied);
         if (result.Destroyed)
         {
             _events.Publish(tick, CombatEventKind.TargetDestroyed, attacker,
@@ -414,6 +420,28 @@ public sealed class CombatSystem
         long tick) =>
         _events.Publish(tick, CombatEventKind.AttackStarted, attacker,
             targetKind, targetId);
+
+    private CombatWeaponDamageSnapshot Weapon(int attacker) => new(
+        _combat.AttackDamage[attacker],
+        _combat.AttacksPerVolley[attacker],
+        _combat.BonusVs[attacker],
+        _combat.BonusDamage[attacker],
+        _movement.WeaponUpgradeLevel(_combat.Teams[attacker]),
+        _combat.BaseUpgradeDamage[attacker],
+        _combat.BonusUpgradeDamage[attacker]);
+
+    internal CombatDamageResult PreviewDamage(int attacker, int target)
+    {
+        if ((uint)attacker >= (uint)_units.Count ||
+            (uint)target >= (uint)_units.Count ||
+            !_units.Alive[attacker] || !_units.Alive[target])
+            throw new ArgumentOutOfRangeException();
+        return CombatDamageResolver.Resolve(
+            Weapon(attacker),
+            new CombatDefenseSnapshot(
+                _combat.Armor[target], _combat.Attributes[target]),
+            _combat.Health[target]);
+    }
 
     private static Vector2 ClosestOutsidePoint(
         SimRect bounds,

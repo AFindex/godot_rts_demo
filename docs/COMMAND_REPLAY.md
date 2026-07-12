@@ -164,4 +164,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
   --headless --path . -- --visual-test production-rally-smart-targets
 ```
 
-状态 Hash v2～v12 是历史移动至比赛生命周期边界。当前 Hash v13、Package v12、热快照 v12 和 Unit Command Log v3 由 85 项全量回归验证。
+状态 Hash v2～v13 是历史移动至比赛生命周期边界。当前 Hash v14、Package v13、热快照 v13、Production Command Log v5 和 Unit Command Log v3 由 92 项全量回归验证；v14 新增单位护甲、属性、攻击段数、Bonus 和升级量。

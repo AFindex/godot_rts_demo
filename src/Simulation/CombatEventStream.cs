@@ -15,7 +15,10 @@ public readonly record struct CombatEvent(
     CombatTargetKind TargetKind,
     int TargetId,
     float Damage,
-    float RemainingHealth);
+    float RemainingHealth,
+    float DamagePerAttack,
+    int AttacksApplied,
+    bool BonusApplied);
 
 public readonly record struct CombatEventBatch(
     CombatEvent[] Events,
@@ -48,12 +51,15 @@ public sealed class CombatEventStream
         CombatTargetKind targetKind,
         int targetId,
         float damage = 0f,
-        float remainingHealth = 0f)
+        float remainingHealth = 0f,
+        float damagePerAttack = 0f,
+        int attacksApplied = 0,
+        bool bonusApplied = false)
     {
         var sequence = _nextSequence++;
         _events[(int)((sequence - 1) % (ulong)_events.Length)] = new CombatEvent(
             tick, sequence, kind, attackerUnit, targetKind, targetId,
-            damage, remainingHealth);
+            damage, remainingHealth, damagePerAttack, attacksApplied, bonusApplied);
         if (_count < _events.Length) _count++;
     }
 

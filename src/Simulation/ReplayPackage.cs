@@ -87,7 +87,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 12;
+    public const int CurrentFormatVersion = 13;
 
     public SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -566,7 +566,10 @@ public sealed class SimulationReplayPackageSnapshot
         new CombatProfileSnapshot(
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte()));
+            reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte(),
+            reader.ReadSingle(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()));
 
     private static void WriteUnit(BinaryWriter writer, ReplayInitialUnit unit)
     {
@@ -583,6 +586,13 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(unit.CombatProfile.AttackWindupSeconds);
         writer.Write(unit.CombatProfile.LeashDistance);
         writer.Write((byte)unit.CombatProfile.Positioning);
+        writer.Write(unit.CombatProfile.Armor);
+        writer.Write((ushort)unit.CombatProfile.Attributes);
+        writer.Write(unit.CombatProfile.AttacksPerVolley);
+        writer.Write((ushort)unit.CombatProfile.BonusVs);
+        writer.Write(unit.CombatProfile.BonusDamage);
+        writer.Write(unit.CombatProfile.BaseUpgradeDamage);
+        writer.Write(unit.CombatProfile.BonusUpgradeDamage);
     }
 
     private static ReplayInitialBuilding ReadBuilding(BinaryReader reader) => new(
@@ -733,7 +743,14 @@ public sealed class SimulationReplayPackageRecorder
                     simulation.Combat.AttackCooldownDurations[unit],
                     simulation.Combat.AttackWindupDurations[unit],
                     simulation.Combat.LeashDistances[unit],
-                    simulation.Combat.PositioningKinds[unit]));
+                    simulation.Combat.PositioningKinds[unit],
+                    simulation.Combat.Armor[unit],
+                    simulation.Combat.Attributes[unit],
+                    simulation.Combat.AttacksPerVolley[unit],
+                    simulation.Combat.BonusVs[unit],
+                    simulation.Combat.BonusDamage[unit],
+                    simulation.Combat.BaseUpgradeDamage[unit],
+                    simulation.Combat.BonusUpgradeDamage[unit]));
         }
         return result;
     }

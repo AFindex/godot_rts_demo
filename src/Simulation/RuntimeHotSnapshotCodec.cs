@@ -317,6 +317,13 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.Health[unit]);
             writer.Write(combat.MaximumHealth[unit]);
             writer.Write(combat.AttackDamage[unit]);
+            writer.Write(combat.Armor[unit]);
+            writer.Write((ushort)combat.Attributes[unit]);
+            writer.Write(combat.AttacksPerVolley[unit]);
+            writer.Write((ushort)combat.BonusVs[unit]);
+            writer.Write(combat.BonusDamage[unit]);
+            writer.Write(combat.BaseUpgradeDamage[unit]);
+            writer.Write(combat.BonusUpgradeDamage[unit]);
             writer.Write(combat.AttackRanges[unit]);
             writer.Write(combat.AcquisitionRanges[unit]);
             writer.Write(combat.AttackCooldownDurations[unit]);
@@ -350,6 +357,13 @@ internal static class RuntimeHotSnapshotCodec
             combat.Health[unit] = reader.ReadSingle();
             combat.MaximumHealth[unit] = reader.ReadSingle();
             combat.AttackDamage[unit] = reader.ReadSingle();
+            combat.Armor[unit] = reader.ReadSingle();
+            combat.Attributes[unit] = (CombatAttribute)reader.ReadUInt16();
+            combat.AttacksPerVolley[unit] = reader.ReadInt32();
+            combat.BonusVs[unit] = (CombatAttribute)reader.ReadUInt16();
+            combat.BonusDamage[unit] = reader.ReadSingle();
+            combat.BaseUpgradeDamage[unit] = reader.ReadSingle();
+            combat.BonusUpgradeDamage[unit] = reader.ReadSingle();
             combat.AttackRanges[unit] = reader.ReadSingle();
             combat.AcquisitionRanges[unit] = reader.ReadSingle();
             combat.AttackCooldownDurations[unit] = reader.ReadSingle();

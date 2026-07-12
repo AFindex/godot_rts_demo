@@ -1,9 +1,39 @@
 ﻿{
-    "generated_at":  "2026-07-12T12:52:15.6985620+08:00",
+    "generated_at":  "2026-07-12T14:30:56.7697787+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  117,
-    "case_count":  91,
+    "recording_count":  119,
+    "case_count":  92,
     "recordings":  [
+                       {
+                           "id":  "combat-damage-matrix",
+                           "display_name":  "Catalog armor, attributes, bonus damage and multi-hit matrix",
+                           "batch":  "20260712_143026",
+                           "created_at":  "2026-07-12T14:30:56.3196216+08:00",
+                           "video":  "../20260712_143026/combat-damage-matrix.webm",
+                           "log":  "../20260712_143026/combat-damage-matrix.log",
+                           "bytes":  159587,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS combat-damage-matrix: ticks=300, health=80,70,82, damage=20,30,18, catalog=BC15AFA55BA3455E",
+                           "metrics":  "ticks=300, health=80,70,82, damage=20,30,18, catalog=BC15AFA55BA3455E"
+                       },
+                       {
+                           "id":  "technology-research-upgrades",
+                           "display_name":  "Research levels, cancellation, prerequisites and exclusivity persist",
+                           "batch":  "20260712_143026",
+                           "created_at":  "2026-07-12T14:30:56.3196216+08:00",
+                           "video":  "../20260712_143026/technology-research-upgrades.webm",
+                           "log":  "../20260712_143026/technology-research-upgrades.log",
+                           "bytes":  474837,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS technology-research-upgrades: ticks=1320, catalog=f1/8F9990031AA55B5E, levels=weapon2/assault1/fort0, rules=True/True/True/True/True, cancel=True, resources=2475/1575, upgradedDamage=13, persistence=True/True/True, versions=log5/package13/hot13",
+                           "metrics":  "ticks=1320, catalog=f1/8F9990031AA55B5E, levels=weapon2/assault1/fort0, rules=True/True/True/True/True, cancel=True, resources=2475/1575, upgradedDamage=13, persistence=True/True/True, versions=log5/package13/hot13"
+                       },
                        {
                            "id":  "combat-event-stream",
                            "display_name":  "Attack start, impact and destruction emit deterministic events",

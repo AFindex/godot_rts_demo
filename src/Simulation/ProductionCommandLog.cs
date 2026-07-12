@@ -40,7 +40,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 4;
+    public const int CurrentFormatVersion = 5;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {
@@ -317,6 +317,13 @@ internal static class ProductionSerialization
         writer.Write(value.Combat.AttackWindupSeconds);
         writer.Write(value.Combat.LeashDistance);
         writer.Write((byte)value.Combat.Positioning);
+        writer.Write(value.Combat.Armor);
+        writer.Write((ushort)value.Combat.Attributes);
+        writer.Write(value.Combat.AttacksPerVolley);
+        writer.Write((ushort)value.Combat.BonusVs);
+        writer.Write(value.Combat.BonusDamage);
+        writer.Write(value.Combat.BaseUpgradeDamage);
+        writer.Write(value.Combat.BonusUpgradeDamage);
         writer.Write(value.IsWorker);
     }
 
@@ -329,7 +336,10 @@ internal static class ProductionSerialization
         new CombatProfileSnapshot(
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte()),
+            reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte(),
+            reader.ReadSingle(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()),
         reader.ReadBoolean());
 
     private static void WriteString(BinaryWriter writer, string value)
