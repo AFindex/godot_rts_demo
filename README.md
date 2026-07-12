@@ -230,7 +230,7 @@ S11-H1 模块化对局 AI 已完成：Economy/Build/Production/Technology/Scouti
 
 S11-H2 已完成：Standard/Aggressive 配置进入 [AI Configuration Resource](docs/AI_CONFIGURATION_RESOURCE.md)；双 AI 使用不同周期/offset 自对战。Tick 1,200 成对恢复后继续运行 AI，以及 Tick 0 只重放正式命令且不启动 AI，两条链都与连续运行最终 Hash 一致。
 
-S11-H3 已完成：解耦的 [双 AI 持续遭遇战关卡](docs/AI_ENCOUNTER_LEVEL.md) 从 6 工人开局，自主完成双方基础设施、扩张、总 4 级科技和持续互攻；关卡编排只依赖稳定业务合同，不读取模拟内部 Store。
+S11-H3 已完成并补强：解耦的 [双 AI 持续遭遇战关卡](docs/AI_ENCOUNTER_LEVEL.md) 从 6 工人开局，自主完成双方基础设施、扩张、总 4 级科技和持续互攻；双方经逐 Tick 状态迁移验收完成 114/96 轮真实采集循环。录像通过独立镜头关键帧巡视双方基地，SCV 的去矿、采集、携货返程、入账再出发均可直接观察；关卡编排仍只依赖稳定业务合同，不读取模拟内部 Store。
 
 S11-I1/I2 已完成：资源点与己方建筑进入正式 SmartCommand 目标协议；混合选择按能力拆分，乱序选择稳定选择最低 ID 施工者。Shift 现在可排队 `Move → GatherResource` 与 `Move → ResumeConstruction`；未来 Tick 重新验证失败的任务会有界跳过并继续下一条命令，详见 [操作层](docs/OPERATION_LAYER.md)。
 

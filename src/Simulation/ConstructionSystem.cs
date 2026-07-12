@@ -333,7 +333,11 @@ public sealed class ConstructionSystem
                 economy.RegisterTownHall(
                     building.PlayerId,
                     building.Id,
-                    (building.Bounds.Min + building.Bounds.Max) * 0.5f);
+                    (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                    MathF.Max(
+                        building.Bounds.Max.X - building.Bounds.Min.X,
+                        building.Bounds.Max.Y - building.Bounds.Min.Y) * 0.5f +
+                    12f);
             }
             if (building.RefineryNode.Value >= 0)
             {

@@ -295,6 +295,13 @@ public readonly record struct TestWorkerEconomySnapshot(
     TestEconomyResourceKind CargoKind,
     int CargoAmount);
 
+public readonly record struct TestWorkerCycleSnapshot(
+    TestUnitId Unit,
+    TestWorkerEconomyState State,
+    TestResourceNodeId TargetNode,
+    TestEconomyResourceKind CargoKind,
+    int CargoAmount);
+
 public enum TestMapVisibility : byte
 {
     Hidden,
@@ -1409,6 +1416,25 @@ public sealed partial class MovementTestRig
             new TestResourceNodeId(snapshot.TargetNode.Value),
             (TestEconomyResourceKind)snapshot.CargoKind,
             snapshot.CargoAmount);
+    }
+
+    public TestWorkerCycleSnapshot[] ObservePlayerWorkers(int playerId)
+    {
+        var workers = new List<TestWorkerCycleSnapshot>();
+        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        {
+            if (!_simulation.Units.Alive[unit] ||
+                !_simulation.Economy.IsWorkerOwnedBy(unit, playerId))
+                continue;
+            var snapshot = _simulation.Economy.Worker(unit);
+            workers.Add(new TestWorkerCycleSnapshot(
+                new TestUnitId(unit),
+                (TestWorkerEconomyState)snapshot.State,
+                new TestResourceNodeId(snapshot.TargetNode.Value),
+                (TestEconomyResourceKind)snapshot.CargoKind,
+                snapshot.CargoAmount));
+        }
+        return workers.ToArray();
     }
 
     public TestPlayerViewSnapshot ObservePlayerView(int playerId)
@@ -2986,11 +3012,17 @@ public readonly record struct TestDiagnosticArea(
     string Label,
     TestDiagnosticKind Kind);
 
+public readonly record struct TestCameraKeyframe(
+    long Tick,
+    Vector2 Center,
+    float Zoom);
+
 public sealed class VisualTestSession
 {
     private readonly SortedDictionary<long, List<ScheduledAction>> _actions = new();
     private readonly List<TestDiagnosticArea> _diagnosticAreas = [];
     private readonly List<TestGameplayBuildingId> _selectedBuildings = [];
+    private readonly List<TestCameraKeyframe> _cameraKeyframes = [];
     private readonly Func<MovementTestRig, ScenarioResult> _evaluate;
 
     public VisualTestSession(
@@ -3029,11 +3061,57 @@ public sealed class VisualTestSession
     internal TargetCommandRequest? TargetCommandPreview { get; private set; }
     internal Vector2? TargetCommandPreviewPointer { get; private set; }
     private bool DynamicUnitRendering { get; set; }
+    internal bool OmniscientRendering { get; private set; }
+    internal bool HasCameraTrack => _cameraKeyframes.Count > 0;
 
     public VisualTestSession RenderSpawnedUnits()
     {
         DynamicUnitRendering = true;
         return this;
+    }
+
+    public VisualTestSession RenderOmniscient()
+    {
+        OmniscientRendering = true;
+        return this;
+    }
+
+    public VisualTestSession CameraKeyframe(
+        long tick,
+        Vector2 center,
+        float zoom)
+    {
+        if (tick < 0 || tick > DurationTicks ||
+            !float.IsFinite(center.X) || !float.IsFinite(center.Y) ||
+            !float.IsFinite(zoom) || zoom <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(tick));
+        if (_cameraKeyframes.Any(value => value.Tick == tick))
+            throw new InvalidOperationException(
+                $"Camera keyframe {tick} is already defined.");
+        _cameraKeyframes.Add(new TestCameraKeyframe(tick, center, zoom));
+        _cameraKeyframes.Sort((left, right) => left.Tick.CompareTo(right.Tick));
+        return this;
+    }
+
+    internal TestCameraKeyframe CameraAt(long tick)
+    {
+        if (_cameraKeyframes.Count == 0)
+            throw new InvalidOperationException("No camera track is defined.");
+        if (tick <= _cameraKeyframes[0].Tick) return _cameraKeyframes[0];
+        for (var index = 1; index < _cameraKeyframes.Count; index++)
+        {
+            var right = _cameraKeyframes[index];
+            if (tick > right.Tick) continue;
+            var left = _cameraKeyframes[index - 1];
+            var amount = (tick - left.Tick) /
+                         (float)(right.Tick - left.Tick);
+            amount = amount * amount * (3f - 2f * amount);
+            return new TestCameraKeyframe(
+                tick,
+                Vector2.Lerp(left.Center, right.Center, amount),
+                left.Zoom + (right.Zoom - left.Zoom) * amount);
+        }
+        return _cameraKeyframes[^1];
     }
 
     public VisualTestSession Highlight(

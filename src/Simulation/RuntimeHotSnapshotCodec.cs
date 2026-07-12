@@ -504,6 +504,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(dropOff.Id.Value);
             writer.Write(dropOff.PlayerId);
             WriteVector(writer, dropOff.Position);
+            writer.Write(dropOff.ArrivalRadius);
             writer.Write(dropOff.AcceptsMinerals);
             writer.Write(dropOff.AcceptsVespene);
             writer.Write(dropOff.Operational);
@@ -589,9 +590,11 @@ internal static class RuntimeHotSnapshotCodec
             var value = new EconomyDropOffRuntimeEntry(
                 new EconomyDropOffId(reader.ReadInt32()),
                 reader.ReadInt32(), ReadVector(reader),
+                reader.ReadSingle(),
                 reader.ReadBoolean(), reader.ReadBoolean(),
                 reader.ReadBoolean());
             if (value.Id.Value != index || !Finite(value.Position) ||
+                !Positive(value.ArrivalRadius) ||
                 !players.Any(player => player.PlayerId == value.PlayerId) ||
                 !value.AcceptsMinerals && !value.AcceptsVespene)
             {

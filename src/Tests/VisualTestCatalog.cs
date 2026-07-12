@@ -533,8 +533,8 @@ public static class VisualTestCatalog
                              impact.ProjectileId == launched.ProjectileId &&
                              targetHealth == 80f &&
                              runtime.ObserveCombatProjectiles().Length == 0 &&
-                             package.FormatVersion == 17 &&
-                             hot.FormatVersion == 17 && exact;
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion && exact;
                 return new ScenarioResult(
                     passed,
                     $"flight={inFlight.Length}@" +
@@ -770,8 +770,8 @@ public static class VisualTestCatalog
                              cooldownAfterMove == cooldownBeforeMove &&
                              launches.ContainsKey(attackers[3].Value) &&
                              health.SequenceEqual([190f, 190f, 200f, 190f]) &&
-                             package.FormatVersion == 17 &&
-                             hot.FormatVersion == 17 && exact;
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion && exact;
                 return new ScenarioResult(
                     passed,
                     $"windupTravel={rootedTravel:0.0}/{mobileTravel:0.0}, " +
@@ -925,8 +925,8 @@ public static class VisualTestCatalog
                              strongSwitchTick < 80 &&
                              !selectedMarginal && explicitIssued && explicitHeld &&
                              runtime.ObserveCombat(attacker).Target == initial &&
-                             scoreParts && package.FormatVersion == 17 &&
-                             hot.FormatVersion == 17 && exact;
+                             scoreParts && package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion && exact;
                 return new ScenarioResult(
                     passed,
                     $"target30={targetAtThirty?.Value}, switch={strongSwitchTick}, " +
@@ -1113,8 +1113,8 @@ public static class VisualTestCatalog
                                meleeTravel < cooldownTravel &&
                                cooldownTravel < 1.5f;
                 var passed = roles && ranks && shares && physical &&
-                             package.FormatVersion == 17 &&
-                             hot.FormatVersion == 17 && exact;
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion && exact;
                 return new ScenarioResult(
                     passed,
                     $"roles={windup.Role}/{meleeLock.Role}/{cooldown.Role}/" +
@@ -2034,7 +2034,7 @@ public static class VisualTestCatalog
                              builderOrders.CompletedQueuedOrders == 1 &&
                              gatherActive && failedTaskSkipped &&
                              commandLog.FormatVersion == 3 &&
-                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == commandLog.StableHash && exact;
                 return new ScenarioResult(
@@ -2753,7 +2753,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 17 &&
+                    exact && rejected && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -2847,7 +2847,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -3976,8 +3976,8 @@ public static class VisualTestCatalog
                 var exact = replay.FinalHash == runtime.StateHash &&
                             resumed.FinalHash == runtime.StateHash &&
                             replay.MatchesFrom(resumed, hotTick);
-                var versions = package.FormatVersion == 17 &&
-                               hot.FormatVersion == 17;
+                var versions = package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                               hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion;
                 var passed = enemyBarracks.Succeeded && initialBoundary &&
                              ownershipRejected && hiddenTargetRejected &&
                              visibleResourceObserved &&
@@ -4129,7 +4129,7 @@ public static class VisualTestCatalog
                              defeatedCommandRejected && matchCompleted &&
                              completedCommandRejected && winner &&
                              packageRoundTrip && hotRoundTrip && exact &&
-                             package.FormatVersion == 17 && hot.FormatVersion == 17;
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion;
                 return new ScenarioResult(
                     passed,
                     $"build={playerOneBase.Code}/{playerTwoBase.Code}/" +
@@ -4530,9 +4530,15 @@ public static class VisualTestCatalog
                                       package.ProductionCommandCount >= 20 &&
                                       package.UnitCommandCount >= 20;
                 var packageRoundTrip = package.TryCanonicalRoundTrip(out _);
+                var gatheringLoop = left.CompletedGatherCycles >= 10 &&
+                                    right.CompletedGatherCycles >= 10 &&
+                                    left.SawGoingToResource && right.SawGoingToResource &&
+                                    left.SawGathering && right.SawGathering &&
+                                    left.SawReturningCargo && right.SawReturningCargo;
                 var passed = aiAttached && infrastructure && technology &&
                              expansion && continuousAttack && mutualCombat &&
-                             attrition && commandCoverage && packageRoundTrip &&
+                             attrition && gatheringLoop && commandCoverage &&
+                             packageRoundTrip &&
                              match.Phase == TestMatchPhase.Running;
                 return new ScenarioResult(
                     passed,
@@ -4547,6 +4553,8 @@ public static class VisualTestCatalog
                     $"tech={left.MaximumTechnologyLevels}/" +
                     $"{right.MaximumTechnologyLevels}, bases=" +
                     $"{left.Latest.TownHalls}/{right.Latest.TownHalls}, " +
+                    $"gatherLoops={left.CompletedGatherCycles}/" +
+                    $"{right.CompletedGatherCycles}, " +
                     $"commands=e{package.EconomyCommandCount}/" +
                     $"b{package.ConstructionCommandCount}/" +
                     $"p{package.ProductionCommandCount}/u" +
@@ -4555,6 +4563,16 @@ public static class VisualTestCatalog
                     $"package={package.FormatVersion}/{packageRoundTrip}");
             })
             .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(750f, 425f), 0.76f)
+            .CameraKeyframe(180, new Vector2(750f, 425f), 0.76f)
+            .CameraKeyframe(480, new Vector2(310f, 430f), 1.02f)
+            .CameraKeyframe(900, new Vector2(1190f, 430f), 1.02f)
+            .CameraKeyframe(1380, new Vector2(750f, 425f), 0.92f)
+            .CameraKeyframe(1800, new Vector2(750f, 425f), 1.12f)
+            .CameraKeyframe(2280, new Vector2(430f, 570f), 0.96f)
+            .CameraKeyframe(2760, new Vector2(1070f, 570f), 0.96f)
+            .CameraKeyframe(3300, new Vector2(750f, 425f), 0.80f)
             .Highlight(
                 new SimRect(new Vector2(30f, 170f), new Vector2(640f, 720f)),
                 "STANDARD AI: economy, production, academy and expansion",
@@ -4581,6 +4599,13 @@ public static class VisualTestCatalog
         session.At(1900, "REINFORCEMENT: production replaces combat losses", _ => { });
         session.At(2200, "LATE SKIRMISH: expansions fund continuing attacks", _ => { });
         session.At(3000, "TECHED WAR: upgraded reinforcements sustain the front", _ => { });
+        for (var tick = level.AiAttachTick;
+             tick < level.DurationTicks;
+             tick++)
+        {
+            session.At(tick, "Observe complete worker gathering cycles", _ =>
+                telemetry.ObserveWorkerCycles(level, levelRuntime));
+        }
         for (var tick = level.AiAttachTick;
              tick < level.DurationTicks;
              tick += 30)
@@ -5017,9 +5042,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 17 &&
-                             producingHot.FormatVersion == 17 &&
-                             waitingHot.FormatVersion == 17 &&
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             producingHot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
+                             waitingHot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -5235,7 +5260,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -5375,7 +5400,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -5516,7 +5541,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -5676,7 +5701,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
+                             package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -5790,7 +5815,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 17 && exact;
+                             hotRoundTrip && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

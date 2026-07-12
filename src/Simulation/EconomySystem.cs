@@ -314,6 +314,7 @@ public readonly record struct EconomyDropOffRuntimeEntry(
     EconomyDropOffId Id,
     int PlayerId,
     Vector2 Position,
+    float ArrivalRadius,
     bool AcceptsMinerals,
     bool AcceptsVespene,
     bool Operational);
@@ -437,7 +438,7 @@ public readonly record struct GatherCommandResult(
 public sealed class EconomySystem
 {
     private const float NodeArrivalPadding = 30f;
-    private const float DropOffArrivalRadius = 52f;
+    private const float DefaultDropOffArrivalRadius = 52f;
     private const float BaseResourceRadius = 360f;
     private readonly bool[] _workers;
     private readonly int[] _workerPlayers;
@@ -478,6 +479,10 @@ public sealed class EconomySystem
     public bool IsWorkerOwnedBy(int unit, int playerId) =>
         IsWorker(unit) && _workerPlayers[unit] == playerId;
 
+    public bool SuppressesUnitCollision(int unit) =>
+        IsWorker(unit) && WorkerCollisionPolicy.SuppressesUnitCollision(
+            _workerStates[unit]);
+
     public bool IsVespeneNode(EconomyResourceNodeId id) =>
         (uint)id.Value < (uint)_nodes.Count &&
         _nodes[id.Value].Kind == EconomyResourceKind.VespeneGas &&
@@ -512,26 +517,31 @@ public sealed class EconomySystem
         int playerId,
         Vector2 position,
         bool acceptsMinerals = true,
-        bool acceptsVespene = true)
+        bool acceptsVespene = true,
+        float arrivalRadius = DefaultDropOffArrivalRadius)
     {
         if (!Players.IsRegistered(playerId) || !IsFinite(position) ||
-            !acceptsMinerals && !acceptsVespene)
+            !acceptsMinerals && !acceptsVespene ||
+            !float.IsFinite(arrivalRadius) || arrivalRadius <= 0f)
         {
             throw new ArgumentOutOfRangeException(nameof(playerId));
         }
         var id = new EconomyDropOffId(_dropOffs.Count);
         _dropOffs.Add(new DropOff(
-            id, playerId, position, acceptsMinerals, acceptsVespene, true));
+            id, playerId, position, arrivalRadius,
+            acceptsMinerals, acceptsVespene, true));
         return id;
     }
 
     public EconomyBaseId RegisterTownHall(
         int playerId,
         GameplayBuildingId townHall,
-        Vector2 position)
+        Vector2 position,
+        float arrivalRadius)
     {
         if (!Players.IsRegistered(playerId) || townHall.Value < 0 ||
-            !IsFinite(position))
+            !IsFinite(position) || !float.IsFinite(arrivalRadius) ||
+            arrivalRadius <= 0f)
         {
             throw new ArgumentOutOfRangeException(nameof(playerId));
         }
@@ -549,7 +559,8 @@ public sealed class EconomySystem
             _dropOffs[_bases[index].DropOff.Value].Operational = true;
             return _bases[index].Id;
         }
-        var dropOff = AddDropOff(playerId, position);
+        var dropOff = AddDropOff(
+            playerId, position, arrivalRadius: arrivalRadius);
         var id = new EconomyBaseId(_bases.Count);
         _bases.Add(new EconomyBase(
             id, playerId, townHall, dropOff, position, true));
@@ -905,6 +916,7 @@ public sealed class EconomySystem
             node.ActiveHarvesters)).ToArray();
         var dropOffs = _dropOffs.Select(dropOff => new EconomyDropOffRuntimeEntry(
             dropOff.Id, dropOff.PlayerId, dropOff.Position,
+            dropOff.ArrivalRadius,
             dropOff.AcceptsMinerals, dropOff.AcceptsVespene,
             dropOff.Operational)).ToArray();
         var bases = _bases.Select(value => new EconomyBaseRuntimeEntry(
@@ -956,6 +968,7 @@ public sealed class EconomySystem
             }
             _dropOffs.Add(new DropOff(
                 value.Id, value.PlayerId, value.Position,
+                value.ArrivalRadius,
                 value.AcceptsMinerals, value.AcceptsVespene,
                 value.Operational));
         }
@@ -1029,6 +1042,7 @@ public sealed class EconomySystem
             hash.Add(dropOff.Id.Value);
             hash.Add(dropOff.PlayerId);
             hash.Add(dropOff.Position);
+            hash.Add(dropOff.ArrivalRadius);
             hash.Add(dropOff.AcceptsMinerals);
             hash.Add(dropOff.AcceptsVespene);
             hash.Add(dropOff.Operational);
@@ -1168,7 +1182,7 @@ public sealed class EconomySystem
         }
         var dropOff = _dropOffs[dropOffIndex];
         if (Vector2.DistanceSquared(units.Positions[unit], dropOff.Position) >
-            DropOffArrivalRadius * DropOffArrivalRadius)
+            dropOff.ArrivalRadius * dropOff.ArrivalRadius)
         {
             return;
         }
@@ -1384,6 +1398,7 @@ public sealed class EconomySystem
         EconomyDropOffId id,
         int playerId,
         Vector2 position,
+        float arrivalRadius,
         bool acceptsMinerals,
         bool acceptsVespene,
         bool operational)
@@ -1391,6 +1406,7 @@ public sealed class EconomySystem
         public EconomyDropOffId Id { get; } = id;
         public int PlayerId { get; } = playerId;
         public Vector2 Position { get; } = position;
+        public float ArrivalRadius { get; } = arrivalRadius;
         public bool AcceptsMinerals { get; } = acceptsMinerals;
         public bool AcceptsVespene { get; } = acceptsVespene;
         public bool Operational { get; set; } = operational;

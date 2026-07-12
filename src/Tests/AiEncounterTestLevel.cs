@@ -169,6 +169,12 @@ public readonly record struct AiEncounterCombatSignal(
     CombatEventKind Kind,
     int AttackerPlayerId);
 
+public readonly record struct AiEncounterWorkerSignal(
+    int UnitId,
+    TestWorkerEconomyState State,
+    TestEconomyResourceKind CargoKind,
+    int CargoAmount);
+
 public interface IAiEncounterLevelRuntime
 {
     void RegisterPlayer(int playerId, int minerals, int gas, int supply, int used);
@@ -187,6 +193,7 @@ public interface IAiEncounterLevelRuntime
         float buildingSeconds,
         int decisionOffsetTicks);
     AiEncounterSideSnapshot ObserveSide(int playerId);
+    AiEncounterWorkerSignal[] ObserveWorkers(int playerId);
     AiEncounterCombatSignal[] ObserveCombatSignals(ulong afterSequence);
 }
 
@@ -309,8 +316,24 @@ public sealed class AiEncounterTelemetry
         return progress.Snapshot();
     }
 
+    public void ObserveWorkerCycles(
+        AiEncounterLevelDefinition level,
+        IAiEncounterLevelRuntime runtime)
+    {
+        foreach (var side in level.Sides)
+        {
+            if (!_progress.TryGetValue(side.PlayerId, out var progress))
+            {
+                progress = new SideProgress();
+                _progress.Add(side.PlayerId, progress);
+            }
+            progress.ObserveWorkers(runtime.ObserveWorkers(side.PlayerId));
+        }
+    }
+
     private sealed class SideProgress
     {
+        private readonly Dictionary<int, AiEncounterWorkerSignal> _workers = [];
         private long _lastAttackTick = -1;
         private int _minimumArmyAfterFirstAttack = int.MaxValue;
 
@@ -323,6 +346,10 @@ public sealed class AiEncounterTelemetry
         public int Impacts { get; set; }
         public int MaximumArmy { get; private set; }
         public int MaximumTechnologyLevels { get; private set; }
+        public int CompletedGatherCycles { get; private set; }
+        public bool SawGoingToResource { get; private set; }
+        public bool SawGathering { get; private set; }
+        public bool SawReturningCargo { get; private set; }
         public AiEncounterSideSnapshot Latest { get; private set; }
 
         public void Observe(AiEncounterSideSnapshot value, long tick)
@@ -358,6 +385,26 @@ public sealed class AiEncounterTelemetry
             }
         }
 
+        public void ObserveWorkers(AiEncounterWorkerSignal[] workers)
+        {
+            foreach (var worker in workers)
+            {
+                SawGoingToResource |=
+                    worker.State == TestWorkerEconomyState.GoingToResource;
+                SawGathering |= worker.State == TestWorkerEconomyState.Gathering;
+                SawReturningCargo |=
+                    worker.State == TestWorkerEconomyState.ReturningCargo &&
+                    worker.CargoAmount > 0;
+                if (_workers.TryGetValue(worker.UnitId, out var previous) &&
+                    previous.State == TestWorkerEconomyState.ReturningCargo &&
+                    previous.CargoAmount > 0 &&
+                    worker.State == TestWorkerEconomyState.GoingToResource &&
+                    worker.CargoAmount == 0)
+                    CompletedGatherCycles++;
+                _workers[worker.UnitId] = worker;
+            }
+        }
+
         public AiEncounterTelemetrySnapshot Snapshot() => new(
             EstablishedTick,
             InfrastructureTick,
@@ -371,6 +418,10 @@ public sealed class AiEncounterTelemetry
                 ? 0
                 : _minimumArmyAfterFirstAttack,
             MaximumTechnologyLevels,
+            CompletedGatherCycles,
+            SawGoingToResource,
+            SawGathering,
+            SawReturningCargo,
             Latest);
     }
 }
@@ -386,6 +437,10 @@ public readonly record struct AiEncounterTelemetrySnapshot(
     int MaximumArmy,
     int MinimumArmyAfterFirstAttack,
     int MaximumTechnologyLevels,
+    int CompletedGatherCycles,
+    bool SawGoingToResource,
+    bool SawGathering,
+    bool SawReturningCargo,
     AiEncounterSideSnapshot Latest);
 
 public sealed class MovementTestRigAiEncounterRuntime(
@@ -472,6 +527,14 @@ public sealed class MovementTestRigAiEncounterRuntime(
             ai.Phase,
             ai.LastAttackTick);
     }
+
+    public AiEncounterWorkerSignal[] ObserveWorkers(int playerId) =>
+        rig.ObservePlayerWorkers(playerId).Select(value =>
+            new AiEncounterWorkerSignal(
+                value.Unit.Value,
+                value.State,
+                value.CargoKind,
+                value.CargoAmount)).ToArray();
 
     public AiEncounterCombatSignal[] ObserveCombatSignals(ulong afterSequence)
     {

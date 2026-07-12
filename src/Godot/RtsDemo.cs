@@ -489,6 +489,17 @@ public partial class RtsDemo : Node2D
         }
 
         DrawRect(new Rect2(Vector2.Zero, new Vector2(1280f, 720f)), new Color("101722"));
+        if (_visualTest?.HasCameraTrack == true)
+        {
+            var viewport = GetViewportRect().Size;
+            var camera = _visualTest.CameraAt(_simulation.Metrics.Tick);
+            var viewportCenter = new Vector2(viewport.X * 0.5f,
+                82f + (viewport.Y - 82f) * 0.5f);
+            var offset = viewportCenter -
+                         GodotPathProvider.ToGodot(camera.Center) * camera.Zoom;
+            DrawSetTransform(offset, 0f,
+                new Vector2(camera.Zoom, camera.Zoom));
+        }
         DrawGrid();
 
         var bounds = ToRect2(_world.Bounds);
@@ -686,6 +697,13 @@ public partial class RtsDemo : Node2D
             var completed = building.State == BuildingLifecycleState.Completed;
             DrawRect(rect, color with { A = completed ? 0.88f : 0.46f }, true);
             DrawRect(rect, completed ? color.Lightened(0.25f) : color, false, 3f);
+            var teamColor = building.PlayerId == 1
+                ? new Color("4da3ff")
+                : building.PlayerId == 2
+                    ? new Color("f05b64")
+                    : new Color("d6d6d6");
+            DrawRect(rect.Grow(3f), teamColor, false, 2f);
+            DrawBuildingIdentity(building.Type.Function, rect, teamColor);
             if (_selectedBuildings.Contains(building.Id.Value))
             {
                 DrawRect(rect.Grow(5f), new Color("f8f4a6"), false, 3f);
@@ -1418,7 +1436,37 @@ public partial class RtsDemo : Node2D
                 _ => color
             };
 
-            DrawCircle(position, radius, color);
+            var isWorker = _simulation.Economy.IsWorker(unit);
+            var isHeavy = !isWorker &&
+                (_simulation.Combat.Attributes[unit] & CombatAttribute.Armored) != 0;
+            if (isWorker)
+            {
+                Vector2[] points = [
+                    position + new Vector2(0f, -radius - 2f),
+                    position + new Vector2(radius + 2f, 0f),
+                    position + new Vector2(0f, radius + 2f),
+                    position + new Vector2(-radius - 2f, 0f)
+                ];
+                DrawColoredPolygon(points, color);
+                DrawPolyline(
+                    new Vector2[] {
+                        points[0], points[1], points[2], points[3], points[0]
+                    }, color.Lightened(0.35f), 1.5f);
+                DrawWorkerEconomyState(unit, position, radius, color);
+            }
+            else if (isHeavy)
+            {
+                DrawCircle(position, radius + 2f, color);
+                DrawCircle(position, radius * 0.53f, color.Darkened(0.32f));
+                DrawArc(position, radius + 4f, 0f, MathF.Tau, 8,
+                    color.Lightened(0.32f), 2f);
+            }
+            else
+            {
+                DrawCircle(position, radius, color);
+                DrawArc(position, radius + 2f, -0.65f, 0.65f, 5,
+                    color.Lightened(0.38f), 2f);
+            }
             if (_simulation.Combat.Teams[unit] != 0)
             {
                 var healthRatio = Math.Clamp(
@@ -1447,6 +1495,100 @@ public partial class RtsDemo : Node2D
                 DrawArc(position, radius + 3f, 0f, MathF.Tau, 18,
                     new Color("65f5ff"), 2f);
             }
+        }
+    }
+
+    private void DrawWorkerEconomyState(
+        int unit,
+        Vector2 position,
+        float radius,
+        Color teamColor)
+    {
+        if (_simulation is null || !_simulation.Economy.IsWorker(unit)) return;
+        var worker = _simulation.Economy.Worker(unit);
+        var label = worker.State switch
+        {
+            WorkerEconomyState.GoingToResource => "SCV > RES",
+            WorkerEconomyState.WaitingForResource => "SCV WAIT",
+            WorkerEconomyState.Gathering => "SCV MINING",
+            WorkerEconomyState.ReturningCargo => worker.CargoKind ==
+                EconomyResourceKind.Minerals
+                    ? $"SCV < M+{worker.CargoAmount}"
+                    : $"SCV < G+{worker.CargoAmount}",
+            _ => "SCV IDLE"
+        };
+        var routeColor = worker.CargoKind == EconomyResourceKind.VespeneGas
+            ? new Color("61db83")
+            : new Color("65c9ff");
+        if (worker.State == WorkerEconomyState.GoingToResource &&
+            _economyOverview is not null)
+        {
+            foreach (var node in _economyOverview.ResourceNodes)
+            {
+                if (node.Id != worker.TargetNode) continue;
+                DrawLine(position, GodotPathProvider.ToGodot(node.Position),
+                    routeColor with { A = 0.32f }, 1.2f);
+                break;
+            }
+        }
+        else if (worker.State == WorkerEconomyState.ReturningCargo)
+        {
+            DrawLine(position,
+                GodotPathProvider.ToGodot(_simulation.Units.MoveGoals[unit]),
+                routeColor with { A = 0.38f }, 1.4f);
+            DrawCircle(position + new Vector2(radius + 3f, -radius - 1f),
+                3.2f, routeColor);
+        }
+        DrawString(ThemeDB.FallbackFont,
+            position + new Vector2(-24f, radius + 15f), label,
+            HorizontalAlignment.Center, 48f, 9,
+            worker.State == WorkerEconomyState.Idle
+                ? teamColor.Darkened(0.15f)
+                : routeColor.Lightened(0.18f));
+    }
+
+    private void DrawBuildingIdentity(
+        BuildingFunctionKind function,
+        Rect2 rect,
+        Color teamColor)
+    {
+        var center = rect.GetCenter();
+        var extent = MathF.Min(rect.Size.X, rect.Size.Y) * 0.22f;
+        var ink = teamColor.Lightened(0.45f);
+        switch (function)
+        {
+            case BuildingFunctionKind.TownHall:
+                DrawRect(new Rect2(center - new Vector2(extent, extent),
+                    new Vector2(extent * 2f, extent * 2f)), ink, false, 3f);
+                DrawLine(center - new Vector2(extent, 0f),
+                    center + new Vector2(extent, 0f), ink, 2f);
+                DrawLine(center - new Vector2(0f, extent),
+                    center + new Vector2(0f, extent), ink, 2f);
+                break;
+            case BuildingFunctionKind.Supply:
+                for (var offset = -1; offset <= 1; offset++)
+                    DrawLine(center + new Vector2(-extent, offset * 6f),
+                        center + new Vector2(extent, offset * 6f), ink, 3f);
+                break;
+            case BuildingFunctionKind.Production:
+                DrawLine(center + new Vector2(-extent, extent),
+                    center + new Vector2(0f, -extent), ink, 3f);
+                DrawLine(center + new Vector2(0f, -extent),
+                    center + new Vector2(extent, extent), ink, 3f);
+                break;
+            case BuildingFunctionKind.Refinery:
+                DrawCircle(center, extent, ink with { A = 0.26f });
+                DrawArc(center, extent, 0f, MathF.Tau, 16, ink, 3f);
+                break;
+            case BuildingFunctionKind.Research:
+                DrawPolyline(new Vector2[] {
+                    center + new Vector2(0f, -extent),
+                    center + new Vector2(extent, 0f),
+                    center + new Vector2(0f, extent),
+                    center + new Vector2(-extent, 0f),
+                    center + new Vector2(0f, -extent)
+                }, ink, 3f);
+                break;
         }
     }
 
@@ -1769,16 +1911,26 @@ public partial class RtsDemo : Node2D
             _economyOverview = _simulation.Economy.CreateOverview(
                 PlayerTeam, _simulation.Units.Count);
             _economyControl?.SetSnapshot(_economyOverview);
-            _playerView = _simulation.CreatePlayerView(PlayerTeam);
-            _visibleUnitIds.Clear();
-            _visibleBuildingIds.Clear();
-            _visibleResources.Clear();
-            foreach (var unit in _playerView.Units)
-                _visibleUnitIds.Add(unit.UnitId);
-            foreach (var building in _playerView.Buildings)
-                _visibleBuildingIds.Add(building.BuildingId.Value);
-            foreach (var resource in _playerView.Resources)
-                _visibleResources.Add(resource.NodeId.Value, resource);
+            if (_visualTest?.OmniscientRendering == true)
+            {
+                _playerView = null;
+                _visibleUnitIds.Clear();
+                _visibleBuildingIds.Clear();
+                _visibleResources.Clear();
+            }
+            else
+            {
+                _playerView = _simulation.CreatePlayerView(PlayerTeam);
+                _visibleUnitIds.Clear();
+                _visibleBuildingIds.Clear();
+                _visibleResources.Clear();
+                foreach (var unit in _playerView.Units)
+                    _visibleUnitIds.Add(unit.UnitId);
+                foreach (var building in _playerView.Buildings)
+                    _visibleBuildingIds.Add(building.BuildingId.Value);
+                foreach (var resource in _playerView.Resources)
+                    _visibleResources.Add(resource.NodeId.Value, resource);
+            }
         }
         else
         {

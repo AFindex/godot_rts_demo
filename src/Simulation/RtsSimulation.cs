@@ -44,6 +44,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly Action<int, int, RallyTarget> _productionApplyRally;
     private readonly int[] _collisionNeighbors = new int[64];
     private readonly CombatContactSnapshot[] _combatContacts;
+    private readonly bool[] _unitCollisionSuppressed;
     private readonly int[] _orderReadyUnits;
     private readonly UnitOrder[] _orderReadyOrders;
     private readonly bool[] _orderReadyProcessed;
@@ -84,6 +85,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _orderReadyProcessed = new bool[capacity];
         _orderDispatchUnits = new int[capacity];
         _combatContacts = new CombatContactSnapshot[capacity];
+        _unitCollisionSuppressed = new bool[capacity];
         _spatialHash = new SpatialHash(40f);
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
@@ -1945,6 +1947,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Technology.Update(delta, Construction, Economy.Players);
         Economy.Update(
             delta, Units, _economyMoveWorker, _economyStopWorker);
+        for (var unit = 0; unit < Units.Count; unit++)
+            _unitCollisionSuppressed[unit] =
+                Economy.SuppressesUnitCollision(unit);
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
@@ -1968,7 +1973,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.SpatialHashMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
-        _steeringSolver.Solve(Units, delta);
+        _steeringSolver.Solve(Units, delta, _unitCollisionSuppressed);
         _chokeController?.ConstrainSolvedVelocities(Units);
         Metrics.SteeringMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -2598,6 +2603,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 {
                     var neighbor = _collisionNeighbors[neighborIndex];
                     if (neighbor <= unit)
+                    {
+                        continue;
+                    }
+                    if (_unitCollisionSuppressed[unit] ||
+                        _unitCollisionSuppressed[neighbor])
                     {
                         continue;
                     }

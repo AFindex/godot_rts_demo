@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-12T20:31:34.0835892+08:00",
+    "generated_at":  "2026-07-12T23:12:44.4157235+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  128,
+    "recording_count":  129,
     "case_count":  100,
     "recordings":  [
+                       {
+                           "id":  "ai-continuous-encounter",
+                           "display_name":  null,
+                           "batch":  "20260712_231126",
+                           "created_at":  "2026-07-12T23:12:44.1895131+08:00",
+                           "video":  "../20260712_231126/ai-continuous-encounter.webm",
+                           "log":  "../20260712_231126/ai-continuous-encounter.log",
+                           "bytes":  32617953,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS ai-continuous-encounter: ticks=3600, milestones=L[570/660/1140/690] R[630/870/1230/750], attacks=51/83, impacts=84/30, army=13-\u003e2/5-\u003e1, tech=4/4, bases=2/2, gatherLoops=114/96, commands=e32/b12/p54/u166, running=True, package=18/True",
+                           "metrics":  "ticks=3600, milestones=L[570/660/1140/690] R[630/870/1230/750], attacks=51/83, impacts=84/30, army=13-\u003e2/5-\u003e1, tech=4/4, bases=2/2, gatherLoops=114/96, commands=e32/b12/p54/u166, running=True, package=18/True"
+                       },
                        {
                            "id":  "frontend-test-browser",
                            "display_name":  "Launch screen test browser and Chinese descriptions",

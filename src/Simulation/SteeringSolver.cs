@@ -20,7 +20,10 @@ public sealed class SteeringSolver
         _spatialHash = spatialHash;
     }
 
-    public void Solve(UnitStore units, float delta)
+    public void Solve(
+        UnitStore units,
+        float delta,
+        ReadOnlySpan<bool> unitCollisionSuppressed)
     {
         for (var unit = 0; unit < units.Count; unit++)
         {
@@ -38,11 +41,16 @@ public sealed class SteeringSolver
                 continue;
             }
 
-            units.NextVelocities[unit] = SolveUnit(units, unit, delta);
+            units.NextVelocities[unit] = SolveUnit(
+                units, unit, delta, unitCollisionSuppressed);
         }
     }
 
-    private Vector2 SolveUnit(UnitStore units, int unit, float delta)
+    private Vector2 SolveUnit(
+        UnitStore units,
+        int unit,
+        float delta,
+        ReadOnlySpan<bool> unitCollisionSuppressed)
     {
         var position = units.Positions[unit];
         var preferred = units.PreferredVelocities[unit];
@@ -70,7 +78,8 @@ public sealed class SteeringSolver
             unit,
             preferred,
             neighborCount,
-            horizon);
+            horizon,
+            unitCollisionSuppressed);
         if (preferredRisk < 0.02f &&
             _world.IsSegmentFree(position, position + preferred * 0.32f, radius))
         {
@@ -103,7 +112,8 @@ public sealed class SteeringSolver
                 unit,
                 candidate,
                 neighborCount,
-                horizon);
+                horizon,
+                unitCollisionSuppressed);
             var angularCost = MathF.Abs(CandidateAngles[candidateIndex]) / 180f;
             var speedLoss = 1f - candidate.Length() / preferredSpeed;
             var side = MathF.Abs(angle) < 0.01f ? (sbyte)0 : angle < 0f ? (sbyte)-1 : (sbyte)1;
@@ -143,7 +153,8 @@ public sealed class SteeringSolver
         int unit,
         Vector2 candidate,
         int neighborCount,
-        float horizon)
+        float horizon,
+        ReadOnlySpan<bool> unitCollisionSuppressed)
     {
         var risk = 0f;
         var position = units.Positions[unit];
@@ -152,6 +163,11 @@ public sealed class SteeringSolver
         for (var i = 0; i < neighborCount; i++)
         {
             var neighbor = _neighborBuffer[i];
+            if (unitCollisionSuppressed[unit] ||
+                unitCollisionSuppressed[neighbor])
+            {
+                continue;
+            }
             var offset = units.Positions[neighbor] - position;
             var combinedRadius = radius + units.Radii[neighbor] + 1.5f;
             var distanceSquared = offset.LengthSquared();
