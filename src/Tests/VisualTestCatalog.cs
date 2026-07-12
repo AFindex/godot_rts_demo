@@ -80,6 +80,7 @@ public static class VisualTestCatalog
         "match-capability-elimination",
         "ai-modular-skirmish",
         "ai-dual-runtime-replay",
+        "ai-continuous-encounter",
         "construction-gameplay-buildings",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
@@ -226,6 +227,8 @@ public static class VisualTestCatalog
         "ai-modular-skirmish" => CreateModularAiSkirmish(aiConfigurations),
         "ai-dual-runtime-replay" => CreateDualAiRuntimeReplay(
             navigationMap, gameplayProfiles, clearanceBake, aiConfigurations),
+        "ai-continuous-encounter" => CreateContinuousAiEncounter(
+            gameplayProfiles, aiConfigurations),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
@@ -984,7 +987,7 @@ public static class VisualTestCatalog
             MaximumHealth: 500f,
             AttackDamage: 1f,
             AttackRange: 300f,
-            AcquisitionRange: 270f,
+            AcquisitionRange: 300f,
             AttackCooldownSeconds: 20f,
             AttackWindupSeconds: 5f,
             LeashDistance: 600f);
@@ -4440,6 +4443,125 @@ public static class VisualTestCatalog
                     value.EstablishedPresence);
                 pairedCapture = runtime.CaptureAiRuntimeState();
             });
+        return session;
+    }
+
+    private static VisualTestSession CreateContinuousAiEncounter(
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        AiConfigurationCatalogSnapshot? aiConfigurations)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        aiConfigurations ??= DemoAiConfigurations.CreateCatalog();
+        var level = AiEncounterLevelDefinition.CreateContinuousBattle(
+            aiConfigurations);
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            192, level.Navigation, gameplayProfiles, clearanceBake: null);
+        var levelRuntime = new MovementTestRigAiEncounterRuntime(rig);
+        var prepared = AiEncounterLevelOrchestrator.Prepare(level, levelRuntime);
+        rig.StartReplayPackageRecording();
+        var deployment = AiEncounterLevelOrchestrator.Begin(
+            level, levelRuntime, prepared);
+        var telemetry = new AiEncounterTelemetry();
+        var visible = deployment.Workers
+            .SelectMany(value => value)
+            .Select(value => new TestUnitId(value))
+            .ToArray();
+        var aiAttached = false;
+
+        var session = new VisualTestSession(
+            level.Id,
+            level.DisplayName,
+            level.DurationTicks,
+            rig,
+            visible,
+            runtime =>
+            {
+                var left = telemetry.Snapshot(1);
+                var right = telemetry.Snapshot(2);
+                var package = runtime.CaptureReplayPackage();
+                var match = runtime.ObserveMatch();
+                var infrastructure = left.InfrastructureTick >= 0 &&
+                                     right.InfrastructureTick >= 0;
+                var technology = left.TechnologyTick >= 0 &&
+                                 right.TechnologyTick >= 0 &&
+                                 left.MaximumTechnologyLevels >= 2 &&
+                                 right.MaximumTechnologyLevels >= 2;
+                var expansion = left.ExpansionTick >= 0 &&
+                                right.ExpansionTick >= 0;
+                var continuousAttack = left.AttackOrders >= 4 &&
+                                       right.AttackOrders >= 4 &&
+                                       left.Latest.LastAttackTick >= 3000 &&
+                                       right.Latest.LastAttackTick >= 3000;
+                var mutualCombat = left.Impacts >= 8 && right.Impacts >= 8 &&
+                                   left.MaximumArmy >= 3 &&
+                                   right.MaximumArmy >= 3;
+                var attrition = left.MinimumArmyAfterFirstAttack <
+                                    left.MaximumArmy &&
+                                right.MinimumArmyAfterFirstAttack <
+                                    right.MaximumArmy;
+                var commandCoverage = package.EconomyCommandCount >= 12 &&
+                                      package.ConstructionCommandCount >= 10 &&
+                                      package.ProductionCommandCount >= 20 &&
+                                      package.UnitCommandCount >= 20;
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out _);
+                var passed = aiAttached && infrastructure && technology &&
+                             expansion && continuousAttack && mutualCombat &&
+                             attrition && commandCoverage && packageRoundTrip &&
+                             match.Phase == TestMatchPhase.Running;
+                return new ScenarioResult(
+                    passed,
+                    $"milestones=L[{left.InfrastructureTick}/" +
+                    $"{left.TechnologyTick}/{left.ExpansionTick}/" +
+                    $"{left.FirstAttackTick}] R[{right.InfrastructureTick}/" +
+                    $"{right.TechnologyTick}/{right.ExpansionTick}/" +
+                    $"{right.FirstAttackTick}], attacks={left.AttackOrders}/" +
+                    $"{right.AttackOrders}, impacts={left.Impacts}/{right.Impacts}, " +
+                    $"army={left.MaximumArmy}->{left.MinimumArmyAfterFirstAttack}/" +
+                    $"{right.MaximumArmy}->{right.MinimumArmyAfterFirstAttack}, " +
+                    $"tech={left.MaximumTechnologyLevels}/" +
+                    $"{right.MaximumTechnologyLevels}, bases=" +
+                    $"{left.Latest.TownHalls}/{right.Latest.TownHalls}, " +
+                    $"commands=e{package.EconomyCommandCount}/" +
+                    $"b{package.ConstructionCommandCount}/" +
+                    $"p{package.ProductionCommandCount}/u" +
+                    $"{package.UnitCommandCount}, running=" +
+                    $"{match.Phase == TestMatchPhase.Running}, " +
+                    $"package={package.FormatVersion}/{packageRoundTrip}");
+            })
+            .RenderSpawnedUnits()
+            .Highlight(
+                new SimRect(new Vector2(30f, 170f), new Vector2(640f, 720f)),
+                "STANDARD AI: economy, production, academy and expansion",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(860f, 170f), new Vector2(1470f, 720f)),
+                "AGGRESSIVE AI: faster scouting and attack cadence",
+                TestDiagnosticKind.Rejected)
+            .Highlight(
+                new SimRect(new Vector2(620f, 315f), new Vector2(880f, 535f)),
+                "ENCOUNTER LANE: reinforcements repeatedly contest the center",
+                TestDiagnosticKind.Accepted);
+
+        session.At(level.AiAttachTick, "OPENING: bases online, AI directors attach", _ =>
+        {
+            AiEncounterLevelOrchestrator.StartEconomy(
+                level, levelRuntime, deployment);
+            AiEncounterLevelOrchestrator.AttachAi(level, levelRuntime);
+            aiAttached = true;
+        });
+        session.At(600, "DEVELOPMENT: supply, barracks and gas infrastructure", _ => { });
+        session.At(1200, "TECHNOLOGY: academies climb combat upgrades", _ => { });
+        session.At(1500, "FIRST CLASHES: both armies cross the center", _ => { });
+        session.At(1900, "REINFORCEMENT: production replaces combat losses", _ => { });
+        session.At(2200, "LATE SKIRMISH: expansions fund continuing attacks", _ => { });
+        session.At(3000, "TECHED WAR: upgraded reinforcements sustain the front", _ => { });
+        for (var tick = level.AiAttachTick;
+             tick < level.DurationTicks;
+             tick += 30)
+        {
+            session.At(tick, "Observe decoupled encounter telemetry", runtime =>
+                telemetry.Observe(level, levelRuntime, runtime.Tick));
+        }
         return session;
     }
 

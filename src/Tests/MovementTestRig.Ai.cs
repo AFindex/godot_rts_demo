@@ -95,7 +95,8 @@ public sealed partial class MovementTestRig
         return new TestAiSnapshot(
             (TestAiStrategicPhase)policy.Phase,
             agent.LastDecisionTick,
-            agent.PolicyState.Length);
+            agent.PolicyState.Length,
+            policy.LastAttackTick);
     }
 
     public TestAiRuntimeCapture CaptureAiRuntimeState()

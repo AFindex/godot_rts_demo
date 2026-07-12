@@ -76,3 +76,11 @@ AI 配置已经进入版本化 `AiConfigurationCatalogSnapshot v1` 和 Godot Res
 同一场景还保存完整 Replay Package（当前格式 v14），并从 Tick 0 按 Construction→Production/Research→Economy→Unit 的协议顺序重放正式命令。重放过程不创建 Director 或 Policy，最终 Hash 同样一致。为此 Director 在执行边界按相同域顺序稳定排序已被仲裁选中的意图；战略优先级决定选什么，回放协议决定跨域执行次序。
 
 H2 至此收口。撤退、目标价值和更细防守只在以后有明确失败用例时推进，不作为当前无限优化项。
+
+## 7. S11-H3 解耦双 AI 遭遇战关卡
+
+`ai-continuous-encounter` 不复用协议测试的固定布置脚本，而是通过独立 `AiEncounterLevelDefinition` 声明镜像地图、资源簇、出生配置和双方 AI Profile。`AiEncounterLevelOrchestrator` 只面向 `IAiEncounterLevelRuntime`，依次执行 Prepare、正式录制边界、Begin、StartEconomy 和 AttachAi；具体模拟调用全部封装在 `MovementTestRigAiEncounterRuntime`。
+
+关卡和 `AiEncounterTelemetry` 不读取 UnitStore、CombatStore、路径、生产队列内部状态或 Godot Node。遥测按公开比赛、经济、建筑、科技、AI 和 CombatEvent 快照记录基础设施、科技、扩张、攻击指令、实际命中与战损。策略只额外公开 Blackboard 中已有的只读 `LastAttackTick`，没有复制或修改策略状态。
+
+60 秒结果为：双方 Tick 570/630 完整基础设施，750/870 开始科技，1140/1260 扩张，780/750 首攻；最终累计科技均为 4，正式攻击指令 62/83，实际命中 91/30，军队从峰值下降到 1/1 后继续补兵，比赛保持 Running。详细边界与录像见 [双 AI 遭遇战测试关卡](AI_ENCOUNTER_LEVEL.md)。

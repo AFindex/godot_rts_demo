@@ -57,7 +57,8 @@ public enum TestAiStrategicPhase : byte
 public readonly record struct TestAiSnapshot(
     TestAiStrategicPhase Phase,
     long LastDecisionTick,
-    int StateBytes);
+    int StateBytes,
+    long LastAttackTick);
 
 public enum TestProductionCommandCode : byte
 {

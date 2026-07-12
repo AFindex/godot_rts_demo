@@ -252,6 +252,7 @@ public sealed class ModularSkirmishAiPolicy : IRtsAiPolicy, IRtsAiExecutionObser
     public string PolicyId => "rts-demo.modular-skirmish";
     public int StateFormatVersion => FormatVersion;
     public AiStrategicPhase Phase => _blackboard.Phase;
+    public long LastAttackTick => _blackboard.LastAttackTick;
 
     public void Decide(AiObservationSnapshot observation, IAiIntentSink intents)
     {
