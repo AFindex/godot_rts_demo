@@ -10,7 +10,8 @@ foreach (var result in benchmark.Cases)
         $"p95={result.P95TickMilliseconds:0.000}ms " +
         $"hash={result.AverageStateHashMilliseconds:0.000}ms " +
         $"max={result.MaximumTickMilliseconds:0.000}ms " +
-        $"alloc={result.AverageAllocatedBytes / 1024.0:0.0}KB/tick");
+        $"alloc={result.AverageAllocatedBytes / 1024.0:0.0}KB/tick " +
+        $"projectiles={result.ActiveProjectiles}");
 }
 foreach (var result in benchmark.CombatCases)
 {
@@ -20,7 +21,8 @@ foreach (var result in benchmark.CombatCases)
         $"p95={result.P95TickMilliseconds:0.000}ms " +
         $"hash={result.AverageStateHashMilliseconds:0.000}ms " +
         $"max={result.MaximumTickMilliseconds:0.000}ms " +
-        $"alloc={result.AverageAllocatedBytes / 1024.0:0.0}KB/tick");
+        $"alloc={result.AverageAllocatedBytes / 1024.0:0.0}KB/tick " +
+        $"projectiles={result.ActiveProjectiles}");
 }
 
 Console.WriteLine($"RTS_BENCHMARK_JSON {JsonSerializer.Serialize(benchmark)}");

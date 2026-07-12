@@ -37,6 +37,7 @@ public static class ProductionCatalogResourceConverter
                 BonusDamage = type.Combat.BonusDamage,
                 BaseUpgradeDamage = type.Combat.BaseUpgradeDamage,
                 BonusUpgradeDamage = type.Combat.BonusUpgradeDamage,
+                ProjectileSpeed = type.Combat.ProjectileSpeed,
                 IsWorker = type.IsWorker
             });
         }
@@ -111,7 +112,9 @@ public static class ProductionCatalogResourceConverter
                 source.AttackWindupSeconds, source.LeashDistance,
                 source.Positioning, source.Armor, source.Attributes,
                 source.AttacksPerVolley, source.BonusVs, source.BonusDamage,
-                source.BaseUpgradeDamage, source.BonusUpgradeDamage);
+                source.BaseUpgradeDamage, source.BonusUpgradeDamage,
+                source.ProjectileSpeed);
+
             units[index] = new UnitTypeProfile(
                 source.Id, source.DisplayName ?? string.Empty,
                 movement, combat, source.IsWorker);

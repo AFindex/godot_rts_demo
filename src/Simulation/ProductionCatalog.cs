@@ -58,7 +58,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;
@@ -214,6 +214,7 @@ public sealed class ProductionCatalogSnapshot
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BonusDamage));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BaseUpgradeDamage));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BonusUpgradeDamage));
+        writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.ProjectileSpeed));
         writer.Write(unit.IsWorker);
     }
 
@@ -250,7 +251,9 @@ public sealed class ProductionCatalogSnapshot
         unit.Combat.BaseUpgradeDamage >= 0f &&
         float.IsFinite(unit.Combat.BaseUpgradeDamage) &&
         unit.Combat.BonusUpgradeDamage >= 0f &&
-        float.IsFinite(unit.Combat.BonusUpgradeDamage);
+        float.IsFinite(unit.Combat.BonusUpgradeDamage) &&
+        unit.Combat.ProjectileSpeed >= 0f &&
+        float.IsFinite(unit.Combat.ProjectileSpeed);
 
     internal static bool ValidRequirements(
         ImmutableArray<ProductionRequirementProfile> requirements)
@@ -395,7 +398,9 @@ public static class DemoProductionCatalog
                 BonusVs: CombatAttribute.Armored,
                 BonusDamage: 10f,
                 BaseUpgradeDamage: 1f,
-                BonusUpgradeDamage: 1f), false);
+                BonusUpgradeDamage: 1f,
+                ProjectileSpeed: 320f), false);
+
         var worker = new UnitTypeProfile(
             2, "SCV",
             new UnitMovementProfileSnapshot(2, "SCV", 7.5f, 128f, 720f,

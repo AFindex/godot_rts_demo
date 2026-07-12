@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-12T14:54:43.8100614+08:00",
+    "generated_at":  "2026-07-12T15:20:39.9948608+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  120,
-    "case_count":  93,
+    "recording_count":  121,
+    "case_count":  94,
     "recordings":  [
+                       {
+                           "id":  "combat-projectile-flight",
+                           "display_name":  "Homing projectile flight survives hot snapshot and replay",
+                           "batch":  "20260712_152027",
+                           "created_at":  "2026-07-12T15:20:39.5937059+08:00",
+                           "video":  "../20260712_152027/combat-projectile-flight.webm",
+                           "log":  "../20260712_152027/combat-projectile-flight.log",
+                           "bytes":  180258,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS combat-projectile-flight: ticks=480, flight=1@\u003c406.5414, 250\u003e, projectile=1/1, hp=80, versions=package15/hot15, exact=True",
+                           "metrics":  "ticks=480, flight=1@\u003c406.5414, 250\u003e, projectile=1/1, hp=80, versions=package15/hot15, exact=True"
+                       },
                        {
                            "id":  "combat-building-defense",
                            "display_name":  "Building armor, size and Fortification share formal damage rules",

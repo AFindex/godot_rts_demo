@@ -105,6 +105,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public StaticWorld World { get; }
     public UnitStore Units { get; }
     public CombatStore Combat { get; }
+    public CombatProjectileSystem CombatProjectiles => _combatSystem.Projectiles;
     public CombatEventStream CombatEvents { get; }
     public UnitCommandQueueStore CommandQueues { get; }
     public EconomySystem Economy { get; }
@@ -223,6 +224,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             DynamicOccupancy = World.DynamicOccupancy.CaptureRuntimeState(),
             Units = units,
             Combat = combat,
+            CombatProjectiles = CombatProjectiles.CaptureRuntimeState(),
             Economy = Economy.CaptureRuntimeState(Units.Count),
             Visibility = Visibility.CaptureRuntimeState(),
             Match = Match.CaptureRuntimeState(),
@@ -249,6 +251,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         World.DynamicOccupancy.RestoreRuntimeState(snapshot.DynamicOccupancy);
         Units.CopyRuntimeStateFrom(snapshot.Units);
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
+        CombatProjectiles.RestoreRuntimeState(snapshot.CombatProjectiles);
         CombatEvents.Reset();
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
         Construction.RestoreRuntimeState(snapshot.Construction);
@@ -3268,6 +3271,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId building) =>
         (uint)attacker < (uint)Units.Count && Units.Alive[attacker] &&
         Construction.IsEnemyTarget(building, Combat.Teams[attacker]);
+
+    bool ICombatMovementDriver.IsBuildingAlive(GameplayBuildingId building) =>
+        Construction.IsAlive(building);
 
     SimRect ICombatMovementDriver.BuildingTargetBounds(
         GameplayBuildingId building) => Construction.Observe(building).Bounds;

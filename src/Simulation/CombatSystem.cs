@@ -19,6 +19,7 @@ public interface ICombatMovementDriver
     void FinishEngagement(int unit, UnitCommandIntent intent);
     void Kill(int unit);
     bool IsBuildingTargetValid(int attacker, GameplayBuildingId building);
+    bool IsBuildingAlive(GameplayBuildingId building);
     SimRect BuildingTargetBounds(GameplayBuildingId building);
     CombatBuildingDamageResult DamageBuilding(
         GameplayBuildingId building, CombatWeaponDamageSnapshot weapon);
@@ -40,6 +41,7 @@ public sealed class CombatSystem
     private readonly ICombatMovementDriver _movement;
     private readonly CombatEngagementSlotAllocator _slots;
     private readonly CombatEventStream _events;
+    public CombatProjectileSystem Projectiles { get; } = new();
 
     public CombatSystem(
         UnitStore units,
@@ -57,6 +59,12 @@ public sealed class CombatSystem
 
     public void Update(float delta, long tick)
     {
+        Projectiles.Update(delta, ResolveProjectileTarget,
+            value => ApplyProjectileImpact(value, tick),
+            value => _events.Publish(
+                tick, CombatEventKind.ProjectileExpired,
+                value.AttackerUnit, value.TargetKind, value.TargetId,
+                projectileId: value.Id));
         for (var unit = 0; unit < _units.Count; unit++)
         {
             if (!_units.Alive[unit])
@@ -192,7 +200,7 @@ public sealed class CombatSystem
             _combat.WindupRemaining[unit] -= delta;
             if (_combat.WindupRemaining[unit] <= 0f && IsValidTarget(unit, target))
             {
-                ApplyHit(unit, target, tick);
+                FireAtUnit(unit, target, tick);
             }
             return;
         }
@@ -203,7 +211,7 @@ public sealed class CombatSystem
             if (windup <= 0f)
             {
                 PublishAttackStarted(unit, CombatTargetKind.Unit, target, tick);
-                ApplyHit(unit, target, tick);
+                FireAtUnit(unit, target, tick);
             }
             else
             {
@@ -213,16 +221,52 @@ public sealed class CombatSystem
         }
     }
 
-    private void ApplyHit(int attacker, int target, long tick)
+    private void FireAtUnit(int attacker, int target, long tick)
     {
         _combat.CooldownRemaining[attacker] =
             _combat.AttackCooldownDurations[attacker];
-        var result = PreviewDamage(attacker, target);
+        var weapon = Weapon(attacker);
+        if (_combat.ProjectileSpeed[attacker] > 0f)
+        {
+            if (Projectiles.Launch(
+                attacker, CombatTargetKind.Unit, target,
+                _units.Positions[attacker], _combat.ProjectileSpeed[attacker],
+                weapon, out var projectileId))
+            {
+                _events.Publish(tick, CombatEventKind.ProjectileLaunched,
+                    attacker, CombatTargetKind.Unit, target,
+                    projectileId: projectileId);
+            }
+            else
+            {
+                _events.Publish(tick, CombatEventKind.ProjectileExpired,
+                    attacker, CombatTargetKind.Unit, target,
+                    projectileId: 0);
+            }
+            return;
+        }
+        ApplyUnitWeapon(attacker, target, weapon, tick, -1);
+    }
+
+    private void ApplyUnitWeapon(
+        int attacker,
+        int target,
+        CombatWeaponDamageSnapshot weapon,
+        long tick,
+        int projectileId)
+    {
+        if (!IsValidTarget(attacker, target)) return;
+        var result = CombatDamageResolver.Resolve(
+            weapon,
+            new CombatDefenseSnapshot(
+                _combat.Armor[target], _combat.Attributes[target]),
+            _combat.Health[target]);
         var damage = result.TotalDamage;
         _combat.Health[target] = result.RemainingHealth;
         _events.Publish(tick, CombatEventKind.Impact, attacker,
             CombatTargetKind.Unit, target, damage, _combat.Health[target],
-            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied);
+            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied,
+            projectileId);
         if (_combat.Health[target] > 0f)
         {
             return;
@@ -366,7 +410,7 @@ public sealed class CombatSystem
             if (_combat.WindupRemaining[unit] <= 0f &&
                 _movement.IsBuildingTargetValid(unit, building))
             {
-                ApplyBuildingHit(unit, building, tick);
+                FireAtBuilding(unit, building, tick);
             }
             return;
         }
@@ -378,7 +422,7 @@ public sealed class CombatSystem
         if (windup <= 0f)
         {
             PublishAttackStarted(unit, CombatTargetKind.Building, building.Value, tick);
-            ApplyBuildingHit(unit, building, tick);
+            FireAtBuilding(unit, building, tick);
         }
         else
         {
@@ -387,14 +431,44 @@ public sealed class CombatSystem
         }
     }
 
-    private void ApplyBuildingHit(
+    private void FireAtBuilding(
         int attacker,
         GameplayBuildingId building,
         long tick)
     {
         _combat.CooldownRemaining[attacker] =
             _combat.AttackCooldownDurations[attacker];
-        var result = _movement.DamageBuilding(building, Weapon(attacker));
+        var weapon = Weapon(attacker);
+        if (_combat.ProjectileSpeed[attacker] > 0f)
+        {
+            if (Projectiles.Launch(
+                attacker, CombatTargetKind.Building, building.Value,
+                _units.Positions[attacker], _combat.ProjectileSpeed[attacker],
+                weapon, out var projectileId))
+            {
+                _events.Publish(tick, CombatEventKind.ProjectileLaunched,
+                    attacker, CombatTargetKind.Building, building.Value,
+                    projectileId: projectileId);
+            }
+            else
+            {
+                _events.Publish(tick, CombatEventKind.ProjectileExpired,
+                    attacker, CombatTargetKind.Building, building.Value,
+                    projectileId: 0);
+            }
+            return;
+        }
+        ApplyBuildingWeapon(attacker, building, weapon, tick, -1);
+    }
+
+    private void ApplyBuildingWeapon(
+        int attacker,
+        GameplayBuildingId building,
+        CombatWeaponDamageSnapshot weapon,
+        long tick,
+        int projectileId)
+    {
+        var result = _movement.DamageBuilding(building, weapon);
         if (!result.Applied)
         {
             Disengage(attacker);
@@ -403,7 +477,8 @@ public sealed class CombatSystem
         _events.Publish(tick, CombatEventKind.Impact, attacker,
             CombatTargetKind.Building, building.Value,
             result.AppliedDamage, result.RemainingHealth,
-            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied);
+            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied,
+            projectileId);
         if (result.Destroyed)
         {
             _events.Publish(tick, CombatEventKind.TargetDestroyed, attacker,
@@ -442,6 +517,36 @@ public sealed class CombatSystem
                 _combat.Armor[target], _combat.Attributes[target]),
             _combat.Health[target]);
     }
+
+    private (bool Valid, Vector2 Position) ResolveProjectileTarget(
+        CombatTargetKind kind,
+        int targetId) => kind switch
+    {
+        CombatTargetKind.Unit when (uint)targetId < (uint)_units.Count &&
+                                   _units.Alive[targetId] =>
+            (true, _units.Positions[targetId]),
+        CombatTargetKind.Building when _movement.IsBuildingAlive(
+            new GameplayBuildingId(targetId)) =>
+            (true, Center(_movement.BuildingTargetBounds(
+                new GameplayBuildingId(targetId)))),
+        _ => (false, default)
+    };
+
+    private void ApplyProjectileImpact(
+        CombatProjectileSnapshot projectile,
+        long tick)
+    {
+        if (projectile.TargetKind == CombatTargetKind.Unit)
+            ApplyUnitWeapon(projectile.AttackerUnit, projectile.TargetId,
+                projectile.Weapon, tick, projectile.Id);
+        else if (projectile.TargetKind == CombatTargetKind.Building)
+            ApplyBuildingWeapon(projectile.AttackerUnit,
+                new GameplayBuildingId(projectile.TargetId),
+                projectile.Weapon, tick, projectile.Id);
+    }
+
+    private static Vector2 Center(SimRect bounds) =>
+        (bounds.Min + bounds.Max) * 0.5f;
 
     private static Vector2 ClosestOutsidePoint(
         SimRect bounds,

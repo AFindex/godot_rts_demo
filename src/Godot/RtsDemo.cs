@@ -497,6 +497,7 @@ public partial class RtsDemo : Node2D
         }
 
         DrawUnits();
+        DrawCombatProjectiles();
 
         if (_dragging)
         {
@@ -1419,6 +1420,22 @@ public partial class RtsDemo : Node2D
                 DrawArc(position, radius + 3f, 0f, MathF.Tau, 18,
                     new Color("65f5ff"), 2f);
             }
+        }
+    }
+
+    private void DrawCombatProjectiles()
+    {
+        if (_simulation is null)
+        {
+            return;
+        }
+        foreach (var projectile in _simulation.CombatProjectiles.ObserveActive())
+        {
+            var position = GodotPathProvider.ToGodot(projectile.Position);
+            var color = new Color("ffd166");
+            DrawCircle(position, 5f, color);
+            DrawArc(position, 8f, 0f, MathF.Tau, 14,
+                color with { A = 0.7f }, 1.5f);
         }
     }
 

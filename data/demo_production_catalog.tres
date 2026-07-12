@@ -65,6 +65,7 @@ BonusVs = 2
 BonusDamage = 10.0
 BaseUpgradeDamage = 1.0
 BonusUpgradeDamage = 1.0
+ProjectileSpeed = 320.0
 
 [sub_resource type="Resource" id="Resource_djvlx"]
 script = ExtResource("2_wxyxp")

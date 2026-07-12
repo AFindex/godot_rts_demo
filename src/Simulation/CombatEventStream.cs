@@ -3,6 +3,8 @@ namespace RtsDemo.Simulation;
 public enum CombatEventKind : byte
 {
     AttackStarted,
+    ProjectileLaunched,
+    ProjectileExpired,
     Impact,
     TargetDestroyed
 }
@@ -18,7 +20,8 @@ public readonly record struct CombatEvent(
     float RemainingHealth,
     float DamagePerAttack,
     int AttacksApplied,
-    bool BonusApplied);
+    bool BonusApplied,
+    int ProjectileId);
 
 public readonly record struct CombatEventBatch(
     CombatEvent[] Events,
@@ -54,12 +57,14 @@ public sealed class CombatEventStream
         float remainingHealth = 0f,
         float damagePerAttack = 0f,
         int attacksApplied = 0,
-        bool bonusApplied = false)
+        bool bonusApplied = false,
+        int projectileId = -1)
     {
         var sequence = _nextSequence++;
         _events[(int)((sequence - 1) % (ulong)_events.Length)] = new CombatEvent(
             tick, sequence, kind, attackerUnit, targetKind, targetId,
-            damage, remainingHealth, damagePerAttack, attacksApplied, bonusApplied);
+            damage, remainingHealth, damagePerAttack, attacksApplied, bonusApplied,
+            projectileId);
         if (_count < _events.Length) _count++;
     }
 

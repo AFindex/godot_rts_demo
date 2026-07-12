@@ -19,7 +19,8 @@ public sealed record BenchmarkCaseResult(
     double AveragePathMilliseconds,
     double AverageSteeringMilliseconds,
     double AverageCollisionMilliseconds,
-    double AverageOtherMilliseconds);
+    double AverageOtherMilliseconds,
+    int ActiveProjectiles);
 
 public sealed record BenchmarkSuiteResult(
     string CreatedAtUtc,
@@ -103,12 +104,13 @@ public static class SimulationBenchmark
         var profile = new TestCombatProfile(
             MaximumHealth: 1000f,
             AttackDamage: 0f,
-            AttackRange: 70f,
+            AttackRange: 500f,
             AcquisitionRange: 600f,
-            AttackCooldownSeconds: 1f,
+            AttackCooldownSeconds: 0.5f,
             AttackWindupSeconds: 0f,
             LeashDistance: 800f,
-            Positioning: TestCombatPositioning.Ranged);
+            Positioning: TestCombatPositioning.Ranged,
+            ProjectileSpeed: 160f);
         var half = unitCount / 2;
         var left = new TestUnitId[half];
         var right = new TestUnitId[unitCount - half];
@@ -145,14 +147,16 @@ public static class SimulationBenchmark
             rig,
             left.Concat(right).ToArray(),
             p95BudgetMilliseconds,
-            allocationBudget: 8192);
+            allocationBudget: 8192,
+            requireProjectiles: true);
     }
 
     private static BenchmarkCaseResult Measure(
         MovementTestRig rig,
         TestUnitId[] units,
         double p95Budget,
-        long allocationBudget = 1024)
+        long allocationBudget = 1024,
+        bool requireProjectiles = false)
     {
         for (var tick = 0; tick < WarmupTicks; tick++)
         {
@@ -190,6 +194,7 @@ public static class SimulationBenchmark
         }
 
         var observations = rig.Observe(units);
+        var projectiles = rig.ObserveCombatProjectiles();
         var finite = observations.All(unit =>
             float.IsFinite(unit.Position.X) && float.IsFinite(unit.Position.Y) &&
             float.IsFinite(unit.Velocity.X) && float.IsFinite(unit.Velocity.Y));
@@ -216,7 +221,12 @@ public static class SimulationBenchmark
         return new BenchmarkCaseResult(
             units.Length,
             MeasuredTicks,
-            finite && inside && p95 <= p95Budget &&
+            finite && inside &&
+            (!requireProjectiles || projectiles.Length >= units.Length / 2) &&
+            projectiles.All(value =>
+                float.IsFinite(value.Position.X) &&
+                float.IsFinite(value.Position.Y)) &&
+            p95 <= p95Budget &&
             averageAllocation <= allocationBudget &&
             averageStateHashMilliseconds <= stateHashBudget &&
             lastStateHash != 0UL,
@@ -232,6 +242,7 @@ public static class SimulationBenchmark
             path / MeasuredTicks,
             steering / MeasuredTicks,
             collision / MeasuredTicks,
-            other / MeasuredTicks);
+            other / MeasuredTicks,
+            projectiles.Length);
     }
 }

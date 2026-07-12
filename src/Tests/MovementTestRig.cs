@@ -798,7 +798,8 @@ public readonly record struct TestCombatProfile(
     CombatAttribute BonusVs = CombatAttribute.None,
     float BonusDamage = 0f,
     float BaseUpgradeDamage = 0f,
-    float BonusUpgradeDamage = 0f)
+    float BonusUpgradeDamage = 0f,
+    float ProjectileSpeed = 0f)
 {
     public static TestCombatProfile Standard => new(
         45f, 8f, 34f, 155f, 0.72f, 0.18f, 260f);
@@ -841,7 +842,16 @@ public readonly record struct TestCombatEvent(
     float RemainingHealth,
     float DamagePerAttack,
     int AttacksApplied,
-    bool BonusApplied);
+    bool BonusApplied,
+    int ProjectileId);
+
+public readonly record struct TestCombatProjectileSnapshot(
+    int Id,
+    TestUnitId Attacker,
+    CombatTargetKind TargetKind,
+    int TargetId,
+    Vector2 Position,
+    float Speed);
 
 public readonly record struct TestCombatEventBatch(
     TestCombatEvent[] Events,
@@ -1773,7 +1783,8 @@ public sealed partial class MovementTestRig
             resolvedProfile.BonusVs,
             resolvedProfile.BonusDamage,
             resolvedProfile.BaseUpgradeDamage,
-            resolvedProfile.BonusUpgradeDamage);
+            resolvedProfile.BonusUpgradeDamage,
+            resolvedProfile.ProjectileSpeed);
         return new TestUnitId(_simulation.AddUnit(
             position, team, backendProfile, radius, maximumSpeed, acceleration));
     }
@@ -2735,10 +2746,17 @@ public sealed partial class MovementTestRig
                 new TestUnitId(value.AttackerUnit), value.TargetKind,
                 value.TargetId, value.Damage, value.RemainingHealth,
                 value.DamagePerAttack, value.AttacksApplied,
-                value.BonusApplied)).ToArray(),
+                value.BonusApplied, value.ProjectileId)).ToArray(),
             batch.LatestSequence,
             batch.LostEvents);
     }
+
+    public TestCombatProjectileSnapshot[] ObserveCombatProjectiles() =>
+        _simulation.CombatProjectiles.ObserveActive()
+            .Select(value => new TestCombatProjectileSnapshot(
+                value.Id, new TestUnitId(value.AttackerUnit),
+                value.TargetKind, value.TargetId, value.Position, value.Speed))
+            .ToArray();
 
     public TestCombatDamagePreview PreviewCombatDamage(
         TestUnitId attacker,

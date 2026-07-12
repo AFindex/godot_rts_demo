@@ -26,6 +26,7 @@ internal sealed class SimulationRuntimeStateCapture
     public required DynamicOccupancyRuntimeSnapshot DynamicOccupancy { get; init; }
     public required UnitStore Units { get; init; }
     public required CombatStore Combat { get; init; }
+    public required CombatProjectileRuntimeSnapshot CombatProjectiles { get; init; }
     public required EconomyRuntimeSnapshot Economy { get; init; }
     public required PlayerVisibilityRuntimeSnapshot Visibility { get; init; }
     public required MatchRuntimeSnapshot Match { get; init; }
@@ -44,7 +45,7 @@ internal sealed class SimulationRuntimeStateCapture
 /// </summary>
 public sealed class SimulationHotSnapshot
 {
-    public const int CurrentFormatVersion = 14;
+    public const int CurrentFormatVersion = 15;
 
     internal SimulationHotSnapshot(
         ulong packageHash,

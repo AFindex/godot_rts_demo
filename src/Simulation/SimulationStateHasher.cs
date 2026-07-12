@@ -6,7 +6,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public static class SimulationStateHasher
 {
-    public const int CurrentFormatVersion = 15;
+    public const int CurrentFormatVersion = 16;
 
     public static ulong Compute(RtsSimulation simulation)
     {
@@ -31,6 +31,7 @@ public static class SimulationStateHasher
         AppendCombat(ref hash, simulation.Combat, simulation.Units.Count);
         simulation.Economy.AppendStateHash(ref hash, simulation.Units.Count);
         simulation.Construction.AppendStateHash(ref hash);
+        simulation.CombatProjectiles.AppendStateHash(ref hash);
         simulation.Production.AppendStateHash(ref hash);
         simulation.Technology.AppendStateHash(ref hash);
         simulation.Visibility.AppendStateHash(ref hash);
@@ -137,6 +138,7 @@ public static class SimulationStateHasher
             hash.Add(combat.BonusDamage[unit]);
             hash.Add(combat.BaseUpgradeDamage[unit]);
             hash.Add(combat.BonusUpgradeDamage[unit]);
+            hash.Add(combat.ProjectileSpeed[unit]);
             hash.Add(combat.AttackRanges[unit]);
             hash.Add(combat.AcquisitionRanges[unit]);
             hash.Add(combat.AttackCooldownDurations[unit]);

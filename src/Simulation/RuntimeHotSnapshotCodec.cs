@@ -25,6 +25,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteDynamic(writer, state.DynamicOccupancy);
         WriteUnits(writer, state.Units);
         WriteCombat(writer, state.Combat, state.Units.Count);
+        WriteProjectiles(writer, state.CombatProjectiles);
         WriteEconomy(writer, state.Economy, state.Units.Count);
         WriteVisibility(writer, state.Visibility);
         WriteMatch(writer, state.Match);
@@ -84,6 +85,7 @@ internal static class RuntimeHotSnapshotCodec
             var dynamic = ReadDynamic(reader);
             var units = ReadUnits(reader, capacity);
             var combat = ReadCombat(reader, capacity, units.Count);
+            var projectiles = ReadProjectiles(reader, units.Count);
             var economy = ReadEconomy(reader, units.Count);
             var visibility = ReadVisibility(reader);
             var match = ReadMatch(reader, economy);
@@ -108,6 +110,7 @@ internal static class RuntimeHotSnapshotCodec
                 DynamicOccupancy = dynamic,
                 Units = units,
                 Combat = combat,
+                CombatProjectiles = projectiles,
                 Economy = economy,
                 Visibility = visibility,
                 Match = match,
@@ -324,6 +327,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.BonusDamage[unit]);
             writer.Write(combat.BaseUpgradeDamage[unit]);
             writer.Write(combat.BonusUpgradeDamage[unit]);
+            writer.Write(combat.ProjectileSpeed[unit]);
             writer.Write(combat.AttackRanges[unit]);
             writer.Write(combat.AcquisitionRanges[unit]);
             writer.Write(combat.AttackCooldownDurations[unit]);
@@ -364,6 +368,7 @@ internal static class RuntimeHotSnapshotCodec
             combat.BonusDamage[unit] = reader.ReadSingle();
             combat.BaseUpgradeDamage[unit] = reader.ReadSingle();
             combat.BonusUpgradeDamage[unit] = reader.ReadSingle();
+            combat.ProjectileSpeed[unit] = reader.ReadSingle();
             combat.AttackRanges[unit] = reader.ReadSingle();
             combat.AcquisitionRanges[unit] = reader.ReadSingle();
             combat.AttackCooldownDurations[unit] = reader.ReadSingle();
@@ -388,6 +393,70 @@ internal static class RuntimeHotSnapshotCodec
         }
         return combat;
     }
+
+    private static void WriteProjectiles(
+        BinaryWriter writer,
+        CombatProjectileRuntimeSnapshot snapshot)
+    {
+        writer.Write(snapshot.NextId);
+        writer.Write(snapshot.Active.Length);
+        foreach (var value in snapshot.Active)
+        {
+            writer.Write(value.Id);
+            writer.Write(value.AttackerUnit);
+            writer.Write((byte)value.TargetKind);
+            writer.Write(value.TargetId);
+            WriteVector(writer, value.Position);
+            writer.Write(value.Speed);
+            WriteWeapon(writer, value.Weapon);
+        }
+    }
+
+    private static CombatProjectileRuntimeSnapshot ReadProjectiles(
+        BinaryReader reader,
+        int unitCount)
+    {
+        var nextId = reader.ReadInt32();
+        var count = ReadCount(reader, CombatProjectileSystem.MaximumProjectiles);
+        var active = new CombatProjectileSnapshot[count];
+        var previous = 0;
+        for (var index = 0; index < count; index++)
+        {
+            var value = new CombatProjectileSnapshot(
+                reader.ReadInt32(), reader.ReadInt32(),
+                (CombatTargetKind)reader.ReadByte(), reader.ReadInt32(),
+                ReadVector(reader), reader.ReadSingle(), ReadWeapon(reader));
+            if (value.Id <= previous || value.Id >= nextId ||
+                (uint)value.AttackerUnit >= (uint)unitCount ||
+                value.TargetKind is not (CombatTargetKind.Unit or
+                    CombatTargetKind.Building) ||
+                value.TargetId < 0 || value.Speed <= 0f ||
+                !float.IsFinite(value.Speed) ||
+                !CombatProjectileSystem.ValidWeapon(value.Weapon))
+                throw new InvalidDataException();
+            active[index] = value;
+            previous = value.Id;
+        }
+        return new CombatProjectileRuntimeSnapshot(nextId, active);
+    }
+
+    private static void WriteWeapon(
+        BinaryWriter writer,
+        CombatWeaponDamageSnapshot value)
+    {
+        writer.Write(value.BaseDamage);
+        writer.Write(value.AttacksPerVolley);
+        writer.Write((ushort)value.BonusVs);
+        writer.Write(value.BonusDamage);
+        writer.Write(value.UpgradeLevel);
+        writer.Write(value.BaseUpgradeDamage);
+        writer.Write(value.BonusUpgradeDamage);
+    }
+
+    private static CombatWeaponDamageSnapshot ReadWeapon(BinaryReader reader) => new(
+        reader.ReadSingle(), reader.ReadInt32(),
+        (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
+        reader.ReadInt32(), reader.ReadSingle(), reader.ReadSingle());
 
     internal static void WriteEconomy(
         BinaryWriter writer,

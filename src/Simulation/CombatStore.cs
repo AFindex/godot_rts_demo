@@ -48,7 +48,8 @@ public readonly record struct CombatProfileSnapshot(
     CombatAttribute BonusVs = CombatAttribute.None,
     float BonusDamage = 0f,
     float BaseUpgradeDamage = 0f,
-    float BonusUpgradeDamage = 0f)
+    float BonusUpgradeDamage = 0f,
+    float ProjectileSpeed = 0f)
 {
     public static CombatProfileSnapshot Standard => new(
         MaximumHealth: 45f,
@@ -75,7 +76,8 @@ public readonly record struct CombatProfileSnapshot(
             AttacksPerVolley is < 1 or > 32 ||
             !float.IsFinite(BonusDamage) || BonusDamage < 0f ||
             !float.IsFinite(BaseUpgradeDamage) || BaseUpgradeDamage < 0f ||
-            !float.IsFinite(BonusUpgradeDamage) || BonusUpgradeDamage < 0f)
+            !float.IsFinite(BonusUpgradeDamage) || BonusUpgradeDamage < 0f ||
+            !float.IsFinite(ProjectileSpeed) || ProjectileSpeed < 0f)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(CombatProfileSnapshot),
@@ -103,6 +105,7 @@ public sealed class CombatStore
         BonusDamage = new float[capacity];
         BaseUpgradeDamage = new float[capacity];
         BonusUpgradeDamage = new float[capacity];
+        ProjectileSpeed = new float[capacity];
         AttackRanges = new float[capacity];
         AcquisitionRanges = new float[capacity];
         AttackCooldownDurations = new float[capacity];
@@ -139,6 +142,7 @@ public sealed class CombatStore
     public float[] BonusDamage { get; }
     public float[] BaseUpgradeDamage { get; }
     public float[] BonusUpgradeDamage { get; }
+    public float[] ProjectileSpeed { get; }
     public float[] AttackRanges { get; }
     public float[] AcquisitionRanges { get; }
     public float[] AttackCooldownDurations { get; }
@@ -175,6 +179,7 @@ public sealed class CombatStore
         BonusDamage[unit] = profile.BonusDamage;
         BaseUpgradeDamage[unit] = profile.BaseUpgradeDamage;
         BonusUpgradeDamage[unit] = profile.BonusUpgradeDamage;
+        ProjectileSpeed[unit] = profile.ProjectileSpeed;
         AttackRanges[unit] = profile.AttackRange;
         AcquisitionRanges[unit] = profile.AcquisitionRange;
         AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
@@ -209,6 +214,7 @@ public sealed class CombatStore
         Copy(source.BonusDamage, BonusDamage);
         Copy(source.BaseUpgradeDamage, BaseUpgradeDamage);
         Copy(source.BonusUpgradeDamage, BonusUpgradeDamage);
+        Copy(source.ProjectileSpeed, ProjectileSpeed);
         Copy(source.AttackRanges, AttackRanges);
         Copy(source.AcquisitionRanges, AcquisitionRanges);
         Copy(source.AttackCooldownDurations, AttackCooldownDurations);
