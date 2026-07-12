@@ -328,6 +328,8 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.BaseUpgradeDamage[unit]);
             writer.Write(combat.BonusUpgradeDamage[unit]);
             writer.Write(combat.ProjectileSpeed[unit]);
+            writer.Write(combat.CanMoveDuringWindup[unit]);
+            writer.Write(combat.CanMoveDuringCooldown[unit]);
             writer.Write(combat.AttackRanges[unit]);
             writer.Write(combat.AcquisitionRanges[unit]);
             writer.Write(combat.AttackCooldownDurations[unit]);
@@ -369,6 +371,8 @@ internal static class RuntimeHotSnapshotCodec
             combat.BaseUpgradeDamage[unit] = reader.ReadSingle();
             combat.BonusUpgradeDamage[unit] = reader.ReadSingle();
             combat.ProjectileSpeed[unit] = reader.ReadSingle();
+            combat.CanMoveDuringWindup[unit] = reader.ReadBoolean();
+            combat.CanMoveDuringCooldown[unit] = reader.ReadBoolean();
             combat.AttackRanges[unit] = reader.ReadSingle();
             combat.AcquisitionRanges[unit] = reader.ReadSingle();
             combat.AttackCooldownDurations[unit] = reader.ReadSingle();

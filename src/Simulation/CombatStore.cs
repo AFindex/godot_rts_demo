@@ -49,7 +49,9 @@ public readonly record struct CombatProfileSnapshot(
     float BonusDamage = 0f,
     float BaseUpgradeDamage = 0f,
     float BonusUpgradeDamage = 0f,
-    float ProjectileSpeed = 0f)
+    float ProjectileSpeed = 0f,
+    bool CanMoveDuringWindup = false,
+    bool CanMoveDuringCooldown = false)
 {
     public static CombatProfileSnapshot Standard => new(
         MaximumHealth: 45f,
@@ -106,6 +108,8 @@ public sealed class CombatStore
         BaseUpgradeDamage = new float[capacity];
         BonusUpgradeDamage = new float[capacity];
         ProjectileSpeed = new float[capacity];
+        CanMoveDuringWindup = new bool[capacity];
+        CanMoveDuringCooldown = new bool[capacity];
         AttackRanges = new float[capacity];
         AcquisitionRanges = new float[capacity];
         AttackCooldownDurations = new float[capacity];
@@ -143,6 +147,8 @@ public sealed class CombatStore
     public float[] BaseUpgradeDamage { get; }
     public float[] BonusUpgradeDamage { get; }
     public float[] ProjectileSpeed { get; }
+    public bool[] CanMoveDuringWindup { get; }
+    public bool[] CanMoveDuringCooldown { get; }
     public float[] AttackRanges { get; }
     public float[] AcquisitionRanges { get; }
     public float[] AttackCooldownDurations { get; }
@@ -180,6 +186,8 @@ public sealed class CombatStore
         BaseUpgradeDamage[unit] = profile.BaseUpgradeDamage;
         BonusUpgradeDamage[unit] = profile.BonusUpgradeDamage;
         ProjectileSpeed[unit] = profile.ProjectileSpeed;
+        CanMoveDuringWindup[unit] = profile.CanMoveDuringWindup;
+        CanMoveDuringCooldown[unit] = profile.CanMoveDuringCooldown;
         AttackRanges[unit] = profile.AttackRange;
         AcquisitionRanges[unit] = profile.AcquisitionRange;
         AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
@@ -215,6 +223,8 @@ public sealed class CombatStore
         Copy(source.BaseUpgradeDamage, BaseUpgradeDamage);
         Copy(source.BonusUpgradeDamage, BonusUpgradeDamage);
         Copy(source.ProjectileSpeed, ProjectileSpeed);
+        Copy(source.CanMoveDuringWindup, CanMoveDuringWindup);
+        Copy(source.CanMoveDuringCooldown, CanMoveDuringCooldown);
         Copy(source.AttackRanges, AttackRanges);
         Copy(source.AcquisitionRanges, AcquisitionRanges);
         Copy(source.AttackCooldownDurations, AttackCooldownDurations);

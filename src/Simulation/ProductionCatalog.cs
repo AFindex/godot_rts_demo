@@ -58,7 +58,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 4;
+    public const int CurrentFormatVersion = 5;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;
@@ -215,6 +215,8 @@ public sealed class ProductionCatalogSnapshot
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BaseUpgradeDamage));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.BonusUpgradeDamage));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.ProjectileSpeed));
+        writer.Write(unit.Combat.CanMoveDuringWindup);
+        writer.Write(unit.Combat.CanMoveDuringCooldown);
         writer.Write(unit.IsWorker);
     }
 

@@ -18,6 +18,7 @@ public static class VisualTestCatalog
         "combat-damage-matrix",
         "combat-projectile-flight",
         "combat-projectile-presentation",
+        "combat-mobile-fire",
         "combat-building-defense",
         "attack-move-leash-resume",
         "attack-move-command-isolation",
@@ -128,6 +129,7 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "combat-projectile-presentation" =>
             CreateCombatProjectilePresentation(),
+        "combat-mobile-fire" => CreateCombatMobileFire(gameplayProfiles),
         "combat-building-defense" => CreateCombatBuildingDefense(
             navigationMap, gameplayProfiles, clearanceBake,
             buildingTypes, technologyCatalog),
@@ -496,8 +498,8 @@ public static class VisualTestCatalog
                              impact.ProjectileId == launched.ProjectileId &&
                              targetHealth == 80f &&
                              runtime.ObserveCombatProjectiles().Length == 0 &&
-                             package.FormatVersion == 15 &&
-                             hot.FormatVersion == 15 && exact;
+                             package.FormatVersion == 16 &&
+                             hot.FormatVersion == 16 && exact;
                 return new ScenarioResult(
                     passed,
                     $"flight={inFlight.Length}@" +
@@ -608,6 +610,196 @@ public static class VisualTestCatalog
                                   float.IsFinite(cue.Position.Y);
                 }
                 lostEvents += frame.LostEvents;
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateCombatMobileFire(
+        GameplayProfileCatalogSnapshot? gameplayProfiles)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        if (!NavigationMapSnapshot.TryCreate(
+                NavigationMapSnapshot.CurrentFormatVersion,
+                new SimRect(Vector2.Zero, new Vector2(1000f, 700f)),
+                [], [], [], [],
+                out var navigationMap,
+                out var navigationValidation) || navigationMap is null)
+            throw new InvalidOperationException(
+                $"Mobile fire map invalid: {navigationValidation.FirstError}");
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            12, navigationMap, gameplayProfiles, clearanceBake: null);
+        var rootedProfile = new TestCombatProfile(
+            MaximumHealth: 100f,
+            AttackDamage: 10f,
+            AttackRange: 170f,
+            AcquisitionRange: 350f,
+            AttackCooldownSeconds: 20f,
+            AttackWindupSeconds: 0.6f,
+            LeashDistance: 900f,
+            ProjectileSpeed: 220f);
+        var mobileProfile = rootedProfile with
+        {
+            CanMoveDuringWindup = true,
+            CanMoveDuringCooldown = true
+        };
+        var targetProfile = new TestCombatProfile(
+            MaximumHealth: 200f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 20f,
+            AttackCooldownSeconds: 20f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 80f);
+        var attackers = new[]
+        {
+            rig.SpawnCombat(new Vector2(120f, 100f), 1, rootedProfile,
+                maximumSpeed: 110f),
+            rig.SpawnCombat(new Vector2(120f, 265f), 1, mobileProfile,
+                maximumSpeed: 110f),
+            rig.SpawnCombat(new Vector2(120f, 430f), 1, rootedProfile,
+                maximumSpeed: 110f),
+            rig.SpawnCombat(new Vector2(120f, 595f), 1, rootedProfile,
+                maximumSpeed: 110f)
+        };
+        var targets = new[]
+        {
+            rig.SpawnCombat(new Vector2(520f, 100f), 2, targetProfile),
+            rig.SpawnCombat(new Vector2(520f, 265f), 2, targetProfile),
+            rig.SpawnCombat(new Vector2(520f, 430f), 2, targetProfile),
+            rig.SpawnCombat(new Vector2(520f, 595f), 2, targetProfile)
+        };
+        rig.StartReplayPackageRecording();
+        var goal = new Vector2(900f, 350f);
+        rig.AttackMove([attackers[0]], new Vector2(goal.X, 100f));
+        rig.AttackMove([attackers[1]], new Vector2(goal.X, 265f));
+        rig.AttackTarget([attackers[2]], targets[2]);
+        rig.AttackMove([attackers[3]], new Vector2(goal.X, 595f));
+
+        var starts = new Dictionary<int, TestCombatEvent>();
+        var launches = new Dictionary<int, TestCombatEvent>();
+        var latestSequence = 0UL;
+        var cancelIssued = false;
+        var cancelWindupBefore = 0f;
+        var cancelWindupAfter = -1f;
+        var cooldownMoveIssued = false;
+        var cooldownBeforeMove = 0f;
+        var cooldownAfterMove = -1f;
+        Vector2? rootedAfterCooldownSecond = null;
+        Vector2? mobileAfterCooldownSecond = null;
+        TestRuntimeStateCapture? runtimeCapture = null;
+
+        var session = new VisualTestSession(
+            "combat-mobile-fire",
+            "Rooted windup, mobile fire and command cancellation",
+            720,
+            rig,
+            [.. attackers, .. targets],
+            runtime =>
+            {
+                var rootedTravel = starts.TryGetValue(attackers[0].Value, out var rs) &&
+                                   launches.TryGetValue(attackers[0].Value, out var rl)
+                    ? Vector2.Distance(rs.WorldPosition, rl.WorldPosition)
+                    : -1f;
+                var mobileTravel = starts.TryGetValue(attackers[1].Value, out var ms) &&
+                                   launches.TryGetValue(attackers[1].Value, out var ml)
+                    ? Vector2.Distance(ms.WorldPosition, ml.WorldPosition)
+                    : -1f;
+                var rootedCooldownTravel = rootedAfterCooldownSecond.HasValue &&
+                                           launches.TryGetValue(attackers[0].Value,
+                                               out var rootedLaunch)
+                    ? Vector2.Distance(rootedLaunch.WorldPosition,
+                        rootedAfterCooldownSecond.Value)
+                    : -1f;
+                var mobileCooldownTravel = mobileAfterCooldownSecond.HasValue &&
+                                           launches.TryGetValue(attackers[1].Value,
+                                               out var mobileLaunch)
+                    ? Vector2.Distance(mobileLaunch.WorldPosition,
+                        mobileAfterCooldownSecond.Value)
+                    : -1f;
+                var health = targets.Select(value =>
+                    runtime.ObserveCombat(value).Health).ToArray();
+                var package = runtime.CaptureReplayPackage();
+                var hot = runtime.BindHotSnapshot(package, runtimeCapture!);
+                var restored = runtime.ResumeHotSnapshot(
+                    package, hot, runtime.Tick);
+                var exact = restored.FinalHash == runtime.StateHash;
+                var passed = rootedTravel is >= 0f and < 2f &&
+                             mobileTravel > 20f &&
+                             rootedCooldownTravel is >= 0f and < 2f &&
+                             mobileCooldownTravel > 20f &&
+                             cancelIssued && cancelWindupBefore > 0f &&
+                             cancelWindupAfter == 0f &&
+                             !launches.ContainsKey(attackers[2].Value) &&
+                             cooldownMoveIssued && cooldownBeforeMove > 0f &&
+                             cooldownAfterMove == cooldownBeforeMove &&
+                             launches.ContainsKey(attackers[3].Value) &&
+                             health.SequenceEqual([190f, 190f, 200f, 190f]) &&
+                             package.FormatVersion == 16 &&
+                             hot.FormatVersion == 16 && exact;
+                return new ScenarioResult(
+                    passed,
+                    $"windupTravel={rootedTravel:0.0}/{mobileTravel:0.0}, " +
+                    $"cooldownTravel={rootedCooldownTravel:0.0}/" +
+                    $"{mobileCooldownTravel:0.0}, cancel=" +
+                    $"{cancelWindupBefore:0.00}->{cancelWindupAfter:0.00}/" +
+                    $"launch{launches.ContainsKey(attackers[2].Value)}, " +
+                    $"cooldownMove={cooldownBeforeMove:0.00}->" +
+                    $"{cooldownAfterMove:0.00}, health={string.Join(',', health)}, " +
+                    $"versions=package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"exact={exact}");
+            });
+
+        session.At(180, "Capture mobile weapon runtime", runtime =>
+            runtimeCapture = runtime.CaptureRuntimeState());
+
+        for (var tick = 0; tick < 720; tick++)
+        {
+            session.At(tick, "Observe weapon movement constraints", runtime =>
+            {
+                var batch = runtime.ObserveCombatEvents(latestSequence);
+                latestSequence = batch.LatestSequence;
+                foreach (var combatEvent in batch.Events)
+                {
+                    if (combatEvent.Kind == CombatEventKind.AttackStarted)
+                    {
+                        starts.TryAdd(combatEvent.Attacker.Value, combatEvent);
+                        if (combatEvent.Attacker == attackers[2] && !cancelIssued)
+                        {
+                            cancelWindupBefore = runtime.ObserveCombat(
+                                attackers[2]).WindupRemaining;
+                            runtime.Move([attackers[2]],
+                                new Vector2(900f, 430f));
+                            cancelWindupAfter = runtime.ObserveCombat(
+                                attackers[2]).WindupRemaining;
+                            cancelIssued = true;
+                        }
+                    }
+                    if (combatEvent.Kind == CombatEventKind.ProjectileLaunched)
+                    {
+                        launches.TryAdd(combatEvent.Attacker.Value, combatEvent);
+                        if (combatEvent.Attacker == attackers[3] &&
+                            !cooldownMoveIssued)
+                        {
+                            cooldownBeforeMove = runtime.ObserveCombat(
+                                attackers[3]).CooldownRemaining;
+                            runtime.Move([attackers[3]],
+                                new Vector2(900f, 595f));
+                            cooldownAfterMove = runtime.ObserveCombat(
+                                attackers[3]).CooldownRemaining;
+                            cooldownMoveIssued = true;
+                        }
+                    }
+                }
+
+                if (launches.TryGetValue(attackers[0].Value, out var rooted) &&
+                    runtime.Tick >= rooted.Tick + 60 &&
+                    !rootedAfterCooldownSecond.HasValue)
+                    rootedAfterCooldownSecond = runtime.Observe(attackers[0]).Position;
+                if (launches.TryGetValue(attackers[1].Value, out var mobile) &&
+                    runtime.Tick >= mobile.Tick + 60 &&
+                    !mobileAfterCooldownSecond.HasValue)
+                    mobileAfterCooldownSecond = runtime.Observe(attackers[1]).Position;
             });
         }
         return session;
@@ -1483,7 +1675,7 @@ public static class VisualTestCatalog
                              builderOrders.CompletedQueuedOrders == 1 &&
                              gatherActive && failedTaskSkipped &&
                              commandLog.FormatVersion == 3 &&
-                             package.FormatVersion == 15 && hot.FormatVersion == 15 &&
+                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == commandLog.StableHash && exact;
                 return new ScenarioResult(
@@ -2202,7 +2394,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 15 &&
+                    exact && rejected && hot.FormatVersion == 16 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -2296,7 +2488,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 15 && hot.FormatVersion == 15 &&
+                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -3425,8 +3617,8 @@ public static class VisualTestCatalog
                 var exact = replay.FinalHash == runtime.StateHash &&
                             resumed.FinalHash == runtime.StateHash &&
                             replay.MatchesFrom(resumed, hotTick);
-                var versions = package.FormatVersion == 15 &&
-                               hot.FormatVersion == 15;
+                var versions = package.FormatVersion == 16 &&
+                               hot.FormatVersion == 16;
                 var passed = enemyBarracks.Succeeded && initialBoundary &&
                              ownershipRejected && hiddenTargetRejected &&
                              visibleResourceObserved &&
@@ -3578,7 +3770,7 @@ public static class VisualTestCatalog
                              defeatedCommandRejected && matchCompleted &&
                              completedCommandRejected && winner &&
                              packageRoundTrip && hotRoundTrip && exact &&
-                             package.FormatVersion == 15 && hot.FormatVersion == 15;
+                             package.FormatVersion == 16 && hot.FormatVersion == 16;
                 return new ScenarioResult(
                     passed,
                     $"build={playerOneBase.Code}/{playerTwoBase.Code}/" +
@@ -4347,9 +4539,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 15 &&
-                             producingHot.FormatVersion == 15 &&
-                             waitingHot.FormatVersion == 15 &&
+                             package.FormatVersion == 16 &&
+                             producingHot.FormatVersion == 16 &&
+                             waitingHot.FormatVersion == 16 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -4565,7 +4757,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 15 && hot.FormatVersion == 15 &&
+                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -4576,7 +4768,7 @@ public static class VisualTestCatalog
                     $"marine={marine.Position}->{marine.AssignedTarget}, " +
                     $"protocol={protocol}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log6/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"versions=log7/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
                     $"buildings={runtime.ObserveGameplayBuilding(townHall.BuildingId).State}/" +
                     $"{runtime.ObserveGameplayBuilding(barracks.BuildingId).State}, " +
                     $"issued={issued}({issueDetails}), ids={townHall.BuildingId.Value}/" +
@@ -4705,7 +4897,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 15 && hot.FormatVersion == 15 &&
+                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -4717,7 +4909,7 @@ public static class VisualTestCatalog
                     $"{secondBarracks.Succeeded}, train={trained}, " +
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log6/package{package.FormatVersion}/hot{hot.FormatVersion}");
+                    $"versions=log7/package{package.FormatVersion}/hot{hot.FormatVersion}");
             });
         session.At(650, "Reject advanced unit while one Barracks is missing", runtime =>
         {
@@ -4846,7 +5038,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 15 && hot.FormatVersion == 15 &&
+                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -4867,7 +5059,7 @@ public static class VisualTestCatalog
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"upgradedDamage={upgradedDamage.TotalDamage}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log6/package{package.FormatVersion}/hot{hot.FormatVersion}");
+                    $"versions=log7/package{package.FormatVersion}/hot{hot.FormatVersion}");
             });
         session.At(700, "Reject doctrine, cancel first weapon order, then requeue", runtime =>
         {
@@ -5006,7 +5198,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 15 && hot.FormatVersion == 15 &&
+                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -5120,7 +5312,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 15 && exact;
+                             hotRoundTrip && hot.FormatVersion == 16 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

@@ -137,7 +137,8 @@ public sealed class CombatSystem
             var range = _combat.AttackRanges[unit] +
                         _units.Radii[unit] + _units.Radii[target];
             if (distance <= range &&
-                (intent == UnitCommandIntent.Hold || _slots.IsReady(unit)))
+                (intent == UnitCommandIntent.Hold || _slots.IsReady(unit) ||
+                 CanContinueMobileAttackMove(unit, intent)))
             {
                 UpdateAttack(unit, target, delta, tick);
             }
@@ -194,10 +195,12 @@ public sealed class CombatSystem
     private void UpdateAttack(int unit, int target, float delta, long tick)
     {
         _combat.Phases[unit] = CombatPhase.Attacking;
-        _movement.StopForAttack(unit);
+        var intent = _combat.CommandIntents[unit];
 
         if (_combat.WindupRemaining[unit] > 0f)
         {
+            ApplyAttackMovement(
+                unit, intent, _combat.CanMoveDuringWindup[unit]);
             _combat.WindupRemaining[unit] -= delta;
             if (_combat.WindupRemaining[unit] <= 0f && IsValidTarget(unit, target))
             {
@@ -206,19 +209,25 @@ public sealed class CombatSystem
             return;
         }
 
-        if (_combat.CooldownRemaining[unit] <= 0f)
+        if (_combat.CooldownRemaining[unit] > 0f)
         {
-            var windup = _combat.AttackWindupDurations[unit];
-            if (windup <= 0f)
-            {
-                PublishAttackStarted(unit, CombatTargetKind.Unit, target, tick);
-                FireAtUnit(unit, target, tick);
-            }
-            else
-            {
-                _combat.WindupRemaining[unit] = windup;
-                PublishAttackStarted(unit, CombatTargetKind.Unit, target, tick);
-            }
+            ApplyAttackMovement(
+                unit, intent, _combat.CanMoveDuringCooldown[unit]);
+            return;
+        }
+
+        var windup = _combat.AttackWindupDurations[unit];
+        ApplyAttackMovement(
+            unit, intent, _combat.CanMoveDuringWindup[unit]);
+        if (windup <= 0f)
+        {
+            PublishAttackStarted(unit, CombatTargetKind.Unit, target, tick);
+            FireAtUnit(unit, target, tick);
+        }
+        else
+        {
+            _combat.WindupRemaining[unit] = windup;
+            PublishAttackStarted(unit, CombatTargetKind.Unit, target, tick);
         }
     }
 
@@ -373,7 +382,7 @@ public sealed class CombatSystem
         var range = _combat.AttackRanges[unit] + _units.Radii[unit];
         if (distance <= range)
         {
-            UpdateBuildingAttack(unit, building, delta, tick);
+            UpdateBuildingAttack(unit, building, intent, delta, tick);
             return;
         }
         if (intent == UnitCommandIntent.Hold)
@@ -405,13 +414,15 @@ public sealed class CombatSystem
     private void UpdateBuildingAttack(
         int unit,
         GameplayBuildingId building,
+        UnitCommandIntent intent,
         float delta,
         long tick)
     {
         _combat.Phases[unit] = CombatPhase.Attacking;
-        _movement.StopForAttack(unit);
         if (_combat.WindupRemaining[unit] > 0f)
         {
+            ApplyAttackMovement(
+                unit, intent, _combat.CanMoveDuringWindup[unit]);
             _combat.WindupRemaining[unit] -= delta;
             if (_combat.WindupRemaining[unit] <= 0f &&
                 _movement.IsBuildingTargetValid(unit, building))
@@ -422,9 +433,13 @@ public sealed class CombatSystem
         }
         if (_combat.CooldownRemaining[unit] > 0f)
         {
+            ApplyAttackMovement(
+                unit, intent, _combat.CanMoveDuringCooldown[unit]);
             return;
         }
         var windup = _combat.AttackWindupDurations[unit];
+        ApplyAttackMovement(
+            unit, intent, _combat.CanMoveDuringWindup[unit]);
         if (windup <= 0f)
         {
             PublishAttackStarted(unit, CombatTargetKind.Building, building.Value, tick);
@@ -508,6 +523,27 @@ public sealed class CombatSystem
         _events.Publish(tick, CombatEventKind.AttackStarted, attacker,
             targetKind, targetId,
             worldPosition: _units.Positions[attacker]);
+
+    private bool CanContinueMobileAttackMove(
+        int unit,
+        UnitCommandIntent intent) =>
+        intent == UnitCommandIntent.AttackMove &&
+        _combat.Phases[unit] == CombatPhase.Attacking &&
+        (_combat.WindupRemaining[unit] > 0f
+            ? _combat.CanMoveDuringWindup[unit]
+            : _combat.CooldownRemaining[unit] > 0f &&
+              _combat.CanMoveDuringCooldown[unit]);
+
+    private void ApplyAttackMovement(
+        int unit,
+        UnitCommandIntent intent,
+        bool allowed)
+    {
+        if (allowed && intent == UnitCommandIntent.AttackMove)
+            _movement.ResumeAttackMove(unit, _combat.AttackMoveGoals[unit]);
+        else
+            _movement.StopForAttack(unit);
+    }
 
     private CombatWeaponDamageSnapshot Weapon(int attacker) => new(
         _combat.AttackDamage[attacker],

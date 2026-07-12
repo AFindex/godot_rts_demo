@@ -3223,6 +3223,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
             return;
         }
 
+        if ((Units.Modes[unit] is UnitMoveMode.Moving or
+                UnitMoveMode.WaitingForPath) &&
+            Vector2.DistanceSquared(Units.MoveGoals[unit], target) <= 0.01f)
+        {
+            return;
+        }
+
         SetCombatDestination(unit, target);
     }
 

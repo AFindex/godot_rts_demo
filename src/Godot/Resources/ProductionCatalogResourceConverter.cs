@@ -38,6 +38,8 @@ public static class ProductionCatalogResourceConverter
                 BaseUpgradeDamage = type.Combat.BaseUpgradeDamage,
                 BonusUpgradeDamage = type.Combat.BonusUpgradeDamage,
                 ProjectileSpeed = type.Combat.ProjectileSpeed,
+                CanMoveDuringWindup = type.Combat.CanMoveDuringWindup,
+                CanMoveDuringCooldown = type.Combat.CanMoveDuringCooldown,
                 IsWorker = type.IsWorker
             });
         }
@@ -113,7 +115,9 @@ public static class ProductionCatalogResourceConverter
                 source.Positioning, source.Armor, source.Attributes,
                 source.AttacksPerVolley, source.BonusVs, source.BonusDamage,
                 source.BaseUpgradeDamage, source.BonusUpgradeDamage,
-                source.ProjectileSpeed);
+                source.ProjectileSpeed,
+                source.CanMoveDuringWindup,
+                source.CanMoveDuringCooldown);
 
             units[index] = new UnitTypeProfile(
                 source.Id, source.DisplayName ?? string.Empty,

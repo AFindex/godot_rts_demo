@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-12T15:51:01.4780915+08:00",
+    "generated_at":  "2026-07-12T16:54:51.7084901+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  123,
-    "case_count":  95,
+    "recording_count":  124,
+    "case_count":  96,
     "recordings":  [
+                       {
+                           "id":  "combat-mobile-fire",
+                           "display_name":  "Rooted windup, mobile fire and command cancellation",
+                           "batch":  "20260712_165436",
+                           "created_at":  "2026-07-12T16:54:51.2538747+08:00",
+                           "video":  "../20260712_165436/combat-mobile-fire.webm",
+                           "log":  "../20260712_165436/combat-mobile-fire.log",
+                           "bytes":  600447,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS combat-mobile-fire: ticks=720, windupTravel=0.0/59.8, cooldownTravel=0.0/110.3, cancel=0.60-\u003e0.00/launchFalse, cooldownMove=20.00-\u003e20.00, health=190,190,200,190, versions=package16/hot16, exact=True",
+                           "metrics":  "ticks=720, windupTravel=0.0/59.8, cooldownTravel=0.0/110.3, cancel=0.60-\u003e0.00/launchFalse, cooldownMove=20.00-\u003e20.00, health=190,190,200,190, versions=package16/hot16, exact=True"
+                       },
                        {
                            "id":  "combat-projectile-flight",
                            "display_name":  "Homing projectile flight survives hot snapshot and replay",

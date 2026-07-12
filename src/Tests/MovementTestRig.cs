@@ -799,7 +799,9 @@ public readonly record struct TestCombatProfile(
     float BonusDamage = 0f,
     float BaseUpgradeDamage = 0f,
     float BonusUpgradeDamage = 0f,
-    float ProjectileSpeed = 0f)
+    float ProjectileSpeed = 0f,
+    bool CanMoveDuringWindup = false,
+    bool CanMoveDuringCooldown = false)
 {
     public static TestCombatProfile Standard => new(
         45f, 8f, 34f, 155f, 0.72f, 0.18f, 260f);
@@ -829,7 +831,9 @@ public readonly record struct TestCombatSnapshot(
     TestUnitId? Target,
     TestCombatState State,
     bool HasAttackPosition,
-    Vector2 AttackPosition);
+    Vector2 AttackPosition,
+    float WindupRemaining,
+    float CooldownRemaining);
 
 public readonly record struct TestCombatEvent(
     long Tick,
@@ -1821,7 +1825,9 @@ public sealed partial class MovementTestRig
             resolvedProfile.BonusDamage,
             resolvedProfile.BaseUpgradeDamage,
             resolvedProfile.BonusUpgradeDamage,
-            resolvedProfile.ProjectileSpeed);
+            resolvedProfile.ProjectileSpeed,
+            resolvedProfile.CanMoveDuringWindup,
+            resolvedProfile.CanMoveDuringCooldown);
         return new TestUnitId(_simulation.AddUnit(
             position, team, backendProfile, radius, maximumSpeed, acceleration));
     }
@@ -2771,7 +2777,9 @@ public sealed partial class MovementTestRig
                 ? TestCombatState.Dead
                 : (TestCombatState)_simulation.Combat.Phases[index],
             _simulation.Combat.HasAttackSlots[index],
-            _simulation.Combat.AttackSlotTargets[index]);
+            _simulation.Combat.AttackSlotTargets[index],
+            _simulation.Combat.WindupRemaining[index],
+            _simulation.Combat.CooldownRemaining[index]);
     }
 
     public TestCombatEventBatch ObserveCombatEvents(ulong afterSequence = 0)

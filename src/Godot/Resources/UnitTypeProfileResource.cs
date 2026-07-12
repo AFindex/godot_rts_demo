@@ -45,5 +45,7 @@ public partial class UnitTypeProfileResource : Resource
     public float BonusUpgradeDamage { get; set; }
     [Export(PropertyHint.Range, "0,5000,1,or_greater")]
     public float ProjectileSpeed { get; set; }
+    [Export] public bool CanMoveDuringWindup { get; set; }
+    [Export] public bool CanMoveDuringCooldown { get; set; }
     [Export] public bool IsWorker { get; set; }
 }
