@@ -20,6 +20,7 @@ public static class VisualTestCatalog
         "combat-projectile-presentation",
         "combat-mobile-fire",
         "combat-target-selection",
+        "combat-contact-priority",
         "combat-building-defense",
         "attack-move-leash-resume",
         "attack-move-command-isolation",
@@ -133,6 +134,8 @@ public static class VisualTestCatalog
         "combat-mobile-fire" => CreateCombatMobileFire(gameplayProfiles),
         "combat-target-selection" =>
             CreateCombatTargetSelection(gameplayProfiles),
+        "combat-contact-priority" =>
+            CreateCombatContactPriority(gameplayProfiles),
         "combat-building-defense" => CreateCombatBuildingDefense(
             navigationMap, gameplayProfiles, clearanceBake,
             buildingTypes, technologyCatalog),
@@ -952,6 +955,183 @@ public static class VisualTestCatalog
                     explicitHeld = false;
             });
         }
+        return session;
+    }
+
+    private static VisualTestSession CreateCombatContactPriority(
+        GameplayProfileCatalogSnapshot? gameplayProfiles)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        if (!NavigationMapSnapshot.TryCreate(
+                NavigationMapSnapshot.CurrentFormatVersion,
+                new SimRect(Vector2.Zero, new Vector2(1100f, 760f)),
+                [], [], [], [],
+                out var navigationMap,
+                out var navigationValidation) || navigationMap is null)
+            throw new InvalidOperationException(
+                $"Combat contact map invalid: {navigationValidation.FirstError}");
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, clearanceBake: null);
+        var targetProfile = new TestCombatProfile(
+            MaximumHealth: 10000f,
+            AttackDamage: 0f,
+            AttackRange: 1f,
+            AcquisitionRange: 1f,
+            AttackCooldownSeconds: 20f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 50f);
+        var fixedWindupProfile = new TestCombatProfile(
+            MaximumHealth: 500f,
+            AttackDamage: 1f,
+            AttackRange: 300f,
+            AcquisitionRange: 270f,
+            AttackCooldownSeconds: 20f,
+            AttackWindupSeconds: 5f,
+            LeashDistance: 600f);
+        var fixedCooldownProfile = fixedWindupProfile with
+        {
+            AttackWindupSeconds = 0f
+        };
+        var mobileProfile = fixedWindupProfile with
+        {
+            AttackRange = 400f,
+            AcquisitionRange = 450f,
+            CanMoveDuringWindup = true,
+            CanMoveDuringCooldown = true
+        };
+        var meleeProfile = fixedWindupProfile with
+        {
+            AttackRange = 20f,
+            AcquisitionRange = 80f,
+            Positioning = TestCombatPositioning.Melee
+        };
+        var standardProfile = targetProfile;
+
+        var fixedWindup = rig.SpawnCombat(
+            new Vector2(240f, 100f), 1, fixedWindupProfile);
+        var fixedCooldown = rig.SpawnCombat(
+            new Vector2(240f, 260f), 1, fixedCooldownProfile);
+        var mobile = rig.SpawnCombat(
+            new Vector2(197f, 420f), 1, mobileProfile,
+            maximumSpeed: 110f);
+        var melee = rig.SpawnCombat(
+            new Vector2(240f, 600f), 1, meleeProfile);
+        var targets = new[]
+        {
+            rig.SpawnCombat(new Vector2(500f, 100f), 2, targetProfile),
+            rig.SpawnCombat(new Vector2(500f, 260f), 2, targetProfile),
+            rig.SpawnCombat(
+                new Vector2(500f, 420f), 2,
+                targetProfile with { AutoTargetPriority = 10 }),
+            rig.SpawnCombat(new Vector2(272f, 600f), 2, targetProfile)
+        };
+        rig.StartReplayPackageRecording();
+        rig.Hold([fixedWindup, fixedCooldown, melee]);
+        rig.AttackMove([mobile], new Vector2(900f, 420f));
+
+        TestCombatContactSnapshot? fixedWindupContact = null;
+        TestCombatContactSnapshot? fixedCooldownContact = null;
+        TestCombatContactSnapshot? mobileContact = null;
+        TestCombatContactSnapshot? meleeContact = null;
+        TestCombatContactSnapshot? standardContact = null;
+        TestCombatContactResolution? fixedWindupPair = null;
+        TestCombatContactResolution? fixedCooldownPair = null;
+        TestCombatContactResolution? mobilePair = null;
+        TestCombatContactResolution? meleePair = null;
+        var contactOrigins = new Dictionary<int, Vector2>();
+        var contactDisplacements = new Dictionary<int, float>();
+        TestRuntimeStateCapture? runtimeCapture = null;
+
+        var session = new VisualTestSession(
+            "combat-contact-priority",
+            "Combat contact roles and bounded collision resistance",
+            180,
+            rig,
+            [fixedWindup, fixedCooldown, mobile, melee, .. targets],
+            runtime =>
+            {
+                var windup = fixedWindupContact!.Value;
+                var cooldown = fixedCooldownContact!.Value;
+                var movingFire = mobileContact!.Value;
+                var meleeLock = meleeContact!.Value;
+                var standard = standardContact!.Value;
+                var windupShare = fixedWindupPair!.Value.LeftCorrectionShare;
+                var meleeShare = meleePair!.Value.LeftCorrectionShare;
+                var cooldownShare = fixedCooldownPair!.Value.LeftCorrectionShare;
+                var mobileShare = mobilePair!.Value.LeftCorrectionShare;
+                var fixedTravel = contactDisplacements[fixedWindup.Value];
+                var meleeTravel = contactDisplacements[melee.Value];
+                var cooldownTravel = contactDisplacements[fixedCooldown.Value];
+                var package = runtime.CaptureReplayPackage();
+                var hot = runtime.BindHotSnapshot(package, runtimeCapture!);
+                var restored = runtime.ResumeHotSnapshot(
+                    package, hot, runtime.Tick);
+                var exact = restored.FinalHash == runtime.StateHash;
+                var roles = windup.Role == TestCombatContactRole.FixedWindup &&
+                            cooldown.Role == TestCombatContactRole.FixedCooldown &&
+                            movingFire.Role == TestCombatContactRole.MobileWeapon &&
+                            meleeLock.Role == TestCombatContactRole.MeleeContact &&
+                            standard.Role == TestCombatContactRole.Standard;
+                var ranks = windup.ResistanceRank > meleeLock.ResistanceRank &&
+                            meleeLock.ResistanceRank > cooldown.ResistanceRank &&
+                            cooldown.ResistanceRank > movingFire.ResistanceRank &&
+                            movingFire.ResistanceRank > standard.ResistanceRank;
+                var shares = windupShare < meleeShare &&
+                             meleeShare < cooldownShare &&
+                             cooldownShare < mobileShare &&
+                             mobileShare < 0.55f;
+                var physical = fixedTravel < meleeTravel &&
+                               meleeTravel < cooldownTravel &&
+                               cooldownTravel < 1.5f;
+                var passed = roles && ranks && shares && physical &&
+                             package.FormatVersion == 17 &&
+                             hot.FormatVersion == 17 && exact;
+                return new ScenarioResult(
+                    passed,
+                    $"roles={windup.Role}/{meleeLock.Role}/{cooldown.Role}/" +
+                    $"{movingFire.Role}/{standard.Role}, ranks=" +
+                    $"{windup.ResistanceRank}/{meleeLock.ResistanceRank}/" +
+                    $"{cooldown.ResistanceRank}/{movingFire.ResistanceRank}/" +
+                    $"{standard.ResistanceRank}, shares=" +
+                    $"{windupShare:0.000}/{meleeShare:0.000}/" +
+                    $"{cooldownShare:0.000}/{mobileShare:0.000}, push=" +
+                    $"{fixedTravel:0.00}/{meleeTravel:0.00}/{cooldownTravel:0.00}, " +
+                    $"versions=package{package.FormatVersion}/hot" +
+                    $"{hot.FormatVersion}, exact={exact}");
+            })
+            .RenderSpawnedUnits();
+
+        session.At(10, "Inspect roles and add identical contact pressure", runtime =>
+        {
+            fixedWindupContact = runtime.PreviewCombatContact(fixedWindup);
+            fixedCooldownContact = runtime.PreviewCombatContact(fixedCooldown);
+            mobileContact = runtime.PreviewCombatContact(mobile);
+            meleeContact = runtime.PreviewCombatContact(melee);
+            foreach (var unit in new[] { fixedWindup, fixedCooldown, mobile, melee })
+            {
+                contactOrigins[unit.Value] = runtime.Observe(unit).Position;
+                var pusher = runtime.SpawnCombat(
+                    runtime.Observe(unit).Position - new Vector2(12f, 0f),
+                    1,
+                    standardProfile);
+                var pair = runtime.PreviewCombatContact(unit, pusher);
+                standardContact ??= pair.Right;
+                if (unit == fixedWindup) fixedWindupPair = pair;
+                else if (unit == fixedCooldown) fixedCooldownPair = pair;
+                else if (unit == mobile) mobilePair = pair;
+                else meleePair = pair;
+            }
+        });
+        session.At(11, "Measure one-tick collision correction", runtime =>
+        {
+            foreach (var unit in new[] { fixedWindup, fixedCooldown, melee })
+            {
+                contactDisplacements[unit.Value] = Vector2.Distance(
+                    contactOrigins[unit.Value], runtime.Observe(unit).Position);
+            }
+        });
+        session.At(90, "Capture derived contact state boundary", runtime =>
+            runtimeCapture = runtime.CaptureRuntimeState());
         return session;
     }
 

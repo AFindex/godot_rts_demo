@@ -43,6 +43,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly Func<UnitTypeProfile, int, Vector2, int> _productionSpawnUnit;
     private readonly Action<int, int, RallyTarget> _productionApplyRally;
     private readonly int[] _collisionNeighbors = new int[64];
+    private readonly CombatContactSnapshot[] _combatContacts;
     private readonly int[] _orderReadyUnits;
     private readonly UnitOrder[] _orderReadyOrders;
     private readonly bool[] _orderReadyProcessed;
@@ -82,6 +83,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
         _orderDispatchUnits = new int[capacity];
+        _combatContacts = new CombatContactSnapshot[capacity];
         _spatialHash = new SpatialHash(40f);
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
@@ -134,6 +136,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public CombatAutoTargetScore PreviewAutoTargetScore(
         int attacker,
         int target) => _combatSystem.PreviewAutoTargetScore(attacker, target);
+
+    public CombatContactSnapshot PreviewCombatContact(int unit)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        return EvaluateCombatContact(unit);
+    }
+
+    public CombatContactResolution PreviewCombatContact(
+        int left,
+        int right) => CombatContactPolicy.Resolve(
+        PreviewCombatContact(left), PreviewCombatContact(right));
 
     public CombatDamageResult PreviewCombatDamage(
         int attacker,
@@ -2556,6 +2570,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     private void SolveCollisions()
     {
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            _combatContacts[unit] = Units.Alive[unit]
+                ? EvaluateCombatContact(unit)
+                : default;
+        }
+
         for (var iteration = 0; iteration < CollisionIterations; iteration++)
         {
             Array.Clear(Units.CollisionCorrections, 0, Units.Count);
@@ -2599,8 +2620,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                         Metrics.MaximumPenetration,
                         penetration);
 
-                    var inverseA = InversePushMass(Units.Modes[unit]);
-                    var inverseB = InversePushMass(Units.Modes[neighbor]);
+                    var inverseA = _combatContacts[unit].InverseMobility;
+                    var inverseB = _combatContacts[neighbor].InverseMobility;
                     var totalInverse = inverseA + inverseB;
                     if (totalInverse <= 0f)
                     {
@@ -3345,13 +3366,16 @@ public sealed class RtsSimulation : ICombatMovementDriver
         QueueNavigationReplan(unit, countInvalidation: false);
     }
 
-    private static float InversePushMass(UnitMoveMode mode) => mode switch
-    {
-        UnitMoveMode.Hold => 0f,
-        UnitMoveMode.Arrived => 0.28f,
-        UnitMoveMode.Idle => 0.65f,
-        _ => 1f
-    };
+    private CombatContactSnapshot EvaluateCombatContact(int unit) =>
+        CombatContactPolicy.Evaluate(
+            Units.Modes[unit],
+            Combat.Phases[unit],
+            Combat.CommandIntents[unit],
+            Combat.PositioningKinds[unit],
+            Combat.WindupRemaining[unit],
+            Combat.CooldownRemaining[unit],
+            Combat.CanMoveDuringWindup[unit],
+            Combat.CanMoveDuringCooldown[unit]);
 
     private static Vector2 DeterministicNormal(int left, int right)
     {

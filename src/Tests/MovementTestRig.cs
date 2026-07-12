@@ -913,6 +913,26 @@ public readonly record struct TestCombatAutoTargetScore(
     bool ArmedThreat,
     float TotalScore);
 
+public enum TestCombatContactRole : byte
+{
+    Standard,
+    MobileWeapon,
+    FixedCooldown,
+    MeleeContact,
+    FixedWindup
+}
+
+public readonly record struct TestCombatContactSnapshot(
+    TestCombatContactRole Role,
+    float InverseMobility,
+    int ResistanceRank);
+
+public readonly record struct TestCombatContactResolution(
+    TestCombatContactSnapshot Left,
+    TestCombatContactSnapshot Right,
+    float LeftCorrectionShare,
+    float RightCorrectionShare);
+
 public enum TestBuildingFootprintClass : byte
 {
     Small,
@@ -2868,6 +2888,21 @@ public sealed partial class MovementTestRig
             value.TotalScore);
     }
 
+    public TestCombatContactSnapshot PreviewCombatContact(TestUnitId unit) =>
+        ToTestCombatContact(_simulation.PreviewCombatContact(unit.Value));
+
+    public TestCombatContactResolution PreviewCombatContact(
+        TestUnitId left,
+        TestUnitId right)
+    {
+        var value = _simulation.PreviewCombatContact(left.Value, right.Value);
+        return new TestCombatContactResolution(
+            ToTestCombatContact(value.Left),
+            ToTestCombatContact(value.Right),
+            value.LeftCorrectionShare,
+            value.RightCorrectionShare);
+    }
+
     public TestCombatDamagePreview PreviewCombatDamage(
         TestUnitId attacker,
         TestGameplayBuildingId target)
@@ -2878,6 +2913,12 @@ public sealed partial class MovementTestRig
             value.DamagePerAttack, value.TotalDamage,
             value.AttacksApplied, value.BonusApplied);
     }
+
+    private static TestCombatContactSnapshot ToTestCombatContact(
+        CombatContactSnapshot value) => new(
+        (TestCombatContactRole)value.Role,
+        value.InverseMobility,
+        value.ResistanceRank);
 
     public TestOrderSnapshot ObserveOrders(TestUnitId unit)
     {
