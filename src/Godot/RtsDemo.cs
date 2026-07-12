@@ -394,6 +394,7 @@ public partial class RtsDemo : Node2D
         UpdateCombatPresentation((float)delta);
         _commandMarkerTime = MathF.Max(0f, _commandMarkerTime - (float)delta);
         UpdateHud();
+        SyncWorldPresentationLayers();
         QueueRedraw();
 
         if (_visualTest is not null &&
@@ -489,16 +490,15 @@ public partial class RtsDemo : Node2D
         }
 
         DrawRect(new Rect2(Vector2.Zero, new Vector2(1280f, 720f)), new Color("101722"));
-        if (_visualTest?.HasCameraTrack == true)
+        var worldCanvasTransform = CurrentWorldCanvasTransform();
+        if (worldCanvasTransform != RtsWorldCanvasTransform.Identity)
         {
-            var viewport = GetViewportRect().Size;
-            var camera = _visualTest.CameraAt(_simulation.Metrics.Tick);
-            var viewportCenter = new Vector2(viewport.X * 0.5f,
-                82f + (viewport.Y - 82f) * 0.5f);
-            var offset = viewportCenter -
-                         GodotPathProvider.ToGodot(camera.Center) * camera.Zoom;
-            DrawSetTransform(offset, 0f,
-                new Vector2(camera.Zoom, camera.Zoom));
+            DrawSetTransform(
+                worldCanvasTransform.Offset,
+                0f,
+                new Vector2(
+                    worldCanvasTransform.Scale,
+                    worldCanvasTransform.Scale));
         }
         DrawGrid();
 
@@ -2725,6 +2725,7 @@ public partial class RtsDemo : Node2D
         _launchScreen?.HideScreen();
         SetFrontEndBlocking(false);
         UpdateHud();
+        SyncWorldPresentationLayers();
         QueueRedraw();
     }
 
@@ -2881,6 +2882,7 @@ public partial class RtsDemo : Node2D
         if (caseId == "frontend-test-browser" && !_interactiveVisualTest)
             ShowTestBrowserPreview();
         UpdateHud();
+        SyncWorldPresentationLayers();
         QueueRedraw();
         GD.Print(
             $"RTS_VISUAL_TEST_START {_visualTest.Id}: " +
@@ -2898,6 +2900,30 @@ public partial class RtsDemo : Node2D
             events,
             deltaSeconds);
         _combatProjectileLayer.SetFrame(frame);
+    }
+
+    private RtsWorldCanvasTransform CurrentWorldCanvasTransform()
+    {
+        if (_visualTest?.HasCameraTrack != true || _simulation is null)
+            return RtsWorldCanvasTransform.Identity;
+        var viewport = GetViewportRect().Size;
+        var camera = _visualTest.CameraAt(_simulation.Metrics.Tick);
+        var viewportCenter = new Vector2(
+            viewport.X * 0.5f,
+            82f + (viewport.Y - 82f) * 0.5f);
+        return new RtsWorldCanvasTransform(
+            viewportCenter -
+            GodotPathProvider.ToGodot(camera.Center) * camera.Zoom,
+            camera.Zoom);
+    }
+
+    private void SyncWorldPresentationLayers()
+    {
+        var transform = CurrentWorldCanvasTransform();
+        _combatProjectileLayer?.SetWorldCanvasTransform(transform);
+        _targetCommandOverlay?.SetWorldCanvasTransform(transform);
+        GetNodeOrNull<ClearancePreview2D>("ClearancePreview")?
+            .SetWorldCanvasTransform(transform);
     }
 
     private bool TryPrepareHotReloadCandidate()

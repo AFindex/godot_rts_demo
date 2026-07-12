@@ -87,6 +87,9 @@ public partial class ClearancePreview2D : Node2D
         QueueRedraw();
     }
 
+    public void SetWorldCanvasTransform(RtsWorldCanvasTransform transform) =>
+        transform.Apply(this);
+
     public override void _Draw()
     {
         if (!Enabled || (!Engine.IsEditorHint() && !RuntimePreviewEnabled) ||

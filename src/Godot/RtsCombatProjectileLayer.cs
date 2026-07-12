@@ -22,6 +22,9 @@ public partial class RtsCombatProjectileLayer : Node2D
         QueueRedraw();
     }
 
+    public void SetWorldCanvasTransform(RtsWorldCanvasTransform transform) =>
+        transform.Apply(this);
+
     public override void _Draw()
     {
         var theme = Theme ?? new RtsCombatPresentationThemeResource();

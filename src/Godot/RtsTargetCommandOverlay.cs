@@ -28,6 +28,9 @@ public partial class RtsTargetCommandOverlay : Node2D
         QueueRedraw();
     }
 
+    public void SetWorldCanvasTransform(RtsWorldCanvasTransform transform) =>
+        transform.Apply(this);
+
     public override void _Draw()
     {
         if (_request is null) return;

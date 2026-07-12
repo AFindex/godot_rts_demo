@@ -63,6 +63,8 @@ MovementTestRigAiEncounterRuntime
 
 `VisualTestSession` 提供纯测试表现合同 `CameraKeyframe(tick, center, zoom)`。镜头轨道使用平滑插值，只改变 Godot 绘制变换，不读取或写入模拟、AI、寻路和录像状态。本关卡先保持双方总览，再依次巡视左侧采集、右侧采集、中央交战、双方自然扩张，最后回到总览；录像不再把右侧基地留在 1280×720 画布外。
 
+世界主体、确定性弹道、弹道拖尾、命中圈、伤害数字、目标命令预览和 Clearance 预览统一消费同一个 `RtsWorldCanvasTransform`。镜头平移或缩放时，独立 `Node2D` 表现层不再停留在未变换的世界坐标；该变换只属于 Godot 表现，不进入权威状态或回放。
+
 ## 当前验收结果
 
 - 左/右完整基础设施：Tick 570 / 630；
@@ -78,6 +80,6 @@ MovementTestRigAiEncounterRuntime
 - 正式命令：经济 32、建造 12、生产/研究 54、单位 166；
 - Replay Package v18 / Hot Snapshot v18 可规范往返，State Hash v19。
 
-录像位于 `test_videos/20260712_231126/ai-continuous-encounter.webm`，AV1/WebM、1802 帧、32,617,953 字节；包含总览和自动平滑镜头巡视。
+录像位于 `test_videos/20260712_233934/ai-continuous-encounter.webm`，AV1/WebM、1802 帧、32,562,443 字节；包含总览、自动平滑镜头巡视以及镜头变换后的正确弹道和命中特效。
 
 这个关卡已经形成后续复杂玩法的集成入口。新增单位、技能、科技或 AI Planner 时，应扩展数据定义和公开遥测，而不是在关卡里直接调用底层系统或为某个固定 Tick 写作弊脚本。

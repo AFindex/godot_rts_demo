@@ -1,5 +1,5 @@
 ﻿{
-    "created_at":  "2026-07-12T23:12:44.1895131+08:00",
+    "created_at":  "2026-07-12T23:40:55.5631510+08:00",
     "fps":  30,
     "codec":  "AV1 (libsvtav1)",
     "container":  "WebM",
@@ -116,8 +116,8 @@
                       "id":  "ai-continuous-encounter",
                       "file":  "ai-continuous-encounter.webm",
                       "log":  "ai-continuous-encounter.log",
-                      "bytes":  32617953,
-                      "source_bytes":  182762630,
+                      "bytes":  32562443,
+                      "source_bytes":  182619040,
                       "codec":  "av1",
                       "container":  "webm",
                       "crf":  32,
