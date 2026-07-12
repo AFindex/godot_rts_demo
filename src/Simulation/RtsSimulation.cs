@@ -131,6 +131,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public CombatDamageResult PreviewCombatDamage(int attacker, int target) =>
         _combatSystem.PreviewDamage(attacker, target);
 
+    public CombatAutoTargetScore PreviewAutoTargetScore(
+        int attacker,
+        int target) => _combatSystem.PreviewAutoTargetScore(attacker, target);
+
     public CombatDamageResult PreviewCombatDamage(
         int attacker,
         GameplayBuildingId building)

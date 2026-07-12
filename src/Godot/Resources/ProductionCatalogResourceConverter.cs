@@ -40,6 +40,7 @@ public static class ProductionCatalogResourceConverter
                 ProjectileSpeed = type.Combat.ProjectileSpeed,
                 CanMoveDuringWindup = type.Combat.CanMoveDuringWindup,
                 CanMoveDuringCooldown = type.Combat.CanMoveDuringCooldown,
+                AutoTargetPriority = type.Combat.AutoTargetPriority,
                 IsWorker = type.IsWorker
             });
         }
@@ -117,7 +118,8 @@ public static class ProductionCatalogResourceConverter
                 source.BaseUpgradeDamage, source.BonusUpgradeDamage,
                 source.ProjectileSpeed,
                 source.CanMoveDuringWindup,
-                source.CanMoveDuringCooldown);
+                source.CanMoveDuringCooldown,
+                source.AutoTargetPriority);
 
             units[index] = new UnitTypeProfile(
                 source.Id, source.DisplayName ?? string.Empty,

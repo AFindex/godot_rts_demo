@@ -19,6 +19,7 @@ public static class VisualTestCatalog
         "combat-projectile-flight",
         "combat-projectile-presentation",
         "combat-mobile-fire",
+        "combat-target-selection",
         "combat-building-defense",
         "attack-move-leash-resume",
         "attack-move-command-isolation",
@@ -130,6 +131,8 @@ public static class VisualTestCatalog
         "combat-projectile-presentation" =>
             CreateCombatProjectilePresentation(),
         "combat-mobile-fire" => CreateCombatMobileFire(gameplayProfiles),
+        "combat-target-selection" =>
+            CreateCombatTargetSelection(gameplayProfiles),
         "combat-building-defense" => CreateCombatBuildingDefense(
             navigationMap, gameplayProfiles, clearanceBake,
             buildingTypes, technologyCatalog),
@@ -498,8 +501,8 @@ public static class VisualTestCatalog
                              impact.ProjectileId == launched.ProjectileId &&
                              targetHealth == 80f &&
                              runtime.ObserveCombatProjectiles().Length == 0 &&
-                             package.FormatVersion == 16 &&
-                             hot.FormatVersion == 16 && exact;
+                             package.FormatVersion == 17 &&
+                             hot.FormatVersion == 17 && exact;
                 return new ScenarioResult(
                     passed,
                     $"flight={inFlight.Length}@" +
@@ -735,8 +738,8 @@ public static class VisualTestCatalog
                              cooldownAfterMove == cooldownBeforeMove &&
                              launches.ContainsKey(attackers[3].Value) &&
                              health.SequenceEqual([190f, 190f, 200f, 190f]) &&
-                             package.FormatVersion == 16 &&
-                             hot.FormatVersion == 16 && exact;
+                             package.FormatVersion == 17 &&
+                             hot.FormatVersion == 17 && exact;
                 return new ScenarioResult(
                     passed,
                     $"windupTravel={rootedTravel:0.0}/{mobileTravel:0.0}, " +
@@ -800,6 +803,153 @@ public static class VisualTestCatalog
                     runtime.Tick >= mobile.Tick + 60 &&
                     !mobileAfterCooldownSecond.HasValue)
                     mobileAfterCooldownSecond = runtime.Observe(attackers[1]).Position;
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateCombatTargetSelection(
+        GameplayProfileCatalogSnapshot? gameplayProfiles)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        if (!NavigationMapSnapshot.TryCreate(
+                NavigationMapSnapshot.CurrentFormatVersion,
+                new SimRect(Vector2.Zero, new Vector2(1000f, 700f)),
+                [], [], [], [],
+                out var navigationMap,
+                out var navigationValidation) || navigationMap is null)
+            throw new InvalidOperationException(
+                $"Target selection map invalid: {navigationValidation.FirstError}");
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            12, navigationMap, gameplayProfiles, clearanceBake: null);
+        var attacker = rig.SpawnCombat(
+            new Vector2(150f, 350f), 1,
+            new TestCombatProfile(
+                MaximumHealth: 100f,
+                AttackDamage: 0f,
+                AttackRange: 400f,
+                AcquisitionRange: 400f,
+                AttackCooldownSeconds: 2f,
+                AttackWindupSeconds: 0.1f,
+                LeashDistance: 500f,
+                BonusVs: CombatAttribute.Armored));
+        var passive = new TestCombatProfile(
+            MaximumHealth: 100f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 20f,
+            AttackCooldownSeconds: 10f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 80f,
+            Attributes: CombatAttribute.Light);
+        var preferred = passive with
+        {
+            AttackDamage = 1f,
+            Attributes = CombatAttribute.Armored,
+            AutoTargetPriority = 1
+        };
+        var initial = rig.SpawnCombat(
+            new Vector2(250f, 350f), 2, passive);
+        rig.StartReplayPackageRecording();
+        rig.Hold([attacker]);
+
+        TestUnitId? strong = null;
+        TestUnitId? marginal = null;
+        TestUnitId? targetAtThirty = null;
+        var strongSwitchTick = -1L;
+        var selectedMarginal = false;
+        var explicitIssued = false;
+        var explicitHeld = true;
+        TestRuntimeStateCapture? runtimeCapture = null;
+        TestCombatAutoTargetScore? initialScoreAtSpawn = null;
+        TestCombatAutoTargetScore? strongScoreAtSpawn = null;
+        TestCombatAutoTargetScore? marginalScoreAtSpawn = null;
+
+        var session = new VisualTestSession(
+            "combat-target-selection",
+            "Priority scoring, retarget hysteresis and explicit target lock",
+            300,
+            rig,
+            [attacker, initial],
+            runtime =>
+            {
+                var initialScore = initialScoreAtSpawn!.Value;
+                var strongScore = strongScoreAtSpawn!.Value;
+                var marginalScore = marginalScoreAtSpawn!.Value;
+                var package = runtime.CaptureReplayPackage();
+                var hot = runtime.BindHotSnapshot(package, runtimeCapture!);
+                var restored = runtime.ResumeHotSnapshot(
+                    package, hot, runtime.Tick);
+                var exact = restored.FinalHash == runtime.StateHash;
+                var scoreParts = strongScore.Priority == 1 &&
+                                 strongScore.WeaponBonusMatch &&
+                                 strongScore.ArmedThreat &&
+                                 strongScore.TotalScore < initialScore.TotalScore &&
+                                 marginalScore.TotalScore < strongScore.TotalScore &&
+                                 strongScore.TotalScore - marginalScore.TotalScore <
+                                     2500f;
+                var passed = targetAtThirty == initial &&
+                             strongSwitchTick >= 50 &&
+                             strongSwitchTick < 80 &&
+                             !selectedMarginal && explicitIssued && explicitHeld &&
+                             runtime.ObserveCombat(attacker).Target == initial &&
+                             scoreParts && package.FormatVersion == 17 &&
+                             hot.FormatVersion == 17 && exact;
+                return new ScenarioResult(
+                    passed,
+                    $"target30={targetAtThirty?.Value}, switch={strongSwitchTick}, " +
+                    $"marginal={selectedMarginal}, explicit={explicitHeld}, " +
+                    $"scores={initialScore.TotalScore:0}/" +
+                    $"{strongScore.TotalScore:0}/{marginalScore.TotalScore:0}, " +
+                    $"parts=p{strongScore.Priority}/b{strongScore.WeaponBonusMatch}/" +
+                    $"t{strongScore.ArmedThreat}, versions=package" +
+                    $"{package.FormatVersion}/hot{hot.FormatVersion}, exact={exact}");
+            })
+            .RenderSpawnedUnits();
+
+        session.At(15, "Add clearly better armored threat", runtime =>
+        {
+            strong = runtime.SpawnCombat(
+                new Vector2(150f, 480f), 2, preferred);
+            initialScoreAtSpawn = runtime.PreviewAutoTargetScore(
+                attacker, initial);
+            strongScoreAtSpawn = runtime.PreviewAutoTargetScore(
+                attacker, strong.Value);
+        });
+        session.At(80, "Add only marginally better candidate", runtime =>
+        {
+            marginal = runtime.SpawnCombat(
+                new Vector2(150f, 223f), 2, preferred);
+            strongScoreAtSpawn = runtime.PreviewAutoTargetScore(
+                attacker, strong!.Value);
+            marginalScoreAtSpawn = runtime.PreviewAutoTargetScore(
+                attacker, marginal.Value);
+        });
+        session.At(150, "Player explicitly locks the original target", runtime =>
+        {
+            runtime.AttackTarget([attacker], initial);
+            explicitIssued = true;
+        });
+        session.At(151, "Add extreme auto-priority candidate", runtime =>
+            runtime.SpawnCombat(
+                new Vector2(300f, 350f), 2,
+                preferred with { AutoTargetPriority = 10 }));
+        session.At(180, "Capture explicit lock and scoring runtime", runtime =>
+            runtimeCapture = runtime.CaptureRuntimeState());
+
+        for (var tick = 0; tick < 300; tick++)
+        {
+            session.At(tick, "Observe stable target selection", runtime =>
+            {
+                var target = runtime.ObserveCombat(attacker).Target;
+                if (runtime.Tick == 30)
+                    targetAtThirty = target;
+                if (strong.HasValue && target == strong && strongSwitchTick < 0)
+                    strongSwitchTick = runtime.Tick;
+                if (marginal.HasValue && target == marginal)
+                    selectedMarginal = true;
+                if (explicitIssued && target != initial)
+                    explicitHeld = false;
             });
         }
         return session;
@@ -1675,7 +1825,7 @@ public static class VisualTestCatalog
                              builderOrders.CompletedQueuedOrders == 1 &&
                              gatherActive && failedTaskSkipped &&
                              commandLog.FormatVersion == 3 &&
-                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
+                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == commandLog.StableHash && exact;
                 return new ScenarioResult(
@@ -2394,7 +2544,7 @@ public static class VisualTestCatalog
                                    package, hot);
                 return new ScenarioResult(
                     roundTrip && decoded!.StableHash == hot.StableHash &&
-                    exact && rejected && hot.FormatVersion == 16 &&
+                    exact && rejected && hot.FormatVersion == 17 &&
                     hot.Tick == snapshotTick && restored.SampleCount == 17,
                     $"tick={hot.Tick}, bytes={hot.CanonicalByteCount}, " +
                     $"snapshot={hot.StableHash:X16}, " +
@@ -2488,7 +2638,7 @@ public static class VisualTestCatalog
                                       economy.VespeneGas > 0;
                 var passed = packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == economyLog.StableHash &&
-                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
+                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
                              package.EconomyCommandCount == 7 &&
                              package.UnitCommandCount == 0 &&
                              exact && rejected && resourcesFlowed;
@@ -3617,8 +3767,8 @@ public static class VisualTestCatalog
                 var exact = replay.FinalHash == runtime.StateHash &&
                             resumed.FinalHash == runtime.StateHash &&
                             replay.MatchesFrom(resumed, hotTick);
-                var versions = package.FormatVersion == 16 &&
-                               hot.FormatVersion == 16;
+                var versions = package.FormatVersion == 17 &&
+                               hot.FormatVersion == 17;
                 var passed = enemyBarracks.Succeeded && initialBoundary &&
                              ownershipRejected && hiddenTargetRejected &&
                              visibleResourceObserved &&
@@ -3770,7 +3920,7 @@ public static class VisualTestCatalog
                              defeatedCommandRejected && matchCompleted &&
                              completedCommandRejected && winner &&
                              packageRoundTrip && hotRoundTrip && exact &&
-                             package.FormatVersion == 16 && hot.FormatVersion == 16;
+                             package.FormatVersion == 17 && hot.FormatVersion == 17;
                 return new ScenarioResult(
                     passed,
                     $"build={playerOneBase.Code}/{playerTwoBase.Code}/" +
@@ -4539,9 +4689,9 @@ public static class VisualTestCatalog
                              producingRoundTrip && waitingRoundTrip &&
                              spawnedRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 16 &&
-                             producingHot.FormatVersion == 16 &&
-                             waitingHot.FormatVersion == 16 &&
+                             package.FormatVersion == 17 &&
+                             producingHot.FormatVersion == 17 &&
+                             waitingHot.FormatVersion == 17 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 4 &&
                              package.WorldCommandCount == 8 &&
@@ -4757,7 +4907,7 @@ public static class VisualTestCatalog
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
+                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
                              package.ProductionCommandCount == 5 &&
                              exact && rejected;
                 return new ScenarioResult(
@@ -4768,7 +4918,7 @@ public static class VisualTestCatalog
                     $"marine={marine.Position}->{marine.AssignedTarget}, " +
                     $"protocol={protocol}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log7/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"versions=log8/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
                     $"buildings={runtime.ObserveGameplayBuilding(townHall.BuildingId).State}/" +
                     $"{runtime.ObserveGameplayBuilding(barracks.BuildingId).State}, " +
                     $"issued={issued}({issueDetails}), ids={townHall.BuildingId.Value}/" +
@@ -4897,7 +5047,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 450 && economy.SupplyUsed == 2 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
+                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
                              package.ConstructionCommandCount == 3 &&
                              package.ProductionCommandCount == 1 && exact && rejected;
                 return new ScenarioResult(
@@ -4909,7 +5059,7 @@ public static class VisualTestCatalog
                     $"{secondBarracks.Succeeded}, train={trained}, " +
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log7/package{package.FormatVersion}/hot{hot.FormatVersion}");
+                    $"versions=log8/package{package.FormatVersion}/hot{hot.FormatVersion}");
             });
         session.At(650, "Reject advanced unit while one Barracks is missing", runtime =>
         {
@@ -5038,7 +5188,7 @@ public static class VisualTestCatalog
                              economy.VespeneGas == 1575 &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
+                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
                              package.ConstructionCommandCount == 1 &&
                              package.ProductionCommandCount == 5 &&
                              technologyCatalog.StableHash ==
@@ -5059,7 +5209,7 @@ public static class VisualTestCatalog
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"upgradedDamage={upgradedDamage.TotalDamage}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log7/package{package.FormatVersion}/hot{hot.FormatVersion}");
+                    $"versions=log8/package{package.FormatVersion}/hot{hot.FormatVersion}");
             });
         session.At(700, "Reject doctrine, cancel first weapon order, then requeue", runtime =>
         {
@@ -5198,7 +5348,7 @@ public static class VisualTestCatalog
                 var passed = issued && canceledSuccessfully && resumed &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
-                             package.FormatVersion == 16 && hot.FormatVersion == 16 &&
+                             package.FormatVersion == 17 && hot.FormatVersion == 17 &&
                              package.ConstructionCommandCount == 7 &&
                              package.WorldCommandCount == 0 &&
                              package.UnitCommandCount == 1 &&
@@ -5312,7 +5462,7 @@ public static class VisualTestCatalog
                              economy.SupplyCapacity == 10 &&
                              package.ConstructionCommandCount == 1 &&
                              package.UnitCommandCount == 1 &&
-                             hotRoundTrip && hot.FormatVersion == 16 && exact;
+                             hotRoundTrip && hot.FormatVersion == 17 && exact;
                 return new ScenarioResult(
                     passed,
                     $"state={building.State}, hp={building.Health:0}, " +

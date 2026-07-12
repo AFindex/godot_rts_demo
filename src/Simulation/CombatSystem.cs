@@ -11,6 +11,14 @@ public readonly record struct CombatBuildingDamageResult(
     int AttacksApplied,
     bool BonusApplied);
 
+public readonly record struct CombatAutoTargetScore(
+    int TargetUnit,
+    float DistanceSquared,
+    int Priority,
+    bool WeaponBonusMatch,
+    bool ArmedThreat,
+    float TotalScore);
+
 public interface ICombatMovementDriver
 {
     void Chase(int unit, Vector2 target);
@@ -33,8 +41,14 @@ public interface ICombatMovementDriver
 public sealed class CombatSystem
 {
     private const int AcquisitionTickStride = 6;
+    private const int RetargetTickStride = 12;
     private const float ChaseRepathSeconds = 0.2f;
     private const float ChaseRetargetDistance = 12f;
+    private const float MinimumTargetLockSeconds = 0.75f;
+    private const float PriorityScoreWeight = 12_000f;
+    private const float WeaponBonusScoreWeight = 6_000f;
+    private const float ArmedThreatScoreWeight = 3_000f;
+    private const float RetargetImprovementMargin = 2_500f;
 
     private readonly UnitStore _units;
     private readonly CombatStore _combat;
@@ -77,6 +91,8 @@ public sealed class CombatSystem
                 0f, _combat.CooldownRemaining[unit] - delta);
             _combat.ChaseRepathRemaining[unit] = MathF.Max(
                 0f, _combat.ChaseRepathRemaining[unit] - delta);
+            _combat.TargetLockRemaining[unit] = MathF.Max(
+                0f, _combat.TargetLockRemaining[unit] - delta);
 
             var intent = _combat.CommandIntents[unit];
             if (intent is not (UnitCommandIntent.AttackMove or
@@ -107,13 +123,35 @@ public sealed class CombatSystem
 
                 if ((tick + unit) % AcquisitionTickStride == 0)
                 {
-                    target = FindNearestTarget(unit);
+                    target = FindBestTarget(unit);
                     if (target >= 0)
                     {
                         BeginEngagement(unit, target);
                     }
                 }
                 continue;
+            }
+
+            if (intent != UnitCommandIntent.AttackTarget &&
+                _combat.WindupRemaining[unit] <= 0f &&
+                _combat.TargetLockRemaining[unit] <= 0f &&
+                (tick + unit) % RetargetTickStride == 0)
+            {
+                var candidate = FindBestTarget(unit);
+                var candidateScore = candidate >= 0 && candidate != target
+                    ? TargetScore(unit, candidate)
+                    : default;
+                var currentScore = candidate >= 0 && candidate != target
+                    ? TargetScore(unit, target)
+                    : default;
+                if (candidate >= 0 && candidate != target &&
+                    HasSemanticTargetAdvantage(candidateScore, currentScore) &&
+                    candidateScore.TotalScore + RetargetImprovementMargin <
+                    currentScore.TotalScore)
+                {
+                    BeginEngagement(unit, candidate);
+                    target = candidate;
+                }
             }
 
             if (intent is not (UnitCommandIntent.Hold or UnitCommandIntent.AttackTarget) &&
@@ -155,12 +193,15 @@ public sealed class CombatSystem
 
     private void BeginEngagement(int unit, int target)
     {
+        _slots.Release(unit);
         _combat.TargetUnits[unit] = target;
         _combat.TargetBuildings[unit] = -1;
         _combat.TargetKinds[unit] = CombatTargetKind.Unit;
         _combat.EngagementOrigins[unit] = _units.Positions[unit];
         _combat.Phases[unit] = CombatPhase.Chasing;
         _combat.ChaseRepathRemaining[unit] = 0f;
+        _combat.WindupRemaining[unit] = 0f;
+        _combat.TargetLockRemaining[unit] = MinimumTargetLockSeconds;
         if (_combat.CommandIntents[unit] != UnitCommandIntent.Hold)
         {
             _slots.Assign(unit, target);
@@ -308,6 +349,7 @@ public sealed class CombatSystem
         _combat.Phases[unit] = CombatPhase.Searching;
         _combat.WindupRemaining[unit] = 0f;
         _combat.ChaseRepathRemaining[unit] = 0f;
+        _combat.TargetLockRemaining[unit] = 0f;
         _slots.Release(unit);
         if (intent == UnitCommandIntent.AttackMove)
         {
@@ -319,10 +361,10 @@ public sealed class CombatSystem
         }
     }
 
-    private int FindNearestTarget(int unit)
+    private int FindBestTarget(int unit)
     {
         var best = -1;
-        var bestDistanceSquared = float.PositiveInfinity;
+        var bestScore = float.PositiveInfinity;
         var intent = _combat.CommandIntents[unit];
         for (var candidate = 0; candidate < _units.Count; candidate++)
         {
@@ -341,16 +383,50 @@ public sealed class CombatSystem
             {
                 continue;
             }
-            if (distanceSquared < bestDistanceSquared ||
-                (distanceSquared == bestDistanceSquared && candidate < best))
+            var score = TargetScore(unit, candidate).TotalScore;
+            if (score < bestScore ||
+                (score == bestScore && candidate < best))
             {
                 best = candidate;
-                bestDistanceSquared = distanceSquared;
+                bestScore = score;
             }
         }
 
         return best;
     }
+
+    internal CombatAutoTargetScore PreviewAutoTargetScore(
+        int attacker,
+        int target)
+    {
+        if ((uint)attacker >= (uint)_units.Count ||
+            (uint)target >= (uint)_units.Count)
+            throw new ArgumentOutOfRangeException();
+        return TargetScore(attacker, target);
+    }
+
+    private CombatAutoTargetScore TargetScore(int attacker, int target)
+    {
+        var distanceSquared = Vector2.DistanceSquared(
+            _units.Positions[attacker], _units.Positions[target]);
+        var priority = _combat.AutoTargetPriority[target];
+        var bonusMatch = _combat.BonusVs[attacker] != CombatAttribute.None &&
+                         (_combat.BonusVs[attacker] &
+                          _combat.Attributes[target]) != 0;
+        var armedThreat = _combat.AttackDamage[target] > 0f;
+        var total = distanceSquared - priority * PriorityScoreWeight -
+                    (bonusMatch ? WeaponBonusScoreWeight : 0f) -
+                    (armedThreat ? ArmedThreatScoreWeight : 0f);
+        return new CombatAutoTargetScore(
+            target, distanceSquared, priority, bonusMatch, armedThreat, total);
+    }
+
+    private static bool HasSemanticTargetAdvantage(
+        CombatAutoTargetScore candidate,
+        CombatAutoTargetScore current) =>
+        candidate.Priority > current.Priority ||
+        candidate.WeaponBonusMatch && !current.WeaponBonusMatch ||
+        candidate.ArmedThreat && !current.ArmedThreat;
 
     private bool IsValidTarget(int unit, int target) =>
         (uint)target < (uint)_units.Count &&

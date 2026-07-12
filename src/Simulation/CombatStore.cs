@@ -51,7 +51,8 @@ public readonly record struct CombatProfileSnapshot(
     float BonusUpgradeDamage = 0f,
     float ProjectileSpeed = 0f,
     bool CanMoveDuringWindup = false,
-    bool CanMoveDuringCooldown = false)
+    bool CanMoveDuringCooldown = false,
+    int AutoTargetPriority = 0)
 {
     public static CombatProfileSnapshot Standard => new(
         MaximumHealth: 45f,
@@ -79,7 +80,8 @@ public readonly record struct CombatProfileSnapshot(
             !float.IsFinite(BonusDamage) || BonusDamage < 0f ||
             !float.IsFinite(BaseUpgradeDamage) || BaseUpgradeDamage < 0f ||
             !float.IsFinite(BonusUpgradeDamage) || BonusUpgradeDamage < 0f ||
-            !float.IsFinite(ProjectileSpeed) || ProjectileSpeed < 0f)
+            !float.IsFinite(ProjectileSpeed) || ProjectileSpeed < 0f ||
+            AutoTargetPriority is < 0 or > 10)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(CombatProfileSnapshot),
@@ -110,6 +112,7 @@ public sealed class CombatStore
         ProjectileSpeed = new float[capacity];
         CanMoveDuringWindup = new bool[capacity];
         CanMoveDuringCooldown = new bool[capacity];
+        AutoTargetPriority = new int[capacity];
         AttackRanges = new float[capacity];
         AcquisitionRanges = new float[capacity];
         AttackCooldownDurations = new float[capacity];
@@ -131,6 +134,7 @@ public sealed class CombatStore
         CooldownRemaining = new float[capacity];
         WindupRemaining = new float[capacity];
         ChaseRepathRemaining = new float[capacity];
+        TargetLockRemaining = new float[capacity];
         Array.Fill(TargetUnits, -1);
         Array.Fill(TargetBuildings, -1);
     }
@@ -149,6 +153,7 @@ public sealed class CombatStore
     public float[] ProjectileSpeed { get; }
     public bool[] CanMoveDuringWindup { get; }
     public bool[] CanMoveDuringCooldown { get; }
+    public int[] AutoTargetPriority { get; }
     public float[] AttackRanges { get; }
     public float[] AcquisitionRanges { get; }
     public float[] AttackCooldownDurations { get; }
@@ -170,6 +175,7 @@ public sealed class CombatStore
     public float[] CooldownRemaining { get; }
     public float[] WindupRemaining { get; }
     public float[] ChaseRepathRemaining { get; }
+    public float[] TargetLockRemaining { get; }
 
     public void Register(int unit, int team, Vector2 position, CombatProfileSnapshot profile)
     {
@@ -188,6 +194,7 @@ public sealed class CombatStore
         ProjectileSpeed[unit] = profile.ProjectileSpeed;
         CanMoveDuringWindup[unit] = profile.CanMoveDuringWindup;
         CanMoveDuringCooldown[unit] = profile.CanMoveDuringCooldown;
+        AutoTargetPriority[unit] = profile.AutoTargetPriority;
         AttackRanges[unit] = profile.AttackRange;
         AcquisitionRanges[unit] = profile.AcquisitionRange;
         AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
@@ -225,6 +232,7 @@ public sealed class CombatStore
         Copy(source.ProjectileSpeed, ProjectileSpeed);
         Copy(source.CanMoveDuringWindup, CanMoveDuringWindup);
         Copy(source.CanMoveDuringCooldown, CanMoveDuringCooldown);
+        Copy(source.AutoTargetPriority, AutoTargetPriority);
         Copy(source.AttackRanges, AttackRanges);
         Copy(source.AcquisitionRanges, AcquisitionRanges);
         Copy(source.AttackCooldownDurations, AttackCooldownDurations);
@@ -246,6 +254,7 @@ public sealed class CombatStore
         Copy(source.CooldownRemaining, CooldownRemaining);
         Copy(source.WindupRemaining, WindupRemaining);
         Copy(source.ChaseRepathRemaining, ChaseRepathRemaining);
+        Copy(source.TargetLockRemaining, TargetLockRemaining);
     }
 
     private static void Copy<T>(T[] source, T[] destination) =>
@@ -280,6 +289,7 @@ public sealed class CombatStore
         HasAttackSlots[unit] = false;
         WindupRemaining[unit] = 0f;
         ChaseRepathRemaining[unit] = 0f;
+        TargetLockRemaining[unit] = 0f;
         if (intent == UnitCommandIntent.AttackMove)
         {
             AttackMoveGoals[unit] = goal;

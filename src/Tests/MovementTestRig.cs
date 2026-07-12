@@ -801,7 +801,8 @@ public readonly record struct TestCombatProfile(
     float BonusUpgradeDamage = 0f,
     float ProjectileSpeed = 0f,
     bool CanMoveDuringWindup = false,
-    bool CanMoveDuringCooldown = false)
+    bool CanMoveDuringCooldown = false,
+    int AutoTargetPriority = 0)
 {
     public static TestCombatProfile Standard => new(
         45f, 8f, 34f, 155f, 0.72f, 0.18f, 260f);
@@ -903,6 +904,14 @@ public readonly record struct TestCombatDamagePreview(
     float TotalDamage,
     int AttacksApplied,
     bool BonusApplied);
+
+public readonly record struct TestCombatAutoTargetScore(
+    TestUnitId Target,
+    float DistanceSquared,
+    int Priority,
+    bool WeaponBonusMatch,
+    bool ArmedThreat,
+    float TotalScore);
 
 public enum TestBuildingFootprintClass : byte
 {
@@ -1827,7 +1836,8 @@ public sealed partial class MovementTestRig
             resolvedProfile.BonusUpgradeDamage,
             resolvedProfile.ProjectileSpeed,
             resolvedProfile.CanMoveDuringWindup,
-            resolvedProfile.CanMoveDuringCooldown);
+            resolvedProfile.CanMoveDuringCooldown,
+            resolvedProfile.AutoTargetPriority);
         return new TestUnitId(_simulation.AddUnit(
             position, team, backendProfile, radius, maximumSpeed, acceleration));
     }
@@ -2841,6 +2851,21 @@ public sealed partial class MovementTestRig
         return new TestCombatDamagePreview(
             value.DamagePerAttack, value.TotalDamage,
             value.AttacksApplied, value.BonusApplied);
+    }
+
+    public TestCombatAutoTargetScore PreviewAutoTargetScore(
+        TestUnitId attacker,
+        TestUnitId target)
+    {
+        var value = _simulation.PreviewAutoTargetScore(
+            attacker.Value, target.Value);
+        return new TestCombatAutoTargetScore(
+            new TestUnitId(value.TargetUnit),
+            value.DistanceSquared,
+            value.Priority,
+            value.WeaponBonusMatch,
+            value.ArmedThreat,
+            value.TotalScore);
     }
 
     public TestCombatDamagePreview PreviewCombatDamage(

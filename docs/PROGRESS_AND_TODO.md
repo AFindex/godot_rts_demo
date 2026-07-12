@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 96 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 97 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
 当前规模：
 
 - 134 个 C# 源文件。
-- 约 41,622 行 C#（按 `src/**/*.cs` 统计）。
-- 96 个黑盒场景。
-- AV1/WebM 规范录像覆盖全部 96 个当前逻辑场景。
-- Release 1000 单位移动 P95：约 9.45ms。
+- 约 41,908 行 C#（按 `src/**/*.cs` 统计）。
+- 97 个黑盒场景。
+- AV1/WebM 规范录像覆盖全部 97 个当前逻辑场景。
+- Release 1000 单位移动 P95：约 11.50ms。
 - Release 1000 单位当前线程分配：约 685B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -37,11 +37,11 @@
 | S5 碰撞与约束 | 运行时闭环完成 | 圆碰撞、动态占用、三档净空、四档建筑、Profile Resource、局部净空与全局 Connectivity Guard | 具名关键锚点、多移动层、非矩形 footprint |
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
-| S8 战斗移动 | E4a 移动射击完成 | AttackMove、占位、统一伤害、确定性投射物、解耦表现、前摇/冷却移动约束、命令取消与存档回放 | 有限目标权重和推挤优先级 |
+| S8 战斗移动 | E4b 目标评分完成 | AttackMove、占位、统一伤害、确定性投射物/表现、移动射击、有限自动评分、锁定滞后、玩家目标优先 | 战斗推挤与接触优先级 |
 | 操作层 | J2b2b 完成 | Shift 跨域任务、混合选择/编组、快照命令卡、Move/AttackMove/Rally/Build 目标模式、同类型多建筑生产/取消/队列聚合、SmartCommand、相机、Minimap | 图标、tooltip、热键重映射和最终皮肤 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | J2b2b + S8-E4a 完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、双 AI、完整操作、确定性弹道/表现/移动射击、Package/Hot v16、Hash v17 | 目标评分与后续战斗 |
+| S11 实际 RTS 玩法 | J2b2b + S8-E4b 完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、双 AI、完整操作、弹道/移动射击/目标评分、Package/Hot v17、Hash v18 | 战斗推挤与后续战斗 |
 
 ## 3. 已完成的运行时闭环
 
@@ -1067,7 +1067,21 @@ E3b 至此收口。下一段为 E4a 移动射击与武器移动约束。
 - 96/96 全量黑盒回归通过。Release 256/512/1000 移动 P95 为 1.81/6.74/9.45ms；128/256 投射物战斗 P95 为 2.06/3.14ms，末帧 417/163 个活跃投射物。
 - 12 秒 AV1/WebM 位于 `test_videos/20260712_165436/`，600,447 字节。全仓录像门禁通过 125 个视频、70 个 manifest、124 个场景引用，编码均为 AV1。
 
-E4a 至此收口。下一段优先做 E4b 有限目标评分与重新选敌稳定性：保持玩家锁定目标最高优先，只为自动索敌提供少量可解释权重和切换滞后；不做可脚本化仇恨系统，也不提前扩展范围伤害。
+E4a 至此收口。下一段为 E4b 有限目标评分与重新选敌稳定性。
+
+### AQ：S8-E4b 有限目标评分与稳定重选（已完成）
+
+- 自动候选先通过敌对、存活和射程，再按 `distance² - priority×12000 - bonusMatch×6000 - armedThreat×3000` 选择最低分；完全同分按稳定 Unit ID。
+- 目标 Profile 新增 0～10 `AutoTargetPriority`，默认 0；`PreviewAutoTargetScore` 公开距离、优先级、Bonus、Threat 与总分，调试层不复制公式。
+- 初次锁定至少 0.75 秒，每 12 Tick 最多重查一次；新目标必须改善 2,500 分，并在 Priority、Bonus Match 或 Armed Threat 至少一项语义升级。相同语义目标不因纯距离变化抖动。
+- 玩家 AttackTarget 完全跳过自动重选；建筑仍走显式 AttackBuilding，不混入未经验证的单位权重。
+- Production Catalog v6、Production Command Log v8、Package/Hot v17 和 State Hash v18 保存 AutoTargetPriority 与 TargetLockRemaining；目录 Hash 为 `6A33CA0648280068`。
+- `combat-target-selection` 验证 Tick 30 保持初始目标、Tick 60 切换强目标、拒绝仅改善 771 分的同类目标、玩家显式锁定不被 Priority 10 覆盖；评分 10000/-4100/-4871，热恢复最终 Hash 一致。
+- 高密度基准曾暴露纯距离重选导致攻击波次被反复取消，最终规则明确要求语义升级。修正后 128/256 单位末帧恢复 417/163 个投射物，P95 为 2.01/3.00ms。
+- 97/97 全量黑盒回归通过。Release 256/512/1000 移动 P95 为 1.37/4.29/11.50ms；状态 Hash v18 在 1000 单位下平均 1.76ms。
+- 5 秒 AV1/WebM 位于 `test_videos/20260712_171341/`，126,349 字节。全仓录像门禁通过 126 个视频、71 个 manifest、125 个场景引用，编码均为 AV1。
+
+E4b 至此收口。下一段 E5a 只处理战斗推挤与接触优先级：近战接触者、正在前摇的固定武器、移动射击单位和普通穿行单位之间的质量规则；不重写现有碰撞解算器，也不引入通用物理标签系统。
 
 ## 8. 可以并行但不能提前耦合的优化
 

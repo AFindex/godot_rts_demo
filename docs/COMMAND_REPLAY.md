@@ -164,4 +164,4 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
   --headless --path . -- --visual-test production-rally-smart-targets
 ```
 
-状态 Hash v2～v16 是历史移动至确定性投射物边界。当前 Hash v17、Package v16、热快照 v16、Production Command Log v7、Construction Command Log v2 和 Unit Command Log v3 由 96 项全量回归验证；v17 新增 CanMoveDuringWindup/CanMoveDuringCooldown，Package/Hot 完整恢复移动攻击周期。
+状态 Hash v2～v17 是历史移动至武器移动约束边界。当前 Hash v18、Package v17、热快照 v17、Production Command Log v8、Construction Command Log v2 和 Unit Command Log v3 由 97 项全量回归验证；v18 新增 AutoTargetPriority 与 TargetLockRemaining，Package/Hot 完整恢复自动目标锁定周期。

@@ -87,7 +87,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 16;
+    public const int CurrentFormatVersion = 17;
 
     public SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -570,7 +570,8 @@ public sealed class SimulationReplayPackageSnapshot
             reader.ReadSingle(), (CombatAttribute)reader.ReadUInt16(),
             reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean()));
+            reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
+            reader.ReadInt32()));
 
     private static void WriteUnit(BinaryWriter writer, ReplayInitialUnit unit)
     {
@@ -597,6 +598,7 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(unit.CombatProfile.ProjectileSpeed);
         writer.Write(unit.CombatProfile.CanMoveDuringWindup);
         writer.Write(unit.CombatProfile.CanMoveDuringCooldown);
+        writer.Write(unit.CombatProfile.AutoTargetPriority);
     }
 
     private static ReplayInitialBuilding ReadBuilding(BinaryReader reader) => new(
@@ -757,7 +759,8 @@ public sealed class SimulationReplayPackageRecorder
                     simulation.Combat.BonusUpgradeDamage[unit],
                     simulation.Combat.ProjectileSpeed[unit],
                     simulation.Combat.CanMoveDuringWindup[unit],
-                    simulation.Combat.CanMoveDuringCooldown[unit]));
+                    simulation.Combat.CanMoveDuringCooldown[unit],
+                    simulation.Combat.AutoTargetPriority[unit]));
         }
         return result;
     }

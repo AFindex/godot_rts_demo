@@ -330,6 +330,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.ProjectileSpeed[unit]);
             writer.Write(combat.CanMoveDuringWindup[unit]);
             writer.Write(combat.CanMoveDuringCooldown[unit]);
+            writer.Write(combat.AutoTargetPriority[unit]);
             writer.Write(combat.AttackRanges[unit]);
             writer.Write(combat.AcquisitionRanges[unit]);
             writer.Write(combat.AttackCooldownDurations[unit]);
@@ -351,6 +352,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.CooldownRemaining[unit]);
             writer.Write(combat.WindupRemaining[unit]);
             writer.Write(combat.ChaseRepathRemaining[unit]);
+            writer.Write(combat.TargetLockRemaining[unit]);
         }
     }
 
@@ -373,6 +375,7 @@ internal static class RuntimeHotSnapshotCodec
             combat.ProjectileSpeed[unit] = reader.ReadSingle();
             combat.CanMoveDuringWindup[unit] = reader.ReadBoolean();
             combat.CanMoveDuringCooldown[unit] = reader.ReadBoolean();
+            combat.AutoTargetPriority[unit] = reader.ReadInt32();
             combat.AttackRanges[unit] = reader.ReadSingle();
             combat.AcquisitionRanges[unit] = reader.ReadSingle();
             combat.AttackCooldownDurations[unit] = reader.ReadSingle();
@@ -394,6 +397,11 @@ internal static class RuntimeHotSnapshotCodec
             combat.CooldownRemaining[unit] = reader.ReadSingle();
             combat.WindupRemaining[unit] = reader.ReadSingle();
             combat.ChaseRepathRemaining[unit] = reader.ReadSingle();
+            combat.TargetLockRemaining[unit] = reader.ReadSingle();
+            if (combat.AutoTargetPriority[unit] is < 0 or > 10 ||
+                !float.IsFinite(combat.TargetLockRemaining[unit]) ||
+                combat.TargetLockRemaining[unit] < 0f)
+                throw new InvalidDataException();
         }
         return combat;
     }

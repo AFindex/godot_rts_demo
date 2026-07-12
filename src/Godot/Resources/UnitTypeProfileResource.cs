@@ -47,5 +47,7 @@ public partial class UnitTypeProfileResource : Resource
     public float ProjectileSpeed { get; set; }
     [Export] public bool CanMoveDuringWindup { get; set; }
     [Export] public bool CanMoveDuringCooldown { get; set; }
+    [Export(PropertyHint.Range, "0,10,1")]
+    public int AutoTargetPriority { get; set; }
     [Export] public bool IsWorker { get; set; }
 }
