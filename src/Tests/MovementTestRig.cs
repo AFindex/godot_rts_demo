@@ -843,7 +843,8 @@ public readonly record struct TestCombatEvent(
     float DamagePerAttack,
     int AttacksApplied,
     bool BonusApplied,
-    int ProjectileId);
+    int ProjectileId,
+    Vector2 WorldPosition);
 
 public readonly record struct TestCombatProjectileSnapshot(
     int Id,
@@ -852,6 +853,41 @@ public readonly record struct TestCombatProjectileSnapshot(
     int TargetId,
     Vector2 Position,
     float Speed);
+
+public enum TestCombatProjectileVisualKind : byte
+{
+    Bolt,
+    Orb,
+    Volley
+}
+
+public enum TestCombatPresentationCueKind : byte
+{
+    Impact,
+    Expired
+}
+
+public readonly record struct TestCombatPresentationProjectile(
+    int Id,
+    TestCombatProjectileVisualKind VisualKind,
+    Vector2 Position,
+    Vector2 Heading,
+    Vector2[] Trail);
+
+public readonly record struct TestCombatPresentationCue(
+    ulong Sequence,
+    TestCombatPresentationCueKind Kind,
+    int ProjectileId,
+    Vector2 Position,
+    float NormalizedAge,
+    float Damage,
+    bool BonusApplied);
+
+public readonly record struct TestCombatPresentationFrame(
+    TestCombatPresentationProjectile[] Projectiles,
+    TestCombatPresentationCue[] Cues,
+    ulong LatestEventSequence,
+    int LostEvents);
 
 public readonly record struct TestCombatEventBatch(
     TestCombatEvent[] Events,
@@ -1024,6 +1060,7 @@ public sealed partial class MovementTestRig
     private readonly GameplayProfileCatalogSnapshot? _gameplayProfiles;
     private readonly ClearanceBakeSnapshot? _clearanceBake;
     private readonly ControlGroupManager _controlGroups;
+    private readonly CombatPresentationComposer _combatPresentation = new();
 
     private MovementTestRig(
         StaticWorld world,
@@ -2746,7 +2783,8 @@ public sealed partial class MovementTestRig
                 new TestUnitId(value.AttackerUnit), value.TargetKind,
                 value.TargetId, value.Damage, value.RemainingHealth,
                 value.DamagePerAttack, value.AttacksApplied,
-                value.BonusApplied, value.ProjectileId)).ToArray(),
+                value.BonusApplied, value.ProjectileId,
+                value.WorldPosition)).ToArray(),
             batch.LatestSequence,
             batch.LostEvents);
     }
@@ -2757,6 +2795,35 @@ public sealed partial class MovementTestRig
                 value.Id, new TestUnitId(value.AttackerUnit),
                 value.TargetKind, value.TargetId, value.Position, value.Speed))
             .ToArray();
+
+    public TestCombatPresentationFrame ObserveCombatPresentation(
+        float elapsedSeconds = 1f / 60f)
+    {
+        var events = _simulation.CombatEvents.ReadAfter(
+            _combatPresentation.LatestEventSequence);
+        var frame = _combatPresentation.Update(
+            _simulation.CombatProjectiles.ObserveActive(),
+            events,
+            elapsedSeconds);
+        return new TestCombatPresentationFrame(
+            frame.Projectiles.Select(value =>
+                new TestCombatPresentationProjectile(
+                    value.Id,
+                    (TestCombatProjectileVisualKind)value.VisualKind,
+                    value.Position,
+                    value.Heading,
+                    value.Trail.ToArray())).ToArray(),
+            frame.Cues.Select(value => new TestCombatPresentationCue(
+                value.Sequence,
+                (TestCombatPresentationCueKind)value.Kind,
+                value.ProjectileId,
+                value.Position,
+                value.NormalizedAge,
+                value.Damage,
+                value.BonusApplied)).ToArray(),
+            frame.LatestEventSequence,
+            frame.LostEvents);
+    }
 
     public TestCombatDamagePreview PreviewCombatDamage(
         TestUnitId attacker,

@@ -10,17 +10,17 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 94 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 95 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
 当前规模：
 
-- 130 个 C# 源文件。
-- 约 40,736 行 C#（按 `src/**/*.cs` 统计）。
-- 94 个黑盒场景。
-- AV1/WebM 规范录像覆盖全部 94 个当前逻辑场景。
-- Release 1000 单位移动 P95：约 9.20ms。
+- 134 个 C# 源文件。
+- 约 41,349 行 C#（按 `src/**/*.cs` 统计）。
+- 95 个黑盒场景。
+- AV1/WebM 规范录像覆盖全部 95 个当前逻辑场景。
+- Release 1000 单位移动 P95：约 8.46ms。
 - Release 1000 单位当前线程分配：约 685B/Tick。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
@@ -37,11 +37,11 @@
 | S5 碰撞与约束 | 运行时闭环完成 | 圆碰撞、动态占用、三档净空、四档建筑、Profile Resource、局部净空与全局 Connectivity Guard | 具名关键锚点、多移动层、非矩形 footprint |
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
-| S8 战斗移动 | E3a 确定性弹道完成 | AttackMove、占位、统一伤害、固定容量投射物、跟踪目标、事件/表现快照、存档回放 | 弹道表现扩展、移动射击、复杂目标权重和推挤优先级 |
+| S8 战斗移动 | E3b 弹道表现完成 | AttackMove、占位、统一伤害、固定容量投射物、跟踪目标、事件/表现快照、主题资源、存档回放 | 移动射击、复杂目标权重和推挤优先级 |
 | 操作层 | J2b2b 完成 | Shift 跨域任务、混合选择/编组、快照命令卡、Move/AttackMove/Rally/Build 目标模式、同类型多建筑生产/取消/队列聚合、SmartCommand、相机、Minimap | 图标、tooltip、热键重映射和最终皮肤 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | J2b2b + S8-E3a 完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、双 AI、完整操作、确定性弹道、Package/Hot v15、Hash v16 | 后续战斗与表现扩展 |
+| S11 实际 RTS 玩法 | J2b2b + S8-E3b 完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、双 AI、完整操作、确定性弹道与解耦表现、Package/Hot v15、Hash v16 | 移动射击与后续战斗 |
 
 ## 3. 已完成的运行时闭环
 
@@ -1042,7 +1042,19 @@ S8-E2b 完成情况如下。
 - 94/94 全量黑盒回归通过。Release 256/512/1000 移动 P95 为 1.82/6.11/9.20ms；128/256 投射物战斗 P95 为 3.06/3.29ms，测量末帧仍有 417/163 个活跃投射物，分配约 1.7/5.2KB/Tick。
 - 8 秒 AV1/WebM 位于 `test_videos/20260712_152027/`，180,258 字节。全仓录像门禁通过 122 个视频、68 个 manifest、121 个场景引用，编码均为 AV1。
 
-S8-E3a 至此收口。下一段优先做 E3b 弹道表现合同（轨迹类型、命中特效提示、可插拔 Godot 表现），之后再评估移动射击；范围伤害、拦截物和复杂弹道只有实际单位设计需要时再加入，避免优化地狱。
+S8-E3a 至此收口。下一段为 E3b 弹道表现合同。
+
+### AO：S8-E3b 解耦弹道表现合同（已完成）
+
+- `CombatEvent` 增加派生 `WorldPosition`；AttackStarted、Launch、Expire、Impact 和 Destroy 都能直接驱动表现，不需要反查 CombatStore 或已经销毁的建筑。
+- `CombatPresentationComposer` 只消费公开投射物快照与增量事件，输出不可变 Frame；每个飞行体最多 10 个拖尾点，Impact/Expired 提示最多保留 0.4 秒，Event Sequence 重置时自动清空短期历史。
+- 默认可替换 resolver 将单段普通武器映射为 Bolt、属性 Bonus 映射为 Orb、多段攻击映射为 Volley。实际项目可替换映射，不修改模拟层。
+- `RtsCombatProjectileLayer` 是独立 Node2D，只消费 Frame；`data/demo_combat_presentation_theme.tres` 独立配置六类颜色、三类半径、拖尾宽度和命中半径。`RtsDemo` 仅保留薄绑定。
+- `CombatPresentationSelfTest` 覆盖样式、朝向、拖尾、Impact/Expired 和有界回收；`combat-projectile-presentation` 通过稳定 Facade 验证三样式、10 点拖尾、命中 ID 1/2/3、90/85/84 生命与零事件丢失。
+- 95/95 全量黑盒回归通过。Release 256/512/1000 移动 P95 为 3.24/5.26/8.46ms；128/256 投射物战斗 P95 为 2.16/3.04ms，末帧 417/163 个活跃投射物。
+- 两段 AV1/WebM 位于 `test_videos/20260712_155038/`，分别为 178,595 和 218,406 字节。全仓录像门禁通过 124 个视频、69 个 manifest、123 个场景引用，编码均为 AV1。
+
+E3b 至此收口。下一段 E4a 只处理具有实际操作价值的移动射击与武器移动约束：数据化声明能否边移动边起手/完成攻击、移动命令与冷却/前摇的关系，以及对应 AttackMove 手感。范围伤害、拦截物、粒子和音频不提前进入权威层。
 
 ## 8. 可以并行但不能提前耦合的优化
 

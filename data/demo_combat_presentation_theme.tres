@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RtsCombatPresentationThemeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsCombatPresentationThemeResource.cs" id="1_theme"]
+
+[resource]
+script = ExtResource("1_theme")
+BoltColor = Color(1, 0.819608, 0.4, 1)
+OrbColor = Color(1, 0.45098, 0.25098, 1)
+VolleyColor = Color(0.439216, 0.839216, 1, 1)
+ImpactColor = Color(1, 0.952941, 0.690196, 1)
+BonusImpactColor = Color(1, 0.439216, 0.65098, 1)
+ExpiredColor = Color(0.603922, 0.647059, 0.694118, 1)
+BoltRadius = 4.0
+OrbRadius = 6.5
+VolleyRadius = 5.0
+TrailWidth = 2.0
+ImpactRadius = 30.0

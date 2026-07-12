@@ -17,6 +17,7 @@ public static class VisualTestCatalog
         "combat-event-stream",
         "combat-damage-matrix",
         "combat-projectile-flight",
+        "combat-projectile-presentation",
         "combat-building-defense",
         "attack-move-leash-resume",
         "attack-move-command-isolation",
@@ -125,6 +126,8 @@ public static class VisualTestCatalog
         "combat-damage-matrix" => CreateCombatDamageMatrix(productionCatalog),
         "combat-projectile-flight" => CreateCombatProjectileFlight(
             navigationMap, gameplayProfiles, clearanceBake),
+        "combat-projectile-presentation" =>
+            CreateCombatProjectilePresentation(),
         "combat-building-defense" => CreateCombatBuildingDefense(
             navigationMap, gameplayProfiles, clearanceBake,
             buildingTypes, technologyCatalog),
@@ -510,6 +513,104 @@ public static class VisualTestCatalog
             })
             .At(195, "Move target while projectile is in flight", runtime =>
                 runtime.Move([target], new Vector2(820f, 360f)));
+    }
+
+    private static VisualTestSession CreateCombatProjectilePresentation()
+    {
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1000f, 700f), 12);
+        var targetProfile = new TestCombatProfile(
+            MaximumHealth: 100f,
+            AttackDamage: 0f,
+            AttackRange: 20f,
+            AcquisitionRange: 20f,
+            AttackCooldownSeconds: 20f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 80f,
+            Attributes: CombatAttribute.Armored);
+        var boltProfile = new TestCombatProfile(
+            100f, 10f, 650f, 700f, 20f, 0.1f, 900f,
+            ProjectileSpeed: 180f);
+        var orbProfile = boltProfile with
+        {
+            BonusVs = CombatAttribute.Armored,
+            BonusDamage = 5f
+        };
+        var volleyProfile = boltProfile with
+        {
+            AttackDamage = 8f,
+            AttacksPerVolley = 2
+        };
+        var attackers = new[]
+        {
+            rig.SpawnCombat(new Vector2(150f, 160f), 1, boltProfile),
+            rig.SpawnCombat(new Vector2(150f, 350f), 1, orbProfile),
+            rig.SpawnCombat(new Vector2(150f, 540f), 1, volleyProfile)
+        };
+        var targets = new[]
+        {
+            rig.SpawnCombat(new Vector2(700f, 160f), 2, targetProfile),
+            rig.SpawnCombat(new Vector2(700f, 350f), 2, targetProfile),
+            rig.SpawnCombat(new Vector2(700f, 540f), 2, targetProfile)
+        };
+        for (var index = 0; index < attackers.Length; index++)
+            rig.AttackTarget([attackers[index]], targets[index]);
+
+        var styles = new HashSet<TestCombatProjectileVisualKind>();
+        var impactProjectileIds = new HashSet<int>();
+        var maximumTrail = 0;
+        var lostEvents = 0;
+        var finiteCues = true;
+        var session = new VisualTestSession(
+            "combat-projectile-presentation",
+            "Decoupled bolt, orb, volley trails and impact cues",
+            540,
+            rig,
+            [.. attackers, .. targets],
+            runtime =>
+            {
+                var health = targets.Select(value =>
+                    runtime.ObserveCombat(value).Health).ToArray();
+                var passed = styles.SetEquals([
+                                 TestCombatProjectileVisualKind.Bolt,
+                                 TestCombatProjectileVisualKind.Orb,
+                                 TestCombatProjectileVisualKind.Volley]) &&
+                             maximumTrail ==
+                                 CombatPresentationComposer.MaximumTrailPoints &&
+                             impactProjectileIds.Count == 3 &&
+                             impactProjectileIds.All(value => value > 0) &&
+                             health.SequenceEqual([90f, 85f, 84f]) &&
+                             lostEvents == 0 && finiteCues;
+                return new ScenarioResult(
+                    passed,
+                    $"styles={string.Join(',', styles.Order())}, " +
+                    $"trail={maximumTrail}, impacts=" +
+                    $"{string.Join(',', impactProjectileIds.Order())}, " +
+                    $"health={string.Join(',', health)}, lost={lostEvents}, " +
+                    $"finite={finiteCues}");
+            });
+        for (var tick = 0; tick < 540; tick += 3)
+        {
+            session.At(tick, "Observe presentation snapshot", runtime =>
+            {
+                var frame = runtime.ObserveCombatPresentation(0.05f);
+                foreach (var projectile in frame.Projectiles)
+                {
+                    styles.Add(projectile.VisualKind);
+                    maximumTrail = Math.Max(maximumTrail,
+                        projectile.Trail.Length);
+                }
+                foreach (var cue in frame.Cues.Where(value =>
+                             value.Kind == TestCombatPresentationCueKind.Impact))
+                {
+                    impactProjectileIds.Add(cue.ProjectileId);
+                    finiteCues &= float.IsFinite(cue.Position.X) &&
+                                  float.IsFinite(cue.Position.Y);
+                }
+                lostEvents += frame.LostEvents;
+            });
+        }
+        return session;
     }
 
     private static VisualTestSession CreateCombatBuildingDefense(

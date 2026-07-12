@@ -64,7 +64,8 @@ public sealed class CombatSystem
             value => _events.Publish(
                 tick, CombatEventKind.ProjectileExpired,
                 value.AttackerUnit, value.TargetKind, value.TargetId,
-                projectileId: value.Id));
+                projectileId: value.Id,
+                worldPosition: value.Position));
         for (var unit = 0; unit < _units.Count; unit++)
         {
             if (!_units.Alive[unit])
@@ -235,13 +236,15 @@ public sealed class CombatSystem
             {
                 _events.Publish(tick, CombatEventKind.ProjectileLaunched,
                     attacker, CombatTargetKind.Unit, target,
-                    projectileId: projectileId);
+                    projectileId: projectileId,
+                    worldPosition: _units.Positions[attacker]);
             }
             else
             {
                 _events.Publish(tick, CombatEventKind.ProjectileExpired,
                     attacker, CombatTargetKind.Unit, target,
-                    projectileId: 0);
+                    projectileId: 0,
+                    worldPosition: _units.Positions[attacker]);
             }
             return;
         }
@@ -253,7 +256,8 @@ public sealed class CombatSystem
         int target,
         CombatWeaponDamageSnapshot weapon,
         long tick,
-        int projectileId)
+        int projectileId,
+        Vector2? impactPosition = null)
     {
         if (!IsValidTarget(attacker, target)) return;
         var result = CombatDamageResolver.Resolve(
@@ -263,10 +267,11 @@ public sealed class CombatSystem
             _combat.Health[target]);
         var damage = result.TotalDamage;
         _combat.Health[target] = result.RemainingHealth;
+        var worldPosition = impactPosition ?? _units.Positions[target];
         _events.Publish(tick, CombatEventKind.Impact, attacker,
             CombatTargetKind.Unit, target, damage, _combat.Health[target],
             result.DamagePerAttack, result.AttacksApplied, result.BonusApplied,
-            projectileId);
+            projectileId, worldPosition);
         if (_combat.Health[target] > 0f)
         {
             return;
@@ -281,7 +286,8 @@ public sealed class CombatSystem
         _slots.Release(target);
         _movement.Kill(target);
         _events.Publish(tick, CombatEventKind.TargetDestroyed, attacker,
-            CombatTargetKind.Unit, target, damage, 0f);
+            CombatTargetKind.Unit, target, damage, 0f,
+            worldPosition: worldPosition);
     }
 
     private void Disengage(int unit)
@@ -448,13 +454,15 @@ public sealed class CombatSystem
             {
                 _events.Publish(tick, CombatEventKind.ProjectileLaunched,
                     attacker, CombatTargetKind.Building, building.Value,
-                    projectileId: projectileId);
+                    projectileId: projectileId,
+                    worldPosition: _units.Positions[attacker]);
             }
             else
             {
                 _events.Publish(tick, CombatEventKind.ProjectileExpired,
                     attacker, CombatTargetKind.Building, building.Value,
-                    projectileId: 0);
+                    projectileId: 0,
+                    worldPosition: _units.Positions[attacker]);
             }
             return;
         }
@@ -466,8 +474,11 @@ public sealed class CombatSystem
         GameplayBuildingId building,
         CombatWeaponDamageSnapshot weapon,
         long tick,
-        int projectileId)
+        int projectileId,
+        Vector2? impactPosition = null)
     {
+        var worldPosition = impactPosition ?? Center(
+            _movement.BuildingTargetBounds(building));
         var result = _movement.DamageBuilding(building, weapon);
         if (!result.Applied)
         {
@@ -478,12 +489,13 @@ public sealed class CombatSystem
             CombatTargetKind.Building, building.Value,
             result.AppliedDamage, result.RemainingHealth,
             result.DamagePerAttack, result.AttacksApplied, result.BonusApplied,
-            projectileId);
+            projectileId, worldPosition);
         if (result.Destroyed)
         {
             _events.Publish(tick, CombatEventKind.TargetDestroyed, attacker,
                 CombatTargetKind.Building, building.Value,
-                result.AppliedDamage, 0f);
+                result.AppliedDamage, 0f,
+                worldPosition: worldPosition);
             Disengage(attacker);
         }
     }
@@ -494,7 +506,8 @@ public sealed class CombatSystem
         int targetId,
         long tick) =>
         _events.Publish(tick, CombatEventKind.AttackStarted, attacker,
-            targetKind, targetId);
+            targetKind, targetId,
+            worldPosition: _units.Positions[attacker]);
 
     private CombatWeaponDamageSnapshot Weapon(int attacker) => new(
         _combat.AttackDamage[attacker],
@@ -538,11 +551,11 @@ public sealed class CombatSystem
     {
         if (projectile.TargetKind == CombatTargetKind.Unit)
             ApplyUnitWeapon(projectile.AttackerUnit, projectile.TargetId,
-                projectile.Weapon, tick, projectile.Id);
+                projectile.Weapon, tick, projectile.Id, projectile.Position);
         else if (projectile.TargetKind == CombatTargetKind.Building)
             ApplyBuildingWeapon(projectile.AttackerUnit,
                 new GameplayBuildingId(projectile.TargetId),
-                projectile.Weapon, tick, projectile.Id);
+                projectile.Weapon, tick, projectile.Id, projectile.Position);
     }
 
     private static Vector2 Center(SimRect bounds) =>

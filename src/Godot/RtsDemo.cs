@@ -113,9 +113,13 @@ public partial class RtsDemo : Node2D
     private readonly HashSet<int> _visibleBuildingIds = [];
     private readonly Dictionary<int, PlayerResourceViewSnapshot> _visibleResources = [];
     private RtsEconomyControl? _economyControl;
+    private readonly CombatPresentationComposer _combatPresentation = new();
+    private RtsCombatProjectileLayer? _combatProjectileLayer;
 
     public override async void _Ready()
     {
+        _combatProjectileLayer =
+            GetNodeOrNull<RtsCombatProjectileLayer>("CombatProjectileLayer");
         var userArguments = OS.GetCmdlineUserArgs();
         if (userArguments.Contains("--benchmark"))
         {
@@ -323,6 +327,7 @@ public partial class RtsDemo : Node2D
             groupRoutePlanner: _routePlanner,
             chokeController: _chokeController,
             clearanceBake: _clearanceBake);
+        _combatPresentation.Reset();
         InitializeResourceFileWatcher(enableFileSystemWatchers:
             EnableResourceFileWatcher);
         InitializeOperationState();
@@ -371,6 +376,7 @@ public partial class RtsDemo : Node2D
         {
             _visualTest.Step();
         }
+        UpdateCombatPresentation((float)delta);
         _commandMarkerTime = MathF.Max(0f, _commandMarkerTime - (float)delta);
         UpdateHud();
         QueueRedraw();
@@ -497,7 +503,6 @@ public partial class RtsDemo : Node2D
         }
 
         DrawUnits();
-        DrawCombatProjectiles();
 
         if (_dragging)
         {
@@ -1420,22 +1425,6 @@ public partial class RtsDemo : Node2D
                 DrawArc(position, radius + 3f, 0f, MathF.Tau, 18,
                     new Color("65f5ff"), 2f);
             }
-        }
-    }
-
-    private void DrawCombatProjectiles()
-    {
-        if (_simulation is null)
-        {
-            return;
-        }
-        foreach (var projectile in _simulation.CombatProjectiles.ObserveActive())
-        {
-            var position = GodotPathProvider.ToGodot(projectile.Position);
-            var color = new Color("ffd166");
-            DrawCircle(position, 5f, color);
-            DrawArc(position, 8f, 0f, MathF.Tau, 14,
-                color with { A = 0.7f }, 1.5f);
         }
     }
 
@@ -2518,6 +2507,8 @@ public partial class RtsDemo : Node2D
 
         _world = _visualTest.World;
         _simulation = _visualTest.Simulation;
+        _combatPresentation.Reset();
+        _combatProjectileLayer?.SetFrame(CombatPresentationFrame.Empty);
         _routePlanner = _visualTest.RoutePlanner;
         _chokeController = _visualTest.ChokeController;
         if (caseId == "resource-file-watch-workflow")
@@ -2587,6 +2578,19 @@ public partial class RtsDemo : Node2D
         GD.Print(
             $"RTS_VISUAL_TEST_START {_visualTest.Id}: " +
             $"ticks={_visualTest.DurationTicks}, units={_visualTest.VisibleUnits.Length}");
+    }
+
+    private void UpdateCombatPresentation(float deltaSeconds)
+    {
+        if (_simulation is null || _combatProjectileLayer is null)
+            return;
+        var events = _simulation.CombatEvents.ReadAfter(
+            _combatPresentation.LatestEventSequence);
+        var frame = _combatPresentation.Update(
+            _simulation.CombatProjectiles.ObserveActive(),
+            events,
+            deltaSeconds);
+        _combatProjectileLayer.SetFrame(frame);
     }
 
     private bool TryPrepareHotReloadCandidate()
