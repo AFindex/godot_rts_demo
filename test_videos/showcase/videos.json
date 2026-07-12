@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-12T11:45:52.1601757+08:00",
+    "generated_at":  "2026-07-12T12:52:15.6985620+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  116,
-    "case_count":  90,
+    "recording_count":  117,
+    "case_count":  91,
     "recordings":  [
+                       {
+                           "id":  "combat-event-stream",
+                           "display_name":  "Attack start, impact and destruction emit deterministic events",
+                           "batch":  "20260712_125206",
+                           "created_at":  "2026-07-12T12:52:15.0381224+08:00",
+                           "video":  "../20260712_125206/combat-event-stream.webm",
+                           "log":  "../20260712_125206/combat-event-stream.log",
+                           "bytes":  103453,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS combat-event-stream: ticks=300, events=7, starts=3, impacts=12,12,1, destroyed=1, lost=0",
+                           "metrics":  "ticks=300, events=7, starts=3, impacts=12,12,1, destroyed=1, lost=0"
+                       },
                        {
                            "id":  "operation-production-group-batch",
                            "display_name":  "Three Barracks fan out Train and cancel the newest order per producer",

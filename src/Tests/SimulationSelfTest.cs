@@ -45,6 +45,7 @@ public static class SimulationSelfTest
             var operationPresentationResult = OperationPresentationSelfTest.Run();
             var controlGroupResult = ControlGroupSelfTest.Run();
             var productionGroupResult = ProductionGroupPresentationSelfTest.Run();
+            var combatEventResult = CombatEventStreamSelfTest.Run();
             var passed = dataResult.Passed && profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
@@ -56,8 +57,8 @@ public static class SimulationSelfTest
                        aiArchitectureResult.Passed &&
                        aiConfigurationResult.Passed && modularAiResult.Passed;
             passed &= operationPresentationResult.Passed && controlGroupResult.Passed &&
-                      productionGroupResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 19)
+                      productionGroupResult.Passed && combatEventResult.Passed;
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 21)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -113,7 +114,9 @@ public static class SimulationSelfTest
                 $"({controlGroupResult.Summary})",
                 $"production-group=" +
                 $"{(productionGroupResult.Passed ? "PASS" : "FAIL")}" +
-                $"({productionGroupResult.Summary})"
+                $"({productionGroupResult.Summary})",
+                $"combat-events={(combatEventResult.Passed ? "PASS" : "FAIL")}" +
+                $"({combatEventResult.Summary})"
             };
             foreach (var caseId in VisualTestCatalog.CaseIds)
             {

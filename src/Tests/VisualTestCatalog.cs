@@ -14,6 +14,7 @@ public static class VisualTestCatalog
     [
         "single-unit",
         "attack-move-engage-resume",
+        "combat-event-stream",
         "attack-move-leash-resume",
         "attack-move-command-isolation",
         "attack-move-cancel",
@@ -117,6 +118,7 @@ public static class VisualTestCatalog
     {
         "single-unit" => CreateSingleUnit(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
+        "combat-event-stream" => CreateCombatEventStream(),
         "attack-move-leash-resume" => CreateAttackMoveLeashResume(),
         "attack-move-command-isolation" => CreateAttackMoveCommandIsolation(),
         "attack-move-cancel" => CreateAttackMoveCancel(),
@@ -284,6 +286,64 @@ public static class VisualTestCatalog
                     passed,
                     $"defender_alive={defenderCombat.Alive}, " +
                     $"attacker_x={attack.Position.X:F1}, state={attackerCombat.State}");
+            });
+    }
+
+    private static VisualTestSession CreateCombatEventStream()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(900f, 520f), 8);
+        var attackerProfile = new TestCombatProfile(
+            MaximumHealth: 80f,
+            AttackDamage: 12f,
+            AttackRange: 90f,
+            AcquisitionRange: 220f,
+            AttackCooldownSeconds: 0.6f,
+            AttackWindupSeconds: 0.15f,
+            LeashDistance: 320f);
+        var targetProfile = new TestCombatProfile(
+            MaximumHealth: 25f,
+            AttackDamage: 0f,
+            AttackRange: 10f,
+            AcquisitionRange: 40f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 80f);
+        var attacker = rig.SpawnCombat(
+            new Vector2(250f, 260f), 1, attackerProfile);
+        var target = rig.SpawnCombat(
+            new Vector2(520f, 260f), 2, targetProfile);
+        rig.AttackTarget([attacker], target);
+        return new VisualTestSession(
+            "combat-event-stream",
+            "Attack start, impact and destruction emit deterministic events",
+            300,
+            rig,
+            [attacker, target],
+            runtime =>
+            {
+                var batch = runtime.ObserveCombatEvents();
+                var starts = batch.Events.Where(value =>
+                    value.Kind == CombatEventKind.AttackStarted).ToArray();
+                var impacts = batch.Events.Where(value =>
+                    value.Kind == CombatEventKind.Impact).ToArray();
+                var destroyed = batch.Events.Where(value =>
+                    value.Kind == CombatEventKind.TargetDestroyed).ToArray();
+                var ordered = batch.Events.Select(value => value.Sequence)
+                    .SequenceEqual(Enumerable.Range(1, batch.Events.Length)
+                        .Select(value => (ulong)value));
+                var passed = !runtime.ObserveCombat(target).Alive &&
+                             starts.Length == 3 && impacts.Length == 3 &&
+                             destroyed.Length == 1 && ordered &&
+                             impacts.Select(value => value.Damage)
+                                 .SequenceEqual([12f, 12f, 1f]) &&
+                             impacts.Select(value => value.RemainingHealth)
+                                 .SequenceEqual([13f, 1f, 0f]) &&
+                             batch.LostEvents == 0;
+                return new ScenarioResult(
+                    passed,
+                    $"events={batch.Events.Length}, starts={starts.Length}, " +
+                    $"impacts={string.Join(',', impacts.Select(value => value.Damage))}, " +
+                    $"destroyed={destroyed.Length}, lost={batch.LostEvents}");
             });
     }
 

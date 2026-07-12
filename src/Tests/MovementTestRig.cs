@@ -820,6 +820,21 @@ public readonly record struct TestCombatSnapshot(
     bool HasAttackPosition,
     Vector2 AttackPosition);
 
+public readonly record struct TestCombatEvent(
+    long Tick,
+    ulong Sequence,
+    CombatEventKind Kind,
+    TestUnitId Attacker,
+    CombatTargetKind TargetKind,
+    int TargetId,
+    float Damage,
+    float RemainingHealth);
+
+public readonly record struct TestCombatEventBatch(
+    TestCombatEvent[] Events,
+    ulong LatestSequence,
+    int LostEvents);
+
 public enum TestBuildingFootprintClass : byte
 {
     Small,
@@ -2680,6 +2695,18 @@ public sealed partial class MovementTestRig
                 : (TestCombatState)_simulation.Combat.Phases[index],
             _simulation.Combat.HasAttackSlots[index],
             _simulation.Combat.AttackSlotTargets[index]);
+    }
+
+    public TestCombatEventBatch ObserveCombatEvents(ulong afterSequence = 0)
+    {
+        var batch = _simulation.CombatEvents.ReadAfter(afterSequence);
+        return new TestCombatEventBatch(
+            batch.Events.Select(value => new TestCombatEvent(
+                value.Tick, value.Sequence, value.Kind,
+                new TestUnitId(value.AttackerUnit), value.TargetKind,
+                value.TargetId, value.Damage, value.RemainingHealth)).ToArray(),
+            batch.LatestSequence,
+            batch.LostEvents);
     }
 
     public TestOrderSnapshot ObserveOrders(TestUnitId unit)

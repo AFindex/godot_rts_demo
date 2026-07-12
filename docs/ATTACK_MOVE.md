@@ -18,7 +18,7 @@ AttackMove 路线
 → 恢复原 AttackMove 终点
 ```
 
-当前攻击是即时命中抽象，没有弹道、转身、动画事件和护甲结算。
+当前攻击仍是即时命中抽象，没有弹道、转身和护甲结算；攻击起手、命中与摧毁已经发布为独立确定性事件。
 
 ## 模块边界
 
@@ -28,6 +28,7 @@ AttackMove 路线
 - `ICombatMovementDriver`：战斗层到导航层的窄接口；战斗系统不知道路径对象、Portal、Grid 或 Godot。
 - `RtsSimulation`：把追击和恢复意图转换为现有路径请求，并负责死亡单位退出移动/碰撞状态。
 - `MovementTestRig`：业务级测试接口，只暴露 `SpawnCombat`、`AttackMove` 和 `ObserveCombat`。
+- `CombatEventStream`：固定容量派生事件流，按 Tick/Sequence 发布 `AttackStarted`、`Impact`、`TargetDestroyed`；表现层不读取状态机内部数组。
 
 移动路径与战斗意图不能共用同一个“最终目标”。追击时 `SlotTarget` 可以反复改变，但 `CombatStore.AttackMoveGoals` 保留原始终点；脱战恢复不依赖当前追击路径。
 
@@ -64,6 +65,7 @@ AttackMove 路线
 - `combat-ranged-ring`：10 个远程单位全部进入唯一攻击环。
 - `combat-stop-hold-acquire`：Stop 局部追击；Hold 原地攻击近目标并忽略射程外目标。
 - `combat-multi-retarget`：8 个攻击者连续消灭 4 个目标，随后 8/8 恢复原路线。
+- `combat-event-stream`：25 HP 目标受到 12、12、1 三次实际伤害；严格产生 3 个起手、3 个命中和 1 个摧毁事件，序号连续且没有丢失。
 
 这些场景不读取路径点、状态数组或选敌实现；底层替换后测试接口和业务预期可以保持不变。
 
@@ -71,4 +73,6 @@ AttackMove 路线
 
 当前 Demo 的战斗移动阶段到此收口。下一阶段转向 Shift 命令队列、Control Group、SmartCommand、命令日志和确定性回放。
 
-弹道、移动射击、仇恨权重、单位碰撞业务优先级、动画同步和真实伤害系统后置，只有实际玩法需要时才重新开启。
+S8-E1 已重新开启战斗后续并完成事件边界。事件属于可重建输出，不进入权威状态；热恢复时清空，后续固定 Tick 会重新生成。固定容量溢出通过 `LostEvents` 明确报告，不会静默伪装成完整事件流。
+
+后续顺序为真实伤害/护甲与科技修正、弹道，再评估移动射击、仇恨权重和单位碰撞业务优先级。动画、音效和特效直接消费当前事件合同，不反向耦合战斗状态机。

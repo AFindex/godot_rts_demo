@@ -11,7 +11,7 @@ python -m http.server 10086
 
 然后访问 `http://localhost:10086/test_videos/showcase/`。浏览器出于安全限制不能在直接打开本地 HTML 文件时读取 JSON，因此需要一个本地 HTTP 服务。
 
-仓库保留覆盖 90 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+仓库保留覆盖 91 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
@@ -66,6 +66,7 @@ python -m http.server 10086
 - `20260712_034401/`：S11-J2b1 命令卡目标模式；独立 Overlay 展示 Move 目标准星，两段 Shift Move、右键取消、Rally 和 Attack Move 全链路通过，3/3 单位到达。
 - `20260712_040340/`：S11-J2b2a Build 放置模式；Worker 命令卡展示 5 种建筑，红色静态障碍拒绝切换为绿色合法 footprint，稳定选择最近工人并完成 Supply Depot。
 - `20260712_114535/`：S11-J2b2b 同类型多建筑生产；3 座 Barracks 连续两次批量 Train 聚合为 6 个订单，按每建筑最新匹配订单取消后剩 3 个并最终出生 3 个 Marine。
+- `20260712_125206/`：S8-E1 确定性战斗事件流；3 次攻击产生 3 个 AttackStarted、3 个 Impact（12/12/1）和 1 个 TargetDestroyed，固定容量事件读取无丢失。
 
 重新录制所有当前场景：
 

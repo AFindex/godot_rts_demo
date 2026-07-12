@@ -70,6 +70,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _pathProvider = pathProvider;
         Units = new UnitStore(capacity);
         Combat = new CombatStore(capacity);
+        CombatEvents = new CombatEventStream();
         CommandQueues = new UnitCommandQueueStore(capacity);
         Economy = new EconomySystem(capacity);
         Construction = new ConstructionSystem();
@@ -92,7 +93,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
-        _combatSystem = new CombatSystem(Units, Combat, this, world);
+        _combatSystem = new CombatSystem(Units, Combat, this, world, CombatEvents);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _constructionMoveWorker = MoveConstructionWorker;
@@ -104,6 +105,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public StaticWorld World { get; }
     public UnitStore Units { get; }
     public CombatStore Combat { get; }
+    public CombatEventStream CombatEvents { get; }
     public UnitCommandQueueStore CommandQueues { get; }
     public EconomySystem Economy { get; }
     public ConstructionSystem Construction { get; }
@@ -228,6 +230,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         World.DynamicOccupancy.RestoreRuntimeState(snapshot.DynamicOccupancy);
         Units.CopyRuntimeStateFrom(snapshot.Units);
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
+        CombatEvents.Reset();
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
         Construction.RestoreRuntimeState(snapshot.Construction);
         Production.RestoreRuntimeState(
@@ -3250,9 +3253,21 @@ public sealed class RtsSimulation : ICombatMovementDriver
     SimRect ICombatMovementDriver.BuildingTargetBounds(
         GameplayBuildingId building) => Construction.Observe(building).Bounds;
 
-    bool ICombatMovementDriver.DamageBuilding(
+    CombatBuildingDamageResult ICombatMovementDriver.DamageBuilding(
         GameplayBuildingId building,
-        float damage) => DamageBuilding(building, damage);
+        float damage)
+    {
+        if (!Construction.IsAlive(building)) return default;
+        var before = Construction.Observe(building).Health;
+        if (!DamageBuilding(building, damage)) return default;
+        var after = Construction.Observe(building);
+        var remaining = MathF.Max(0f, after.Health);
+        return new CombatBuildingDamageResult(
+            true,
+            after.State == BuildingLifecycleState.Destroyed,
+            MathF.Max(0f, before - remaining),
+            remaining);
+    }
 
     private void SetCombatDestination(int unit, Vector2 target)
     {

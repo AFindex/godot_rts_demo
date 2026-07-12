@@ -2,6 +2,12 @@ using System.Numerics;
 
 namespace RtsDemo.Simulation;
 
+public readonly record struct CombatBuildingDamageResult(
+    bool Applied,
+    bool Destroyed,
+    float AppliedDamage,
+    float RemainingHealth);
+
 public interface ICombatMovementDriver
 {
     void Chase(int unit, Vector2 target);
@@ -11,7 +17,8 @@ public interface ICombatMovementDriver
     void Kill(int unit);
     bool IsBuildingTargetValid(int attacker, GameplayBuildingId building);
     SimRect BuildingTargetBounds(GameplayBuildingId building);
-    bool DamageBuilding(GameplayBuildingId building, float damage);
+    CombatBuildingDamageResult DamageBuilding(
+        GameplayBuildingId building, float damage);
 }
 
 /// <summary>
@@ -28,17 +35,20 @@ public sealed class CombatSystem
     private readonly CombatStore _combat;
     private readonly ICombatMovementDriver _movement;
     private readonly CombatEngagementSlotAllocator _slots;
+    private readonly CombatEventStream _events;
 
     public CombatSystem(
         UnitStore units,
         CombatStore combat,
         ICombatMovementDriver movement,
-        StaticWorld world)
+        StaticWorld world,
+        CombatEventStream events)
     {
         _units = units;
         _combat = combat;
         _movement = movement;
         _slots = new CombatEngagementSlotAllocator(units, combat, world);
+        _events = events;
     }
 
     public void Update(float delta, long tick)
@@ -65,7 +75,7 @@ public sealed class CombatSystem
 
             if (_combat.TargetKinds[unit] == CombatTargetKind.Building)
             {
-                UpdateBuildingTarget(unit, intent, delta);
+                UpdateBuildingTarget(unit, intent, delta, tick);
                 continue;
             }
 
@@ -116,7 +126,7 @@ public sealed class CombatSystem
             if (distance <= range &&
                 (intent == UnitCommandIntent.Hold || _slots.IsReady(unit)))
             {
-                UpdateAttack(unit, target, delta);
+                UpdateAttack(unit, target, delta, tick);
             }
             else if (intent == UnitCommandIntent.Hold)
             {
@@ -168,7 +178,7 @@ public sealed class CombatSystem
         _movement.Chase(unit, targetPosition);
     }
 
-    private void UpdateAttack(int unit, int target, float delta)
+    private void UpdateAttack(int unit, int target, float delta, long tick)
     {
         _combat.Phases[unit] = CombatPhase.Attacking;
         _movement.StopForAttack(unit);
@@ -178,7 +188,7 @@ public sealed class CombatSystem
             _combat.WindupRemaining[unit] -= delta;
             if (_combat.WindupRemaining[unit] <= 0f && IsValidTarget(unit, target))
             {
-                ApplyHit(unit, target);
+                ApplyHit(unit, target, tick);
             }
             return;
         }
@@ -188,21 +198,25 @@ public sealed class CombatSystem
             var windup = _combat.AttackWindupDurations[unit];
             if (windup <= 0f)
             {
-                ApplyHit(unit, target);
+                PublishAttackStarted(unit, CombatTargetKind.Unit, target, tick);
+                ApplyHit(unit, target, tick);
             }
             else
             {
                 _combat.WindupRemaining[unit] = windup;
+                PublishAttackStarted(unit, CombatTargetKind.Unit, target, tick);
             }
         }
     }
 
-    private void ApplyHit(int attacker, int target)
+    private void ApplyHit(int attacker, int target, long tick)
     {
         _combat.CooldownRemaining[attacker] =
             _combat.AttackCooldownDurations[attacker];
-        _combat.Health[target] = MathF.Max(
-            0f, _combat.Health[target] - _combat.AttackDamage[attacker]);
+        var damage = MathF.Min(_combat.Health[target], _combat.AttackDamage[attacker]);
+        _combat.Health[target] = MathF.Max(0f, _combat.Health[target] - damage);
+        _events.Publish(tick, CombatEventKind.Impact, attacker,
+            CombatTargetKind.Unit, target, damage, _combat.Health[target]);
         if (_combat.Health[target] > 0f)
         {
             return;
@@ -216,6 +230,8 @@ public sealed class CombatSystem
         _combat.TargetKinds[target] = CombatTargetKind.None;
         _slots.Release(target);
         _movement.Kill(target);
+        _events.Publish(tick, CombatEventKind.TargetDestroyed, attacker,
+            CombatTargetKind.Unit, target, damage, 0f);
     }
 
     private void Disengage(int unit)
@@ -280,7 +296,8 @@ public sealed class CombatSystem
     private void UpdateBuildingTarget(
         int unit,
         UnitCommandIntent intent,
-        float delta)
+        float delta,
+        long tick)
     {
         var building = new GameplayBuildingId(_combat.TargetBuildings[unit]);
         if (!_movement.IsBuildingTargetValid(unit, building))
@@ -300,7 +317,7 @@ public sealed class CombatSystem
         var range = _combat.AttackRanges[unit] + _units.Radii[unit];
         if (distance <= range)
         {
-            UpdateBuildingAttack(unit, building, delta);
+            UpdateBuildingAttack(unit, building, delta, tick);
             return;
         }
         if (intent == UnitCommandIntent.Hold)
@@ -332,7 +349,8 @@ public sealed class CombatSystem
     private void UpdateBuildingAttack(
         int unit,
         GameplayBuildingId building,
-        float delta)
+        float delta,
+        long tick)
     {
         _combat.Phases[unit] = CombatPhase.Attacking;
         _movement.StopForAttack(unit);
@@ -342,7 +360,7 @@ public sealed class CombatSystem
             if (_combat.WindupRemaining[unit] <= 0f &&
                 _movement.IsBuildingTargetValid(unit, building))
             {
-                ApplyBuildingHit(unit, building);
+                ApplyBuildingHit(unit, building, tick);
             }
             return;
         }
@@ -353,25 +371,49 @@ public sealed class CombatSystem
         var windup = _combat.AttackWindupDurations[unit];
         if (windup <= 0f)
         {
-            ApplyBuildingHit(unit, building);
+            PublishAttackStarted(unit, CombatTargetKind.Building, building.Value, tick);
+            ApplyBuildingHit(unit, building, tick);
         }
         else
         {
             _combat.WindupRemaining[unit] = windup;
+            PublishAttackStarted(unit, CombatTargetKind.Building, building.Value, tick);
         }
     }
 
-    private void ApplyBuildingHit(int attacker, GameplayBuildingId building)
+    private void ApplyBuildingHit(
+        int attacker,
+        GameplayBuildingId building,
+        long tick)
     {
         _combat.CooldownRemaining[attacker] =
             _combat.AttackCooldownDurations[attacker];
-        if (!_movement.DamageBuilding(
-                building, _combat.AttackDamage[attacker]) ||
-            !_movement.IsBuildingTargetValid(attacker, building))
+        var result = _movement.DamageBuilding(
+            building, _combat.AttackDamage[attacker]);
+        if (!result.Applied)
         {
+            Disengage(attacker);
+            return;
+        }
+        _events.Publish(tick, CombatEventKind.Impact, attacker,
+            CombatTargetKind.Building, building.Value,
+            result.AppliedDamage, result.RemainingHealth);
+        if (result.Destroyed)
+        {
+            _events.Publish(tick, CombatEventKind.TargetDestroyed, attacker,
+                CombatTargetKind.Building, building.Value,
+                result.AppliedDamage, 0f);
             Disengage(attacker);
         }
     }
+
+    private void PublishAttackStarted(
+        int attacker,
+        CombatTargetKind targetKind,
+        int targetId,
+        long tick) =>
+        _events.Publish(tick, CombatEventKind.AttackStarted, attacker,
+            targetKind, targetId);
 
     private static Vector2 ClosestOutsidePoint(
         SimRect bounds,
