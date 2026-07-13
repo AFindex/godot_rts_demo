@@ -56,7 +56,7 @@ Idle
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造、建筑战斗、生产、研究和 Shift 工人任务现已纳入 Replay Package 与持久化热快照。当前 Replay Package v26、Hot Snapshot v25、State Hash v26；Research/CancelResearch 使用设施命令日志独立语义。
+经济、建造、建筑战斗、生产、研究和 Shift 工人任务现已纳入 Replay Package 与持久化热快照。当前 Replay Package v27、Hot Snapshot v26、State Hash v27；Research/CancelResearch 使用设施命令日志独立语义。
 
 ### Shift 连续建造合同
 

@@ -101,7 +101,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _steeringSolver = new SteeringSolver(world, _spatialHash);
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
-        _combatSystem = new CombatSystem(Units, Combat, this, world, CombatEvents);
+        _combatSystem = new CombatSystem(
+            Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _constructionMoveWorker = MoveConstructionWorker;
@@ -696,8 +697,15 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         if (Combat.Teams[unit] == playerId)
             return false;
-        return Visibility.IsVisible(playerId, Units.Positions[unit]);
+        return CanPlayerPerceiveUnit(playerId, unit);
     }
+
+    private bool CanPlayerPerceiveUnit(int playerId, int unit) =>
+        Visibility.IsUnitVisible(playerId, unit, Units, Combat);
+
+    private bool CanCombatPerceiveUnit(int playerId, int unit) =>
+        Combat.ConcealmentKinds[unit] == UnitConcealmentKind.None ||
+        CanPlayerPerceiveUnit(playerId, unit);
 
     private bool IsReservationKnownToPlayer(
         int playerId,
@@ -806,10 +814,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CombatProfileSnapshot combatProfile,
         float radius = 7.5f,
         float maxSpeed = 128f,
-        float acceleration = 720f)
+        float acceleration = 720f,
+        UnitPerceptionProfileSnapshot perception = default)
     {
         var unit = Units.Add(position, radius, maxSpeed, acceleration);
-        Combat.Register(unit, team, position, combatProfile);
+        Combat.Register(unit, team, position, combatProfile, perception);
         return unit;
     }
 
@@ -826,14 +835,16 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Vector2 position,
         UnitMovementProfileSnapshot movementProfile,
         int team,
-        CombatProfileSnapshot combatProfile) =>
+        CombatProfileSnapshot combatProfile,
+        UnitPerceptionProfileSnapshot perception = default) =>
         AddUnit(
             position,
             team,
             combatProfile,
             movementProfile.PhysicalRadius,
             movementProfile.MaximumSpeed,
-            movementProfile.Acceleration);
+            movementProfile.Acceleration,
+            perception);
 
     public int AddWorker(
         Vector2 position,
@@ -1393,14 +1404,16 @@ public sealed class RtsSimulation : ICombatMovementDriver
             var owner = Combat.Teams[unit];
             var relation = Relation(playerId, owner);
             if (relation != PlayerEntityRelation.Own &&
-                !Visibility.IsVisible(playerId, Units.Positions[unit]))
+                !CanPlayerPerceiveUnit(playerId, unit))
             {
                 continue;
             }
             units.Add(new PlayerUnitViewSnapshot(
                 unit, owner, relation, Units.Positions[unit], Units.Radii[unit],
                 Combat.Health[unit], Combat.MaximumHealth[unit],
-                Units.Modes[unit], Combat.Phases[unit]));
+                Units.Modes[unit], Combat.Phases[unit],
+                Visibility.ConcealmentStateFor(
+                    playerId, unit, Units, Combat)));
         }
         var buildings = new List<PlayerBuildingViewSnapshot>();
         foreach (var building in Construction.CreateOverview())
@@ -1531,7 +1544,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     return new(PlayerOrderCommandCode.InvalidTarget);
                 if (Combat.Teams[target.Unit] == playerId)
                     return new(PlayerOrderCommandCode.FriendlyTarget);
-                if (!Visibility.IsVisible(playerId, Units.Positions[target.Unit]))
+                if (!CanPlayerPerceiveUnit(playerId, target.Unit))
                     return new(PlayerOrderCommandCode.TargetNotVisible);
                 break;
             case SmartCommandTargetKind.EnemyBuilding:
@@ -1855,7 +1868,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 knownOccupant = true;
                 continue;
             }
-            if (Visibility.IsVisible(playerId, Units.Positions[unit]))
+            if (CanPlayerPerceiveUnit(playerId, unit))
                 knownOccupant = true;
         }
         return knownOccupant
@@ -2404,6 +2417,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
+        Visibility.UpdateDetection(Units, Combat);
         _combatSystem.Update(delta, Metrics.Tick);
         Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -2424,7 +2438,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.SpatialHashMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
-        _steeringSolver.Solve(Units, delta, _unitCollisionSuppressed);
+        _steeringSolver.Solve(
+            Units, delta, _unitCollisionSuppressed, Combat.ConcealmentKinds);
         _chokeController?.ConstrainSolvedVelocities(Units);
         Metrics.SteeringMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -3154,8 +3169,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     {
                         continue;
                     }
-                    if (_unitCollisionSuppressed[unit] ||
-                        _unitCollisionSuppressed[neighbor])
+                    if (UnitCollisionPolicy.SuppressesPair(
+                            _unitCollisionSuppressed[unit],
+                            Combat.ConcealmentKinds[unit],
+                            _unitCollisionSuppressed[neighbor],
+                            Combat.ConcealmentKinds[neighbor]))
                     {
                         continue;
                     }

@@ -23,7 +23,8 @@ public sealed class SteeringSolver
     public void Solve(
         UnitStore units,
         float delta,
-        ReadOnlySpan<bool> unitCollisionSuppressed)
+        ReadOnlySpan<bool> unitCollisionSuppressed,
+        ReadOnlySpan<UnitConcealmentKind> concealmentKinds)
     {
         for (var unit = 0; unit < units.Count; unit++)
         {
@@ -42,7 +43,7 @@ public sealed class SteeringSolver
             }
 
             units.NextVelocities[unit] = SolveUnit(
-                units, unit, delta, unitCollisionSuppressed);
+                units, unit, delta, unitCollisionSuppressed, concealmentKinds);
         }
     }
 
@@ -50,7 +51,8 @@ public sealed class SteeringSolver
         UnitStore units,
         int unit,
         float delta,
-        ReadOnlySpan<bool> unitCollisionSuppressed)
+        ReadOnlySpan<bool> unitCollisionSuppressed,
+        ReadOnlySpan<UnitConcealmentKind> concealmentKinds)
     {
         var position = units.Positions[unit];
         var preferred = units.PreferredVelocities[unit];
@@ -79,7 +81,7 @@ public sealed class SteeringSolver
             preferred,
             neighborCount,
             horizon,
-            unitCollisionSuppressed);
+            unitCollisionSuppressed, concealmentKinds);
         if (preferredRisk < 0.02f &&
             _world.IsSegmentFree(position, position + preferred * 0.32f, radius))
         {
@@ -113,7 +115,7 @@ public sealed class SteeringSolver
                 candidate,
                 neighborCount,
                 horizon,
-                unitCollisionSuppressed);
+                unitCollisionSuppressed, concealmentKinds);
             var angularCost = MathF.Abs(CandidateAngles[candidateIndex]) / 180f;
             var speedLoss = 1f - candidate.Length() / preferredSpeed;
             var side = MathF.Abs(angle) < 0.01f ? (sbyte)0 : angle < 0f ? (sbyte)-1 : (sbyte)1;
@@ -154,7 +156,8 @@ public sealed class SteeringSolver
         Vector2 candidate,
         int neighborCount,
         float horizon,
-        ReadOnlySpan<bool> unitCollisionSuppressed)
+        ReadOnlySpan<bool> unitCollisionSuppressed,
+        ReadOnlySpan<UnitConcealmentKind> concealmentKinds)
     {
         var risk = 0f;
         var position = units.Positions[unit];
@@ -163,8 +166,10 @@ public sealed class SteeringSolver
         for (var i = 0; i < neighborCount; i++)
         {
             var neighbor = _neighborBuffer[i];
-            if (unitCollisionSuppressed[unit] ||
-                unitCollisionSuppressed[neighbor])
+            if (UnitCollisionPolicy.SuppressesPair(
+                    unitCollisionSuppressed[unit], concealmentKinds[unit],
+                    unitCollisionSuppressed[neighbor],
+                    concealmentKinds[neighbor]))
             {
                 continue;
             }

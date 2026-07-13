@@ -33,6 +33,32 @@ public enum CombatPositioningKind : byte
     Ranged
 }
 
+public enum UnitConcealmentKind : byte
+{
+    None,
+    Cloaked,
+    Burrowed
+}
+
+public readonly record struct UnitPerceptionProfileSnapshot(
+    UnitConcealmentKind Concealment,
+    float DetectionRange)
+{
+    public static UnitPerceptionProfileSnapshot Standard => new(
+        UnitConcealmentKind.None, 0f);
+
+    public void Validate()
+    {
+        if (!Enum.IsDefined(Concealment) ||
+            !float.IsFinite(DetectionRange) || DetectionRange < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(UnitPerceptionProfileSnapshot),
+                "Unit perception values are invalid.");
+        }
+    }
+}
+
 public readonly record struct CombatProfileSnapshot(
     float MaximumHealth,
     float AttackDamage,
@@ -113,6 +139,8 @@ public sealed class CombatStore
         CanMoveDuringWindup = new bool[capacity];
         CanMoveDuringCooldown = new bool[capacity];
         AutoTargetPriority = new int[capacity];
+        ConcealmentKinds = new UnitConcealmentKind[capacity];
+        DetectionRanges = new float[capacity];
         AttackRanges = new float[capacity];
         AcquisitionRanges = new float[capacity];
         AttackCooldownDurations = new float[capacity];
@@ -154,6 +182,8 @@ public sealed class CombatStore
     public bool[] CanMoveDuringWindup { get; }
     public bool[] CanMoveDuringCooldown { get; }
     public int[] AutoTargetPriority { get; }
+    public UnitConcealmentKind[] ConcealmentKinds { get; }
+    public float[] DetectionRanges { get; }
     public float[] AttackRanges { get; }
     public float[] AcquisitionRanges { get; }
     public float[] AttackCooldownDurations { get; }
@@ -177,9 +207,15 @@ public sealed class CombatStore
     public float[] ChaseRepathRemaining { get; }
     public float[] TargetLockRemaining { get; }
 
-    public void Register(int unit, int team, Vector2 position, CombatProfileSnapshot profile)
+    public void Register(
+        int unit,
+        int team,
+        Vector2 position,
+        CombatProfileSnapshot profile,
+        UnitPerceptionProfileSnapshot perception = default)
     {
         profile.Validate();
+        perception.Validate();
         Teams[unit] = team;
         Health[unit] = profile.MaximumHealth;
         MaximumHealth[unit] = profile.MaximumHealth;
@@ -195,6 +231,8 @@ public sealed class CombatStore
         CanMoveDuringWindup[unit] = profile.CanMoveDuringWindup;
         CanMoveDuringCooldown[unit] = profile.CanMoveDuringCooldown;
         AutoTargetPriority[unit] = profile.AutoTargetPriority;
+        ConcealmentKinds[unit] = perception.Concealment;
+        DetectionRanges[unit] = perception.DetectionRange;
         AttackRanges[unit] = profile.AttackRange;
         AcquisitionRanges[unit] = profile.AcquisitionRange;
         AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
@@ -233,6 +271,8 @@ public sealed class CombatStore
         Copy(source.CanMoveDuringWindup, CanMoveDuringWindup);
         Copy(source.CanMoveDuringCooldown, CanMoveDuringCooldown);
         Copy(source.AutoTargetPriority, AutoTargetPriority);
+        Copy(source.ConcealmentKinds, ConcealmentKinds);
+        Copy(source.DetectionRanges, DetectionRanges);
         Copy(source.AttackRanges, AttackRanges);
         Copy(source.AcquisitionRanges, AcquisitionRanges);
         Copy(source.AttackCooldownDurations, AttackCooldownDurations);

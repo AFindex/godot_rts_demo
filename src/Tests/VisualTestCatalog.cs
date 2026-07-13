@@ -88,6 +88,7 @@ public static class VisualTestCatalog
         "economy-expansion-saturation",
         "player-visibility-authority",
         "construction-player-known-placement",
+        "concealment-detection-construction",
         "match-capability-elimination",
         "ai-modular-skirmish",
         "ai-dual-runtime-replay",
@@ -258,6 +259,8 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "construction-player-known-placement" =>
             CreateConstructionPlayerKnownPlacement(),
+        "concealment-detection-construction" =>
+            CreateConcealmentDetectionConstruction(),
         "match-capability-elimination" => CreateMatchCapabilityElimination(
             navigationMap, gameplayProfiles, clearanceBake),
         "ai-modular-skirmish" => CreateModularAiSkirmish(aiConfigurations),
@@ -5916,6 +5919,167 @@ public static class VisualTestCatalog
             runtime => hotCapture = runtime.CaptureRuntimeState());
         session.At(150, "Move the now-visible enemy and allow hard commit", runtime =>
             runtime.PlayerMove(2, [hiddenEnemy], new Vector2(950f, 300f)));
+        return session;
+    }
+
+    private static VisualTestSession CreateConcealmentDetectionConstruction()
+    {
+        var navigationMap = DemoMapDefinition.CreateSnapshot();
+        var gameplayProfiles = DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            20, navigationMap, gameplayProfiles, null);
+        rig.RegisterPlayer(1, 3000, 500, 30);
+        rig.RegisterPlayer(2, 3000, 500, 30);
+        var builder = rig.SpawnWorker(
+            new Vector2(100f, 300f), 1,
+            maximumSpeed: 400f, acceleration: 2000f);
+        var harmlessWeapon = TestCombatProfile.Standard with
+        {
+            AttackDamage = 0f
+        };
+        var scout = rig.SpawnCombat(
+            new Vector2(700f, 390f), 1, harmlessWeapon);
+        var detector = rig.SpawnCombat(
+            new Vector2(450f, 520f), 1,
+            maximumSpeed: 300f,
+            acceleration: 1400f,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.None, 110f));
+        var buriedBlocker = rig.SpawnCombat(
+            new Vector2(800f, 300f), 2,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.Burrowed, 0f));
+        var buriedContact = rig.SpawnCombat(
+            new Vector2(300f, 120f), 2,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.Burrowed, 0f));
+        var passer = rig.SpawnCombat(
+            new Vector2(180f, 120f), 1,
+            maximumSpeed: 300f, acceleration: 1400f);
+        var target = new Vector2(800f, 300f);
+        var profile = DemoBuildingTypes.SupplyDepot with { BuildSeconds = 1f };
+        rig.StartReplayPackageRecording();
+
+        var hiddenOnVisibleGround = false;
+        var previewAccepted = false;
+        var hiddenAttackRejected = false;
+        var authorityWaitHidden = false;
+        var burrowContactSuppressed = false;
+        var detectedStateExposed = false;
+        var detectedAttackAccepted = false;
+        TestConstructionResult build = default;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 130;
+        var session = new VisualTestSession(
+            "concealment-detection-construction",
+            "Separate sight, detection and authority construction blocking",
+            420,
+            rig,
+            [builder, scout, detector, buriedBlocker, buriedContact, passer],
+            runtime =>
+            {
+                var building = runtime.ObserveGameplayBuilding(build.BuildingId);
+                var package = runtime.CaptureReplayPackage();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var replay = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = replay.FinalHash == runtime.StateHash &&
+                            resumed.FinalHash == runtime.StateHash;
+                var passed = hiddenOnVisibleGround && previewAccepted &&
+                             hiddenAttackRejected && authorityWaitHidden &&
+                             burrowContactSuppressed && detectedStateExposed &&
+                             detectedAttackAccepted &&
+                             building.State == TestBuildingLifecycleState.Completed &&
+                             packageRoundTrip && hotRoundTrip && exact &&
+                             package.FormatVersion ==
+                                 SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             hot.FormatVersion ==
+                                 SimulationHotSnapshot.CurrentFormatVersion;
+                return new ScenarioResult(
+                    passed,
+                    $"hidden={hiddenOnVisibleGround}/{hiddenAttackRejected}, " +
+                    $"preview={previewAccepted}, wait={authorityWaitHidden}, " +
+                    $"burrowPass={burrowContactSuppressed}, " +
+                    $"detected={detectedStateExposed}/{detectedAttackAccepted}, " +
+                    $"state={building.State}, versions=package{package.FormatVersion}/" +
+                    $"hot{hot.FormatVersion}, exact={exact}");
+            })
+            .RenderSpawnedUnits()
+            .CameraKeyframe(0, new Vector2(620f, 300f), 0.85f)
+            .CameraKeyframe(150, new Vector2(780f, 300f), 1.05f)
+            .CameraKeyframe(300, new Vector2(900f, 300f), 0.95f)
+            .Highlight(
+                new SimRect(new Vector2(740f, 240f), new Vector2(860f, 360f)),
+                "VISIBLE GROUND: undetected burrow blocks authority only",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(160f, 80f), new Vector2(460f, 160f)),
+                "BURROW CONTACT: normal unit passes, buildings still block",
+                TestDiagnosticKind.Accepted);
+        session.At(10, "Issue on visible ground without detection", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            hiddenOnVisibleGround = view.VisibleCells > 0 &&
+                                    !view.Units.Contains(buriedBlocker);
+            var preview = runtime.PreviewBuild(1, builder, profile, target);
+            previewAccepted = preview.Succeeded;
+            hiddenAttackRejected = runtime.PlayerAttackUnit(
+                1, [scout], buriedBlocker) ==
+                TestPlayerOrderCommandCode.TargetNotVisible;
+            build = runtime.Build(1, builder, profile, target);
+            if (!build.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Concealment construction issue failed: " +
+                    $"{build.Code}/{build.PlacementCode}; " +
+                    $"preview={preview.Code}/{preview.PlacementCode}.");
+            }
+            runtime.PlayerMove(1, [passer], new Vector2(440f, 120f));
+        });
+        session.At(115, "Burrowed unit suppresses ordinary unit contact", runtime =>
+        {
+            var moving = runtime.Observe(passer);
+            var buried = runtime.Observe(buriedContact);
+            burrowContactSuppressed = moving.Position.X > 380f &&
+                                      Vector2.Distance(
+                                          buried.Position,
+                                          new Vector2(300f, 120f)) < 1f;
+        });
+        session.At(hotTick, "Capture the undetected authority wait", runtime =>
+        {
+            var building = runtime.ObserveGameplayBuilding(build.BuildingId);
+            var view = runtime.ObservePlayerView(1);
+            authorityWaitHidden =
+                building.State == TestBuildingLifecycleState.BlockedAtStart &&
+                !view.Units.Contains(buriedBlocker) &&
+                view.BuildingViews.Any(value =>
+                    value.BuildingId == build.BuildingId &&
+                    value.ConstructionStatus ==
+                        TestPublicConstructionStatus.WaitingForClearance);
+            hotCapture = runtime.CaptureRuntimeState();
+        });
+        session.At(140, "Move an explicit detector into range", runtime =>
+            runtime.PlayerMove(1, [detector], new Vector2(730f, 370f)));
+        session.At(230, "Detection reveals state and enables targeting", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            detectedStateExposed = view.UnitViews.Any(value =>
+                value.Unit == buriedBlocker &&
+                value.ConcealmentState ==
+                    TestPlayerConcealmentState.ConcealedDetected) &&
+                view.BuildingViews.Any(value =>
+                    value.BuildingId == build.BuildingId &&
+                    value.ConstructionStatus ==
+                        TestPublicConstructionStatus.KnownOccupant);
+            detectedAttackAccepted = runtime.PlayerAttackUnit(
+                1, [scout], buriedBlocker) ==
+                TestPlayerOrderCommandCode.Success;
+        });
+        session.At(240, "Remove the authority blocker and commit", runtime =>
+            runtime.PlayerMove(2, [buriedBlocker], new Vector2(1040f, 300f)));
         return session;
     }
 

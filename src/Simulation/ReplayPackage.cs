@@ -28,7 +28,8 @@ public readonly record struct ReplayInitialUnit(
     float MaximumSpeed,
     float Acceleration,
     int Team,
-    CombatProfileSnapshot CombatProfile);
+    CombatProfileSnapshot CombatProfile,
+    UnitPerceptionProfileSnapshot PerceptionProfile);
 
 public readonly record struct ReplayInitialBuilding(
     DynamicFootprintId Id,
@@ -87,7 +88,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 26;
+    public const int CurrentFormatVersion = 27;
 
     public SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -523,6 +524,7 @@ public sealed class SimulationReplayPackageSnapshot
         try
         {
             unit.CombatProfile.Validate();
+            unit.PerceptionProfile.Validate();
             return true;
         }
         catch (ArgumentOutOfRangeException)
@@ -571,7 +573,9 @@ public sealed class SimulationReplayPackageSnapshot
             reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
-            reader.ReadInt32()));
+            reader.ReadInt32()),
+        new UnitPerceptionProfileSnapshot(
+            (UnitConcealmentKind)reader.ReadByte(), reader.ReadSingle()));
 
     private static void WriteUnit(BinaryWriter writer, ReplayInitialUnit unit)
     {
@@ -599,6 +603,8 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(unit.CombatProfile.CanMoveDuringWindup);
         writer.Write(unit.CombatProfile.CanMoveDuringCooldown);
         writer.Write(unit.CombatProfile.AutoTargetPriority);
+        writer.Write((byte)unit.PerceptionProfile.Concealment);
+        writer.Write(unit.PerceptionProfile.DetectionRange);
     }
 
     private static ReplayInitialBuilding ReadBuilding(BinaryReader reader) => new(
@@ -760,7 +766,10 @@ public sealed class SimulationReplayPackageRecorder
                     simulation.Combat.ProjectileSpeed[unit],
                     simulation.Combat.CanMoveDuringWindup[unit],
                     simulation.Combat.CanMoveDuringCooldown[unit],
-                    simulation.Combat.AutoTargetPriority[unit]));
+                    simulation.Combat.AutoTargetPriority[unit]),
+                new UnitPerceptionProfileSnapshot(
+                    simulation.Combat.ConcealmentKinds[unit],
+                    simulation.Combat.DetectionRanges[unit]));
         }
         return result;
     }
@@ -814,7 +823,8 @@ public static class SimulationReplayPackageFactory
                 unit.CombatProfile,
                 unit.Radius,
                 unit.MaximumSpeed,
-                unit.Acceleration);
+                unit.Acceleration,
+                unit.PerceptionProfile);
             if (actual != index)
             {
                 throw new InvalidOperationException("Unit IDs are not dense.");

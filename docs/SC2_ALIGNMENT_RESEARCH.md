@@ -219,7 +219,7 @@ Reservation 与 Hard Footprint 必须使用不同 ID/不同集合。前者只解
 
 当前项目已经把上述工程合同落地为 `ConstructionBlockerPolicy + ConstructionEvictionPlanner + UnitCommandQueueStore 临时覆盖层`。多单位按稳定 ID 获得不同外沿槽位，活动 Move 和后续队列不会被施工系统改写；Hard Commit 后恢复。由于 E0 仍未完成，当前只把 Idle/Stop/Move 视为 MovableFriendly，Hold、Harvest、其他 Builder、其他订单和 AuthorityEnemy 都保守等待。这里冻结的是可替换机制，不是对 SC2 未公开策略的宣称。
 
-PlayerKnown 与 Authority 现已形成独立运行时合同。玩家 Preview/Issue 允许己方单位内预放置，只读取当前可见敌军和已知硬占地；当前不可见的敌军单位、Gameplay Building 与 Reservation 不改变颜色或接受码。Builder 到场后 Authority 使用完整世界重验。公开 `PublicConstructionStatus` 只表达清场、已知占位或等待空间，不返回隐藏对象身份；全局 Connectivity 也延迟到 Authority Hard Commit，避免通过全局拓扑产生侧信道。该实现覆盖普通战争迷雾，但不声称已经拥有 SC2 的 Cloak/Burrow/Detection 语义。
+PlayerKnown 与 Authority 现已形成独立运行时合同。玩家 Preview/Issue 允许己方单位内预放置，只读取当前可见敌军和已知硬占地；当前不可见或未侦测的敌军单位、Gameplay Building 与 Reservation 不改变颜色或接受码。Builder 到场后 Authority 使用完整世界重验。公开 `PublicConstructionStatus` 只表达清场、已知占位或等待空间，不返回隐藏对象身份；全局 Connectivity 也延迟到 Authority Hard Commit，避免通过全局拓扑产生侧信道。普通战争迷雾和 Cloak/Burrow/Detection 现在共用该合同。
 
 ### 4.5 当前实现差距
 
@@ -228,7 +228,7 @@ PlayerKnown 与 Authority 现已形成独立运行时合同。玩家 Preview/Iss
 | 光标 Preview | 无副作用，使用 PlayerKnown 放置合同 | 主路径已对齐/颜色策略待 E0 |
 | 网格吸附 | 8px | 内容参数可调 |
 | 单位重叠 | 己方软占位允许 Reservation；可见敌军拒绝；开工按策略分类 | 工程主链已完成/动作待 E0 |
-| 隐藏敌人 | PlayerKnown 忽略当前不可见的敌军单位、建筑和 Reservation；到场后 Authority 重验 | 普通战争迷雾已对齐；Cloak/Burrow/Detection 待实现 |
+| 隐藏敌人 | PlayerKnown 忽略当前不可见/未侦测的敌军单位、建筑和 Reservation；到场后 Authority 重验 | 普通战争迷雾与 Cloak/Burrow/Detection 基础矩阵已对齐；Ally 待实现 |
 | 下单后 Ghost | 独立权威 Reservation + 不可变 Ghost 快照 | 已对齐架构时序 |
 | 工人接近期间占地 | Reservation 不进入 Pathing，普通单位可穿越 | 已对齐架构时序 |
 | 开工动态重检 | Builder 到场重新评估后才原子 Hard Commit | 主路径已对齐 |
@@ -292,6 +292,18 @@ Blizzard 提醒建筑摆得太紧会让新单位卡在出口，并建议把 Rall
 
 这里必须区分证据强度：官方资料支持“畅通侧会影响能否顺利离开”和目标死亡的玩家可观察结果，但没有公开确认其内部是否正好使用“友军软、敌军硬”分类。因此软/硬分类是当前项目为可玩性冻结的可替换策略；未来只有 SC2 实机矩阵或真实玩法失败才能修改。不同建筑的特殊出生点仍未数据化，也不属于核心对齐完成条件。
 
+### 5.5 普通视野、隐形与侦测是三层合同
+
+Blizzard 的 Cloaking Guide 明确说明：Cloaked 单位在附近没有 Detector 时不能被敌方选择或作为目标，Zerg 的 Burrowed 单位也属于这一类隐藏对象。[Blizzard Cloaking Guide](https://news.blizzard.com/en-us/article/4546769/game-guide-cloaking)（A）
+
+SC2 官方 API 没有把这件事压成一个 `Visible` 布尔值，而是分别暴露 `DisplayType(Visible/Snapshot/Hidden)`、`Alliance(Self/Ally/Neutral/Enemy)`、`CloakState(Cloaked/CloakedDetected/NotCloaked/Unknown)` 和单位的 `detect_range`。这足以冻结架构边界：地图视野、外交关系、单位隐蔽状态和侦测范围必须独立建模。[SC2 API Unit](https://blizzard.github.io/s2client-api/classsc2_1_1_unit.html)（A）
+
+Burrow 还有独立的碰撞语义。稳定社区资料记录：埋地单位与普通非埋地单位不发生单位接触，但仍与建筑发生占用关系，埋地单位之间仍会接触；用埋地单位阻止基地落位也是实际战术。[Liquipedia Burrow](https://liquipedia.net/starcraft2/Burrow)（B）公开玩家观察进一步指出，未侦测阻挡可能让预放置仍显示可放，但实际提交无法开始；该条只作为当前客户端 E0 复现实验的候选，不单独冻结失败提示或等待时序。[Arqade: Do Burrowed Units Block Building Construction?](https://gaming.stackexchange.com/questions/6342/do-burrowed-units-block-building-construction)（C）
+
+当前 Demo 已完成第一段正式能力层：单位权威 Profile 独立保存 `None/Cloaked/Burrowed` 与 `DetectionRange`；32 单位视野网格旁有每 Tick 派生的 Detection grid。PlayerView、玩家目标命令和 PlayerKnown 施工查询都要求“普通视野成立，并且隐蔽目标已被侦测”；己方隐蔽单位始终可见。战斗自动索敌只对 Cloaked/Burrowed 增加侦测门禁，不改变既有普通单位索敌平衡。Burrowed 与普通单位的成对接触被抑制，但地形与 Hard Footprint 仍阻挡。
+
+这不是完整的种族技能实现：尚无 Cloak/Burrow 开关、能量/研究、埋地移动能力、视野缩减、显形特效、扫描临时侦测或盟友共享视野。`Alliance` 仍是下一段依赖；这些能力不得反向侵入施工 Validator。
+
 ## 6. 黑盒测试规划
 
 所有对齐测试只能通过正式业务门面下命令并读取稳定快照，不能访问 `EconomySystem`、`ConstructionSystem`、Steering 或 NavMesh 私有数组。
@@ -316,7 +328,7 @@ Blizzard 提醒建筑摆得太紧会让新单位卡在出口，并建议把 Rall
 
 - 未侦测潜地阻挡不改变预览，Builder 到达后施工不应穿过敌人。
 - 侦测前后对比失败提示、退款/等待策略、Fog 信息泄漏。
-- 当前项目还没有隐形/潜地系统，先把测试列入协议，不用假实体作弊。
+- 已由正式 `concealment-detection-construction` 场景覆盖：可见地面上的未侦测 Burrowed 单位不出现在 PlayerView、Preview/Issue 成功、Authority 到场等待且只发布通用反馈；Detector 进入范围后目标与 `ConcealedDetected` 状态可见、玩家攻击命令开放，阻挡解除后建筑完工。场景同时验证普通单位穿过 Burrowed 单位、Replay/Hot/State Hash 精确一致。
 
 #### `construction-under-build-defense`
 
@@ -335,7 +347,7 @@ Blizzard 提醒建筑摆得太紧会让新单位卡在出口，并建议把 Rall
 ### P2：内容层对齐
 
 - Pylon Power、Creep、Add-on 空间和 Lift/Land。
-- Burrow/Cloak/Detection 对放置与目标选择的影响。
+- Burrow/Cloak/Detection 的基础放置、目标选择和接触矩阵已完成；能力开关、能量/研究、扫描、特殊显形和盟友共享视野仍属内容扩展。
 - Gold Mineral、MULE、Extractor Trick、气矿不同种族设施。
 - 这些不应阻塞当前纯 Terran Demo 的核心手感收口。
 
@@ -367,6 +379,8 @@ Blizzard 提醒建筑摆得太紧会让新单位卡在出口，并建议把 Rall
 - [Blizzard：Basic Unit Controls](https://news.blizzard.com/en-us/article/4552956/game-guide-basic-unit-controls)
 - [Blizzard：Special Control / Queuing](https://news.blizzard.com/en-us/article/4552955/game-guide-special-control)
 - [Blizzard：Common Mistakes / 75% Refund](https://news.blizzard.com/en-us/article/4552958/game-guide-common-mistakes)
+- [Blizzard：Cloaking Game Guide](https://news.blizzard.com/en-us/article/4546769/game-guide-cloaking)
+- [Blizzard SC2 API：Unit / Display / Alliance / Cloak / Detection](https://blizzard.github.io/s2client-api/classsc2_1_1_unit.html)
 - [Blizzard SC2 API：GameInfo grids](https://blizzard.github.io/s2client-api/structsc2_1_1_game_info.html)
 - [Blizzard SC2 API：Placement Query](https://blizzard.github.io/s2client-api/classsc2_1_1_query_interface.html)
 - [Liquipedia：Mineral Walk](https://liquipedia.net/starcraft2/Mineral_Walk)

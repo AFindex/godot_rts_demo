@@ -357,6 +357,28 @@ public enum TestMapVisibility : byte
     Visible
 }
 
+public enum TestUnitConcealmentKind : byte
+{
+    None,
+    Cloaked,
+    Burrowed
+}
+
+public enum TestPlayerConcealmentState : byte
+{
+    NotConcealed,
+    ConcealedOwn,
+    ConcealedDetected
+}
+
+public readonly record struct TestPerceptionProfile(
+    TestUnitConcealmentKind Concealment,
+    float DetectionRange)
+{
+    public static TestPerceptionProfile Standard => new(
+        TestUnitConcealmentKind.None, 0f);
+}
+
 public enum TestPlayerOrderCommandCode : byte
 {
     Success,
@@ -390,9 +412,14 @@ public readonly record struct TestPlayerBuildingView(
     TestGameplayBuildingId BuildingId,
     TestPublicConstructionStatus ConstructionStatus);
 
+public readonly record struct TestPlayerUnitView(
+    TestUnitId Unit,
+    TestPlayerConcealmentState ConcealmentState);
+
 public readonly record struct TestPlayerViewSnapshot(
     int PlayerId,
     TestUnitId[] Units,
+    TestPlayerUnitView[] UnitViews,
     TestGameplayBuildingId[] Buildings,
     TestPlayerBuildingView[] BuildingViews,
     TestPlayerResourceView[] Resources,
@@ -1618,6 +1645,9 @@ public sealed partial class MovementTestRig
         return new TestPlayerViewSnapshot(
             playerId,
             view.Units.Select(value => new TestUnitId(value.UnitId)).ToArray(),
+            view.Units.Select(value => new TestPlayerUnitView(
+                new TestUnitId(value.UnitId),
+                (TestPlayerConcealmentState)value.ConcealmentState)).ToArray(),
             view.Buildings.Select(value =>
                 new TestGameplayBuildingId(value.BuildingId.Value)).ToArray(),
             view.Buildings.Select(value => new TestPlayerBuildingView(
@@ -2081,12 +2111,16 @@ public sealed partial class MovementTestRig
         TestCombatProfile? profile = null,
         float radius = 7.5f,
         float maximumSpeed = 128f,
-        float acceleration = 720f)
+        float acceleration = 720f,
+        TestPerceptionProfile perception = default)
     {
         var resolvedProfile = profile ?? TestCombatProfile.Standard;
         var backendProfile = ToBackendCombat(resolvedProfile);
         return new TestUnitId(_simulation.AddUnit(
-            position, team, backendProfile, radius, maximumSpeed, acceleration));
+            position, team, backendProfile, radius, maximumSpeed, acceleration,
+            new UnitPerceptionProfileSnapshot(
+                (UnitConcealmentKind)perception.Concealment,
+                perception.DetectionRange)));
     }
 
     private static CombatProfileSnapshot ToBackendCombat(

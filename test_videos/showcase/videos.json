@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T19:49:05.1633936+08:00",
+    "generated_at":  "2026-07-13T20:41:47.9856599+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  146,
-    "case_count":  115,
+    "recording_count":  147,
+    "case_count":  116,
     "recordings":  [
+                       {
+                           "id":  "concealment-detection-construction",
+                           "display_name":  "Separate sight, detection and authority construction blocking",
+                           "batch":  "20260713_204122",
+                           "created_at":  "2026-07-13T20:41:46.8282751+08:00",
+                           "video":  "../20260713_204122/concealment-detection-construction.webm",
+                           "log":  "../20260713_204122/concealment-detection-construction.log",
+                           "bytes":  1023759,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS concealment-detection-construction: ticks=420, hidden=True/True, preview=True, wait=True, burrowPass=True, detected=True/True, state=Completed, versions=package27/hot26, exact=True",
+                           "metrics":  "ticks=420, hidden=True/True, preview=True, wait=True, burrowPass=True, detected=True/True, state=Completed, versions=package27/hot26, exact=True"
+                       },
                        {
                            "id":  "construction-player-known-placement",
                            "display_name":  "Player-known construction placement and authority revalidation",

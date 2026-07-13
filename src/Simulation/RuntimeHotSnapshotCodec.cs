@@ -332,6 +332,8 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.CanMoveDuringWindup[unit]);
             writer.Write(combat.CanMoveDuringCooldown[unit]);
             writer.Write(combat.AutoTargetPriority[unit]);
+            writer.Write((byte)combat.ConcealmentKinds[unit]);
+            writer.Write(combat.DetectionRanges[unit]);
             writer.Write(combat.AttackRanges[unit]);
             writer.Write(combat.AcquisitionRanges[unit]);
             writer.Write(combat.AttackCooldownDurations[unit]);
@@ -377,6 +379,9 @@ internal static class RuntimeHotSnapshotCodec
             combat.CanMoveDuringWindup[unit] = reader.ReadBoolean();
             combat.CanMoveDuringCooldown[unit] = reader.ReadBoolean();
             combat.AutoTargetPriority[unit] = reader.ReadInt32();
+            combat.ConcealmentKinds[unit] =
+                (UnitConcealmentKind)reader.ReadByte();
+            combat.DetectionRanges[unit] = reader.ReadSingle();
             combat.AttackRanges[unit] = reader.ReadSingle();
             combat.AcquisitionRanges[unit] = reader.ReadSingle();
             combat.AttackCooldownDurations[unit] = reader.ReadSingle();
@@ -400,6 +405,9 @@ internal static class RuntimeHotSnapshotCodec
             combat.ChaseRepathRemaining[unit] = reader.ReadSingle();
             combat.TargetLockRemaining[unit] = reader.ReadSingle();
             if (combat.AutoTargetPriority[unit] is < 0 or > 10 ||
+                !Enum.IsDefined(combat.ConcealmentKinds[unit]) ||
+                !float.IsFinite(combat.DetectionRanges[unit]) ||
+                combat.DetectionRanges[unit] < 0f ||
                 !float.IsFinite(combat.TargetLockRemaining[unit]) ||
                 combat.TargetLockRemaining[unit] < 0f)
                 throw new InvalidDataException();

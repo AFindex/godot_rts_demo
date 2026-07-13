@@ -16,6 +16,13 @@ public enum PlayerEntityRelation : byte
     Neutral
 }
 
+public enum PlayerConcealmentState : byte
+{
+    NotConcealed,
+    ConcealedOwn,
+    ConcealedDetected
+}
+
 public enum PlayerOrderCommandCode : byte
 {
     Success,
@@ -47,7 +54,9 @@ public readonly record struct PlayerUnitViewSnapshot(
     float Health,
     float MaximumHealth,
     UnitMoveMode MoveMode,
-    CombatPhase CombatPhase);
+    CombatPhase CombatPhase,
+    PlayerConcealmentState ConcealmentState =
+        PlayerConcealmentState.NotConcealed);
 
 public readonly record struct PlayerBuildingViewSnapshot(
     GameplayBuildingId BuildingId,
@@ -129,7 +138,10 @@ public sealed class PlayerVisibilitySystem
         ConstructionSystem construction)
     {
         foreach (var grid in _players.Values)
+        {
             Array.Clear(grid.Visible);
+            Array.Clear(grid.Detected);
+        }
 
         for (var unit = 0; unit < units.Count; unit++)
         {
@@ -138,9 +150,36 @@ public sealed class PlayerVisibilitySystem
                 playerId >= MaximumPlayers)
                 continue;
             RevealCircle(playerId, units.Positions[unit], UnitVisionRadius);
+            if (combat.DetectionRanges[unit] > 0f)
+            {
+                RevealDetectionCircle(
+                    playerId,
+                    units.Positions[unit],
+                    combat.DetectionRanges[unit]);
+            }
         }
 
         construction.VisitVisionSources(_revealBuilding);
+    }
+
+    public void UpdateDetection(UnitStore units, CombatStore combat)
+    {
+        foreach (var grid in _players.Values)
+            Array.Clear(grid.Detected);
+        for (var unit = 0; unit < units.Count; unit++)
+        {
+            var playerId = combat.Teams[unit];
+            if (!units.Alive[unit] || playerId <= 0 ||
+                playerId >= MaximumPlayers ||
+                combat.DetectionRanges[unit] <= 0f)
+            {
+                continue;
+            }
+            RevealDetectionCircle(
+                playerId,
+                units.Positions[unit],
+                combat.DetectionRanges[unit]);
+        }
     }
 
     public MapVisibility At(int playerId, Vector2 position)
@@ -159,6 +198,44 @@ public sealed class PlayerVisibilitySystem
 
     public bool IsVisible(int playerId, Vector2 position) =>
         At(playerId, position) == MapVisibility.Visible;
+
+    public bool IsUnitVisible(
+        int playerId,
+        int unit,
+        UnitStore units,
+        CombatStore combat)
+    {
+        if ((uint)unit >= (uint)units.Count || !units.Alive[unit])
+            return false;
+        if (combat.Teams[unit] == playerId)
+            return true;
+        var position = units.Positions[unit];
+        if (!IsVisible(playerId, position))
+            return false;
+        return combat.ConcealmentKinds[unit] == UnitConcealmentKind.None ||
+               IsDetected(playerId, position);
+    }
+
+    public bool IsDetected(int playerId, Vector2 position) =>
+        _players.TryGetValue(playerId, out var grid) &&
+        TryCell(position, out var cell) && grid.Detected[cell];
+
+    public PlayerConcealmentState ConcealmentStateFor(
+        int playerId,
+        int unit,
+        UnitStore units,
+        CombatStore combat)
+    {
+        var concealment = combat.ConcealmentKinds[unit];
+        if (concealment == UnitConcealmentKind.None)
+            return PlayerConcealmentState.NotConcealed;
+        return combat.Teams[unit] == playerId
+            ? PlayerConcealmentState.ConcealedOwn
+            : IsUnitVisible(playerId, unit, units, combat)
+                ? PlayerConcealmentState.ConcealedDetected
+                : throw new InvalidOperationException(
+                    "An undetected enemy has no player-visible concealment state.");
+    }
 
     public byte[] CreateCells(int playerId)
     {
@@ -224,6 +301,20 @@ public sealed class PlayerVisibilitySystem
 
     private void RevealCircle(int playerId, Vector2 center, float radius)
     {
+        RevealCircle(playerId, center, radius, detection: false);
+    }
+
+    private void RevealDetectionCircle(int playerId, Vector2 center, float radius)
+    {
+        RevealCircle(playerId, center, radius, detection: true);
+    }
+
+    private void RevealCircle(
+        int playerId,
+        Vector2 center,
+        float radius,
+        bool detection)
+    {
         if (!_players.TryGetValue(playerId, out var grid))
         {
             grid = new VisibilityGrid(Columns * Rows);
@@ -253,8 +344,15 @@ public sealed class PlayerVisibilitySystem
                 if (Vector2.DistanceSquared(position, center) > radiusSquared)
                     continue;
                 var cell = row * Columns + column;
-                grid.Visible[cell] = true;
-                grid.Explored[cell] = true;
+                if (detection)
+                {
+                    grid.Detected[cell] = true;
+                }
+                else
+                {
+                    grid.Visible[cell] = true;
+                    grid.Explored[cell] = true;
+                }
             }
         }
     }
@@ -315,5 +413,6 @@ public sealed class PlayerVisibilitySystem
     {
         public bool[] Explored { get; } = new bool[cells];
         public bool[] Visible { get; } = new bool[cells];
+        public bool[] Detected { get; } = new bool[cells];
     }
 }
