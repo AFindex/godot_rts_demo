@@ -38,7 +38,7 @@ public readonly record struct CommandLogValidationResult(
 public sealed class SimulationCommandLogSnapshot
 {
     private const uint Magic = 0x434D5452; // RTMC in little-endian bytes.
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
     private const int HeaderBytes = 12;
     private const int EntryFixedBytes = 34;
     private const int MaximumEntries = 1_000_000;

@@ -461,6 +461,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
                         TargetBuilding: command.TargetBuilding),
                     command.Queued);
                 break;
+            case UnitOrderKind.ReturnCargo:
+                IssueDeferredWorkerOrder(
+                    command.Units,
+                    new UnitOrder(UnitOrderKind.ReturnCargo, Vector2.Zero),
+                    command.Queued);
+                break;
             case UnitOrderKind.Stop:
                 Stop(command.Units);
                 break;
@@ -504,6 +510,15 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 {
                     throw new InvalidOperationException(
                         $"Replay worker transfer failed with {transfer.Code}.");
+                }
+                break;
+            case EconomyCommandKind.ReturnCargo:
+                var returned = IssueReturnCargo(
+                    command.PlayerId, command.UnitId);
+                if (!returned.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Replay Return Cargo failed with {returned.Code}.");
                 }
                 break;
             default:
@@ -810,8 +825,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Span<int> gatheringWorker = stackalloc int[1];
         gatheringWorker[0] = unit;
         Construction.InterruptBuilders(gatheringWorker);
-        Economy.BeginGather(unit, nodeId);
-        MoveEconomyWorker(unit, Economy.ObserveResourceNode(nodeId).Position);
+        Economy.BeginGather(
+            unit, nodeId, Units.Positions[unit], Units.Radii[unit],
+            _economyMoveWorker);
         CommandQueues.Begin(
             unit,
             new UnitOrder(
@@ -819,6 +835,59 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 Economy.ResourceNodePosition(nodeId),
                 TargetResourceNode: nodeId.Value,
                 SequenceId: NextOrderSequenceId()),
+            wasQueued: false);
+        return validation;
+    }
+
+    public ReturnCargoCommandResult IssueReturnCargo(
+        int issuingPlayerId,
+        int unit,
+        bool queued = false)
+    {
+        var matchBlock = MatchCommandBlockFor(issuingPlayerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new ReturnCargoCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed =>
+                        ReturnCargoCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant =>
+                        ReturnCargoCommandCode.NotParticipant,
+                    _ => ReturnCargoCommandCode.PlayerDefeated
+                }, unit);
+        }
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
+        {
+            return new ReturnCargoCommandResult(
+                ReturnCargoCommandCode.InvalidUnit, unit);
+        }
+        var validation = Economy.ValidateReturnCargo(issuingPlayerId, unit);
+        if (!validation.Succeeded)
+            return validation;
+
+        var order = new UnitOrder(UnitOrderKind.ReturnCargo, Vector2.Zero);
+        if (queued)
+        {
+            Span<int> queuedWorker = stackalloc int[1];
+            queuedWorker[0] = unit;
+            IssueDeferredWorkerOrder(queuedWorker, order, queued: true);
+            return validation;
+        }
+
+        _economyCommandRecorder?.RecordReturnCargo(
+            Metrics.Tick, issuingPlayerId, unit);
+        CommandQueues.ClearPending(unit);
+        CommandQueues.HasActiveOrders[unit] = false;
+        Span<int> worker = stackalloc int[1];
+        worker[0] = unit;
+        Construction.InterruptBuilders(worker);
+        Economy.BeginReturnCargo(
+            unit, Units.Positions[unit], Units.Radii[unit],
+            _economyMoveWorker);
+        CommandQueues.Begin(
+            unit,
+            order with { SequenceId = NextOrderSequenceId() },
             wasQueued: false);
         return validation;
     }
@@ -1268,6 +1337,29 @@ public sealed class RtsSimulation : ICombatMovementDriver
         if (!validation.Succeeded) return validation;
         Hold(units);
         return validation;
+    }
+
+    public PlayerOrderCommandResult IssuePlayerReturnCargo(
+        int playerId,
+        ReadOnlySpan<int> units,
+        bool queued = false)
+    {
+        var selection = ValidatePlayerSelection(playerId, units);
+        if (!selection.Succeeded) return selection;
+        var issued = false;
+        for (var index = 0; index < units.Length; index++)
+        {
+            var unit = units[index];
+            if (!Economy.IsWorkerOwnedBy(unit, playerId) ||
+                Economy.Worker(unit).CargoAmount <= 0)
+                continue;
+            var result = IssueReturnCargo(playerId, unit, queued);
+            issued |= result.Succeeded;
+        }
+        return issued
+            ? selection
+            : new PlayerOrderCommandResult(
+                PlayerOrderCommandCode.ContextActionUnavailable);
     }
 
     public PlayerOrderCommandResult IssuePlayerSmartCommand(
@@ -1896,6 +1988,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 ExecuteGatherResourceTask(
                     unitIndices, order.TargetResourceNode);
                 break;
+            case UnitOrderKind.ReturnCargo:
+                ExecuteReturnCargoTask(unitIndices);
+                break;
             case UnitOrderKind.ResumeConstruction:
                 ExecuteResumeConstructionTask(
                     unitIndices, order.TargetBuilding);
@@ -1934,8 +2029,26 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 continue;
             worker[0] = unit;
             Construction.InterruptBuilders(worker);
-            Economy.BeginGather(unit, resource);
-            MoveEconomyWorker(unit, Economy.ResourceNodePosition(resource));
+            Economy.BeginGather(
+                unit, resource, Units.Positions[unit], Units.Radii[unit],
+                _economyMoveWorker);
+        }
+    }
+
+    private void ExecuteReturnCargoTask(ReadOnlySpan<int> unitIndices)
+    {
+        Span<int> worker = stackalloc int[1];
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            var playerId = Combat.Teams[unit];
+            if (!Economy.ValidateReturnCargo(playerId, unit).Succeeded)
+                continue;
+            worker[0] = unit;
+            Construction.InterruptBuilders(worker);
+            Economy.BeginReturnCargo(
+                unit, Units.Positions[unit], Units.Radii[unit],
+                _economyMoveWorker);
         }
     }
 
@@ -2147,7 +2260,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
                         Economy.ValidateGather(
                             playerId, unit, rally.ResourceNode).Succeeded)
                     {
-                        Economy.BeginGather(unit, rally.ResourceNode);
+                        Economy.BeginGather(
+                            unit, rally.ResourceNode,
+                            Units.Positions[unit], Units.Radii[unit],
+                            _economyMoveWorker);
                     }
                     else
                     {
@@ -3282,6 +3398,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     CommandQueues.ActiveTargetBuildings[unit])),
             UnitOrderKind.GatherResource =>
                 IsGatherResourceOrderComplete(unit),
+            UnitOrderKind.ReturnCargo =>
+                !Economy.IsWorker(unit) ||
+                Economy.Worker(unit).CargoAmount <= 0,
             UnitOrderKind.ResumeConstruction =>
                 IsResumeConstructionOrderComplete(unit),
             UnitOrderKind.Stop or UnitOrderKind.Hold => true,

@@ -282,7 +282,8 @@ public enum WorkerEconomyState : byte
     GoingToResource,
     WaitingForResource,
     Gathering,
-    ReturningCargo
+    ReturningCargo,
+    WaitingForDropOff
 }
 
 public readonly record struct WorkerEconomySnapshot(
@@ -447,6 +448,26 @@ public readonly record struct GatherCommandResult(
     public bool Succeeded => Code == GatherCommandCode.Success;
 }
 
+public enum ReturnCargoCommandCode : byte
+{
+    Success,
+    InvalidUnit,
+    UnitNotWorker,
+    WrongOwner,
+    NoCargo,
+    MissingDropOff,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
+}
+
+public readonly record struct ReturnCargoCommandResult(
+    ReturnCargoCommandCode Code,
+    int UnitId)
+{
+    public bool Succeeded => Code == ReturnCargoCommandCode.Success;
+}
+
 public sealed class EconomySystem
 {
     private const float NodeArrivalPadding = 30f;
@@ -546,6 +567,13 @@ public sealed class EconomySystem
             id, playerId, position, halfExtents, arrivalRadius,
             acceptsMinerals, acceptsVespene, true));
         return id;
+    }
+
+    public void SetDropOffOperational(EconomyDropOffId id, bool value)
+    {
+        if ((uint)id.Value >= (uint)_dropOffs.Count)
+            throw new ArgumentOutOfRangeException(nameof(id));
+        _dropOffs[id.Value].Operational = value;
     }
 
     public EconomyBaseId RegisterTownHall(
@@ -779,13 +807,53 @@ public sealed class EconomySystem
         return new GatherCommandResult(GatherCommandCode.Success, unit, nodeId);
     }
 
-    public void BeginGather(int unit, EconomyResourceNodeId nodeId)
+    public ReturnCargoCommandResult ValidateReturnCargo(
+        int issuingPlayerId,
+        int unit)
+    {
+        if ((uint)unit >= (uint)_workers.Length)
+            return ReturnCargoFailure(ReturnCargoCommandCode.InvalidUnit, unit);
+        if (!_workers[unit])
+            return ReturnCargoFailure(ReturnCargoCommandCode.UnitNotWorker, unit);
+        if (_workerPlayers[unit] != issuingPlayerId)
+            return ReturnCargoFailure(ReturnCargoCommandCode.WrongOwner, unit);
+        if (_cargoAmounts[unit] <= 0)
+            return ReturnCargoFailure(ReturnCargoCommandCode.NoCargo, unit);
+        if (FindNearestDropOff(
+                issuingPlayerId, _cargoKinds[unit], Vector2.Zero) < 0)
+            return ReturnCargoFailure(ReturnCargoCommandCode.MissingDropOff, unit);
+        return new ReturnCargoCommandResult(
+            ReturnCargoCommandCode.Success, unit);
+    }
+
+    public void BeginGather(
+        int unit,
+        EconomyResourceNodeId nodeId,
+        Vector2 position,
+        float unitRadius,
+        Action<int, Vector2> moveWorker)
     {
         ReleaseClaim(unit);
         _workerNodes[unit] = nodeId.Value;
-        _workerStates[unit] = WorkerEconomyState.GoingToResource;
-        _cargoAmounts[unit] = 0;
         _workRemaining[unit] = 0f;
+        if (_cargoAmounts[unit] > 0)
+        {
+            BeginReturningCargo(unit, position, unitRadius, moveWorker);
+            return;
+        }
+        _workerStates[unit] = WorkerEconomyState.GoingToResource;
+        moveWorker(unit, _nodes[nodeId.Value].Position);
+    }
+
+    public void BeginReturnCargo(
+        int unit,
+        Vector2 position,
+        float unitRadius,
+        Action<int, Vector2> moveWorker)
+    {
+        ReleaseClaim(unit);
+        _workRemaining[unit] = 0f;
+        BeginReturningCargo(unit, position, unitRadius, moveWorker);
     }
 
     public void Cancel(ReadOnlySpan<int> units)
@@ -840,7 +908,10 @@ public sealed class EconomySystem
                     UpdateGathering(unit, delta, units, moveWorker);
                     break;
                 case WorkerEconomyState.ReturningCargo:
-                    UpdateReturning(unit, units, moveWorker);
+                    UpdateReturning(unit, units, moveWorker, stopWorker);
+                    break;
+                case WorkerEconomyState.WaitingForDropOff:
+                    UpdateWaitingForDropOff(unit, units, moveWorker);
                     break;
             }
         }
@@ -919,7 +990,9 @@ public sealed class EconomySystem
             workers++;
             gathering += _workerStates[unit] == WorkerEconomyState.Gathering ? 1 : 0;
             returning += _workerStates[unit] == WorkerEconomyState.ReturningCargo ? 1 : 0;
-            waiting += _workerStates[unit] == WorkerEconomyState.WaitingForResource ? 1 : 0;
+            waiting += _workerStates[unit] is
+                WorkerEconomyState.WaitingForResource or
+                WorkerEconomyState.WaitingForDropOff ? 1 : 0;
         }
         return new EconomyOverviewSnapshot(
             Players.Snapshot(playerId),
@@ -1210,7 +1283,7 @@ public sealed class EconomySystem
             _workerPlayers[unit], node.Kind, units.Positions[unit], clearance);
         if (dropOff < 0)
         {
-            _workerStates[unit] = WorkerEconomyState.Idle;
+            _workerStates[unit] = WorkerEconomyState.WaitingForDropOff;
             return;
         }
         _workerStates[unit] = WorkerEconomyState.ReturningCargo;
@@ -1222,7 +1295,8 @@ public sealed class EconomySystem
     private void UpdateReturning(
         int unit,
         UnitStore units,
-        Action<int, Vector2> moveWorker)
+        Action<int, Vector2> moveWorker,
+        Action<int> stopWorker)
     {
         var clearance = units.Radii[unit] + DropOffClearancePadding;
         var dropOffIndex = FindNearestDropOff(
@@ -1230,7 +1304,8 @@ public sealed class EconomySystem
             clearance);
         if (dropOffIndex < 0)
         {
-            _workerStates[unit] = WorkerEconomyState.Idle;
+            _workerStates[unit] = WorkerEconomyState.WaitingForDropOff;
+            stopWorker(unit);
             return;
         }
         var dropOff = _dropOffs[dropOffIndex];
@@ -1238,16 +1313,30 @@ public sealed class EconomySystem
                 units.Positions[unit],
                 clearance))
         {
+            if (!dropOff.IsApproachTarget(
+                    units.MoveGoals[unit], clearance))
+            {
+                moveWorker(unit, dropOff.ApproachPoint(
+                    units.Positions[unit], clearance));
+            }
             return;
         }
         Players.Credit(
             _workerPlayers[unit], _cargoKinds[unit], _cargoAmounts[unit]);
         _cargoAmounts[unit] = 0;
         var nodeIndex = _workerNodes[unit];
+        if (nodeIndex < 0)
+        {
+            _workerStates[unit] = WorkerEconomyState.Idle;
+            return;
+        }
         if (!IsNodeAvailable(nodeIndex))
         {
+            var desiredKind = (uint)nodeIndex < (uint)_nodes.Count
+                ? _nodes[nodeIndex].Kind
+                : _cargoKinds[unit];
             nodeIndex = FindNearestNode(
-                _cargoKinds[unit], units.Positions[unit]);
+                desiredKind, units.Positions[unit]);
             _workerNodes[unit] = nodeIndex;
         }
         if (nodeIndex < 0)
@@ -1257,6 +1346,40 @@ public sealed class EconomySystem
         }
         _workerStates[unit] = WorkerEconomyState.GoingToResource;
         moveWorker(unit, _nodes[nodeIndex].Position);
+    }
+
+    private void UpdateWaitingForDropOff(
+        int unit,
+        UnitStore units,
+        Action<int, Vector2> moveWorker)
+    {
+        var clearance = units.Radii[unit] + DropOffClearancePadding;
+        var dropOff = FindNearestDropOff(
+            _workerPlayers[unit], _cargoKinds[unit], units.Positions[unit],
+            clearance);
+        if (dropOff < 0)
+            return;
+        _workerStates[unit] = WorkerEconomyState.ReturningCargo;
+        moveWorker(unit, _dropOffs[dropOff].ApproachPoint(
+            units.Positions[unit], clearance));
+    }
+
+    private void BeginReturningCargo(
+        int unit,
+        Vector2 position,
+        float unitRadius,
+        Action<int, Vector2> moveWorker)
+    {
+        var clearance = unitRadius + DropOffClearancePadding;
+        var dropOff = FindNearestDropOff(
+            _workerPlayers[unit], _cargoKinds[unit], position, clearance);
+        if (dropOff < 0)
+        {
+            _workerStates[unit] = WorkerEconomyState.WaitingForDropOff;
+            return;
+        }
+        _workerStates[unit] = WorkerEconomyState.ReturningCargo;
+        moveWorker(unit, _dropOffs[dropOff].ApproachPoint(position, clearance));
     }
 
     private void RetargetOrIdle(
@@ -1290,16 +1413,8 @@ public sealed class EconomySystem
         _workRemaining[unit] = 0f;
         if (_cargoAmounts[unit] > 0)
         {
-            var clearance = unitRadius + DropOffClearancePadding;
-            var dropOff = FindNearestDropOff(
-                _workerPlayers[unit], _cargoKinds[unit], position, clearance);
-            if (dropOff >= 0)
-            {
-                _workerStates[unit] = WorkerEconomyState.ReturningCargo;
-                moveWorker(unit, _dropOffs[dropOff].ApproachPoint(
-                    position, clearance));
-                return;
-            }
+            BeginReturningCargo(unit, position, unitRadius, moveWorker);
+            return;
         }
         _workerStates[unit] = WorkerEconomyState.GoingToResource;
         moveWorker(unit, _nodes[node].Position);
@@ -1426,6 +1541,10 @@ public sealed class EconomySystem
         int unit,
         EconomyResourceNodeId nodeId) => new(code, unit, nodeId);
 
+    private static ReturnCargoCommandResult ReturnCargoFailure(
+        ReturnCargoCommandCode code,
+        int unit) => new(code, unit);
+
     private static bool IsFinite(Vector2 value) =>
         float.IsFinite(value.X) && float.IsFinite(value.Y);
 
@@ -1521,6 +1640,19 @@ public sealed class EconomySystem
         public bool HasArrived(Vector2 origin, float clearance) =>
             DistanceSquaredTo(origin, clearance) <=
             ArrivalRadius * ArrivalRadius;
+
+        public bool IsApproachTarget(Vector2 target, float clearance)
+        {
+            if (HalfExtents == Vector2.Zero)
+                return Vector2.DistanceSquared(target, Position) <= 0.0625f;
+            var half = HalfExtents + new Vector2(clearance);
+            var delta = Vector2.Abs(target - Position);
+            const float tolerance = 0.25f;
+            return MathF.Abs(delta.X - half.X) <= tolerance &&
+                       delta.Y <= half.Y + tolerance ||
+                   MathF.Abs(delta.Y - half.Y) <= tolerance &&
+                       delta.X <= half.X + tolerance;
+        }
     }
 
     private sealed class EconomyBase(

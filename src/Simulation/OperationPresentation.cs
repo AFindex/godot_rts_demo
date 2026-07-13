@@ -82,7 +82,8 @@ public enum CommandCardActionKind : byte
     CancelProductionBatch,
     Research,
     CancelResearch,
-    CancelConstruction
+    CancelConstruction,
+    ReturnCargo
 }
 
 public enum TargetCommandKind : byte

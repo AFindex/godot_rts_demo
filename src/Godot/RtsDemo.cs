@@ -1553,6 +1553,8 @@ public partial class RtsDemo : Node2D
                 EconomyResourceKind.Minerals
                     ? $"SCV < M+{worker.CargoAmount}"
                     : $"SCV < G+{worker.CargoAmount}",
+            WorkerEconomyState.WaitingForDropOff =>
+                $"SCV WAIT DROPOFF {worker.CargoAmount}",
             _ => "SCV IDLE"
         };
         var routeColor = worker.CargoKind == EconomyResourceKind.VespeneGas
@@ -2161,6 +2163,18 @@ public partial class RtsDemo : Node2D
                 "Stop", true, "S", 10));
             result.Add(new(key, CommandCardActionKind.Hold, -1, -1,
                 "Hold Position", true, "H", 20));
+            if (key.Kind == GameplaySelectionKind.Worker)
+            {
+                var carrying = active.Members.Count(value =>
+                    _simulation.Economy.IsWorker(value.EntityId) &&
+                    _simulation.Economy.Worker(value.EntityId).CargoAmount > 0);
+                if (carrying > 0)
+                {
+                    result.Add(new(
+                        key, CommandCardActionKind.ReturnCargo, -1, -1,
+                        "Return Cargo", true, $"{carrying} carrying", 25));
+                }
+            }
             if (key.Kind == GameplaySelectionKind.Worker &&
                 _buildingTypes is not null)
             {
@@ -2327,6 +2341,9 @@ public partial class RtsDemo : Node2D
                 break;
             case CommandCardActionKind.Hold:
                 _simulation.IssuePlayerHold(PlayerTeam, activeUnits);
+                break;
+            case CommandCardActionKind.ReturnCargo:
+                _simulation.IssuePlayerReturnCargo(PlayerTeam, activeUnits);
                 break;
             case CommandCardActionKind.Train when _productionCatalog is not null:
                 ExecuteProductionBatch(_productionCatalog.Recipe(action.DataId));

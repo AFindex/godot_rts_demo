@@ -6,6 +6,7 @@ namespace RtsDemo.Tests;
 public readonly record struct TestUnitId(int Value);
 public readonly record struct TestBuildingId(int Value);
 public readonly record struct TestResourceNodeId(int Value);
+public readonly record struct TestDropOffId(int Value);
 public readonly record struct TestEconomyBaseId(int Value);
 public readonly record struct TestGameplayBuildingId(int Value);
 public readonly record struct TestProductionOrderId(int Value);
@@ -269,6 +270,19 @@ public enum TestGatherCommandCode : byte
     NotParticipant
 }
 
+public enum TestReturnCargoCommandCode : byte
+{
+    Success,
+    InvalidUnit,
+    UnitNotWorker,
+    WrongOwner,
+    NoCargo,
+    MissingDropOff,
+    PlayerDefeated,
+    MatchCompleted,
+    NotParticipant
+}
+
 public enum TestWorkerEconomyState : byte
 {
     None,
@@ -276,7 +290,8 @@ public enum TestWorkerEconomyState : byte
     GoingToResource,
     WaitingForResource,
     Gathering,
-    ReturningCargo
+    ReturningCargo,
+    WaitingForDropOff
 }
 
 public readonly record struct TestPlayerEconomySnapshot(
@@ -429,7 +444,8 @@ public enum TestOrderKind : byte
     Stop,
     Hold,
     GatherResource,
-    ResumeConstruction
+    ResumeConstruction,
+    ReturnCargo
 }
 
 public readonly record struct TestOrderSnapshot(
@@ -1397,13 +1413,19 @@ public sealed partial class MovementTestRig
             requiresRefinery,
             operational).Value);
 
-    public void AddResourceDropOff(
+    public TestDropOffId AddResourceDropOff(
         int playerId,
         Vector2 position,
         bool acceptsMinerals = true,
         bool acceptsVespene = true) =>
-        _simulation.Economy.AddDropOff(
-            playerId, position, acceptsMinerals, acceptsVespene);
+        new(_simulation.Economy.AddDropOff(
+            playerId, position, acceptsMinerals, acceptsVespene).Value);
+
+    public void SetResourceDropOffOperational(
+        TestDropOffId dropOff,
+        bool operational) =>
+        _simulation.Economy.SetDropOffOperational(
+            new EconomyDropOffId(dropOff.Value), operational);
 
     public void SetRefineryOperational(
         TestResourceNodeId nodeId,
@@ -1420,6 +1442,13 @@ public sealed partial class MovementTestRig
             issuingPlayerId,
             worker.Value,
             new EconomyResourceNodeId(nodeId.Value)).Code;
+
+    public TestReturnCargoCommandCode ReturnCargo(
+        int issuingPlayerId,
+        TestUnitId worker,
+        bool queued = false) =>
+        (TestReturnCargoCommandCode)_simulation.IssueReturnCargo(
+            issuingPlayerId, worker.Value, queued).Code;
 
     public TestEconomyTransactionCode Spend(
         int playerId,

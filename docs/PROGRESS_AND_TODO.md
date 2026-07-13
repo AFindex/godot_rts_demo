@@ -1,6 +1,6 @@
 # Godot RTS 移动系统：进度回顾与剩余 TODO
 
-更新日期：2026-07-12
+更新日期：2026-07-13
 
 这份文档是当前唯一的实施状态入口。它对照最初的 S0～S10 技术路线，区分已经形成可运行闭环的部分、只有原型的部分和尚未开始的部分。
 
@@ -10,16 +10,16 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 103 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 106 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
 当前规模：
 
-- 139 个 C# 源文件。
-- 约 43,649 行 C#（按 `src/**/*.cs` 统计）。
-- 103 个黑盒场景。
-- AV1/WebM 规范录像覆盖全部 103 个当前逻辑场景。
+- 146 个 C# 源文件。
+- 约 43,805 行 C#（按 `src/**/*.cs` 统计）。
+- 106 个黑盒场景。
+- AV1/WebM 规范录像覆盖全部 106 个当前逻辑场景。
 - Release 1000 单位移动 P95：约 10.07ms。
 - Release 1000 单位当前线程分配：约 685B/Tick。
 
@@ -1215,6 +1215,19 @@ C1 与 C4 至此收口。下一项继续 C2/C3 时，只补阻挡分类、多单
 - 专项录像位于 `test_videos/20260713_131501/`：1280×720、347 帧、AV1/WebM、CRF 32、preset 8；全库录像验证通过 136 段视频、80 个 manifest、135 个场景引用，编码均为 AV1。
 
 C5 已收口。下一步不继续微调建筑护甲；按对齐依赖图，应回到仍部分完成的 C2/C3，但其中 Idle/Hold/Harvest、盟友/可见敌军/隐藏敌军和多单位让位策略仍受 E0 实机证据约束。在没有证据时，可优先推进不依赖未知规则的 P1 `E1` 显式 Return Cargo。
+
+### BC：E1 显式 Return Cargo（已完成）
+
+- 新增正式 `ReturnCargo` 单位订单、结果码、玩家批量门面和命令卡动作；只有携货 Worker 可执行，无货返回 `NoCargo`，无投递点返回 `MissingDropOff`。
+- 修复携货 Worker 放派资源会直接清空 Cargo 的旧行为。矿→气、气→矿现在都先投递原 Cargo，再前往保存的新节点；Stop/Hold/Attack/Move 保留货物但清除恢复采集意图，之后显式返还会投递并 Idle。
+- DropOff 途中失效会重新选择最近有效建筑边缘并真正更新移动目标；全部失效进入 `WaitingForDropOff`，停止移动但不丢 Cargo，任何有效 DropOff 恢复后自动续投。
+- 普通显式返还写入 Economy Command Log v3；Shift Return Cargo 进入 Unit Command Log v4。Replay Package/Hot Snapshot 升级 v21，State Hash 升级 v22，旧版本明确拒绝。
+- `economy-explicit-return-cargo` 验证普通返还恢复、Stop 后返还并 Idle、矿↔气双向 Cargo 保留、Shift Return Cargo、经济/单位日志规范往返、Replay 和 Tick 300 热恢复；结果全部为 True，命令数为 `e8/u3`。
+- `economy-return-cargo-dropoff-loss` 验证主 DropOff 失效后改道备用点、全部失效后携货等待、`MissingDropOff`、45 Tick 后恢复续投和不可达 0。
+- Release/Debug 构建 0 错误、0 警告；106/106 全量 Godot 黑盒回归通过。受影响的经济回放、Shift Worker、96 Worker 采矿和扩张饱和度专项均通过。
+- AV1/WebM 位于 `test_videos/20260713_142242/` 与 `test_videos/20260713_142815/`，1280×720、CRF 32、preset 8；在已通过的 138/81/137 全库门禁基础上，重录 Shift Return Cargo 后当前库存为 139 个视频、82 个 manifest、138 个场景引用，新增文件由录制脚本逐项验证为 AV1。
+
+E1 至此收口，不继续调整返矿路径启发式。下一项进入 E2：先拆分普通矿片的实际采集槽、理想分配、等待者和 MULE 独立通道，再实现事件驱动的批量自动分矿。
 
 ## 8. 可以并行但不能提前耦合的优化
 

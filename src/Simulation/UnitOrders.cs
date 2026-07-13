@@ -12,7 +12,8 @@ public enum UnitOrderKind : byte
     Stop,
     Hold,
     GatherResource,
-    ResumeConstruction
+    ResumeConstruction,
+    ReturnCargo
 }
 
 public readonly record struct UnitOrder(

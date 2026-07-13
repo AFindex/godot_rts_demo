@@ -52,6 +52,8 @@ public static class VisualTestCatalog
         "replay-checkpoint-choke",
         "replay-hot-snapshot",
         "economy-replay-persistence",
+        "economy-explicit-return-cargo",
+        "economy-return-cargo-dropoff-loss",
         "open-field",
         "dense-formation",
         "opposing-streams",
@@ -187,6 +189,10 @@ public static class VisualTestCatalog
             navigationMap, gameplayProfiles, clearanceBake),
         "economy-replay-persistence" => CreateEconomyReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
+        "economy-explicit-return-cargo" => CreateExplicitReturnCargo(
+            navigationMap, gameplayProfiles, clearanceBake),
+        "economy-return-cargo-dropoff-loss" =>
+            CreateReturnCargoDropOffLoss(),
         "open-field" => CreateOpenField(),
         "dense-formation" => CreateDenseFormation(),
         "opposing-streams" => CreateOpposingStreams(),
@@ -2049,7 +2055,8 @@ public static class VisualTestCatalog
                              builderOrders.PendingOrders == 0 &&
                              builderOrders.CompletedQueuedOrders == 1 &&
                              gatherActive && failedTaskSkipped &&
-                             commandLog.FormatVersion == 3 &&
+                             commandLog.FormatVersion ==
+                                 SimulationCommandLogSnapshot.CurrentFormatVersion &&
                              package.FormatVersion == SimulationReplayPackageSnapshot.CurrentFormatVersion && hot.FormatVersion == SimulationHotSnapshot.CurrentFormatVersion &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == commandLog.StableHash && exact;
@@ -2894,6 +2901,373 @@ public static class VisualTestCatalog
                 new SimRect(new Vector2(425f, 475f), new Vector2(515f, 565f)),
                 "REFINERY: operational transition is recorded",
                 TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateExplicitReturnCargo(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 0, 0, 10, 4);
+        rig.AddResourceDropOff(1, new Vector2(170f, 350f));
+        var mineral = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(430f, 270f), 1_000, 5, 0.3f, 3);
+        var gas = rig.AddResourceNode(
+            TestEconomyResourceKind.VespeneGas,
+            new Vector2(455f, 455f), 1_000, 4, 0.35f, 3,
+            requiresRefinery: true, operational: true);
+        var workers = new[]
+        {
+            rig.SpawnWorker(new Vector2(375f, 245f), 1),
+            rig.SpawnWorker(new Vector2(390f, 275f), 1),
+            rig.SpawnWorker(new Vector2(405f, 305f), 1),
+            rig.SpawnWorker(new Vector2(420f, 335f), 1)
+        };
+
+        rig.StartReplayPackageRecording();
+        var noCargoRejected = rig.ReturnCargo(1, workers[0]) ==
+                              TestReturnCargoCommandCode.NoCargo;
+        foreach (var worker in workers)
+            rig.Gather(1, worker, mineral);
+
+        var explicitReturnIssued = false;
+        var explicitReturnResumed = false;
+        var stopIssued = false;
+        var stoppedReturnIssued = false;
+        var stoppedReturnEndedIdle = false;
+        var retargetIssued = false;
+        var retargetPreservedCargo = false;
+        var reverseRetargetIssued = false;
+        var reverseRetargetPreservedCargo = false;
+        var queuedReturnIssued = false;
+        var queuedReturnCompleted = false;
+        var gasDelivered = false;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 300;
+
+        var session = new VisualTestSession(
+                "economy-explicit-return-cargo",
+                "Return Cargo preserves carried resources and deterministic gather intent",
+                720,
+                rig,
+                workers,
+                runtime =>
+                {
+                    var package = runtime.CaptureReplayPackage();
+                    var economyLog = runtime.CaptureEconomyCommandLog();
+                    var commandLog = runtime.CaptureCommandLog();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(
+                        out var decodedPackage);
+                    var economyRoundTrip = economyLog.TryCanonicalRoundTrip(
+                        out var decodedEconomy);
+                    var baseline = packageRoundTrip
+                        ? runtime.ReplayPackage(decodedPackage!, runtime.Tick)
+                        : null;
+                    var exactReplay = baseline is not null &&
+                                      baseline.FinalHash == runtime.StateHash;
+                    var hotExact = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotExact = resumed.FinalHash == runtime.StateHash &&
+                                       baseline is not null &&
+                                       baseline.MatchesFrom(resumed, hotTick);
+                        }
+                    }
+                    var versions =
+                        economyLog.FormatVersion ==
+                            EconomyCommandLogSnapshot.CurrentFormatVersion &&
+                        commandLog.FormatVersion ==
+                            SimulationCommandLogSnapshot.CurrentFormatVersion &&
+                        package.FormatVersion ==
+                            SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                        hotVersion == SimulationHotSnapshot.CurrentFormatVersion;
+                    var passed = noCargoRejected && explicitReturnIssued &&
+                                 explicitReturnResumed && stopIssued &&
+                                 stoppedReturnIssued && stoppedReturnEndedIdle &&
+                                 retargetIssued && retargetPreservedCargo &&
+                                 reverseRetargetIssued &&
+                                 reverseRetargetPreservedCargo &&
+                                 queuedReturnIssued && queuedReturnCompleted &&
+                                 gasDelivered && packageRoundTrip &&
+                                 economyRoundTrip &&
+                                 decodedEconomy!.StableHash == economyLog.StableHash &&
+                                 package.EconomyCommandCount == 8 &&
+                                 package.UnitCommandCount == 3 &&
+                                 exactReplay && hotExact && versions;
+                    var economy = runtime.ObservePlayerEconomy(1);
+                    return new ScenarioResult(
+                        passed,
+                        $"return={explicitReturnIssued}/{explicitReturnResumed}, " +
+                        $"stop-return={stopIssued}/{stoppedReturnIssued}/" +
+                        $"{stoppedReturnEndedIdle}, retarget={retargetIssued}/" +
+                        $"{retargetPreservedCargo}/{reverseRetargetIssued}/" +
+                        $"{reverseRetargetPreservedCargo}, queued=" +
+                        $"{queuedReturnIssued}/{queuedReturnCompleted}, resources=" +
+                        $"{economy.Minerals}/{economy.VespeneGas}, " +
+                        $"logs=e{package.EconomyCommandCount}v" +
+                        $"{economyLog.FormatVersion}/u{package.UnitCommandCount}v" +
+                        $"{commandLog.FormatVersion}, replay={exactReplay}, " +
+                        $"hot={hotExact}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(330f, 350f), 1.08f)
+            .CameraKeyframe(220, new Vector2(300f, 350f), 1.18f)
+            .CameraKeyframe(440, new Vector2(385f, 365f), 1.12f)
+            .CameraKeyframe(700, new Vector2(330f, 350f), 1.08f)
+            .Highlight(
+                new SimRect(new Vector2(105f, 275f), new Vector2(235f, 425f)),
+                "DROP-OFF: explicit return completes before next intent",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(385f, 215f), new Vector2(485f, 325f)),
+                "MINERALS: return resumes only when gather intent remains",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(405f, 405f), new Vector2(505f, 505f)),
+                "GAS: carried minerals survive cross-resource retarget",
+                TestDiagnosticKind.Accepted);
+
+        for (var tick = 1; tick < session.DurationTicks; tick++)
+        {
+            session.At(tick, "Observe and exercise Return Cargo contract", runtime =>
+            {
+                var first = runtime.ObserveWorkerEconomy(workers[0]);
+                var second = runtime.ObserveWorkerEconomy(workers[1]);
+                var third = runtime.ObserveWorkerEconomy(workers[2]);
+                var fourth = runtime.ObserveWorkerEconomy(workers[3]);
+
+                if (!explicitReturnIssued &&
+                    first.State == TestWorkerEconomyState.ReturningCargo &&
+                    first.CargoAmount > 0)
+                {
+                    explicitReturnIssued = runtime.ReturnCargo(1, workers[0]) ==
+                                           TestReturnCargoCommandCode.Success;
+                }
+                else if (explicitReturnIssued && first.CargoAmount == 0 &&
+                         first.TargetNode == mineral &&
+                         first.State is TestWorkerEconomyState.GoingToResource or
+                             TestWorkerEconomyState.Gathering)
+                {
+                    explicitReturnResumed = true;
+                }
+
+                if (!stopIssued &&
+                    second.State == TestWorkerEconomyState.ReturningCargo &&
+                    second.CargoAmount > 0)
+                {
+                    runtime.Stop([workers[1]]);
+                    stopIssued = true;
+                }
+                else if (stopIssued && !stoppedReturnIssued &&
+                         second.State == TestWorkerEconomyState.Idle &&
+                         second.CargoAmount > 0)
+                {
+                    stoppedReturnIssued = runtime.ReturnCargo(1, workers[1]) ==
+                                          TestReturnCargoCommandCode.Success;
+                }
+                else if (stoppedReturnIssued && second.CargoAmount == 0 &&
+                         second.State == TestWorkerEconomyState.Idle)
+                {
+                    stoppedReturnEndedIdle = true;
+                }
+
+                if (!retargetIssued &&
+                    third.State == TestWorkerEconomyState.ReturningCargo &&
+                    third.CargoAmount > 0)
+                {
+                    var cargo = third.CargoAmount;
+                    retargetIssued = runtime.Gather(1, workers[2], gas) ==
+                                     TestGatherCommandCode.Success;
+                    var after = runtime.ObserveWorkerEconomy(workers[2]);
+                    retargetPreservedCargo = retargetIssued &&
+                                             after.CargoAmount == cargo &&
+                                             after.TargetNode == gas &&
+                                             after.State ==
+                                                 TestWorkerEconomyState.ReturningCargo;
+                }
+                else if (retargetIssued && !reverseRetargetIssued &&
+                         third.State == TestWorkerEconomyState.ReturningCargo &&
+                         third.CargoKind == TestEconomyResourceKind.VespeneGas &&
+                         third.CargoAmount > 0)
+                {
+                    var cargo = third.CargoAmount;
+                    reverseRetargetIssued =
+                        runtime.Gather(1, workers[2], mineral) ==
+                        TestGatherCommandCode.Success;
+                    var after = runtime.ObserveWorkerEconomy(workers[2]);
+                    reverseRetargetPreservedCargo = reverseRetargetIssued &&
+                        after.CargoKind == TestEconomyResourceKind.VespeneGas &&
+                        after.CargoAmount == cargo &&
+                        after.TargetNode == mineral &&
+                        after.State == TestWorkerEconomyState.ReturningCargo;
+                }
+                gasDelivered |= runtime.ObservePlayerEconomy(1).VespeneGas > 0;
+                if (!queuedReturnIssued &&
+                    fourth.State == TestWorkerEconomyState.ReturningCargo &&
+                    fourth.CargoAmount > 0)
+                {
+                    runtime.Move([workers[3]], new Vector2(545f, 350f));
+                    queuedReturnIssued = runtime.ReturnCargo(
+                        1, workers[3], queued: true) ==
+                        TestReturnCargoCommandCode.Success &&
+                        runtime.ObserveOrders(workers[3]).PendingOrders == 1;
+                }
+                else if (queuedReturnIssued && fourth.CargoAmount == 0 &&
+                         fourth.State == TestWorkerEconomyState.Idle)
+                {
+                    queuedReturnCompleted = true;
+                }
+                if (runtime.Tick == hotTick)
+                    hotCapture = runtime.CaptureRuntimeState();
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateReturnCargoDropOffLoss()
+    {
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1_100f, 620f), 8);
+        rig.RegisterPlayer(1, 0, 0, 5, 1);
+        var nearDropOff = rig.AddResourceDropOff(
+            1, new Vector2(180f, 310f));
+        var farDropOff = rig.AddResourceDropOff(
+            1, new Vector2(850f, 310f));
+        var mineral = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(470f, 310f), 500, 5, 0.25f, 1);
+        var worker = rig.SpawnWorker(new Vector2(425f, 310f), 1);
+        rig.Gather(1, worker, mineral);
+
+        var explicitReturnIssued = false;
+        var nearDisabled = false;
+        var reroutedToFar = false;
+        var allDisabled = false;
+        var waitedWithCargo = false;
+        var missingDropOffRejected = false;
+        var reenabled = false;
+        var resumed = false;
+        var delivered = false;
+        var waitStartedTick = -1L;
+
+        var session = new VisualTestSession(
+                "economy-return-cargo-dropoff-loss",
+                "Return Cargo reroutes, waits without loss, and resumes after DropOff recovery",
+                600,
+                rig,
+                [worker],
+                runtime =>
+                {
+                    var state = runtime.ObserveWorkerEconomy(worker);
+                    var recovery = runtime.ObserveRecovery([worker]);
+                    var passed = explicitReturnIssued && nearDisabled &&
+                                 reroutedToFar && allDisabled &&
+                                 waitedWithCargo && missingDropOffRejected &&
+                                 reenabled && resumed && delivered &&
+                                 recovery.UnreachableUnits == 0;
+                    return new ScenarioResult(
+                        passed,
+                        $"return={explicitReturnIssued}, reroute={reroutedToFar}, " +
+                        $"wait={waitedWithCargo}, missing={missingDropOffRejected}, " +
+                        $"resume={resumed}, delivered={delivered}, " +
+                        $"minerals={runtime.ObservePlayerEconomy(1).Minerals}, " +
+                        $"state={state.State}, unreachable=" +
+                        $"{recovery.UnreachableUnits}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(515f, 310f), 0.88f)
+            .CameraKeyframe(160, new Vector2(600f, 310f), 0.94f)
+            .CameraKeyframe(300, new Vector2(515f, 310f), 0.88f)
+            .CameraKeyframe(580, new Vector2(300f, 310f), 1.02f)
+            .Highlight(
+                new SimRect(new Vector2(125f, 255f), new Vector2(235f, 365f)),
+                "PRIMARY DROP-OFF: disabled, later restored",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(795f, 255f), new Vector2(905f, 365f)),
+                "SECONDARY DROP-OFF: deterministic reroute target",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(425f, 265f), new Vector2(515f, 355f)),
+                "WAIT: cargo remains authoritative with no valid DropOff",
+                TestDiagnosticKind.Rejected);
+
+        for (var tick = 1; tick < session.DurationTicks; tick++)
+        {
+            session.At(tick, "Exercise DropOff loss and recovery", runtime =>
+            {
+                var state = runtime.ObserveWorkerEconomy(worker);
+                if (!explicitReturnIssued &&
+                    state.State == TestWorkerEconomyState.ReturningCargo &&
+                    state.CargoAmount > 0)
+                {
+                    explicitReturnIssued = runtime.ReturnCargo(1, worker) ==
+                                           TestReturnCargoCommandCode.Success;
+                    runtime.SetResourceDropOffOperational(nearDropOff, false);
+                    nearDisabled = true;
+                    return;
+                }
+
+                if (nearDisabled && !reroutedToFar &&
+                    state.State == TestWorkerEconomyState.ReturningCargo)
+                {
+                    var expected = runtime.PreviewDropOffApproach(
+                        1, TestEconomyResourceKind.Minerals, worker);
+                    reroutedToFar = expected.Found &&
+                                    expected.Center.X > 800f &&
+                                    Vector2.DistanceSquared(
+                                        runtime.Observe(worker).AssignedTarget,
+                                        expected.Target) <= 0.25f;
+                    if (reroutedToFar)
+                    {
+                        runtime.SetResourceDropOffOperational(
+                            farDropOff, false);
+                        allDisabled = true;
+                    }
+                    return;
+                }
+
+                if (allDisabled && !waitedWithCargo &&
+                    state.State == TestWorkerEconomyState.WaitingForDropOff &&
+                    state.CargoAmount > 0)
+                {
+                    waitedWithCargo = true;
+                    waitStartedTick = runtime.Tick;
+                    missingDropOffRejected = runtime.ReturnCargo(1, worker) ==
+                        TestReturnCargoCommandCode.MissingDropOff;
+                    return;
+                }
+
+                if (waitedWithCargo && !reenabled &&
+                    runtime.Tick >= waitStartedTick + 45)
+                {
+                    runtime.SetResourceDropOffOperational(nearDropOff, true);
+                    reenabled = true;
+                    return;
+                }
+
+                if (reenabled && !resumed &&
+                    state.State == TestWorkerEconomyState.ReturningCargo)
+                    resumed = true;
+                delivered |= resumed && state.CargoAmount == 0 &&
+                             runtime.ObservePlayerEconomy(1).Minerals >= 5;
+            });
+        }
+        return session;
     }
 
     private static VisualTestSession BuildReplaySession(

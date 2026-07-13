@@ -4,7 +4,8 @@ public enum EconomyCommandKind : byte
 {
     Gather = 1,
     SetRefineryOperational = 2,
-    TransferWorkers = 3
+    TransferWorkers = 3,
+    ReturnCargo = 4
 }
 
 public readonly record struct RecordedEconomyCommand(
@@ -34,7 +35,7 @@ public sealed class EconomyCommandLogSnapshot
 {
     private const uint Magic = 0x43455452; // RTEC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
 
     public EconomyCommandLogSnapshot(RecordedEconomyCommand[] entries)
     {
@@ -105,7 +106,9 @@ public sealed class EconomyCommandLogSnapshot
                         entry.ResourceNodeId < 0 ||
                     entry.Kind == EconomyCommandKind.TransferWorkers &&
                         (entry.SourceBaseId < 0 || entry.TargetBaseId < 0 ||
-                         entry.Count <= 0))
+                         entry.Count <= 0) ||
+                    entry.Kind == EconomyCommandKind.ReturnCargo &&
+                        entry.UnitId < 0)
                 {
                     validation = EconomyCommandLogValidationCode.InvalidEntry;
                     return false;
@@ -181,6 +184,11 @@ public sealed class EconomyCommandRecorder
         _entries.Add(new RecordedEconomyCommand(
             tick, EconomyCommandKind.TransferWorkers,
             playerId, -1, -1, false, source.Value, target.Value, count));
+
+    public void RecordReturnCargo(long tick, int playerId, int unitId) =>
+        _entries.Add(new RecordedEconomyCommand(
+            tick, EconomyCommandKind.ReturnCargo,
+            playerId, unitId, -1, false, -1, -1, 0));
 
     public EconomyCommandLogSnapshot Capture() => new(_entries.ToArray());
 }

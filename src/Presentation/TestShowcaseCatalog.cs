@@ -97,6 +97,8 @@ public static class TestShowcaseCatalog
             M("replay-checkpoint-choke", "狭口 Checkpoint", "回放", "验证交通方向、排空与队列未来态可以确定性恢复。"),
             M("replay-hot-snapshot", "运行时热快照", "回放", "验证直接恢复模拟热状态、规范载荷与篡改拒绝。"),
             M("economy-replay-persistence", "经济回放持久化", "回放", "验证采集、返还和工人阶段在回放及热恢复中一致。"),
+            M("economy-explicit-return-cargo", "显式返还资源", "经济玩法", "验证返还资源、Stop 后投递、矿气双向改派、命令日志、回放和热恢复。"),
+            M("economy-return-cargo-dropoff-loss", "投递点失效与恢复", "经济玩法", "验证携货工人改道备用投递点、无投递点等待、失败码和恢复后续投。"),
             M("open-field", "开放场大编队", "群体移动", "验证开放区域中多单位编队分槽、避让和整队抵达。"),
             M("dense-formation", "密集编队", "群体移动", "验证高密度起点下 Steering、碰撞和最终收敛。"),
             M("opposing-streams", "对向人流", "群体移动", "验证两股对向单位的避让侧选择与通行。"),

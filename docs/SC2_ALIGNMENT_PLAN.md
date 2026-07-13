@@ -16,7 +16,7 @@
 4. 所有新增未来态必须进入回放、热恢复和状态 Hash。
 5. Godot/UI 只消费不可变快照，不拥有放置、让位、采矿或退款规则。
 
-以下内容不属于本轮强制完成项：完整三族机制、Power/Creep、Add-on、Lift/Land、Burrow/Cloak、MULE、Extractor Trick、逐帧复制 SC2 动画，以及没有实际失败证据的 Steering 微调。
+以下内容不属于本轮强制完成项：完整三族机制、Power/Creep、Add-on、Lift/Land、Burrow/Cloak、Extractor Trick、逐帧复制 SC2 动画，以及没有实际失败证据的 Steering 微调。MULE 的完整召唤、寿命、修理和数值平衡仍属于内容扩展，但它与普通 Worker 独立占用矿片的采集能力合同纳入 E2 强制设计与测试，不能以后加 MULE 时重写经济内核。
 
 ## 2. 当前基线
 
@@ -25,7 +25,7 @@
 | Harvest/ReturningCargo 单位碰撞豁免 | 核心已对齐 | 只补独立矩阵回归，不重写 Steering |
 | 建筑与地形仍阻挡采矿农民 | 已对齐 | 作为碰撞矩阵硬门禁 |
 | 最近有效 DropOff 与最近建筑边缘 | 主路径已对齐 | 补显式 Return Cargo 与包围边界实验 |
-| 玩家批量右键资源后的自动分矿 | 部分对齐 | P1 实现确定性资源簇分配 |
+| 玩家批量右键资源后的自动分矿 | 部分对齐 | P1 拆分单人采集槽、双人软饱和、第三人递减排队与 MULE 独立通道 |
 | Preview 无副作用 | 部分对齐 | 拆成静态可见校验快照 |
 | 下单后的 Ghost/Reservation | 未对齐 | P0 新增权威施工意图 |
 | 工人到达前的建筑占地 | 未对齐，当前过早硬占地 | P0 延迟到 Hard Commit |
@@ -272,7 +272,7 @@ P0 综合完成条件：C0～C5 全部通过，E0 已确认的规则有来源和
 
 ## 7. P1 工作包：经济与操作完整性
 
-### E1：显式 Return Cargo
+### E1：显式 Return Cargo（已完成，2026-07-13）
 
 新增正式订单 `ReturnCargo`，仅携货 Worker 可执行。它选择最近有效 DropOff，成功投递后恢复保存的采集意图或继续 Shift 后续订单。
 
@@ -284,15 +284,29 @@ P0 综合完成条件：C0～C5 全部通过，E0 已确认的规则有来源和
 - Stop/Hold/Attack 是否清除恢复采集意图。
 - 普通右键新资源、显式 Return Cargo、Shift Return Cargo 的差异。
 
-同包更新订单校验、命令日志、Replay/Hot/Hash、命令卡快照和 AI 意图适配。用例 `economy-explicit-return-cargo` 覆盖跨基地、矿转气、气转矿、DropOff 消失和热恢复。
+同包更新订单校验、命令日志、Replay/Hot/Hash、命令卡快照和玩家/AI 可共用的意图门面。`economy-explicit-return-cargo` 覆盖普通返还、Stop 后返还、矿转气、气转矿、Shift Return Cargo、命令日志、Replay 与热恢复；`economy-return-cargo-dropoff-loss` 隔离覆盖最近 DropOff 失效后改道、全部失效时携货等待、`MissingDropOff` 和恢复后自动续投。
+
+完成结果：新增正式 `UnitOrderKind.ReturnCargo`、`ReturnCargoCommandResult`、`WaitingForDropOff` 与命令卡动作。携货 Worker 收到新 Gather 时不再清空 Cargo，而是先投递再前往新资源；Stop/Hold/Attack/Move 保留货物但清除恢复采集意图，因此之后显式返还会投递并 Idle。活动投递点失效时会更新移动目标到新的最近有效边缘，全部失效则停止并保留 Cargo，恢复后自动继续。普通显式返还写入 Economy Command Log v3；Shift 返还写入 Unit Command Log v4；Replay Package/Hot Snapshot v21 与 State Hash v22 拒绝旧版本。专项结果为普通返还恢复 `True`、Stop 后返还并 Idle `True`、矿↔气 Cargo 双向保留 `True/True`、Shift 返还 `True`、DropOff 改道/等待/恢复 `True/True/True`、不可达 0；106/106 全量黑盒回归通过。AV1/WebM 位于 `test_videos/20260713_142242/` 与 `test_videos/20260713_142815/`。
 
 ### E2：批量自动分矿
 
-新增独立确定性 `ResourceAssignmentPolicy`，只在玩家批量 Gather、Rally 新 Worker、当前矿枯竭或明确转场时运行，不在每 Tick 为追求最优收入而重排。
+先废除 `HarvesterCapacity` 同时表示“实际并发采集数”和“理想分配人数”的含混合同。普通矿片固定区分：
 
-分配输入：同一资源簇、资源类型、每节点 Active/Assigned、预计等待、额外路程、是否为玩家明确点中的首选矿。输出是稳定节点 ID；玩家单选 Worker 精确点击矿点时至少保证第一轮强制绑定，保留微操能力。
+- `NormalActiveSlots=1`：同一时刻最多一个普通 Worker 执行实际采集动作。
+- `IdealNormalAssignments=2`：两个普通 Worker 通过往返错峰形成 UI/AI 使用的高效软饱和；标准八矿为 16 个理想矿工。
+- 第三个普通 Worker 允许进入等待队列并产生递减边际收益；不能把两人软饱和误做成拒绝命令的硬上限。
+- 第四个及更多 Worker 仍可接受 Gather，但标准距离下不得伪造额外并发采集吞吐；测试验证其收入不高于三人层的容差上限。
+- MULE 使用独立 `GathererCapability`/采集通道：可与一个普通 Worker 同时采同一矿片，不计入普通矿工 `Assigned/Ideal`；同一矿片同时最多一个 MULE，多个 MULE 在矿簇内独立分散或排队。E2 只实现并验证该能力合同，不实现召唤、寿命和完整单位内容。
 
-场景 `economy-auto-patch-distribution`：8 片矿，12/16/24 Worker，记录首轮分散、每片 Active/Assigned、等待 Tick、近/远矿收入与第三 Worker 边际收益。
+新增独立确定性 `ResourceAssignmentPolicy`。它在玩家批量 Gather、Rally 新 Worker、Worker 到达时发现首选矿被占用、当前矿枯竭/失效或明确转场时运行；不在每 Tick 为追求最优收入而全局重排。运行时维护增量 Active/Assigned/Waiting 计数，避免大量 Worker 时反复扫描全部单位。
+
+分配输入：同一所属基地资源簇、资源类型、普通/MULE 能力、每节点 Active/Assigned/Waiting、预计可用时刻、Worker 到矿和矿到 DropOff 的额外路程、是否为玩家明确点中的首选矿。输出使用稳定 Worker/Node ID 决胜。普通右键把被点矿片视为首选而不是永久唯一节点；单选精确点击仍允许 SC2 式“占用时改选”，若要模拟反复右键强制近矿，必须由当前客户端实验冻结，不凭猜测添加不可取消的一轮锁。
+
+稳定快照分别暴露 `ActiveNormal/AssignedNormal/WaitingNormal/ActiveMules/AssignedMules`，基地快照分别提供 Mineral/Gas 的 Assigned 与 Ideal；UI、AI 和测试不得用采集槽数量反推软饱和。
+
+场景 `economy-auto-patch-distribution`：8 片矿，12/16/24/32 Worker 全部右键同一片矿，记录首轮分散、每片 Active/Assigned/Waiting、Rally 新 Worker 填空、枯竭后收缩、近/远矿收入、第二/第三/第四 Worker 边际收益。16 Worker 必须形成两人软饱和；24 Worker 允许第三人排队但收益递减；32 Worker 不得通过伪并发继续线性增收。
+
+场景 `economy-mule-independent-mining`：同一矿片覆盖 `2 SCV`、`2 SCV + 1 MULE`、`2 SCV + 2 MULE`，验证普通通道一次只采一个、一个 MULE 可与普通 Worker 同采、第二个 MULE 等待；再在八矿投放多个 MULE，验证分散、普通 `16/16` 饱和度不变、回放/热恢复/Hash 一致。MULE 测试可使用能力化测试采集者，不要求先做 Orbital Command。
 
 数值校准使用内容 Profile：常规/富矿携带量 5/7、占矿约 1.99 秒、离开停顿约 0.3571 秒作为 SC2 预设目标；通用经济内核继续允许其他数值。先验证收入区间，不追逐逐帧一致。
 
@@ -319,7 +333,7 @@ P2 不作为核心对齐收口条件，按实际玩法需求逐项启用：
 1. `ConstructionMethodKind` 扩展 `ConsumeWorker`，完整验证 ContinuousWorker、StartAndRelease、ConsumeWorker。
 2. Power、Creep、Add-on 空间、Lift/Land 作为 Placement Rule Provider，不侵入通用 Validator。
 3. Detection/Visibility 成熟后启用隐藏阻挡完整矩阵。
-4. Gold Mineral、MULE、Extractor Trick 和种族气矿设施通过资源/能力 Profile 扩展。
+4. Gold Mineral、MULE 召唤/寿命/修理、Extractor Trick 和种族气矿设施通过资源/能力 Profile 扩展；不得改变 E2 已冻结的普通/MULE 独立采集通道。
 5. Connectivity Guard 改为地图/AI 安全策略，玩家正式规则允许战术建筑墙；不能继续把“禁止断路”描述成 SC2 规则。
 6. 单位加速度与横向响应只在录制的对照操作暴露可重复差异后进入独立手感包。
 
