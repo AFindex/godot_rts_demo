@@ -27,7 +27,7 @@
 2. 关闭碰撞必须来自 Harvest/Return Cargo 订单语义，不能变成 Worker 类型的永久属性。Stop、Hold、Attack、普通 Move、施工等订单要恢复正常碰撞。
 3. 建筑放置至少要拆成“光标预览、已接受的施工意图/幽灵、施工开始后的硬 Footprint”三个阶段。当前实现下单即创建硬 Footprint，时序过早。
 4. 当前放置预检把所有活单位都视为硬失败 `UnitOverlap`。SC2 对己方单位、可见敌人、后来进入的单位、隐藏/潜地敌人有不同表现；其中“己方单位被要求让开”有较强社区证据，但精确时序必须实机确认。
-5. SC2 建造中的建筑没有伤害减免。当前 Demo 无论施工阶段还是完工阶段都使用建筑基础护甲和升级护甲，明确不对齐。
+5. SC2 建造中的建筑没有伤害减免。当前 Demo 已改为施工期有效护甲 0，仅从完成 Tick 起应用建筑基础护甲和升级护甲。
 6. SC2 的 Placement Grid、单位 Pathing Grid、建筑 Footprint、Near Resource、Power/Creep 和动态单位占位是不同层。不能继续用单个 `TryPlaceBuilding` 布尔式思维承载所有语义。
 
 因此，下一阶段最值得做的不是继续调 Steering，而是先建立“施工意图与硬占地分离”的协议和独立黑盒测试。
@@ -226,7 +226,7 @@ Reservation 与 Hard Footprint 必须使用不同 ID/不同集合。前者只解
 | Drone 消耗/取消恢复 | 没有 `ConsumeWorker` | 未对齐，内容层后置 |
 | 取消退款 | 75% | 已对齐；[Blizzard Common Mistakes](https://news.blizzard.com/en-us/article/4552958/game-guide-common-mistakes)（A） |
 | 建造中生命增长 | 10%→100% 随进度增长 | 方向对齐，数值待校准 |
-| 建造中护甲 | 使用完整基础/升级护甲 | 未对齐；官方说明施工中无伤害减免 |
+| 建造中护甲 | 施工期有效护甲 0，完成 Tick 后应用基础/升级护甲 | 已对齐；由生命周期派生快照和正式战斗伤害共同验证 |
 | Builder 死亡/打断 | `WaitingForBuilder`，可续建 | 已对齐主路径 |
 | Shift 连续造建筑 | Build 不进入正式 Shift 队列 | 未对齐；官方明确支持结构队列 |
 | Refinery 绑定气矿 | 可见未启用气矿吸附并独占 | 已对齐主路径 |

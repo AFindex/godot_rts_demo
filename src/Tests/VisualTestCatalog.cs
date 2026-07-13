@@ -87,6 +87,7 @@ public static class VisualTestCatalog
         "ai-continuous-encounter",
         "construction-gameplay-buildings",
         "construction-reservation-hard-commit",
+        "construction-under-build-defense",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
         "production-replay-persistence",
@@ -241,6 +242,9 @@ public static class VisualTestCatalog
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
         "construction-reservation-hard-commit" =>
             CreateConstructionReservationHardCommit(
+                navigationMap, gameplayProfiles, clearanceBake),
+        "construction-under-build-defense" =>
+            CreateConstructionUnderBuildDefense(
                 navigationMap, gameplayProfiles, clearanceBake),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
@@ -5454,6 +5458,165 @@ public static class VisualTestCatalog
                     canceledTarget + new Vector2(80f)),
                 "CANCEL: reservation-only cleanup and 75% refund",
                 TestDiagnosticKind.Info);
+    }
+
+    private static VisualTestSession CreateConstructionUnderBuildDefense(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1000, 1000, 20, 1);
+        rig.RegisterPlayer(2, 5000, 5000, 30, 2);
+        var targetBuilder = rig.SpawnWorker(new Vector2(350f, 353f), 2);
+        var academyBuilder = rig.SpawnWorker(new Vector2(350f, 520f), 2);
+        var attackProfile = new TestCombatProfile(
+            MaximumHealth: 100f,
+            AttackDamage: 20f,
+            AttackRange: 220f,
+            AcquisitionRange: 260f,
+            AttackCooldownSeconds: 10f,
+            AttackWindupSeconds: 0.05f,
+            LeashDistance: 400f);
+        var attackers = new[]
+        {
+            rig.SpawnCombat(new Vector2(270f, 308f), 1, attackProfile),
+            rig.SpawnCombat(new Vector2(270f, 338f), 1, attackProfile),
+            rig.SpawnCombat(new Vector2(270f, 368f), 1, attackProfile),
+            rig.SpawnCombat(new Vector2(270f, 398f), 1, attackProfile)
+        };
+        var targetType = DemoBuildingTypes.SupplyDepot with
+        {
+            Name = "Armor Boundary Target",
+            BuildSeconds = 10f,
+            MaximumHealth = 1000f,
+            Armor = 4f,
+            ArmorUpgradePerLevel = 2f
+        };
+        var academyType = DemoBuildingTypes.Academy with { BuildSeconds = 0.1f };
+        var weapon = DemoTechnologies.InfantryWeapons with
+        {
+            Cost = new EconomyCost(0, 0),
+            ResearchSeconds = 0.1f
+        };
+        var fortification = DemoTechnologies.FortificationDoctrine with
+        {
+            Cost = new EconomyCost(0, 0),
+            ResearchSeconds = 0.1f
+        };
+
+        rig.StartReplayPackageRecording();
+        var target = rig.Build(
+            2, targetBuilder, targetType, new Vector2(420f, 353f));
+        var academy = rig.Build(
+            2, academyBuilder, academyType, new Vector2(420f, 520f));
+        var samples = new TestGameplayBuildingSnapshot[4];
+        var previewDamage = new float[4];
+        var impactDamage = Enumerable.Repeat(float.NaN, 4).ToArray();
+        TestResearchResult weaponResearch = default;
+        TestResearchResult armorResearch = default;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 315;
+
+        void SampleAndAttack(MovementTestRig runtime, int index)
+        {
+            samples[index] = runtime.ObserveGameplayBuilding(target.BuildingId);
+            previewDamage[index] = runtime.PreviewCombatDamage(
+                attackers[index], target.BuildingId).TotalDamage;
+            runtime.AttackBuilding([attackers[index]], target.BuildingId);
+        }
+
+        void CaptureImpactAndStop(MovementTestRig runtime, int index)
+        {
+            impactDamage[index] = runtime.ObserveCombatEvents().Events
+                .LastOrDefault(value => value.Kind == CombatEventKind.Impact &&
+                                        value.TargetKind == CombatTargetKind.Building)
+                .Damage;
+            runtime.Stop([attackers[index]]);
+        }
+
+        var session = new VisualTestSession(
+            "construction-under-build-defense",
+            "Construction armor stays zero until the exact completion boundary",
+            690,
+            rig,
+            [targetBuilder, academyBuilder, .. attackers],
+            runtime =>
+            {
+                var final = runtime.ObserveGameplayBuilding(target.BuildingId);
+                var package = runtime.CaptureReplayPackage();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var replay = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var replayExact = replay.FinalHash == runtime.StateHash;
+                var resumedExact = resumed.FinalHash == runtime.StateHash;
+                var traceExact = replay.MatchesFrom(resumed, hotTick + 30);
+                var exact = replayExact && resumedExact && traceExact;
+                var constructionStates = samples.Take(3).All(value =>
+                    value.State == TestBuildingLifecycleState.Constructing &&
+                    value.Armor == 0f);
+                var progressBands = samples[0].Progress is >= 0.06f and <= 0.18f &&
+                                    samples[1].Progress is >= 0.42f and <= 0.58f &&
+                                    samples[2].Progress is >= 0.90f and < 1f;
+                var completedBoundary = samples[3].State ==
+                                            TestBuildingLifecycleState.Completed &&
+                                        samples[3].Armor == 6f &&
+                                        final.Armor == 6f;
+                var damageBoundary =
+                    previewDamage.SequenceEqual([20f, 20f, 20f, 14f]) &&
+                    impactDamage.SequenceEqual([20f, 20f, 20f, 14f]);
+                var passed = target.Succeeded && academy.Succeeded &&
+                             runtime.TechnologyLevel(2, fortification.Id) == 1 &&
+                             constructionStates && progressBands && completedBoundary &&
+                             damageBoundary && packageRoundTrip && hotRoundTrip && exact;
+                return new ScenarioResult(
+                    passed,
+                    $"progress={string.Join(',', samples.Select(value => value.Progress.ToString("0.000")))}, " +
+                    $"armor={string.Join(',', samples.Select(value => value.Armor))}, " +
+                    $"preview={string.Join(',', previewDamage)}, " +
+                    $"impact={string.Join(',', impactDamage)}, fort=" +
+                    $"{runtime.TechnologyLevel(2, fortification.Id)}, " +
+                    $"research={weaponResearch.Code}/{armorResearch.Code}, " +
+                    $"exact={replayExact}/{resumedExact}/{traceExact}, " +
+                    $"hash={runtime.StateHash:X16}/{replay.FinalHash:X16}/" +
+                    $"{resumed.FinalHash:X16}, bytes=" +
+                    $"{package.CanonicalByteCount}/{hot.CanonicalByteCount}");
+            })
+            .SelectBuildings(target.BuildingId)
+            .Highlight(
+                new SimRect(new Vector2(350f, 285f), new Vector2(490f, 420f)),
+                "UNDER CONSTRUCTION: Armor 0 -> completed Armor 6",
+                TestDiagnosticKind.Accepted);
+        session.At(30, "Research weapon prerequisite", runtime =>
+            weaponResearch = runtime.Research(2, academy.BuildingId, weapon));
+        session.At(45, "Research Fortification before defense samples", runtime =>
+            armorResearch = runtime.Research(2, academy.BuildingId, fortification));
+        session.At(75, "Attack near 10% progress with zero effective armor", runtime =>
+            SampleAndAttack(runtime, 0));
+        session.At(90, "Capture first construction impact", runtime =>
+            CaptureImpactAndStop(runtime, 0));
+        session.At(hotTick, "Attack near 50% and capture hot construction state", runtime =>
+        {
+            hotCapture = runtime.CaptureRuntimeState();
+            SampleAndAttack(runtime, 1);
+        });
+        session.At(330, "Capture midpoint construction impact", runtime =>
+            CaptureImpactAndStop(runtime, 1));
+        session.At(590, "Attack on the last incomplete construction interval", runtime =>
+            SampleAndAttack(runtime, 2));
+        session.At(605, "Capture pre-completion impact", runtime =>
+            CaptureImpactAndStop(runtime, 2));
+        session.At(630, "Attack after completion applies full upgraded armor", runtime =>
+            SampleAndAttack(runtime, 3));
+        session.At(645, "Capture completed-building impact", runtime =>
+            CaptureImpactAndStop(runtime, 3));
+        return session;
     }
 
     private static VisualTestSession CreateBuildingTypeResourceRuntime(

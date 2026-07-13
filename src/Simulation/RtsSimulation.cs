@@ -161,9 +161,29 @@ public sealed class RtsSimulation : ICombatMovementDriver
         if ((uint)attacker >= (uint)Units.Count || !Units.Alive[attacker] ||
             !Construction.IsAlive(building))
             throw new ArgumentOutOfRangeException();
-        var target = Construction.Observe(building);
+        var target = ObserveGameplayBuilding(building);
         return CombatDamageResolver.Resolve(
             CombatWeapon(attacker), BuildingDefense(target), target.Health);
+    }
+
+    public GameplayBuildingSnapshot ObserveGameplayBuilding(
+        GameplayBuildingId building)
+    {
+        var snapshot = Construction.Observe(building);
+        return snapshot with { EffectiveArmor = EffectiveBuildingArmor(snapshot) };
+    }
+
+    public GameplayBuildingSnapshot[] CreateGameplayBuildingOverview()
+    {
+        var snapshots = Construction.CreateOverview();
+        for (var index = 0; index < snapshots.Length; index++)
+        {
+            snapshots[index] = snapshots[index] with
+            {
+                EffectiveArmor = EffectiveBuildingArmor(snapshots[index])
+            };
+        }
+        return snapshots;
     }
 
     public ClearanceBakeCommitResult TryCommitClearanceBake(
@@ -3434,14 +3454,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Combat.BaseUpgradeDamage[attacker], Combat.BonusUpgradeDamage[attacker]);
 
     private CombatDefenseSnapshot BuildingDefense(GameplayBuildingSnapshot building)
+        => new(EffectiveBuildingArmor(building), building.Type.Attributes);
+
+    private float EffectiveBuildingArmor(GameplayBuildingSnapshot building)
     {
+        if (building.State != BuildingLifecycleState.Completed)
+            return 0f;
         var level = CombatBuildingArmorTechnologyId < 0
             ? 0
             : Technology.Level(
                 building.PlayerId, CombatBuildingArmorTechnologyId);
-        return new CombatDefenseSnapshot(
-            building.Type.Armor + level * building.Type.ArmorUpgradePerLevel,
-            building.Type.Attributes);
+        return building.Type.Armor +
+               level * building.Type.ArmorUpgradePerLevel;
     }
 
     private void SetCombatDestination(int unit, Vector2 target)

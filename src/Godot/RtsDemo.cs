@@ -698,7 +698,7 @@ public partial class RtsDemo : Node2D
         {
             return;
         }
-        foreach (var building in _simulation.Construction.CreateOverview())
+        foreach (var building in _simulation.CreateGameplayBuildingOverview())
         {
             if (building.IsTerminal)
             {
@@ -1116,7 +1116,7 @@ public partial class RtsDemo : Node2D
         {
             var buildingId = new GameplayBuildingId(buildingValue);
             if (!_simulation.Construction.IsAlive(buildingId)) continue;
-            var building = _simulation.Construction.Observe(buildingId);
+            var building = _simulation.ObserveGameplayBuilding(buildingId);
             if (building.PlayerId != PlayerTeam) continue;
             positions.Add((building.Bounds.Min + building.Bounds.Max) * 0.5f);
         }
@@ -1207,7 +1207,7 @@ public partial class RtsDemo : Node2D
         {
             var id = new GameplayBuildingId(value);
             if (!_simulation.Construction.IsAlive(id) ||
-                _simulation.Construction.Observe(id).PlayerId != PlayerTeam) continue;
+                _simulation.ObserveGameplayBuilding(id).PlayerId != PlayerTeam) continue;
             result.Add(new ControlGroupEntity(ControlGroupEntityKind.Building, value));
         }
         return result.ToArray();
@@ -1224,7 +1224,7 @@ public partial class RtsDemo : Node2D
         }
         var id = new GameplayBuildingId(entity.EntityId);
         return _simulation.Construction.IsAlive(id) &&
-               _simulation.Construction.Observe(id).PlayerId == PlayerTeam;
+               _simulation.ObserveGameplayBuilding(id).PlayerId == PlayerTeam;
     }
 
     private static bool TryReadControlGroup(
@@ -1289,7 +1289,7 @@ public partial class RtsDemo : Node2D
 
         if (best < 0)
         {
-            foreach (var building in _simulation.Construction.CreateOverview())
+            foreach (var building in _simulation.CreateGameplayBuildingOverview())
             {
                 if (!building.IsTerminal &&
                     (_playerView is null ||
@@ -1397,7 +1397,7 @@ public partial class RtsDemo : Node2D
             else
             {
                 var clickWorld = GodotPathProvider.ToNumerics(click);
-                var building = _simulation.Construction.CreateOverview()
+                var building = _simulation.CreateGameplayBuildingOverview()
                     .Where(value =>
                         !value.IsTerminal && value.PlayerId == PlayerTeam &&
                         value.Bounds.Contains(clickWorld))
@@ -2103,7 +2103,7 @@ public partial class RtsDemo : Node2D
         {
             var id = new GameplayBuildingId(value);
             return !_simulation.Construction.IsAlive(id) ||
-                   _simulation.Construction.Observe(id).PlayerId != PlayerTeam;
+                   _simulation.ObserveGameplayBuilding(id).PlayerId != PlayerTeam;
         });
         var entities = new List<GameplaySelectionEntity>();
         foreach (var unit in _selectedUnits.OrderBy(value => value))
@@ -2129,7 +2129,7 @@ public partial class RtsDemo : Node2D
         {
             var buildingId = new GameplayBuildingId(buildingValue);
             if (!_simulation.Construction.IsAlive(buildingId)) continue;
-            var building = _simulation.Construction.Observe(buildingId);
+            var building = _simulation.ObserveGameplayBuilding(buildingId);
             if (building.PlayerId != PlayerTeam) continue;
             entities.Add(new GameplaySelectionEntity(
                 GameplaySelectionKind.Building,
@@ -2178,7 +2178,7 @@ public partial class RtsDemo : Node2D
         var buildings = active.Members
             .Select(value => new GameplayBuildingId(value.EntityId))
             .Where(value => _simulation.Construction.IsAlive(value))
-            .Select(value => _simulation.Construction.Observe(value))
+            .Select(value => _simulation.ObserveGameplayBuilding(value))
             .Where(value => value.PlayerId == PlayerTeam)
             .OrderBy(value => value.Id.Value)
             .ToArray();
@@ -2360,7 +2360,7 @@ public partial class RtsDemo : Node2D
                     {
                         var id = new GameplayBuildingId(member.EntityId);
                         if (!_simulation.Construction.IsAlive(id) ||
-                            _simulation.Construction.Observe(id).State ==
+                            _simulation.ObserveGameplayBuilding(id).State ==
                                 BuildingLifecycleState.Completed) continue;
                         if (_simulation.CancelConstruction(PlayerTeam, id))
                             _selectedBuildings.Remove(id.Value);
@@ -2580,7 +2580,7 @@ public partial class RtsDemo : Node2D
         {
             var id = new GameplayBuildingId(value);
             if (!_simulation.Construction.IsAlive(id) ||
-                _simulation.Construction.Observe(id).PlayerId != PlayerTeam)
+                _simulation.ObserveGameplayBuilding(id).PlayerId != PlayerTeam)
                 return false;
         }
         var succeeded = 0;
@@ -2787,7 +2787,7 @@ public partial class RtsDemo : Node2D
         }
         _playableDemoSmoke = false;
         var player = _simulation.Economy.Players.Snapshot(PlayerTeam);
-        var enemyFacilities = _simulation.Construction.CreateOverview()
+        var enemyFacilities = _simulation.CreateGameplayBuildingOverview()
             .Count(value => !value.IsTerminal &&
                 value.PlayerId == PlayableSkirmishScenario.EnemyId);
         var match = _simulation.Match.CreateSnapshot(
@@ -2939,7 +2939,7 @@ public partial class RtsDemo : Node2D
                 "operation-production-group-batch") &&
             _selectedBuildings.Count > 0)
         {
-            var selected = _simulation.Construction.Observe(
+            var selected = _simulation.ObserveGameplayBuilding(
                 new GameplayBuildingId(_selectedBuildings.Min()));
             _activeSelectionSubgroup = new SelectionSubgroupKey(
                 GameplaySelectionKind.Building, selected.Type.Id);

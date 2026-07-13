@@ -1619,7 +1619,7 @@ public sealed partial class MovementTestRig
         TestGameplayBuildingId building,
         bool queued = false)
     {
-        var snapshot = _simulation.Construction.Observe(
+        var snapshot = _simulation.ObserveGameplayBuilding(
             new GameplayBuildingId(building.Value));
         return (TestPlayerOrderCommandCode)_simulation.IssuePlayerSmartCommand(
             playerId,
@@ -1709,13 +1709,13 @@ public sealed partial class MovementTestRig
     public TestGameplayBuildingSnapshot ObserveGameplayBuilding(
         TestGameplayBuildingId building)
     {
-        var value = _simulation.Construction.Observe(
+        var value = _simulation.ObserveGameplayBuilding(
             new GameplayBuildingId(building.Value));
         return ToTestGameplayBuildingSnapshot(value);
     }
 
     public TestGameplayBuildingSnapshot[] ObserveGameplayBuildings() =>
-        _simulation.Construction.CreateOverview()
+        _simulation.CreateGameplayBuildingOverview()
             .Select(ToTestGameplayBuildingSnapshot)
             .ToArray();
 
@@ -1735,7 +1735,7 @@ public sealed partial class MovementTestRig
             value.Progress,
             value.Health,
             value.MaximumHealth,
-            value.Type.Armor,
+            value.EffectiveArmor,
             value.Type.Attributes,
             value.Type.ArmorUpgradePerLevel,
             new TestResourceNodeId(value.RefineryNode.Value),
@@ -1746,7 +1746,7 @@ public sealed partial class MovementTestRig
         int playerId,
         int typeId,
         bool completedOnly = true) =>
-        _simulation.Construction.CreateOverview().Count(value =>
+        _simulation.CreateGameplayBuildingOverview().Count(value =>
             value.PlayerId == playerId && value.Type.Id == typeId &&
             !value.IsTerminal &&
             (!completedOnly || value.State == BuildingLifecycleState.Completed));
@@ -2040,7 +2040,7 @@ public sealed partial class MovementTestRig
         TestGameplayBuildingId target,
         bool queued = false)
     {
-        var building = _simulation.Construction.Observe(
+        var building = _simulation.ObserveGameplayBuilding(
             new GameplayBuildingId(target.Value));
         _simulation.IssueSmartCommand(
             ToBackendIndices(units),
@@ -2296,7 +2296,7 @@ public sealed partial class MovementTestRig
         {
             var id = new GameplayBuildingId(value.Value);
             if (!_simulation.Construction.IsAlive(id) ||
-                _simulation.Construction.Observe(id).PlayerId != playerId)
+                _simulation.ObserveGameplayBuilding(id).PlayerId != playerId)
                 return false;
         }
         foreach (var value in buildings)

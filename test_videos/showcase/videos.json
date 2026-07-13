@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T12:40:41.4359698+08:00",
+    "generated_at":  "2026-07-13T13:15:34.6138203+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  134,
-    "case_count":  104,
+    "recording_count":  135,
+    "case_count":  105,
     "recordings":  [
+                       {
+                           "id":  "construction-under-build-defense",
+                           "display_name":  "Construction armor stays zero until the exact completion boundary",
+                           "batch":  "20260713_131501",
+                           "created_at":  "2026-07-13T13:15:34.1013703+08:00",
+                           "video":  "../20260713_131501/construction-under-build-defense.webm",
+                           "log":  "../20260713_131501/construction-under-build-defense.log",
+                           "bytes":  604975,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS construction-under-build-defense: ticks=690, progress=0.125,0.525,0.983,1.000, armor=0,0,0,6, preview=20,20,20,14, impact=20,20,20,14, fort=1, research=Success/Success, exact=True/True/True, hash=9A2DB845CEDC72A2/9A2DB845CEDC72A2/9A2DB845CEDC72A2, bytes=1597/3493",
+                           "metrics":  "ticks=690, progress=0.125,0.525,0.983,1.000, armor=0,0,0,6, preview=20,20,20,14, impact=20,20,20,14, fort=1, research=Success/Success, exact=True/True/True, hash=9A2DB845CEDC72A2/9A2DB845CEDC72A2/9A2DB845CEDC72A2, bytes=1597/3493"
+                       },
                        {
                            "id":  "construction-reservation-hard-commit",
                            "display_name":  "Reserved ghost allows transit, rejects overlap, then commits hard footprint",

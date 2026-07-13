@@ -167,6 +167,7 @@ public readonly record struct GameplayBuildingSnapshot(
     float Progress,
     float Health,
     float MaximumHealth,
+    float EffectiveArmor,
     EconomyResourceNodeId RefineryNode)
 {
     public bool IsTerminal => State is
@@ -852,7 +853,9 @@ public sealed class ConstructionSystem
         public GameplayBuildingSnapshot Snapshot() => new(
             Id, PlayerId, Type, Bounds, ReservationId, FootprintId,
             State, BuilderUnit, AccessPoint,
-            Progress, Health, Type.MaximumHealth, RefineryNode);
+            Progress, Health, Type.MaximumHealth,
+            State == BuildingLifecycleState.Completed ? Type.Armor : 0f,
+            RefineryNode);
 
         public ConstructionRuntimeEntry RuntimeSnapshot() => new(
             Id, PlayerId, Type, Bounds, ReservationId, FootprintId,
