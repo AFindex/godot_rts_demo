@@ -27,6 +27,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteCombat(writer, state.Combat, state.Units.Count);
         WriteProjectiles(writer, state.CombatProjectiles);
         WriteEconomy(writer, state.Economy, state.Units.Count);
+        WriteDiplomacy(writer, state.Diplomacy);
         WriteVisibility(writer, state.Visibility);
         WriteMatch(writer, state.Match);
         WriteConstruction(writer, state.Construction);
@@ -87,8 +88,11 @@ internal static class RuntimeHotSnapshotCodec
             var combat = ReadCombat(reader, capacity, units.Count);
             var projectiles = ReadProjectiles(reader, units.Count);
             var economy = ReadEconomy(reader, units.Count);
+            var diplomacy = ReadDiplomacy(reader);
+            var diplomacySystem = new PlayerDiplomacySystem();
+            diplomacySystem.RestoreRuntimeState(diplomacy);
             var visibility = ReadVisibility(reader);
-            var match = ReadMatch(reader, economy);
+            var match = ReadMatch(reader, economy, diplomacySystem);
             var construction = ReadConstruction(
                 reader, units.Count, dynamic.Footprints, economy);
             var production = ReadProduction(
@@ -113,6 +117,7 @@ internal static class RuntimeHotSnapshotCodec
                 Combat = combat,
                 CombatProjectiles = projectiles,
                 Economy = economy,
+                Diplomacy = diplomacy,
                 Visibility = visibility,
                 Match = match,
                 Construction = construction,
@@ -764,6 +769,35 @@ internal static class RuntimeHotSnapshotCodec
         }
     }
 
+    internal static void WriteDiplomacy(
+        BinaryWriter writer,
+        PlayerDiplomacyRuntimeSnapshot diplomacy)
+    {
+        writer.Write(diplomacy.Players.Length);
+        foreach (var entry in diplomacy.Players)
+        {
+            writer.Write(entry.PlayerId);
+            writer.Write(entry.AllianceId);
+            writer.Write(entry.SharedVision);
+        }
+    }
+
+    internal static PlayerDiplomacyRuntimeSnapshot ReadDiplomacy(
+        BinaryReader reader)
+    {
+        var count = ReadCount(reader, PlayerVisibilitySystem.MaximumPlayers - 1);
+        var players = new PlayerDiplomacyRuntimeEntry[count];
+        for (var index = 0; index < count; index++)
+        {
+            players[index] = new PlayerDiplomacyRuntimeEntry(
+                reader.ReadInt32(), reader.ReadInt32(), reader.ReadBoolean());
+        }
+        var result = new PlayerDiplomacyRuntimeSnapshot(players);
+        var validator = new PlayerDiplomacySystem();
+        validator.RestoreRuntimeState(result);
+        return result;
+    }
+
     private static void WriteVisibility(
         BinaryWriter writer,
         PlayerVisibilityRuntimeSnapshot visibility)
@@ -826,6 +860,7 @@ internal static class RuntimeHotSnapshotCodec
         writer.Write(match.StartedTick);
         writer.Write(match.CompletedTick);
         writer.Write(match.WinnerPlayerId);
+        writer.Write(match.WinnerAllianceId);
         writer.Write(match.Players.Length);
         foreach (var player in match.Players)
         {
@@ -838,12 +873,14 @@ internal static class RuntimeHotSnapshotCodec
 
     internal static MatchRuntimeSnapshot ReadMatch(
         BinaryReader reader,
-        EconomyRuntimeSnapshot economy)
+        EconomyRuntimeSnapshot economy,
+        PlayerDiplomacySystem diplomacy)
     {
         var phase = (MatchPhase)reader.ReadByte();
         var startedTick = reader.ReadInt64();
         var completedTick = reader.ReadInt64();
         var winner = reader.ReadInt32();
+        var winnerAlliance = reader.ReadInt32();
         var count = ReadCount(reader, PlayerVisibilitySystem.MaximumPlayers);
         var players = new MatchPlayerRuntimeEntry[count];
         var previousPlayer = 0;
@@ -864,7 +901,7 @@ internal static class RuntimeHotSnapshotCodec
                 value.Status == MatchPlayerStatus.Active &&
                     value.DefeatedTick != -1 ||
                 value.Status == MatchPlayerStatus.Victorious &&
-                    value.PlayerId != winner ||
+                    diplomacy.AllianceIdFor(value.PlayerId) != winnerAlliance ||
                 value.Status == MatchPlayerStatus.Defeated &&
                     (!value.EstablishedPresence || value.DefeatedTick < 0))
             {
@@ -876,20 +913,29 @@ internal static class RuntimeHotSnapshotCodec
             previousPlayer = value.PlayerId;
         }
         if (!Enum.IsDefined(phase) || startedTick < -1 || completedTick < -1 ||
-            winner < -1 ||
+            winner < -1 || winnerAlliance < -1 ||
             phase == MatchPhase.Setup &&
                 (startedTick != -1 || completedTick != -1 || winner != -1 ||
+                 winnerAlliance != -1 ||
                  players.Length != 0) ||
             phase == MatchPhase.Running &&
                 (startedTick != 0 || completedTick != -1 || winner != -1 ||
+                 winnerAlliance != -1 ||
                  players.Length < 2 || active == 0 || victorious != 0) ||
             phase == MatchPhase.Completed &&
                 (startedTick != 0 || completedTick < 0 || players.Length < 2 ||
                  active != 0) ||
-            winner >= 0 && victorious != 1 || winner < 0 && victorious != 0)
+            winnerAlliance >= 0 && victorious == 0 ||
+            winnerAlliance < 0 && victorious != 0 ||
+            winner >= 0 && victorious != 1 ||
+            winner >= 0 && !players.Any(value =>
+                value.PlayerId == winner &&
+                value.Status == MatchPlayerStatus.Victorious) ||
+            winner < 0 && victorious == 1)
             throw new InvalidDataException();
         return new MatchRuntimeSnapshot(
-            phase, startedTick, completedTick, winner, players);
+            phase, startedTick, completedTick, winner, players,
+            winnerAlliance);
     }
 
     internal static ConstructionRuntimeSnapshot ReadConstruction(

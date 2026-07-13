@@ -211,11 +211,15 @@ PlayerKnown 边界现已落地：Preview/Issue 忽略己方软占位和当前不
 
 公开反馈使用派生 `PublicConstructionStatus`，只暴露 `None / ClearingFriendlyUnits / KnownOccupant / WaitingForClearance`，不发布 Authority blocker ID、阵营或隐藏原因。`construction-player-known-placement` 经正式 Preview、Build、Hold、Move、PlayerView 门面验证友军内预放置、可见敌军拒绝、隐藏敌军无预览差异、到场 Authority 等待、解除后完工及 Package/Hot 规范往返。专项 AV1/WebM 位于 `test_videos/20260713_194851/`。
 
-当前完成边界新增 D0：`UnitPerceptionProfileSnapshot` 独立声明 `None/Cloaked/Burrowed` 与 DetectionRange；视野网格旁维护派生侦测网格。PlayerView、显式攻击、PlayerKnown 放置、Authority 通用反馈和隐蔽目标自动索敌均消费同一感知合同；Burrowed/普通单位接触豁免不影响建筑与地形。Replay Package v27、Hot Snapshot v26、State Hash v27 保存并校验该权威 Profile。
+当前完成边界新增 D0：`UnitPerceptionProfileSnapshot` 独立声明 `None/Cloaked/Burrowed` 与 DetectionRange；视野网格旁维护派生侦测网格。PlayerView、显式攻击、PlayerKnown 放置、Authority 通用反馈和隐蔽目标自动索敌均消费同一感知合同；Burrowed/普通单位接触豁免不影响建筑与地形。
 
 `concealment-detection-construction` 的 1280×720、212 帧 AV1/WebM 位于 `test_videos/20260713_204122/`；专项与 115/115 全量黑盒回归均通过。
 
-尚未完成：盟友最终分类与共享视野，以及 E0 对 Hold、Harvest、可见敌军等动作的实机策略冻结。Cloak/Burrow 的开关、能量/研究、扫描和特殊单位例外属于后续内容能力，不重写 D0 或施工入口。
+D1 阵营合同已经完成：`PlayerDiplomacySystem` 提供 Own/Ally/Neutral/Enemy、显式 alliance ID 和联盟级 Shared Vision；视野与 Detection 共享、玩家视图、显式/自动攻击、SmartCommand、施工阻挡和联盟胜负均消费同一关系查询。盟友施工占位独立分类为 `AuthorityAlly` 并保守 Wait，不在 E0 前擅自移动盟友。Replay Package v28、Hot Snapshot v27、State Hash v28 保存并校验外交、联盟胜方和多 Victorious 状态。
+
+`alliance-shared-vision-team-victory` 的 2v2 黑盒覆盖共享侦测、`ConcealedAlly/ConcealedDetected`、友军攻击拒绝、盟友 `UnitOverlap` 和 alliance 100 双人胜利；116/116 全量 Godot 黑盒回归通过。专项 1280×720、212 帧 AV1/WebM 位于 `test_videos/20260713_211815/`；全库媒体门禁通过 149 个视频、91 个 manifest、148 个场景引用，均为 AV1。
+
+尚未完成：E0 对 Hold、Harvest、可见敌军和盟友自动让位动作的 SC2 实机策略冻结。Cloak/Burrow 的开关、能量/研究、扫描和特殊单位例外属于后续内容能力，不重写 D0/D1 或施工入口。
 
 ### C3：确定性友军让位（有限工程闭环完成）
 
@@ -239,7 +243,7 @@ PlayerKnown 边界现已落地：Preview/Issue 忽略己方软占位和当前不
 
 `construction-multi-unit-eviction` 只使用正式 Build、Hold、ResumeConstruction、Move、Stop 和稳定观察快照，覆盖四档尺寸与 `1/8/8/32` 占位单位；观察到的临时撤离数精确为 `1/8/8/32`，Hold 建筑保持 `BlockedAtStart` 直到玩家解除，活动 Move 和一个后续队列项在让位期间保持并最终完成。Replay 与活动 32 人撤离期间的 Hot Restore 逐 Tick 一致。专项 AV1/WebM 位于 `test_videos/20260713_185509/`。
 
-系统覆盖层进入 Replay Package v26、Hot Snapshot v25 和 State Hash v26；Unit Command Log 保持 v4，因为让位不是玩家意图。C3 的工程机制至此不再需要重写；普通战争迷雾敌军的预览/到场边界已补齐。后续 D0 已补 Cloak/Burrow/Detection；剩余是 E0 决定策略表和 Ally 矩阵。
+系统覆盖层进入 Replay Package v26、Hot Snapshot v25 和 State Hash v26；Unit Command Log 保持 v4，因为让位不是玩家意图。C3 的工程机制至此不再需要重写；普通战争迷雾敌军的预览/到场边界已补齐。后续 D0 已补 Cloak/Burrow/Detection，D1 已补 Ally/共享视野和保守 `AuthorityAlly`；剩余是 E0 决定动作策略表。
 
 ### C4：Reservation 最小持久化骨架与重演闭环（已完成，2026-07-13）
 
@@ -364,7 +368,7 @@ Replay Package 升级 v25、Hot Snapshot 升级 v24、State Hash 升级 v25；Un
 
 只有实测证明不同建筑出口规则影响玩法时，才新增数据化出口 Profile；不为每座建筑手写分支。
 
-X1 至此收口，并满足本计划最后一个可在当时证据下执行的 P1 工作包。本轮 SC2 核心对齐停止继续添加启发式：C2/C3 的 Hold/Harvest/敌军动作仍等待 E0；后来因真实施工依赖补完的 Visibility/Detection 基础记录为 D0。其余 P2 只由真实内容需求触发。
+X1 至此收口，并满足本计划最后一个可在当时证据下执行的 P1 工作包。本轮 SC2 核心对齐停止继续添加启发式：C2/C3 的 Hold/Harvest/敌军/盟友动作仍等待 E0；后来因真实施工依赖补完的 Visibility/Detection 为 D0，Alliance/Shared Vision 为 D1。其余 P2 只由真实内容需求触发。
 
 ## 8. P2 内容层扩展
 
@@ -372,7 +376,7 @@ P2 不作为核心对齐收口条件，按实际玩法需求逐项启用：
 
 1. `ConstructionMethodKind` 扩展 `ConsumeWorker`，完整验证 ContinuousWorker、StartAndRelease、ConsumeWorker。
 2. Power、Creep、Add-on 空间、Lift/Land 作为 Placement Rule Provider，不侵入通用 Validator。
-3. 普通战争迷雾和 Cloak/Burrow/Detection 的 PlayerKnown 矩阵已经启用；后续 Visibility 内容扩展只补盟友关系、能力开关、扫描与种族例外，不重写施工入口。
+3. 普通战争迷雾、Cloak/Burrow/Detection 和 Ally/Shared Vision 的 PlayerKnown 矩阵已经启用；后续 Visibility 内容扩展只补能力开关、扫描与种族例外，不重写施工入口。
 4. Gold Mineral、MULE 召唤/寿命/修理、Extractor Trick 和种族气矿设施通过资源/能力 Profile 扩展；不得改变 E2 已冻结的普通/MULE 独立采集通道。
 5. Connectivity Guard 改为地图/AI 安全策略，玩家正式规则允许战术建筑墙；不能继续把“禁止断路”描述成 SC2 规则。
 6. 单位加速度与横向响应只在录制的对照操作暴露可重复差异后进入独立手感包。

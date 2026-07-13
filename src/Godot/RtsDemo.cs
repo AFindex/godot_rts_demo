@@ -736,11 +736,7 @@ public partial class RtsDemo : Node2D
                     : completed ? color.Lightened(0.25f) : color,
                 false,
                 reservationGhost ? 2f : 3f);
-            var teamColor = building.PlayerId == 1
-                ? new Color("4da3ff")
-                : building.PlayerId == 2
-                    ? new Color("f05b64")
-                    : new Color("d6d6d6");
+            var teamColor = PlayerRelationColor(building.PlayerId);
             DrawRect(rect.Grow(3f), teamColor, false, 2f);
             DrawBuildingIdentity(building.Type.Function, rect, teamColor);
             if (_selectedBuildings.Contains(building.Id.Value))
@@ -1296,8 +1292,9 @@ public partial class RtsDemo : Node2D
                      _visibleBuildingIds.Contains(building.Id.Value)) &&
                     building.Bounds.Contains(position))
                 {
-                    var ownBuilding = building.PlayerId ==
-                                      _simulation.Combat.Teams[selectedUnit];
+                    var ownBuilding = _simulation.Diplomacy.IsFriendly(
+                        _simulation.Combat.Teams[selectedUnit],
+                        building.PlayerId);
                     return new SmartCommandTarget(
                         ownBuilding
                             ? SmartCommandTargetKind.FriendlyBuilding
@@ -1322,8 +1319,9 @@ public partial class RtsDemo : Node2D
             }
             return new SmartCommandTarget(SmartCommandTargetKind.Ground, position);
         }
-        var kind = _simulation.Combat.Teams[selectedUnit] ==
-                   _simulation.Combat.Teams[best]
+        var kind = _simulation.Diplomacy.IsFriendly(
+            _simulation.Combat.Teams[selectedUnit],
+            _simulation.Combat.Teams[best])
             ? SmartCommandTargetKind.FriendlyUnit
             : SmartCommandTargetKind.EnemyUnit;
         return new SmartCommandTarget(kind, _simulation.Units.Positions[best], best);
@@ -1455,9 +1453,7 @@ public partial class RtsDemo : Node2D
             }
             if (_simulation.Combat.Teams[unit] != 0)
             {
-                color = _simulation.Combat.Teams[unit] == 1
-                    ? new Color("4da3ff")
-                    : new Color("f05b64");
+                color = PlayerRelationColor(_simulation.Combat.Teams[unit]);
                 if (_simulation.Combat.Phases[unit] == CombatPhase.Attacking)
                 {
                     color = color.Lightened(0.25f);
@@ -1534,6 +1530,19 @@ public partial class RtsDemo : Node2D
                     new Color("65f5ff"), 2f);
             }
         }
+    }
+
+    private Color PlayerRelationColor(int ownerPlayerId)
+    {
+        if (_simulation is null || ownerPlayerId <= 0)
+            return new Color("d6d6d6");
+        return _simulation.Diplomacy.Relation(PlayerTeam, ownerPlayerId) switch
+        {
+            PlayerEntityRelation.Own => new Color("4da3ff"),
+            PlayerEntityRelation.Ally => new Color("45d6c6"),
+            PlayerEntityRelation.Enemy => new Color("f05b64"),
+            _ => new Color("d6d6d6")
+        };
     }
 
     private void DrawWorkerEconomyState(
@@ -2043,6 +2052,8 @@ public partial class RtsDemo : Node2D
                     $"Prod{value.ProductionFacilities}")),
             MatchPhase.Completed when match.WinnerPlayerId >= 0 =>
                 $"MATCH COMPLETE  WINNER P{match.WinnerPlayerId}",
+            MatchPhase.Completed when match.WinnerAllianceId >= 0 =>
+                $"MATCH COMPLETE  WINNER ALLIANCE {match.WinnerAllianceId}",
             MatchPhase.Completed => "MATCH COMPLETE  DRAW",
             _ => throw new ArgumentOutOfRangeException()
         };

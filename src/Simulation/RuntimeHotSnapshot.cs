@@ -28,6 +28,7 @@ internal sealed class SimulationRuntimeStateCapture
     public required CombatStore Combat { get; init; }
     public required CombatProjectileRuntimeSnapshot CombatProjectiles { get; init; }
     public required EconomyRuntimeSnapshot Economy { get; init; }
+    public required PlayerDiplomacyRuntimeSnapshot Diplomacy { get; init; }
     public required PlayerVisibilityRuntimeSnapshot Visibility { get; init; }
     public required MatchRuntimeSnapshot Match { get; init; }
     public required ConstructionRuntimeSnapshot Construction { get; init; }
@@ -45,7 +46,7 @@ internal sealed class SimulationRuntimeStateCapture
 /// </summary>
 public sealed class SimulationHotSnapshot
 {
-    public const int CurrentFormatVersion = 26;
+    public const int CurrentFormatVersion = 27;
 
     internal SimulationHotSnapshot(
         ulong packageHash,

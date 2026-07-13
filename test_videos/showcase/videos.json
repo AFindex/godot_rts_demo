@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T20:41:47.9856599+08:00",
+    "generated_at":  "2026-07-13T21:18:32.8721871+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  147,
-    "case_count":  116,
+    "recording_count":  148,
+    "case_count":  117,
     "recordings":  [
+                       {
+                           "id":  "alliance-shared-vision-team-victory",
+                           "display_name":  "2v2 alliance relations, shared detection and team victory",
+                           "batch":  "20260713_211815",
+                           "created_at":  "2026-07-13T21:18:32.2773964+08:00",
+                           "video":  "../20260713_211815/alliance-shared-vision-team-victory.webm",
+                           "log":  "../20260713_211815/alliance-shared-vision-team-victory.log",
+                           "bytes":  1185295,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS alliance-shared-vision-team-victory: ticks=420, shared=True, relations=True, friendlyFire=True, detection=True, placementWait=True/UnitOverlap, match=Completed[P1:Victorious/1,P2:Victorious/1,P3:Defeated/0,P4:Defeated/0], buildings=[Completed,Completed,Destroyed,Destroyed], winner=A100/P-1, versions=package28/hot27, exact=True/True hash=AF1B8DB8C253AB74/R6C9C57D10A59BD5E/HAF1B8DB8C253AB74",
+                           "metrics":  "ticks=420, shared=True, relations=True, friendlyFire=True, detection=True, placementWait=True/UnitOverlap, match=Completed[P1:Victorious/1,P2:Victorious/1,P3:Defeated/0,P4:Defeated/0], buildings=[Completed,Completed,Destroyed,Destroyed], winner=A100/P-1, versions=package28/hot27, exact=True/True hash=AF1B8DB8C253AB74/R6C9C57D10A59BD5E/HAF1B8DB8C253AB74"
+                       },
                        {
                            "id":  "concealment-detection-construction",
                            "display_name":  "Separate sight, detection and authority construction blocking",

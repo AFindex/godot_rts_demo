@@ -59,6 +59,7 @@ public enum ReplayPackageValidationCode : byte
     InvalidUnitManifest,
     InvalidBuildingManifest,
     InvalidEconomyManifest,
+    InvalidDiplomacyManifest,
     InvalidConstructionManifest,
     InvalidProductionManifest,
     InvalidTechnologyManifest,
@@ -88,7 +89,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 27;
+    public const int CurrentFormatVersion = 28;
 
     public SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -97,6 +98,7 @@ public sealed class SimulationReplayPackageSnapshot
         ReplayInitialUnit[] units,
         ReplayInitialBuilding[] buildings,
         EconomyRuntimeSnapshot economy,
+        PlayerDiplomacyRuntimeSnapshot diplomacy,
         ConstructionRuntimeSnapshot construction,
         ProductionRuntimeSnapshot production,
         TechnologyRuntimeSnapshot technology,
@@ -113,6 +115,7 @@ public sealed class SimulationReplayPackageSnapshot
         Units = units;
         Buildings = buildings;
         Economy = economy;
+        Diplomacy = diplomacy;
         Construction = construction;
         Production = production;
         Technology = technology;
@@ -133,6 +136,7 @@ public sealed class SimulationReplayPackageSnapshot
     public ReplayInitialUnit[] Units { get; }
     public ReplayInitialBuilding[] Buildings { get; }
     public EconomyRuntimeSnapshot Economy { get; }
+    public PlayerDiplomacyRuntimeSnapshot Diplomacy { get; }
     public ConstructionRuntimeSnapshot Construction { get; }
     public ProductionRuntimeSnapshot Production { get; }
     public TechnologyRuntimeSnapshot Technology { get; }
@@ -257,6 +261,22 @@ public sealed class SimulationReplayPackageSnapshot
                 return false;
             }
 
+            PlayerDiplomacyRuntimeSnapshot diplomacy;
+            PlayerDiplomacySystem diplomacySystem;
+            try
+            {
+                diplomacy = RuntimeHotSnapshotCodec.ReadDiplomacy(reader);
+                diplomacySystem = new PlayerDiplomacySystem();
+                diplomacySystem.RestoreRuntimeState(diplomacy);
+            }
+            catch (Exception exception) when (
+                exception is InvalidOperationException or InvalidDataException)
+            {
+                validation = new ReplayPackageValidationResult(
+                    ReplayPackageValidationCode.InvalidDiplomacyManifest);
+                return false;
+            }
+
             ConstructionRuntimeSnapshot construction;
             try
             {
@@ -300,7 +320,8 @@ public sealed class SimulationReplayPackageSnapshot
             MatchRuntimeSnapshot match;
             try
             {
-                match = RuntimeHotSnapshotCodec.ReadMatch(reader, economy);
+                match = RuntimeHotSnapshotCodec.ReadMatch(
+                    reader, economy, diplomacySystem);
             }
             catch (InvalidDataException)
             {
@@ -430,6 +451,7 @@ public sealed class SimulationReplayPackageSnapshot
                 units,
                 buildings,
                 economy,
+                diplomacy,
                 construction,
                 production,
                 technology,
@@ -478,6 +500,7 @@ public sealed class SimulationReplayPackageSnapshot
         }
         RuntimeHotSnapshotCodec.WriteEconomy(
             writer, Economy, Units.Length);
+        RuntimeHotSnapshotCodec.WriteDiplomacy(writer, Diplomacy);
         RuntimeHotSnapshotCodec.WriteConstruction(writer, Construction);
         RuntimeHotSnapshotCodec.WriteProduction(writer, Production);
         RuntimeHotSnapshotCodec.WriteTechnology(writer, Technology);
@@ -662,6 +685,7 @@ public sealed class SimulationReplayPackageRecorder
     private readonly ReplayInitialUnit[] _units;
     private readonly ReplayInitialBuilding[] _buildings;
     private readonly EconomyRuntimeSnapshot _economy;
+    private readonly PlayerDiplomacyRuntimeSnapshot _diplomacy;
     private readonly ConstructionRuntimeSnapshot _construction;
     private readonly ProductionRuntimeSnapshot _production;
     private readonly TechnologyRuntimeSnapshot _technology;
@@ -683,6 +707,7 @@ public sealed class SimulationReplayPackageRecorder
         _units = CaptureUnits(simulation);
         _economy = simulation.Economy.CaptureRuntimeState(
             simulation.Units.Count);
+        _diplomacy = simulation.Diplomacy.CaptureRuntimeState();
         _construction = simulation.Construction.CaptureRuntimeState();
         _production = simulation.Production.CaptureRuntimeState();
         _technology = simulation.Technology.CaptureRuntimeState();
@@ -721,6 +746,7 @@ public sealed class SimulationReplayPackageRecorder
         _units.ToArray(),
         _buildings.ToArray(),
         _economy,
+        _diplomacy,
         _construction,
         _production,
         _technology,
@@ -844,6 +870,17 @@ public static class SimulationReplayPackageFactory
         }
         try
         {
+            simulation.Diplomacy.RestoreRuntimeState(package.Diplomacy);
+        }
+        catch (InvalidOperationException)
+        {
+            simulation = null;
+            validation = new ReplayPackageValidationResult(
+                ReplayPackageValidationCode.InvalidDiplomacyManifest);
+            return false;
+        }
+        try
+        {
             simulation.Construction.RestoreRuntimeState(package.Construction);
         }
         catch (InvalidOperationException)
@@ -885,7 +922,8 @@ public static class SimulationReplayPackageFactory
         try
         {
             simulation.Match.RestoreRuntimeState(
-                package.Match, simulation.Economy.Players);
+                package.Match, simulation.Economy.Players,
+                simulation.Diplomacy);
         }
         catch (InvalidOperationException)
         {

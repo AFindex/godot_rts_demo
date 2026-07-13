@@ -134,6 +134,7 @@ public static class TestShowcaseCatalog
             M("player-visibility-authority", "视野与命令权限", "比赛规则", "验证战争迷雾、探索记忆和不可见目标权限。"),
             M("construction-player-known-placement", "施工已知信息边界", "建造生产", "验证友军内预放置、可见敌军拒绝、隐藏敌军不改变预览，以及到场后的权威重验和统一反馈。"),
             M("concealment-detection-construction", "隐形侦测与施工阻挡", "比赛规则", "验证可见地面与单位侦测分层、埋地接触、权威施工阻挡、显形后命令权限及确定性恢复。"),
+            M("alliance-shared-vision-team-victory", "2v2 阵营与共享视野", "比赛规则", "验证 Self/Ally/Enemy 关系、盟友共享视野和侦测、友军伤害拒绝、盟友施工占位及联盟共同胜利。"),
             M("match-capability-elimination", "比赛失败与终局", "比赛规则", "验证建立存在、基地损失、玩家失败和胜负锁定。"),
             M("ai-modular-skirmish", "模块化 AI 完整对局", "AI 对局", "验证单 AI 从经济发展、科技扩张到摧毁敌方基地。"),
             M("ai-dual-runtime-replay", "双 AI 热恢复与回放", "AI 对局", "验证错峰双 AI 的策略未来态、热恢复和纯命令回放。"),

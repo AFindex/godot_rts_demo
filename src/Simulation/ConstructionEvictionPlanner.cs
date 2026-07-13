@@ -10,6 +10,7 @@ public enum ConstructionBlockerKind : byte
     FriendlyEconomyTask,
     FriendlyAssignedBuilder,
     FriendlyOtherOrder,
+    AuthorityAlly,
     AuthorityEnemy
 }
 
@@ -26,10 +27,12 @@ public readonly record struct ConstructionBlockerPolicy(
     ConstructionBlockerAction FriendlyEconomyTask,
     ConstructionBlockerAction FriendlyAssignedBuilder,
     ConstructionBlockerAction FriendlyOtherOrder,
+    ConstructionBlockerAction AuthorityAlly,
     ConstructionBlockerAction AuthorityEnemy)
 {
     public static ConstructionBlockerPolicy ProjectDefault { get; } = new(
         ConstructionBlockerAction.BeginEviction,
+        ConstructionBlockerAction.Wait,
         ConstructionBlockerAction.Wait,
         ConstructionBlockerAction.Wait,
         ConstructionBlockerAction.Wait,
@@ -46,6 +49,7 @@ public readonly record struct ConstructionBlockerPolicy(
             ConstructionBlockerKind.FriendlyAssignedBuilder =>
                 FriendlyAssignedBuilder,
             ConstructionBlockerKind.FriendlyOtherOrder => FriendlyOtherOrder,
+            ConstructionBlockerKind.AuthorityAlly => AuthorityAlly,
             ConstructionBlockerKind.AuthorityEnemy => AuthorityEnemy,
             _ => ConstructionBlockerAction.Wait
         };

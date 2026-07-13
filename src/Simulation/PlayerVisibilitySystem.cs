@@ -12,6 +12,7 @@ public enum MapVisibility : byte
 public enum PlayerEntityRelation : byte
 {
     Own,
+    Ally,
     Enemy,
     Neutral
 }
@@ -20,6 +21,7 @@ public enum PlayerConcealmentState : byte
 {
     NotConcealed,
     ConcealedOwn,
+    ConcealedAlly,
     ConcealedDetected
 }
 
@@ -107,11 +109,13 @@ public sealed class PlayerVisibilitySystem
     public const float BuildingVisionRadius = 256f;
     public const float TownHallVisionRadius = 320f;
     private readonly SimRect _bounds;
+    private readonly PlayerDiplomacySystem _diplomacy;
     private readonly Dictionary<int, VisibilityGrid> _players = [];
     private readonly Action<int, Vector2, BuildingFunctionKind> _revealBuilding;
 
     public PlayerVisibilitySystem(
         SimRect bounds,
+        PlayerDiplomacySystem diplomacy,
         float cellSize = DefaultCellSize)
     {
         if (bounds.Width <= 0f || bounds.Height <= 0f ||
@@ -120,6 +124,7 @@ public sealed class PlayerVisibilitySystem
             throw new ArgumentOutOfRangeException(nameof(cellSize));
         }
         _bounds = bounds;
+        _diplomacy = diplomacy;
         CellSize = cellSize;
         Columns = (int)MathF.Ceiling(bounds.Width / cellSize);
         Rows = (int)MathF.Ceiling(bounds.Height / cellSize);
@@ -149,10 +154,10 @@ public sealed class PlayerVisibilitySystem
             if (!units.Alive[unit] || playerId <= 0 ||
                 playerId >= MaximumPlayers)
                 continue;
-            RevealCircle(playerId, units.Positions[unit], UnitVisionRadius);
+            RevealVisionSource(playerId, units.Positions[unit], UnitVisionRadius);
             if (combat.DetectionRanges[unit] > 0f)
             {
-                RevealDetectionCircle(
+                RevealDetectionSource(
                     playerId,
                     units.Positions[unit],
                     combat.DetectionRanges[unit]);
@@ -175,7 +180,7 @@ public sealed class PlayerVisibilitySystem
             {
                 continue;
             }
-            RevealDetectionCircle(
+            RevealDetectionSource(
                 playerId,
                 units.Positions[unit],
                 combat.DetectionRanges[unit]);
@@ -207,12 +212,16 @@ public sealed class PlayerVisibilitySystem
     {
         if ((uint)unit >= (uint)units.Count || !units.Alive[unit])
             return false;
-        if (combat.Teams[unit] == playerId)
+        var relation = _diplomacy.Relation(playerId, combat.Teams[unit]);
+        if (relation == PlayerEntityRelation.Own ||
+            relation == PlayerEntityRelation.Ally &&
+            _diplomacy.SharesVision(playerId, combat.Teams[unit]))
             return true;
         var position = units.Positions[unit];
         if (!IsVisible(playerId, position))
             return false;
-        return combat.ConcealmentKinds[unit] == UnitConcealmentKind.None ||
+        return relation == PlayerEntityRelation.Ally ||
+               combat.ConcealmentKinds[unit] == UnitConcealmentKind.None ||
                IsDetected(playerId, position);
     }
 
@@ -229,8 +238,11 @@ public sealed class PlayerVisibilitySystem
         var concealment = combat.ConcealmentKinds[unit];
         if (concealment == UnitConcealmentKind.None)
             return PlayerConcealmentState.NotConcealed;
-        return combat.Teams[unit] == playerId
+        var relation = _diplomacy.Relation(playerId, combat.Teams[unit]);
+        return relation == PlayerEntityRelation.Own
             ? PlayerConcealmentState.ConcealedOwn
+            : relation == PlayerEntityRelation.Ally
+                ? PlayerConcealmentState.ConcealedAlly
             : IsUnitVisible(playerId, unit, units, combat)
                 ? PlayerConcealmentState.ConcealedDetected
                 : throw new InvalidOperationException(
@@ -309,6 +321,27 @@ public sealed class PlayerVisibilitySystem
         RevealCircle(playerId, center, radius, detection: true);
     }
 
+    private void RevealVisionSource(int sourcePlayerId, Vector2 center, float radius)
+    {
+        for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+        {
+            if (_diplomacy.SharesVision(viewer, sourcePlayerId))
+                RevealCircle(viewer, center, radius);
+        }
+    }
+
+    private void RevealDetectionSource(
+        int sourcePlayerId,
+        Vector2 center,
+        float radius)
+    {
+        for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+        {
+            if (_diplomacy.SharesVision(viewer, sourcePlayerId))
+                RevealDetectionCircle(viewer, center, radius);
+        }
+    }
+
     private void RevealCircle(
         int playerId,
         Vector2 center,
@@ -364,7 +397,7 @@ public sealed class PlayerVisibilitySystem
     {
         if (playerId <= 0 || playerId >= MaximumPlayers)
             return;
-        RevealCircle(
+        RevealVisionSource(
             playerId, center,
             function == BuildingFunctionKind.TownHall
                 ? TownHallVisionRadius

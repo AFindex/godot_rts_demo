@@ -368,7 +368,16 @@ public enum TestPlayerConcealmentState : byte
 {
     NotConcealed,
     ConcealedOwn,
+    ConcealedAlly,
     ConcealedDetected
+}
+
+public enum TestPlayerEntityRelation : byte
+{
+    Own,
+    Ally,
+    Enemy,
+    Neutral
 }
 
 public readonly record struct TestPerceptionProfile(
@@ -410,11 +419,13 @@ public enum TestPublicConstructionStatus : byte
 
 public readonly record struct TestPlayerBuildingView(
     TestGameplayBuildingId BuildingId,
-    TestPublicConstructionStatus ConstructionStatus);
+    TestPublicConstructionStatus ConstructionStatus,
+    TestPlayerEntityRelation Relation);
 
 public readonly record struct TestPlayerUnitView(
     TestUnitId Unit,
-    TestPlayerConcealmentState ConcealmentState);
+    TestPlayerConcealmentState ConcealmentState,
+    TestPlayerEntityRelation Relation);
 
 public readonly record struct TestPlayerViewSnapshot(
     int PlayerId,
@@ -457,7 +468,8 @@ public readonly record struct TestMatchSnapshot(
     TestMatchPhase Phase,
     long CompletedTick,
     int WinnerPlayerId,
-    TestPlayerCapabilitySnapshot[] Players);
+    TestPlayerCapabilitySnapshot[] Players,
+    int WinnerAllianceId);
 
 public readonly record struct TestEconomyBaseSnapshot(
     TestEconomyBaseId Id,
@@ -1647,12 +1659,14 @@ public sealed partial class MovementTestRig
             view.Units.Select(value => new TestUnitId(value.UnitId)).ToArray(),
             view.Units.Select(value => new TestPlayerUnitView(
                 new TestUnitId(value.UnitId),
-                (TestPlayerConcealmentState)value.ConcealmentState)).ToArray(),
+                (TestPlayerConcealmentState)value.ConcealmentState,
+                (TestPlayerEntityRelation)value.Relation)).ToArray(),
             view.Buildings.Select(value =>
                 new TestGameplayBuildingId(value.BuildingId.Value)).ToArray(),
             view.Buildings.Select(value => new TestPlayerBuildingView(
                 new TestGameplayBuildingId(value.BuildingId.Value),
-                (TestPublicConstructionStatus)value.ConstructionStatus))
+                (TestPublicConstructionStatus)value.ConstructionStatus,
+                (TestPlayerEntityRelation)value.Relation))
                 .ToArray(),
             view.Resources.Select(value => new TestPlayerResourceView(
                 new TestResourceNodeId(value.NodeId.Value),
@@ -1668,6 +1682,12 @@ public sealed partial class MovementTestRig
 
     public void StartMatch(params int[] playerIds) =>
         _simulation.StartMatch(playerIds);
+
+    public void ConfigureAlliance(
+        int allianceId,
+        bool sharedVision,
+        params int[] playerIds) =>
+        _simulation.ConfigureAlliance(allianceId, sharedVision, playerIds);
 
     public TestMatchSnapshot ObserveMatch()
     {
@@ -1691,7 +1711,8 @@ public sealed partial class MovementTestRig
                     value.Workers,
                     value.CombatUnits,
                     value.HasAnyProduction,
-                    value.IsEliminationRisk)).ToArray());
+                    value.IsEliminationRisk)).ToArray(),
+            snapshot.WinnerAllianceId);
     }
 
     public TestPlayerOrderCommandCode PlayerMove(
@@ -2878,6 +2899,7 @@ public sealed partial class MovementTestRig
             source.Units.ToArray(),
             source.Buildings.ToArray(),
             source.Economy,
+            source.Diplomacy,
             source.Construction,
             source.Production,
             source.Technology,
@@ -3036,6 +3058,7 @@ public sealed partial class MovementTestRig
             source.Units.ToArray(),
             source.Buildings.ToArray(),
             source.Economy,
+            source.Diplomacy,
             source.Construction,
             source.Production,
             source.Technology,

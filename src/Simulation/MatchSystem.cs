@@ -37,11 +37,12 @@ public sealed record MatchSnapshot(
     long StartedTick,
     long CompletedTick,
     int WinnerPlayerId,
-    PlayerCapabilitySnapshot[] Players)
+    PlayerCapabilitySnapshot[] Players,
+    int WinnerAllianceId = -1)
 {
     public bool IsRunning => Phase == MatchPhase.Running;
     public bool IsCompleted => Phase == MatchPhase.Completed;
-    public bool IsDraw => IsCompleted && WinnerPlayerId < 0;
+    public bool IsDraw => IsCompleted && WinnerAllianceId < 0;
 }
 
 public readonly record struct MatchPlayerRuntimeEntry(
@@ -55,7 +56,8 @@ public sealed record MatchRuntimeSnapshot(
     long StartedTick,
     long CompletedTick,
     int WinnerPlayerId,
-    MatchPlayerRuntimeEntry[] Players);
+    MatchPlayerRuntimeEntry[] Players,
+    int WinnerAllianceId = -1);
 
 internal readonly record struct PlayerBuildingCapabilities(
     int Active,
@@ -72,6 +74,7 @@ public sealed class MatchSystem
     public long StartedTick { get; private set; } = -1;
     public long CompletedTick { get; private set; } = -1;
     public int WinnerPlayerId { get; private set; } = -1;
+    public int WinnerAllianceId { get; private set; } = -1;
 
     public void Start(
         long tick,
@@ -99,7 +102,8 @@ public sealed class MatchSystem
 
     public void Update(
         long tick,
-        ConstructionSystem construction)
+        ConstructionSystem construction,
+        PlayerDiplomacySystem diplomacy)
     {
         if (Phase != MatchPhase.Running)
             return;
@@ -120,13 +124,20 @@ public sealed class MatchSystem
             return;
         var active = _players.Where(value =>
             value.Status == MatchPlayerStatus.Active).ToArray();
-        if (active.Length > 1)
+        var activeAlliances = active
+            .Select(value => diplomacy.AllianceIdFor(value.PlayerId))
+            .Distinct()
+            .ToArray();
+        if (activeAlliances.Length > 1)
             return;
         Phase = MatchPhase.Completed;
         CompletedTick = tick;
         WinnerPlayerId = active.Length == 1 ? active[0].PlayerId : -1;
-        if (active.Length == 1)
-            active[0].Status = MatchPlayerStatus.Victorious;
+        WinnerAllianceId = activeAlliances.Length == 1
+            ? activeAlliances[0]
+            : -1;
+        for (var index = 0; index < active.Length; index++)
+            active[index].Status = MatchPlayerStatus.Victorious;
     }
 
     public bool CanIssueCommands(int playerId) =>
@@ -167,7 +178,8 @@ public sealed class MatchSystem
                 buildings.Production, buildings.Research, workers, combatUnits);
         }
         return new MatchSnapshot(
-            Phase, StartedTick, CompletedTick, WinnerPlayerId, players);
+            Phase, StartedTick, CompletedTick, WinnerPlayerId, players,
+            WinnerAllianceId);
     }
 
     public MatchRuntimeSnapshot CaptureRuntimeState() => new(
@@ -177,20 +189,27 @@ public sealed class MatchSystem
         WinnerPlayerId,
         _players.Select(value => new MatchPlayerRuntimeEntry(
             value.PlayerId, value.Status, value.EstablishedPresence,
-            value.DefeatedTick)).ToArray());
+            value.DefeatedTick)).ToArray(),
+        WinnerAllianceId);
 
     public void RestoreRuntimeState(
         MatchRuntimeSnapshot snapshot,
-        PlayerEconomyStore economy)
+        PlayerEconomyStore economy,
+        PlayerDiplomacySystem diplomacy)
     {
         if (!Enum.IsDefined(snapshot.Phase) || snapshot.StartedTick < -1 ||
             snapshot.CompletedTick < -1 || snapshot.WinnerPlayerId < -1 ||
+            snapshot.WinnerAllianceId < -1 ||
             snapshot.Phase == MatchPhase.Setup &&
                 (snapshot.StartedTick != -1 || snapshot.CompletedTick != -1 ||
-                 snapshot.WinnerPlayerId != -1 || snapshot.Players.Length != 0) ||
+                 snapshot.WinnerPlayerId != -1 ||
+                 snapshot.WinnerAllianceId != -1 ||
+                 snapshot.Players.Length != 0) ||
             snapshot.Phase == MatchPhase.Running &&
                 (snapshot.StartedTick != 0 || snapshot.CompletedTick != -1 ||
-                 snapshot.WinnerPlayerId != -1 || snapshot.Players.Length < 2) ||
+                 snapshot.WinnerPlayerId != -1 ||
+                 snapshot.WinnerAllianceId != -1 ||
+                 snapshot.Players.Length < 2) ||
             snapshot.Phase == MatchPhase.Completed &&
                 (snapshot.StartedTick != 0 || snapshot.CompletedTick < 0 ||
                  snapshot.Players.Length < 2))
@@ -208,7 +227,8 @@ public sealed class MatchSystem
                 !Enum.IsDefined(entry.Status) || entry.DefeatedTick < -1 ||
                 entry.Status == MatchPlayerStatus.Active && entry.DefeatedTick != -1 ||
                 entry.Status == MatchPlayerStatus.Victorious &&
-                    entry.PlayerId != snapshot.WinnerPlayerId ||
+                    diplomacy.AllianceIdFor(entry.PlayerId) !=
+                        snapshot.WinnerAllianceId ||
                 entry.Status == MatchPlayerStatus.Defeated &&
                     (!entry.EstablishedPresence || entry.DefeatedTick < 0))
             {
@@ -227,8 +247,13 @@ public sealed class MatchSystem
         if (snapshot.Phase == MatchPhase.Running &&
                 (victorious != 0 || active == 0) ||
             snapshot.Phase == MatchPhase.Completed && active != 0 ||
-            snapshot.WinnerPlayerId >= 0 && victorious != 1 ||
-            snapshot.WinnerPlayerId < 0 && victorious != 0)
+            snapshot.WinnerAllianceId >= 0 && victorious == 0 ||
+            snapshot.WinnerAllianceId < 0 && victorious != 0 ||
+            snapshot.WinnerPlayerId >= 0 &&
+                (victorious != 1 || snapshot.WinnerPlayerId !=
+                    snapshot.Players.First(value =>
+                        value.Status == MatchPlayerStatus.Victorious).PlayerId) ||
+            snapshot.WinnerPlayerId < 0 && victorious == 1)
         {
             throw new InvalidOperationException("Match winner state is invalid.");
         }
@@ -236,6 +261,7 @@ public sealed class MatchSystem
         StartedTick = snapshot.StartedTick;
         CompletedTick = snapshot.CompletedTick;
         WinnerPlayerId = snapshot.WinnerPlayerId;
+        WinnerAllianceId = snapshot.WinnerAllianceId;
     }
 
     internal void AppendStateHash(ref StableHash64 hash)
@@ -244,6 +270,7 @@ public sealed class MatchSystem
         hash.Add(StartedTick);
         hash.Add(CompletedTick);
         hash.Add(WinnerPlayerId);
+        hash.Add(WinnerAllianceId);
         hash.Add(_players.Count);
         foreach (var player in _players)
         {

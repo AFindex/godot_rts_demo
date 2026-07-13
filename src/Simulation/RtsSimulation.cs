@@ -82,7 +82,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Construction = new ConstructionSystem();
         Production = new ProductionSystem();
         Technology = new TechnologySystem();
-        Visibility = new PlayerVisibilitySystem(world.Bounds);
+        Diplomacy = new PlayerDiplomacySystem();
+        Visibility = new PlayerVisibilitySystem(world.Bounds, Diplomacy);
         Match = new MatchSystem();
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
@@ -102,7 +103,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _groupRoutePlanner = groupRoutePlanner;
         _chokeController = chokeController;
         _combatSystem = new CombatSystem(
-            Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit);
+            Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit,
+            Diplomacy.IsEnemy);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _constructionMoveWorker = MoveConstructionWorker;
@@ -125,6 +127,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         QueuedConstructionPolicy.ProjectDefault;
     public ProductionSystem Production { get; }
     public TechnologySystem Technology { get; }
+    public PlayerDiplomacySystem Diplomacy { get; }
     public PlayerVisibilitySystem Visibility { get; }
     public MatchSystem Match { get; }
     public SimulationMetrics Metrics { get; } = new();
@@ -275,6 +278,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Combat = combat,
             CombatProjectiles = CombatProjectiles.CaptureRuntimeState(),
             Economy = Economy.CaptureRuntimeState(Units.Count),
+            Diplomacy = Diplomacy.CaptureRuntimeState(),
             Visibility = Visibility.CaptureRuntimeState(),
             Match = Match.CaptureRuntimeState(),
             Construction = Construction.CaptureRuntimeState(),
@@ -303,6 +307,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CombatProjectiles.RestoreRuntimeState(snapshot.CombatProjectiles);
         CombatEvents.Reset();
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
+        Diplomacy.RestoreRuntimeState(snapshot.Diplomacy);
         Construction.RestoreRuntimeState(snapshot.Construction);
         Production.RestoreRuntimeState(
             snapshot.Production, Construction, Economy, Units);
@@ -310,7 +315,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             snapshot.Technology, Construction, Economy.Players);
         Visibility.RestoreRuntimeState(snapshot.Visibility);
         Visibility.Update(Units, Combat, Construction);
-        Match.RestoreRuntimeState(snapshot.Match, Economy.Players);
+        Match.RestoreRuntimeState(snapshot.Match, Economy.Players, Diplomacy);
         CommandQueues.CopyRuntimeStateFrom(snapshot.CommandQueues);
         if (_chokeController is not null && snapshot.ChokeTraffic is not null)
         {
@@ -353,6 +358,20 @@ public sealed class RtsSimulation : ICombatMovementDriver
             throw new InvalidOperationException(
                 "Match setup must be completed before command recording starts.");
         Match.Start(Metrics.Tick, playerIds, Economy.Players);
+    }
+
+    public void ConfigureAlliance(
+        int allianceId,
+        bool sharedVision,
+        params int[] playerIds)
+    {
+        if (Metrics.Tick != 0 || Match.Phase != MatchPhase.Setup ||
+            _commandRecorder is not null || _replayPackageRecorder is not null)
+        {
+            throw new InvalidOperationException(
+                "Alliances must be configured during tick-zero match setup.");
+        }
+        Diplomacy.ConfigureAlliance(allianceId, sharedVision, playerIds);
     }
 
     public SimulationCommandLogSnapshot CaptureCommandLog()
@@ -1402,7 +1421,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             if (!Units.Alive[unit])
                 continue;
             var owner = Combat.Teams[unit];
-            var relation = Relation(playerId, owner);
+            var relation = Diplomacy.Relation(playerId, owner);
             if (relation != PlayerEntityRelation.Own &&
                 !CanPlayerPerceiveUnit(playerId, unit))
             {
@@ -1421,7 +1440,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             if (building.IsTerminal)
                 continue;
             var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
-            var relation = Relation(playerId, building.PlayerId);
+            var relation = Diplomacy.Relation(playerId, building.PlayerId);
             if (relation != PlayerEntityRelation.Own &&
                 !Visibility.IsVisible(playerId, center))
             {
@@ -1535,14 +1554,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 if ((uint)target.Unit >= (uint)Units.Count ||
                     !Units.Alive[target.Unit])
                     return new(PlayerOrderCommandCode.InvalidTarget);
-                if (Combat.Teams[target.Unit] != playerId)
+                if (!Diplomacy.IsFriendly(playerId, Combat.Teams[target.Unit]))
                     return new(PlayerOrderCommandCode.FriendlyTarget);
                 break;
             case SmartCommandTargetKind.EnemyUnit:
                 if ((uint)target.Unit >= (uint)Units.Count ||
                     !Units.Alive[target.Unit])
                     return new(PlayerOrderCommandCode.InvalidTarget);
-                if (Combat.Teams[target.Unit] == playerId)
+                if (!Diplomacy.IsEnemy(playerId, Combat.Teams[target.Unit]))
                     return new(PlayerOrderCommandCode.FriendlyTarget);
                 if (!CanPlayerPerceiveUnit(playerId, target.Unit))
                     return new(PlayerOrderCommandCode.TargetNotVisible);
@@ -1552,9 +1571,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 if (!Construction.IsAlive(id))
                     return new(PlayerOrderCommandCode.InvalidTarget);
                 var building = Construction.Observe(id);
-                if (building.PlayerId == playerId)
+                if (Diplomacy.IsFriendly(playerId, building.PlayerId))
                     return new(PlayerOrderCommandCode.FriendlyTarget);
-                if (!Construction.IsEnemyTarget(id, playerId))
+                if (!IsHostileBuilding(id, playerId))
                     return new(PlayerOrderCommandCode.InvalidTarget);
                 var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
                 if (!Visibility.IsVisible(playerId, center))
@@ -1564,7 +1583,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 var friendlyId = new GameplayBuildingId(target.Building);
                 if (!Construction.IsAlive(friendlyId))
                     return new(PlayerOrderCommandCode.InvalidTarget);
-                if (Construction.Observe(friendlyId).PlayerId != playerId)
+                if (!Diplomacy.IsFriendly(
+                        playerId, Construction.Observe(friendlyId).PlayerId))
                     return new(PlayerOrderCommandCode.InvalidTarget);
                 break;
             case SmartCommandTargetKind.ResourceNode:
@@ -1642,7 +1662,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var buildingId = new GameplayBuildingId(target.Building);
         var building = Construction.Observe(buildingId);
         var builder = -1;
-        if (building.State == BuildingLifecycleState.WaitingForBuilder)
+        if (building.PlayerId == playerId &&
+            building.State == BuildingLifecycleState.WaitingForBuilder)
         {
             for (var index = 0; index < units.Length; index++)
             {
@@ -1837,13 +1858,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
         NotParticipant
     }
 
-    private static PlayerEntityRelation Relation(int playerId, int ownerId) =>
-        ownerId == playerId
-            ? PlayerEntityRelation.Own
-            : ownerId <= 0
-                ? PlayerEntityRelation.Neutral
-                : PlayerEntityRelation.Enemy;
-
     private PublicConstructionStatus PublicConstructionStatusFor(
         int playerId,
         GameplayBuildingSnapshot building)
@@ -1914,7 +1928,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             ValidateUnitIndex(unitIndices[index]);
             ValidateLivingUnit(unitIndices[index]);
-            if (!Construction.IsEnemyTarget(
+            if (!IsHostileBuilding(
                     targetBuilding, Combat.Teams[unitIndices[index]]))
             {
                 throw new InvalidOperationException(
@@ -2324,7 +2338,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
-            if (Combat.Teams[unit] == Combat.Teams[targetUnit])
+            if (!Diplomacy.IsEnemy(
+                    Combat.Teams[unit], Combat.Teams[targetUnit]))
             {
                 throw new InvalidOperationException(
                     $"Unit {targetUnit} is friendly to attacker {unit}.");
@@ -2352,8 +2367,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
-            if (!Construction.IsEnemyTarget(
-                    buildingId, Combat.Teams[unit]))
+            if (!IsHostileBuilding(buildingId, Combat.Teams[unit]))
             {
                 throw new InvalidOperationException(
                     $"Building {targetBuilding} is friendly to attacker {unit}.");
@@ -2465,7 +2479,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         phaseStart = Stopwatch.GetTimestamp();
         AdvanceQueuedOrders();
         Visibility.Update(Units, Combat, Construction);
-        Match.Update(Metrics.Tick, Construction);
+        Match.Update(Metrics.Tick, Construction, Diplomacy);
         Metrics.CommandMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
         Metrics.AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
@@ -2567,7 +2581,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
             }
             var target = CommandQueues.ActiveTargetUnits[unit];
             if ((uint)target < (uint)Units.Count && Units.Alive[target] &&
-                Combat.Teams[target] == Combat.Teams[unit])
+                Diplomacy.IsFriendly(
+                    Combat.Teams[unit], Combat.Teams[target]))
             {
                 var position = Units.Positions[target];
                 CommandQueues.ActivePositions[unit] = position;
@@ -3915,7 +3930,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int attacker,
         GameplayBuildingId building) =>
         (uint)attacker < (uint)Units.Count && Units.Alive[attacker] &&
-        Construction.IsEnemyTarget(building, Combat.Teams[attacker]);
+        IsHostileBuilding(building, Combat.Teams[attacker]);
 
     bool ICombatMovementDriver.IsBuildingAlive(GameplayBuildingId building) =>
         Construction.IsAlive(building);
@@ -4194,7 +4209,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GameplayBuildingId buildingId)
     {
         if (Combat.Teams[unit] != playerId)
-            return ConstructionBlockerKind.AuthorityEnemy;
+            return Diplomacy.IsFriendly(playerId, Combat.Teams[unit])
+                ? ConstructionBlockerKind.AuthorityAlly
+                : ConstructionBlockerKind.AuthorityEnemy;
         if (Construction.IsAssignedBuilder(unit))
             return ConstructionBlockerKind.FriendlyAssignedBuilder;
         if (CommandQueues.ConstructionEvacuationActive[unit] &&
@@ -4272,6 +4289,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CommandQueues.ConstructionEvacuationTargets[unit] = Vector2.Zero;
         CommandQueues.ConstructionEvacuationFootprints[unit] = default;
     }
+
+    private bool IsHostileBuilding(
+        GameplayBuildingId building,
+        int viewerPlayerId) =>
+        Construction.IsAlive(building) &&
+        Diplomacy.IsEnemy(
+            viewerPlayerId, Construction.Observe(building).PlayerId);
 
 
 }

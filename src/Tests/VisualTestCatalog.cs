@@ -89,6 +89,7 @@ public static class VisualTestCatalog
         "player-visibility-authority",
         "construction-player-known-placement",
         "concealment-detection-construction",
+        "alliance-shared-vision-team-victory",
         "match-capability-elimination",
         "ai-modular-skirmish",
         "ai-dual-runtime-replay",
@@ -261,6 +262,8 @@ public static class VisualTestCatalog
             CreateConstructionPlayerKnownPlacement(),
         "concealment-detection-construction" =>
             CreateConcealmentDetectionConstruction(),
+        "alliance-shared-vision-team-victory" =>
+            CreateAllianceSharedVisionTeamVictory(),
         "match-capability-elimination" => CreateMatchCapabilityElimination(
             navigationMap, gameplayProfiles, clearanceBake),
         "ai-modular-skirmish" => CreateModularAiSkirmish(aiConfigurations),
@@ -5986,8 +5989,9 @@ public static class VisualTestCatalog
                 var replay = runtime.ReplayPackage(decoded!, runtime.Tick);
                 var resumed = runtime.ResumeHotSnapshot(
                     package, decodedHot!, runtime.Tick);
-                var exact = replay.FinalHash == runtime.StateHash &&
-                            resumed.FinalHash == runtime.StateHash;
+                var replayExact = replay.FinalHash == runtime.StateHash;
+                var hotExact = resumed.FinalHash == runtime.StateHash;
+                var exact = replayExact && hotExact;
                 var passed = hiddenOnVisibleGround && previewAccepted &&
                              hiddenAttackRejected && authorityWaitHidden &&
                              burrowContactSuppressed && detectedStateExposed &&
@@ -6080,6 +6084,176 @@ public static class VisualTestCatalog
         });
         session.At(240, "Remove the authority blocker and commit", runtime =>
             runtime.PlayerMove(2, [buriedBlocker], new Vector2(1040f, 300f)));
+        return session;
+    }
+
+    private static VisualTestSession CreateAllianceSharedVisionTeamVictory()
+    {
+        var navigationMap = DemoMapDefinition.CreateSnapshot();
+        var gameplayProfiles = DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, null);
+        for (var player = 1; player <= 4; player++)
+            rig.RegisterPlayer(player, 3000, 500, 30);
+        rig.ConfigureAlliance(100, true, 1, 2);
+        rig.ConfigureAlliance(200, true, 3, 4);
+
+        var builders = new[]
+        {
+            rig.SpawnWorker(new Vector2(120f, 500f), 1),
+            rig.SpawnWorker(new Vector2(930f, 570f), 2),
+            rig.SpawnWorker(new Vector2(800f, 210f), 3),
+            rig.SpawnWorker(new Vector2(400f, 360f), 4)
+        };
+        var placementBuilder = rig.SpawnWorker(new Vector2(340f, 580f), 1);
+        var attacker = rig.SpawnCombat(new Vector2(700f, 350f), 1);
+        var alliedDetector = rig.SpawnCombat(
+            new Vector2(790f, 350f), 2,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.None, 120f));
+        var concealedAlly = rig.SpawnCombat(
+            new Vector2(820f, 410f), 2,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.Cloaked, 0f));
+        var concealedEnemy = rig.SpawnCombat(
+            new Vector2(860f, 350f), 3,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.Burrowed, 0f));
+        var alliedPlacementBlocker = rig.SpawnCombat(
+            new Vector2(500f, 500f), 2,
+            profile: TestCombatProfile.Standard with { AttackDamage = 0f });
+
+        var baseProfile = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 0.5f,
+            MaximumHealth = 260f
+        };
+        rig.StartMatch(1, 2, 3, 4);
+        rig.StartReplayPackageRecording();
+        var bases = new[]
+        {
+            rig.Build(1, builders[0], baseProfile, new Vector2(250f, 500f)),
+            rig.Build(2, builders[1], baseProfile, new Vector2(1050f, 570f)),
+            rig.Build(3, builders[2], DemoBuildingTypes.Barracks with
+            {
+                BuildSeconds = 0.5f,
+                MaximumHealth = 240f
+            }, new Vector2(800f, 140f)),
+            rig.Build(4, builders[3], DemoBuildingTypes.Barracks with
+            {
+                BuildSeconds = 0.5f,
+                MaximumHealth = 240f
+            }, new Vector2(400f, 260f))
+        };
+
+        var sharedVision = false;
+        var relations = false;
+        var friendlyFireRejected = false;
+        var detectedEnemyTargetable = false;
+        var alliedPlacementWait = false;
+        var alliedPlacementCode = TestBuildingPlacementCode.Success;
+        var teamVictory = false;
+        var preVictoryStateHash = 0UL;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 300;
+        var session = new VisualTestSession(
+            "alliance-shared-vision-team-victory",
+            "2v2 alliance relations, shared detection and team victory",
+            420,
+            rig,
+            builders.Append(placementBuilder).Concat([
+                attacker, alliedDetector, concealedAlly, concealedEnemy,
+                alliedPlacementBlocker]).ToArray(),
+            runtime =>
+            {
+                var match = runtime.ObserveMatch();
+                var package = runtime.CaptureReplayPackage();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var replay = runtime.ReplayPackage(decoded!, 100);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var replayExact = replay.FinalHash == preVictoryStateHash;
+                var hotExact = resumed.FinalHash == runtime.StateHash;
+                var exact = replayExact && hotExact;
+                teamVictory = match.Phase == TestMatchPhase.Completed &&
+                              match.WinnerPlayerId == -1 &&
+                              match.WinnerAllianceId == 100 &&
+                              match.Players.Where(value => value.PlayerId <= 2)
+                                  .All(value => value.Status ==
+                                      TestMatchPlayerStatus.Victorious) &&
+                              match.Players.Where(value => value.PlayerId >= 3)
+                                  .All(value => value.Status ==
+                                      TestMatchPlayerStatus.Defeated);
+                var passed = bases.All(value => value.Succeeded) &&
+                             sharedVision && relations &&
+                             friendlyFireRejected && detectedEnemyTargetable &&
+                             alliedPlacementWait && teamVictory &&
+                             packageRoundTrip && hotRoundTrip && exact &&
+                             package.FormatVersion ==
+                                 SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             hot.FormatVersion ==
+                                 SimulationHotSnapshot.CurrentFormatVersion;
+                return new ScenarioResult(
+                    passed,
+                    $"shared={sharedVision}, relations={relations}, " +
+                    $"friendlyFire={friendlyFireRejected}, " +
+                    $"detection={detectedEnemyTargetable}, " +
+                    $"placementWait={alliedPlacementWait}/{alliedPlacementCode}, " +
+                    $"match={match.Phase}[{string.Join(',', match.Players.Select(value => $"P{value.PlayerId}:{value.Status}/{value.ActiveBuildings}"))}], " +
+                    $"buildings=[{string.Join(',', bases.Select(value => runtime.ObserveGameplayBuilding(value.BuildingId).State))}], " +
+                    $"winner=A{match.WinnerAllianceId}/P{match.WinnerPlayerId}, " +
+                    $"versions=package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"exact={replayExact}/{hotExact} " +
+                    $"hash={runtime.StateHash:X16}/R{replay.FinalHash:X16}/H{resumed.FinalHash:X16}");
+            })
+            .RenderSpawnedUnits()
+            .CameraKeyframe(0, new Vector2(640f, 350f), 0.82f)
+            .CameraKeyframe(90, new Vector2(840f, 350f), 1.15f)
+            .CameraKeyframe(150, new Vector2(640f, 350f), 0.72f)
+            .Highlight(
+                new SimRect(new Vector2(730f, 285f), new Vector2(920f, 450f)),
+                "ALLY VISION + DETECTION",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(430f, 430f), new Vector2(570f, 570f)),
+                "ALLY OCCUPANT: conservative placement wait",
+                TestDiagnosticKind.Info);
+        session.At(15, "Validate alliance-relative player observation", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            var ally = view.UnitViews.Single(value => value.Unit == concealedAlly);
+            var enemy = view.UnitViews.Single(value => value.Unit == concealedEnemy);
+            sharedVision = view.Units.Contains(alliedDetector) &&
+                           view.Units.Contains(concealedEnemy);
+            relations = ally.Relation == TestPlayerEntityRelation.Ally &&
+                        ally.ConcealmentState ==
+                            TestPlayerConcealmentState.ConcealedAlly &&
+                        enemy.Relation == TestPlayerEntityRelation.Enemy &&
+                        enemy.ConcealmentState ==
+                            TestPlayerConcealmentState.ConcealedDetected;
+            friendlyFireRejected = runtime.PlayerAttackUnit(
+                1, [attacker], concealedAlly) ==
+                TestPlayerOrderCommandCode.FriendlyTarget;
+            detectedEnemyTargetable = runtime.PlayerAttackUnit(
+                1, [attacker], concealedEnemy) ==
+                TestPlayerOrderCommandCode.Success;
+            alliedPlacementCode = runtime.PreviewBuild(
+                1, placementBuilder, DemoBuildingTypes.SupplyDepot,
+                new Vector2(500f, 500f)).PlacementCode;
+            alliedPlacementWait = alliedPlacementCode ==
+                                  TestBuildingPlacementCode.UnitOverlap;
+        });
+        session.At(100, "Capture pre-victory replay state", runtime =>
+            preVictoryStateHash = runtime.StateHash);
+        session.At(220, "Eliminate both members of the opposing alliance", runtime =>
+        {
+            runtime.DamageBuilding(bases[2].BuildingId, 100000f);
+            runtime.DamageBuilding(bases[3].BuildingId, 100000f);
+        });
+        session.At(hotTick, "Capture completed 2v2 alliance state", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
         return session;
     }
 

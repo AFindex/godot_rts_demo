@@ -56,6 +56,7 @@ public sealed class CombatSystem
     private readonly CombatEngagementSlotAllocator _slots;
     private readonly CombatEventStream _events;
     private readonly Func<int, int, bool> _canPerceiveTarget;
+    private readonly Func<int, int, bool> _isHostileTarget;
     public CombatProjectileSystem Projectiles { get; } = new();
 
     public CombatSystem(
@@ -64,7 +65,8 @@ public sealed class CombatSystem
         ICombatMovementDriver movement,
         StaticWorld world,
         CombatEventStream events,
-        Func<int, int, bool> canPerceiveTarget)
+        Func<int, int, bool> canPerceiveTarget,
+        Func<int, int, bool> isHostileTarget)
     {
         _units = units;
         _combat = combat;
@@ -72,6 +74,7 @@ public sealed class CombatSystem
         _slots = new CombatEngagementSlotAllocator(units, combat, world);
         _events = events;
         _canPerceiveTarget = canPerceiveTarget;
+        _isHostileTarget = isHostileTarget;
     }
 
     public void Update(float delta, long tick)
@@ -435,7 +438,7 @@ public sealed class CombatSystem
         (uint)target < (uint)_units.Count &&
         target != unit &&
         _units.Alive[target] &&
-        _combat.Teams[target] != _combat.Teams[unit] &&
+        _isHostileTarget(_combat.Teams[unit], _combat.Teams[target]) &&
         _canPerceiveTarget(_combat.Teams[unit], target);
 
     private void UpdateBuildingTarget(
