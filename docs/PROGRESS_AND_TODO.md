@@ -10,7 +10,7 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 100 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 102 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
@@ -18,8 +18,8 @@
 
 - 139 个 C# 源文件。
 - 约 43,649 行 C#（按 `src/**/*.cs` 统计）。
-- 100 个黑盒场景。
-- AV1/WebM 规范录像覆盖全部 100 个当前逻辑场景。
+- 102 个黑盒场景。
+- AV1/WebM 规范录像覆盖全部 102 个当前逻辑场景。
 - Release 1000 单位移动 P95：约 10.07ms。
 - Release 1000 单位当前线程分配：约 685B/Tick。
 
@@ -1166,6 +1166,18 @@ H3 提供后续复杂玩法的集成基线。新单位、技能、科技或 AI P
 - 每个工作包都限定允许修改范围、稳定合同、黑盒用例、Replay/Hot/Hash 要求、AV1 录像门禁和停止条件；每项机制最多一个隔离矩阵加一个复杂对局，防止进入启发式优化地狱。
 
 下一项建议直接实施 `M0 economy-mineral-walk-collision-matrix`：它不依赖 SC2 实机未知项，能先锁住已经正确的采矿碰撞语义；随后实施 `C0` 放置校验分层和 `C1` Reservation/Ghost。若暂时无法取得 SC2 实机录像，可以继续修施工护甲、Return Cargo 与自动分矿，但不提前写死友军让位策略。
+
+### AY：M0 Mineral Walk 碰撞矩阵（已完成）
+
+- 新增 `economy-mineral-walk-collision-matrix` 独立黑盒场景：24 个正式 Worker 分四条矿路往返，前三条穿过友军 Hold、敌军小型单位和大型单位密墙，第四条必须绕过正式施工完成的 Supply Depot。
+- 测试不读取 `_unitCollisionSuppressed`、Steering、UnitStore 或 NavMesh 私有数据，只通过正式 Gather/Stop/Hold/Attack/Build 门面与稳定 Worker、Order、Unit、Building、Recovery 快照验收业务结果。
+- 去程 24/24、返程 24/24；三类单位车道均记录到真实圆重叠，证明不是从单位旁绕过；建筑穿透样本 0 且确认发生绕行；不可达 0。
+- 三个重叠探针在 Mineral Walk 中分别切换 Stop、Hold、AttackTarget，经济状态恢复 Idle、订单正确，并在 2/4/2 Tick 完成正常碰撞分离，远低于 120 Tick 上限。
+- 现有正式运行时通过矩阵，无需为测试调整 WorkerCollisionPolicy、Steering 或最终碰撞解算；首轮返程计数异常来自测试误加东侧 DropOff，按正式最近投递语义定位并删除污染夹具。
+- Release/Debug 构建均为 0 错误、0 警告；102/102 全量 Godot 黑盒回归通过。
+- 专项 AV1/WebM 位于 `test_videos/20260713_113009/`：1280×720、452 帧、CRF 32、preset 8；全仓录像校验通过 133 个视频、77 个 manifest、132 个场景引用，编码均为 AV1。
+
+M0 已收口，不继续调整采矿 Steering。下一项按 [SC2 对齐实施计划](SC2_ALIGNMENT_PLAN.md) 进入 `C0`：把静态 Placement、动态开工占位校验与 Hard Footprint Commit 拆成独立合同，同时保持当前玩家可观察行为不变。
 
 ## 8. 可以并行但不能提前耦合的优化
 

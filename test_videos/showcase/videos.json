@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T01:28:23.2177529+08:00",
+    "generated_at":  "2026-07-13T11:30:40.6516264+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  131,
-    "case_count":  102,
+    "recording_count":  132,
+    "case_count":  103,
     "recordings":  [
+                       {
+                           "id":  "economy-mineral-walk-collision-matrix",
+                           "display_name":  "Mineral Walk crosses units, respects buildings, and restores collision",
+                           "batch":  "20260713_113009",
+                           "created_at":  "2026-07-13T11:30:39.1885961+08:00",
+                           "video":  "../20260713_113009/economy-mineral-walk-collision-matrix.webm",
+                           "log":  "../20260713_113009/economy-mineral-walk-collision-matrix.log",
+                           "bytes":  9574411,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-mineral-walk-collision-matrix: ticks=900, gather=24/24, cross=24/24, unit-overlap=1/1/1, building-penetration=0, detour=True, recovery=2/4/2 max=4, orders=True, unreachable=0",
+                           "metrics":  "ticks=900, gather=24/24, cross=24/24, unit-overlap=1/1/1, building-penetration=0, detour=True, recovery=2/4/2 max=4, orders=True, unreachable=0"
+                       },
                        {
                            "id":  "playable-skirmish-demo",
                            "display_name":  null,

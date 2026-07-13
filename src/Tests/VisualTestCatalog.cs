@@ -77,6 +77,7 @@ public static class VisualTestCatalog
         "resource-file-watch-workflow",
         "building-connectivity-diff-preview",
         "economy-dual-resource",
+        "economy-mineral-walk-collision-matrix",
         "economy-mass-mining",
         "economy-expansion-saturation",
         "player-visibility-authority",
@@ -223,6 +224,8 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview" =>
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
+        "economy-mineral-walk-collision-matrix" =>
+            CreateMineralWalkCollisionMatrix(),
         "economy-mass-mining" => CreateMassMiningEconomy(),
         "economy-expansion-saturation" => CreateExpansionSaturation(),
         "player-visibility-authority" => CreatePlayerVisibilityAuthority(
@@ -3802,6 +3805,285 @@ public static class VisualTestCatalog
                     new Vector2(515f, 545f)),
                 "VESPENE: refinery required, capacity 3",
                 TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateMineralWalkCollisionMatrix()
+    {
+        const int laneCount = 4;
+        const int workersPerLane = 6;
+        const int mainWorkerCount = laneCount * workersPerLane;
+        Vector2 worldSize = new(1400f, 800f);
+        float[] laneY = [150f, 320f, 480f, 650f];
+        float[] crossingX = [520f, 720f, 920f, 700f];
+        var rig = MovementTestRig.CreateEconomyMap(worldSize, 96);
+        rig.RegisterPlayer(1, 4000, 0, 80, mainWorkerCount + 4);
+
+        var inert = new TestCombatProfile(
+            MaximumHealth: 10_000f,
+            AttackDamage: 0f,
+            AttackRange: 1f,
+            AcquisitionRange: 1f,
+            AttackCooldownSeconds: 10f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 1f);
+
+        TestUnitId[] CreateBarrier(
+            float x,
+            float centerY,
+            int count,
+            float spacing,
+            int team,
+            float radius)
+        {
+            var result = new TestUnitId[count];
+            var firstY = centerY - (count - 1) * spacing * 0.5f;
+            for (var index = 0; index < count; index++)
+            {
+                result[index] = rig.SpawnCombat(
+                    new Vector2(x, firstY + index * spacing),
+                    team,
+                    inert,
+                    radius,
+                    maximumSpeed: 100f,
+                    acceleration: 720f);
+            }
+            rig.Hold(result);
+            return result;
+        }
+
+        TestUnitId[][] blockersByLane =
+        [
+            CreateBarrier(crossingX[0], laneY[0], 11, 15f, team: 1, radius: 8f),
+            CreateBarrier(crossingX[1], laneY[1], 11, 15f, team: 2, radius: 8f),
+            CreateBarrier(crossingX[2], laneY[2], 7, 32f, team: 2, radius: 18f),
+            []
+        ];
+
+        var buildingCenter = new Vector2(crossingX[3], laneY[3]);
+        var buildingSize = DemoBuildingTypes.SupplyDepot.Size;
+        var buildingBuilder = rig.SpawnWorker(
+            buildingCenter + new Vector2(0f, 78f), 1,
+            maximumSpeed: 220f, acceleration: 900f);
+        var building = rig.Build(
+            1,
+            buildingBuilder,
+            DemoBuildingTypes.SupplyDepot with { BuildSeconds = 0.15f },
+            buildingCenter);
+
+        var mainWorkers = new TestUnitId[mainWorkerCount];
+        var workerLanes = new int[mainWorkerCount];
+        var resources = new TestResourceNodeId[laneCount];
+        for (var lane = 0; lane < laneCount; lane++)
+        {
+            rig.AddResourceDropOff(1, new Vector2(95f, laneY[lane]));
+            resources[lane] = rig.AddResourceNode(
+                TestEconomyResourceKind.Minerals,
+                new Vector2(1290f, laneY[lane]),
+                amount: 20_000,
+                harvestBatch: 5,
+                harvestSeconds: 0.2f,
+                harvesterCapacity: workersPerLane);
+            for (var worker = 0; worker < workersPerLane; worker++)
+            {
+                var index = lane * workersPerLane + worker;
+                mainWorkers[index] = rig.SpawnWorker(
+                    new Vector2(
+                        145f + worker % 2 * 17f,
+                        laneY[lane] + (worker - 2.5f) * 11f),
+                    1,
+                    maximumSpeed: 220f,
+                    acceleration: 900f);
+                workerLanes[index] = lane;
+            }
+        }
+
+        var recoveryResource = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(1320f, 750f),
+            amount: 5000,
+            harvestBatch: 5,
+            harvestSeconds: 0.2f,
+            harvesterCapacity: 3);
+        Vector2[] recoveryOrigins =
+        [
+            new(1040f, 750f), new(1120f, 750f), new(1200f, 750f)
+        ];
+        var recoveryWorkers = new TestUnitId[3];
+        var recoveryBlockers = new TestUnitId[3];
+        for (var index = 0; index < recoveryWorkers.Length; index++)
+        {
+            recoveryBlockers[index] = rig.SpawnCombat(
+                recoveryOrigins[index], team: 2, inert,
+                radius: 9f, maximumSpeed: 100f, acceleration: 720f);
+            rig.Hold([recoveryBlockers[index]]);
+            recoveryWorkers[index] = rig.SpawnWorker(
+                recoveryOrigins[index], 1,
+                maximumSpeed: 180f, acceleration: 900f);
+            rig.Gather(1, recoveryWorkers[index], recoveryResource);
+        }
+
+        var acceptedGatherCommands = 0;
+        var outboundCrossed = new HashSet<int>();
+        var returnCrossed = new HashSet<int>();
+        var collisionOverlapByLane = new bool[3];
+        var recoveryTicks = new int[3];
+        Array.Fill(recoveryTicks, -1);
+        var recoveryCommandTick = -1L;
+        var buildingPenetrationSamples = 0;
+        var buildingDetourObserved = false;
+        var buildingHalf = buildingSize * 0.5f;
+
+        var session = new VisualTestSession(
+                "economy-mineral-walk-collision-matrix",
+                "Mineral Walk crosses units, respects buildings, and restores collision",
+                900,
+                rig,
+                [.. mainWorkers, .. recoveryWorkers, buildingBuilder],
+                runtime =>
+                {
+                    var buildingCompleted = building.Succeeded &&
+                        runtime.ObserveGameplayBuilding(building.BuildingId).State ==
+                        TestBuildingLifecycleState.Completed;
+                    var recovery = runtime.ObserveRecovery(mainWorkers);
+                    var orders = recoveryWorkers.Select(runtime.ObserveOrders).ToArray();
+                    var recoveryStates = recoveryWorkers.Select(
+                        runtime.ObserveWorkerEconomy).ToArray();
+                    var restoredOrders =
+                        orders[0].ActiveOrder == TestOrderKind.Stop &&
+                        orders[1].ActiveOrder == TestOrderKind.Hold &&
+                        orders[2].ActiveOrder == TestOrderKind.AttackTarget &&
+                        recoveryStates.All(value =>
+                            value.State == TestWorkerEconomyState.Idle);
+                    var maximumRecoveryTicks = recoveryTicks.Max();
+                    var passed = buildingCompleted &&
+                                 acceptedGatherCommands == mainWorkerCount &&
+                                 outboundCrossed.Count == mainWorkerCount &&
+                                 returnCrossed.Count == mainWorkerCount &&
+                                 collisionOverlapByLane.All(value => value) &&
+                                 buildingPenetrationSamples == 0 &&
+                                 buildingDetourObserved &&
+                                 recoveryTicks.All(value => value is >= 0 and <= 120) &&
+                                 restoredOrders &&
+                                 recovery.UnreachableUnits == 0;
+                    return new ScenarioResult(
+                        passed,
+                        $"gather={acceptedGatherCommands}/{mainWorkerCount}, " +
+                        $"cross={outboundCrossed.Count}/{returnCrossed.Count}, " +
+                        $"unit-overlap={string.Join('/', collisionOverlapByLane.Select(value => value ? 1 : 0))}, " +
+                        $"building-penetration={buildingPenetrationSamples}, " +
+                        $"detour={buildingDetourObserved}, recovery={string.Join('/', recoveryTicks)} " +
+                        $"max={maximumRecoveryTicks}, orders={restoredOrders}, " +
+                        $"unreachable={recovery.UnreachableUnits}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(700f, 400f), 0.73f)
+            .CameraKeyframe(280, new Vector2(700f, 400f), 0.82f)
+            .CameraKeyframe(560, new Vector2(900f, 520f), 0.88f)
+            .CameraKeyframe(880, new Vector2(700f, 400f), 0.73f)
+            .Highlight(
+                new SimRect(new Vector2(490f, 65f), new Vector2(550f, 235f)),
+                "FRIENDLY HOLD: harvest transit passes through",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(690f, 235f), new Vector2(750f, 405f)),
+                "ENEMY UNITS: harvest transit passes through",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(880f, 365f), new Vector2(960f, 595f)),
+                "LARGE UNITS: bidirectional collision suppression",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(
+                    buildingCenter - buildingHalf - new Vector2(18f),
+                    buildingCenter + buildingHalf + new Vector2(18f)),
+                "BUILDING: hard footprint still blocks",
+                TestDiagnosticKind.Rejected)
+            .Highlight(
+                new SimRect(new Vector2(1000f, 710f), new Vector2(1240f, 790f)),
+                "STOP / HOLD / ATTACK: normal collision resumes",
+                TestDiagnosticKind.Info);
+
+        session.At(1, "Cancel three Mineral Walk probes with Stop, Hold and Attack", runtime =>
+        {
+            recoveryCommandTick = runtime.Tick;
+            runtime.Stop([recoveryWorkers[0]]);
+            runtime.Hold([recoveryWorkers[1]]);
+            runtime.AttackTarget([recoveryWorkers[2]], recoveryBlockers[2]);
+        });
+        session.At(60, "Start 24 workers through four collision lanes", runtime =>
+        {
+            for (var index = 0; index < mainWorkers.Length; index++)
+            {
+                if (runtime.Gather(
+                        1, mainWorkers[index], resources[workerLanes[index]]) ==
+                    TestGatherCommandCode.Success)
+                    acceptedGatherCommands++;
+            }
+        });
+
+        for (var tick = 2; tick < session.DurationTicks; tick++)
+        {
+            session.At(tick, "Observe public Mineral Walk outcomes", runtime =>
+            {
+                for (var probe = 0; probe < recoveryWorkers.Length; probe++)
+                {
+                    if (recoveryTicks[probe] >= 0)
+                        continue;
+                    var worker = runtime.Observe(recoveryWorkers[probe]);
+                    var blocker = runtime.Observe(recoveryBlockers[probe]);
+                    if (Vector2.Distance(worker.Position, blocker.Position) >=
+                        worker.Radius + blocker.Radius - 0.25f)
+                    {
+                        recoveryTicks[probe] = (int)(runtime.Tick - recoveryCommandTick);
+                    }
+                }
+
+                for (var index = 0; index < mainWorkers.Length; index++)
+                {
+                    var workerId = mainWorkers[index];
+                    var unit = runtime.Observe(workerId);
+                    var economy = runtime.ObserveWorkerEconomy(workerId);
+                    var lane = workerLanes[index];
+                    if (economy.State == TestWorkerEconomyState.GoingToResource &&
+                        unit.Position.X > crossingX[lane] + 45f)
+                        outboundCrossed.Add(workerId.Value);
+                    if (economy.State == TestWorkerEconomyState.ReturningCargo &&
+                        unit.Position.X < crossingX[lane] - 45f)
+                        returnCrossed.Add(workerId.Value);
+
+                    if (lane < collisionOverlapByLane.Length &&
+                        !collisionOverlapByLane[lane] &&
+                        economy.State is TestWorkerEconomyState.GoingToResource or
+                            TestWorkerEconomyState.ReturningCargo)
+                    {
+                        foreach (var blockerId in blockersByLane[lane])
+                        {
+                            var blocker = runtime.Observe(blockerId);
+                            if (Vector2.Distance(unit.Position, blocker.Position) <
+                                unit.Radius + blocker.Radius - 0.5f)
+                            {
+                                collisionOverlapByLane[lane] = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (lane != 3)
+                        continue;
+                    var expandedHalf = buildingHalf + new Vector2(unit.Radius - 0.1f);
+                    var delta = Vector2.Abs(unit.Position - buildingCenter);
+                    if (delta.X < expandedHalf.X && delta.Y < expandedHalf.Y)
+                        buildingPenetrationSamples++;
+                    if (MathF.Abs(unit.Position.X - buildingCenter.X) <
+                            buildingHalf.X + unit.Radius + 12f &&
+                        delta.Y >= buildingHalf.Y + unit.Radius - 1f)
+                        buildingDetourObserved = true;
+                }
+            });
+        }
+
+        return session;
     }
 
     private static VisualTestSession CreateMassMiningEconomy()

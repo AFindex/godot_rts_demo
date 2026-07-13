@@ -246,7 +246,7 @@ P0 综合完成条件：C0～C5 全部通过，E0 已确认的规则有来源和
 
 ## 6. P0 并行工作包：采矿碰撞回归
 
-### M0：Mineral Walk 碰撞矩阵
+### M0：Mineral Walk 碰撞矩阵（已完成）
 
 这一包优先补测试，除非测试暴露错误，否则不改寻路和 Steering。
 
@@ -255,6 +255,8 @@ P0 综合完成条件：C0～C5 全部通过，E0 已确认的规则有来源和
 稳定测试快照只暴露订单、经济阶段、位置、是否到达、建筑穿透计数和最大重叠恢复 Tick，不暴露 `_unitCollisionSuppressed`。
 
 完成条件：Harvest/ReturningCargo 穿越完成；建筑和地形穿透 0；Stop/Hold/Attack 后有限散开；不可达 0；性能不低于当前同规模测试的硬门禁。
+
+完成结果（2026-07-13）：新增 `economy-mineral-walk-collision-matrix`，24/24 Worker 去程和 24/24 返程完成；友军 Hold、敌军小型单位、大型单位三条车道均记录到真实单位重叠；正式 Supply Depot 穿透 0 且确认绕行；Stop/Hold/Attack 探针分别在 2/4/2 Tick 恢复分离；不可达 0。场景只使用 `MovementTestRig` 正式业务门面和稳定快照，未读取碰撞抑制、Steering 或 UnitStore 内部状态。对应 AV1/WebM 位于 `test_videos/20260713_113009/`。
 
 ## 7. P1 工作包：经济与操作完整性
 
