@@ -142,6 +142,7 @@ public static class TestShowcaseCatalog
             M("construction-under-build-defense", "施工护甲完成边界", "建造生产", "验证施工期有效护甲恒为零，完成 Tick 后才应用建筑基础护甲与防御科技。"),
             M("building-type-resource-runtime", "建筑类型 Resource", "数据工作流", "验证建筑目录 Resource、尺寸、功能和运行时建造。"),
             M("production-queue-exit-rally", "生产队列与 Rally", "建造生产", "验证排队、出口、人口预留、Rally 和建筑摧毁清理。"),
+            M("production-exit-rally-boundaries", "生产出口与 Rally 边界", "建造生产", "验证四方向出口、友军软让位、敌军硬封口及 Rally 目标死亡时序。"),
             M("production-replay-persistence", "生产热恢复", "回放", "验证生产中、等待出口和已出生三个阶段的恢复一致性。"),
             M("production-catalog-resource-runtime", "生产目录 Resource", "数据工作流", "验证兵种、配方、前置和战斗 Profile 从目录加载。"),
             M("production-rally-smart-targets", "Rally 智能目标", "建造生产", "验证地面、资源和友军 Rally 的正式目标协议。"),

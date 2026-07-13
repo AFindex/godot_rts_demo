@@ -36,7 +36,7 @@
 | 取消返还 75% | 已对齐 | Reservation 取消时保持一致 |
 | Builder 中断与续建 | 主路径已对齐 | 新状态机回归保护 |
 | Build Shift Queue | 已对齐 | Q1 已覆盖预扣、软 Reservation、逐项重验、跳过/退款、取消、死亡和回矿 |
-| 生产出口阻挡 | 主路径可靠 | P1 只补方向与封口矩阵 |
+| 生产出口阻挡 | 已对齐 | X1 已覆盖 Rally 方向、友军软封、敌军/静态硬封、恢复及目标死亡时序 |
 
 ## 3. 不可破坏的设计规则
 
@@ -338,9 +338,19 @@ Q1 至此收口。下一项进入 X1 生产出口与 Rally 边界，不继续为
 
 ### X1：生产出口与 Rally 边界
 
-保留现有 12 个确定性出口与 `WaitingForExit` 语义，只补：Rally 四方向、友军软封口、敌军硬封口、出生前目标死亡、出生后目标死亡、阻挡解除恢复。
+状态：已完成。
+
+保留 12 个稳定候选与 `WaitingForExit` 语义。`ProductionExitResolver` 将地形、建筑和敌军占用归为硬阻挡；只含友军时归为软阻挡，并按 Unit ID 稳定顺序请求既有施工撤离能力寻找合法外侧点。候选出口按到 Rally 目标的距离排序并以候选序号决胜；没有 Rally 时保持固定候选顺序。每个完成订单最多检查 12 个候选和当前单位集合，不增加逐 Tick 全局出口扫描。
+
+Blizzard 官方资料明确了玩家可观察的两种目标死亡边界：目标在单位离开生产建筑前死亡，新单位不会执行 Rally；目标在其出生后死亡，单位继续前往目标最后占据的位置。当前实现因此把有效友军 Rally 解析为系统派生 `FollowFriendly` 活动订单；目标存活时仅在位置变化至少 8 px 后重发移动，目标死亡后转成普通 Move 到最后位置。它不写入玩家 Unit Command Log，但活动未来态进入 Hot Snapshot 和 State Hash。公开资料没有确认 SC2 内部“友军软、敌军硬”的精确分类，因此该分类明确记为本项目可替换的确定性策略，不伪装成官方内部实现。
+
+`production-exit-rally-boundaries` 只经稳定业务门面建造 8 座生产建筑、设置四方向/友军单位 Rally、生产单位、移动/攻击目标并观察不可变快照。520 Tick 结果为：方向 `True/True`、友军软封撤离/出生 `True/True`、敌军硬封等待/解除恢复 `True/True`、出生前/后死亡 `True/True`，Replay 与 Tick 300 Hot Restore 精确一致。专项 AV1/WebM 位于 `test_videos/20260713_173106/`。
+
+Replay Package 升级 v25、Hot Snapshot 升级 v24、State Hash 升级 v25；Unit Command Log 保持 v4、Production Command Log 保持 v8，因为 Follow 是可重演的系统派生状态而非玩家意图。当前 112/112 全量 Godot 黑盒回归通过。
 
 只有实测证明不同建筑出口规则影响玩法时，才新增数据化出口 Profile；不为每座建筑手写分支。
+
+X1 至此收口，并满足本计划最后一个可在现有证据下执行的 P1 工作包。本轮 SC2 核心对齐停止继续添加启发式：C2/C3 的完整占位矩阵等待 E0 实机证据与 Visibility/Detection 基础；P2 只由真实内容需求触发。
 
 ## 8. P2 内容层扩展
 

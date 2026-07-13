@@ -473,7 +473,8 @@ public enum TestOrderKind : byte
     Hold,
     GatherResource,
     ResumeConstruction,
-    ReturnCargo
+    ReturnCargo,
+    FollowFriendly
 }
 
 public readonly record struct TestOrderSnapshot(
@@ -481,7 +482,8 @@ public readonly record struct TestOrderSnapshot(
     int PendingOrders,
     int CompletedQueuedOrders,
     int QueueOverflows,
-    int ActiveTargetBuilding);
+    int ActiveTargetBuilding,
+    int ActiveTargetUnit);
 
 public sealed class TestCommandLog
 {
@@ -3199,7 +3201,8 @@ public sealed partial class MovementTestRig
             _simulation.CommandQueues.PendingCounts[index],
             _simulation.CommandQueues.CompletedQueuedOrders[index],
             _simulation.CommandQueues.QueueOverflowCounts[index],
-            _simulation.CommandQueues.ActiveTargetBuildings[index]);
+            _simulation.CommandQueues.ActiveTargetBuildings[index],
+            _simulation.CommandQueues.ActiveTargetUnits[index]);
     }
 
     public TestUnitSnapshot[] Observe(IReadOnlyList<TestUnitId> units)

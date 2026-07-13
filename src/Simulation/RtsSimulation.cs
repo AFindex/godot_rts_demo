@@ -44,6 +44,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         HardFootprintCommitResult> _constructionCommitFootprint;
     private readonly Func<UnitTypeProfile, int, Vector2, int> _productionSpawnUnit;
     private readonly Action<int, int, RallyTarget> _productionApplyRally;
+    private readonly Func<int, int, SimRect, float, bool>
+        _productionEvacuateExitBlocker;
     private readonly int[] _collisionNeighbors = new int[64];
     private readonly CombatContactSnapshot[] _combatContacts;
     private readonly bool[] _unitCollisionSuppressed;
@@ -107,6 +109,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _constructionCommitFootprint = CommitConstructionFootprint;
         _productionSpawnUnit = SpawnProducedUnit;
         _productionApplyRally = ApplyProducedUnitRally;
+        _productionEvacuateExitBlocker = EvacuateProductionExitBlocker;
     }
 
     public StaticWorld World { get; }
@@ -2284,12 +2287,15 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Construction,
             Economy.Players,
             Units,
+            Combat,
             World,
             _productionSpawnUnit,
-            _productionApplyRally);
+            _productionApplyRally,
+            _productionEvacuateExitBlocker);
         Technology.Update(delta, Construction, Economy.Players);
         Economy.Update(
             delta, Units, _economyMoveWorker, _economyStopWorker);
+        UpdateProducedUnitRallyFollowers();
         for (var unit = 0; unit < Units.Count; unit++)
             _unitCollisionSuppressed[unit] =
                 Economy.SuppressesUnitCollision(unit) ||
@@ -2405,12 +2411,22 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     }
                     break;
                 case RallyTargetKind.FriendlyUnit:
-                    var target = (uint)rally.Unit < (uint)Units.Count &&
-                                 Units.Alive[rally.Unit] &&
-                                 Combat.Teams[rally.Unit] == playerId
-                        ? Units.Positions[rally.Unit]
-                        : rally.Position;
-                    IssueMove(produced, target);
+                    if ((uint)rally.Unit >= (uint)Units.Count ||
+                        !Units.Alive[rally.Unit] ||
+                        Combat.Teams[rally.Unit] != playerId)
+                    {
+                        break;
+                    }
+                    var target = Units.Positions[rally.Unit];
+                    ExecuteMoveOrder(
+                        produced, target, UnitCommandIntent.Move);
+                    CommandQueues.Begin(
+                        unit,
+                        new UnitOrder(
+                            UnitOrderKind.FollowFriendly,
+                            target,
+                            rally.Unit),
+                        wasQueued: false);
                     break;
                 case RallyTargetKind.Ground:
                     IssueMove(produced, rally.Position);
@@ -2421,6 +2437,87 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             _issuingSystemOrder = false;
         }
+    }
+
+    private void UpdateProducedUnitRallyFollowers()
+    {
+        const float followRepathDistance = 8f;
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] || !CommandQueues.HasActiveOrders[unit] ||
+                CommandQueues.ActiveKinds[unit] != UnitOrderKind.FollowFriendly)
+            {
+                continue;
+            }
+            var target = CommandQueues.ActiveTargetUnits[unit];
+            if ((uint)target < (uint)Units.Count && Units.Alive[target] &&
+                Combat.Teams[target] == Combat.Teams[unit])
+            {
+                var position = Units.Positions[target];
+                CommandQueues.ActivePositions[unit] = position;
+                if (Vector2.DistanceSquared(
+                        Units.MoveGoals[unit], position) >
+                    followRepathDistance * followRepathDistance)
+                {
+                    SetCombatDestination(unit, position);
+                }
+                continue;
+            }
+
+            var lastPosition = CommandQueues.ActivePositions[unit];
+            CommandQueues.ActiveKinds[unit] = UnitOrderKind.Move;
+            CommandQueues.ActiveTargetUnits[unit] = -1;
+            if (Vector2.DistanceSquared(
+                    Units.MoveGoals[unit], lastPosition) > 0.01f)
+            {
+                SetCombatDestination(unit, lastPosition);
+            }
+        }
+    }
+
+    private bool EvacuateProductionExitBlocker(
+        int playerId,
+        int blockerUnit,
+        SimRect producerBounds,
+        float producedUnitRadius)
+    {
+        if ((uint)blockerUnit >= (uint)Units.Count ||
+            !Units.Alive[blockerUnit] ||
+            Combat.Teams[blockerUnit] != playerId ||
+            Construction.IsAssignedBuilder(blockerUnit))
+        {
+            return false;
+        }
+        if (!ConstructionStartEvacuation.TryFindExit(
+                World,
+                producerBounds,
+                Units.Positions[blockerUnit],
+                Units.Radii[blockerUnit],
+                producedUnitRadius + 24f,
+                out var exit))
+        {
+            return false;
+        }
+        if (Vector2.DistanceSquared(Units.MoveGoals[blockerUnit], exit) <= 1f &&
+            Units.Modes[blockerUnit] is not UnitMoveMode.Idle)
+        {
+            return true;
+        }
+
+        Span<int> blocker = stackalloc int[1];
+        blocker[0] = blockerUnit;
+        if (Economy.IsWorker(blockerUnit))
+            Economy.Cancel(blocker);
+        _issuingSystemOrder = true;
+        try
+        {
+            IssueMove(blocker, exit);
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
+        return true;
     }
 
     private void ProcessPathRequests()
@@ -3567,6 +3664,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 Economy.Worker(unit).CargoAmount <= 0,
             UnitOrderKind.ResumeConstruction =>
                 IsResumeConstructionOrderComplete(unit),
+            UnitOrderKind.FollowFriendly => false,
             UnitOrderKind.Stop or UnitOrderKind.Hold => true,
             _ => true
         };

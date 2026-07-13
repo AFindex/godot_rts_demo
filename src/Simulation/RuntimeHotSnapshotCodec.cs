@@ -1348,7 +1348,8 @@ internal static class RuntimeHotSnapshotCodec
                     reader.ReadInt32(),
                     reader.ReadInt32(),
                     reader.ReadInt32());
-                if (!UnitOrderContract.IsStructurallyValid(order) ||
+                if (order.Kind == UnitOrderKind.FollowFriendly ||
+                    !UnitOrderContract.IsStructurallyValid(order) ||
                     !queues.TryEnqueue(unit, order))
                 {
                     throw new InvalidDataException();

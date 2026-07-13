@@ -251,12 +251,16 @@ public sealed class ProductionSystem
         ConstructionSystem construction,
         PlayerEconomyStore economy,
         UnitStore units,
+        CombatStore combat,
         StaticWorld world,
         Func<UnitTypeProfile, int, Vector2, int> spawn,
-        Action<int, int, RallyTarget> applyRally)
+        Action<int, int, RallyTarget> applyRally,
+        Func<int, int, SimRect, float, bool> evacuateFriendlyExitBlocker)
     {
         ReleaseDeadUnitSupply(units, economy);
         List<int>? retiredProducers = null;
+        Span<int> friendlyBlockers = stackalloc int[
+            ProductionExitResolver.MaximumReportedFriendlyBlockers];
         foreach (var pair in _queues)
         {
             var queue = pair.Value;
@@ -283,15 +287,33 @@ public sealed class ProductionSystem
             }
             if (order.State != ProductionOrderState.WaitingForExit) continue;
             var building = construction.Observe(queue.Producer);
-            if (!TryFindExit(
-                    building.Bounds,
-                    order.Recipe.UnitType.Movement.PhysicalRadius,
-                    queue.Rally.IsSet ? queue.Rally.Position : null,
-                    units,
-                    world,
-                    out var exit))
+            var exit = ProductionExitResolver.Resolve(
+                building.Bounds,
+                order.Recipe.UnitType.Movement.PhysicalRadius,
+                queue.Rally.IsSet ? queue.Rally.Position : null,
+                order.PlayerId,
+                units,
+                combat,
+                world,
+                friendlyBlockers);
+            if (exit.Status == ProductionExitStatus.SoftBlockedByFriendly)
+            {
+                for (var blocker = 0;
+                     blocker < exit.FriendlyBlockerCount;
+                     blocker++)
+                {
+                    evacuateFriendlyExitBlocker(
+                        order.PlayerId,
+                        friendlyBlockers[blocker],
+                        building.Bounds,
+                        order.Recipe.UnitType.Movement.PhysicalRadius);
+                }
                 continue;
-            var unit = spawn(order.Recipe.UnitType, order.PlayerId, exit);
+            }
+            if (exit.Status != ProductionExitStatus.Available)
+                continue;
+            var unit = spawn(
+                order.Recipe.UnitType, order.PlayerId, exit.Position);
             _producedUnits.Add(new ProducedUnitPopulation(
                 unit, order.PlayerId, order.Recipe.Cost.Supply));
             if (queue.Rally.IsSet)
@@ -464,60 +486,6 @@ public sealed class ProductionSystem
                 hash.Add(order.Progress);
             }
         }
-    }
-
-    private static bool TryFindExit(
-        SimRect bounds,
-        float radius,
-        Vector2? rally,
-        UnitStore units,
-        StaticWorld world,
-        out Vector2 exit)
-    {
-        var center = (bounds.Min + bounds.Max) * 0.5f;
-        var offset = radius + 6f;
-        Span<Vector2> candidates = stackalloc Vector2[12]
-        {
-            new(bounds.Max.X + offset, center.Y),
-            new(bounds.Min.X - offset, center.Y),
-            new(center.X, bounds.Max.Y + offset),
-            new(center.X, bounds.Min.Y - offset),
-            new(bounds.Max.X + offset, bounds.Max.Y + offset),
-            new(bounds.Max.X + offset, bounds.Min.Y - offset),
-            new(bounds.Min.X - offset, bounds.Max.Y + offset),
-            new(bounds.Min.X - offset, bounds.Min.Y - offset),
-            new(bounds.Max.X + offset, bounds.Min.Y + bounds.Height * 0.25f),
-            new(bounds.Max.X + offset, bounds.Min.Y + bounds.Height * 0.75f),
-            new(bounds.Min.X - offset, bounds.Min.Y + bounds.Height * 0.25f),
-            new(bounds.Min.X - offset, bounds.Min.Y + bounds.Height * 0.75f)
-        };
-        var bestDistance = float.PositiveInfinity;
-        exit = default;
-        for (var index = 0; index < candidates.Length; index++)
-        {
-            var candidate = candidates[index];
-            if (!world.IsDiscFree(candidate, radius) ||
-                UnitOverlaps(candidate, radius, units)) continue;
-            var score = rally.HasValue
-                ? Vector2.DistanceSquared(candidate, rally.Value)
-                : index;
-            if (score >= bestDistance) continue;
-            bestDistance = score;
-            exit = candidate;
-        }
-        return float.IsFinite(bestDistance);
-    }
-
-    private static bool UnitOverlaps(Vector2 position, float radius, UnitStore units)
-    {
-        for (var unit = 0; unit < units.Count; unit++)
-        {
-            if (!units.Alive[unit]) continue;
-            var minimum = radius + units.Radii[unit] + 1f;
-            if (Vector2.DistanceSquared(position, units.Positions[unit]) <
-                minimum * minimum) return true;
-        }
-        return false;
     }
 
     private void ReleaseDeadUnitSupply(

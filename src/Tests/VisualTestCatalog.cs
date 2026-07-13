@@ -97,6 +97,7 @@ public static class VisualTestCatalog
         "construction-under-build-defense",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
+        "production-exit-rally-boundaries",
         "production-replay-persistence",
         "production-catalog-resource-runtime",
         "production-rally-smart-targets",
@@ -272,6 +273,8 @@ public static class VisualTestCatalog
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
         "production-queue-exit-rally" => CreateProductionQueueExitRally(),
+        "production-exit-rally-boundaries" =>
+            CreateProductionExitRallyBoundaries(gameplayProfiles),
         "production-replay-persistence" => CreateProductionReplayPersistence(
             navigationMap, gameplayProfiles, clearanceBake),
         "production-catalog-resource-runtime" =>
@@ -7269,6 +7272,379 @@ public static class VisualTestCatalog
                 TestDiagnosticKind.Accepted);
     }
 
+    private static VisualTestSession CreateProductionExitRallyBoundaries(
+        GameplayProfileCatalogSnapshot? gameplayProfiles)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var created = NavigationMapSnapshot.TryCreate(
+            NavigationMapSnapshot.CurrentFormatVersion,
+            new SimRect(Vector2.Zero, new Vector2(1000f, 600f)),
+            [], [], [], [],
+            out var navigation,
+            out var navigationValidation);
+        if (!created || navigation is null)
+        {
+            throw new InvalidOperationException(
+                $"Production boundary map is invalid: " +
+                $"{navigationValidation.FirstError}.");
+        }
+
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            128, navigation, gameplayProfiles, clearanceBake: null);
+        rig.RegisterPlayer(1, 10000, 2000, 80, 0);
+        rig.RegisterPlayer(2, 10000, 2000, 80, 0);
+        var catalog = DemoProductionCatalog.CreateSnapshot();
+        var marine = catalog.Recipe(0) with { ProductionSeconds = 0.25f };
+        var rallyMarine = marine with { ProductionSeconds = 0.5f };
+        var barracks = DemoBuildingTypes.Barracks with { BuildSeconds = 0.2f };
+        Vector2[] centers =
+        [
+            new(120f, 100f), new(370f, 100f),
+            new(620f, 100f), new(870f, 100f),
+            new(120f, 350f), new(370f, 350f),
+            new(620f, 350f), new(870f, 350f)
+        ];
+        var builders = centers.Select(center => rig.SpawnWorker(
+            center - new Vector2(100f, 0f), 1,
+            maximumSpeed: 260f)).ToArray();
+        var softSealPositions = CreateProductionSealPositions(
+            centers[4], barracks.Size,
+            marine.UnitType.Movement.PhysicalRadius);
+        var hardSealPositions = CreateProductionSealPositions(
+            centers[5], barracks.Size,
+            marine.UnitType.Movement.PhysicalRadius);
+        var blockerProfile = TestCombatProfile.Standard with
+        {
+            MaximumHealth = 10000f,
+            AttackDamage = 0f,
+            AttackRange = 0f,
+            AcquisitionRange = 0f
+        };
+        var friendlyBlockers = softSealPositions.Select((position, index) =>
+            rig.SpawnCombat(
+                position + Vector2.Normalize(position - centers[4]) * 30f, 1,
+                blockerProfile,
+                radius: 7.5f, maximumSpeed: 260f,
+                acceleration: 1000f)).ToArray();
+        var enemyBlockers = hardSealPositions.Select((position, index) =>
+            rig.SpawnCombat(
+                position + Vector2.Normalize(position - centers[5]) * 30f, 2,
+                blockerProfile,
+                radius: 7.5f, maximumSpeed: 260f,
+                acceleration: 1000f)).ToArray();
+        var beforeTarget = rig.SpawnCombat(new Vector2(600f, 540f), 1);
+        var afterTarget = rig.SpawnCombat(
+            new Vector2(900f, 540f), 1,
+            maximumSpeed: 220f, acceleration: 900f);
+        var killerProfile = TestCombatProfile.Standard with
+        {
+            AttackDamage = 1000f,
+            AttackRange = 40f,
+            AcquisitionRange = 40f,
+            AttackWindupSeconds = 0.05f,
+            LeashDistance = 1400f,
+            ProjectileSpeed = 0f
+        };
+        var beforeKiller = rig.SpawnCombat(
+            new Vector2(550f, 540f), 2, killerProfile,
+            maximumSpeed: 500f, acceleration: 1600f);
+        var afterKiller = rig.SpawnCombat(
+            new Vector2(710f, 540f), 2, killerProfile,
+            maximumSpeed: 500f, acceleration: 1600f);
+        var initialUnitCount = rig.UnitCount;
+        rig.StartReplayPackageRecording();
+
+        var buildings = new TestConstructionResult[centers.Length];
+        var issued = false;
+        var buildingsCompleted = false;
+        var directionCaptured = false;
+        var directionAligned = false;
+        var softEvacuated = false;
+        var softSpawned = false;
+        var hardWaited = false;
+        var hardRecovered = false;
+        var beforeTargetDied = false;
+        var beforeNoRally = false;
+        var afterFollowed = false;
+        var afterContinued = false;
+        var beforeSpawnPosition = Vector2.Zero;
+        var afterDeathPosition = Vector2.Zero;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 300;
+
+        var session = new VisualTestSession(
+                "production-exit-rally-boundaries",
+                "Four-way exits, soft friendly evacuation and Rally death boundaries",
+                520,
+                rig,
+                [.. builders, .. friendlyBlockers, .. enemyBlockers,
+                    beforeTarget, afterTarget, beforeKiller, afterKiller],
+                runtime =>
+                {
+                    var package = runtime.CaptureReplayPackage();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(
+                        out var decoded);
+                    var replay = packageRoundTrip
+                        ? runtime.ReplayPackage(decoded!, runtime.Tick)
+                        : null;
+                    var replayExact = replay is not null &&
+                                      replay.FinalHash == runtime.StateHash;
+                    var hotExact = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotExact = resumed.FinalHash == runtime.StateHash &&
+                                       replay is not null &&
+                                       replay.MatchesFrom(resumed, hotTick);
+                        }
+                    }
+
+                    buildingsCompleted = buildings.All(value =>
+                        value.Succeeded &&
+                        runtime.ObserveGameplayBuilding(value.BuildingId).State ==
+                            TestBuildingLifecycleState.Completed);
+                    if (runtime.UnitCount >= initialUnitCount + 8)
+                        hardRecovered = true;
+                    if (runtime.UnitCount >= initialUnitCount + 7)
+                    {
+                        var beforeUnit = new TestUnitId(initialUnitCount + 5);
+                        var afterUnit = new TestUnitId(initialUnitCount + 6);
+                        var before = runtime.Observe(beforeUnit);
+                        var after = runtime.Observe(afterUnit);
+                        beforeNoRally |=
+                            runtime.ObserveOrders(beforeUnit).ActiveOrder ==
+                                TestOrderKind.None &&
+                            Vector2.Distance(
+                                before.Position, beforeSpawnPosition) < 24f;
+                        afterContinued |= !runtime.IsUnitAlive(afterTarget) &&
+                            runtime.ObserveOrders(afterUnit).ActiveOrder ==
+                                TestOrderKind.Move &&
+                            Vector2.Distance(
+                                after.AssignedTarget, afterDeathPosition) < 1f &&
+                            Vector2.Distance(
+                                after.Position, afterDeathPosition) < 28f;
+                    }
+                    var versions = package.FormatVersion ==
+                                       SimulationReplayPackageSnapshot
+                                           .CurrentFormatVersion &&
+                                   hotVersion ==
+                                       SimulationHotSnapshot.CurrentFormatVersion;
+                    var passed = issued && buildingsCompleted &&
+                                 directionCaptured && directionAligned &&
+                                 softEvacuated && softSpawned &&
+                                 hardWaited && hardRecovered &&
+                                 beforeTargetDied && beforeNoRally &&
+                                 afterFollowed && afterContinued &&
+                                 packageRoundTrip && replayExact && hotExact &&
+                                 versions;
+                    return new ScenarioResult(
+                        passed,
+                        $"build/train={buildingsCompleted}/{issued}, " +
+                        $"directions={directionCaptured}/{directionAligned}, " +
+                        $"soft={softEvacuated}/{softSpawned}, " +
+                        $"hard={hardWaited}/{hardRecovered}, " +
+                        $"death-before={beforeTargetDied}/{beforeNoRally}, " +
+                        $"death-after={afterFollowed}/{afterContinued}, " +
+                        $"units={runtime.UnitCount - initialUnitCount}, " +
+                        $"replay={replayExact}, hot={hotExact}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(500f, 290f), 0.9f)
+            .CameraKeyframe(100, new Vector2(495f, 145f), 1.02f)
+            .CameraKeyframe(200, new Vector2(245f, 350f), 1.08f)
+            .CameraKeyframe(320, new Vector2(745f, 420f), 1.04f)
+            .CameraKeyframe(430, new Vector2(370f, 350f), 1.08f)
+            .CameraKeyframe(515, new Vector2(500f, 290f), 0.92f)
+            .Highlight(
+                new SimRect(new Vector2(35f, 35f), new Vector2(950f, 170f)),
+                "RALLY CHOOSES EAST / WEST / SOUTH / NORTH EXIT",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(35f, 270f), new Vector2(460f, 440f)),
+                "FRIENDLY SOFT SEAL / ENEMY HARD SEAL",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(535f, 270f), new Vector2(960f, 570f)),
+                "RALLY TARGET DIES BEFORE / AFTER SPAWN",
+                TestDiagnosticKind.Rejected);
+
+        session.At(1, "Build eight production facilities through the gameplay API",
+            runtime =>
+            {
+                for (var index = 0; index < buildings.Length; index++)
+                    buildings[index] = runtime.Build(
+                        1, builders[index], barracks, centers[index]);
+            });
+        session.At(45, "Move friendly and enemy rings around separate producers",
+            runtime =>
+            {
+                for (var index = 0; index < friendlyBlockers.Length; index++)
+                {
+                    runtime.Move(
+                        [friendlyBlockers[index]], softSealPositions[index]);
+                    runtime.Move(
+                        [enemyBlockers[index]], hardSealPositions[index]);
+                }
+            });
+        session.At(100, "Train through four Rally directions",
+            runtime =>
+            {
+                Vector2[] rallies =
+                [
+                    new(280f, 100f), new(210f, 100f),
+                    new(620f, 270f), new(870f, 30f)
+                ];
+                issued = true;
+                for (var index = 0; index < rallies.Length; index++)
+                {
+                    issued &= runtime.SetRallyPoint(
+                        1, buildings[index].BuildingId, rallies[index]);
+                    issued &= runtime.Train(
+                        1, buildings[index].BuildingId, marine).Succeeded;
+                }
+            });
+        for (var tick = 110; tick <= 140; tick++)
+        {
+            session.At(tick, "Capture first-frame directional exits", runtime =>
+            {
+                if (directionCaptured ||
+                    runtime.UnitCount < initialUnitCount + 4)
+                {
+                    return;
+                }
+                var east = runtime.Observe(
+                    new TestUnitId(initialUnitCount)).Position;
+                var west = runtime.Observe(
+                    new TestUnitId(initialUnitCount + 1)).Position;
+                var south = runtime.Observe(
+                    new TestUnitId(initialUnitCount + 2)).Position;
+                var north = runtime.Observe(
+                    new TestUnitId(initialUnitCount + 3)).Position;
+                var half = barracks.Size * 0.5f;
+                directionAligned = east.X > centers[0].X + half.X &&
+                                   west.X < centers[1].X - half.X &&
+                                   south.Y > centers[2].Y + half.Y &&
+                                   north.Y < centers[3].Y - half.Y;
+                directionCaptured = true;
+            });
+        }
+        session.At(150, "Train after friendly and enemy seals have settled",
+            runtime =>
+            {
+                runtime.Hold(friendlyBlockers);
+                runtime.Hold(enemyBlockers);
+                issued &= runtime.SetRallyPoint(
+                    1, buildings[4].BuildingId, new Vector2(300f, 350f));
+                issued &= runtime.SetRallyPoint(
+                    1, buildings[5].BuildingId, new Vector2(590f, 350f));
+                issued &= runtime.Train(
+                    1, buildings[4].BuildingId, marine).Succeeded;
+                issued &= runtime.Train(
+                    1, buildings[5].BuildingId, marine).Succeeded;
+            });
+        session.At(200, "Verify soft evacuation and persistent enemy hard block",
+            runtime =>
+            {
+                softEvacuated = friendlyBlockers
+                    .Select((unit, index) => Vector2.Distance(
+                        runtime.Observe(unit).Position,
+                        softSealPositions[index]))
+                    .Any(distance => distance > 10f);
+                softSpawned = runtime.UnitCount >= initialUnitCount + 5;
+                var hardQueue = runtime.ObserveProduction(
+                    buildings[5].BuildingId);
+                hardWaited = hardQueue.ActiveState ==
+                                 TestProductionOrderState.WaitingForExit &&
+                             hardQueue.ActiveProgress == 1f &&
+                             runtime.UnitCount == initialUnitCount + 5;
+            });
+        session.At(210, "Bind two unit Rally targets and start production",
+            runtime =>
+            {
+                issued &= runtime.SetRallyFriendlyUnit(
+                    1, buildings[6].BuildingId, beforeTarget);
+                issued &= runtime.SetRallyFriendlyUnit(
+                    1, buildings[7].BuildingId, afterTarget);
+                issued &= runtime.Train(
+                    1, buildings[6].BuildingId, rallyMarine).Succeeded;
+                issued &= runtime.Train(
+                    1, buildings[7].BuildingId, rallyMarine).Succeeded;
+            });
+        session.At(215, "Kill the first Rally target before its unit exits",
+            runtime => runtime.AttackTarget([beforeKiller], beforeTarget));
+        session.At(250, "Observe no Rally versus active friendly following",
+            runtime =>
+            {
+                beforeTargetDied = !runtime.IsUnitAlive(beforeTarget);
+                if (runtime.UnitCount < initialUnitCount + 7)
+                    return;
+                var beforeUnit = new TestUnitId(initialUnitCount + 5);
+                var afterUnit = new TestUnitId(initialUnitCount + 6);
+                beforeSpawnPosition = runtime.Observe(beforeUnit).Position;
+                beforeNoRally = runtime.ObserveOrders(beforeUnit).ActiveOrder ==
+                                TestOrderKind.None;
+                var afterOrder = runtime.ObserveOrders(afterUnit);
+                afterFollowed = afterOrder.ActiveOrder ==
+                                    TestOrderKind.FollowFriendly &&
+                                afterOrder.ActiveTargetUnit == afterTarget.Value;
+            });
+        session.At(260, "Move the live Rally target after its follower exits",
+            runtime => runtime.Move(
+                [afterTarget], new Vector2(780f, 560f)));
+        session.At(hotTick, "Capture live FollowFriendly and blocked-exit future state",
+            runtime =>
+            {
+                hotCapture = runtime.CaptureRuntimeState();
+                if (runtime.UnitCount < initialUnitCount + 7)
+                    return;
+                var afterUnit = runtime.Observe(
+                    new TestUnitId(initialUnitCount + 6));
+                afterFollowed &= Vector2.Distance(
+                    afterUnit.AssignedTarget,
+                    runtime.Observe(afterTarget).Position) < 12f;
+            });
+        session.At(340, "Kill the Rally target after the follower has tracked it",
+            runtime => runtime.AttackTarget([afterKiller], afterTarget));
+        session.At(370, "Release the enemy seal after capturing the death position",
+            runtime =>
+            {
+                afterDeathPosition = runtime.Observe(afterTarget).Position;
+                runtime.Move(enemyBlockers, new Vector2(370f, 550f));
+            });
+        return session;
+    }
+
+    private static Vector2[] CreateProductionSealPositions(
+        Vector2 center,
+        Vector2 buildingSize,
+        float producedUnitRadius)
+    {
+        var half = buildingSize * 0.5f;
+        var offset = producedUnitRadius + 6f;
+        return
+        [
+            center + new Vector2(half.X + offset, 0f),
+            center + new Vector2(-half.X - offset, 0f),
+            center + new Vector2(0f, half.Y + offset),
+            center + new Vector2(0f, -half.Y - offset),
+            center + new Vector2(half.X + offset, half.Y + offset),
+            center + new Vector2(half.X + offset, -half.Y - offset),
+            center + new Vector2(-half.X - offset, half.Y + offset),
+            center + new Vector2(-half.X - offset, -half.Y - offset),
+            center + new Vector2(half.X + offset, -half.Y * 0.5f),
+            center + new Vector2(half.X + offset, half.Y * 0.5f),
+            center + new Vector2(-half.X - offset, -half.Y * 0.5f),
+            center + new Vector2(-half.X - offset, half.Y * 0.5f)
+        ];
+    }
+
     private static VisualTestSession CreateProductionReplayPersistence(
         NavigationMapSnapshot? navigationMap,
         GameplayProfileCatalogSnapshot? gameplayProfiles,
@@ -7564,11 +7940,17 @@ public static class VisualTestCatalog
                 var marine = produced
                     ? runtime.Observe(new TestUnitId(4))
                     : default;
+                var leaderObservation = runtime.Observe(leader);
+                var marineOrders = produced
+                    ? runtime.ObserveOrders(new TestUnitId(4))
+                    : default;
                 var gatherStarted = worker.State is not
                     TestWorkerEconomyState.None and not TestWorkerEconomyState.Idle &&
                     worker.TargetNode == minerals;
                 var resolvedFriendlyTarget = Vector2.Distance(
-                    marine.AssignedTarget, new Vector2(700f, 300f)) < 0.1f;
+                    marine.AssignedTarget, leaderObservation.Position) < 0.1f &&
+                    marineOrders.ActiveOrder == TestOrderKind.FollowFriendly &&
+                    marineOrders.ActiveTargetUnit == leader.Value;
                 var protocol = resourceRally.Kind ==
                                    TestRallyTargetKind.ResourceNode &&
                                resourceRally.ResourceNode == minerals &&
@@ -7634,7 +8016,7 @@ public static class VisualTestCatalog
                 TestDiagnosticKind.Info)
             .Highlight(
                 new SimRect(new Vector2(730f, 300f), new Vector2(1120f, 620f)),
-                "RESOURCE -> Gather / FRIENDLY -> spawn-time position",
+                "RESOURCE -> Gather / FRIENDLY -> live follow target",
                 TestDiagnosticKind.Accepted);
     }
 

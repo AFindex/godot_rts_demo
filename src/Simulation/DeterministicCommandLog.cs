@@ -124,12 +124,14 @@ public sealed class SimulationCommandLogSnapshot
                 targetUnit,
                 targetBuilding,
                 targetResourceNode);
-            if (!UnitOrderContract.IsStructurallyValid(order))
+            if (kind == UnitOrderKind.FollowFriendly ||
+                !UnitOrderContract.IsStructurallyValid(order))
             {
                 validation = new CommandLogValidationResult(
-                    Enum.IsDefined(kind) && kind != UnitOrderKind.None
-                        ? CommandLogValidationCode.InvalidTarget
-                        : CommandLogValidationCode.InvalidOrderKind,
+                    kind == UnitOrderKind.FollowFriendly ||
+                    !Enum.IsDefined(kind) || kind == UnitOrderKind.None
+                        ? CommandLogValidationCode.InvalidOrderKind
+                        : CommandLogValidationCode.InvalidTarget,
                     entryIndex);
                 return false;
             }

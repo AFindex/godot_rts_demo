@@ -73,7 +73,7 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 
 - `TargetCommandRequest` 冻结命令类型与当前活动子组的稳定 Unit/Building ID；不会持有选择控件、Node 或模拟引用。
 - `TargetCommandResolver` 只解析 Primary/Secondary、世界坐标和 Shift：左键确认，右键取消；Move/AttackMove/Build 的 Shift 确认进入队列并保持目标模式，后续以右键或 Escape 退出。
-- Move、Attack Move 分别进入正式 `IssuePlayerMove` / `IssuePlayerAttackMove` 玩家门禁；Rally 对活动同类型生产建筑子组执行正式 `SetProductionRallyTarget`，继续支持 Ground/Resource/FriendlyUnit。
+- Move、Attack Move 分别进入正式 `IssuePlayerMove` / `IssuePlayerAttackMove` 玩家门禁；Rally 对活动同类型生产建筑子组执行正式 `SetProductionRallyTarget`，继续支持 Ground/Resource/FriendlyUnit。友军目标在新单位出生后形成系统派生 Follow，目标死亡后继续到最后位置；目标若在出生前已死亡则不执行 Rally。该派生状态进入热快照与 Hash，但不伪装成玩家 Unit Command。
 - `RtsTargetCommandOverlay` 只消费请求与光标世界坐标，独立绘制颜色、准星和提示；换样式、文案和动画不修改输入解析或业务命令。
 - 编组召回、Space 全选会取消未完成目标模式；请求中的实体在确认时仍由正式业务 API 再验证生命期、所有权和比赛状态。
 

@@ -13,7 +13,8 @@ public enum UnitOrderKind : byte
     Hold,
     GatherResource,
     ResumeConstruction,
-    ReturnCargo
+    ReturnCargo,
+    FollowFriendly
 }
 
 public readonly record struct UnitOrder(
@@ -30,7 +31,7 @@ public static class UnitOrderContract
         Enum.IsDefined(order.Kind) && order.Kind != UnitOrderKind.None &&
         float.IsFinite(order.TargetPosition.X) &&
         float.IsFinite(order.TargetPosition.Y) &&
-        (order.Kind == UnitOrderKind.AttackTarget
+        (order.Kind is UnitOrderKind.AttackTarget or UnitOrderKind.FollowFriendly
             ? order.TargetUnit >= 0
             : order.TargetUnit == -1) &&
         (order.Kind is UnitOrderKind.AttackBuilding or

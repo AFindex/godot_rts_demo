@@ -56,7 +56,7 @@ Idle
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造、建筑战斗、生产、研究和 Shift 工人任务现已纳入 Replay Package 与持久化热快照。当前 Replay Package v24、Hot Snapshot v23、State Hash v24；Research/CancelResearch 使用设施命令日志独立语义。
+经济、建造、建筑战斗、生产、研究和 Shift 工人任务现已纳入 Replay Package 与持久化热快照。当前 Replay Package v25、Hot Snapshot v24、State Hash v25；Research/CancelResearch 使用设施命令日志独立语义。
 
 ### Shift 连续建造合同
 
@@ -145,8 +145,8 @@ S11-D1 运行时已完成：
 - 单位 Type 保存移动、战斗和 Worker 语义；配方保存合法生产建筑、双资源/人口成本、生产时间和取消退款率。
 - 每建筑独立五格队列。资源和人口在入队事务中一次预留；排队失败不扣费，取消释放完整人口并按配方退款。
 - 只有己方已完工且 Type 匹配的建筑可生产；错误玩家、错误建筑、未完工、资源不足、人口阻塞和队列满均返回稳定结果。
-- 完成订单在十二个有界确定性候选点搜索出口，同时检查静态地图、动态 Footprint 和活单位；全部被堵时停在 `WaitingForExit`，不丢失、不重扣也不生成重叠单位。
-- 出口恢复后生成完整移动/战斗 Profile 单位；Worker 配方同时注册经济工人。地面 Rally 作为系统 Move 下发，不污染玩家命令录制。
+- 完成订单在十二个有界稳定候选点搜索出口；朝 Rally 方向的合法候选优先。静态地图、动态 Footprint 和敌军单位属于硬阻挡；只含友军的候选会触发确定性软撤离。全部硬阻挡时停在 `WaitingForExit`，不丢失、不重扣也不生成重叠单位。
+- 出口恢复后生成完整移动/战斗 Profile 单位；Worker 配方同时注册经济工人。地面 Rally 作为系统 Move 下发；友军 Rally 使用系统派生 Follow，二者都不污染玩家命令录制。
 - 已出生单位保留稳定人口账本，首次观察到死亡时只释放预留人口，不错误返还生产资源。
 - 生产建筑被摧毁后，所有未完成订单全额退款并释放人口，队列和 Rally 状态一起移除。
 - Godot 建筑表现只消费 `ProductionQueueSnapshot`，绘制当前单位、进度、状态和队列长度；HUD 只显示活动订单总数。
@@ -172,13 +172,13 @@ S11-D3b Rally SmartCommand 已完成：
 
 - `RallyTarget` 明确区分 None、Ground、ResourceNode 和 FriendlyUnit；实体目标同时保存稳定 ID 与确定性回退位置，不保存 Godot Node 引用。
 - 生产建筑右键复用命中解析：资源点写入 ResourceNode，友军写入 Unit ID，其余位置写入 Ground；表现层只消费生产 Snapshot 绘制虚线与标记。
-- Worker 出生到有效资源节点后直接进入正式 Gather 状态；非 Worker 对资源点执行 Move。友军目标在出生时解析当前有效位置，失效则使用记录位置。
-- 语义依据 [Blizzard《StarCraft II》Buildings Game Guide](https://news.blizzard.com/en-us/article/4488317/game-guide-buildings)：主基地 Rally 到资源会令新工人采集，单位目标失效后使用最后位置。当前 Demo 与既有 Friendly SmartCommand 一致，出生时生成 Move；持续 Follow 是未来独立订单能力，不塞进本次 Rally 协议升级。
+- Worker 出生到有效资源节点后直接进入正式 Gather 状态；非 Worker 对资源点执行 Move。有效友军目标会创建系统派生 `FollowFriendly`：目标存活时有界更新路径，死亡后转为 Move 到最后位置。
+- 语义依据 [Blizzard《StarCraft II》Buildings Game Guide](https://news.blizzard.com/en-us/article/4488317/game-guide-buildings)：主基地 Rally 到资源会令新工人采集；友军目标在单位出生前死亡时不执行 Rally，出生后死亡则继续前往最后位置。这两个死亡边界现已由 X1 正式实现并进入回放/热恢复门禁。
 - Production Command Log 升级为 v2，Replay Package/Hot Snapshot 升级为 v6，状态 Hash 升级为 v7；编码和恢复均验证目标种类、坐标和实体范围。
 - `production-rally-smart-targets` 只通过测试业务 Facade 覆盖资源、友军、Ground 覆盖、生产中热恢复、完整回放和非法版本/截断拒绝。
 - 76/76 全量黑盒回归通过。
 
-Rally 本阶段已收口；当前后续是 S11-E2 正式研究/升级队列。
+Rally 在 X1 生产出口边界中最终收口；不同建筑专属出口只有真实玩法或实机证据需要时才数据化。
 
 S11-E1 建筑前置与生产可用性已完成：
 
