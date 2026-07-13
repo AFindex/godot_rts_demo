@@ -58,7 +58,8 @@ public readonly record struct PlayerBuildingViewSnapshot(
     BuildingLifecycleState State,
     float Progress,
     float Health,
-    float MaximumHealth);
+    float MaximumHealth,
+    PublicConstructionStatus ConstructionStatus = PublicConstructionStatus.None);
 
 public readonly record struct PlayerResourceViewSnapshot(
     EconomyResourceNodeId NodeId,

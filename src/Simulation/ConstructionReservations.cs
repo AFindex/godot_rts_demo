@@ -50,7 +50,8 @@ public sealed class ConstructionReservationStore
     public bool TryFindOverlap(
         SimRect bounds,
         out ConstructionReservationEntry conflict,
-        ConstructionReservationId ignore = default)
+        ConstructionReservationId ignore = default,
+        Predicate<ConstructionReservationEntry>? include = null)
     {
         for (var index = 0; index < _entries.Count; index++)
         {
@@ -58,6 +59,8 @@ public sealed class ConstructionReservationStore
             if (value.Id == ignore)
                 continue;
             if (!OverlapsArea(bounds, value.Bounds))
+                continue;
+            if (include is not null && !include(value))
                 continue;
             conflict = value;
             return true;

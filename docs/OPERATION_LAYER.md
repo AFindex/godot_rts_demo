@@ -80,14 +80,15 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 ### Build 放置
 
 - Worker 活动子组按 `BuildingTypeCatalogSnapshot` 生成 Supply Depot、Barracks、Command Center、Refinery、Academy 动作；尺寸、费用、功能和最小通行等级都来自 Catalog。
-- `RtsSimulation.PreviewConstruction` 是无副作用正式入口，与 `IssueConstruction` 共用比赛、工人、资源、Refinery、footprint、单位重叠、净空和 Connectivity Guard 验证；预览不会创建动态占用、扣资源或写命令日志。
+- `RtsSimulation.PreviewConstruction` 是无副作用正式入口，与 `IssueConstruction` 共用比赛、工人、资源、Refinery 和 PlayerKnown 放置验证；预览不会创建动态占用、扣资源或写命令日志。己方动态单位是软占位，可见敌军是已知硬阻挡，当前不可见的敌军单位/建筑/Reservation 不改变结果。
 - 光标中心按 8px 网格吸附。Refinery 在 Vespene 节点 32px 内吸附到节点中心；否则明确显示 `RefineryNodeRequired`。
 - 多选 Worker 按目标距离、Unit ID 稳定排序，逐个调用正式预览并选第一个合格工人；因此忙碌或失效工人不会阻塞仍可用的近邻工人。
-- 预览按吸附位置缓存，并至多每 6 Tick 刷新相同位置的资源/生命期状态，避免每渲染帧重复执行 Connectivity Guard。
+- 预览按吸附位置缓存，并至多每 6 Tick 刷新相同位置的资源/生命期状态。全局 Connectivity Guard 只在 Builder 到场的 Authority Hard Commit 前运行，既避免每渲染帧全图分析，也避免隐藏建筑通过拓扑结果泄露。
 - `BuildTargetPreviewSnapshot` 只向 Overlay 提供 bounds、builder、resource、CanPlace 和稳定状态；Overlay 绿色显示 Success，红色显示具体 Construction/Placement Code。
 - 左键只在最新正式预览通过时调用 `IssueConstruction`；失败保留目标模式以便改位置。普通成功退出；Shift 成功创建软 Reservation 并保持目标模式，可继续摆放下一座。右键/Escape 始终无副作用取消。
 - Shift Build 接受时预扣资源并保存完整解析后 Profile，但未轮到的 Reservation 不创建 Hard Footprint。执行时重新验证静态放置；失效项全退并继续，动态友军仍走既有确定性撤离；玩家主动取消保持 75% 退款。
 - 施工多单位让位使用独立系统临时覆盖层：Idle/Stop/Move 友军可被分配到唯一外沿槽，但其活动 Move 和 Shift 队列不被改写；Hard Commit 后继续原订单。Hold、采集、其他施工者/订单和敌军在 E0 证据冻结前保持等待。
+- `PlayerBuildingViewSnapshot.ConstructionStatus` 只发布 `None / ClearingFriendlyUnits / KnownOccupant / WaitingForClearance`；Godot/UI 不读取 Authority blocker ID、阵营或隐藏原因。
 - 施工和经济系统派生的 Stop 不会清空玩家 Shift 队列。Builder 死亡时，已经轮到的可续建 Reservation 保持 `WaitingForBuilder`，其未开始未来项全退并取消。
 
 ### 同类型多建筑生产

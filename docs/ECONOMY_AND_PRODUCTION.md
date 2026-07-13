@@ -62,6 +62,7 @@ Idle
 
 - Shift Build 在接受时原子扣费，并为每项保存完整 Building Profile、目标 Bounds、Refinery 目标与软 Reservation；未轮到的项不创建 Hard Footprint。
 - Builder 到场后的动态占位由独立 `ConstructionBlockerPolicy` 决策；Idle/Stop/Move 友军可进入最多 64 人的稳定外沿分槽，Hold、采集、其他 Builder/订单与敌军保守等待。系统临时覆盖层不清玩家 Move 或 Shift 队列，Hard Commit/取消后恢复。
+- Build 预览/接受使用 PlayerKnown 过滤：己方单位允许先建立 Reservation，可见敌军拒绝，当前不可见的敌军单位、建筑与 Reservation 不改变公开结果；Builder 到场后 Authority 才执行完整占位与 Connectivity 重验。公开施工状态经过可见性过滤，不返回隐藏 blocker 身份。
 - 轮到执行时重新验证静态放置，然后复用 Builder 接近、动态占位撤离和 Hard Commit 生命周期。晚期静态失败全额退款并继续下一项；主动取消仍返还 75%。
 - Builder 死亡保留当前已开始或已轮到的可续建项，取消并全退尚未开始的未来 Reservation；最后可继续排 Gather 回矿。
 - 上述未知 SC2 内部细节集中在 `QueuedConstructionPolicy`，不会散落为 UI 或状态机特判。

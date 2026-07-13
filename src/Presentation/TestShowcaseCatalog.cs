@@ -132,6 +132,7 @@ public static class TestShowcaseCatalog
             M("economy-mass-mining", "大规模多基地采矿", "经济玩法", "96 个农民在四个基地与 32 片矿之间持续往返，验证最近投递边界、完整循环和高密度穿行。"),
             M("economy-expansion-saturation", "扩张与饱和度", "经济玩法", "验证双基地归属、工人转场、饱和度和基地摧毁。"),
             M("player-visibility-authority", "视野与命令权限", "比赛规则", "验证战争迷雾、探索记忆和不可见目标权限。"),
+            M("construction-player-known-placement", "施工已知信息边界", "建造生产", "验证友军内预放置、可见敌军拒绝、隐藏敌军不改变预览，以及到场后的权威重验和统一反馈。"),
             M("match-capability-elimination", "比赛失败与终局", "比赛规则", "验证建立存在、基地损失、玩家失败和胜负锁定。"),
             M("ai-modular-skirmish", "模块化 AI 完整对局", "AI 对局", "验证单 AI 从经济发展、科技扩张到摧毁敌方基地。"),
             M("ai-dual-runtime-replay", "双 AI 热恢复与回放", "AI 对局", "验证错峰双 AI 的策略未来态、热恢复和纯命令回放。"),

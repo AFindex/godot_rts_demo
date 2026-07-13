@@ -201,6 +201,14 @@ public readonly record struct GameplayBuildingSnapshot(
         BuildingLifecycleState.Canceled or BuildingLifecycleState.Destroyed;
 }
 
+public enum PublicConstructionStatus : byte
+{
+    None,
+    ClearingFriendlyUnits,
+    KnownOccupant,
+    WaitingForClearance
+}
+
 public readonly record struct ConstructionRuntimeEntry(
     GameplayBuildingId Id,
     int PlayerId,
@@ -657,6 +665,22 @@ public sealed class ConstructionSystem
             throw new ArgumentOutOfRangeException(nameof(id));
         }
         return building.Snapshot();
+    }
+
+    public bool TryObserveFootprint(
+        DynamicFootprintId footprintId,
+        out GameplayBuildingSnapshot snapshot)
+    {
+        for (var index = 0; index < _buildings.Count; index++)
+        {
+            var building = _buildings[index];
+            if (building.FootprintId != footprintId || building.IsTerminal)
+                continue;
+            snapshot = building.Snapshot();
+            return true;
+        }
+        snapshot = default;
+        return false;
     }
 
     public Vector2 BuilderAccessPoint(GameplayBuildingId id)

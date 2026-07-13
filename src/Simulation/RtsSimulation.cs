@@ -652,6 +652,63 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 DynamicStartValidationCode.NotEvaluated, -1));
     }
 
+    private BuildingPlacementAssessment AssessPlayerKnownBuildingPlacement(
+        int playerId,
+        SimRect footprint,
+        BuildingPlacementRules rules)
+    {
+        var assessment = BuildingPlacementValidator.Evaluate(
+            World,
+            Units,
+            footprint,
+            rules with { PreserveConnectivity = false },
+            _buildingConnectivityGuard,
+            value => IsDynamicFootprintKnownToPlayer(playerId, value),
+            unit => IsUnitPlacementBlockerKnownToPlayer(playerId, unit));
+        if (!assessment.Succeeded ||
+            !Construction.Reservations.TryFindOverlap(
+                footprint,
+                out var conflict,
+                default,
+                value => IsReservationKnownToPlayer(playerId, value)))
+            return assessment;
+        return new BuildingPlacementAssessment(
+            new StaticPlacementResult(
+                StaticPlacementCode.DynamicFootprintOverlap,
+                conflict.Id.Value),
+            new DynamicStartValidationResult(
+                DynamicStartValidationCode.NotEvaluated, -1));
+    }
+
+    private bool IsDynamicFootprintKnownToPlayer(
+        int playerId,
+        DynamicFootprint footprint)
+    {
+        if (!Construction.TryObserveFootprint(footprint.Id, out var building))
+            return true;
+        if (building.PlayerId == playerId)
+            return true;
+        var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+        return Visibility.IsVisible(playerId, center);
+    }
+
+    private bool IsUnitPlacementBlockerKnownToPlayer(int playerId, int unit)
+    {
+        if (Combat.Teams[unit] == playerId)
+            return false;
+        return Visibility.IsVisible(playerId, Units.Positions[unit]);
+    }
+
+    private bool IsReservationKnownToPlayer(
+        int playerId,
+        ConstructionReservationEntry reservation)
+    {
+        if (reservation.PlayerId == playerId)
+            return true;
+        var center = (reservation.Bounds.Min + reservation.Bounds.Max) * 0.5f;
+        return Visibility.IsVisible(playerId, center);
+    }
+
     public HardFootprintCommitResult TryCommitHardFootprint(
         SimRect footprint,
         BuildingPlacementRules rules) =>
@@ -1121,7 +1178,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var halfSize = placementProfile.Size * 0.5f;
         var footprint = new SimRect(
             resolvedCenter - halfSize, resolvedCenter + halfSize);
-        var placement = AssessBuildingPlacement(
+        var placement = AssessPlayerKnownBuildingPlacement(
+            issuingPlayerId,
             footprint,
             new BuildingPlacementRules(
                 placementProfile.MinimumPassageClass,
@@ -1359,7 +1417,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
             buildings.Add(new PlayerBuildingViewSnapshot(
                 building.Id, building.PlayerId, relation, building.Type,
                 building.Bounds, building.State, building.Progress,
-                building.Health, building.MaximumHealth));
+                building.Health, building.MaximumHealth,
+                PublicConstructionStatusFor(playerId, building)));
         }
         var resources = new List<PlayerResourceViewSnapshot>();
         for (var index = 0; index < Economy.ResourceNodeCount; index++)
@@ -1771,6 +1830,38 @@ public sealed class RtsSimulation : ICombatMovementDriver
             : ownerId <= 0
                 ? PlayerEntityRelation.Neutral
                 : PlayerEntityRelation.Enemy;
+
+    private PublicConstructionStatus PublicConstructionStatusFor(
+        int playerId,
+        GameplayBuildingSnapshot building)
+    {
+        if (building.State != BuildingLifecycleState.BlockedAtStart)
+            return PublicConstructionStatus.None;
+        var knownOccupant = false;
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] || unit == building.BuilderUnit ||
+                !building.Bounds.Expanded(
+                        Units.Radii[unit] +
+                        building.Type.PlacementProfile.UnitPadding)
+                    .Contains(Units.Positions[unit]))
+                continue;
+            if (Combat.Teams[unit] == playerId)
+            {
+                if (CommandQueues.ConstructionEvacuationActive[unit] &&
+                    CommandQueues.ConstructionEvacuationBuildings[unit] ==
+                        building.Id.Value)
+                    return PublicConstructionStatus.ClearingFriendlyUnits;
+                knownOccupant = true;
+                continue;
+            }
+            if (Visibility.IsVisible(playerId, Units.Positions[unit]))
+                knownOccupant = true;
+        }
+        return knownOccupant
+            ? PublicConstructionStatus.KnownOccupant
+            : PublicConstructionStatus.WaitingForClearance;
+    }
 
     public void IssueAttackMove(
         ReadOnlySpan<int> unitIndices,

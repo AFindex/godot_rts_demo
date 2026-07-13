@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T18:55:48.5347947+08:00",
+    "generated_at":  "2026-07-13T19:49:05.1633936+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  145,
-    "case_count":  114,
+    "recording_count":  146,
+    "case_count":  115,
     "recordings":  [
+                       {
+                           "id":  "construction-player-known-placement",
+                           "display_name":  "Player-known construction placement and authority revalidation",
+                           "batch":  "20260713_194851",
+                           "created_at":  "2026-07-13T19:49:04.5536335+08:00",
+                           "video":  "../20260713_194851/construction-player-known-placement.webm",
+                           "log":  "../20260713_194851/construction-player-known-placement.log",
+                           "bytes":  1156897,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS construction-player-known-placement: ticks=360, known=True/True/True/True, status=True/True/True, retry=True, states=Completed/Completed/Completed, package=True, hot=True",
+                           "metrics":  "ticks=360, known=True/True/True/True, status=True/True/True, retry=True, states=Completed/Completed/Completed, package=True, hot=True"
+                       },
                        {
                            "id":  "construction-multi-unit-eviction",
                            "display_name":  "Stable 1/8/32 occupant evacuation with conservative Hold policy",

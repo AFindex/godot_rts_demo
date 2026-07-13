@@ -23,6 +23,13 @@ S11-F2 把所有权、可见信息和玩家命令权限收敛到纯 C# 模拟边
 
 Godot 的实体绘制、点击命中和 Minimap 标记只消费 PlayerView。敌方生产/研究队列只对所有者显示；Debug DynamicFootprint 在玩家视图启用时不再绕过雾层绘制。
 
+### 施工放置边界
+
+- `PreviewConstruction` 与 `IssueConstruction` 使用 PlayerKnown 评估：己方动态单位是允许先建立 Reservation 的软占位；当前可见敌军参与 `UnitOverlap`；当前不可见的敌军单位、Gameplay Building 和 Reservation 不改变预览或命令接受码。
+- 地形、世界边界和非 Gameplay 的地图占地仍按地图已知信息处理。全局 Connectivity Guard 使用 Authority 导航图，因此不在 PlayerKnown 预览运行，只在 Builder 到场的 Hard Commit 前执行。
+- 到场后的 Authority 重验可以等待玩家不可见的阻挡，但 `PlayerBuildingViewSnapshot.ConstructionStatus` 只发布 `None / ClearingFriendlyUnits / KnownOccupant / WaitingForClearance`，不发布 blocker ID、阵营或隐藏原因。
+- 该合同覆盖普通战争迷雾；项目尚未拥有 Ally、Cloak、Burrow 或 Detection 状态，不能把“视野外普通单位”测试冒充成完整隐形侦测矩阵。
+
 ## 玩家命令入口
 
 `IssuePlayerMove / IssuePlayerAttackMove / IssuePlayerStop / IssuePlayerHold / IssuePlayerSmartCommand` 在写入正式命令日志之前统一验证：
@@ -43,3 +50,5 @@ Godot 的实体绘制、点击命中和 Minimap 标记只消费 PlayerView。敌
 - 解码严格拒绝非法网格、过量玩家、无序/重复 Player ID、长度错误和非零 padding bits。
 
 `player-visibility-authority` 黑盒场景覆盖：隐藏敌人不可查询与不可攻击、敌方单位不可被玩家 1 控制、侦察后单位/建筑/资源可见、返回后敌方动态实体再次隐藏、资源保留已探索但未知实时储量，以及完整回放与探索中的热恢复精确一致。
+
+`construction-player-known-placement` 覆盖友军单位内预放置、可见敌军拒绝、隐藏敌军不影响 Preview/Issue、Builder 到场后的 Authority 等待、可见性过滤反馈和解除阻挡后的完工；测试只使用正式业务门面。

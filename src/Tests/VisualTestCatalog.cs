@@ -87,6 +87,7 @@ public static class VisualTestCatalog
         "economy-mass-mining",
         "economy-expansion-saturation",
         "player-visibility-authority",
+        "construction-player-known-placement",
         "match-capability-elimination",
         "ai-modular-skirmish",
         "ai-dual-runtime-replay",
@@ -255,6 +256,8 @@ public static class VisualTestCatalog
         "economy-expansion-saturation" => CreateExpansionSaturation(),
         "player-visibility-authority" => CreatePlayerVisibilityAuthority(
             navigationMap, gameplayProfiles, clearanceBake),
+        "construction-player-known-placement" =>
+            CreateConstructionPlayerKnownPlacement(),
         "match-capability-elimination" => CreateMatchCapabilityElimination(
             navigationMap, gameplayProfiles, clearanceBake),
         "ai-modular-skirmish" => CreateModularAiSkirmish(aiConfigurations),
@@ -5745,6 +5748,174 @@ public static class VisualTestCatalog
                                       value.Visibility == TestMapVisibility.Explored &&
                                       value.KnownRemaining == -1);
         });
+        return session;
+    }
+
+    private static VisualTestSession CreateConstructionPlayerKnownPlacement()
+    {
+        var navigationMap = DemoMapDefinition.CreateSnapshot();
+        var gameplayProfiles = DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            24, navigationMap, gameplayProfiles, null);
+        rig.RegisterPlayer(1, 3000, 500, 30);
+        rig.RegisterPlayer(2, 3000, 500, 30);
+        var friendlyBuilder = rig.SpawnWorker(
+            new Vector2(80f, 120f), 1, maximumSpeed: 400f, acceleration: 2000f);
+        var hiddenBuilder = rig.SpawnWorker(
+            new Vector2(80f, 300f), 1, maximumSpeed: 400f, acceleration: 2000f);
+        var visibleBuilder = rig.SpawnWorker(
+            new Vector2(80f, 500f), 1, maximumSpeed: 400f, acceleration: 2000f);
+        var friendlyOccupant = rig.SpawnCombat(new Vector2(280f, 120f), 1);
+        var hiddenEnemy = rig.SpawnCombat(new Vector2(800f, 300f), 2);
+        var visibleEnemy = rig.SpawnCombat(new Vector2(320f, 500f), 2);
+        var scout = rig.SpawnCombat(new Vector2(300f, 440f), 1);
+        var profile = DemoBuildingTypes.SupplyDepot with { BuildSeconds = 1f };
+        var friendlyTarget = new Vector2(280f, 120f);
+        var hiddenTarget = new Vector2(800f, 300f);
+        var visibleTarget = new Vector2(320f, 500f);
+        rig.StartReplayPackageRecording();
+
+        var hiddenAtIssue = false;
+        var friendlyPreviewAccepted = false;
+        var hiddenPreviewAccepted = false;
+        var visiblePreviewRejected = false;
+        var visibleRetryAccepted = false;
+        var knownFriendlyWait = false;
+        var clearingObserved = false;
+        var knownEnemyWait = false;
+        TestConstructionResult friendlyBuild = default;
+        TestConstructionResult hiddenBuild = default;
+        TestConstructionResult visibleBuild = default;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 140;
+        var visibleUnits = new[]
+        {
+            friendlyBuilder, hiddenBuilder, visibleBuilder, friendlyOccupant,
+            hiddenEnemy, visibleEnemy, scout
+        };
+        var session = new VisualTestSession(
+            "construction-player-known-placement",
+            "Player-known construction placement and authority revalidation",
+            360,
+            rig,
+            visibleUnits,
+            runtime =>
+            {
+                var friendly = runtime.ObserveGameplayBuilding(
+                    friendlyBuild.BuildingId);
+                var hidden = runtime.ObserveGameplayBuilding(hiddenBuild.BuildingId);
+                var visible = runtime.ObserveGameplayBuilding(
+                    visibleBuild.BuildingId);
+                var package = runtime.CaptureReplayPackage();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out _);
+                var completed = friendly.State == TestBuildingLifecycleState.Completed &&
+                                hidden.State == TestBuildingLifecycleState.Completed &&
+                                visible.State == TestBuildingLifecycleState.Completed;
+                var passed = hiddenAtIssue && friendlyPreviewAccepted &&
+                             hiddenPreviewAccepted && visiblePreviewRejected &&
+                             visibleRetryAccepted && friendlyBuild.Succeeded &&
+                             hiddenBuild.Succeeded && visibleBuild.Succeeded &&
+                             knownFriendlyWait && clearingObserved &&
+                             knownEnemyWait && completed && packageRoundTrip &&
+                             hotRoundTrip;
+                return new ScenarioResult(
+                    passed,
+                    $"known={friendlyPreviewAccepted}/{visiblePreviewRejected}/" +
+                    $"{hiddenPreviewAccepted}/{hiddenAtIssue}, " +
+                    $"status={knownFriendlyWait}/{clearingObserved}/" +
+                    $"{knownEnemyWait}, retry={visibleRetryAccepted}, " +
+                    $"states={friendly.State}/{hidden.State}/{visible.State}, " +
+                    $"package={packageRoundTrip}, hot={hotRoundTrip}");
+            })
+            .RenderSpawnedUnits()
+            .CameraKeyframe(0, new Vector2(300f, 300f), 0.9f)
+            .CameraKeyframe(120, new Vector2(680f, 300f), 0.9f)
+            .CameraKeyframe(260, new Vector2(800f, 300f), 1.05f)
+            .Highlight(
+                new SimRect(new Vector2(210f, 60f), new Vector2(360f, 180f)),
+                "FRIENDLY: reservation accepted, policy decides evacuation",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(710f, 220f), new Vector2(890f, 380f)),
+                "FOG: hidden occupant cannot change preview",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(240f, 430f), new Vector2(400f, 570f)),
+                "VISIBLE ENEMY: placement rejected",
+                TestDiagnosticKind.Rejected);
+        session.At(5, "Hold friendly occupant and establish visibility", runtime =>
+            runtime.Hold([friendlyOccupant]));
+        session.At(10, "Compare friendly, hidden enemy and visible enemy previews",
+            runtime =>
+            {
+                hiddenAtIssue = !runtime.ObservePlayerView(1).Units.Contains(
+                    hiddenEnemy);
+                var friendlyPreview = runtime.PreviewBuild(
+                    1, friendlyBuilder, profile, friendlyTarget);
+                var hiddenPreview = runtime.PreviewBuild(
+                    1, hiddenBuilder, profile, hiddenTarget);
+                var visiblePreview = runtime.PreviewBuild(
+                    1, visibleBuilder, profile, visibleTarget);
+                friendlyPreviewAccepted = friendlyPreview.Succeeded;
+                hiddenPreviewAccepted = hiddenPreview.Succeeded;
+                visiblePreviewRejected =
+                    visiblePreview.Code ==
+                        TestConstructionCommandCode.PlacementRejected &&
+                    visiblePreview.PlacementCode ==
+                        TestBuildingPlacementCode.UnitOverlap;
+                friendlyBuild = runtime.Build(
+                    1, friendlyBuilder, profile, friendlyTarget);
+                hiddenBuild = runtime.Build(
+                    1, hiddenBuilder, profile, hiddenTarget);
+            });
+        session.At(20, "Move the visible enemy away", runtime =>
+            runtime.PlayerMove(2, [visibleEnemy], new Vector2(540f, 500f)));
+        session.At(45, "Retry placement after visible blocker leaves", runtime =>
+        {
+            var preview = runtime.PreviewBuild(
+                1, visibleBuilder, profile, visibleTarget);
+            visibleRetryAccepted = preview.Succeeded;
+            visibleBuild = runtime.Build(
+                1, visibleBuilder, profile, visibleTarget);
+        });
+        session.At(50, "Expose generic known-occupant feedback for friendly Hold",
+            runtime =>
+            {
+                var view = runtime.ObservePlayerView(1);
+                knownFriendlyWait = view.BuildingViews.Any(value =>
+                    value.BuildingId == friendlyBuild.BuildingId &&
+                    value.ConstructionStatus ==
+                        TestPublicConstructionStatus.KnownOccupant);
+            });
+        session.At(60, "Release Hold without replacing the construction order",
+            runtime => runtime.PlayerMove(
+                1, [friendlyOccupant], new Vector2(500f, 120f)));
+        foreach (var tick in new long[] { 62, 66, 70, 74 })
+        {
+            session.At(tick, "Observe the public friendly-clearing state", runtime =>
+            {
+                clearingObserved |= runtime.ObservePlayerView(1).BuildingViews.Any(
+                    value => value.BuildingId == friendlyBuild.BuildingId &&
+                             value.ConstructionStatus ==
+                                 TestPublicConstructionStatus.ClearingFriendlyUnits);
+            });
+        }
+        session.At(130, "Authority wait becomes a visible generic occupant status",
+            runtime =>
+            {
+                var view = runtime.ObservePlayerView(1);
+                knownEnemyWait = view.Units.Contains(hiddenEnemy) &&
+                    view.BuildingViews.Any(value =>
+                        value.BuildingId == hiddenBuild.BuildingId &&
+                        value.ConstructionStatus ==
+                            TestPublicConstructionStatus.KnownOccupant);
+            });
+        session.At(hotTick, "Capture an authority-blocked construction future",
+            runtime => hotCapture = runtime.CaptureRuntimeState());
+        session.At(150, "Move the now-visible enemy and allow hard commit", runtime =>
+            runtime.PlayerMove(2, [hiddenEnemy], new Vector2(950f, 300f)));
         return session;
     }
 

@@ -156,14 +156,35 @@ public static class BuildingPlacementValidator
         UnitStore units,
         SimRect footprint,
         BuildingPlacementRules rules,
-        BuildingConnectivityGuard? connectivityGuard = null)
+        BuildingConnectivityGuard? connectivityGuard = null,
+        Predicate<DynamicFootprint>? includeDynamicFootprint = null,
+        Predicate<int>? includeUnit = null)
     {
+        var deferConnectivity = rules.PreserveConnectivity &&
+                                connectivityGuard is not null;
+        var initialRules = deferConnectivity
+            ? rules with { PreserveConnectivity = false }
+            : rules;
         var staticResult = ValidateStatic(
-            world, footprint, rules, connectivityGuard);
+            world, footprint, initialRules, connectivityGuard,
+            includeDynamicFootprint);
         var dynamicResult = BlocksDynamicEvaluation(staticResult.Code)
             ? new DynamicStartValidationResult(
                 DynamicStartValidationCode.NotEvaluated, -1)
-            : ValidateDynamicStart(units, footprint, rules);
+            : ValidateDynamicStart(units, footprint, rules, includeUnit);
+        if (deferConnectivity && staticResult.Succeeded &&
+            dynamicResult.Succeeded &&
+            HasCompleteConnectivityKnowledge(world, includeDynamicFootprint))
+        {
+            var connectivity = connectivityGuard!.Evaluate(
+                footprint, rules.MinimumPassageClass);
+            if (!connectivity.Preserved)
+            {
+                staticResult = StaticFailure(
+                    StaticPlacementCode.DisconnectsNavigation,
+                    connectivity.FirstSplitComponentId);
+            }
+        }
         return new BuildingPlacementAssessment(staticResult, dynamicResult);
     }
 
@@ -171,7 +192,8 @@ public static class BuildingPlacementValidator
         StaticWorld world,
         SimRect footprint,
         BuildingPlacementRules rules,
-        BuildingConnectivityGuard? connectivityGuard = null)
+        BuildingConnectivityGuard? connectivityGuard = null,
+        Predicate<DynamicFootprint>? includeDynamicFootprint = null)
     {
         if (!ValidRequest(footprint, rules))
         {
@@ -195,14 +217,20 @@ public static class BuildingPlacementValidator
         }
 
         var dynamicFootprints = world.DynamicOccupancy.Snapshot();
+        var completeConnectivityKnowledge =
+            !rules.PreserveConnectivity || connectivityGuard is null ||
+            includeDynamicFootprint is null ||
+            dynamicFootprints.All(value => includeDynamicFootprint(value));
         for (var index = 0; index < dynamicFootprints.Length; index++)
         {
-            if (OverlapsArea(footprint, dynamicFootprints[index].Bounds))
-            {
-                return StaticFailure(
-                    StaticPlacementCode.DynamicFootprintOverlap,
-                    dynamicFootprints[index].Id.Value);
-            }
+            if (!OverlapsArea(footprint, dynamicFootprints[index].Bounds))
+                continue;
+            if (includeDynamicFootprint is not null &&
+                !includeDynamicFootprint(dynamicFootprints[index]))
+                continue;
+            return StaticFailure(
+                StaticPlacementCode.DynamicFootprintOverlap,
+                dynamicFootprints[index].Id.Value);
         }
 
         var requiredWidth = MovementClearance.ForClass(
@@ -224,16 +252,23 @@ public static class BuildingPlacementValidator
 
         for (var index = 0; index < dynamicFootprints.Length; index++)
         {
-            if (CreatesNarrowGap(
+            if (!CreatesNarrowGap(
                     footprint, dynamicFootprints[index].Bounds, requiredWidth))
-            {
-                return StaticFailure(
-                    StaticPlacementCode.InsufficientClearance,
-                    dynamicFootprints[index].Id.Value);
-            }
+                continue;
+            if (includeDynamicFootprint is not null &&
+                !includeDynamicFootprint(dynamicFootprints[index]))
+                continue;
+            return StaticFailure(
+                StaticPlacementCode.InsufficientClearance,
+                dynamicFootprints[index].Id.Value);
         }
 
-        if (rules.PreserveConnectivity && connectivityGuard is not null)
+        // The authoritative connectivity guard contains every hard footprint.
+        // Running it with a filtered player-known world would leak an excluded
+        // building through the preview result, so defer this check to hard
+        // commit whenever knowledge is incomplete.
+        if (rules.PreserveConnectivity && connectivityGuard is not null &&
+            completeConnectivityKnowledge)
         {
             var connectivity = connectivityGuard.Evaluate(
                 footprint, rules.MinimumPassageClass);
@@ -251,7 +286,8 @@ public static class BuildingPlacementValidator
     public static DynamicStartValidationResult ValidateDynamicStart(
         UnitStore units,
         SimRect footprint,
-        BuildingPlacementRules rules)
+        BuildingPlacementRules rules,
+        Predicate<int>? includeUnit = null)
     {
         if (!ValidRequest(footprint, rules))
         {
@@ -262,6 +298,8 @@ public static class BuildingPlacementValidator
         for (var unit = 0; unit < units.Count; unit++)
         {
             if (!units.Alive[unit])
+                continue;
+            if (includeUnit is not null && !includeUnit(unit))
                 continue;
             if (footprint.Expanded(units.Radii[unit] + rules.UnitPadding)
                 .Contains(units.Positions[unit]))
@@ -336,6 +374,21 @@ public static class BuildingPlacementValidator
             StaticPlacementCode.OutsideWorld or
             StaticPlacementCode.StaticObstacleOverlap or
             StaticPlacementCode.DynamicFootprintOverlap;
+
+    private static bool HasCompleteConnectivityKnowledge(
+        StaticWorld world,
+        Predicate<DynamicFootprint>? includeDynamicFootprint)
+    {
+        if (includeDynamicFootprint is null)
+            return true;
+        var footprints = world.DynamicOccupancy.Snapshot();
+        for (var index = 0; index < footprints.Length; index++)
+        {
+            if (!includeDynamicFootprint(footprints[index]))
+                return false;
+        }
+        return true;
+    }
 
     private static StaticPlacementResult StaticFailure(
         StaticPlacementCode code,

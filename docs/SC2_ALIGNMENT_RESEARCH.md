@@ -219,14 +219,16 @@ Reservation 与 Hard Footprint 必须使用不同 ID/不同集合。前者只解
 
 当前项目已经把上述工程合同落地为 `ConstructionBlockerPolicy + ConstructionEvictionPlanner + UnitCommandQueueStore 临时覆盖层`。多单位按稳定 ID 获得不同外沿槽位，活动 Move 和后续队列不会被施工系统改写；Hard Commit 后恢复。由于 E0 仍未完成，当前只把 Idle/Stop/Move 视为 MovableFriendly，Hold、Harvest、其他 Builder、其他订单和 AuthorityEnemy 都保守等待。这里冻结的是可替换机制，不是对 SC2 未公开策略的宣称。
 
+PlayerKnown 与 Authority 现已形成独立运行时合同。玩家 Preview/Issue 允许己方单位内预放置，只读取当前可见敌军和已知硬占地；当前不可见的敌军单位、Gameplay Building 与 Reservation 不改变颜色或接受码。Builder 到场后 Authority 使用完整世界重验。公开 `PublicConstructionStatus` 只表达清场、已知占位或等待空间，不返回隐藏对象身份；全局 Connectivity 也延迟到 Authority Hard Commit，避免通过全局拓扑产生侧信道。该实现覆盖普通战争迷雾，但不声称已经拥有 SC2 的 Cloak/Burrow/Detection 语义。
+
 ### 4.5 当前实现差距
 
 | 细节 | 当前实现 | 对齐判断 |
 |---|---|---|
-| 光标 Preview | 无副作用，共用正式校验 | 部分对齐 |
+| 光标 Preview | 无副作用，使用 PlayerKnown 放置合同 | 主路径已对齐/颜色策略待 E0 |
 | 网格吸附 | 8px | 内容参数可调 |
-| 单位重叠 | Preview 保持无副作用；开工按策略分类动态阻挡 | 部分对齐/待实机 |
-| 隐藏敌人 | 放置校验读取全体 UnitStore | 未对齐，可能泄露信息 |
+| 单位重叠 | 己方软占位允许 Reservation；可见敌军拒绝；开工按策略分类 | 工程主链已完成/动作待 E0 |
+| 隐藏敌人 | PlayerKnown 忽略当前不可见的敌军单位、建筑和 Reservation；到场后 Authority 重验 | 普通战争迷雾已对齐；Cloak/Burrow/Detection 待实现 |
 | 下单后 Ghost | 独立权威 Reservation + 不可变 Ghost 快照 | 已对齐架构时序 |
 | 工人接近期间占地 | Reservation 不进入 Pathing，普通单位可穿越 | 已对齐架构时序 |
 | 开工动态重检 | Builder 到场重新评估后才原子 Hard Commit | 主路径已对齐 |

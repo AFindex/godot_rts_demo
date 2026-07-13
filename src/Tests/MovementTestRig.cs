@@ -378,10 +378,23 @@ public readonly record struct TestPlayerResourceView(
     TestMapVisibility Visibility,
     int KnownRemaining);
 
+public enum TestPublicConstructionStatus : byte
+{
+    None,
+    ClearingFriendlyUnits,
+    KnownOccupant,
+    WaitingForClearance
+}
+
+public readonly record struct TestPlayerBuildingView(
+    TestGameplayBuildingId BuildingId,
+    TestPublicConstructionStatus ConstructionStatus);
+
 public readonly record struct TestPlayerViewSnapshot(
     int PlayerId,
     TestUnitId[] Units,
     TestGameplayBuildingId[] Buildings,
+    TestPlayerBuildingView[] BuildingViews,
     TestPlayerResourceView[] Resources,
     int HiddenCells,
     int ExploredCells,
@@ -1607,6 +1620,10 @@ public sealed partial class MovementTestRig
             view.Units.Select(value => new TestUnitId(value.UnitId)).ToArray(),
             view.Buildings.Select(value =>
                 new TestGameplayBuildingId(value.BuildingId.Value)).ToArray(),
+            view.Buildings.Select(value => new TestPlayerBuildingView(
+                new TestGameplayBuildingId(value.BuildingId.Value),
+                (TestPublicConstructionStatus)value.ConstructionStatus))
+                .ToArray(),
             view.Resources.Select(value => new TestPlayerResourceView(
                 new TestResourceNodeId(value.NodeId.Value),
                 (TestMapVisibility)value.Visibility,
@@ -1756,6 +1773,29 @@ public sealed partial class MovementTestRig
         bool queued = false)
     {
         var result = _simulation.IssueConstruction(
+            playerId,
+            worker.Value,
+            profile,
+            center,
+            refineryNode.HasValue
+                ? new EconomyResourceNodeId(refineryNode.Value.Value)
+                : new EconomyResourceNodeId(-1),
+            queued);
+        return new TestConstructionResult(
+            (TestConstructionCommandCode)result.Code,
+            new TestGameplayBuildingId(result.BuildingId.Value),
+            (TestBuildingPlacementCode)result.PlacementCode);
+    }
+
+    public TestConstructionResult PreviewBuild(
+        int playerId,
+        TestUnitId worker,
+        BuildingTypeProfile profile,
+        Vector2 center,
+        TestResourceNodeId? refineryNode = null,
+        bool queued = false)
+    {
+        var result = _simulation.PreviewConstruction(
             playerId,
             worker.Value,
             profile,
