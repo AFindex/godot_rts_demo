@@ -679,6 +679,16 @@ internal static class RuntimeHotSnapshotCodec
         BinaryWriter writer,
         ConstructionRuntimeSnapshot construction)
     {
+        writer.Write(construction.Reservations.NextId);
+        writer.Write(construction.Reservations.Entries.Length);
+        foreach (var reservation in construction.Reservations.Entries)
+        {
+            writer.Write(reservation.Id.Value);
+            writer.Write(reservation.BuildingId.Value);
+            writer.Write(reservation.PlayerId);
+            WriteRect(writer, reservation.Bounds);
+            writer.Write(reservation.AcceptedTick);
+        }
         writer.Write(construction.Buildings.Length);
         foreach (var value in construction.Buildings)
         {
@@ -686,6 +696,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(value.PlayerId);
             ConstructionSerialization.WriteProfile(writer, value.Type);
             WriteRect(writer, value.Bounds);
+            writer.Write(value.ReservationId.Value);
             writer.Write(value.FootprintId.Value);
             writer.Write((byte)value.State);
             writer.Write(value.BuilderUnit);
@@ -830,9 +841,43 @@ internal static class RuntimeHotSnapshotCodec
         DynamicFootprint[] footprints,
         EconomyRuntimeSnapshot economy)
     {
+        var nextReservationId = reader.ReadInt32();
+        var reservationCount = ReadCount(reader, MaximumCapacity);
+        if (nextReservationId <= 0)
+            throw new InvalidDataException();
+        var reservations = new ConstructionReservationEntry[reservationCount];
+        var reservationIds = new HashSet<int>();
+        var reservationBuildings = new HashSet<int>();
+        var maximumReservationId = 0;
+        for (var index = 0; index < reservationCount; index++)
+        {
+            var value = new ConstructionReservationEntry(
+                new ConstructionReservationId(reader.ReadInt32()),
+                new GameplayBuildingId(reader.ReadInt32()),
+                reader.ReadInt32(),
+                ReadRect(reader),
+                reader.ReadInt64());
+            if (!value.Id.IsValid || !reservationIds.Add(value.Id.Value) ||
+                value.BuildingId.Value < 0 ||
+                !reservationBuildings.Add(value.BuildingId.Value) ||
+                !economy.Players.Any(player =>
+                    player.PlayerId == value.PlayerId) ||
+                !Finite(value.Bounds.Min) || !Finite(value.Bounds.Max) ||
+                value.Bounds.Width <= 0f || value.Bounds.Height <= 0f ||
+                value.AcceptedTick < 0)
+                throw new InvalidDataException();
+            maximumReservationId = Math.Max(
+                maximumReservationId, value.Id.Value);
+            reservations[index] = value;
+        }
+        if (nextReservationId <= maximumReservationId)
+            throw new InvalidDataException();
+        var reservationsById = reservations.ToDictionary(
+            value => value.Id.Value);
         var count = ReadCount(reader, MaximumCapacity);
         var buildings = new ConstructionRuntimeEntry[count];
         var boundNodes = new HashSet<int>();
+        var matchedReservations = new HashSet<int>();
         for (var index = 0; index < count; index++)
         {
             var value = new ConstructionRuntimeEntry(
@@ -840,6 +885,7 @@ internal static class RuntimeHotSnapshotCodec
                 reader.ReadInt32(),
                 ConstructionSerialization.ReadProfile(reader),
                 ReadRect(reader),
+                new ConstructionReservationId(reader.ReadInt32()),
                 new DynamicFootprintId(reader.ReadInt32()),
                 (BuildingLifecycleState)reader.ReadByte(),
                 reader.ReadInt32(),
@@ -850,24 +896,40 @@ internal static class RuntimeHotSnapshotCodec
             var terminal = value.State is
                 BuildingLifecycleState.Canceled or BuildingLifecycleState.Destroyed;
             var activeProgress = value.State is
+                BuildingLifecycleState.ReservedApproach or
+                BuildingLifecycleState.BlockedAtStart or
                 BuildingLifecycleState.Approaching or
                 BuildingLifecycleState.Constructing or
                 BuildingLifecycleState.WaitingForBuilder;
             var continuousBuilderRequired =
                 value.Type.ConstructionMethod ==
                     ConstructionMethodKind.ContinuousWorker &&
-                value.State is BuildingLifecycleState.Approaching or
+                value.State is BuildingLifecycleState.ReservedApproach or
+                    BuildingLifecycleState.BlockedAtStart or
+                    BuildingLifecycleState.Approaching or
                     BuildingLifecycleState.Constructing;
             var footprint = footprints.FirstOrDefault(item =>
                 item.Id == value.FootprintId);
             var hasFootprint = footprint.Id.Value > 0;
+            var reservation = default(ConstructionReservationEntry);
+            var hasReservation = value.ReservationId.IsValid &&
+                reservationsById.TryGetValue(
+                    value.ReservationId.Value, out reservation);
+            var reservedState = value.State is
+                BuildingLifecycleState.ReservedApproach or
+                BuildingLifecycleState.BlockedAtStart;
+            var hardState = value.State is
+                BuildingLifecycleState.Approaching or
+                BuildingLifecycleState.Constructing or
+                BuildingLifecycleState.Completed;
             if (value.Id.Value != index || value.PlayerId < 0 ||
                 !economy.Players.Any(player => player.PlayerId == value.PlayerId) ||
                 !ConstructionSerialization.ValidProfile(value.Type) ||
                 !Enum.IsDefined(value.State) || !Finite(value.Bounds.Min) ||
                 !Finite(value.Bounds.Max) || value.Bounds.Width <= 0f ||
                 value.Bounds.Height <= 0f ||
-                value.FootprintId.Value <= 0 ||
+                value.FootprintId.Value < 0 ||
+                value.ReservationId.Value < 0 ||
                 value.BuilderUnit < -1 || value.BuilderUnit >= unitCount ||
                 !Finite(value.AccessPoint) ||
                 !float.IsFinite(value.Progress) || value.Progress is < 0f or > 1f ||
@@ -877,8 +939,17 @@ internal static class RuntimeHotSnapshotCodec
                     value.Progress != 1f ||
                 activeProgress && value.Progress >= 1f ||
                 continuousBuilderRequired && value.BuilderUnit < 0 ||
-                terminal == hasFootprint ||
+                terminal && (hasFootprint || hasReservation) ||
+                !terminal && hasFootprint == hasReservation ||
+                reservedState && !hasReservation ||
+                hardState && !hasFootprint ||
                 hasFootprint && footprint.Bounds != value.Bounds ||
+                value.ReservationId.IsValid && !hasReservation ||
+                hasReservation &&
+                    (reservation.BuildingId != value.Id ||
+                     reservation.PlayerId != value.PlayerId ||
+                     reservation.Bounds != value.Bounds ||
+                     !matchedReservations.Add(value.ReservationId.Value)) ||
                 value.RefineryNode.Value < -1 ||
                 value.RefineryNode.Value >= economy.ResourceNodes.Length ||
                 value.Type.RequiresVespeneNode != (value.RefineryNode.Value >= 0) ||
@@ -894,6 +965,8 @@ internal static class RuntimeHotSnapshotCodec
             }
             buildings[index] = value;
         }
+        if (matchedReservations.Count != reservations.Length)
+            throw new InvalidDataException();
         foreach (var economyBase in economy.Bases)
         {
             if ((uint)economyBase.TownHall.Value >= (uint)buildings.Length)
@@ -920,7 +993,10 @@ internal static class RuntimeHotSnapshotCodec
                 throw new InvalidDataException();
             }
         }
-        return new ConstructionRuntimeSnapshot(buildings);
+        return new ConstructionRuntimeSnapshot(
+            buildings,
+            new ConstructionReservationRuntimeSnapshot(
+                nextReservationId, reservations));
     }
 
     internal static void WriteProduction(

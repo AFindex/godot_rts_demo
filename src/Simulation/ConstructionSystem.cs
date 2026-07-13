@@ -116,6 +116,8 @@ public static class DemoBuildingTypes
 
 public enum BuildingLifecycleState : byte
 {
+    ReservedApproach,
+    BlockedAtStart,
     Approaching,
     Constructing,
     WaitingForBuilder,
@@ -157,9 +159,11 @@ public readonly record struct GameplayBuildingSnapshot(
     int PlayerId,
     BuildingTypeProfile Type,
     SimRect Bounds,
+    ConstructionReservationId ReservationId,
     DynamicFootprintId FootprintId,
     BuildingLifecycleState State,
     int BuilderUnit,
+    Vector2 AccessPoint,
     float Progress,
     float Health,
     float MaximumHealth,
@@ -174,6 +178,7 @@ public readonly record struct ConstructionRuntimeEntry(
     int PlayerId,
     BuildingTypeProfile Type,
     SimRect Bounds,
+    ConstructionReservationId ReservationId,
     DynamicFootprintId FootprintId,
     BuildingLifecycleState State,
     int BuilderUnit,
@@ -183,16 +188,41 @@ public readonly record struct ConstructionRuntimeEntry(
     EconomyResourceNodeId RefineryNode);
 
 public sealed record ConstructionRuntimeSnapshot(
-    ConstructionRuntimeEntry[] Buildings);
+    ConstructionRuntimeEntry[] Buildings,
+    ConstructionReservationRuntimeSnapshot Reservations);
 
 public sealed class ConstructionSystem
 {
-    private const float BuilderArrivalTolerance = 12f;
+    public const float BuilderArrivalTolerance = 40f;
     private readonly List<BuildingEntity> _buildings = [];
     private readonly HashSet<int> _boundRefineryNodes = [];
 
+    public ConstructionReservationStore Reservations { get; } = new();
+
     public int Count => _buildings.Count(value => !value.IsTerminal);
     public bool HasRuntimeState => _buildings.Count > 0;
+
+    public bool TryFindReservationOverlap(
+        SimRect bounds,
+        out ConstructionReservationEntry conflict) =>
+        Reservations.TryFindOverlap(bounds, out conflict);
+
+    public bool IsAssignedBuilder(int unit) =>
+        _buildings.Any(value =>
+            !value.IsTerminal && value.BuilderUnit == unit);
+
+    public bool SuppressesBuilderUnitCollision(int unit)
+    {
+        for (var index = 0; index < _buildings.Count; index++)
+        {
+            var value = _buildings[index];
+            if (value.BuilderUnit == unit && value.State is
+                    BuildingLifecycleState.ReservedApproach or
+                    BuildingLifecycleState.BlockedAtStart)
+                return true;
+        }
+        return false;
+    }
 
     public ConstructionCommandResult ValidateRequest(
         EconomySystem economy,
@@ -249,16 +279,15 @@ public sealed class ConstructionSystem
         int builderUnit,
         BuildingTypeProfile profile,
         SimRect bounds,
-        DynamicFootprintId footprintId,
         EconomyResourceNodeId refineryNode,
-        Vector2 builderPosition,
-        float builderRadius)
+        Vector2 accessPoint,
+        long acceptedTick)
     {
         var id = new GameplayBuildingId(_buildings.Count);
-        var accessPoint = FindAccessPoint(
-            bounds, builderPosition, builderRadius + BuilderArrivalTolerance);
+        var reservationId = Reservations.Add(
+            id, playerId, bounds, acceptedTick);
         _buildings.Add(new BuildingEntity(
-            id, playerId, profile, bounds, footprintId, builderUnit,
+            id, playerId, profile, bounds, reservationId, default, builderUnit,
             refineryNode, accessPoint));
         if (refineryNode.Value >= 0)
         {
@@ -272,7 +301,12 @@ public sealed class ConstructionSystem
         UnitStore units,
         EconomySystem economy,
         Action<int, Vector2> moveBuilder,
-        Action<int> stopBuilder)
+        Action<int> stopBuilder,
+        Func<ConstructionReservationId, SimRect, BuildingPlacementRules,
+            HardFootprintCommitResult>
+            commitHardFootprint,
+        Action<int, int, SimRect, BuildingPlacementRules, int>
+            evacuateStartOccupant)
     {
         for (var index = 0; index < _buildings.Count; index++)
         {
@@ -282,7 +316,10 @@ public sealed class ConstructionSystem
             {
                 continue;
             }
-            var needsBuilder = building.State == BuildingLifecycleState.Approaching ||
+            var needsBuilder = building.State is
+                                   BuildingLifecycleState.ReservedApproach or
+                                   BuildingLifecycleState.BlockedAtStart or
+                                   BuildingLifecycleState.Approaching ||
                                building.Type.ConstructionMethod ==
                                    ConstructionMethodKind.ContinuousWorker;
             if (needsBuilder &&
@@ -292,7 +329,65 @@ public sealed class ConstructionSystem
                 building.State = BuildingLifecycleState.WaitingForBuilder;
                 continue;
             }
-            if (building.State == BuildingLifecycleState.Approaching)
+            if (building.State is BuildingLifecycleState.ReservedApproach or
+                BuildingLifecycleState.BlockedAtStart)
+            {
+                if (Vector2.DistanceSquared(
+                        units.Positions[building.BuilderUnit], building.AccessPoint) >
+                    BuilderArrivalTolerance * BuilderArrivalTolerance)
+                {
+                    building.State = BuildingLifecycleState.ReservedApproach;
+                    continue;
+                }
+                var placement = building.Type.PlacementProfile;
+                var commit = commitHardFootprint(
+                    building.ReservationId,
+                    building.Bounds,
+                    new BuildingPlacementRules(
+                        placement.MinimumPassageClass,
+                        placement.UnitPadding));
+                if (!commit.Succeeded)
+                {
+                    if (commit.Code ==
+                            HardFootprintCommitCode.DynamicOccupantRejected &&
+                        commit.Assessment.Dynamic.ConflictUnit ==
+                            building.BuilderUnit)
+                    {
+                        building.State = BuildingLifecycleState.ReservedApproach;
+                        moveBuilder(building.BuilderUnit, building.AccessPoint);
+                        continue;
+                    }
+                    building.State = BuildingLifecycleState.BlockedAtStart;
+                    stopBuilder(building.BuilderUnit);
+                    if (commit.Code ==
+                            HardFootprintCommitCode.DynamicOccupantRejected &&
+                        commit.Assessment.Dynamic.ConflictUnit >= 0)
+                    {
+                        evacuateStartOccupant(
+                            building.PlayerId,
+                            building.BuilderUnit,
+                            building.Bounds,
+                            new BuildingPlacementRules(
+                                placement.MinimumPassageClass,
+                                placement.UnitPadding),
+                            commit.Assessment.Dynamic.ConflictUnit);
+                    }
+                    continue;
+                }
+                building.FootprintId = commit.FootprintId;
+                if (!Reservations.Remove(building.ReservationId))
+                    throw new InvalidOperationException(
+                        "Construction reservation disappeared before hard commit.");
+                building.ReservationId = default;
+                building.State = BuildingLifecycleState.Constructing;
+                stopBuilder(building.BuilderUnit);
+                if (building.Type.ConstructionMethod ==
+                    ConstructionMethodKind.StartAndRelease)
+                {
+                    building.BuilderUnit = -1;
+                }
+            }
+            else if (building.State == BuildingLifecycleState.Approaching)
             {
                 if (Vector2.DistanceSquared(
                         units.Positions[building.BuilderUnit], building.AccessPoint) >
@@ -348,7 +443,9 @@ public sealed class ConstructionSystem
         {
             var building = _buildings[index];
             if (building.State is not
-                    (BuildingLifecycleState.Approaching or
+                    (BuildingLifecycleState.ReservedApproach or
+                     BuildingLifecycleState.BlockedAtStart or
+                     BuildingLifecycleState.Approaching or
                      BuildingLifecycleState.Constructing))
             {
                 continue;
@@ -370,6 +467,7 @@ public sealed class ConstructionSystem
         int builderUnit,
         EconomySystem economy,
         UnitStore units,
+        Vector2 accessPoint,
         Action<int, Vector2> moveBuilder)
     {
         if (!TryGet(buildingId, out var building) ||
@@ -381,10 +479,10 @@ public sealed class ConstructionSystem
             return false;
         }
         building.BuilderUnit = builderUnit;
-        building.AccessPoint = FindAccessPoint(
-            building.Bounds, units.Positions[builderUnit],
-            units.Radii[builderUnit] + BuilderArrivalTolerance);
-        building.State = BuildingLifecycleState.Approaching;
+        building.AccessPoint = accessPoint;
+        building.State = building.FootprintId.Value > 0
+            ? BuildingLifecycleState.Approaching
+            : BuildingLifecycleState.ReservedApproach;
         moveBuilder(builderUnit, building.AccessPoint);
         return true;
     }
@@ -402,7 +500,9 @@ public sealed class ConstructionSystem
         economy.IsWorkerOwnedBy(builderUnit, playerId) &&
         !_buildings.Any(value =>
             value.Id != buildingId && value.BuilderUnit == builderUnit &&
-            value.State is BuildingLifecycleState.Approaching or
+            value.State is BuildingLifecycleState.ReservedApproach or
+                BuildingLifecycleState.BlockedAtStart or
+                BuildingLifecycleState.Approaching or
                 BuildingLifecycleState.Constructing);
 
     public bool Cancel(
@@ -417,10 +517,17 @@ public sealed class ConstructionSystem
         {
             return false;
         }
-        if (!removeFootprint(building.FootprintId))
+        if (building.FootprintId.Value > 0 &&
+            !removeFootprint(building.FootprintId))
         {
             return false;
         }
+        building.FootprintId = default;
+        if (building.ReservationId.IsValid &&
+            !Reservations.Remove(building.ReservationId))
+            throw new InvalidOperationException(
+                "Construction reservation disappeared before cancel.");
+        building.ReservationId = default;
         economy.Players.Refund(
             playerId, building.Type.Cost, building.Type.CancelRefundFraction);
         ReleaseRefinery(building, economy);
@@ -435,7 +542,8 @@ public sealed class ConstructionSystem
         Func<DynamicFootprintId, bool> removeFootprint)
     {
         if (!float.IsFinite(damage) || damage <= 0f ||
-            !TryGet(id, out var building) || building.IsTerminal)
+            !TryGet(id, out var building) || building.IsTerminal ||
+            building.FootprintId.Value <= 0)
         {
             return false;
         }
@@ -448,6 +556,7 @@ public sealed class ConstructionSystem
         {
             return false;
         }
+        building.FootprintId = default;
         if (building.State == BuildingLifecycleState.Completed &&
             building.Type.SupplyProvided > 0)
         {
@@ -491,7 +600,8 @@ public sealed class ConstructionSystem
         for (var index = 0; index < _buildings.Count; index++)
         {
             var building = _buildings[index];
-            if (building.IsTerminal || building.PlayerId <= 0)
+            if (building.IsTerminal || building.PlayerId <= 0 ||
+                building.FootprintId.Value <= 0)
                 continue;
             visitor(
                 building.PlayerId,
@@ -531,29 +641,49 @@ public sealed class ConstructionSystem
             value.Health > 0f);
 
     public ConstructionRuntimeSnapshot CaptureRuntimeState() => new(
-        _buildings.Select(value => value.RuntimeSnapshot()).ToArray());
+        _buildings.Select(value => value.RuntimeSnapshot()).ToArray(),
+        Reservations.CaptureRuntimeState());
 
     public void RestoreRuntimeState(ConstructionRuntimeSnapshot snapshot)
     {
         _buildings.Clear();
         _boundRefineryNodes.Clear();
+        Reservations.RestoreRuntimeState(snapshot.Reservations);
         for (var index = 0; index < snapshot.Buildings.Length; index++)
         {
             var value = snapshot.Buildings[index];
             if (value.Id.Value != index || !ValidProfile(value.Type) ||
                 !Enum.IsDefined(value.State) || value.PlayerId < 0 ||
-                value.FootprintId.Value <= 0 ||
+                value.FootprintId.Value < 0 ||
+                value.ReservationId.Value < 0 ||
+                (value.State is BuildingLifecycleState.Canceled or
+                    BuildingLifecycleState.Destroyed
+                    ? value.FootprintId.Value > 0 || value.ReservationId.IsValid
+                    : (value.FootprintId.Value > 0) ==
+                        value.ReservationId.IsValid) ||
+                (value.State is BuildingLifecycleState.ReservedApproach or
+                    BuildingLifecycleState.BlockedAtStart) &&
+                    !value.ReservationId.IsValid ||
+                (value.State is BuildingLifecycleState.Approaching or
+                    BuildingLifecycleState.Constructing or
+                    BuildingLifecycleState.Completed) &&
+                    value.FootprintId.Value <= 0 ||
                 !float.IsFinite(value.Progress) || value.Progress is < 0f or > 1f ||
                 !float.IsFinite(value.Health) || value.Health < 0f ||
                 !float.IsFinite(value.AccessPoint.X) ||
                 !float.IsFinite(value.AccessPoint.Y))
             {
                 throw new InvalidOperationException(
-                    "Construction runtime entry is invalid.");
+                    $"Construction runtime entry is invalid: id={value.Id.Value}, " +
+                    $"state={value.State}, reservation={value.ReservationId.Value}, " +
+                    $"footprint={value.FootprintId.Value}, builder={value.BuilderUnit}, " +
+                    $"progress={value.Progress}, health={value.Health}, " +
+                    $"access={value.AccessPoint}.");
             }
             var building = new BuildingEntity(
                 value.Id, value.PlayerId, value.Type, value.Bounds,
-                value.FootprintId, value.BuilderUnit, value.RefineryNode,
+                value.ReservationId, value.FootprintId,
+                value.BuilderUnit, value.RefineryNode,
                 value.AccessPoint)
             {
                 State = value.State,
@@ -561,6 +691,16 @@ public sealed class ConstructionSystem
                 Health = value.Health
             };
             _buildings.Add(building);
+            if (value.ReservationId.IsValid)
+            {
+                var reservation = snapshot.Reservations.Entries.SingleOrDefault(
+                    entry => entry.Id == value.ReservationId);
+                if (reservation.BuildingId != value.Id ||
+                    reservation.PlayerId != value.PlayerId ||
+                    reservation.Bounds != value.Bounds)
+                    throw new InvalidOperationException(
+                        "Construction reservation does not match its building.");
+            }
             if (!building.IsTerminal && value.RefineryNode.Value >= 0 &&
                 !_boundRefineryNodes.Add(value.RefineryNode.Value))
             {
@@ -568,15 +708,20 @@ public sealed class ConstructionSystem
                     "A Vespene node is bound by multiple buildings.");
             }
         }
+        if (Reservations.Count != _buildings.Count(value =>
+                !value.IsTerminal && value.ReservationId.IsValid))
+            throw new InvalidOperationException(
+                "Construction reservation count does not match buildings.");
     }
 
     public bool OwnsActiveFootprint(DynamicFootprintId footprintId) =>
+        footprintId.Value > 0 &&
         _buildings.Any(value =>
             !value.IsTerminal && value.FootprintId == footprintId);
 
     public bool IsEnemyTarget(GameplayBuildingId id, int playerId) =>
         TryGet(id, out var building) && !building.IsTerminal &&
-        building.PlayerId != playerId;
+        building.FootprintId.Value > 0 && building.PlayerId != playerId;
 
     public bool IsAlive(GameplayBuildingId id) =>
         TryGet(id, out var building) && !building.IsTerminal &&
@@ -584,6 +729,7 @@ public sealed class ConstructionSystem
 
     internal void AppendStateHash(ref StableHash64 hash)
     {
+        Reservations.AppendStateHash(ref hash);
         hash.Add(_buildings.Count);
         foreach (var building in _buildings)
         {
@@ -608,9 +754,11 @@ public sealed class ConstructionSystem
             hash.Add(value.Type.ArmorUpgradePerLevel);
             hash.Add(value.Bounds.Min);
             hash.Add(value.Bounds.Max);
+            hash.Add(value.ReservationId.Value);
             hash.Add(value.FootprintId.Value);
             hash.Add((byte)value.State);
             hash.Add(value.BuilderUnit);
+            hash.Add(building.AccessPoint);
             hash.Add(value.Progress);
             hash.Add(value.Health);
             hash.Add(value.RefineryNode.Value);
@@ -636,19 +784,6 @@ public sealed class ConstructionSystem
         }
         _boundRefineryNodes.Remove(building.RefineryNode.Value);
         economy.SetRefineryOperational(building.RefineryNode, false);
-    }
-
-    private static Vector2 FindAccessPoint(
-        SimRect bounds, Vector2 origin, float offset)
-    {
-        Vector2[] candidates =
-        [
-            new(bounds.Min.X - offset, Math.Clamp(origin.Y, bounds.Min.Y, bounds.Max.Y)),
-            new(bounds.Max.X + offset, Math.Clamp(origin.Y, bounds.Min.Y, bounds.Max.Y)),
-            new(Math.Clamp(origin.X, bounds.Min.X, bounds.Max.X), bounds.Min.Y - offset),
-            new(Math.Clamp(origin.X, bounds.Min.X, bounds.Max.X), bounds.Max.Y + offset)
-        ];
-        return candidates.OrderBy(value => Vector2.DistanceSquared(origin, value)).First();
     }
 
     internal static bool ValidProfile(BuildingTypeProfile profile) =>
@@ -678,6 +813,7 @@ public sealed class ConstructionSystem
             int playerId,
             BuildingTypeProfile type,
             SimRect bounds,
+            ConstructionReservationId reservationId,
             DynamicFootprintId footprintId,
             int builderUnit,
             EconomyResourceNodeId refineryNode,
@@ -687,11 +823,14 @@ public sealed class ConstructionSystem
             PlayerId = playerId;
             Type = type;
             Bounds = bounds;
+            ReservationId = reservationId;
             FootprintId = footprintId;
             BuilderUnit = builderUnit;
             RefineryNode = refineryNode;
             AccessPoint = accessPoint;
-            State = BuildingLifecycleState.Approaching;
+            State = reservationId.IsValid
+                ? BuildingLifecycleState.ReservedApproach
+                : BuildingLifecycleState.Approaching;
             Health = type.MaximumHealth * 0.1f;
         }
 
@@ -699,7 +838,8 @@ public sealed class ConstructionSystem
         public int PlayerId { get; }
         public BuildingTypeProfile Type { get; }
         public SimRect Bounds { get; }
-        public DynamicFootprintId FootprintId { get; }
+        public ConstructionReservationId ReservationId { get; set; }
+        public DynamicFootprintId FootprintId { get; set; }
         public int BuilderUnit { get; set; }
         public EconomyResourceNodeId RefineryNode { get; }
         public Vector2 AccessPoint { get; set; }
@@ -710,11 +850,13 @@ public sealed class ConstructionSystem
             BuildingLifecycleState.Canceled or BuildingLifecycleState.Destroyed;
 
         public GameplayBuildingSnapshot Snapshot() => new(
-            Id, PlayerId, Type, Bounds, FootprintId, State, BuilderUnit,
+            Id, PlayerId, Type, Bounds, ReservationId, FootprintId,
+            State, BuilderUnit, AccessPoint,
             Progress, Health, Type.MaximumHealth, RefineryNode);
 
         public ConstructionRuntimeEntry RuntimeSnapshot() => new(
-            Id, PlayerId, Type, Bounds, FootprintId, State, BuilderUnit,
+            Id, PlayerId, Type, Bounds, ReservationId, FootprintId,
+            State, BuilderUnit,
             AccessPoint, Progress, Health, RefineryNode);
     }
 }

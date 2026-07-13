@@ -36,7 +36,7 @@ public sealed class ConstructionCommandLogSnapshot
 {
     private const uint Magic = 0x43435452; // RTCC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
 
     public ConstructionCommandLogSnapshot(RecordedConstructionCommand[] entries)
     {

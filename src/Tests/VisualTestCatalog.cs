@@ -86,6 +86,7 @@ public static class VisualTestCatalog
         "ai-dual-runtime-replay",
         "ai-continuous-encounter",
         "construction-gameplay-buildings",
+        "construction-reservation-hard-commit",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
         "production-replay-persistence",
@@ -238,6 +239,9 @@ public static class VisualTestCatalog
         "ai-continuous-encounter" => CreateContinuousAiEncounter(
             gameplayProfiles, aiConfigurations),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
+        "construction-reservation-hard-commit" =>
+            CreateConstructionReservationHardCommit(
+                navigationMap, gameplayProfiles, clearanceBake),
         "building-type-resource-runtime" =>
             CreateBuildingTypeResourceRuntime(buildingTypes),
         "production-queue-exit-rally" => CreateProductionQueueExitRally(),
@@ -1910,7 +1914,10 @@ public static class VisualTestCatalog
                 var workersResolved = first.State == TestWorkerEconomyState.Idle &&
                                       second.State == TestWorkerEconomyState.Idle;
                 var marineMoved = Vector2.Distance(
-                    marineState.Position, new Vector2(400f, 260f)) < 45f;
+                                      marineState.Position, building.Center) < 90f &&
+                                  Vector2.Distance(
+                                      marineState.Position,
+                                      new Vector2(190f, 330f)) > 100f;
                 var passed = supply.Succeeded && interrupted &&
                              gatherResult == TestPlayerOrderCommandCode.Success &&
                              queuedResult == TestPlayerOrderCommandCode.Success &&
@@ -4798,6 +4805,28 @@ public static class VisualTestCatalog
                 var productionLog = runtime.CaptureProductionCommandLog();
                 var unitLog = runtime.CaptureCommandLog();
                 var economy = runtime.ObservePlayerEconomy(1);
+                var constructionStates = string.Join(',',
+                    runtime.ObserveGameplayBuildings()
+                        .Where(value => value.State is not
+                            TestBuildingLifecycleState.Canceled and not
+                            TestBuildingLifecycleState.Destroyed)
+                        .GroupBy(value => value.State)
+                        .OrderBy(value => value.Key)
+                        .Select(value => $"{value.Key}:{value.Count()}"));
+                var pendingApproaches = string.Join(';',
+                    runtime.ObserveGameplayBuildings()
+                        .Where(value => value.State is
+                            TestBuildingLifecycleState.ReservedApproach or
+                            TestBuildingLifecycleState.BlockedAtStart)
+                        .Select(value =>
+                        {
+                            var builder = runtime.Observe(value.BuilderUnit);
+                            return $"{value.Id.Value}/{value.Name}:" +
+                                   $"b{value.BuilderUnit.Value}@{builder.Position}," +
+                                   $"center={value.Center},access={value.AccessPoint}," +
+                                   $"slot={builder.AssignedTarget},v={builder.Velocity}," +
+                                   $"mode={builder.State}";
+                        }));
                 var commandCoverage = economyLog.EntryCount >= 5 &&
                                       constructionLog.EntryCount >= 6 &&
                                       productionLog.EntryCount >= 5 &&
@@ -4820,6 +4849,8 @@ public static class VisualTestCatalog
                     $"supply={economy.SupplyUsed}/{economy.SupplyCapacity}, " +
                     $"commands=e{economyLog.EntryCount}/b{constructionLog.EntryCount}/" +
                     $"p{productionLog.EntryCount}/u{unitLog.EntryCount}, " +
+                    $"states=[{constructionStates}], " +
+                    $"pending=[{pendingApproaches}], " +
                     $"victory={victory}@{match.CompletedTick}, aiState={ai.StateBytes}B");
             })
             .RenderSpawnedUnits()
@@ -5295,6 +5326,134 @@ public static class VisualTestCatalog
                 new SimRect(new Vector2(730f, 470f), new Vector2(830f, 570f)),
                 "REFINERY: bound to Vespene node",
                 TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateConstructionReservationHardCommit(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            24, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 1000, 0, 15, 2);
+        var builder = rig.SpawnWorker(
+            new Vector2(100f, 353f), 1, maximumSpeed: 60f);
+        var duplicateBuilder = rig.SpawnWorker(new Vector2(100f, 430f), 1);
+        var canceledBuilder = rig.SpawnWorker(new Vector2(100f, 600f), 1);
+        var transit = new[]
+        {
+            rig.Spawn(new Vector2(200f, 325f), 8f, 280f, 900f),
+            rig.Spawn(new Vector2(200f, 353f), 8f, 280f, 900f),
+            rig.Spawn(new Vector2(200f, 381f), 8f, 280f, 900f)
+        };
+        var target = new Vector2(420f, 353f);
+        var canceledTarget = new Vector2(400f, 600f);
+        rig.StartReplayPackageRecording();
+        var accepted = rig.Build(
+            1, builder, DemoBuildingTypes.SupplyDepot, target);
+        var initial = rig.ObserveGameplayBuilding(accepted.BuildingId);
+        var duplicate = rig.Build(
+            1, duplicateBuilder, DemoBuildingTypes.SupplyDepot, target);
+        var rawPlacement = rig.AssessBuildingPlacement(
+            target, DemoBuildingTypes.SupplyDepot.Size, TestMovementClass.Small);
+        var canceled = rig.Build(
+            1, canceledBuilder, DemoBuildingTypes.SupplyDepot, canceledTarget);
+        rig.Move(transit, new Vector2(800f, 353f));
+
+        var acceptedAsGhost = accepted.Succeeded && canceled.Succeeded &&
+                              initial.ReservationId > 0 &&
+                              initial.FootprintId.Value == 0 &&
+                              initial.State == TestBuildingLifecycleState.ReservedApproach &&
+                              rig.BuildingCount == 0;
+        var overlapRejected = duplicate.Code ==
+                                  TestConstructionCommandCode.PlacementRejected &&
+                              duplicate.PlacementCode ==
+                                  TestBuildingPlacementCode.DynamicFootprintOverlap &&
+                              rawPlacement.CombinedCode ==
+                                  TestBuildingPlacementCode.DynamicFootprintOverlap;
+        var canceledCleanly = false;
+        var crossedWhileGhost = false;
+        var hardCommitted = false;
+        var friendlyOccupantEvacuated = false;
+        TestRuntimeStateCapture? ghostCapture = null;
+        var session = new VisualTestSession(
+            "construction-reservation-hard-commit",
+            "Reserved ghost allows transit, rejects overlap, then commits hard footprint",
+            720,
+            rig,
+            [builder, duplicateBuilder, canceledBuilder, .. transit],
+            runtime =>
+            {
+                var building = runtime.ObserveGameplayBuilding(accepted.BuildingId);
+                var canceledState = runtime.ObserveGameplayBuilding(canceled.BuildingId);
+                var economy = runtime.ObservePlayerEconomy(1);
+                var package = runtime.CaptureReplayPackage();
+                var hot = runtime.BindHotSnapshot(package, ghostCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var hotReplay = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var hotExact = hotRoundTrip &&
+                               hotReplay.FinalHash == runtime.StateHash;
+                var passed = acceptedAsGhost && overlapRejected &&
+                             canceledCleanly && crossedWhileGhost && hardCommitted &&
+                             friendlyOccupantEvacuated && hotExact &&
+                             building.ReservationId == 0 &&
+                             building.FootprintId.Value > 0 &&
+                             building.State is TestBuildingLifecycleState.Constructing or
+                                 TestBuildingLifecycleState.Completed &&
+                             canceledState.State == TestBuildingLifecycleState.Canceled &&
+                             canceledState.ReservationId == 0 &&
+                             canceledState.FootprintId.Value == 0 &&
+                             runtime.BuildingCount == 1 &&
+                             economy.Minerals == 875;
+                return new ScenarioResult(
+                    passed,
+                    $"ghost={acceptedAsGhost}, overlap={overlapRejected}, " +
+                    $"transit={crossedWhileGhost}, hard={hardCommitted}, " +
+                    $"evacuated={friendlyOccupantEvacuated}, " +
+                    $"cancel={canceledCleanly}, hot={hotExact}/{hot.CanonicalByteCount}B, " +
+                    $"state={building.State}, " +
+                    $"reservation={building.ReservationId}, " +
+                    $"footprints={runtime.BuildingCount}, minerals={economy.Minerals}");
+            });
+        session.At(30, "Cancel a reservation without creating or removing a footprint", runtime =>
+            canceledCleanly = runtime.CancelConstruction(1, canceled.BuildingId));
+        session.At(90, "A friendly worker walks into the reserved footprint", runtime =>
+            runtime.Move([duplicateBuilder], target));
+        session.At(120, "Traffic crosses the reserved ghost before the builder arrives", runtime =>
+        {
+            var building = runtime.ObserveGameplayBuilding(accepted.BuildingId);
+            crossedWhileGhost = transit.All(unit =>
+                                    runtime.Observe(unit).Position.X > target.X + 70f) &&
+                                building.ReservationId > 0 &&
+                                building.FootprintId.Value == 0 &&
+                                runtime.BuildingCount == 0;
+            ghostCapture = runtime.CaptureRuntimeState();
+        });
+        session.At(420, "Builder arrival atomically converts reservation to hard footprint", runtime =>
+        {
+            var building = runtime.ObserveGameplayBuilding(accepted.BuildingId);
+            hardCommitted = building.ReservationId == 0 &&
+                            building.FootprintId.Value > 0 &&
+                            runtime.BuildingCount == 1;
+            var occupant = runtime.Observe(duplicateBuilder).Position;
+            friendlyOccupantEvacuated =
+                MathF.Abs(occupant.X - target.X) > 28f ||
+                MathF.Abs(occupant.Y - target.Y) > 28f;
+        });
+        return session
+            .Highlight(
+                new SimRect(target - new Vector2(80f), target + new Vector2(80f)),
+                "RESERVATION GHOST: no pathing collision before builder arrival",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(
+                    canceledTarget - new Vector2(80f),
+                    canceledTarget + new Vector2(80f)),
+                "CANCEL: reservation-only cleanup and 75% refund",
+                TestDiagnosticKind.Info);
     }
 
     private static VisualTestSession CreateBuildingTypeResourceRuntime(

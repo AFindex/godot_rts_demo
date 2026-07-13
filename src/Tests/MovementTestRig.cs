@@ -181,6 +181,8 @@ public readonly record struct TestProductionGroupSnapshot(
 
 public enum TestBuildingLifecycleState : byte
 {
+    ReservedApproach,
+    BlockedAtStart,
     Approaching,
     Constructing,
     WaitingForBuilder,
@@ -222,8 +224,11 @@ public readonly record struct TestGameplayBuildingSnapshot(
     int TypeId,
     string Name,
     Vector2 Size,
+    int ReservationId,
     TestBuildingId FootprintId,
     TestBuildingLifecycleState State,
+    Vector2 Center,
+    Vector2 AccessPoint,
     float Progress,
     float Health,
     float MaximumHealth,
@@ -1706,13 +1711,27 @@ public sealed partial class MovementTestRig
     {
         var value = _simulation.Construction.Observe(
             new GameplayBuildingId(building.Value));
+        return ToTestGameplayBuildingSnapshot(value);
+    }
+
+    public TestGameplayBuildingSnapshot[] ObserveGameplayBuildings() =>
+        _simulation.Construction.CreateOverview()
+            .Select(ToTestGameplayBuildingSnapshot)
+            .ToArray();
+
+    private static TestGameplayBuildingSnapshot ToTestGameplayBuildingSnapshot(
+        GameplayBuildingSnapshot value)
+    {
         return new TestGameplayBuildingSnapshot(
-            building,
+            new TestGameplayBuildingId(value.Id.Value),
             value.Type.Id,
             value.Type.Name,
             value.Type.Size,
+            value.ReservationId.Value,
             new TestBuildingId(value.FootprintId.Value),
             (TestBuildingLifecycleState)value.State,
+            (value.Bounds.Min + value.Bounds.Max) * 0.5f,
+            value.AccessPoint,
             value.Progress,
             value.Health,
             value.MaximumHealth,

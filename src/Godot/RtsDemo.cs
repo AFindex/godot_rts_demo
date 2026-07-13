@@ -720,8 +720,22 @@ public partial class RtsDemo : Node2D
                 _ => new Color("d6d6d6")
             };
             var completed = building.State == BuildingLifecycleState.Completed;
-            DrawRect(rect, color with { A = completed ? 0.88f : 0.46f }, true);
-            DrawRect(rect, completed ? color.Lightened(0.25f) : color, false, 3f);
+            var reservationGhost = building.ReservationId.IsValid &&
+                                   building.FootprintId.Value <= 0;
+            DrawRect(
+                rect,
+                color with
+                {
+                    A = reservationGhost ? 0.18f : completed ? 0.88f : 0.46f
+                },
+                true);
+            DrawRect(
+                rect,
+                reservationGhost
+                    ? color.Lightened(0.38f)
+                    : completed ? color.Lightened(0.25f) : color,
+                false,
+                reservationGhost ? 2f : 3f);
             var teamColor = building.PlayerId == 1
                 ? new Color("4da3ff")
                 : building.PlayerId == 2
@@ -742,7 +756,9 @@ public partial class RtsDemo : Node2D
             DrawString(
                 ThemeDB.FallbackFont,
                 rect.Position + new Vector2(5f, 17f),
-                $"{building.Type.Name}  {building.Progress:P0}",
+                reservationGhost
+                    ? $"{building.Type.Name}  GHOST"
+                    : $"{building.Type.Name}  {building.Progress:P0}",
                 HorizontalAlignment.Left,
                 rect.Size.X - 10f,
                 12,

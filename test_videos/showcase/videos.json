@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T11:40:35.8986106+08:00",
+    "generated_at":  "2026-07-13T12:40:41.4359698+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  133,
-    "case_count":  103,
+    "recording_count":  134,
+    "case_count":  104,
     "recordings":  [
+                       {
+                           "id":  "construction-reservation-hard-commit",
+                           "display_name":  "Reserved ghost allows transit, rejects overlap, then commits hard footprint",
+                           "batch":  "20260713_123959",
+                           "created_at":  "2026-07-13T12:40:39.5154373+08:00",
+                           "video":  "../20260713_123959/construction-reservation-hard-commit.webm",
+                           "log":  "../20260713_123959/construction-reservation-hard-commit.log",
+                           "bytes":  447155,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS construction-reservation-hard-commit: ticks=720, ghost=True, overlap=True, transit=True, hard=True, evacuated=True, cancel=True, hot=True/3351B, state=Completed, reservation=0, footprints=1, minerals=875",
+                           "metrics":  "ticks=720, ghost=True, overlap=True, transit=True, hard=True, evacuated=True, cancel=True, hot=True/3351B, state=Completed, reservation=0, footprints=1, minerals=875"
+                       },
                        {
                            "id":  "building-placement-rules",
                            "display_name":  "Static placement, dynamic start validation and hard commit layers",

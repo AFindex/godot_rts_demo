@@ -215,12 +215,12 @@ Reservation 与 Hard Footprint 必须使用不同 ID/不同集合。前者只解
 |---|---|---|
 | 光标 Preview | 无副作用，共用正式校验 | 部分对齐 |
 | 网格吸附 | 8px | 内容参数可调 |
-| 单位重叠 | 所有活单位统一 `UnitOverlap` | 未对齐/待实机 |
+| 单位重叠 | Preview/下单仍统一 `UnitOverlap`；开工会重新分类动态阻挡 | 部分对齐/待实机 |
 | 隐藏敌人 | 放置校验读取全体 UnitStore | 未对齐，可能泄露信息 |
-| 下单后 Ghost | 没有独立权威 Reservation | 未对齐 |
-| 工人接近期间占地 | 已创建硬 Dynamic Footprint | 未对齐 |
-| 开工动态重检 | 没有独立重检阶段 | 未对齐 |
-| 友军让位 | 没有 | 未对齐/待实机 |
+| 下单后 Ghost | 独立权威 Reservation + 不可变 Ghost 快照 | 已对齐架构时序 |
+| 工人接近期间占地 | Reservation 不进入 Pathing，普通单位可穿越 | 已对齐架构时序 |
+| 开工动态重检 | Builder 到场重新评估后才原子 Hard Commit | 主路径已对齐 |
+| 友军让位 | 单个可移动己方单位确定性撤离；Builder 接近期临时忽略单位碰撞 | 部分对齐/待 E0 矩阵 |
 | SCV 持续施工 | `ContinuousWorker` | 已对齐主路径 |
 | Probe 开始后离开 | `StartAndRelease` | 只有策略骨架，无种族内容 |
 | Drone 消耗/取消恢复 | 没有 `ConsumeWorker` | 未对齐，内容层后置 |

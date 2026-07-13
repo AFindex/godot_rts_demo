@@ -40,6 +40,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly Action<int> _economyStopWorker;
     private readonly Action<int, Vector2> _constructionMoveWorker;
     private readonly Action<int> _constructionStopWorker;
+    private readonly Func<ConstructionReservationId, SimRect, BuildingPlacementRules,
+        HardFootprintCommitResult> _constructionCommitFootprint;
     private readonly Func<UnitTypeProfile, int, Vector2, int> _productionSpawnUnit;
     private readonly Action<int, int, RallyTarget> _productionApplyRally;
     private readonly int[] _collisionNeighbors = new int[64];
@@ -102,6 +104,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _economyStopWorker = StopEconomyWorker;
         _constructionMoveWorker = MoveConstructionWorker;
         _constructionStopWorker = StopConstructionWorker;
+        _constructionCommitFootprint = CommitConstructionFootprint;
         _productionSpawnUnit = SpawnProducedUnit;
         _productionApplyRally = ApplyProducedUnitRally;
     }
@@ -588,14 +591,39 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public BuildingPlacementAssessment AssessBuildingPlacement(
         SimRect footprint,
         BuildingPlacementRules rules) =>
-        BuildingPlacementValidator.Evaluate(
+        AssessBuildingPlacement(footprint, rules, default);
+
+    private BuildingPlacementAssessment AssessBuildingPlacement(
+        SimRect footprint,
+        BuildingPlacementRules rules,
+        ConstructionReservationId ignoreReservation)
+    {
+        var assessment = BuildingPlacementValidator.Evaluate(
             World, Units, footprint, rules, _buildingConnectivityGuard);
+        if (!assessment.Succeeded ||
+            !Construction.Reservations.TryFindOverlap(
+                footprint, out var conflict, ignoreReservation))
+            return assessment;
+        return new BuildingPlacementAssessment(
+            new StaticPlacementResult(
+                StaticPlacementCode.DynamicFootprintOverlap,
+                conflict.Id.Value),
+            new DynamicStartValidationResult(
+                DynamicStartValidationCode.NotEvaluated, -1));
+    }
 
     public HardFootprintCommitResult TryCommitHardFootprint(
         SimRect footprint,
-        BuildingPlacementRules rules)
+        BuildingPlacementRules rules) =>
+        TryCommitHardFootprint(footprint, rules, default);
+
+    private HardFootprintCommitResult TryCommitHardFootprint(
+        SimRect footprint,
+        BuildingPlacementRules rules,
+        ConstructionReservationId ignoreReservation)
     {
-        var assessment = AssessBuildingPlacement(footprint, rules);
+        var assessment = AssessBuildingPlacement(
+            footprint, rules, ignoreReservation);
         if (!assessment.Succeeded)
         {
             return new HardFootprintCommitResult(
@@ -830,27 +858,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
             issuingPlayerId, builderUnit, profile, center, refineryNode,
             out center, out refineryNode);
         if (!validation.Succeeded) return validation;
-        BuildingPlacementResult placement;
-        _issuingConstructionWorldMutation = true;
-        try
-        {
-            placement = TryPlaceBuilding(center, profile.PlacementProfile);
-        }
-        finally
-        {
-            _issuingConstructionWorldMutation = false;
-        }
-        if (!placement.Succeeded)
-        {
-            return new ConstructionCommandResult(
-                ConstructionCommandCode.PlacementRejected,
-                default,
-                placement.Code);
-        }
         var charged = Economy.Players.TrySpend(issuingPlayerId, profile.Cost);
         if (!charged.Succeeded)
         {
-            RemoveBuilding(placement.FootprintId);
             throw new InvalidOperationException(
                 "Construction cost changed between validation and commit.");
         }
@@ -858,15 +868,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CommandQueues.ClearPending(builderUnit);
         CommandQueues.HasActiveOrders[builderUnit] = false;
         var halfSize = profile.Size * 0.5f;
+        var bounds = new SimRect(center - halfSize, center + halfSize);
+        var accessPoint = ResolveConstructionAccessPoint(
+            bounds, builderUnit, profile.PlacementProfile.UnitPadding);
         var id = Construction.Add(
             issuingPlayerId,
             builderUnit,
             profile,
-            new SimRect(center - halfSize, center + halfSize),
-            placement.FootprintId,
+            bounds,
             refineryNode,
-            Units.Positions[builderUnit],
-            Units.Radii[builderUnit]);
+            accessPoint,
+            Metrics.Tick);
         MoveConstructionWorker(builderUnit, Construction.BuilderAccessPoint(id));
         _constructionCommandRecorder?.RecordBuild(
             Metrics.Tick, issuingPlayerId, builderUnit, profile, center, refineryNode);
@@ -935,12 +947,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var halfSize = placementProfile.Size * 0.5f;
         var footprint = new SimRect(
             resolvedCenter - halfSize, resolvedCenter + halfSize);
-        var placement = BuildingPlacementValidator.Evaluate(
-            World, Units, footprint,
+        var placement = AssessBuildingPlacement(
+            footprint,
             new BuildingPlacementRules(
                 placementProfile.MinimumPassageClass,
-                placementProfile.UnitPadding),
-            _buildingConnectivityGuard);
+                placementProfile.UnitPadding));
         return placement.Succeeded
             ? new ConstructionCommandResult(
                 ConstructionCommandCode.Success, default)
@@ -991,9 +1002,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
             CommandQueues.ClearPending(builderUnit);
             CommandQueues.HasActiveOrders[builderUnit] = false;
         }
+        var buildingSnapshot = Construction.Observe(buildingId);
+        var accessPoint = ResolveConstructionAccessPoint(
+            buildingSnapshot.Bounds,
+            builderUnit,
+            buildingSnapshot.Type.PlacementProfile.UnitPadding);
         var succeeded = Construction.Resume(
             buildingId, playerId, builderUnit, Economy, Units,
-            _constructionMoveWorker);
+            accessPoint, _constructionMoveWorker);
         if (succeeded && recordCommand)
         {
             _constructionCommandRecorder?.RecordResume(
@@ -1268,6 +1284,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 var building = Construction.Observe(id);
                 if (building.PlayerId == playerId)
                     return new(PlayerOrderCommandCode.FriendlyTarget);
+                if (!Construction.IsEnemyTarget(id, playerId))
+                    return new(PlayerOrderCommandCode.InvalidTarget);
                 var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
                 if (!Visibility.IsVisible(playerId, center))
                     return new(PlayerOrderCommandCode.TargetNotVisible);
@@ -1363,7 +1381,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         if (builder < 0)
         {
-            IssueMove(units, target.Position, queued);
+            IssueMove(
+                units,
+                ResolveFriendlyBuildingMoveTarget(building, units),
+                queued);
             return new(PlayerOrderCommandCode.Success);
         }
         if (!Construction.CanResume(
@@ -1384,14 +1405,52 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     TargetBuilding: target.Building),
                 queued: true);
             if (movers.Count > 0)
-                IssueMove(movers.ToArray(), target.Position, queued: true);
+            {
+                var movingUnits = movers.ToArray();
+                IssueMove(
+                    movingUnits,
+                    ResolveFriendlyBuildingMoveTarget(building, movingUnits),
+                    queued: true);
+            }
             return new(PlayerOrderCommandCode.Success);
         }
         if (!ResumeConstruction(playerId, buildingId, builder))
             return new(PlayerOrderCommandCode.ContextActionUnavailable);
         if (movers.Count > 0)
-            IssueMove(movers.ToArray(), target.Position);
+        {
+            var movingUnits = movers.ToArray();
+            IssueMove(
+                movingUnits,
+                ResolveFriendlyBuildingMoveTarget(building, movingUnits));
+        }
         return new(PlayerOrderCommandCode.Success);
+    }
+
+    private Vector2 ResolveFriendlyBuildingMoveTarget(
+        GameplayBuildingSnapshot building,
+        ReadOnlySpan<int> units)
+    {
+        var origin = Vector2.Zero;
+        var collisionRadius = 0f;
+        var navigationRadius = 0f;
+        for (var index = 0; index < units.Length; index++)
+        {
+            origin += Units.Positions[units[index]];
+            collisionRadius = MathF.Max(
+                collisionRadius, Units.Radii[units[index]]);
+            navigationRadius = MathF.Max(
+                navigationRadius, Units.NavigationRadii[units[index]]);
+        }
+        origin /= units.Length;
+        return ConstructionAccessPointResolver.Resolve(
+            World,
+            _pathProvider,
+            building.Bounds,
+            origin,
+            collisionRadius,
+            navigationRadius,
+            building.Type.PlacementProfile.UnitPadding,
+            ConstructionSystem.BuilderArrivalTolerance);
     }
 
     private void IssueDeferredWorkerOrder(
@@ -1953,7 +2012,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units,
             Economy,
             _constructionMoveWorker,
-            _constructionStopWorker);
+            _constructionStopWorker,
+            _constructionCommitFootprint,
+            EvacuateConstructionStartOccupant);
         Production.Update(
             delta,
             Construction,
@@ -1967,7 +2028,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
             delta, Units, _economyMoveWorker, _economyStopWorker);
         for (var unit = 0; unit < Units.Count; unit++)
             _unitCollisionSuppressed[unit] =
-                Economy.SuppressesUnitCollision(unit);
+                Economy.SuppressesUnitCollision(unit) ||
+                Construction.SuppressesBuilderUnitCollision(unit);
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
@@ -3482,6 +3544,76 @@ public sealed class RtsSimulation : ICombatMovementDriver
         try
         {
             Stop(worker);
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
+    }
+
+    private HardFootprintCommitResult CommitConstructionFootprint(
+        ConstructionReservationId reservationId,
+        SimRect footprint,
+        BuildingPlacementRules rules)
+    {
+        _issuingConstructionWorldMutation = true;
+        try
+        {
+            return TryCommitHardFootprint(footprint, rules, reservationId);
+        }
+        finally
+        {
+            _issuingConstructionWorldMutation = false;
+        }
+    }
+
+    private Vector2 ResolveConstructionAccessPoint(
+        SimRect bounds,
+        int builderUnit,
+        float placementPadding) =>
+        ConstructionAccessPointResolver.Resolve(
+            World,
+            _pathProvider,
+            bounds,
+            Units.Positions[builderUnit],
+            Units.Radii[builderUnit],
+            Units.NavigationRadii[builderUnit],
+            placementPadding,
+            ConstructionSystem.BuilderArrivalTolerance);
+
+    private void EvacuateConstructionStartOccupant(
+        int playerId,
+        int builderUnit,
+        SimRect footprint,
+        BuildingPlacementRules rules,
+        int occupantUnit)
+    {
+        if ((uint)occupantUnit >= (uint)Units.Count ||
+            !Units.Alive[occupantUnit] || occupantUnit == builderUnit ||
+            Combat.Teams[occupantUnit] != playerId ||
+            Construction.IsAssignedBuilder(occupantUnit))
+            return;
+
+        if (!ConstructionStartEvacuation.TryFindExit(
+                World,
+                footprint,
+                Units.Positions[occupantUnit],
+                Units.Radii[occupantUnit],
+                rules.UnitPadding,
+                out var exit))
+            return;
+        if (Vector2.DistanceSquared(Units.MoveGoals[occupantUnit], exit) <= 1f &&
+            Units.Modes[occupantUnit] is not UnitMoveMode.Idle)
+            return;
+
+        Span<int> occupant = stackalloc int[1];
+        occupant[0] = occupantUnit;
+        if (Economy.IsWorker(occupantUnit))
+            Economy.Cancel(occupant);
+        _issuingSystemOrder = true;
+        try
+        {
+            IssueMove(occupant, exit);
         }
         finally
         {

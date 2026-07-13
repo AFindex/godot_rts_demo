@@ -131,6 +131,7 @@ public static class TestShowcaseCatalog
             M("ai-dual-runtime-replay", "双 AI 热恢复与回放", "AI 对局", "验证错峰双 AI 的策略未来态、热恢复和纯命令回放。"),
             M("ai-continuous-encounter", "双 AI 持续遭遇战", "AI 对局", "展示双方开局、发展、扩张、攀科技、战损补兵和持续互攻。"),
             M("construction-gameplay-buildings", "正式建筑施工", "建造生产", "验证五类建筑、施工暂停续建、取消退款和建筑摧毁。"),
+            M("construction-reservation-hard-commit", "施工预占与硬提交", "建造生产", "验证施工幽灵不阻挡通行、阻止重复放置，到场后才原子提交硬占用。"),
             M("building-type-resource-runtime", "建筑类型 Resource", "数据工作流", "验证建筑目录 Resource、尺寸、功能和运行时建造。"),
             M("production-queue-exit-rally", "生产队列与 Rally", "建造生产", "验证排队、出口、人口预留、Rally 和建筑摧毁清理。"),
             M("production-replay-persistence", "生产热恢复", "回放", "验证生产中、等待出口和已出生三个阶段的恢复一致性。"),
