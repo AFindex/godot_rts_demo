@@ -40,17 +40,74 @@ public enum UnitConcealmentKind : byte
     Burrowed
 }
 
+public enum UnitConcealmentPhase : byte
+{
+    Visible,
+    Activating,
+    Concealed,
+    Deactivating
+}
+
+public readonly record struct UnitConcealmentCapabilitySnapshot(
+    UnitConcealmentKind Kind,
+    float ActivationSeconds,
+    float DeactivationSeconds,
+    float ConcealedVisionRange,
+    bool CanMoveWhileConcealed,
+    bool CanAttackWhileConcealed)
+{
+    public static UnitConcealmentCapabilitySnapshot None => default;
+
+    public static UnitConcealmentCapabilitySnapshot StandardBurrow => new(
+        UnitConcealmentKind.Burrowed,
+        ActivationSeconds: 1f,
+        DeactivationSeconds: 0.75f,
+        ConcealedVisionRange: 96f,
+        CanMoveWhileConcealed: false,
+        CanAttackWhileConcealed: false);
+
+    public static UnitConcealmentCapabilitySnapshot StandardCloak => new(
+        UnitConcealmentKind.Cloaked,
+        ActivationSeconds: 0.25f,
+        DeactivationSeconds: 0.25f,
+        ConcealedVisionRange: PlayerVisibilitySystem.UnitVisionRadius,
+        CanMoveWhileConcealed: true,
+        CanAttackWhileConcealed: true);
+
+    public void Validate()
+    {
+        if (!Enum.IsDefined(Kind) ||
+            Kind == UnitConcealmentKind.None &&
+            (ActivationSeconds != 0f || DeactivationSeconds != 0f ||
+             ConcealedVisionRange != 0f || CanMoveWhileConcealed ||
+             CanAttackWhileConcealed) ||
+            Kind != UnitConcealmentKind.None &&
+            (!float.IsFinite(ActivationSeconds) || ActivationSeconds <= 0f ||
+             !float.IsFinite(DeactivationSeconds) || DeactivationSeconds <= 0f ||
+             !float.IsFinite(ConcealedVisionRange) ||
+             ConcealedVisionRange <= 0f))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(UnitConcealmentCapabilitySnapshot),
+                "Unit concealment capability values are invalid.");
+        }
+    }
+}
+
 public readonly record struct UnitPerceptionProfileSnapshot(
     UnitConcealmentKind Concealment,
-    float DetectionRange)
+    float DetectionRange,
+    float VisionRange = PlayerVisibilitySystem.UnitVisionRadius)
 {
     public static UnitPerceptionProfileSnapshot Standard => new(
-        UnitConcealmentKind.None, 0f);
+        UnitConcealmentKind.None, 0f,
+        PlayerVisibilitySystem.UnitVisionRadius);
 
     public void Validate()
     {
         if (!Enum.IsDefined(Concealment) ||
-            !float.IsFinite(DetectionRange) || DetectionRange < 0f)
+            !float.IsFinite(DetectionRange) || DetectionRange < 0f ||
+            !float.IsFinite(VisionRange) || VisionRange <= 0f)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(UnitPerceptionProfileSnapshot),
@@ -111,7 +168,12 @@ public readonly record struct CombatProfileSnapshot(
         {
             throw new ArgumentOutOfRangeException(
                 nameof(CombatProfileSnapshot),
-                "Combat profile values are invalid or internally inconsistent.");
+                $"Combat profile values are invalid or internally inconsistent: " +
+                $"hp={MaximumHealth}, damage={AttackDamage}, range={AttackRange}, " +
+                $"acquisition={AcquisitionRange}, cooldown={AttackCooldownSeconds}, " +
+                $"windup={AttackWindupSeconds}, leash={LeashDistance}, " +
+                $"positioning={Positioning}, armor={Armor}, " +
+                $"attacks={AttacksPerVolley}, priority={AutoTargetPriority}.");
         }
     }
 }
@@ -140,7 +202,13 @@ public sealed class CombatStore
         CanMoveDuringCooldown = new bool[capacity];
         AutoTargetPriority = new int[capacity];
         ConcealmentKinds = new UnitConcealmentKind[capacity];
+        ConcealmentCapabilities =
+            new UnitConcealmentCapabilitySnapshot[capacity];
+        ConcealmentPhases = new UnitConcealmentPhase[capacity];
+        ConcealmentTransitionRemaining = new float[capacity];
         DetectionRanges = new float[capacity];
+        BaseVisionRanges = new float[capacity];
+        VisionRanges = new float[capacity];
         AttackRanges = new float[capacity];
         AcquisitionRanges = new float[capacity];
         AttackCooldownDurations = new float[capacity];
@@ -183,7 +251,12 @@ public sealed class CombatStore
     public bool[] CanMoveDuringCooldown { get; }
     public int[] AutoTargetPriority { get; }
     public UnitConcealmentKind[] ConcealmentKinds { get; }
+    public UnitConcealmentCapabilitySnapshot[] ConcealmentCapabilities { get; }
+    public UnitConcealmentPhase[] ConcealmentPhases { get; }
+    public float[] ConcealmentTransitionRemaining { get; }
     public float[] DetectionRanges { get; }
+    public float[] BaseVisionRanges { get; }
+    public float[] VisionRanges { get; }
     public float[] AttackRanges { get; }
     public float[] AcquisitionRanges { get; }
     public float[] AttackCooldownDurations { get; }
@@ -212,10 +285,22 @@ public sealed class CombatStore
         int team,
         Vector2 position,
         CombatProfileSnapshot profile,
-        UnitPerceptionProfileSnapshot perception = default)
+        UnitPerceptionProfileSnapshot perception = default,
+        UnitConcealmentCapabilitySnapshot concealmentCapability = default)
     {
         profile.Validate();
+        if (perception == default)
+            perception = UnitPerceptionProfileSnapshot.Standard;
         perception.Validate();
+        concealmentCapability.Validate();
+        if (perception.Concealment != UnitConcealmentKind.None &&
+            concealmentCapability.Kind != UnitConcealmentKind.None &&
+            perception.Concealment != concealmentCapability.Kind)
+        {
+            throw new ArgumentException(
+                "Initial concealment and toggle capability must use the same kind.",
+                nameof(concealmentCapability));
+        }
         Teams[unit] = team;
         Health[unit] = profile.MaximumHealth;
         MaximumHealth[unit] = profile.MaximumHealth;
@@ -232,7 +317,20 @@ public sealed class CombatStore
         CanMoveDuringCooldown[unit] = profile.CanMoveDuringCooldown;
         AutoTargetPriority[unit] = profile.AutoTargetPriority;
         ConcealmentKinds[unit] = perception.Concealment;
+        ConcealmentCapabilities[unit] = concealmentCapability;
+        ConcealmentPhases[unit] = perception.Concealment ==
+                                  UnitConcealmentKind.None
+            ? UnitConcealmentPhase.Visible
+            : UnitConcealmentPhase.Concealed;
+        ConcealmentTransitionRemaining[unit] = 0f;
         DetectionRanges[unit] = perception.DetectionRange;
+        BaseVisionRanges[unit] = perception.VisionRange;
+        VisionRanges[unit] = perception.Concealment !=
+                                 UnitConcealmentKind.None &&
+                             concealmentCapability.Kind !=
+                                 UnitConcealmentKind.None
+            ? concealmentCapability.ConcealedVisionRange
+            : perception.VisionRange;
         AttackRanges[unit] = profile.AttackRange;
         AcquisitionRanges[unit] = profile.AcquisitionRange;
         AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
@@ -272,7 +370,13 @@ public sealed class CombatStore
         Copy(source.CanMoveDuringCooldown, CanMoveDuringCooldown);
         Copy(source.AutoTargetPriority, AutoTargetPriority);
         Copy(source.ConcealmentKinds, ConcealmentKinds);
+        Copy(source.ConcealmentCapabilities, ConcealmentCapabilities);
+        Copy(source.ConcealmentPhases, ConcealmentPhases);
+        Copy(source.ConcealmentTransitionRemaining,
+            ConcealmentTransitionRemaining);
         Copy(source.DetectionRanges, DetectionRanges);
+        Copy(source.BaseVisionRanges, BaseVisionRanges);
+        Copy(source.VisionRanges, VisionRanges);
         Copy(source.AttackRanges, AttackRanges);
         Copy(source.AcquisitionRanges, AcquisitionRanges);
         Copy(source.AttackCooldownDurations, AttackCooldownDurations);

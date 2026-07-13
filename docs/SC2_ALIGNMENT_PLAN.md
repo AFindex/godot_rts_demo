@@ -16,7 +16,7 @@
 4. 所有新增未来态必须进入回放、热恢复和状态 Hash。
 5. Godot/UI 只消费不可变快照，不拥有放置、让位、采矿或退款规则。
 
-以下内容不属于本轮强制完成项：完整三族机制、Power/Creep、Add-on、Lift/Land、Cloak/Burrow 的技能开关与种族内容、Extractor Trick、逐帧复制 SC2 动画，以及没有实际失败证据的 Steering 微调。基础 Cloak/Burrow/Detection 感知矩阵后来因施工阻挡的真实依赖进入 D0 并已完成。MULE 的完整召唤、寿命、修理和数值平衡仍属于内容扩展，但它与普通 Worker 独立占用矿片的采集能力合同纳入 E2 强制设计与测试，不能以后加 MULE 时重写经济内核。
+以下内容不属于本轮核心强制项：完整三族机制、Power/Creep、Add-on、Lift/Land、完整 Cloak/Burrow 种族内容、Extractor Trick、逐帧复制 SC2 动画，以及没有实际失败证据的 Steering 微调。基础 Cloak/Burrow/Detection 感知矩阵后来因施工阻挡的真实依赖进入 D0 并已完成；主动 Burrow/Unburrow 又按真实内容需求进入 D2a 并完成，但能量、研究、扫描和种族例外仍是后续 P2。MULE 的完整召唤、寿命、修理和数值平衡仍属于内容扩展，但它与普通 Worker 独立占用矿片的采集能力合同纳入 E2 强制设计与测试，不能以后加 MULE 时重写经济内核。
 
 ## 2. 当前基线
 
@@ -32,6 +32,7 @@
 | 开工前动态重验 | 工程矩阵已对齐 | 静态晚期失效、己方清场、Hold/Gather/Ally/Enemy 保守等待均有门禁；SC2 动作仍待 E0 实机 |
 | 己方单位让位 | 工程主链与保守门禁完成、策略待实机 | 1/8/32 分槽、订单恢复和五类策略矩阵已锁定；E0 只决定 Hold/Harvest 等映射 |
 | 隐藏敌人不泄露 | 普通战争迷雾、侦测与 Ally 边界已对齐 | PlayerKnown 不读当前不可见/未侦测对象；共享视野中的 Ally 正式分类，Authority 不越权 |
+| 主动 Burrow/Unburrow | D2a 已对齐 | 正式订单、过渡、视野缩减、行动限制、异层接触、侦测与确定性恢复均有门禁 |
 | 施工中建筑护甲 | 已对齐 | C5 已修正为 0，完成 Tick 后生效 |
 | 取消返还 75% | 已对齐 | Reservation 取消时保持一致 |
 | Builder 中断与续建 | 主路径已对齐 | 新状态机回归保护 |
@@ -221,7 +222,11 @@ D1 阵营合同已经完成：`PlayerDiplomacySystem` 提供 Own/Ally/Neutral/En
 
 `alliance-shared-vision-team-victory` 的 2v2 黑盒覆盖共享侦测、`ConcealedAlly/ConcealedDetected`、友军攻击拒绝、盟友 `UnitOverlap` 和 alliance 100 双人胜利。新增 `construction-blocker-policy-matrix` 进一步覆盖五类施工动作、权限释放和多阶段 Replay/Hot 精确恢复；117/117 全量 Godot 黑盒回归通过。专项 1280×720、362 帧 AV1/WebM 位于 `test_videos/20260713_214756/`；全库媒体门禁通过 150 个视频、92 个 manifest、149 个场景引用，均为 AV1。
 
-尚未完成：E0 对 Hold、Harvest/ReturningCargo、可见或晚到敌军和盟友自动让位动作的 SC2 当前客户端实机策略冻结。工程保守策略与回归已经完成；没有实机证据时不再修改。Cloak/Burrow 的开关、能量/研究、扫描和特殊单位例外属于后续内容能力，不重写 D0/D1 或施工入口。
+D2a 主动隐蔽合同已经完成：`ActivateConcealment/DeactivateConcealment` 是可排队的正式订单；过渡阶段、基础/潜地视野、移动/攻击许可由能力 Profile 描述。激活完成前仍普通可见，解除完成前仍隐蔽；StandardBurrow 在整个非 Visible 周期禁止移动与攻击。PlayerView 为可见条目发布过渡表现状态，但只有 Own 拥有切换权限；下游视野、侦测、战斗、单位接触和施工继续消费既有通用合同。Unit Command Log v5、Replay Package v29、Hot Snapshot v28、State Hash v29 保存完整未来态。
+
+`active-burrow-detection-lifecycle` 覆盖主动潜地、未侦测隐藏、潜地视野缩减、Move/AttackMove 与无效队列拒绝、异层穿行、Detector 入场、解除期间仍隐蔽、恢复移动、Shift 切换和 Tick 50 热恢复；118/118 全量黑盒回归通过。专项 1280×720、242 帧 AV1/WebM 位于 `test_videos/20260713_223815/`；全库媒体门禁通过 151 个视频、93 个 manifest、150 个场景引用，均为 AV1。
+
+尚未完成：E0 对 Hold、Harvest/ReturningCargo、可见或晚到敌军和盟友自动让位动作的 SC2 当前客户端实机策略冻结。工程保守策略与回归已经完成；没有实机证据时不再修改。D2 下一段先建立通用施法者 Energy 与持续区域效果，再接 Scanner Sweep；持续 Cloak 消耗、研究和特殊单位例外不得重写 D0/D1/D2a 或施工入口。
 
 ### C3：确定性友军让位（有限工程闭环完成）
 
@@ -380,7 +385,7 @@ P2 不作为核心对齐收口条件，按实际玩法需求逐项启用：
 
 1. `ConstructionMethodKind` 扩展 `ConsumeWorker`，完整验证 ContinuousWorker、StartAndRelease、ConsumeWorker。
 2. Power、Creep、Add-on 空间、Lift/Land 作为 Placement Rule Provider，不侵入通用 Validator。
-3. 普通战争迷雾、Cloak/Burrow/Detection 和 Ally/Shared Vision 的 PlayerKnown 矩阵已经启用；后续 Visibility 内容扩展只补能力开关、扫描与种族例外，不重写施工入口。
+3. 普通战争迷雾、Cloak/Burrow/Detection 和 Ally/Shared Vision 的 PlayerKnown 矩阵已经启用；D2a 主动 Burrow/Unburrow、视野缩减和行动限制已完成。D2b 先做通用 Caster Energy、地图目标能力和有期限区域效果，再把 Scanner Sweep 作为 Detection Source 接入；持续 Cloak、研究和种族例外后置，不重写施工入口。
 4. Gold Mineral、MULE 召唤/寿命/修理、Extractor Trick 和种族气矿设施通过资源/能力 Profile 扩展；不得改变 E2 已冻结的普通/MULE 独立采集通道。
 5. Connectivity Guard 改为地图/AI 安全策略，玩家正式规则允许战术建筑墙；不能继续把“禁止断路”描述成 SC2 规则。
 6. 单位加速度与横向响应只在录制的对照操作暴露可重复差异后进入独立手感包。

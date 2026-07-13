@@ -89,6 +89,7 @@ public static class VisualTestCatalog
         "player-visibility-authority",
         "construction-player-known-placement",
         "concealment-detection-construction",
+        "active-burrow-detection-lifecycle",
         "alliance-shared-vision-team-victory",
         "match-capability-elimination",
         "ai-modular-skirmish",
@@ -263,6 +264,8 @@ public static class VisualTestCatalog
             CreateConstructionPlayerKnownPlacement(),
         "concealment-detection-construction" =>
             CreateConcealmentDetectionConstruction(),
+        "active-burrow-detection-lifecycle" =>
+            CreateActiveBurrowDetectionLifecycle(),
         "alliance-shared-vision-team-victory" =>
             CreateAllianceSharedVisionTeamVictory(),
         "match-capability-elimination" => CreateMatchCapabilityElimination(
@@ -6087,6 +6090,269 @@ public static class VisualTestCatalog
         });
         session.At(240, "Remove the authority blocker and commit", runtime =>
             runtime.PlayerMove(2, [buriedBlocker], new Vector2(1040f, 300f)));
+        return session;
+    }
+
+    private static VisualTestSession CreateActiveBurrowDetectionLifecycle()
+    {
+        var navigationMap = DemoMapDefinition.CreateSnapshot();
+        var gameplayProfiles = DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            16, navigationMap, gameplayProfiles, null);
+        rig.RegisterPlayer(1, 3000, 500, 30);
+        rig.RegisterPlayer(2, 3000, 500, 30);
+
+        var harmless = TestCombatProfile.Standard with
+        {
+            AttackDamage = 0f
+        };
+        var burrower = rig.SpawnCombat(
+            new Vector2(800f, 300f), 2, harmless,
+            maximumSpeed: 260f,
+            acceleration: 1200f,
+            concealmentCapability: TestConcealmentCapability.StandardBurrow);
+        var queuedBurrower = rig.SpawnCombat(
+            new Vector2(980f, 520f), 2, harmless,
+            concealmentCapability: TestConcealmentCapability.StandardBurrow);
+        var contactBurrower = rig.SpawnCombat(
+            new Vector2(300f, 120f), 2, harmless,
+            concealmentCapability: TestConcealmentCapability.StandardBurrow);
+        var passer = rig.SpawnCombat(
+            new Vector2(180f, 120f), 1, harmless,
+            maximumSpeed: 300f,
+            acceleration: 1500f);
+        var sightProbe = rig.SpawnCombat(
+            new Vector2(700f, 390f), 1, harmless);
+        var detector = rig.SpawnCombat(
+            new Vector2(450f, 520f), 1, harmless,
+            maximumSpeed: 320f,
+            acceleration: 1600f,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.None, 110f));
+        rig.StartReplayPackageRecording();
+
+        var visibleBefore = false;
+        var activatingExposed = false;
+        var invalidToggleRejected = false;
+        var hotCapturedDuringTransition = false;
+        var hiddenWithoutDetection = false;
+        var reducedBurrowSight = false;
+        var restrictedCommands = false;
+        var mixedDepthPass = false;
+        var passPosition = Vector2.Zero;
+        var queuedRoundTrip = false;
+        var detectedAndTargetable = false;
+        var deactivatingStillConcealed = false;
+        var restoredMovement = false;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 50;
+
+        var session = new VisualTestSession(
+            "active-burrow-detection-lifecycle",
+            "Active Burrow lifecycle, detection and queued orders",
+            480,
+            rig,
+            [burrower, queuedBurrower, contactBurrower, passer, sightProbe, detector],
+            runtime =>
+            {
+                var final = runtime.ObserveConcealment(burrower);
+                var queuedFinal = runtime.ObserveConcealment(queuedBurrower);
+                var finalUnit = runtime.Observe(burrower);
+                var moved = finalUnit.Position;
+                var finalOrder = runtime.ObserveOrders(burrower);
+                var package = runtime.CaptureReplayPackage();
+                var packageRoundTrip = package.TryCanonicalRoundTrip(
+                    out var decoded);
+                var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                var hotRoundTrip = hot.TryCanonicalRoundTrip(out var decodedHot);
+                var replay = runtime.ReplayPackage(decoded!, runtime.Tick);
+                var resumed = runtime.ResumeHotSnapshot(
+                    package, decodedHot!, runtime.Tick);
+                var exact = replay.FinalHash == runtime.StateHash &&
+                            resumed.FinalHash == runtime.StateHash;
+                var passed = visibleBefore && activatingExposed &&
+                             invalidToggleRejected &&
+                             hotCapturedDuringTransition &&
+                             hiddenWithoutDetection && reducedBurrowSight &&
+                             restrictedCommands && mixedDepthPass &&
+                             queuedRoundTrip && detectedAndTargetable &&
+                             deactivatingStillConcealed && restoredMovement &&
+                             final.Phase == TestUnitConcealmentPhase.Visible &&
+                             final.ActiveKind == TestUnitConcealmentKind.None &&
+                             queuedFinal.Phase ==
+                                 TestUnitConcealmentPhase.Visible &&
+                             Vector2.Distance(
+                                 moved, new Vector2(800f, 300f)) > 20f &&
+                             packageRoundTrip && hotRoundTrip &&
+                             exact && package.FormatVersion ==
+                                 SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                             hot.FormatVersion ==
+                                 SimulationHotSnapshot.CurrentFormatVersion;
+                return new ScenarioResult(
+                    passed,
+                    $"visible={visibleBefore}, activate={activatingExposed}, " +
+                    $"invalid={invalidToggleRejected}, " +
+                    $"hidden/sight={hiddenWithoutDetection}/{reducedBurrowSight}, " +
+                    $"restricted/pass={restrictedCommands}/{mixedDepthPass}, " +
+                    $"passPos={passPosition}, " +
+                    $"queue={queuedRoundTrip}, detect={detectedAndTargetable}, " +
+                    $"deactivate={deactivatingStillConcealed}/{restoredMovement}, " +
+                    $"phases={final.Phase}/{queuedFinal.Phase}, moved={moved}, " +
+                    $"unit={finalUnit.State}/{finalUnit.AssignedTarget}, " +
+                    $"order={(byte)finalOrder.ActiveOrder}/" +
+                    $"pending{finalOrder.PendingOrders}, " +
+                    $"roundTrip={packageRoundTrip}/{hotRoundTrip}, " +
+                    $"versions=package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"exact={exact}");
+            })
+            .RenderSpawnedUnits()
+            .CameraKeyframe(0, new Vector2(650f, 320f), 0.78f)
+            .CameraKeyframe(170, new Vector2(430f, 220f), 0.92f)
+            .CameraKeyframe(285, new Vector2(610f, 350f), 1.05f)
+            .CameraKeyframe(430, new Vector2(720f, 390f), 0.95f)
+            .Highlight(
+                new SimRect(new Vector2(540f, 220f), new Vector2(700f, 380f)),
+                "BURROW: reduced sight + mixed-depth pass",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(900f, 450f), new Vector2(1060f, 590f)),
+                "QUEUE: Burrow then Unburrow",
+                TestDiagnosticKind.Accepted);
+
+        session.At(5, "Observe the ordinary visible unit", runtime =>
+        {
+            var enemyView = runtime.ObservePlayerView(1);
+            var ownView = runtime.ObservePlayerView(2);
+            visibleBefore = enemyView.Units.Contains(burrower) &&
+                            ownView.Units.Contains(sightProbe);
+            invalidToggleRejected = runtime.PlayerConcealment(
+                2, [burrower], activate: false, queued: true) ==
+                TestPlayerOrderCommandCode.ContextActionUnavailable;
+        });
+        session.At(20, "Begin active Burrow and a queued toggle pair", runtime =>
+        {
+            if (runtime.PlayerConcealment(2, [burrower], activate: true) !=
+                    TestPlayerOrderCommandCode.Success ||
+                runtime.PlayerConcealment(
+                    2, [queuedBurrower], activate: true) !=
+                    TestPlayerOrderCommandCode.Success ||
+                runtime.PlayerConcealment(
+                    2, [contactBurrower], activate: true) !=
+                    TestPlayerOrderCommandCode.Success ||
+                runtime.PlayerConcealment(
+                    2, [queuedBurrower], activate: false, queued: true) !=
+                    TestPlayerOrderCommandCode.Success)
+            {
+                throw new InvalidOperationException(
+                    "Active Burrow commands were not accepted.");
+            }
+            invalidToggleRejected &= runtime.PlayerConcealment(
+                2, [queuedBurrower], activate: false, queued: true) ==
+                TestPlayerOrderCommandCode.ContextActionUnavailable;
+        });
+        session.At(40, "Activation is visible and owned progress is exposed", runtime =>
+        {
+            var state = runtime.ObserveConcealment(burrower);
+            var enemyView = runtime.ObservePlayerView(1);
+            var own = runtime.ObservePlayerView(2).UnitViews.Single(
+                value => value.Unit == burrower);
+            activatingExposed =
+                state.Phase == TestUnitConcealmentPhase.Activating &&
+                state.TransitionProgress is > 0f and < 1f &&
+                enemyView.Units.Contains(burrower) &&
+                own.ConcealmentPhase ==
+                    TestUnitConcealmentPhase.Activating &&
+                own.CanToggleConcealment;
+        });
+        session.At(hotTick, "Capture a mid-activation hot state", runtime =>
+        {
+            hotCapture = runtime.CaptureRuntimeState();
+            hotCapturedDuringTransition =
+                runtime.ObserveConcealment(burrower).Phase ==
+                TestUnitConcealmentPhase.Activating;
+        });
+        session.At(90, "Burrow hides, reduces sight and locks actions", runtime =>
+        {
+            var state = runtime.ObserveConcealment(burrower);
+            hiddenWithoutDetection =
+                state.Phase == TestUnitConcealmentPhase.Concealed &&
+                state.ActiveKind == TestUnitConcealmentKind.Burrowed &&
+                !runtime.ObservePlayerView(1).Units.Contains(burrower);
+            reducedBurrowSight =
+                !runtime.ObservePlayerView(2).Units.Contains(sightProbe);
+            restrictedCommands =
+                runtime.PlayerMove(
+                    2, [burrower], new Vector2(700f, 420f)) ==
+                    TestPlayerOrderCommandCode.ContextActionUnavailable &&
+                runtime.PlayerAttackMove(
+                    2, [burrower], new Vector2(770f, 300f)) ==
+                    TestPlayerOrderCommandCode.ContextActionUnavailable;
+            runtime.PlayerMove(1, [passer], new Vector2(440f, 120f));
+        });
+        session.At(91, "Clear the sight probe from the contact lane", runtime =>
+            runtime.PlayerMove(1, [sightProbe], new Vector2(780f, 460f)));
+        session.At(145, "Queued Burrow and Unburrow return to visible", runtime =>
+        {
+            var state = runtime.ObserveConcealment(queuedBurrower);
+            queuedRoundTrip =
+                state.Phase == TestUnitConcealmentPhase.Visible &&
+                state.ActiveKind == TestUnitConcealmentKind.None;
+        });
+        session.At(210, "Ground unit passes through the buried unit", runtime =>
+        {
+            passPosition = runtime.Observe(passer).Position;
+            mixedDepthPass = passPosition.X > 380f &&
+                Vector2.Distance(
+                    runtime.Observe(contactBurrower).Position,
+                    new Vector2(300f, 120f)) < 1f;
+        });
+        session.At(190, "Move a detector into the concealed contact", runtime =>
+            runtime.PlayerMove(1, [detector], new Vector2(730f, 370f)));
+        session.At(285, "Detection reveals and authorizes a target command", runtime =>
+        {
+            var view = runtime.ObservePlayerView(1);
+            detectedAndTargetable = view.UnitViews.Any(value =>
+                    value.Unit == burrower &&
+                    value.ConcealmentState ==
+                        TestPlayerConcealmentState.ConcealedDetected) &&
+                runtime.PlayerAttackUnit(1, [passer], burrower) ==
+                    TestPlayerOrderCommandCode.Success;
+        });
+        session.At(300, "Stop the harmless detector-side attack", runtime =>
+            runtime.Stop([passer]));
+        session.At(310, "Begin Unburrow", runtime =>
+        {
+            if (runtime.PlayerConcealment(2, [burrower], activate: false) !=
+                TestPlayerOrderCommandCode.Success)
+            {
+                throw new InvalidOperationException("Unburrow was not accepted.");
+            }
+        });
+        session.At(330, "Unburrow remains concealed until completion", runtime =>
+        {
+            var state = runtime.ObserveConcealment(burrower);
+            var view = runtime.ObservePlayerView(1);
+            deactivatingStillConcealed =
+                state.Phase == TestUnitConcealmentPhase.Deactivating &&
+                state.ActiveKind == TestUnitConcealmentKind.Burrowed &&
+                view.UnitViews.Any(value =>
+                    value.Unit == burrower &&
+                    value.ConcealmentState ==
+                        TestPlayerConcealmentState.ConcealedDetected) &&
+                runtime.PlayerMove(
+                    2, [burrower], new Vector2(700f, 420f)) ==
+                    TestPlayerOrderCommandCode.ContextActionUnavailable;
+        });
+        session.At(370, "Movement returns only after Unburrow completes", runtime =>
+        {
+            var state = runtime.ObserveConcealment(burrower);
+            restoredMovement =
+                state.Phase == TestUnitConcealmentPhase.Visible &&
+                state.ActiveKind == TestUnitConcealmentKind.None &&
+                runtime.PlayerMove(
+                    2, [burrower], new Vector2(1040f, 300f)) ==
+                    TestPlayerOrderCommandCode.Success;
+        });
         return session;
     }
 

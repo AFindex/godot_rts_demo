@@ -339,6 +339,17 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.AutoTargetPriority[unit]);
             writer.Write((byte)combat.ConcealmentKinds[unit]);
             writer.Write(combat.DetectionRanges[unit]);
+            var capability = combat.ConcealmentCapabilities[unit];
+            writer.Write((byte)capability.Kind);
+            writer.Write(capability.ActivationSeconds);
+            writer.Write(capability.DeactivationSeconds);
+            writer.Write(capability.ConcealedVisionRange);
+            writer.Write(capability.CanMoveWhileConcealed);
+            writer.Write(capability.CanAttackWhileConcealed);
+            writer.Write((byte)combat.ConcealmentPhases[unit]);
+            writer.Write(combat.ConcealmentTransitionRemaining[unit]);
+            writer.Write(combat.BaseVisionRanges[unit]);
+            writer.Write(combat.VisionRanges[unit]);
             writer.Write(combat.AttackRanges[unit]);
             writer.Write(combat.AcquisitionRanges[unit]);
             writer.Write(combat.AttackCooldownDurations[unit]);
@@ -387,6 +398,17 @@ internal static class RuntimeHotSnapshotCodec
             combat.ConcealmentKinds[unit] =
                 (UnitConcealmentKind)reader.ReadByte();
             combat.DetectionRanges[unit] = reader.ReadSingle();
+            var capability = new UnitConcealmentCapabilitySnapshot(
+                (UnitConcealmentKind)reader.ReadByte(),
+                reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+                reader.ReadBoolean(), reader.ReadBoolean());
+            capability.Validate();
+            combat.ConcealmentCapabilities[unit] = capability;
+            combat.ConcealmentPhases[unit] =
+                (UnitConcealmentPhase)reader.ReadByte();
+            combat.ConcealmentTransitionRemaining[unit] = reader.ReadSingle();
+            combat.BaseVisionRanges[unit] = reader.ReadSingle();
+            combat.VisionRanges[unit] = reader.ReadSingle();
             combat.AttackRanges[unit] = reader.ReadSingle();
             combat.AcquisitionRanges[unit] = reader.ReadSingle();
             combat.AttackCooldownDurations[unit] = reader.ReadSingle();
@@ -411,13 +433,53 @@ internal static class RuntimeHotSnapshotCodec
             combat.TargetLockRemaining[unit] = reader.ReadSingle();
             if (combat.AutoTargetPriority[unit] is < 0 or > 10 ||
                 !Enum.IsDefined(combat.ConcealmentKinds[unit]) ||
+                !Enum.IsDefined(combat.ConcealmentPhases[unit]) ||
                 !float.IsFinite(combat.DetectionRanges[unit]) ||
                 combat.DetectionRanges[unit] < 0f ||
+                !float.IsFinite(combat.ConcealmentTransitionRemaining[unit]) ||
+                combat.ConcealmentTransitionRemaining[unit] < 0f ||
+                !float.IsFinite(combat.BaseVisionRanges[unit]) ||
+                combat.BaseVisionRanges[unit] <= 0f ||
+                !float.IsFinite(combat.VisionRanges[unit]) ||
+                combat.VisionRanges[unit] <= 0f ||
+                !ValidConcealmentState(combat, unit) ||
                 !float.IsFinite(combat.TargetLockRemaining[unit]) ||
                 combat.TargetLockRemaining[unit] < 0f)
                 throw new InvalidDataException();
         }
         return combat;
+    }
+
+    private static bool ValidConcealmentState(CombatStore combat, int unit)
+    {
+        var capability = combat.ConcealmentCapabilities[unit];
+        var phase = combat.ConcealmentPhases[unit];
+        var kind = combat.ConcealmentKinds[unit];
+        if (capability.Kind == UnitConcealmentKind.None)
+        {
+            return combat.ConcealmentTransitionRemaining[unit] == 0f &&
+                   (phase == UnitConcealmentPhase.Visible ||
+                    phase == UnitConcealmentPhase.Concealed) &&
+                   (phase == UnitConcealmentPhase.Visible
+                       ? kind == UnitConcealmentKind.None
+                       : kind != UnitConcealmentKind.None);
+        }
+
+        var expectedKind = phase is UnitConcealmentPhase.Concealed or
+            UnitConcealmentPhase.Deactivating
+            ? capability.Kind
+            : UnitConcealmentKind.None;
+        var expectedVision = phase is UnitConcealmentPhase.Concealed or
+            UnitConcealmentPhase.Deactivating
+            ? capability.ConcealedVisionRange
+            : combat.BaseVisionRanges[unit];
+        var transitioning = phase is UnitConcealmentPhase.Activating or
+            UnitConcealmentPhase.Deactivating;
+        return kind == expectedKind &&
+               combat.VisionRanges[unit] == expectedVision &&
+               (transitioning
+                   ? combat.ConcealmentTransitionRemaining[unit] > 0f
+                   : combat.ConcealmentTransitionRemaining[unit] == 0f);
     }
 
     private static void WriteProjectiles(

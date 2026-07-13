@@ -14,7 +14,9 @@ public enum UnitOrderKind : byte
     GatherResource,
     ResumeConstruction,
     ReturnCargo,
-    FollowFriendly
+    FollowFriendly,
+    ActivateConcealment,
+    DeactivateConcealment
 }
 
 public readonly record struct UnitOrder(

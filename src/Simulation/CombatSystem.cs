@@ -57,6 +57,7 @@ public sealed class CombatSystem
     private readonly CombatEventStream _events;
     private readonly Func<int, int, bool> _canPerceiveTarget;
     private readonly Func<int, int, bool> _isHostileTarget;
+    private readonly Func<int, bool> _canAttack;
     public CombatProjectileSystem Projectiles { get; } = new();
 
     public CombatSystem(
@@ -66,7 +67,8 @@ public sealed class CombatSystem
         StaticWorld world,
         CombatEventStream events,
         Func<int, int, bool> canPerceiveTarget,
-        Func<int, int, bool> isHostileTarget)
+        Func<int, int, bool> isHostileTarget,
+        Func<int, bool> canAttack)
     {
         _units = units;
         _combat = combat;
@@ -75,6 +77,7 @@ public sealed class CombatSystem
         _events = events;
         _canPerceiveTarget = canPerceiveTarget;
         _isHostileTarget = isHostileTarget;
+        _canAttack = canAttack;
     }
 
     public void Update(float delta, long tick)
@@ -99,6 +102,13 @@ public sealed class CombatSystem
                 0f, _combat.ChaseRepathRemaining[unit] - delta);
             _combat.TargetLockRemaining[unit] = MathF.Max(
                 0f, _combat.TargetLockRemaining[unit] - delta);
+
+            if (!_canAttack(unit))
+            {
+                if (_combat.TargetKinds[unit] != CombatTargetKind.None)
+                    Disengage(unit);
+                continue;
+            }
 
             var intent = _combat.CommandIntents[unit];
             if (intent is not (UnitCommandIntent.AttackMove or

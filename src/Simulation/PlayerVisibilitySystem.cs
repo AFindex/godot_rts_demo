@@ -58,7 +58,10 @@ public readonly record struct PlayerUnitViewSnapshot(
     UnitMoveMode MoveMode,
     CombatPhase CombatPhase,
     PlayerConcealmentState ConcealmentState =
-        PlayerConcealmentState.NotConcealed);
+        PlayerConcealmentState.NotConcealed,
+    UnitConcealmentPhase ConcealmentPhase = UnitConcealmentPhase.Visible,
+    float ConcealmentTransitionProgress = 1f,
+    bool CanToggleConcealment = false);
 
 public readonly record struct PlayerBuildingViewSnapshot(
     GameplayBuildingId BuildingId,
@@ -154,7 +157,8 @@ public sealed class PlayerVisibilitySystem
             if (!units.Alive[unit] || playerId <= 0 ||
                 playerId >= MaximumPlayers)
                 continue;
-            RevealVisionSource(playerId, units.Positions[unit], UnitVisionRadius);
+            RevealVisionSource(
+                playerId, units.Positions[unit], combat.VisionRanges[unit]);
             if (combat.DetectionRanges[unit] > 0f)
             {
                 RevealDetectionSource(

@@ -364,6 +364,14 @@ public enum TestUnitConcealmentKind : byte
     Burrowed
 }
 
+public enum TestUnitConcealmentPhase : byte
+{
+    Visible,
+    Activating,
+    Concealed,
+    Deactivating
+}
+
 public enum TestPlayerConcealmentState : byte
 {
     NotConcealed,
@@ -382,11 +390,40 @@ public enum TestPlayerEntityRelation : byte
 
 public readonly record struct TestPerceptionProfile(
     TestUnitConcealmentKind Concealment,
-    float DetectionRange)
+    float DetectionRange,
+    float VisionRange = PlayerVisibilitySystem.UnitVisionRadius)
 {
     public static TestPerceptionProfile Standard => new(
         TestUnitConcealmentKind.None, 0f);
 }
+
+public readonly record struct TestConcealmentCapability(
+    TestUnitConcealmentKind Kind,
+    float ActivationSeconds,
+    float DeactivationSeconds,
+    float ConcealedVisionRange,
+    bool CanMoveWhileConcealed,
+    bool CanAttackWhileConcealed)
+{
+    public static TestConcealmentCapability None => default;
+
+    public static TestConcealmentCapability StandardBurrow => new(
+        TestUnitConcealmentKind.Burrowed,
+        1f,
+        0.75f,
+        96f,
+        false,
+        false);
+}
+
+public readonly record struct TestConcealmentSnapshot(
+    TestUnitConcealmentKind CapabilityKind,
+    TestUnitConcealmentPhase Phase,
+    TestUnitConcealmentKind ActiveKind,
+    float TransitionRemaining,
+    float TransitionProgress,
+    bool CanMove,
+    bool CanAttack);
 
 public enum TestPlayerOrderCommandCode : byte
 {
@@ -425,7 +462,10 @@ public readonly record struct TestPlayerBuildingView(
 public readonly record struct TestPlayerUnitView(
     TestUnitId Unit,
     TestPlayerConcealmentState ConcealmentState,
-    TestPlayerEntityRelation Relation);
+    TestPlayerEntityRelation Relation,
+    TestUnitConcealmentPhase ConcealmentPhase,
+    float ConcealmentTransitionProgress,
+    bool CanToggleConcealment);
 
 public readonly record struct TestPlayerViewSnapshot(
     int PlayerId,
@@ -526,7 +566,9 @@ public enum TestOrderKind : byte
     GatherResource,
     ResumeConstruction,
     ReturnCargo,
-    FollowFriendly
+    FollowFriendly,
+    ActivateConcealment,
+    DeactivateConcealment
 }
 
 public readonly record struct TestOrderSnapshot(
@@ -1660,7 +1702,10 @@ public sealed partial class MovementTestRig
             view.Units.Select(value => new TestPlayerUnitView(
                 new TestUnitId(value.UnitId),
                 (TestPlayerConcealmentState)value.ConcealmentState,
-                (TestPlayerEntityRelation)value.Relation)).ToArray(),
+                (TestPlayerEntityRelation)value.Relation,
+                (TestUnitConcealmentPhase)value.ConcealmentPhase,
+                value.ConcealmentTransitionProgress,
+                value.CanToggleConcealment)).ToArray(),
             view.Buildings.Select(value =>
                 new TestGameplayBuildingId(value.BuildingId.Value)).ToArray(),
             view.Buildings.Select(value => new TestPlayerBuildingView(
@@ -1678,6 +1723,19 @@ public sealed partial class MovementTestRig
                 value == (byte)MapVisibility.Explored),
             view.VisibilityCells.Count(value =>
                 value == (byte)MapVisibility.Visible));
+    }
+
+    public TestConcealmentSnapshot ObserveConcealment(TestUnitId unit)
+    {
+        var value = _simulation.Concealment.Observe(unit.Value);
+        return new TestConcealmentSnapshot(
+            (TestUnitConcealmentKind)value.CapabilityKind,
+            (TestUnitConcealmentPhase)value.Phase,
+            (TestUnitConcealmentKind)value.ActiveKind,
+            value.TransitionRemaining,
+            value.TransitionProgress,
+            value.CanMove,
+            value.CanAttack);
     }
 
     public void StartMatch(params int[] playerIds) =>
@@ -1724,6 +1782,28 @@ public sealed partial class MovementTestRig
             playerId,
             units.Select(value => value.Value).ToArray(),
             target,
+            queued).Code;
+
+    public TestPlayerOrderCommandCode PlayerAttackMove(
+        int playerId,
+        IReadOnlyList<TestUnitId> units,
+        Vector2 target,
+        bool queued = false) =>
+        (TestPlayerOrderCommandCode)_simulation.IssuePlayerAttackMove(
+            playerId,
+            units.Select(value => value.Value).ToArray(),
+            target,
+            queued).Code;
+
+    public TestPlayerOrderCommandCode PlayerConcealment(
+        int playerId,
+        IReadOnlyList<TestUnitId> units,
+        bool activate,
+        bool queued = false) =>
+        (TestPlayerOrderCommandCode)_simulation.IssuePlayerConcealment(
+            playerId,
+            units.Select(value => value.Value).ToArray(),
+            activate,
             queued).Code;
 
     public TestPlayerOrderCommandCode PlayerAttackUnit(
@@ -2133,7 +2213,8 @@ public sealed partial class MovementTestRig
         float radius = 7.5f,
         float maximumSpeed = 128f,
         float acceleration = 720f,
-        TestPerceptionProfile perception = default)
+        TestPerceptionProfile perception = default,
+        TestConcealmentCapability concealmentCapability = default)
     {
         var resolvedProfile = profile ?? TestCombatProfile.Standard;
         var backendProfile = ToBackendCombat(resolvedProfile);
@@ -2141,7 +2222,17 @@ public sealed partial class MovementTestRig
             position, team, backendProfile, radius, maximumSpeed, acceleration,
             new UnitPerceptionProfileSnapshot(
                 (UnitConcealmentKind)perception.Concealment,
-                perception.DetectionRange)));
+                perception.DetectionRange,
+                perception.VisionRange == 0f
+                    ? PlayerVisibilitySystem.UnitVisionRadius
+                    : perception.VisionRange),
+            new UnitConcealmentCapabilitySnapshot(
+                (UnitConcealmentKind)concealmentCapability.Kind,
+                concealmentCapability.ActivationSeconds,
+                concealmentCapability.DeactivationSeconds,
+                concealmentCapability.ConcealedVisionRange,
+                concealmentCapability.CanMoveWhileConcealed,
+                concealmentCapability.CanAttackWhileConcealed)));
     }
 
     private static CombatProfileSnapshot ToBackendCombat(

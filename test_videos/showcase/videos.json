@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T21:48:19.6794211+08:00",
+    "generated_at":  "2026-07-13T22:38:29.0569468+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  149,
-    "case_count":  118,
+    "recording_count":  150,
+    "case_count":  119,
     "recordings":  [
+                       {
+                           "id":  "active-burrow-detection-lifecycle",
+                           "display_name":  "Active Burrow lifecycle, detection and queued orders",
+                           "batch":  "20260713_223815",
+                           "created_at":  "2026-07-13T22:38:28.6157432+08:00",
+                           "video":  "../20260713_223815/active-burrow-detection-lifecycle.webm",
+                           "log":  "../20260713_223815/active-burrow-detection-lifecycle.log",
+                           "bytes":  1414982,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS active-burrow-detection-lifecycle: ticks=480, visible=True, activate=True, invalid=True, hidden/sight=True/True, restricted/pass=True/True, passPos=\u003c436.78955, 120\u003e, queue=True, detect=True, deactivate=True/True, phases=Visible/Visible, moved=\u003c1041.3628, 280.4634\u003e, unit=Moving/\u003c1040, 300\u003e, order=1/pending0, roundTrip=True/True, versions=package29/hot28, exact=True",
+                           "metrics":  "ticks=480, visible=True, activate=True, invalid=True, hidden/sight=True/True, restricted/pass=True/True, passPos=\u003c436.78955, 120\u003e, queue=True, detect=True, deactivate=True/True, phases=Visible/Visible, moved=\u003c1041.3628, 280.4634\u003e, unit=Moving/\u003c1040, 300\u003e, order=1/pending0, roundTrip=True/True, versions=package29/hot28, exact=True"
+                       },
                        {
                            "id":  "construction-blocker-policy-matrix",
                            "display_name":  "Construction blocker policy: evict owned idle, wait on protected orders and foreign authority",

@@ -76,6 +76,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _pathProvider = pathProvider;
         Units = new UnitStore(capacity);
         Combat = new CombatStore(capacity);
+        Concealment = new UnitConcealmentController(Units, Combat);
         CombatEvents = new CombatEventStream();
         CommandQueues = new UnitCommandQueueStore(capacity);
         Economy = new EconomySystem(capacity);
@@ -104,7 +105,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _chokeController = chokeController;
         _combatSystem = new CombatSystem(
             Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit,
-            Diplomacy.IsEnemy);
+            Diplomacy.IsEnemy, Concealment.CanAttack);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _constructionMoveWorker = MoveConstructionWorker;
@@ -118,6 +119,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public StaticWorld World { get; }
     public UnitStore Units { get; }
     public CombatStore Combat { get; }
+    public UnitConcealmentController Concealment { get; }
     public CombatProjectileSystem CombatProjectiles => _combatSystem.Projectiles;
     public CombatEventStream CombatEvents { get; }
     public UnitCommandQueueStore CommandQueues { get; }
@@ -498,6 +500,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
             case UnitOrderKind.Hold:
                 Hold(command.Units);
                 break;
+            case UnitOrderKind.ActivateConcealment:
+                IssueConcealment(command.Units, activate: true, command.Queued);
+                break;
+            case UnitOrderKind.DeactivateConcealment:
+                IssueConcealment(command.Units, activate: false, command.Queued);
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Unsupported recorded command {command.Kind}.");
@@ -834,10 +842,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
         float radius = 7.5f,
         float maxSpeed = 128f,
         float acceleration = 720f,
-        UnitPerceptionProfileSnapshot perception = default)
+        UnitPerceptionProfileSnapshot perception = default,
+        UnitConcealmentCapabilitySnapshot concealmentCapability = default)
     {
         var unit = Units.Add(position, radius, maxSpeed, acceleration);
-        Combat.Register(unit, team, position, combatProfile, perception);
+        Combat.Register(
+            unit, team, position, combatProfile, perception,
+            concealmentCapability);
         return unit;
     }
 
@@ -855,7 +866,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         UnitMovementProfileSnapshot movementProfile,
         int team,
         CombatProfileSnapshot combatProfile,
-        UnitPerceptionProfileSnapshot perception = default) =>
+        UnitPerceptionProfileSnapshot perception = default,
+        UnitConcealmentCapabilitySnapshot concealmentCapability = default) =>
         AddUnit(
             position,
             team,
@@ -863,7 +875,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
             movementProfile.PhysicalRadius,
             movementProfile.MaximumSpeed,
             movementProfile.Acceleration,
-            perception);
+            perception,
+            concealmentCapability);
 
     public int AddWorker(
         Vector2 position,
@@ -1427,12 +1440,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
             {
                 continue;
             }
+            var concealment = Concealment.Observe(unit);
             units.Add(new PlayerUnitViewSnapshot(
                 unit, owner, relation, Units.Positions[unit], Units.Radii[unit],
                 Combat.Health[unit], Combat.MaximumHealth[unit],
                 Units.Modes[unit], Combat.Phases[unit],
                 Visibility.ConcealmentStateFor(
-                    playerId, unit, Units, Combat)));
+                    playerId, unit, Units, Combat),
+                concealment.Phase,
+                concealment.TransitionProgress,
+                concealment.CapabilityKind != UnitConcealmentKind.None &&
+                relation == PlayerEntityRelation.Own));
         }
         var buildings = new List<PlayerBuildingViewSnapshot>();
         foreach (var building in Construction.CreateOverview())
@@ -1480,6 +1498,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         var validation = ValidatePlayerSelection(playerId, units);
         if (!validation.Succeeded) return validation;
+        if (!UnitsAllowMovement(units))
+            return new(PlayerOrderCommandCode.ContextActionUnavailable);
         IssueMove(units, target, queued);
         return validation;
     }
@@ -1492,6 +1512,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         var validation = ValidatePlayerSelection(playerId, units);
         if (!validation.Succeeded) return validation;
+        if (!UnitsAllowMovement(units) || !UnitsAllowAttack(units))
+            return new(PlayerOrderCommandCode.ContextActionUnavailable);
         IssueAttackMove(units, target, queued);
         return validation;
     }
@@ -1514,6 +1536,63 @@ public sealed class RtsSimulation : ICombatMovementDriver
         if (!validation.Succeeded) return validation;
         Hold(units);
         return validation;
+    }
+
+    public PlayerOrderCommandResult IssuePlayerConcealment(
+        int playerId,
+        ReadOnlySpan<int> units,
+        bool activate,
+        bool queued = false)
+    {
+        var validation = ValidatePlayerSelection(playerId, units);
+        if (!validation.Succeeded) return validation;
+        for (var index = 0; index < units.Length; index++)
+        {
+            var unit = units[index];
+            if (!Concealment.CanActivate(unit))
+                return new(PlayerOrderCommandCode.ContextActionUnavailable);
+            if (queued)
+            {
+                if (ProjectedConcealmentActive(unit) == activate)
+                    return new(PlayerOrderCommandCode.ContextActionUnavailable);
+                continue;
+            }
+            var phase = Combat.ConcealmentPhases[unit];
+            if (phase is UnitConcealmentPhase.Activating or
+                UnitConcealmentPhase.Deactivating ||
+                activate && phase != UnitConcealmentPhase.Visible ||
+                !activate && phase != UnitConcealmentPhase.Concealed)
+            {
+                return new(PlayerOrderCommandCode.ContextActionUnavailable);
+            }
+        }
+        IssueConcealment(units, activate, queued);
+        return validation;
+    }
+
+    private bool ProjectedConcealmentActive(int unit)
+    {
+        var active = Combat.ConcealmentPhases[unit] switch
+        {
+            UnitConcealmentPhase.Concealed => true,
+            UnitConcealmentPhase.Activating => true,
+            UnitConcealmentPhase.Visible => false,
+            UnitConcealmentPhase.Deactivating => false,
+            _ => throw new InvalidOperationException(
+                "Unknown concealment phase.")
+        };
+        for (var pending = 0;
+             pending < CommandQueues.PendingCounts[unit];
+             pending++)
+        {
+            active = CommandQueues.PendingAt(unit, pending).Kind switch
+            {
+                UnitOrderKind.ActivateConcealment => true,
+                UnitOrderKind.DeactivateConcealment => false,
+                _ => active
+            };
+        }
+        return active;
     }
 
     public PlayerOrderCommandResult IssuePlayerReturnCargo(
@@ -1548,6 +1627,19 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         var validation = ValidatePlayerSelection(playerId, units);
         if (!validation.Succeeded) return validation;
+        var requiresAttack = attackMoveModifier || target.Kind is
+            SmartCommandTargetKind.EnemyUnit or
+            SmartCommandTargetKind.EnemyBuilding;
+        var requiresMovement = attackMoveModifier || target.Kind is
+            SmartCommandTargetKind.Ground or
+            SmartCommandTargetKind.FriendlyUnit or
+            SmartCommandTargetKind.FriendlyBuilding or
+            SmartCommandTargetKind.ResourceNode;
+        if (requiresAttack && !UnitsAllowAttack(units) ||
+            requiresMovement && !UnitsAllowMovement(units))
+        {
+            return new(PlayerOrderCommandCode.ContextActionUnavailable);
+        }
         switch (target.Kind)
         {
             case SmartCommandTargetKind.FriendlyUnit:
@@ -1837,6 +1929,26 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return new(PlayerOrderCommandCode.Success);
     }
 
+    private bool UnitsAllowMovement(ReadOnlySpan<int> units)
+    {
+        for (var index = 0; index < units.Length; index++)
+        {
+            if (!Concealment.CanMove(units[index]))
+                return false;
+        }
+        return true;
+    }
+
+    private bool UnitsAllowAttack(ReadOnlySpan<int> units)
+    {
+        for (var index = 0; index < units.Length; index++)
+        {
+            if (!Concealment.CanAttack(units[index]))
+                return false;
+        }
+        return true;
+    }
+
     private MatchCommandBlock MatchCommandBlockFor(int playerId)
     {
         if (Match.Phase == MatchPhase.Setup)
@@ -2057,6 +2169,19 @@ public sealed class RtsSimulation : ICombatMovementDriver
             new UnitOrder(UnitOrderKind.Hold, Vector2.Zero),
             queued: false);
 
+    public void IssueConcealment(
+        ReadOnlySpan<int> unitIndices,
+        bool activate,
+        bool queued = false) =>
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(
+                activate
+                    ? UnitOrderKind.ActivateConcealment
+                    : UnitOrderKind.DeactivateConcealment,
+                Vector2.Zero),
+            queued);
+
     private void ExecuteStop(ReadOnlySpan<int> unitIndices)
     {
         for (var i = 0; i < unitIndices.Length; i++)
@@ -2115,6 +2240,47 @@ public sealed class RtsSimulation : ICombatMovementDriver
             }
             Units.Modes[unit] = UnitMoveMode.Hold;
             Combat.SetCommand(unit, UnitCommandIntent.Hold, Units.Positions[unit]);
+        }
+    }
+
+    private void ExecuteConcealmentOrder(
+        ReadOnlySpan<int> unitIndices,
+        bool activate)
+    {
+        Span<int> single = stackalloc int[1];
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            single[0] = unit;
+            ExecuteStop(single);
+            var result = Concealment.Begin(unit, activate);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Concealment transition failed for unit {unit}: " +
+                    $"{result.Code}.");
+            }
+        }
+    }
+
+    private void FreezeConcealmentRestrictedUnits()
+    {
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] || Concealment.CanMove(unit))
+                continue;
+            Units.Paths[unit] = null;
+            Units.RouteWaypoints[unit] = [];
+            Units.PathPending[unit] = false;
+            Units.Modes[unit] = UnitMoveMode.Hold;
+            Units.Velocities[unit] = Vector2.Zero;
+            Units.PreferredVelocities[unit] = Vector2.Zero;
+            Units.NextVelocities[unit] = Vector2.Zero;
+            Units.SlotTargets[unit] = Units.Positions[unit];
+            Units.MoveGoals[unit] = Units.Positions[unit];
+            Units.ActiveChokeIds[unit] = -1;
+            Units.ChokePhases[unit] = ChokePhase.None;
+            Units.ChokeAdmitted[unit] = false;
         }
     }
 
@@ -2223,6 +2389,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 break;
             case UnitOrderKind.Hold:
                 ExecuteHold(unitIndices);
+                break;
+            case UnitOrderKind.ActivateConcealment:
+                ExecuteConcealmentOrder(unitIndices, activate: true);
+                break;
+            case UnitOrderKind.DeactivateConcealment:
+                ExecuteConcealmentOrder(unitIndices, activate: false);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(order));
@@ -2424,6 +2596,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Economy.Update(
             delta, Units, _economyMoveWorker, _economyStopWorker);
         UpdateProducedUnitRallyFollowers();
+        Concealment.Update(delta);
+        FreezeConcealmentRestrictedUnits();
         for (var unit = 0; unit < Units.Count; unit++)
             _unitCollisionSuppressed[unit] =
                 Economy.SuppressesUnitCollision(unit) ||
@@ -3800,6 +3974,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 Economy.Worker(unit).CargoAmount <= 0,
             UnitOrderKind.ResumeConstruction =>
                 IsResumeConstructionOrderComplete(unit),
+            UnitOrderKind.ActivateConcealment =>
+                Concealment.RequestedStateReached(unit, active: true),
+            UnitOrderKind.DeactivateConcealment =>
+                Concealment.RequestedStateReached(unit, active: false),
             UnitOrderKind.FollowFriendly => false,
             UnitOrderKind.Stop or UnitOrderKind.Hold => true,
             _ => true
