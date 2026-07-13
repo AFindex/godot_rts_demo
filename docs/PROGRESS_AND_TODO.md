@@ -1143,6 +1143,19 @@ H3 提供后续复杂玩法的集成基线。新单位、技能、科技或 AI P
 
 详细配置见 [默认可玩对局](PLAYABLE_SKIRMISH_DEMO.md)。后续对该 Demo 的扩展应继续修改场景数据或正式系统能力，不在 `RtsDemo` 中增加固定 Tick 玩法脚本。
 
+### AW：SC2 操作与玩法细节对齐研究（已完成研究基线）
+
+- 新增 [StarCraft II 操作与玩法细节对齐研究](SC2_ALIGNMENT_RESEARCH.md)，按 Blizzard 官方、稳定社区资料和必须实机确认三档管理证据，不把论坛观察直接冻结成实现。
+- 采矿部分明确 Harvest/Return Cargo 关闭单位—单位碰撞、建筑/地形仍阻挡的碰撞矩阵；核对当前 `WorkerCollisionPolicy`、Steering 与最终圆碰撞均消费同一双向抑制规则，主路径已对齐。
+- 记录 SC2 常规/富矿每趟 5/7、矿点占用约 1.99 秒、离开停顿约 0.3571 秒、八片矿两工人长期饱和和三工人气矿等校准数据；这些属于内容参数，不写死到通用内核。
+- 建造部分把 Placement Grid、Pathing Grid、Placement Footprint、Hard Pathing Footprint、资源排斥与动态单位占位拆开；当前 `UnitOverlap` 全拒绝和下单即硬占地被列为明确高优先级差距。
+- 提出 Preview → Reservation/Ghost → Revalidate/Evict → Hard Footprint 的施工协议，并列出己方 Idle/Move/Hold/Harvest、盟友、可见敌人、隐藏/潜地敌人和晚到单位的 SC2 实机录像矩阵。
+- 发现当前施工中建筑仍使用完整基础/升级护甲，而 Blizzard 明确施工结构没有伤害减免；列为独立 P0 黑盒修正项。
+- 规划 P0 `economy-mineral-walk-collision-matrix`、`construction-soft-friendly-occupants`、`construction-hidden-enemy-blocker`、`construction-under-build-defense`，以及 P1 自动分矿、显式 Return Cargo、Late Blocker、Shift Build Queue 和生产出口测试。
+- 为防止无限对齐，明确只强制控制正确性和高影响经济/战术结果；像素级加速度、完整三族例外和每建筑特殊出口只有出现真实失败证据时继续。
+
+本段只建立研究与验收合同，没有修改运行时行为。下一步应先完成 SC2 当前客户端的友军预占位实机矩阵，再设计 Reservation 格式；在证据确认前不直接实现自动推开规则。
+
 ## 8. 可以并行但不能提前耦合的优化
 
 - Steering 预计算候选方向。
