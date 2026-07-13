@@ -1377,6 +1377,13 @@ D2a 至此收口。下一项按依赖顺序做 D2b：先建立通用 Caster Ener
 
 本包是由可复现实机失败驱动的稳定化修复，至此停止继续调参。后续仍按既定依赖进入 D2b；只有新的可复现操作失败、黑盒失败或性能越界，才重新打开到点、攻击站位或施工接近启发式。
 
+### BP：跨机器默认对局启动修复（已完成）
+
+- 复现 `Starting town hall did not complete for P1`：默认对局在 Godot NavMesh 同步前创建 Simulation，而组合路径源错误要求 Primary NavMesh 与 Grid fallback 同时 Ready。此时 `FindPath` 已具备 fallback 能力，但模拟因整体 `IsReady=false` 不处理任何 Builder 路径请求。
+- `ValidatingFallbackPathProvider.IsReady` 现在只要求 Primary 或 fallback 至少一个可工作；Primary 未同步时查询稳定落到 Grid，Godot NavMesh 就绪后继续优先使用通过世界几何校验的 Primary 路径。没有增加固定等待时间，也没有绕过正式施工。
+- 新增 `PathProviderFallbackSelfTest`，用永不 Ready 的 Primary 验证组合 Provider 立即 Ready、确实调用 Primary 一次并返回 fallback 完整路径，冻结跨机器启动合同。
+- 无参数 Godot 启动路径实测不再抛出异常，随后输出 `RTS_NAV_READY=True`；30 秒 `--playable-demo-smoke` 通过：Tick 1868、玩家余额 `2364/600`、敌方设施 6、比赛保持 Running。119/119 全量视觉业务场景及新增基础自检全部通过，Debug 构建 0 错误、0 警告。
+
 ## 8. 可以并行但不能提前耦合的优化
 
 - Steering 预计算候选方向。

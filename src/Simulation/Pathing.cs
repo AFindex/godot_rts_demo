@@ -52,7 +52,7 @@ public sealed class ValidatingFallbackPathProvider :
         _world = world;
     }
 
-    public bool IsReady => _primary.IsReady && _fallback.IsReady;
+    public bool IsReady => _primary.IsReady || _fallback.IsReady;
 
     public Vector2[] FindPath(
         Vector2 start,

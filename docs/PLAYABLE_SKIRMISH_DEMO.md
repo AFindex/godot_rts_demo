@@ -1,6 +1,6 @@
 # 默认可玩对局
 
-更新日期：2026-07-13
+更新日期：2026-07-14
 
 默认入口不再生成两堆无经济语义的测试单位，而是运行完整的 Player vs AI 对局。`PlayableSkirmishScenario` 是纯 C# 场景组合根，只声明地图、开局、资源簇和敌方 AI 配置；采集、施工、生产、科技、视野、战斗、胜负与寻路全部由正式运行时执行。
 
@@ -29,5 +29,7 @@
 纯 C# `PlayableSkirmishScenarioSelfTest` 在同一场景定义上运行 1800 Tick：地图 3120×1720、78 个资源点、双方 12 个初始农民；玩家矿量由 1800 增至 2166，敌方发展到 6 座设施，比赛保持 Running。
 
 Godot 集成烟测另外验证运行时 NavMesh、摄像机、迷雾和表现组合：NavMesh 生成 18 个多边形并成功同步。为支持中央有障碍的地图，`GodotPathProvider` 不再假设世界中心必定可行走，而是确定性选择距离中心最近的合法同步探针。
+
+启动阶段使用 `ValidatingFallbackPathProvider`：Grid fallback 已就绪时即可处理开局施工和移动，不等待 Godot NavigationServer 完成首个物理帧同步；NavMesh 就绪后自动成为首选查询源。组合 Provider 的 Ready 状态因此表示“至少存在可工作的正式路径源”，不会再因不同机器的 NavMesh 初始化时序导致起始 Command Center 无法完工。
 
 30 秒实际玩家视角录像位于 `test_videos/20260713_012005/playable-skirmish-demo.webm`，1280×720、903 帧、AV1/WebM、CRF 32、preset 8。
