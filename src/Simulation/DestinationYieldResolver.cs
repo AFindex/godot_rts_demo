@@ -82,6 +82,8 @@ public sealed class DestinationYieldResolver
             if (other == blockedUnit || !units.Alive[other] ||
                 combatTargets[other] != CombatTargetKind.None ||
                 !IsSettledBlocker(units, other) ||
+                !UnitPushPriorityPolicy.CanDisplace(
+                    units, blockedUnit, other) ||
                 units.DestinationOverflowed[other] ||
                 units.DestinationYieldPhases[other] != DestinationYieldPhase.None ||
                 units.DestinationYieldCooldownTicks[other] > tick)

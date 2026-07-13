@@ -1,9 +1,39 @@
 ﻿{
-    "generated_at":  "2026-07-14T02:17:29.2981581+08:00",
+    "generated_at":  "2026-07-14T03:57:56.7551862+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  161,
-    "case_count":  124,
+    "recording_count":  163,
+    "case_count":  126,
     "recordings":  [
+                       {
+                           "id":  "dynamic-blockage-continuous-waves",
+                           "display_name":  "Large, small and singleton waves share one crowded destination",
+                           "batch":  "20260714_035619",
+                           "created_at":  "2026-07-14T03:57:07.9074806+08:00",
+                           "video":  "../20260714_035619/dynamic-blockage-continuous-waves.webm",
+                           "log":  "../20260714_035619/dynamic-blockage-continuous-waves.log",
+                           "bytes":  4016502,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS dynamic-blockage-continuous-waves: ticks=1800, waves=32/4/3/2/1, arrived=42/42, targets=42/42, settled-tick=1360, drift=0.00, push=124, fallback=0, yield=0, overflow=0",
+                           "metrics":  "ticks=1800, waves=32/4/3/2/1, arrived=42/42, targets=42/42, settled-tick=1360, drift=0.00, push=124, fallback=0, yield=0, overflow=0"
+                       },
+                       {
+                           "id":  "dynamic-blockage-priority-matrix",
+                           "display_name":  "Universal priority push and three-second bounded blockage matrix",
+                           "batch":  "20260714_035619",
+                           "created_at":  "2026-07-14T03:57:07.9074806+08:00",
+                           "video":  "../20260714_035619/dynamic-blockage-priority-matrix.webm",
+                           "log":  "../20260714_035619/dynamic-blockage-priority-matrix.log",
+                           "bytes":  516356,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS dynamic-blockage-priority-matrix: ticks=900, through=1023/1023, shift=537.5/538.3, bounded=429/416, anchor-drift=0.00/0.00, push=1902/1075.8, settles=2@345/710 windows=135/555, target=429/416, hot=True/v29",
+                           "metrics":  "ticks=900, through=1023/1023, shift=537.5/538.3, bounded=429/416, anchor-drift=0.00/0.00, push=1902/1075.8, settles=2@345/710 windows=135/555, target=429/416, hot=True/v29"
+                       },
                        {
                            "id":  "attack-move-squad-slot-resume",
                            "display_name":  "AttackMove squad resumes its individual slots instead of one shared point",

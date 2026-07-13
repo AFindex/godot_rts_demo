@@ -16,6 +16,8 @@ public static class VisualTestCatalog
         "frontend-test-browser",
         "single-unit",
         "group-move-terminal-stability",
+        "dynamic-blockage-priority-matrix",
+        "dynamic-blockage-continuous-waves",
         "friendly-building-radial-interaction",
         "combat-idle-auto-acquire",
         "attack-move-squad-slot-resume",
@@ -153,6 +155,10 @@ public static class VisualTestCatalog
         "single-unit" => CreateSingleUnit(),
         "group-move-terminal-stability" =>
             CreateGroupMoveTerminalStability(),
+        "dynamic-blockage-priority-matrix" =>
+            CreateDynamicBlockagePriorityMatrix(gameplayProfiles),
+        "dynamic-blockage-continuous-waves" =>
+            CreateDynamicBlockageContinuousWaves(),
         "friendly-building-radial-interaction" =>
             CreateFriendlyBuildingRadialInteraction(),
         "combat-idle-auto-acquire" => CreateCombatIdleAutoAcquire(),
@@ -430,6 +436,299 @@ public static class VisualTestCatalog
                 var snapshots = runtime.Observe(units);
                 if (snapshots.All(value =>
                         value.State == TestUnitState.Arrived))
+                {
+                    settled = snapshots;
+                    settledTick = runtime.Tick;
+                }
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateDynamicBlockagePriorityMatrix(
+        GameplayProfileCatalogSnapshot? gameplayProfiles)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var corridorCenters = new[] { 100f, 285f, 470f, 655f };
+        var corridorHalfWidth = 18f;
+        var cursor = 0f;
+        var obstacles = new List<SimRect>();
+        foreach (var center in corridorCenters)
+        {
+            var wallEnd = center - corridorHalfWidth;
+            if (wallEnd > cursor)
+            {
+                obstacles.Add(new SimRect(
+                    new Vector2(0f, cursor),
+                    new Vector2(1200f, wallEnd)));
+            }
+            cursor = center + corridorHalfWidth;
+        }
+        if (cursor < 760f)
+        {
+            obstacles.Add(new SimRect(
+                new Vector2(0f, cursor),
+                new Vector2(1200f, 760f)));
+        }
+        if (!NavigationMapSnapshot.TryCreate(
+                NavigationMapSnapshot.CurrentFormatVersion,
+                new SimRect(Vector2.Zero, new Vector2(1200f, 760f)),
+                obstacles.ToArray(), [], [], [],
+                out var navigationMap,
+                out var validation) || navigationMap is null)
+            throw new InvalidOperationException(
+                $"Priority corridor map invalid: {validation.FirstError}.");
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake: null);
+
+        var equalMover = rig.Spawn(new Vector2(120f, corridorCenters[0]));
+        var equalBlocker = rig.Spawn(new Vector2(500f, corridorCenters[0]));
+        var highMover = rig.Spawn(
+            new Vector2(120f, corridorCenters[1]), radius: 10f);
+        var lowBlocker = rig.Spawn(
+            new Vector2(500f, corridorCenters[1]), radius: 5.5f);
+        var lowMover = rig.Spawn(
+            new Vector2(120f, corridorCenters[2]), radius: 5.5f);
+        var highBlocker = rig.Spawn(
+            new Vector2(500f, corridorCenters[2]), radius: 10f);
+        var holdMover = rig.Spawn(new Vector2(120f, corridorCenters[3]));
+        var holdBlocker = rig.Spawn(new Vector2(500f, corridorCenters[3]));
+        var visible = new[]
+        {
+            equalMover, equalBlocker, highMover, lowBlocker,
+            lowMover, highBlocker, holdMover, holdBlocker
+        };
+        var initialEqualBlocker = rig.Observe(equalBlocker).Position;
+        var initialLowBlocker = rig.Observe(lowBlocker).Position;
+        var initialHighBlocker = rig.Observe(highBlocker).Position;
+        var initialHoldBlocker = rig.Observe(holdBlocker).Position;
+        rig.StartReplayPackageRecording();
+        rig.Hold([holdBlocker]);
+        rig.Move([equalMover], new Vector2(1030f, corridorCenters[0]));
+        rig.Move([highMover], new Vector2(1030f, corridorCenters[1]));
+        rig.Move([lowMover], new Vector2(1030f, corridorCenters[2]));
+        rig.Move([holdMover], new Vector2(1030f, corridorCenters[3]));
+
+        TestRuntimeStateCapture? hotCapture = null;
+        var lowSettledTick = -1L;
+        var holdSettledTick = -1L;
+        var lowWindowStartTick = -1L;
+        var holdWindowStartTick = -1L;
+        var lowWindowStartX = 0f;
+        var holdWindowStartX = 0f;
+        var lowBlockedWindowTicks = -1L;
+        var holdBlockedWindowTicks = -1L;
+        var session = new VisualTestSession(
+                "dynamic-blockage-priority-matrix",
+                "Universal priority push and three-second bounded blockage matrix",
+                900,
+                rig,
+                visible,
+                runtime =>
+                {
+                    var equal = runtime.Observe(equalMover);
+                    var high = runtime.Observe(highMover);
+                    var low = runtime.Observe(lowMover);
+                    var hold = runtime.Observe(holdMover);
+                    var equalShift = Vector2.Distance(
+                        runtime.Observe(equalBlocker).Position,
+                        initialEqualBlocker);
+                    var lowShift = Vector2.Distance(
+                        runtime.Observe(lowBlocker).Position,
+                        initialLowBlocker);
+                    var highDrift = Vector2.Distance(
+                        runtime.Observe(highBlocker).Position,
+                        initialHighBlocker);
+                    var holdDrift = Vector2.Distance(
+                        runtime.Observe(holdBlocker).Position,
+                        initialHoldBlocker);
+                    var diagnostics = runtime.ObserveMovementDiagnostics();
+                    var package = runtime.CaptureReplayPackage();
+                    var hot = runtime.BindHotSnapshot(package, hotCapture!);
+                    var restored = runtime.ResumeHotSnapshot(
+                        package, hot, runtime.Tick);
+                    var exact = restored.FinalHash == runtime.StateHash;
+                    var passThrough = equal.State == TestUnitState.Arrived &&
+                                      equal.Position.X >= 900f &&
+                                      high.State == TestUnitState.Arrived &&
+                                      high.Position.X >= 900f &&
+                                      equalShift >= 40f && lowShift >= 40f;
+                    var bounded = low.State == TestUnitState.Arrived &&
+                                  low.Position.X < 500f &&
+                                  hold.State == TestUnitState.Arrived &&
+                                  hold.Position.X < 500f &&
+                                  highDrift <= 1f && holdDrift <= 1f;
+                    var passed = passThrough && bounded &&
+                                 diagnostics.PriorityPushPairs > 0 &&
+                                 diagnostics.DynamicBlockageSettles == 2 &&
+                                 lowSettledTick is >= 300 and <= 540 &&
+                                 holdSettledTick is >= 300 and <= 720 &&
+                                 exact;
+                    return new ScenarioResult(
+                        passed,
+                        $"through={equal.Position.X:0}/{high.Position.X:0}, " +
+                        $"shift={equalShift:0.0}/{lowShift:0.0}, " +
+                        $"bounded={low.Position.X:0}/{hold.Position.X:0}, " +
+                        $"anchor-drift={highDrift:0.00}/{holdDrift:0.00}, " +
+                        $"push={diagnostics.PriorityPushPairs}/" +
+                        $"{diagnostics.PriorityPushDisplacement:0.0}, " +
+                        $"settles={diagnostics.DynamicBlockageSettles}@" +
+                        $"{lowSettledTick}/{holdSettledTick} " +
+                        $"windows={lowBlockedWindowTicks}/" +
+                        $"{holdBlockedWindowTicks}, " +
+                        $"target={low.AssignedTarget.X:0}/" +
+                        $"{hold.AssignedTarget.X:0}, " +
+                        $"hot={exact}/v{hot.FormatVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(600f, 380f), 0.8f)
+            .Highlight(
+                new SimRect(new Vector2(80f, 75f), new Vector2(1080f, 125f)),
+                "EQUAL PRIORITY: mover pushes idle blocker",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(80f, 260f), new Vector2(1080f, 310f)),
+                "HIGH PRIORITY: large pushes small",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(80f, 445f), new Vector2(1080f, 495f)),
+                "LOW PRIORITY: settle locally after 3 seconds",
+                TestDiagnosticKind.Rejected)
+            .Highlight(
+                new SimRect(new Vector2(80f, 630f), new Vector2(1080f, 680f)),
+                "HOLD: equal priority may not displace anchor",
+                TestDiagnosticKind.Rejected);
+        session.At(300, "Capture active dynamic blockage before bounded settle",
+            runtime => hotCapture = runtime.CaptureRuntimeState());
+        for (var tick = 120; tick < 900; tick += 5)
+        {
+            session.At(tick, "Observe bounded low-priority completion", runtime =>
+            {
+                ObserveBlockedCompletion(
+                    runtime.Observe(lowMover),
+                    runtime.Tick,
+                    ref lowWindowStartTick,
+                    ref lowWindowStartX,
+                    ref lowSettledTick,
+                    ref lowBlockedWindowTicks);
+                ObserveBlockedCompletion(
+                    runtime.Observe(holdMover),
+                    runtime.Tick,
+                    ref holdWindowStartTick,
+                    ref holdWindowStartX,
+                    ref holdSettledTick,
+                    ref holdBlockedWindowTicks);
+            });
+        }
+        return session;
+    }
+
+    private static void ObserveBlockedCompletion(
+        TestUnitSnapshot snapshot,
+        long tick,
+        ref long windowStartTick,
+        ref float windowStartX,
+        ref long settledTick,
+        ref long blockedWindowTicks)
+    {
+        if (settledTick >= 0)
+            return;
+        if (windowStartTick < 0)
+        {
+            windowStartTick = tick;
+            windowStartX = snapshot.Position.X;
+        }
+        else if (snapshot.State != TestUnitState.Arrived &&
+                 snapshot.Position.X - windowStartX >= 1f)
+        {
+            windowStartTick = tick;
+            windowStartX = snapshot.Position.X;
+        }
+        if (snapshot.State != TestUnitState.Arrived)
+            return;
+
+        settledTick = tick;
+        blockedWindowTicks = tick - windowStartTick;
+    }
+
+    private static VisualTestSession CreateDynamicBlockageContinuousWaves()
+    {
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1400f, 820f), 96);
+        var waves = new[]
+        {
+            rig.SpawnGrid(new Vector2(80f, 110f), 4, 8, 18f),
+            rig.SpawnGrid(new Vector2(80f, 315f), 1, 4, 18f),
+            rig.SpawnGrid(new Vector2(80f, 430f), 1, 3, 18f),
+            rig.SpawnGrid(new Vector2(80f, 535f), 1, 2, 18f),
+            new[] { rig.Spawn(new Vector2(80f, 650f)) }
+        };
+        var all = waves.SelectMany(value => value).ToArray();
+        var target = new Vector2(1110f, 410f);
+        rig.Move(waves[0], target);
+        TestUnitSnapshot[]? settled = null;
+        var settledTick = -1L;
+        var session = new VisualTestSession(
+                "dynamic-blockage-continuous-waves",
+                "Large, small and singleton waves share one crowded destination",
+                1800,
+                rig,
+                all,
+                runtime =>
+                {
+                    var snapshots = runtime.Observe(all);
+                    var arrived = snapshots.Count(value =>
+                        value.State == TestUnitState.Arrived);
+                    var uniqueTargets = snapshots.Select(value => (
+                            X: MathF.Round(value.AssignedTarget.X, 1),
+                            Y: MathF.Round(value.AssignedTarget.Y, 1)))
+                        .Distinct().Count();
+                    var lateDrift = settled is null
+                        ? float.PositiveInfinity
+                        : snapshots.Max(value => Vector2.Distance(
+                            value.Position,
+                            settled.Single(previous =>
+                                previous.Id == value.Id).Position));
+                    var diagnostics = runtime.ObserveMovementDiagnostics();
+                    var passed = arrived == all.Length &&
+                                 uniqueTargets == all.Length &&
+                                 settledTick >= 0 &&
+                                 runtime.Tick - settledTick >= 240 &&
+                                 lateDrift <= 1.5f;
+                    return new ScenarioResult(
+                        passed,
+                        $"waves=32/4/3/2/1, arrived={arrived}/{all.Length}, " +
+                        $"targets={uniqueTargets}/{all.Length}, " +
+                        $"settled-tick={settledTick}, drift={lateDrift:0.00}, " +
+                        $"push={diagnostics.PriorityPushPairs}, " +
+                        $"fallback={diagnostics.DynamicBlockageSettles}, " +
+                        $"yield={diagnostics.DestinationYieldEvents}, " +
+                        $"overflow={diagnostics.DestinationOverflowAssignments}");
+                })
+            .RenderSpawnedUnits()
+            .CameraKeyframe(0, new Vector2(620f, 410f), 0.72f)
+            .CameraKeyframe(780, new Vector2(1060f, 410f), 0.82f)
+            .Highlight(
+                new SimRect(new Vector2(930f, 220f), new Vector2(1280f, 600f)),
+                "SHARED DESTINATION / INDEPENDENT COMMAND WAVES",
+                TestDiagnosticKind.Info);
+        session.At(240, "Send four-unit reinforcement wave",
+            runtime => runtime.Move(waves[1], target));
+        session.At(420, "Send three-unit AttackMove wave",
+            runtime => runtime.AttackMove(waves[2], target));
+        session.At(600, "Send two-unit reinforcement wave",
+            runtime => runtime.Move(waves[3], target));
+        session.At(780, "Send singleton into the settled destination",
+            runtime => runtime.Move(waves[4], target));
+        for (var tick = 1080; tick < session.DurationTicks - 240; tick += 10)
+        {
+            session.At(tick, "Capture first stable all-wave settlement", runtime =>
+            {
+                if (settled is not null)
+                    return;
+                var snapshots = runtime.Observe(all);
+                if (snapshots.All(value => value.State == TestUnitState.Arrived))
                 {
                     settled = snapshots;
                     settledTick = runtime.Tick;
@@ -1961,10 +2260,23 @@ public static class VisualTestCatalog
             runtime =>
             {
                 var dead = defenders.Count(unit => !runtime.ObserveCombat(unit).Alive);
-                var resumed = attackers.Count(unit => runtime.Observe(unit).Position.X >= 930f);
+                var snapshots = runtime.Observe(attackers);
+                var resumed = snapshots.Count(unit => unit.Position.X >= 930f);
+                var incomplete = string.Join(
+                    ";",
+                    snapshots
+                        .Where(unit => unit.Position.X < 930f)
+                        .Select(unit =>
+                            $"{unit.Id.Value}@{unit.Position.X:F0}," +
+                            $"{unit.Position.Y:F0}/{unit.State}->" +
+                            $"{unit.AssignedTarget.X:F0},{unit.AssignedTarget.Y:F0}"));
+                var diagnostics = runtime.ObserveMovementDiagnostics();
                 return new ScenarioResult(
                     dead == defenders.Length && resumed >= 6,
-                    $"defeated={dead}/{defenders.Length}, resumed={resumed}/{attackers.Length}");
+                    $"defeated={dead}/{defenders.Length}, " +
+                    $"resumed={resumed}/{attackers.Length}, " +
+                    $"settles={diagnostics.DynamicBlockageSettles}, " +
+                    $"incomplete=[{incomplete}]");
             });
     }
 
@@ -1979,6 +2291,7 @@ public static class VisualTestCatalog
         var targetPosition = runtime.Observe(target).Position;
         var attacking = 0;
         var positioned = new List<Vector2>();
+        var nonAttacking = new List<string>();
         var maximumSlotError = 0f;
         foreach (var attacker in attackers)
         {
@@ -1986,6 +2299,14 @@ public static class VisualTestCatalog
             if (combat.State == TestCombatState.Attacking)
             {
                 attacking++;
+            }
+            else
+            {
+                var snapshot = runtime.Observe(attacker);
+                nonAttacking.Add(
+                    $"{attacker.Value}:{combat.State}@" +
+                    $"{Vector2.Distance(snapshot.Position, targetPosition):0.0}/" +
+                    $"e{Vector2.Distance(snapshot.Position, combat.AttackPosition):0.0}");
             }
             if (combat.HasAttackPosition)
             {
@@ -2013,7 +2334,8 @@ public static class VisualTestCatalog
         return new ScenarioResult(
             passed,
             $"attacking={attacking}/{attackers.Count}, slots={positioned.Count}, " +
-            $"unique={unique}, radiusBand={radiusInBand}, maxSlotError={maximumSlotError:F1}");
+            $"unique={unique}, radiusBand={radiusInBand}, maxSlotError={maximumSlotError:F1}, " +
+            $"inactive=[{string.Join(',', nonAttacking)}]");
     }
 
     private static VisualTestSession CreateQueuedWaypoints()

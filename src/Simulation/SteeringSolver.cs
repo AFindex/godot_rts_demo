@@ -24,7 +24,9 @@ public sealed class SteeringSolver
         UnitStore units,
         float delta,
         ReadOnlySpan<bool> unitCollisionSuppressed,
-        ReadOnlySpan<UnitConcealmentKind> concealmentKinds)
+        ReadOnlySpan<UnitConcealmentKind> concealmentKinds,
+        ReadOnlySpan<CombatContactSnapshot> combatContacts,
+        ReadOnlySpan<CombatTargetKind> combatTargets)
     {
         for (var unit = 0; unit < units.Count; unit++)
         {
@@ -43,7 +45,8 @@ public sealed class SteeringSolver
             }
 
             units.NextVelocities[unit] = SolveUnit(
-                units, unit, delta, unitCollisionSuppressed, concealmentKinds);
+                units, unit, delta, unitCollisionSuppressed, concealmentKinds,
+                combatContacts, combatTargets);
         }
     }
 
@@ -52,7 +55,9 @@ public sealed class SteeringSolver
         int unit,
         float delta,
         ReadOnlySpan<bool> unitCollisionSuppressed,
-        ReadOnlySpan<UnitConcealmentKind> concealmentKinds)
+        ReadOnlySpan<UnitConcealmentKind> concealmentKinds,
+        ReadOnlySpan<CombatContactSnapshot> combatContacts,
+        ReadOnlySpan<CombatTargetKind> combatTargets)
     {
         var position = units.Positions[unit];
         var preferred = units.PreferredVelocities[unit];
@@ -81,7 +86,8 @@ public sealed class SteeringSolver
             preferred,
             neighborCount,
             horizon,
-            unitCollisionSuppressed, concealmentKinds);
+            unitCollisionSuppressed, concealmentKinds, combatContacts,
+            combatTargets);
         if (preferredRisk < 0.02f &&
             _world.IsSegmentFree(position, position + preferred * 0.32f, radius))
         {
@@ -115,7 +121,8 @@ public sealed class SteeringSolver
                 candidate,
                 neighborCount,
                 horizon,
-                unitCollisionSuppressed, concealmentKinds);
+                unitCollisionSuppressed, concealmentKinds, combatContacts,
+                combatTargets);
             var angularCost = MathF.Abs(CandidateAngles[candidateIndex]) / 180f;
             var speedLoss = 1f - candidate.Length() / preferredSpeed;
             var side = MathF.Abs(angle) < 0.01f ? (sbyte)0 : angle < 0f ? (sbyte)-1 : (sbyte)1;
@@ -157,7 +164,9 @@ public sealed class SteeringSolver
         int neighborCount,
         float horizon,
         ReadOnlySpan<bool> unitCollisionSuppressed,
-        ReadOnlySpan<UnitConcealmentKind> concealmentKinds)
+        ReadOnlySpan<UnitConcealmentKind> concealmentKinds,
+        ReadOnlySpan<CombatContactSnapshot> combatContacts,
+        ReadOnlySpan<CombatTargetKind> combatTargets)
     {
         var risk = 0f;
         var position = units.Positions[unit];
@@ -183,7 +192,13 @@ public sealed class SteeringSolver
 
             if (distanceSquared < combinedRadius * combinedRadius)
             {
-                risk += 3f;
+                var responsibility =
+                    UnitPushPriorityPolicy.AvoidanceResponsibility(
+                        units, unit, neighbor, candidate,
+                        combatContacts[neighbor],
+                        combatTargets[unit] != CombatTargetKind.None,
+                        combatTargets[neighbor] != CombatTargetKind.None);
+                risk += 3f * responsibility;
                 continue;
             }
 
@@ -205,7 +220,13 @@ public sealed class SteeringSolver
             var time = (-b - MathF.Sqrt(discriminant)) / (2f * a);
             if (time >= 0f && time <= horizon)
             {
-                risk += 1f + (horizon - time) / horizon;
+                var responsibility =
+                    UnitPushPriorityPolicy.AvoidanceResponsibility(
+                        units, unit, neighbor, candidate,
+                        combatContacts[neighbor],
+                        combatTargets[unit] != CombatTargetKind.None,
+                        combatTargets[neighbor] != CombatTargetKind.None);
+                risk += (1f + (horizon - time) / horizon) * responsibility;
             }
 
         }

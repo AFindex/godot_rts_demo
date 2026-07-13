@@ -234,6 +234,9 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(units.DestinationYieldForCommandVersions[unit]);
             writer.Write(units.DestinationYieldDeadlines[unit]);
             writer.Write(units.DestinationYieldCooldownTicks[unit]);
+            writer.Write(units.DynamicBlockageTicks[unit]);
+            writer.Write(units.DynamicBlockageBestDistances[unit]);
+            writer.Write(units.ReservationMigrationTicks[unit]);
             var path = units.Paths[unit];
             writer.Write(path is not null);
             if (path is not null)
@@ -302,6 +305,16 @@ internal static class RuntimeHotSnapshotCodec
             units.DestinationYieldForCommandVersions[unit] = reader.ReadInt32();
             units.DestinationYieldDeadlines[unit] = reader.ReadInt64();
             units.DestinationYieldCooldownTicks[unit] = reader.ReadInt64();
+            units.DynamicBlockageTicks[unit] = reader.ReadInt32();
+            units.DynamicBlockageBestDistances[unit] = reader.ReadSingle();
+            units.ReservationMigrationTicks[unit] = reader.ReadInt32();
+            if (units.DynamicBlockageTicks[unit] < 0 ||
+                !float.IsFinite(units.DynamicBlockageBestDistances[unit]) ||
+                units.DynamicBlockageBestDistances[unit] < 0f ||
+                units.ReservationMigrationTicks[unit] < 0)
+            {
+                throw new InvalidDataException();
+            }
             if (reader.ReadBoolean())
             {
                 var version = reader.ReadInt32();

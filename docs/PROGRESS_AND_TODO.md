@@ -10,18 +10,18 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 119 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 125 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
 当前规模：
 
-- 152 个 C# 源文件。
-- 约 53,333 行 C#（按当前 `src/**/*.cs` 统计）。
-- 119 个黑盒场景。
+- 154 个 C# 源文件。
+- 约 54,934 行 C#（按当前 `src/**/*.cs` 统计）。
+- 125 个黑盒场景。
 - AV1/WebM 采用固定 AV1/WebM 规范保存；当前里程碑新增场景有独立录像。
-- Release 1000 单位移动 P95：约 10.07ms。
-- Release 1000 单位当前线程分配：约 685B/Tick。
+- Release 1000 单位移动 P95：约 16.18ms（预算 16.67ms）。
+- 当前分配门禁存在此前基线滞后债务：同一机器未修改 HEAD 与本专项都显著高于旧报告，未在本专项放宽预算，见 BR。
 
 这已经是“可继续构建 RTS 游戏的移动内核原型”，还不是完整的《星际争霸 2》级移动、战斗和操作系统。
 
@@ -32,8 +32,8 @@
 | S0 工程骨架 | 原型完成 | Godot 工程、纯 C# 模拟、固定 Tick、Godot 桥 | 独立 Runtime/Core/Editor 程序集边界 |
 | S1 单位移动 | 完成 | Move、Stop、Hold、加速度、速度积分、到达、UnitMovementProfile Resource | 转向模板、Ground/Hover/Air 移动层 |
 | S2 静态导航 | 原型完成 | Godot NavMesh、路径预算、命令版本隔离、Grid fallback、静态 Clearance Bake | 后台查询、NavMesh chunk、动态增量 Connectivity |
-| S3 群体抵达 | Demo 完成 | 唯一槽位、Hungarian 分配、跨命令预留、两单位换槽、局部多单位重匹配、进入方向秩序、主动 Yielding、唯一 Overflow | 生产级 SlotDepth 场、完整碰撞优先级、编队形状保持 |
-| S4 局部群体运动 | 原型完成 | SpatialHash、TTC、候选速度、避让侧记忆 | 更低成本的候选评估、复杂优先级、移动类型交互 |
+| S3 群体抵达 | Demo 完成 | 唯一槽位、Hungarian 分配、跨命令预留、两单位换槽、局部多单位重匹配、进入方向秩序、主动 Yielding、唯一 Overflow、推后预留迁移 | 生产级 SlotDepth 场、编队形状保持 |
+| S4 局部群体运动 | 专项闭环完成 | SpatialHash、TTC、候选速度、避让侧记忆、Movement Class 路权、同级/高低级推挤、3 秒动态阻塞完成 | Ground/Hover/Air 交互、项目化优先级 Profile |
 | S5 碰撞与约束 | 运行时闭环完成 | 圆碰撞、动态占用、三档净空、四档建筑、Profile Resource、局部净空与全局 Connectivity Guard | 具名关键锚点、多移动层、非矩形 footprint |
 | S6 高层路线与动态地图 | 大部分完成 | Portal A*、群组路线、动态 revision、局部失效、同命令批量共享改道、建筑移除恢复 | Sector、共享 corridor、Portal 自动生成、chunk 局部更新 |
 | S7 狭口与卡死 | 大部分完成 | 车道、双向 admission、容量、排空、公平性、Hold 堵口、恢复阶梯 | 多连续狭口、复杂死锁、终点拥堵专用恢复 |
@@ -41,7 +41,7 @@
 | 操作层 | J2b2b 完成 | Shift 跨域任务、混合选择/编组、快照命令卡、Move/AttackMove/Rally/Build 目标模式、同类型多建筑生产/取消/队列聚合、SmartCommand、相机、Minimap | 图标、tooltip、热键重映射和最终皮肤 |
 | S9 编辑器与数据烘焙 | 数据工作流闭环完成 | dirty chunks、Fresh Load、原子差异、文件监听/去抖/有限重试、Bake-only 自动提交、三档放置差异面板 | 按需的几何 Authoring Tool、边界 component graph |
 | S10 性能与诊断 | 基础完成 | Phase timing、GC、黑盒测试、录像、Release benchmark、门槛 | 更全面场景、结构化 capture、热点优化、CI 门禁 |
-| S11 实际 RTS 玩法 | H3/J2b2b + S8-E5a + SC2-D2a 工程闭环完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、主动潜地、双 AI 持续遭遇战、完整操作与战斗、Package v29/Hot v28/Hash v29 | 后续能力由遭遇战关卡暴露的缺口驱动 |
+| S11 实际 RTS 玩法 | H3/J2b2b + S8-E5a + SC2-D2a 工程闭环完成 | 双资源、建筑/生产/科技、扩张、视野/胜负、主动潜地、双 AI 持续遭遇战、完整操作与战斗、Package v29/Hot v29/Hash v30 | 后续能力由遭遇战关卡暴露的缺口驱动 |
 
 ## 3. 已完成的运行时闭环
 
@@ -83,7 +83,10 @@
 - 多角度 Candidate Steering。
 - 避让侧记忆，减少左右反复横跳。
 - 三轮圆碰撞位置修正。
-- Hold、Arrived、Idle 和 Moving 使用不同推挤质量。
+- Hold、Arrived、Idle 和 Moving 使用不同战斗接触阻力；普通导航另由 `Small/Medium/Large` Movement Class 决定定向路权。
+- 同级移动单位可推动普通静止单位，高级可推动低级；低级不能推动高级，同级不能推动 Hold，活动战斗接敌保持接触策略保护。
+- 前方单位阻塞按 Unit ID 每 6 Tick 错峰探测；连续 180 Tick 无足够净进展后把当前导航段就地完成，避免任意 Move/AttackMove/队列路线无限抖动。
+- 被推动的静止单位稳定 6 Tick 后批量迁移全局 Reservation，迁移目标最多偏离实际位置 12px；热点使用预分配缓冲区。
 - 动态修正后重新执行墙体与狭口入口约束。
 
 ### 3.4 动态建筑
@@ -1396,6 +1399,21 @@ D2a 至此收口。下一项按依赖顺序做 D2b：先建立通用 Caster Ener
 - 六段专项 AV1/WebM 位于 `test_videos/20260714_021546/`，覆盖上述四项手感回归、批量分矿真实循环和 96 Worker 压力采矿；默认 CRF 32、preset 8。
 
 本包已经把四个实机阻塞问题变成稳定业务门禁，停止继续凭观感叠加寻路启发式。后续只有新的可复现失败或性能门禁越界才重开底层；内容层继续按 D2b 或实际玩法需求推进。
+
+### BR：通用动态阻塞、挤压优先级与就地完成（已完成）
+
+- 新增无状态 `UnitPushPriorityPolicy`。普通导航直接复用 Small/Medium/Large Movement Class：高级推动低级、同级移动推动普通 Idle/Arrived；低级不推动高级，同级不推动 Hold。
+- Steering 与圆碰撞消费同一方向性路权。Steering 只在候选速度实际形成重叠或 TTC 风险时计算责任，碰撞解算按相同结论分配穿透修正，避免两阶段互相打架。
+- 活动战斗目标退出同级行军强推，继续服从 `CombatContactPolicy`。全量回归曾抓到近战槽由 7/8 降为 6/8，修正后恢复至少 7/8，且固定前摇/近战/冷却/移动武器的阻力等级和位移顺序不变。
+- 前向 96px 阻塞走廊覆盖“尚未物理相交但已被 TTC 提前刹停”的情况；足以在窗口内形成有效进展的正常移动者不启动查询，其余探测按 Unit ID 每 6 Tick 错峰。连续 180 Tick 阻塞且窗口内进展不足 `max(12px, 1.5×radius)` 时，当前导航段在当前位置完成。
+- 就地完成清理路径、速度、Choke 和移动组。Move 清移动意图；普通 AttackMove 导航保留攻击语义并收敛恢复点；战术追击腿不覆盖原 AttackMove 槽，脱战后仍恢复原路线。Shift 队列继续走正式订单完成逻辑。采矿/施工碰撞豁免、PathPending、Choke 和活动 Yield 不被抢占。
+- 被推动单位不会每 Tick 执行全局松弛。连续稳定 6 Tick 后才以预分配缓冲区批量迁移 Reservation，执行 8 轮有限松弛并把目标限制在实际站位 12px 内；`shared-target-reservations` 最小净空 1.84px，`destination-outer-ring` 为 80/80、0 Moving、0 重叠。
+- `DynamicBlockageTicks`、窗口距离和 Reservation 迁移倒计时进入 Hot Snapshot v29 / State Hash v30，非法负数或非有限距离拒绝解码。Replay Package 保持 v29。
+- 新黑盒 `dynamic-blockage-priority-matrix` 和 `dynamic-blockage-continuous-waves` 分别覆盖四车道路权/三秒完成与 `32+4+3+2+1` 五波 42 单位持续增援。后者 42/42 到达、42/42 唯一目标、稳定 240 Tick 漂移 0.00px，正常拥堵没有误触兜底。
+- Release 时间门禁：256/512/1000 单位移动 P95 为 `1.85/5.42/16.18ms`，均在 `4/12.5/16.67ms` 预算内；128/256 总单位持续战斗 P95 为 `0.82/2.66ms`，在 `4/8ms` 预算内。分配门禁在未修改 HEAD 对照上也失败，说明旧 `benchmark_results/latest.json` 已滞后于此前功能；本包没有放宽预算，后续应单独审计 Visibility/Combat/Preferred 阶段分配并重建可信基线。
+- 125/125 全量 Godot 黑盒回归通过。两段专项 AV1/WebM 位于 `test_videos/20260714_035619/`：1280×720、30 FPS、CRF 32、preset 8；优先级矩阵 452 帧，持续增援 902 帧。全库媒体门禁通过 164 个视频、96 个 manifest、163 个场景引用，全部为 AV1。
+
+BR 到此收口，不再继续增加拥堵启发式。后续只有可复现的玩家操作失败、现有黑盒回归或性能时间预算越界才重新打开；下一项仍回到内容/能力计划，而不是继续无穷优化寻路。
 
 ## 8. 可以并行但不能提前耦合的优化
 

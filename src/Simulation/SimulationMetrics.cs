@@ -27,6 +27,10 @@ public sealed class SimulationMetrics
     public int MaximumDestinationNearTicks { get; internal set; }
     public long DestinationYieldEvents { get; internal set; }
     public int ActiveDestinationYields { get; internal set; }
+    public long PriorityPushPairs { get; internal set; }
+    public float PriorityPushDisplacement { get; internal set; }
+    public long DynamicBlockageSettles { get; internal set; }
+    public int MaximumDynamicBlockageTicks { get; internal set; }
     public int PendingUnitOrders { get; internal set; }
     public long CompletedQueuedOrders { get; internal set; }
     public int QueueOverflowEvents { get; internal set; }

@@ -25,6 +25,15 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private const int MaximumActiveDestinationYields = 4;
     private const int DestinationYieldDeadlineTicks = 360;
     private const int DestinationYieldReturnDeadlineTicks = 180;
+    private const int DestinationYieldCooldownTicks = 600;
+    private const int DynamicBlockageTimeoutTicks = 180;
+    private const float DynamicBlockageProgressDistance = 12f;
+    private const float DynamicBlockageLookAheadDistance = 96f;
+    private const int DynamicBlockageProbeIntervalTicks = 6;
+    private const float DynamicBlockageProbeForwardSpeed = 4f;
+    private const int ReservationMigrationSettleTicks = 6;
+    private const int ReservationMigrationRelaxationPasses = 8;
+    private const float MaximumMigratedReservationDistance = 12f;
     private const int TerminalSettleMinimumGroupSize = 4;
     private const float TerminalSettleQuorum = 0.9f;
     private const float TerminalSettleMaximumDistance = 180f;
@@ -59,6 +68,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private readonly UnitOrder[] _orderReadyOrders;
     private readonly bool[] _orderReadyProcessed;
     private readonly int[] _orderDispatchUnits;
+    private readonly int[] _displacedStationaryUnits;
+    private readonly Vector2[] _reservationTargetScratch;
+    private readonly int[] _reservationSelectionScratch;
     private int _pendingNavigationInvalidations;
     private int _nextMovementGroupId = 1;
     private int _nextOrderSequenceId = 1;
@@ -96,6 +108,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
         _orderDispatchUnits = new int[capacity];
+        _displacedStationaryUnits = new int[capacity];
+        _reservationTargetScratch = new Vector2[capacity];
+        _reservationSelectionScratch = new int[capacity];
         _combatContacts = new CombatContactSnapshot[capacity];
         _unitCollisionSuppressed = new bool[capacity];
         _spatialHash = new SpatialHash(40f);
@@ -2160,6 +2175,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units.DestinationYieldForCommandVersions[unit] = 0;
             Units.DestinationYieldDeadlines[unit] = 0;
             Units.DestinationYieldCooldownTicks[unit] = 0;
+            Units.DynamicBlockageTicks[unit] = 0;
+            Units.DynamicBlockageBestDistances[unit] = Vector2.Distance(
+                Units.Positions[unit], assignedTarget);
+            Units.ReservationMigrationTicks[unit] = 0;
             Units.Paths[unit] = null;
             Units.RouteWaypoints[unit] = LastIssuedGroupRoute.Waypoints;
             Units.PathPending[unit] = true;
@@ -2237,6 +2256,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units.DestinationYieldForCommandVersions[unit] = 0;
             Units.DestinationYieldDeadlines[unit] = 0;
             Units.DestinationYieldCooldownTicks[unit] = 0;
+            Units.DynamicBlockageTicks[unit] = 0;
+            Units.DynamicBlockageBestDistances[unit] = 0f;
+            Units.ReservationMigrationTicks[unit] = 0;
             Units.ActiveChokeIds[unit] = -1;
             Units.ChokeDirections[unit] = 0;
             Units.ChokePhases[unit] = ChokePhase.None;
@@ -2649,8 +2671,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.SpatialHashMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
+        UpdateCombatContacts();
         _steeringSolver.Solve(
-            Units, delta, _unitCollisionSuppressed, Combat.ConcealmentKinds);
+            Units, delta, _unitCollisionSuppressed, Combat.ConcealmentKinds,
+            _combatContacts, Combat.TargetKinds);
         _chokeController?.ConstrainSolvedVelocities(Units);
         Metrics.SteeringMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -2661,11 +2685,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
         phaseStart = Stopwatch.GetTimestamp();
         SolveCollisions();
         _chokeController?.ConstrainPositions(Units);
+        AdoptDisplacedStationaryReservations();
         Metrics.CollisionMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
         UpdateProgress(delta);
+        UpdateDynamicBlockageProgress();
         _overflowResolver.UpdateStallTracking(Units, Combat.TargetKinds);
+        ResolveDynamicBlockageTimeouts();
         UpdateDestinationLocalRematch();
         UpdateDestinationReflow();
         UpdateDestinationYielding();
@@ -3366,13 +3393,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     private void SolveCollisions()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
-        {
-            _combatContacts[unit] = Units.Alive[unit]
-                ? EvaluateCombatContact(unit)
-                : default;
-        }
-
         for (var iteration = 0; iteration < CollisionIterations; iteration++)
         {
             Array.Clear(Units.CollisionCorrections, 0, Units.Count);
@@ -3424,17 +3444,35 @@ public sealed class RtsSimulation : ICombatMovementDriver
                         Metrics.MaximumPenetration,
                         penetration);
 
-                    var inverseA = _combatContacts[unit].InverseMobility;
-                    var inverseB = _combatContacts[neighbor].InverseMobility;
-                    var totalInverse = inverseA + inverseB;
-                    if (totalInverse <= 0f)
+                    var resolution = UnitPushPriorityPolicy.Resolve(
+                        Units,
+                        unit,
+                        neighbor,
+                        _combatContacts[unit],
+                        _combatContacts[neighbor],
+                        normal,
+                        Combat.TargetKinds[unit] != CombatTargetKind.None,
+                        Combat.TargetKinds[neighbor] != CombatTargetKind.None);
+                    if (resolution.LeftCorrectionShare <= 0f &&
+                        resolution.RightCorrectionShare <= 0f)
                     {
                         continue;
                     }
 
-                    var correction = normal * (penetration + 0.01f) * 0.72f;
-                    Units.CollisionCorrections[unit] -= correction * (inverseA / totalInverse);
-                    Units.CollisionCorrections[neighbor] += correction * (inverseB / totalInverse);
+                    var correctionMagnitude = (penetration + 0.01f) * 0.72f;
+                    var correction = normal * correctionMagnitude;
+                    Units.CollisionCorrections[unit] -=
+                        correction * resolution.LeftCorrectionShare;
+                    Units.CollisionCorrections[neighbor] +=
+                        correction * resolution.RightCorrectionShare;
+                    if (resolution.LeftPushing || resolution.RightPushing)
+                    {
+                        Metrics.PriorityPushPairs++;
+                        Metrics.PriorityPushDisplacement += correctionMagnitude *
+                            (resolution.LeftPushing
+                                ? resolution.RightCorrectionShare
+                                : resolution.LeftCorrectionShare);
+                    }
                 }
             }
 
@@ -3451,6 +3489,227 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     Units.Radii[unit]);
             }
         }
+    }
+
+    private void UpdateCombatContacts()
+    {
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            _combatContacts[unit] = Units.Alive[unit]
+                ? EvaluateCombatContact(unit)
+                : default;
+        }
+    }
+
+    private void AdoptDisplacedStationaryReservations()
+    {
+        var displacedCount = 0;
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] ||
+                Units.Modes[unit] is not
+                    (UnitMoveMode.Idle or UnitMoveMode.Arrived) ||
+                Combat.TargetKinds[unit] != CombatTargetKind.None ||
+                Units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
+            {
+                Units.ReservationMigrationTicks[unit] = 0;
+                continue;
+            }
+
+            if (Vector2.DistanceSquared(
+                    Units.Positions[unit], Units.PreviousPositions[unit]) > 0.01f)
+            {
+                Units.ReservationMigrationTicks[unit] =
+                    ReservationMigrationSettleTicks;
+                continue;
+            }
+
+            var settleTicks = Units.ReservationMigrationTicks[unit];
+            if (settleTicks <= 0)
+                continue;
+            settleTicks--;
+            Units.ReservationMigrationTicks[unit] = settleTicks;
+            if (settleTicks == 0)
+                _displacedStationaryUnits[displacedCount++] = unit;
+        }
+
+        if (displacedCount == 0)
+            return;
+
+        ResolveTerminalReservations(
+            _displacedStationaryUnits.AsSpan(0, displacedCount),
+            _reservationTargetScratch.AsSpan(0, displacedCount),
+            ReservationMigrationRelaxationPasses);
+        for (var index = 0; index < displacedCount; index++)
+        {
+            var unit = _displacedStationaryUnits[index];
+            var reservation = _reservationTargetScratch[index];
+            var offset = reservation - Units.Positions[unit];
+            if (offset.LengthSquared() > MaximumMigratedReservationDistance *
+                MaximumMigratedReservationDistance)
+            {
+                reservation = Units.Positions[unit] + Vector2.Normalize(offset) *
+                    MaximumMigratedReservationDistance;
+            }
+            Units.SlotTargets[unit] = reservation;
+            Units.MoveGoals[unit] = reservation;
+            Units.DestinationYieldReturnTargets[unit] = reservation;
+            Units.DestinationYieldPoints[unit] = reservation;
+        }
+    }
+
+    private void UpdateDynamicBlockageProgress()
+    {
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] ||
+                Units.Modes[unit] != UnitMoveMode.Moving ||
+                Units.PathPending[unit] ||
+                Units.ChokePhases[unit] != ChokePhase.None ||
+                _unitCollisionSuppressed[unit])
+            {
+                Units.DynamicBlockageTicks[unit] = 0;
+                Units.DynamicBlockageBestDistances[unit] =
+                    Vector2.Distance(
+                        Units.Positions[unit], Units.SlotTargets[unit]);
+                continue;
+            }
+
+            var preferred = Units.PreferredVelocities[unit];
+            var preferredLengthSquared = preferred.LengthSquared();
+            var forwardVelocity = Vector2.Dot(
+                Units.Velocities[unit], preferred);
+            if (Units.DynamicBlockageTicks[unit] == 0 &&
+                forwardVelocity > 0f &&
+                forwardVelocity * forwardVelocity >=
+                preferredLengthSquared *
+                DynamicBlockageProbeForwardSpeed *
+                DynamicBlockageProbeForwardSpeed)
+            {
+                continue;
+            }
+
+            var probesThisTick =
+                (Metrics.Tick + unit) % DynamicBlockageProbeIntervalTicks == 0;
+            if (probesThisTick && !IsBlockedByUnit(unit))
+            {
+                Units.DynamicBlockageTicks[unit] = 0;
+                Units.DynamicBlockageBestDistances[unit] =
+                    RemainingPathDistance(unit, Units.Paths[unit]);
+                continue;
+            }
+            if (!probesThisTick && Units.DynamicBlockageTicks[unit] == 0)
+                continue;
+
+            var remaining = RemainingPathDistance(unit, Units.Paths[unit]);
+
+            if (Units.DynamicBlockageTicks[unit] == 0)
+            {
+                Units.DynamicBlockageTicks[unit] = 1;
+                Units.DynamicBlockageBestDistances[unit] = remaining;
+                continue;
+            }
+
+            Units.DynamicBlockageTicks[unit]++;
+            if (Units.DynamicBlockageTicks[unit] < DynamicBlockageTimeoutTicks)
+                continue;
+
+            var windowStartDistance =
+                Units.DynamicBlockageBestDistances[unit];
+            var meaningfulProgress = MathF.Max(
+                DynamicBlockageProgressDistance,
+                Units.Radii[unit] * 1.5f);
+            if (windowStartDistance - remaining >= meaningfulProgress)
+            {
+                Units.DynamicBlockageTicks[unit] = 1;
+                Units.DynamicBlockageBestDistances[unit] = remaining;
+            }
+        }
+    }
+
+    private bool IsBlockedByUnit(int unit)
+    {
+        var preferred = Units.PreferredVelocities[unit];
+        if (preferred.LengthSquared() <= 1f)
+            return false;
+        var direction = Vector2.Normalize(preferred);
+        var searchRadius = MathF.Max(
+            DynamicBlockageLookAheadDistance,
+            Units.Radii[unit] * 8f + 32f);
+        var neighborCount = _spatialHash.Query(
+            Units.Positions[unit], searchRadius, unit, _collisionNeighbors);
+        for (var index = 0; index < neighborCount; index++)
+        {
+            var neighbor = _collisionNeighbors[index];
+            if (!Units.Alive[neighbor] ||
+                UnitCollisionPolicy.SuppressesPair(
+                    _unitCollisionSuppressed[unit],
+                    Combat.ConcealmentKinds[unit],
+                    _unitCollisionSuppressed[neighbor],
+                    Combat.ConcealmentKinds[neighbor]))
+                continue;
+
+            var offset = Units.Positions[neighbor] - Units.Positions[unit];
+            var forward = Vector2.Dot(offset, direction);
+            var clearance = Units.Radii[unit] + Units.Radii[neighbor] + 4f;
+            if (forward < -1f || forward > DynamicBlockageLookAheadDistance)
+                continue;
+            var lateral = offset - direction * forward;
+            var corridorWidth = clearance * 1.25f;
+            if (lateral.LengthSquared() <= corridorWidth * corridorWidth)
+                return true;
+        }
+        return false;
+    }
+
+    private void ResolveDynamicBlockageTimeouts()
+    {
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] ||
+                Units.DynamicBlockageTicks[unit] <
+                    DynamicBlockageTimeoutTicks ||
+                Units.Modes[unit] != UnitMoveMode.Moving ||
+                Units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
+                continue;
+
+            SettleBlockedNavigationLeg(unit);
+        }
+    }
+
+    private void SettleBlockedNavigationLeg(int unit)
+    {
+        var position = Units.Positions[unit];
+        Units.Paths[unit] = null;
+        Units.RouteWaypoints[unit] = [];
+        Units.PathPending[unit] = false;
+        Units.Modes[unit] = UnitMoveMode.Arrived;
+        Units.SlotTargets[unit] = position;
+        Units.MoveGoals[unit] = position;
+        Units.PreferredVelocities[unit] = Vector2.Zero;
+        Units.Velocities[unit] = Vector2.Zero;
+        Units.NextVelocities[unit] = Vector2.Zero;
+        Units.ActiveChokeIds[unit] = -1;
+        Units.ChokeDirections[unit] = 0;
+        Units.ChokePhases[unit] = ChokePhase.None;
+        Units.ChokeAdmitted[unit] = false;
+        Units.MovementGroupIds[unit] = 0;
+        Units.MovementGroupSizes[unit] = 1;
+        Units.DestinationBestDistances[unit] = 0f;
+        Units.DestinationStallTicks[unit] = 0;
+        Units.DestinationNearTicks[unit] = 0;
+        Units.DestinationOverflowed[unit] = false;
+        Units.DestinationYieldReturnTargets[unit] = position;
+        Units.DestinationYieldPoints[unit] = position;
+        Units.DynamicBlockageTicks[unit] = 0;
+        Units.DynamicBlockageBestDistances[unit] = 0f;
+        Units.ReservationMigrationTicks[unit] = 0;
+        if (Combat.CommandIntents[unit] == UnitCommandIntent.Move)
+            Combat.SetCommand(unit, UnitCommandIntent.None, position);
+        else if (Combat.CommandIntents[unit] == UnitCommandIntent.AttackMove &&
+                 Combat.TargetKinds[unit] == CombatTargetKind.None)
+            Combat.AttackMoveGoals[unit] = position;
+        Metrics.DynamicBlockageSettles++;
     }
 
     private void UpdateProgress(float delta)
@@ -3713,7 +3972,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     continue;
                 groupUnits[memberIndex++] = unit;
             }
-            var terminalAssignments = ResolveTerminalReservations(groupUnits);
+            var terminalAssignments = new Vector2[groupUnits.Length];
+            ResolveTerminalReservations(groupUnits, terminalAssignments);
 
             for (var index = 0; index < groupUnits.Length; index++)
             {
@@ -3739,19 +3999,22 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
-    private Vector2[] ResolveTerminalReservations(int[] groupUnits)
+    private void ResolveTerminalReservations(
+        ReadOnlySpan<int> groupUnits,
+        Span<Vector2> targets,
+        int relaxationPasses = 16)
     {
-        var targets = new Vector2[groupUnits.Length];
-        var selectedIndices = new int[Units.Count];
-        Array.Fill(selectedIndices, -1);
+        if (targets.Length < groupUnits.Length)
+            throw new ArgumentException(
+                "Reservation target buffer is too small.", nameof(targets));
+        _reservationSelectionScratch.AsSpan(0, Units.Count).Fill(-1);
         for (var index = 0; index < groupUnits.Length; index++)
         {
             var unit = groupUnits[index];
             targets[index] = Units.Positions[unit];
-            selectedIndices[unit] = index;
+            _reservationSelectionScratch[unit] = index;
         }
 
-        const int relaxationPasses = 16;
         const float reservationPadding = 2f;
         for (var pass = 0; pass < relaxationPasses; pass++)
         {
@@ -3762,7 +4025,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 {
                     if (right == left || !Units.Alive[right])
                         continue;
-                    var rightIndex = selectedIndices[right];
+                    var rightIndex = _reservationSelectionScratch[right];
                     if (rightIndex >= 0 && rightIndex <= leftIndex)
                         continue;
 
@@ -3796,7 +4059,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
             }
         }
 
-        return targets;
     }
 
     private void MoveTerminalReservation(
@@ -3954,7 +4216,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.DestinationYieldForUnits[unit] = -1;
         Units.DestinationYieldForCommandVersions[unit] = 0;
         Units.DestinationYieldDeadlines[unit] = 0;
-        Units.DestinationYieldCooldownTicks[unit] = long.MaxValue;
+        Units.DestinationYieldCooldownTicks[unit] =
+            Metrics.Tick + DestinationYieldCooldownTicks;
     }
 
     private void QueueDestinationRetarget(
@@ -4009,6 +4272,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.UnreachableUnits = 0;
         Metrics.MaximumDestinationStallTicks = 0;
         Metrics.MaximumDestinationNearTicks = 0;
+        Metrics.MaximumDynamicBlockageTicks = 0;
         Metrics.ActiveDestinationYields = 0;
         Metrics.PendingUnitOrders = 0;
         Metrics.CompletedQueuedOrders = 0;
@@ -4028,6 +4292,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Metrics.MaximumDestinationNearTicks = Math.Max(
                 Metrics.MaximumDestinationNearTicks,
                 Units.DestinationNearTicks[unit]);
+            Metrics.MaximumDynamicBlockageTicks = Math.Max(
+                Metrics.MaximumDynamicBlockageTicks,
+                Units.DynamicBlockageTicks[unit]);
             if (Units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
             {
                 Metrics.ActiveDestinationYields++;

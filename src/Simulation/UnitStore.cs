@@ -86,6 +86,9 @@ public sealed class UnitStore
         DestinationYieldForCommandVersions = new int[capacity];
         DestinationYieldDeadlines = new long[capacity];
         DestinationYieldCooldownTicks = new long[capacity];
+        DynamicBlockageTicks = new int[capacity];
+        DynamicBlockageBestDistances = new float[capacity];
+        ReservationMigrationTicks = new int[capacity];
         Array.Fill(ActiveChokeIds, -1);
         Array.Fill(DestinationYieldForUnits, -1);
     }
@@ -143,6 +146,9 @@ public sealed class UnitStore
     public int[] DestinationYieldForCommandVersions { get; }
     public long[] DestinationYieldDeadlines { get; }
     public long[] DestinationYieldCooldownTicks { get; }
+    public int[] DynamicBlockageTicks { get; }
+    public float[] DynamicBlockageBestDistances { get; }
+    public int[] ReservationMigrationTicks { get; }
 
     public int Add(Vector2 position, float radius, float maxSpeed, float acceleration)
     {
@@ -170,6 +176,7 @@ public sealed class UnitStore
         ActiveChokeIds[index] = -1;
         ProgressOrigins[index] = position;
         ProgressBestDistances[index] = 0f;
+        DynamicBlockageBestDistances[index] = 0f;
         return index;
     }
 
@@ -229,6 +236,9 @@ public sealed class UnitStore
         Copy(source.DestinationYieldForCommandVersions, DestinationYieldForCommandVersions);
         Copy(source.DestinationYieldDeadlines, DestinationYieldDeadlines);
         Copy(source.DestinationYieldCooldownTicks, DestinationYieldCooldownTicks);
+        Copy(source.DynamicBlockageTicks, DynamicBlockageTicks);
+        Copy(source.DynamicBlockageBestDistances, DynamicBlockageBestDistances);
+        Copy(source.ReservationMigrationTicks, ReservationMigrationTicks);
 
         for (var unit = 0; unit < Capacity; unit++)
         {

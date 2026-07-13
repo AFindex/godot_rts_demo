@@ -59,6 +59,8 @@ public static class TestShowcaseCatalog
         var values = new[]
         {
             M("group-move-terminal-stability", "编队移动终点稳定", "基础移动", "验证整队右键移动完成后速度归零，且长时间不再换槽、回拉或抖动。"),
+            M("dynamic-blockage-priority-matrix", "通用阻塞与挤压优先级", "基础移动", "验证同级挤压、高推低、低级与 Hold 阻挡后三秒就地结束，以及热恢复一致。"),
+            M("dynamic-blockage-continuous-waves", "跨波次拥挤集结", "终点协作", "验证大队、小队、双人和单人连续进入同一拥挤目标后都能稳定结束。"),
             M("friendly-building-radial-interaction", "建筑矩形径向交互", "操作", "验证单位从自身方向沿建筑中心射线接近真实矩形边缘，而不是被吸到四个面中点。"),
             M("combat-idle-auto-acquire", "空闲单位自动警戒", "战斗", "验证普通战斗单位无需 AttackMove 也会自动索敌、追击并攻击警戒范围内的敌人。"),
             M("attack-move-squad-slot-resume", "攻击移动编队续行", "战斗移动", "验证编队接敌后恢复各自落点，不会丢失槽位并重新挤向同一个中心点。"),
