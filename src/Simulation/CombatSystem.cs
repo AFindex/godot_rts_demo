@@ -191,7 +191,8 @@ public sealed class CombatSystem
             var range = _combat.AttackRanges[unit] +
                         _units.Radii[unit] + _units.Radii[target];
             if (distance <= range &&
-                (intent == UnitCommandIntent.Hold || _slots.IsReady(unit) ||
+                (intent == UnitCommandIntent.Hold ||
+                 !RequiresAttackSlot(unit) || _slots.IsReady(unit) ||
                  CanContinueMobileAttackMove(unit, intent)))
             {
                 UpdateAttack(unit, target, delta, tick);
@@ -218,18 +219,22 @@ public sealed class CombatSystem
         _combat.ChaseRepathRemaining[unit] = 0f;
         _combat.WindupRemaining[unit] = 0f;
         _combat.TargetLockRemaining[unit] = MinimumTargetLockSeconds;
-        if (_combat.CommandIntents[unit] != UnitCommandIntent.Hold)
+        if (_combat.CommandIntents[unit] != UnitCommandIntent.Hold &&
+            RequiresAttackSlot(unit))
         {
             _slots.Assign(unit, target);
-            UpdateChase(unit, target);
         }
+        if (_combat.CommandIntents[unit] != UnitCommandIntent.Hold)
+            UpdateChase(unit, target);
     }
 
     private void UpdateChase(int unit, int target)
     {
         _combat.Phases[unit] = CombatPhase.Chasing;
         _combat.WindupRemaining[unit] = 0f;
-        var targetPosition = _slots.ResolveChaseTarget(unit, target);
+        var targetPosition = RequiresAttackSlot(unit)
+            ? _slots.ResolveChaseTarget(unit, target)
+            : _units.Positions[target];
         var targetStayedLocal = Vector2.DistanceSquared(
             targetPosition, _combat.LastChaseTargets[unit]) <=
             ChaseRetargetDistance * ChaseRetargetDistance;
@@ -248,6 +253,9 @@ public sealed class CombatSystem
         _combat.ChaseRepathRemaining[unit] = ChaseRepathSeconds;
         _movement.Chase(unit, targetPosition);
     }
+
+    private bool RequiresAttackSlot(int unit) =>
+        _combat.PositioningKinds[unit] == CombatPositioningKind.Melee;
 
     private void UpdateAttack(int unit, int target, float delta, long tick)
     {

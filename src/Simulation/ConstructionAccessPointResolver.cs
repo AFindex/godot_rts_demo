@@ -12,20 +12,16 @@ public static class ConstructionAccessPointResolver
         float collisionRadius,
         float navigationRadius,
         float placementPadding,
-        float arrivalTolerance)
+        Func<Vector2, float, bool>? additionalDiscClearance = null)
     {
-        var offset = collisionRadius + placementPadding +
-                     arrivalTolerance + 1f;
+        var offset = collisionRadius + placementPadding + 1f;
+        var center = (bounds.Min + bounds.Max) * 0.5f;
         Vector2[] candidates =
         [
-            new(bounds.Min.X - offset,
-                Math.Clamp(origin.Y, bounds.Min.Y, bounds.Max.Y)),
-            new(bounds.Max.X + offset,
-                Math.Clamp(origin.Y, bounds.Min.Y, bounds.Max.Y)),
-            new(Math.Clamp(origin.X, bounds.Min.X, bounds.Max.X),
-                bounds.Min.Y - offset),
-            new(Math.Clamp(origin.X, bounds.Min.X, bounds.Max.X),
-                bounds.Max.Y + offset)
+            new(bounds.Min.X - offset, center.Y),
+            new(bounds.Max.X + offset, center.Y),
+            new(center.X, bounds.Min.Y - offset),
+            new(center.X, bounds.Max.Y + offset)
         ];
 
         var best = candidates[0];
@@ -33,7 +29,9 @@ public static class ConstructionAccessPointResolver
         for (var index = 0; index < candidates.Length; index++)
         {
             var candidate = candidates[index];
-            if (!world.IsDiscFree(candidate, collisionRadius))
+            if (!world.IsDiscFree(candidate, collisionRadius) ||
+                additionalDiscClearance is not null &&
+                !additionalDiscClearance(candidate, collisionRadius))
                 continue;
             var path = pathProvider.IsReady
                 ? pathProvider.FindPath(origin, candidate, navigationRadius)
@@ -63,4 +61,5 @@ public static class ConstructionAccessPointResolver
             result += Vector2.Distance(path[index - 1], path[index]);
         return result;
     }
+
 }

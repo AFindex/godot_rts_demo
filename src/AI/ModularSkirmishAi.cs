@@ -365,8 +365,7 @@ public sealed class EconomyPlanner : IAiPlanner
         var observation = context.Observation;
         var activeBuilders = observation.Facilities
             .Where(value => value.BuilderUnit >= 0 &&
-                value.State is BuildingLifecycleState.Approaching or
-                    BuildingLifecycleState.Constructing)
+                AiPlanningFacts.IsActiveBuilderState(value.State))
             .Select(value => value.BuilderUnit)
             .ToHashSet();
         var resources = observation.View.Resources
@@ -465,8 +464,7 @@ public sealed class BuildPlanner : IAiPlanner
         var observation = context.Observation;
         var activeBuilders = observation.Facilities
             .Where(value => value.BuilderUnit >= 0 &&
-                value.State is BuildingLifecycleState.Approaching or
-                    BuildingLifecycleState.Constructing)
+                AiPlanningFacts.IsActiveBuilderState(value.State))
             .Select(value => value.BuilderUnit)
             .ToHashSet();
         var workerCandidates = observation.OwnUnits
@@ -608,6 +606,15 @@ public sealed class BuildPlanner : IAiPlanner
         var half = size * 0.5f + new Vector2(4f);
         return Vector2.Clamp(center, bounds.Min + half, bounds.Max - half);
     }
+}
+
+internal static class AiPlanningFacts
+{
+    public static bool IsActiveBuilderState(BuildingLifecycleState state) =>
+        state is BuildingLifecycleState.ReservedApproach or
+            BuildingLifecycleState.BlockedAtStart or
+            BuildingLifecycleState.Approaching or
+            BuildingLifecycleState.Constructing;
 }
 
 public sealed class ProductionPlanner : IAiPlanner

@@ -520,6 +520,7 @@ public sealed class EconomySystem
     private const float NodeArrivalPadding = 30f;
     private const float DefaultDropOffArrivalRadius = 52f;
     private const float DropOffClearancePadding = 12f;
+    private const float RectangularDropOffArrivalTolerance = 8f;
     private const float BaseResourceRadius = 360f;
     private readonly bool[] _workers;
     private readonly int[] _workerPlayers;
@@ -584,6 +585,24 @@ public sealed class EconomySystem
         _nodes[id.Value].RequiresRefinery;
 
     public Vector2 ResourceNodePosition(EconomyResourceNodeId id) => Node(id).Position;
+
+    public bool IsDiscClearOfResources(
+        Vector2 center,
+        float radius,
+        EconomyResourceNodeId ignoredNode)
+    {
+        var clearance = NodeArrivalPadding + radius;
+        var clearanceSquared = clearance * clearance;
+        for (var index = 0; index < _nodes.Count; index++)
+        {
+            if (index == ignoredNode.Value || _nodes[index].Remaining <= 0)
+                continue;
+            if (Vector2.DistanceSquared(center, _nodes[index].Position) <
+                clearanceSquared)
+                return false;
+        }
+        return true;
+    }
 
     public EconomyResourceNodeId AddResourceNode(
         EconomyResourceKind kind,
@@ -1983,13 +2002,20 @@ public sealed class EconomySystem
                     0f, Vector2.Distance(origin, Position) - ArrivalRadius);
                 return distance * distance;
             }
-            return Vector2.DistanceSquared(
-                origin, ApproachPoint(origin, clearance));
+            var bounds = new SimRect(
+                Position - HalfExtents,
+                Position + HalfExtents).Expanded(clearance);
+            return bounds.DistanceSquaredTo(origin);
         }
 
-        public bool HasArrived(Vector2 origin, float clearance) =>
-            DistanceSquaredTo(origin, clearance) <=
-            ArrivalRadius * ArrivalRadius;
+        public bool HasArrived(Vector2 origin, float clearance)
+        {
+            var tolerance = HalfExtents == Vector2.Zero
+                ? ArrivalRadius
+                : RectangularDropOffArrivalTolerance;
+            return DistanceSquaredTo(origin, clearance) <=
+                   tolerance * tolerance;
+        }
 
         public bool IsApproachTarget(Vector2 target, float clearance)
         {

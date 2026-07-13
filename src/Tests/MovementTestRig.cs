@@ -1035,7 +1035,8 @@ public enum TestCombatProjectileVisualKind : byte
 public enum TestCombatPresentationCueKind : byte
 {
     Impact,
-    Expired
+    Expired,
+    MuzzleFlash
 }
 
 public readonly record struct TestCombatPresentationProjectile(

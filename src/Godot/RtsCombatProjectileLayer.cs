@@ -83,6 +83,20 @@ public partial class RtsCombatProjectileLayer : Node2D
         var position = GodotPathProvider.ToGodot(cue.Position);
         var alpha = 1f - cue.NormalizedAge;
         var radius = Mathf.Lerp(6f, theme.ImpactRadius, cue.NormalizedAge);
+        if (cue.Kind == CombatPresentationCueKind.MuzzleFlash)
+        {
+            var flashRadius = theme.MuzzleFlashRadius *
+                              (1f - cue.NormalizedAge * 0.45f);
+            var color = theme.MuzzleFlashColor with { A = alpha };
+            DrawCircle(position, flashRadius * 0.35f, color);
+            DrawLine(position - new Vector2(flashRadius, 0f),
+                position + new Vector2(flashRadius, 0f), color, 2f,
+                antialiased: true);
+            DrawLine(position - new Vector2(0f, flashRadius),
+                position + new Vector2(0f, flashRadius), color, 2f,
+                antialiased: true);
+            return;
+        }
         if (cue.Kind == CombatPresentationCueKind.Expired)
         {
             var color = theme.ExpiredColor with { A = alpha };

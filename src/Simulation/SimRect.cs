@@ -23,6 +23,12 @@ public readonly record struct SimRect(Vector2 Min, Vector2 Max)
 
     public Vector2 Clamp(Vector2 point) => Vector2.Clamp(point, Min, Max);
 
+    public float DistanceSquaredTo(Vector2 point)
+    {
+        var closest = Clamp(point);
+        return Vector2.DistanceSquared(point, closest);
+    }
+
     public bool SegmentIntersects(Vector2 from, Vector2 to)
     {
         var direction = to - from;

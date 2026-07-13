@@ -6,8 +6,10 @@ namespace RtsDemo.Simulation;
 public sealed class RtsSimulation : ICombatMovementDriver
 {
     private const float WaypointRadius = 13f;
-    private const float ArrivalSlowRadius = 58f;
     private const float ArrivalStopRadius = 3.5f;
+    private const float BaseArrivalResponseRadius = 58f;
+    private const float MinimumArrivalSpeedFactor = 0.45f;
+    private const float MaximumMinimumArrivalSpeed = 64f;
     private const int CollisionIterations = 3;
     private const int DestinationReflowIntervalTicks = 12;
     private const int DestinationReflowCooldownTicks = 90;
@@ -105,7 +107,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _chokeController = chokeController;
         _combatSystem = new CombatSystem(
             Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit,
-            Diplomacy.IsEnemy, Concealment.CanAttack);
+            Diplomacy.IsEnemy, CanUnitAttack);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _constructionMoveWorker = MoveConstructionWorker;
@@ -1141,7 +1143,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         CommandQueues.ClearPending(builderUnit);
         CommandQueues.HasActiveOrders[builderUnit] = false;
         var accessPoint = ResolveConstructionAccessPoint(
-            bounds, builderUnit, profile.PlacementProfile.UnitPadding);
+            bounds,
+            builderUnit,
+            profile.PlacementProfile.UnitPadding,
+            default,
+            refineryNode);
         var id = Construction.Add(
             issuingPlayerId,
             builderUnit,
@@ -1282,7 +1288,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var accessPoint = ResolveConstructionAccessPoint(
             buildingSnapshot.Bounds,
             builderUnit,
-            buildingSnapshot.Type.PlacementProfile.UnitPadding);
+            buildingSnapshot.Type.PlacementProfile.UnitPadding,
+            buildingSnapshot.ReservationId,
+            buildingSnapshot.RefineryNode);
         var succeeded = Construction.Resume(
             buildingId, playerId, builderUnit, Economy, Units,
             accessPoint, _constructionMoveWorker);
@@ -1835,8 +1843,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             origin,
             collisionRadius,
             navigationRadius,
-            building.Type.PlacementProfile.UnitPadding,
-            ConstructionSystem.BuilderArrivalTolerance);
+            building.Type.PlacementProfile.UnitPadding);
     }
 
     private bool IssueDeferredWorkerOrder(
@@ -1948,6 +1955,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         return true;
     }
+
+    private bool CanUnitAttack(int unit) =>
+        Concealment.CanAttack(unit) &&
+        !Construction.SuppressesBuilderCombat(unit);
 
     private MatchCommandBlock MatchCommandBlockFor(int playerId)
     {
@@ -2900,6 +2911,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     current, segmentGoal, navigationRadius);
             }
 
+            if (segment.Length > 0 &&
+                Vector2.DistanceSquared(segment[^1], segmentGoal) > 0.25f &&
+                World.IsSegmentFree(
+                    segment[^1], segmentGoal, navigationRadius))
+            {
+                segment = [.. segment, segmentGoal];
+            }
+
             if (segment.Length == 0 ||
                 Vector2.DistanceSquared(segment[^1], segmentGoal) > 24f * 24f ||
                 !PathIsNavigable(segment, navigationRadius))
@@ -3275,10 +3294,21 @@ public sealed class RtsSimulation : ICombatMovementDriver
             }
 
             var speed = Units.MaxSpeeds[unit];
-            if (finalPoint && distance < ArrivalSlowRadius)
+            if (finalPoint)
             {
-                var factor = Math.Clamp(distance / ArrivalSlowRadius, 0.18f, 1f);
-                speed *= factor * factor * (3f - 2f * factor);
+                var physicalBrakingRadius = speed * speed /
+                    (2f * Units.Accelerations[unit]) + ArrivalStopRadius;
+                var responseRadius = MathF.Max(
+                    BaseArrivalResponseRadius, physicalBrakingRadius);
+                var normalized = Math.Clamp(
+                    (distance - ArrivalStopRadius) /
+                    (responseRadius - ArrivalStopRadius), 0f, 1f);
+                var smooth = normalized * normalized *
+                             (3f - 2f * normalized);
+                var minimumSpeed = MathF.Min(
+                    MaximumMinimumArrivalSpeed,
+                    speed * MinimumArrivalSpeedFactor);
+                speed = minimumSpeed + (speed - minimumSpeed) * smooth;
             }
 
             Units.PreferredVelocities[unit] = toWaypoint / distance * speed;
@@ -4032,6 +4062,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.PathPending[unit] = false;
         Units.Modes[unit] = UnitMoveMode.Hold;
         Units.PreferredVelocities[unit] = Vector2.Zero;
+        Units.Velocities[unit] = Vector2.Zero;
+        Units.NextVelocities[unit] = Vector2.Zero;
         Units.ActiveChokeIds[unit] = -1;
         Units.ChokePhases[unit] = ChokePhase.None;
         Units.ChokeAdmitted[unit] = false;
@@ -4234,6 +4266,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         try
         {
             Stop(worker);
+            Units.Velocities[unit] = Vector2.Zero;
+            Units.NextVelocities[unit] = Vector2.Zero;
         }
         finally
         {
@@ -4264,6 +4298,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         try
         {
             Stop(worker);
+            Units.Velocities[unit] = Vector2.Zero;
+            Units.NextVelocities[unit] = Vector2.Zero;
         }
         finally
         {
@@ -4290,7 +4326,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private Vector2 ResolveConstructionAccessPoint(
         SimRect bounds,
         int builderUnit,
-        float placementPadding) =>
+        float placementPadding,
+        ConstructionReservationId ignoreReservation,
+        EconomyResourceNodeId ignoredResourceNode) =>
         ConstructionAccessPointResolver.Resolve(
             World,
             _pathProvider,
@@ -4299,7 +4337,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Units.Radii[builderUnit],
             Units.NavigationRadii[builderUnit],
             placementPadding,
-            ConstructionSystem.BuilderArrivalTolerance);
+            (center, radius) => Construction.Reservations.IsDiscFree(
+                                    center, radius, ignoreReservation) &&
+                                Economy.IsDiscClearOfResources(
+                                    center, radius, ignoredResourceNode));
 
     private void EvacuateConstructionStartOccupant(
         int playerId,

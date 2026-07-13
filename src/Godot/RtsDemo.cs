@@ -304,6 +304,36 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        var verificationTestId = ReadArgument(
+            userArguments, "--verify-visual-test");
+        if (verificationTestId is not null)
+        {
+            if (!TryLoadRuntimeData())
+            {
+                GetTree().Quit(1);
+                return;
+            }
+
+            var session = VisualTestCatalog.Create(
+                verificationTestId,
+                _navigationSnapshot,
+                _gameplayProfiles,
+                _clearanceBake,
+                buildingTypes: _buildingTypes,
+                productionCatalog: _productionCatalog,
+                technologyCatalog: _technologyCatalog,
+                aiConfigurations: _aiConfigurations);
+            while (session.Rig.Tick < session.DurationTicks)
+                session.Step();
+            var result = session.Evaluate();
+            GD.Print(
+                $"RTS_VISUAL_TEST_VERIFY " +
+                $"{(result.Passed ? "PASS" : "FAIL")} " +
+                $"{verificationTestId}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         var visualTestId = ReadArgument(userArguments, "--visual-test");
         if (visualTestId is not null)
         {

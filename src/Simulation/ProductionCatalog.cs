@@ -389,7 +389,8 @@ public static class DemoProductionCatalog
             new CombatProfileSnapshot(100f, 12f, 90f, 220f, 0.75f, 0.1f, 500f,
                 CombatPositioningKind.Ranged,
                 Attributes: CombatAttribute.Light | CombatAttribute.Biological,
-                BaseUpgradeDamage: 1f), false);
+                BaseUpgradeDamage: 1f,
+                ProjectileSpeed: 520f), false);
         var marauder = new UnitTypeProfile(
             1, "Marauder",
             new UnitMovementProfileSnapshot(1, "Marauder", 10f, 105f, 600f,

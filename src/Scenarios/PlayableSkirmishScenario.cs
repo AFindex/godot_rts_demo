@@ -205,9 +205,15 @@ public static class PlayableSkirmishScenario
                 $"Starting town hall placement failed for P{playerId}: " +
                 $"{result.Code}/{result.PlacementCode}.");
         }
-        for (var tick = 0; tick < 8; tick++) simulation.Tick(1f / 60f);
-        if (simulation.Construction.Observe(result.BuildingId).State !=
-            BuildingLifecycleState.Completed)
+        var state = simulation.Construction.Observe(result.BuildingId).State;
+        for (var tick = 0;
+             tick < 120 && state != BuildingLifecycleState.Completed;
+             tick++)
+        {
+            simulation.Tick(1f / 60f);
+            state = simulation.Construction.Observe(result.BuildingId).State;
+        }
+        if (state != BuildingLifecycleState.Completed)
         {
             throw new InvalidOperationException(
                 $"Starting town hall did not complete for P{playerId}.");

@@ -229,7 +229,7 @@ public sealed record ConstructionRuntimeSnapshot(
 
 public sealed class ConstructionSystem
 {
-    public const float BuilderArrivalTolerance = 40f;
+    public const float BuilderArrivalTolerance = 5f;
     private readonly List<BuildingEntity> _buildings = [];
     private readonly HashSet<int> _boundRefineryNodes = [];
 
@@ -246,6 +246,14 @@ public sealed class ConstructionSystem
     public bool IsAssignedBuilder(int unit) =>
         _buildings.Any(value =>
             !value.IsTerminal && value.BuilderUnit == unit);
+
+    public bool SuppressesBuilderCombat(int unit) =>
+        _buildings.Any(value =>
+            value.BuilderUnit == unit && value.State is
+                BuildingLifecycleState.ReservedApproach or
+                BuildingLifecycleState.BlockedAtStart or
+                BuildingLifecycleState.Approaching or
+                BuildingLifecycleState.Constructing);
 
     public bool SuppressesBuilderUnitCollision(int unit)
     {
@@ -416,9 +424,7 @@ public sealed class ConstructionSystem
             if (building.State is BuildingLifecycleState.ReservedApproach or
                 BuildingLifecycleState.BlockedAtStart)
             {
-                if (Vector2.DistanceSquared(
-                        units.Positions[building.BuilderUnit], building.AccessPoint) >
-                    BuilderArrivalTolerance * BuilderArrivalTolerance)
+                if (!BuilderHasArrived(building, units))
                 {
                     building.State = BuildingLifecycleState.ReservedApproach;
                     continue;
@@ -474,9 +480,7 @@ public sealed class ConstructionSystem
             }
             else if (building.State == BuildingLifecycleState.Approaching)
             {
-                if (Vector2.DistanceSquared(
-                        units.Positions[building.BuilderUnit], building.AccessPoint) >
-                    BuilderArrivalTolerance * BuilderArrivalTolerance)
+                if (!BuilderHasArrived(building, units))
                 {
                     continue;
                 }
@@ -589,6 +593,20 @@ public sealed class ConstructionSystem
                 BuildingLifecycleState.BlockedAtStart or
                 BuildingLifecycleState.Approaching or
                 BuildingLifecycleState.Constructing);
+
+    private static bool BuilderHasArrived(
+        BuildingEntity building,
+        UnitStore units)
+    {
+        var unit = building.BuilderUnit;
+        var minimumDistance = units.Radii[unit] +
+                              building.Type.PlacementProfile.UnitPadding + 0.5f;
+        var maximumDistance = minimumDistance + BuilderArrivalTolerance;
+        var distanceSquared = building.Bounds.DistanceSquaredTo(
+            units.Positions[unit]);
+        return distanceSquared >= minimumDistance * minimumDistance &&
+               distanceSquared <= maximumDistance * maximumDistance;
+    }
 
     public bool Cancel(
         GameplayBuildingId id,

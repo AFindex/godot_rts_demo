@@ -85,14 +85,14 @@ public sealed record AiEncounterLevelDefinition(
         var standard = configurations.Profile(0) with
         {
             TargetWorkers = 10,
-            AttackArmySize = 2,
+            AttackArmySize = 6,
             AttackIntervalTicks = 180,
             ScoutIntervalTicks = 180
         };
         var aggressive = configurations.Profile(1) with
         {
             TargetWorkers = 10,
-            AttackArmySize = 2,
+            AttackArmySize = 6,
             AttackIntervalTicks = 120,
             ScoutIntervalTicks = 150
         };
@@ -136,7 +136,7 @@ public sealed record AiEncounterLevelDefinition(
                 SupplyProvided = 0
             },
             DurationTicks: 3600,
-            AiAttachTick: 60,
+            AiAttachTick: 120,
             AiBuildingSeconds: 1.2f);
     }
 }

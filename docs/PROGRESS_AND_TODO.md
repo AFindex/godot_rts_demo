@@ -1,6 +1,6 @@
 # Godot RTS 移动系统：进度回顾与剩余 TODO
 
-更新日期：2026-07-13
+更新日期：2026-07-14
 
 这份文档是当前唯一的实施状态入口。它对照最初的 S0～S10 技术路线，区分已经形成可运行闭环的部分、只有原型的部分和尚未开始的部分。
 
@@ -10,15 +10,15 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 118 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 119 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
 当前规模：
 
 - 152 个 C# 源文件。
-- 约 49,466 行 C#（按当前 `src/**/*.cs` 统计）。
-- 118 个黑盒场景。
+- 约 53,333 行 C#（按当前 `src/**/*.cs` 统计）。
+- 119 个黑盒场景。
 - AV1/WebM 采用固定 AV1/WebM 规范保存；当前里程碑新增场景有独立录像。
 - Release 1000 单位移动 P95：约 10.07ms。
 - Release 1000 单位当前线程分配：约 685B/Tick。
@@ -1361,6 +1361,21 @@ E0 当前只剩真实 SC2 客户端动作矩阵：Idle/Hold/Gathering/ReturningC
 - 全库媒体门禁通过 151 个视频、93 个 manifest、150 个场景引用，全部为 AV1。详细边界见 [主动隐蔽能力合同](ACTIVE_CONCEALMENT.md)。
 
 D2a 至此收口。下一项按依赖顺序做 D2b：先建立通用 Caster Energy、地图目标能力与有期限区域效果，再把 Scanner Sweep 作为 Detection Source 接入。不能用玩家全局冷却或 Orbital 特判抢跑；持续 Cloak、研究门槛、Burrow 移动例外和显形特效继续后置。
+
+### BO：实机反馈——建筑交互、攻击站位与到点手感稳定化（已完成）
+
+- 矩形建筑交互不再退化为圆形半径：DropOff 用“单位半径 + 建筑半尺寸”扩张后的 AABB 计算到达，矩形交互只保留 8 px 容差。96 Worker 压力场完成 345 次采集循环、619 次边缘返矿，错误边缘与不可达均为 0。
+- 施工接近改为建筑表面距离窄带：Builder 必须停在物理半径、Placement Padding 外约 0.5～5.5 px，不能隔远触发，也不能站进硬占地。四种尺寸建筑完工后的单位表面间隙为 `7.2/6.7/6.7/7.4 px`。
+- 接近点解析同时检查静态/动态建筑、其他施工 Reservation 和资源节点。该修复消除了“接近点落在矿物节点上，Builder 永久卡在 ReservedApproach”的真实长局失败；Refinery 只忽略自己绑定的气矿节点。
+- 施工 Builder 在 ReservedApproach、BlockedAtStart、Approaching、Constructing 阶段不参与自动索敌；AI Economy/Build Planner 同样把这四个阶段视为 Builder 占用，避免施工农民被采集意图反复抢走。
+- 战斗 Engagement Slot 只服务近战。已经在射程内的远程单位立即停稳并开火，不再为了环形槽位强制重排成半圆；10 个远程单位全部攻击，最大位置漂移 `0.00 px`。近战唯一接触槽测试保持通过。
+- 最终到点采用物理制动半径、平滑响应和有上限的最低接近速度，保留 3.5 px Stop Radius，同时去掉末段低速爬行。单单位终点误差保持在 Stop Radius 内，大规模抵达与外环收敛门禁均通过。
+- Marine 投射物速度提高到 `520`，表现层新增短生命周期 `MuzzleFlash` cue；枪口闪光、飞行拖尾和命中提示仍只消费战斗事件流，不写入权威状态或回放。
+- 双 AI 验收改为至少 6 个作战单位后再主动出征，保证关卡先呈现发展和科技。最终双方基础设施均为 `S1/B1/R1/A1`、科技等级总和 `4/4`、基地 `2/2`，持续攻击 `63/75` 次，双侧采集循环 `217/122`。
+- 新增 `--verify-visual-test <case-id>` 快速入口，按同一 `VisualTestCatalog` 在无实时播放下推进并返回业务退出码；测试仍只通过公开门面和不可变快照验收。
+- Debug 构建 0 错误、0 警告，119/119 全量 Godot 黑盒回归通过。专项 AV1/WebM、日志和 manifest 位于 `test_videos/20260714_002734/`；全库媒体门禁通过 156 个视频、94 个 manifest、155 个场景引用，全部为 AV1。
+
+本包是由可复现实机失败驱动的稳定化修复，至此停止继续调参。后续仍按既定依赖进入 D2b；只有新的可复现操作失败、黑盒失败或性能越界，才重新打开到点、攻击站位或施工接近启发式。
 
 ## 8. 可以并行但不能提前耦合的优化
 

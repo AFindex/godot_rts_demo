@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace RtsDemo.Simulation;
 
 public readonly record struct ConstructionReservationId(int Value)
@@ -71,6 +73,18 @@ public sealed class ConstructionReservationStore
 
     public bool Contains(ConstructionReservationId id) =>
         id.IsValid && _entries.Any(value => value.Id == id);
+
+    public bool IsDiscFree(
+        Vector2 center,
+        float radius,
+        ConstructionReservationId ignore = default)
+    {
+        if (!float.IsFinite(center.X) || !float.IsFinite(center.Y) ||
+            !float.IsFinite(radius) || radius < 0f)
+            return false;
+        return _entries.All(value =>
+            value.Id == ignore || !value.Bounds.Expanded(radius).Contains(center));
+    }
 
     public ConstructionReservationRuntimeSnapshot CaptureRuntimeState() =>
         new(_nextId, _entries.OrderBy(value => value.Id.Value).ToArray());

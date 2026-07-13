@@ -12,7 +12,8 @@ public enum CombatProjectileVisualKind : byte
 public enum CombatPresentationCueKind : byte
 {
     Impact,
-    Expired
+    Expired,
+    MuzzleFlash
 }
 
 public readonly record struct CombatProjectilePresentationSnapshot(
@@ -50,6 +51,7 @@ public sealed class CombatPresentationComposer
 {
     public const int MaximumTrailPoints = 10;
     public const float CueLifetimeSeconds = 0.4f;
+    public const float MuzzleFlashLifetimeSeconds = 0.14f;
     private const float MinimumTrailDistanceSquared = 0.25f;
 
     private readonly Dictionary<int, ProjectileTrack> _tracks = [];
@@ -79,14 +81,18 @@ public sealed class CombatPresentationComposer
         AgeCues(deltaSeconds);
         foreach (var combatEvent in eventBatch.Events)
         {
-            if (combatEvent.Kind is CombatEventKind.Impact or
-                CombatEventKind.ProjectileExpired)
+            if (combatEvent.Kind is CombatEventKind.AttackStarted or
+                CombatEventKind.Impact or CombatEventKind.ProjectileExpired)
             {
                 _cues.Add(new MutableCue(
                     combatEvent.Sequence,
-                    combatEvent.Kind == CombatEventKind.Impact
-                        ? CombatPresentationCueKind.Impact
-                        : CombatPresentationCueKind.Expired,
+                    combatEvent.Kind switch
+                    {
+                        CombatEventKind.AttackStarted =>
+                            CombatPresentationCueKind.MuzzleFlash,
+                        CombatEventKind.Impact => CombatPresentationCueKind.Impact,
+                        _ => CombatPresentationCueKind.Expired
+                    },
                     combatEvent.ProjectileId,
                     combatEvent.WorldPosition,
                     0f,
@@ -124,7 +130,8 @@ public sealed class CombatPresentationComposer
             value.Kind,
             value.ProjectileId,
             value.Position,
-            Math.Clamp(value.AgeSeconds / CueLifetimeSeconds, 0f, 1f),
+            Math.Clamp(
+                value.AgeSeconds / LifetimeFor(value.Kind), 0f, 1f),
             value.Damage,
             value.BonusApplied)).ToArray();
         return new CombatPresentationFrame(
@@ -144,12 +151,17 @@ public sealed class CombatPresentationComposer
         {
             var cue = _cues[index];
             cue.AgeSeconds += deltaSeconds;
-            if (cue.AgeSeconds >= CueLifetimeSeconds)
+            if (cue.AgeSeconds >= LifetimeFor(cue.Kind))
                 _cues.RemoveAt(index);
             else
                 _cues[index] = cue;
         }
     }
+
+    private static float LifetimeFor(CombatPresentationCueKind kind) =>
+        kind == CombatPresentationCueKind.MuzzleFlash
+            ? MuzzleFlashLifetimeSeconds
+            : CueLifetimeSeconds;
 
     private static CombatProjectileVisualKind DefaultVisualKind(
         CombatProjectileSnapshot projectile) =>

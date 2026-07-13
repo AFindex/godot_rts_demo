@@ -31,11 +31,15 @@ public static class CombatPresentationSelfTest
             new CombatEvent(
                 10, 2, CombatEventKind.ProjectileExpired, 0,
                 CombatTargetKind.Unit, 5, 0f, 0f, 0f, 0, false, 3,
-                new Vector2(18f, 20f))
-        ], 2, 0);
+                new Vector2(18f, 20f)),
+            new CombatEvent(
+                10, 3, CombatEventKind.AttackStarted, 0,
+                CombatTargetKind.Unit, 4, 0f, 0f, 0f, 0, false, -1,
+                new Vector2(2f, 0f))
+        ], 3, 0);
         var frame = composer.Update(moved, events, 0.1f);
-        var aged = composer.Update([], new CombatEventBatch([], 2, 0), 0.2f);
-        var expired = composer.Update([], new CombatEventBatch([], 2, 0), 0.21f);
+        var aged = composer.Update([], new CombatEventBatch([], 3, 0), 0.2f);
+        var expired = composer.Update([], new CombatEventBatch([], 3, 0), 0.21f);
 
         var passed = frame.Projectiles.Select(value => value.VisualKind)
                          .SequenceEqual([
@@ -45,14 +49,16 @@ public static class CombatPresentationSelfTest
                      frame.Projectiles.All(value =>
                          value.Trail.Length == 2 &&
                          value.Heading == Vector2.UnitX) &&
-                     frame.Cues.Length == 2 &&
+                     frame.Cues.Length == 3 &&
                      frame.Cues[0].Kind == CombatPresentationCueKind.Impact &&
                      frame.Cues[0].BonusApplied &&
                      frame.Cues[1].Kind == CombatPresentationCueKind.Expired &&
+                     frame.Cues[2].Kind ==
+                         CombatPresentationCueKind.MuzzleFlash &&
                      aged.Projectiles.Length == 0 && aged.Cues.Length == 2 &&
                      aged.Cues.All(value => value.NormalizedAge == 0.5f) &&
                      expired.Cues.Length == 0 &&
-                     composer.LatestEventSequence == 2;
+                     composer.LatestEventSequence == 3;
         return new SelfTestResult(passed,
             $"styles={string.Join(',', frame.Projectiles.Select(value => value.VisualKind))}, " +
             $"trails={string.Join(',', frame.Projectiles.Select(value => value.Trail.Length))}, " +

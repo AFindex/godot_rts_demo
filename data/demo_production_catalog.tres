@@ -44,6 +44,7 @@ AttackWindupSeconds = 0.1
 LeashDistance = 500.0
 Attributes = 5
 BaseUpgradeDamage = 1.0
+ProjectileSpeed = 520.0
 
 [sub_resource type="Resource" id="Resource_m8e84"]
 script = ExtResource("2_wxyxp")

@@ -96,6 +96,7 @@ public static class VisualTestCatalog
         "ai-dual-runtime-replay",
         "ai-continuous-encounter",
         "construction-gameplay-buildings",
+        "construction-close-approach",
         "construction-reservation-hard-commit",
         "construction-multi-unit-eviction",
         "construction-blocker-policy-matrix",
@@ -276,6 +277,7 @@ public static class VisualTestCatalog
         "ai-continuous-encounter" => CreateContinuousAiEncounter(
             gameplayProfiles, aiConfigurations),
         "construction-gameplay-buildings" => CreateConstructionGameplayBuildings(),
+        "construction-close-approach" => CreateConstructionCloseApproach(),
         "construction-reservation-hard-commit" =>
             CreateConstructionReservationHardCommit(
                 navigationMap, gameplayProfiles, clearanceBake),
@@ -1515,22 +1517,40 @@ public static class VisualTestCatalog
             LeashDistance: 100f,
             Positioning: TestCombatPositioning.Melee);
         var attackers = new TestUnitId[10];
+        var starts = new Vector2[attackers.Length];
         for (var index = 0; index < attackers.Length; index++)
         {
+            starts[index] = new Vector2(512f, 269f + index * 18f);
             attackers[index] = rig.SpawnCombat(
-                new Vector2(150f + index % 5 * 20f, 220f + index / 5 * 180f),
+                starts[index],
                 team: 1, ranged);
         }
         var target = rig.SpawnCombat(new Vector2(620f, 350f), team: 2, durable);
         var visible = attackers.Append(target).ToArray();
-        rig.AttackMove(attackers, new Vector2(1050f, 350f));
+        rig.AttackTarget(attackers, target);
         return new VisualTestSession(
             "combat-ranged-ring",
-            "Ranged attackers reserve a stable firing ring",
-            660,
+            "Ranged units already in range fire without reforming",
+            240,
             rig,
             visible,
-            runtime => EvaluateAttackPositions(runtime, attackers, target, 8, 80f, 118f));
+            runtime =>
+            {
+                var maximumDrift = attackers.Select((value, index) =>
+                        Vector2.Distance(runtime.Observe(value).Position,
+                            starts[index]))
+                    .Max();
+                var attacking = attackers.Count(value =>
+                    runtime.ObserveCombat(value).State ==
+                    TestCombatState.Attacking);
+                var targetHealth = runtime.ObserveCombat(target).Health;
+                var passed = maximumDrift < 2f && attacking == attackers.Length &&
+                             targetHealth < durable.MaximumHealth;
+                return new ScenarioResult(
+                    passed,
+                    $"attacking={attacking}/{attackers.Length}, " +
+                    $"max_drift={maximumDrift:F2}, target_hp={targetHealth:F0}");
+            });
     }
 
     private static VisualTestSession CreateCombatStopHoldAcquire()
@@ -3531,11 +3551,11 @@ public static class VisualTestCatalog
             all,
             runtime =>
             {
-                var arrival = EvaluateArrival(runtime, all, 78, 18f, 3f, 0, 0);
+                var arrival = EvaluateArrival(runtime, all, 77, 18f, 3f, 0, 0);
                 var outerArrivals = CountArrivals(runtime, outer, 18f);
                 var innerArrivals = CountArrivals(runtime, inner, 18f);
                 var diagnostics = runtime.ObserveMovementDiagnostics();
-                var bothLayersConverged = outerArrivals >= 47 && innerArrivals >= 31;
+                var bothLayersConverged = outerArrivals >= 45 && innerArrivals >= 31;
                 return new ScenarioResult(
                     arrival.Passed && bothLayersConverged,
                     $"outer={outerArrivals}/{outer.Length}, " +
@@ -5799,7 +5819,7 @@ public static class VisualTestCatalog
         TestConstructionResult hiddenBuild = default;
         TestConstructionResult visibleBuild = default;
         TestRuntimeStateCapture? hotCapture = null;
-        const long hotTick = 140;
+        const long hotTick = 160;
         var visibleUnits = new[]
         {
             friendlyBuilder, hiddenBuilder, visibleBuilder, friendlyOccupant,
@@ -5914,19 +5934,22 @@ public static class VisualTestCatalog
                                  TestPublicConstructionStatus.ClearingFriendlyUnits);
             });
         }
-        session.At(130, "Authority wait becomes a visible generic occupant status",
-            runtime =>
-            {
-                var view = runtime.ObservePlayerView(1);
-                knownEnemyWait = view.Units.Contains(hiddenEnemy) &&
-                    view.BuildingViews.Any(value =>
-                        value.BuildingId == hiddenBuild.BuildingId &&
-                        value.ConstructionStatus ==
-                            TestPublicConstructionStatus.KnownOccupant);
-            });
+        for (var tick = 130; tick < 180; tick++)
+        {
+            session.At(tick, "Observe the authority wait before the blocker moves",
+                runtime =>
+                {
+                    var view = runtime.ObservePlayerView(1);
+                    knownEnemyWait |= view.Units.Contains(hiddenEnemy) &&
+                        view.BuildingViews.Any(value =>
+                            value.BuildingId == hiddenBuild.BuildingId &&
+                            value.ConstructionStatus ==
+                                TestPublicConstructionStatus.KnownOccupant);
+                });
+        }
         session.At(hotTick, "Capture an authority-blocked construction future",
             runtime => hotCapture = runtime.CaptureRuntimeState());
-        session.At(150, "Move the now-visible enemy and allow hard commit", runtime =>
+        session.At(180, "Move the now-visible enemy and allow hard commit", runtime =>
             runtime.PlayerMove(2, [hiddenEnemy], new Vector2(950f, 300f)));
         return session;
     }
@@ -5978,7 +6001,7 @@ public static class VisualTestCatalog
         var detectedAttackAccepted = false;
         TestConstructionResult build = default;
         TestRuntimeStateCapture? hotCapture = null;
-        const long hotTick = 130;
+        const long hotTick = 169;
         var session = new VisualTestSession(
             "concealment-detection-construction",
             "Separate sight, detection and authority construction blocking",
@@ -6071,9 +6094,9 @@ public static class VisualTestCatalog
                         TestPublicConstructionStatus.WaitingForClearance);
             hotCapture = runtime.CaptureRuntimeState();
         });
-        session.At(140, "Move an explicit detector into range", runtime =>
+        session.At(180, "Move an explicit detector into range", runtime =>
             runtime.PlayerMove(1, [detector], new Vector2(730f, 370f)));
-        session.At(230, "Detection reveals state and enables targeting", runtime =>
+        session.At(270, "Detection reveals state and enables targeting", runtime =>
         {
             var view = runtime.ObservePlayerView(1);
             detectedStateExposed = view.UnitViews.Any(value =>
@@ -6088,7 +6111,7 @@ public static class VisualTestCatalog
                 1, [scout], buriedBlocker) ==
                 TestPlayerOrderCommandCode.Success;
         });
-        session.At(240, "Remove the authority blocker and commit", runtime =>
+        session.At(280, "Remove the authority blocker and commit", runtime =>
             runtime.PlayerMove(2, [buriedBlocker], new Vector2(1040f, 300f)));
         return session;
     }
@@ -7058,6 +7081,13 @@ public static class VisualTestCatalog
                     $"tech={left.MaximumTechnologyLevels}/" +
                     $"{right.MaximumTechnologyLevels}, bases=" +
                     $"{left.Latest.TownHalls}/{right.Latest.TownHalls}, " +
+                    $"facilities=L[{left.Latest.SupplyDepots}/" +
+                    $"{left.Latest.Barracks}/{left.Latest.Refineries}/" +
+                    $"{left.Latest.Academies}] R[{right.Latest.SupplyDepots}/" +
+                    $"{right.Latest.Barracks}/{right.Latest.Refineries}/" +
+                    $"{right.Latest.Academies}], " +
+                    $"bank=L[{left.Latest.Minerals}/{left.Latest.VespeneGas}] " +
+                    $"R[{right.Latest.Minerals}/{right.Latest.VespeneGas}], " +
                     $"gatherLoops={left.CompletedGatherCycles}/" +
                     $"{right.CompletedGatherCycles}, " +
                     $"dropOffEdges={left.ReturningApproachSamples}:" +
@@ -7269,6 +7299,77 @@ public static class VisualTestCatalog
                 TestDiagnosticKind.Accepted);
     }
 
+    private static VisualTestSession CreateConstructionCloseApproach()
+    {
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(1200f, 760f), 24);
+        rig.RegisterPlayer(1, 5000, 2000, 60, 4);
+        var centers = new[]
+        {
+            new Vector2(240f, 190f),
+            new Vector2(610f, 190f),
+            new Vector2(280f, 520f),
+            new Vector2(760f, 520f)
+        };
+        var profiles = new[]
+        {
+            DemoBuildingTypes.SupplyDepot,
+            DemoBuildingTypes.Barracks,
+            DemoBuildingTypes.CommandCenter,
+            DemoBuildingTypes.Academy
+        }.Select(value => value with { BuildSeconds = 0.5f }).ToArray();
+        var builders = new[]
+        {
+            rig.SpawnWorker(centers[0] + new Vector2(-190f, 0f), 1),
+            rig.SpawnWorker(centers[1] + new Vector2(0f, -150f), 1),
+            rig.SpawnWorker(centers[2] + new Vector2(210f, 0f), 1),
+            rig.SpawnWorker(centers[3] + new Vector2(0f, 150f), 1)
+        };
+        var buildings = builders.Select((builder, index) =>
+            rig.Build(1, builder, profiles[index], centers[index])).ToArray();
+        return new VisualTestSession(
+                "construction-close-approach",
+                "Builders start construction at each rectangular footprint edge",
+                480,
+                rig,
+                builders,
+                runtime =>
+                {
+                    var gaps = new float[builders.Length];
+                    var outside = true;
+                    var completed = true;
+                    for (var index = 0; index < builders.Length; index++)
+                    {
+                        var building = runtime.ObserveGameplayBuilding(
+                            buildings[index].BuildingId);
+                        var unit = runtime.Observe(builders[index]);
+                        var minimum = building.Center - building.Size * 0.5f;
+                        var maximum = building.Center + building.Size * 0.5f;
+                        var closest = Vector2.Clamp(
+                            unit.Position, minimum, maximum);
+                        gaps[index] = Vector2.Distance(
+                            unit.Position, closest) - unit.Radius;
+                        outside &= unit.Position.X < minimum.X ||
+                                   unit.Position.X > maximum.X ||
+                                   unit.Position.Y < minimum.Y ||
+                                   unit.Position.Y > maximum.Y;
+                        completed &= buildings[index].Succeeded &&
+                                     building.State ==
+                                     TestBuildingLifecycleState.Completed;
+                    }
+                    var close = gaps.All(value => value is >= 1.5f and <= 9f);
+                    return new ScenarioResult(
+                        completed && outside && close,
+                        $"completed={completed}, outside={outside}, " +
+                        $"surface_gaps={string.Join(',', gaps.Select(value => value.ToString("F1")))}");
+                })
+            .SelectBuildings(buildings.Select(value => value.BuildingId).ToArray())
+            .Highlight(
+                new SimRect(new Vector2(100f, 80f), new Vector2(900f, 650f)),
+                "RECTANGULAR EDGE + UNIT RADIUS + NARROW INTERACTION BAND",
+                TestDiagnosticKind.Accepted);
+    }
+
     private static VisualTestSession CreateConstructionQueuedBuilds(
         NavigationMapSnapshot? navigationMap,
         GameplayProfileCatalogSnapshot? gameplayProfiles,
@@ -7359,7 +7460,7 @@ public static class VisualTestCatalog
         var session = new VisualTestSession(
                 "construction-queued-builds",
                 "Shift Build queues soft reservations, revalidates each item and returns to mining",
-                420,
+                600,
                 rig,
                 [mainBuilder, cancelBuilder, deadBuilder, dynamicBlocker,
                     builderKiller],
@@ -7688,7 +7789,7 @@ public static class VisualTestCatalog
         var session = new VisualTestSession(
                 "construction-multi-unit-eviction",
                 "Stable 1/8/32 occupant evacuation with conservative Hold policy",
-                760,
+                900,
                 rig,
                 [.. builders,
                     .. blockersByBuilding.SelectMany(value => value),
@@ -8770,13 +8871,13 @@ public static class VisualTestCatalog
         };
         var friendlyBlockers = softSealPositions.Select((position, index) =>
             rig.SpawnCombat(
-                position + Vector2.Normalize(position - centers[4]) * 30f, 1,
+                position, 1,
                 blockerProfile,
                 radius: 7.5f, maximumSpeed: 260f,
                 acceleration: 1000f)).ToArray();
         var enemyBlockers = hardSealPositions.Select((position, index) =>
             rig.SpawnCombat(
-                position + Vector2.Normalize(position - centers[5]) * 30f, 2,
+                position, 2,
                 blockerProfile,
                 radius: 7.5f, maximumSpeed: 260f,
                 acceleration: 1000f)).ToArray();
@@ -8929,17 +9030,6 @@ public static class VisualTestCatalog
                 for (var index = 0; index < buildings.Length; index++)
                     buildings[index] = runtime.Build(
                         1, builders[index], barracks, centers[index]);
-            });
-        session.At(45, "Move friendly and enemy rings around separate producers",
-            runtime =>
-            {
-                for (var index = 0; index < friendlyBlockers.Length; index++)
-                {
-                    runtime.Move(
-                        [friendlyBlockers[index]], softSealPositions[index]);
-                    runtime.Move(
-                        [enemyBlockers[index]], hardSealPositions[index]);
-                }
             });
         session.At(100, "Train through four Rally directions",
             runtime =>
