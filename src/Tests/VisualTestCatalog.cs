@@ -81,6 +81,8 @@ public static class VisualTestCatalog
         "economy-dual-resource",
         "economy-auto-patch-distribution",
         "economy-mule-independent-mining",
+        "economy-assignment-lifecycle",
+        "economy-mining-income-curve",
         "economy-mineral-walk-collision-matrix",
         "economy-mass-mining",
         "economy-expansion-saturation",
@@ -240,6 +242,10 @@ public static class VisualTestCatalog
         "economy-mule-independent-mining" =>
             CreateMuleIndependentMining(
                 navigationMap, gameplayProfiles, clearanceBake),
+        "economy-assignment-lifecycle" =>
+            CreateEconomyAssignmentLifecycle(
+                navigationMap, gameplayProfiles, clearanceBake),
+        "economy-mining-income-curve" => CreateMiningIncomeCurve(),
         "economy-mineral-walk-collision-matrix" =>
             CreateMineralWalkCollisionMatrix(),
         "economy-mass-mining" => CreateMassMiningEconomy(),
@@ -4944,6 +4950,340 @@ public static class VisualTestCatalog
                 }
                 normalWorkerCountInvariant &=
                     runtime.ObservePlayerWorkers(1).Length == 18;
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateEconomyAssignmentLifecycle(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 3000, 0, 30, 15);
+        rig.AddResourceDropOff(1, new Vector2(270f, 350f));
+        var workers = Enumerable.Range(0, 15)
+            .Select(index => rig.SpawnWorker(
+                new Vector2(
+                    295f + index % 5 * 18f,
+                    285f + index / 5 * 52f),
+                1))
+            .ToArray();
+        var center = new Vector2(400f, 350f);
+        var patches = Enumerable.Range(0, 8)
+            .Select(index =>
+            {
+                var angle = index * MathF.Tau / 8f;
+                return rig.AddResourceNode(
+                    TestEconomyResourceKind.Minerals,
+                    center + new Vector2(
+                        MathF.Cos(angle), MathF.Sin(angle)) * 90f,
+                    amount: index == 0 ? 15 : 10_000,
+                    harvestBatch: 5,
+                    harvestSeconds: 0.4f,
+                    harvesterCapacity: 2);
+            })
+            .ToArray();
+        var workerRecipe = DemoProductionCatalog.CreateSnapshot().Recipe(2) with
+        {
+            ProductionSeconds = 0.5f
+        };
+        var townHallType = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 0.2f
+        };
+
+        rig.StartReplayPackageRecording();
+        var townHall = rig.Build(
+            1, workers[0], townHallType, new Vector2(175f, 350f));
+        var batchIssued = false;
+        var rallyIssued = false;
+        var initialDistribution = false;
+        var rallyFilledGap = false;
+        var depletedAndShrunk = false;
+        var assignedInvariant = true;
+        var underfilledNode = new TestResourceNodeId(-1);
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 300;
+
+        var session = new VisualTestSession(
+                "economy-assignment-lifecycle",
+                "Resource Rally fills the least-loaded patch and depletion shrinks assignment counters",
+                1200,
+                rig,
+                workers,
+                runtime =>
+                {
+                    var nodes = patches.Select(runtime.ObserveResourceNode).ToArray();
+                    var depleted = nodes[0];
+                    var remaining = nodes.Skip(1).ToArray();
+                    var package = runtime.CaptureReplayPackage();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(
+                        out var decoded);
+                    var replay = packageRoundTrip
+                        ? runtime.ReplayPackage(decoded!, runtime.Tick)
+                        : null;
+                    var replayExact = replay is not null &&
+                                      replay.FinalHash == runtime.StateHash;
+                    var hotExact = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotExact = resumed.FinalHash == runtime.StateHash &&
+                                       replay is not null &&
+                                       replay.MatchesFrom(resumed, hotTick);
+                        }
+                    }
+                    var remainingAssigned = remaining.Sum(
+                        value => value.AssignedNormal);
+                    var depletedWorkerStates = Enumerable.Range(
+                            0, runtime.UnitCount)
+                        .Select(index => runtime.ObserveWorkerEconomy(
+                            new TestUnitId(index)))
+                        .Where(value => value.TargetNode == patches[0])
+                        .Select(value => value.State)
+                        .ToArray();
+                    var remainingSpread = remaining.Max(
+                                              value => value.AssignedNormal) -
+                                          remaining.Min(
+                                              value => value.AssignedNormal);
+                    var versions = package.FormatVersion ==
+                                       SimulationReplayPackageSnapshot
+                                           .CurrentFormatVersion &&
+                                   hotVersion ==
+                                       SimulationHotSnapshot.CurrentFormatVersion;
+                    var passed = townHall.Succeeded && batchIssued &&
+                                 rallyIssued && initialDistribution &&
+                                 rallyFilledGap && depletedAndShrunk &&
+                                 assignedInvariant && depleted.Remaining == 0 &&
+                                 depleted.ActiveNormal == 0 &&
+                                 depleted.AssignedNormal == 0 &&
+                                 depleted.WaitingNormal == 0 &&
+                                 remainingAssigned == 16 &&
+                                 remainingSpread <= 1 &&
+                                 packageRoundTrip && replayExact && hotExact &&
+                                 versions;
+                    return new ScenarioResult(
+                        passed,
+                        $"initial={initialDistribution}, rally=" +
+                        $"{rallyFilledGap}@node{underfilledNode.Value}, " +
+                        $"depleted={depletedAndShrunk}/left{depleted.Remaining}/" +
+                        $"{depleted.ActiveNormal}:{depleted.AssignedNormal}:" +
+                        $"{depleted.WaitingNormal}, remaining=" +
+                        $"{remainingAssigned}/spread{remainingSpread}, " +
+                        $"states={string.Join('/', depletedWorkerStates)}, " +
+                        $"counters={assignedInvariant}, replay={replayExact}, " +
+                        $"hot={hotExact}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(330f, 350f), 1.08f)
+            .CameraKeyframe(210, new Vector2(390f, 350f), 1.28f)
+            .CameraKeyframe(420, new Vector2(390f, 350f), 1.38f)
+            .CameraKeyframe(690, new Vector2(390f, 350f), 1.32f)
+            .CameraKeyframe(1170, new Vector2(330f, 350f), 1.08f)
+            .Highlight(
+                new SimRect(new Vector2(285f, 235f), new Vector2(515f, 465f)),
+                "RALLY FILL -> DEPLETION SHRINK",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(90f, 265f), new Vector2(260f, 435f)),
+                "COMMAND CENTER: resource Rally producer",
+                TestDiagnosticKind.Info);
+
+        session.At(120, "Distribute fifteen SCVs across eight patches", runtime =>
+            batchIssued = runtime.PlayerSmartResource(
+                1, workers, patches[0]) == TestPlayerOrderCommandCode.Success);
+        session.At(122, "Capture the single underfilled mineral patch", runtime =>
+        {
+            var nodes = patches.Select(runtime.ObserveResourceNode).ToArray();
+            initialDistribution = nodes.Sum(value => value.AssignedNormal) == 15 &&
+                                  nodes.Count(value => value.AssignedNormal == 1) == 1 &&
+                                  nodes.Count(value => value.AssignedNormal == 2) == 7;
+            if (initialDistribution)
+            {
+                underfilledNode = nodes.Single(
+                    value => value.AssignedNormal == 1).Id;
+            }
+        });
+        session.At(180, "Rally a produced SCV to the already occupied clicked patch", runtime =>
+        {
+            var set = runtime.SetRallyResource(
+                1, townHall.BuildingId, patches[0]);
+            var train = runtime.Train(
+                1, townHall.BuildingId, workerRecipe);
+            rallyIssued = set && train.Succeeded;
+        });
+        session.At(260, "Verify Rally selected the previously underfilled patch", runtime =>
+        {
+            if (runtime.UnitCount <= workers.Length)
+                return;
+            var produced = runtime.ObserveWorkerEconomy(
+                new TestUnitId(workers.Length));
+            var nodes = patches.Select(runtime.ObserveResourceNode).ToArray();
+            rallyFilledGap = produced.TargetNode == underfilledNode &&
+                             nodes.All(value => value.AssignedNormal == 2);
+        });
+        session.At(hotTick, "Capture the saturated pre-depletion assignment state", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
+
+        for (var tick = 122; tick < session.DurationTicks; tick += 2)
+        {
+            session.At(tick, "Observe assignment lifecycle counters", runtime =>
+            {
+                var nodes = patches.Select(runtime.ObserveResourceNode).ToArray();
+                assignedInvariant &= nodes.All(value =>
+                    value.ActiveNormal <= value.NormalActiveSlots &&
+                    value.WaitingNormal <= value.AssignedNormal &&
+                    value.ActiveNormal <= value.AssignedNormal);
+                depletedAndShrunk |= nodes[0].Remaining == 0 &&
+                    nodes[0].ActiveNormal == 0 &&
+                    nodes[0].AssignedNormal == 0 &&
+                    nodes[0].WaitingNormal == 0 &&
+                    nodes.Skip(1).Sum(value => value.AssignedNormal) == 16;
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateMiningIncomeCurve()
+    {
+        const int laneCount = 5;
+        var rig = MovementTestRig.CreateEconomyMap(
+            new Vector2(2300f, 2100f), 40);
+        var allWorkers = new List<TestUnitId>();
+        var laneWorkers = new TestUnitId[laneCount][];
+        var laneNodes = new TestResourceNodeId[laneCount];
+        var accepted = 0;
+
+        for (var lane = 0; lane < 4; lane++)
+        {
+            var playerId = lane + 1;
+            var workerCount = lane + 1;
+            var y = 240f + lane * 500f;
+            rig.RegisterPlayer(playerId, 0, 0, 16, workerCount);
+            rig.AddResourceDropOff(playerId, new Vector2(150f, y));
+            laneNodes[lane] = rig.AddResourceNode(
+                TestEconomyResourceKind.Minerals,
+                new Vector2(500f, y),
+                amount: 10_000,
+                harvestBatch: 5,
+                harvestSeconds: 1.99f,
+                harvesterCapacity: 2);
+            laneWorkers[lane] = Enumerable.Range(0, workerCount)
+                .Select(index => rig.SpawnWorker(
+                    new Vector2(205f, y + (index - workerCount / 2f) * 20f),
+                    playerId,
+                    maximumSpeed: 180f,
+                    acceleration: 900f))
+                .ToArray();
+            allWorkers.AddRange(laneWorkers[lane]);
+        }
+
+        const int farPlayer = 5;
+        const float farY = 300f;
+        rig.RegisterPlayer(farPlayer, 0, 0, 16, 2);
+        rig.AddResourceDropOff(farPlayer, new Vector2(1250f, farY));
+        laneNodes[4] = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(2050f, farY),
+            amount: 10_000,
+            harvestBatch: 5,
+            harvestSeconds: 1.99f,
+            harvesterCapacity: 2);
+        laneWorkers[4] = Enumerable.Range(0, 2)
+            .Select(index => rig.SpawnWorker(
+                new Vector2(1300f, farY + (index * 2 - 1) * 15f),
+                farPlayer,
+                maximumSpeed: 180f,
+                acceleration: 900f))
+            .ToArray();
+        allWorkers.AddRange(laneWorkers[4]);
+
+        var activeSlotInvariant = true;
+        var waitingObserved = false;
+        var session = new VisualTestSession(
+                "economy-mining-income-curve",
+                "SC2-style 5 cargo / 1.99 second mining shows bounded worker marginal income",
+                1800,
+                rig,
+                allWorkers.ToArray(),
+                runtime =>
+                {
+                    var income = Enumerable.Range(1, laneCount)
+                        .Select(player =>
+                            runtime.ObservePlayerEconomy(player).Minerals)
+                        .ToArray();
+                    var secondMarginal = income[1] - income[0];
+                    var thirdMarginal = income[2] - income[1];
+                    var fourthMarginal = income[3] - income[2];
+                    var monotonic = income[1] > income[0] &&
+                                    income[2] >= income[1] &&
+                                    income[3] >= income[2];
+                    var diminishing = secondMarginal > thirdMarginal &&
+                                      fourthMarginal <= thirdMarginal;
+                    var distancePenalty = income[4] < income[1];
+                    var passed = accepted == allWorkers.Count &&
+                                 income[0] >= 15 && monotonic && diminishing &&
+                                 distancePenalty && activeSlotInvariant &&
+                                 waitingObserved;
+                    return new ScenarioResult(
+                        passed,
+                        $"near1/2/3/4={string.Join('/', income.Take(4))}, " +
+                        $"marginal={secondMarginal}/{thirdMarginal}/" +
+                        $"{fourthMarginal}, far2={income[4]}, " +
+                        $"monotonic={monotonic}, diminishing={diminishing}, " +
+                        $"active={activeSlotInvariant}, waiting={waitingObserved}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(1100f, 1000f), 0.42f)
+            .CameraKeyframe(360, new Vector2(330f, 740f), 0.72f)
+            .CameraKeyframe(900, new Vector2(1650f, 300f), 0.68f)
+            .CameraKeyframe(1440, new Vector2(330f, 1240f), 0.72f)
+            .CameraKeyframe(1770, new Vector2(1100f, 1000f), 0.42f)
+            .Highlight(
+                new SimRect(new Vector2(80f, 130f), new Vector2(570f, 1920f)),
+                "NEAR LANES: 1 / 2 / 3 / 4 SCVs",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(1160f, 180f), new Vector2(2140f, 420f)),
+                "FAR LANE: same 2 SCVs, longer round trip",
+                TestDiagnosticKind.Info);
+
+        session.At(1, "Start every income lane through formal Gather commands", runtime =>
+        {
+            for (var lane = 0; lane < laneCount; lane++)
+            {
+                foreach (var worker in laneWorkers[lane])
+                {
+                    if (runtime.Gather(lane + 1, worker, laneNodes[lane]) ==
+                        TestGatherCommandCode.Success)
+                    {
+                        accepted++;
+                    }
+                }
+            }
+        });
+        for (var tick = 2; tick < session.DurationTicks; tick += 4)
+        {
+            session.At(tick, "Observe slot and waiting invariants", runtime =>
+            {
+                var nodes = laneNodes.Select(runtime.ObserveResourceNode).ToArray();
+                activeSlotInvariant &= nodes.All(value =>
+                    value.ActiveNormal <= 1);
+                waitingObserved |= nodes.Take(4).Any(value =>
+                    value.WaitingNormal > 0);
             });
         }
         return session;

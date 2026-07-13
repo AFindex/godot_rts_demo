@@ -126,6 +126,8 @@ public static class TestShowcaseCatalog
             M("economy-dual-resource", "双资源采集", "经济玩法", "验证矿物、瓦斯、Refinery、容量、枯竭和再次采集。"),
             M("economy-auto-patch-distribution", "自动分矿与饱和槽位", "经济玩法", "同一次右键把 12/16/24/32 个普通农民确定性分散到八片矿，验证每片矿一个并发采集槽、两个理想分配位、等待队列以及回放和热恢复。"),
             M("economy-mule-independent-mining", "MULE 独立采矿通道", "经济玩法", "验证 MULE 与普通农民可在同一矿片并采、第二个 MULE 等待、八矿 MULE 自动分散且普通 16/16 饱和度不变。"),
+            M("economy-assignment-lifecycle", "分矿生命周期", "经济玩法", "验证资源 Rally 填补最空矿片，以及矿片枯竭后 Active、Assigned、Waiting 收缩并在剩余矿簇确定性重分配。"),
+            M("economy-mining-income-curve", "采矿边际收入曲线", "经济玩法", "使用 5 点携带量和 1.99 秒采集参数，对比近远矿以及每片 1/2/3/4 个普通农民的有限时间收入。"),
             M("economy-mineral-walk-collision-matrix", "采矿穿行碰撞矩阵", "经济玩法", "24 个农民在采矿与返矿途中穿过友军 Hold、敌军和大型单位，但仍绕过正式建筑；Stop、Hold、Attack 后恢复正常碰撞。"),
             M("economy-mass-mining", "大规模多基地采矿", "经济玩法", "96 个农民在四个基地与 32 片矿之间持续往返，验证最近投递边界、完整循环和高密度穿行。"),
             M("economy-expansion-saturation", "扩张与饱和度", "经济玩法", "验证双基地归属、工人转场、饱和度和基地摧毁。"),

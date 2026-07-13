@@ -1,9 +1,39 @@
 ﻿{
-    "generated_at":  "2026-07-13T15:09:51.9392489+08:00",
+    "generated_at":  "2026-07-13T15:24:56.1980588+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  140,
-    "case_count":  109,
+    "recording_count":  142,
+    "case_count":  111,
     "recordings":  [
+                       {
+                           "id":  "economy-assignment-lifecycle",
+                           "display_name":  "Resource Rally fills the least-loaded patch and depletion shrinks assignment counters",
+                           "batch":  "20260713_152402",
+                           "created_at":  "2026-07-13T15:24:55.7337543+08:00",
+                           "video":  "../20260713_152402/economy-assignment-lifecycle.webm",
+                           "log":  "../20260713_152402/economy-assignment-lifecycle.log",
+                           "bytes":  7563132,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-assignment-lifecycle: ticks=1200, initial=True, rally=True@node7, depleted=True/left0/0:0:0, remaining=16/spread1, states=, counters=True, replay=True, hot=True/v23",
+                           "metrics":  "ticks=1200, initial=True, rally=True@node7, depleted=True/left0/0:0:0, remaining=16/spread1, states=, counters=True, replay=True, hot=True/v23"
+                       },
+                       {
+                           "id":  "economy-mining-income-curve",
+                           "display_name":  "SC2-style 5 cargo / 1.99 second mining shows bounded worker marginal income",
+                           "batch":  "20260713_152402",
+                           "created_at":  "2026-07-13T15:24:55.7337543+08:00",
+                           "video":  "../20260713_152402/economy-mining-income-curve.webm",
+                           "log":  "../20260713_152402/economy-mining-income-curve.log",
+                           "bytes":  3847055,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-mining-income-curve: ticks=1800, near1/2/3/4=30/55/65/65, marginal=25/10/0, far2=25, monotonic=True, diminishing=True, active=True, waiting=True",
+                           "metrics":  "ticks=1800, near1/2/3/4=30/55/65/65, marginal=25/10/0, far2=25, monotonic=True, diminishing=True, active=True, waiting=True"
+                       },
                        {
                            "id":  "economy-mule-independent-mining",
                            "display_name":  "MULE uses a separate one-per-patch mining channel without changing normal saturation",

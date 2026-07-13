@@ -25,7 +25,7 @@
 | Harvest/ReturningCargo 单位碰撞豁免 | 核心已对齐 | 只补独立矩阵回归，不重写 Steering |
 | 建筑与地形仍阻挡采矿农民 | 已对齐 | 作为碰撞矩阵硬门禁 |
 | 最近有效 DropOff 与最近建筑边缘 | 主路径已对齐 | 补显式 Return Cargo 与包围边界实验 |
-| 玩家批量右键资源后的自动分矿 | 普通 Worker/MULE 槽位已对齐 | E2c 只剩 Rally/枯竭/近远矿收入曲线门禁 |
+| 玩家批量右键资源后的自动分矿 | 已对齐 | E2a～E2c 已锁定普通/MULE 槽位、Rally 填空、枯竭收缩与收入曲线门禁 |
 | Preview 无副作用 | 部分对齐 | 拆成静态可见校验快照 |
 | 下单后的 Ghost/Reservation | 未对齐 | P0 新增权威施工意图 |
 | 工人到达前的建筑占地 | 未对齐，当前过早硬占地 | P0 延迟到 Hard Commit |
@@ -304,7 +304,7 @@ P0 综合完成条件：C0～C5 全部通过，E0 已确认的规则有来源和
 
 稳定快照分别暴露 `ActiveNormal/AssignedNormal/WaitingNormal/ActiveMules/AssignedMules`，基地快照分别提供 Mineral/Gas 的 Assigned 与 Ideal；UI、AI 和测试不得用采集槽数量反推软饱和。
 
-场景 `economy-auto-patch-distribution`：8 片矿，12/16/24/32 Worker 全部右键同一片矿，记录首轮分散、每片 Active/Assigned/Waiting、Rally 新 Worker 填空、枯竭后收缩、近/远矿收入、第二/第三/第四 Worker 边际收益。16 Worker 必须形成两人软饱和；24 Worker 允许第三人排队但收益递减；32 Worker 不得通过伪并发继续线性增收。
+场景 `economy-auto-patch-distribution`：8 片矿，12/16/24/32 Worker 全部右键同一片矿，记录首轮分散和每片 Active/Assigned/Waiting。16 Worker 必须形成两人软饱和；24/32 Worker 可进入等待队列，但任意时刻每片普通 Active 不得超过一个。Rally 填空与枯竭收缩由 `economy-assignment-lifecycle` 隔离验证；近/远矿和第二/第三/第四 Worker 边际收入由 `economy-mining-income-curve` 隔离验证，避免一个长场景掩盖失败原因。
 
 场景 `economy-mule-independent-mining`：同一矿片覆盖 `2 SCV`、`2 SCV + 1 MULE`、`2 SCV + 2 MULE`，验证普通通道一次只采一个、一个 MULE 可与普通 Worker 同采、第二个 MULE 等待；再在八矿投放多个 MULE，验证分散、普通 `16/16` 饱和度不变、回放/热恢复/Hash 一致。MULE 测试可使用能力化测试采集者，不要求先做 Orbital Command。
 
@@ -317,6 +317,12 @@ P0 综合完成条件：C0～C5 全部通过，E0 已确认的规则有来源和
 当前完成边界（E2b）：`GathererCapability` 已将 `NormalWorker` 与 `Mule` 从“是否能施工”中解耦。MULE 可走正式 Gather/Return Cargo、批量资源 SmartCommand 和采矿穿行，但不属于普通 Worker，不计入基地 Assigned/Ideal、经济 UI Worker 数、施工资格或比赛 Worker/CombatUnit 能力；MULE 只能采矿，采气返回 `CapabilityUnavailable`。每个矿点的 `ActiveMules<=1`，MULE 分配使用独立 `AssignedMules/1` 负载率，与普通 `AssignedNormal/IdealNormalAssignments` 互不影响。能力进入 Worker 运行时条目、规范二进制、热恢复校验和状态 Hash，Replay Package/Hot Snapshot 升级 v23，State Hash 升级 v24。
 
 `economy-mule-independent-mining` 已通过：隔离矿片上 `2 SCV + 1 MULE` 实际出现普通/MULE 同时采集，加入第二个 MULE 后观察到一个 Active、一个 Waiting；主矿簇保持普通 `16/16`，八个 MULE 批量点同一矿后形成 `8/8` 独立分散，普通饱和度不变。MULE 不进入公开 Worker 列表，28 条经济命令 Replay 与 Tick 360 热恢复精确一致。专项 AV1/WebM 位于 `test_videos/20260713_150930/`。E2 下一段只做 E2c：Rally 填空、枯竭收缩、近/远矿和第二/第三/第四 Worker 边际收入门禁；不实现 Orbital、召唤、寿命、修理或完整 MULE 数值内容。
+
+当前完成边界（E2c）：`economy-assignment-lifecycle` 从同点矿形成 `7×2 + 1×1` 的 15 Worker 分配，Town Hall Rally 新生产 Worker 会确定性填入唯一欠载矿片并达到 `8×2`；首片矿枯竭后其 `Active/Assigned/Waiting` 全部归零，16 个 Worker 收缩到其余七片矿且最大 Assigned 差为 1。该场景同时验证 Replay Package 与 Tick 300 Hot Restore 精确一致。
+
+`economy-mining-income-curve` 在统一 `5` 携带量、`1.99s` 占矿时间和固定 30 秒窗口下测得近矿 `1/2/3/4 Worker = 30/55/65/65` Minerals，边际收入为 `+25/+10/+0`；双 Worker 远矿为 `25`，低于近矿双 Worker 的 `55`。这组门禁冻结的是“第二人高收益、第三人递减、第四人不再增益、远矿更低”的业务曲线，不声称逐帧复刻某一 SC2 地图的每分钟绝对值。两段专项 AV1/WebM 位于 `test_videos/20260713_152402/`。
+
+E2 至此整体收口。后续普通矿距离、携带量或采集时间只通过内容 Profile 调整；除非真实玩法或新的 SC2 实机证据击穿上述合同，否则不再修改分配权重或经济状态机。Orbital、MULE 召唤/寿命/修理仍属于 P2 内容扩展。
 
 ### Q1：Shift Build Queue
 
