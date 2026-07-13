@@ -985,6 +985,50 @@ public readonly record struct TestBuildingPlacementResult(
     public bool Succeeded => Code == TestBuildingPlacementCode.Success;
 }
 
+public enum TestStaticPlacementCode : byte
+{
+    Success,
+    InvalidFootprint,
+    OutsideWorld,
+    StaticObstacleOverlap,
+    DynamicFootprintOverlap,
+    InsufficientClearance,
+    DisconnectsNavigation
+}
+
+public enum TestDynamicStartValidationCode : byte
+{
+    NotEvaluated,
+    Success,
+    InvalidFootprint,
+    UnitOverlap
+}
+
+public readonly record struct TestBuildingPlacementAssessment(
+    TestStaticPlacementCode StaticCode,
+    TestDynamicStartValidationCode DynamicCode,
+    TestBuildingPlacementCode CombinedCode,
+    int ConflictId)
+{
+    public bool Succeeded => CombinedCode == TestBuildingPlacementCode.Success;
+}
+
+public enum TestHardFootprintCommitCode : byte
+{
+    Success,
+    StaticPlacementRejected,
+    DynamicOccupantRejected
+}
+
+public readonly record struct TestHardFootprintCommitResult(
+    TestHardFootprintCommitCode Code,
+    TestBuildingId BuildingId,
+    Vector2 Size,
+    TestBuildingPlacementAssessment Assessment)
+{
+    public bool Succeeded => Code == TestHardFootprintCommitCode.Success;
+}
+
 public readonly record struct TestChokeTrafficSnapshot(
     int ActiveDirection,
     bool Draining,
@@ -2274,6 +2318,57 @@ public sealed partial class MovementTestRig
             profile.Size);
     }
 
+    public TestBuildingPlacementAssessment AssessBuildingPlacement(
+        Vector2 center,
+        Vector2 size,
+        TestMovementClass minimumPassageClass)
+    {
+        var halfSize = size * 0.5f;
+        var value = _simulation.AssessBuildingPlacement(
+            new SimRect(center - halfSize, center + halfSize),
+            new BuildingPlacementRules(
+                (MovementClass)minimumPassageClass));
+        return ToTestBuildingPlacementAssessment(value);
+    }
+
+    public TestBuildingPlacementAssessment AssessBuildingPlacement(
+        Vector2 center,
+        TestBuildingFootprintClass footprintClass,
+        TestMovementClass minimumPassageClass) =>
+        AssessBuildingPlacement(
+            center,
+            BuildingFootprintProfile.For(
+                (BuildingFootprintClass)footprintClass).Size,
+            minimumPassageClass);
+
+    public TestHardFootprintCommitResult TryCommitHardFootprint(
+        Vector2 center,
+        Vector2 size,
+        TestMovementClass minimumPassageClass)
+    {
+        var halfSize = size * 0.5f;
+        var value = _simulation.TryCommitHardFootprint(
+            new SimRect(center - halfSize, center + halfSize),
+            new BuildingPlacementRules(
+                (MovementClass)minimumPassageClass));
+        return new TestHardFootprintCommitResult(
+            (TestHardFootprintCommitCode)value.Code,
+            new TestBuildingId(value.FootprintId.Value),
+            size,
+            ToTestBuildingPlacementAssessment(value.Assessment));
+    }
+
+    public TestHardFootprintCommitResult TryCommitHardFootprint(
+        Vector2 center,
+        TestBuildingFootprintClass footprintClass,
+        TestMovementClass minimumPassageClass)
+    {
+        var size = BuildingFootprintProfile.For(
+            (BuildingFootprintClass)footprintClass).Size;
+        return TryCommitHardFootprint(
+            center, size, minimumPassageClass);
+    }
+
     public TestBuildingPlacementResult TryPlaceBuilding(
         Vector2 center,
         BuildingFootprintProfileSnapshot profile)
@@ -2287,6 +2382,14 @@ public sealed partial class MovementTestRig
 
     public bool RemoveBuilding(TestBuildingId id) =>
         _simulation.RemoveBuilding(new DynamicFootprintId(id.Value));
+
+    private static TestBuildingPlacementAssessment
+        ToTestBuildingPlacementAssessment(BuildingPlacementAssessment value) =>
+        new(
+            (TestStaticPlacementCode)value.Static.Code,
+            (TestDynamicStartValidationCode)value.Dynamic.Code,
+            (TestBuildingPlacementCode)value.Code,
+            value.ConflictId);
 
     public TestChokeTrafficSnapshot ObserveChokeTraffic(int chokeIndex = 0)
     {

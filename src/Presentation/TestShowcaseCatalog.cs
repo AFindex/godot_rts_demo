@@ -110,7 +110,7 @@ public static class TestShowcaseCatalog
             M("clearance-portal-choice", "多尺寸 Portal 选择", "净空导航", "验证小单位走窄路、大单位自动选择宽路。"),
             M("clearance-dynamic-gap", "动态窄缝净空", "净空导航", "验证建筑形成窄缝后 Small 可过、Large 明确不可达。"),
             M("building-footprint-sizes", "四档建筑尺寸", "建筑导航", "验证 Small/Medium/Large/Huge footprint 的实际占用。"),
-            M("building-placement-rules", "建筑放置规则", "建筑导航", "验证边界、静态障碍、动态重叠、单位占用和净空。"),
+            M("building-placement-rules", "建筑放置分层规则", "建筑导航", "分别验证静态 Placement、动态单位开工校验、Hard Footprint Commit，以及旧组合错误码优先级。"),
             M("building-connectivity-guard", "全局连通保护", "建筑导航", "验证会切断地图的建筑被拒绝，安全建筑可放置。"),
             M("building-size-navigation", "多尺寸建筑绕行", "建筑导航", "验证四档建筑加入后单位实际改道并抵达。"),
             M("gameplay-profile-resource-runtime", "玩法 Profile Resource", "数据工作流", "验证单位与建筑 Profile Resource 转换后驱动真实运行时。"),

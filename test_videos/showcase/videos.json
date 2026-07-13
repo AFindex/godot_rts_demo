@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T11:30:40.6516264+08:00",
+    "generated_at":  "2026-07-13T11:40:35.8986106+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  132,
+    "recording_count":  133,
     "case_count":  103,
     "recordings":  [
+                       {
+                           "id":  "building-placement-rules",
+                           "display_name":  "Static placement, dynamic start validation and hard commit layers",
+                           "batch":  "20260713_114013",
+                           "created_at":  "2026-07-13T11:40:35.5291275+08:00",
+                           "video":  "../20260713_114013/building-placement-rules.webm",
+                           "log":  "../20260713_114013/building-placement-rules.log",
+                           "bytes":  121399,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS building-placement-rules: ticks=360, accepted=True, early-static=True, dynamic=True, late-static=True, codes=DynamicFootprintOverlap/StaticObstacleOverlap/UnitOverlap/InsufficientClearance, buildings=2",
+                           "metrics":  "ticks=360, accepted=True, early-static=True, dynamic=True, late-static=True, codes=DynamicFootprintOverlap/StaticObstacleOverlap/UnitOverlap/InsufficientClearance, buildings=2"
+                       },
                        {
                            "id":  "economy-mineral-walk-collision-matrix",
                            "display_name":  "Mineral Walk crosses units, respects buildings, and restores collision",
@@ -1281,7 +1296,7 @@
                        },
                        {
                            "id":  "building-placement-rules",
-                           "display_name":  "Business placement rejects overlap, occupancy and fake gaps",
+                           "display_name":  "Static placement, dynamic start validation and hard commit layers",
                            "batch":  "20260710_225930",
                            "created_at":  "2026-07-10T23:00:02.6257479+08:00",
                            "video":  "../20260710_225930/building-placement-rules.webm",

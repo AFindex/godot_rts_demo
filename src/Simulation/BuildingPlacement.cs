@@ -50,27 +50,138 @@ public readonly record struct BuildingPlacementResult(
     public bool Succeeded => Code == BuildingPlacementCode.Success;
 }
 
+public enum StaticPlacementCode : byte
+{
+    Success,
+    InvalidFootprint,
+    OutsideWorld,
+    StaticObstacleOverlap,
+    DynamicFootprintOverlap,
+    InsufficientClearance,
+    DisconnectsNavigation
+}
+
+public readonly record struct StaticPlacementResult(
+    StaticPlacementCode Code,
+    int ConflictId)
+{
+    public bool Succeeded => Code == StaticPlacementCode.Success;
+}
+
+public enum DynamicStartValidationCode : byte
+{
+    NotEvaluated,
+    Success,
+    InvalidFootprint,
+    UnitOverlap
+}
+
+public readonly record struct DynamicStartValidationResult(
+    DynamicStartValidationCode Code,
+    int ConflictUnit)
+{
+    public bool Succeeded => Code == DynamicStartValidationCode.Success;
+}
+
+public readonly record struct BuildingPlacementAssessment(
+    StaticPlacementResult Static,
+    DynamicStartValidationResult Dynamic)
+{
+    public BuildingPlacementCode Code
+    {
+        get
+        {
+            if (Static.Code is StaticPlacementCode.InvalidFootprint or
+                StaticPlacementCode.OutsideWorld or
+                StaticPlacementCode.StaticObstacleOverlap or
+                StaticPlacementCode.DynamicFootprintOverlap)
+                return ToPlacementCode(Static.Code);
+            if (Dynamic.Code == DynamicStartValidationCode.UnitOverlap)
+                return BuildingPlacementCode.UnitOverlap;
+            if (Dynamic.Code is DynamicStartValidationCode.InvalidFootprint or
+                DynamicStartValidationCode.NotEvaluated)
+                return BuildingPlacementCode.InvalidFootprint;
+            return ToPlacementCode(Static.Code);
+        }
+    }
+
+    public int ConflictId => Code == BuildingPlacementCode.UnitOverlap
+        ? Dynamic.ConflictUnit
+        : Static.ConflictId;
+    public bool Succeeded => Code == BuildingPlacementCode.Success;
+
+    public BuildingPlacementResult ToPlacementResult(
+        DynamicFootprintId footprintId = default) =>
+        new(Code, footprintId, ConflictId);
+
+    private static BuildingPlacementCode ToPlacementCode(
+        StaticPlacementCode code) => code switch
+        {
+            StaticPlacementCode.Success => BuildingPlacementCode.Success,
+            StaticPlacementCode.InvalidFootprint =>
+                BuildingPlacementCode.InvalidFootprint,
+            StaticPlacementCode.OutsideWorld =>
+                BuildingPlacementCode.OutsideWorld,
+            StaticPlacementCode.StaticObstacleOverlap =>
+                BuildingPlacementCode.StaticObstacleOverlap,
+            StaticPlacementCode.DynamicFootprintOverlap =>
+                BuildingPlacementCode.DynamicFootprintOverlap,
+            StaticPlacementCode.InsufficientClearance =>
+                BuildingPlacementCode.InsufficientClearance,
+            StaticPlacementCode.DisconnectsNavigation =>
+                BuildingPlacementCode.DisconnectsNavigation,
+            _ => throw new ArgumentOutOfRangeException(nameof(code))
+        };
+}
+
+public enum HardFootprintCommitCode : byte
+{
+    Success,
+    StaticPlacementRejected,
+    DynamicOccupantRejected
+}
+
+public readonly record struct HardFootprintCommitResult(
+    HardFootprintCommitCode Code,
+    DynamicFootprintId FootprintId,
+    BuildingPlacementAssessment Assessment)
+{
+    public bool Succeeded => Code == HardFootprintCommitCode.Success;
+}
+
 public static class BuildingPlacementValidator
 {
-    public static BuildingPlacementResult Validate(
+    public static BuildingPlacementAssessment Evaluate(
         StaticWorld world,
         UnitStore units,
         SimRect footprint,
         BuildingPlacementRules rules,
         BuildingConnectivityGuard? connectivityGuard = null)
     {
-        if (!IsFinite(footprint.Min) || !IsFinite(footprint.Max) ||
-            footprint.Width <= 0f || footprint.Height <= 0f ||
-            !float.IsFinite(rules.UnitPadding) || rules.UnitPadding < 0f ||
-            !Enum.IsDefined(rules.MinimumPassageClass))
+        var staticResult = ValidateStatic(
+            world, footprint, rules, connectivityGuard);
+        var dynamicResult = BlocksDynamicEvaluation(staticResult.Code)
+            ? new DynamicStartValidationResult(
+                DynamicStartValidationCode.NotEvaluated, -1)
+            : ValidateDynamicStart(units, footprint, rules);
+        return new BuildingPlacementAssessment(staticResult, dynamicResult);
+    }
+
+    public static StaticPlacementResult ValidateStatic(
+        StaticWorld world,
+        SimRect footprint,
+        BuildingPlacementRules rules,
+        BuildingConnectivityGuard? connectivityGuard = null)
+    {
+        if (!ValidRequest(footprint, rules))
         {
-            return Failure(BuildingPlacementCode.InvalidFootprint);
+            return StaticFailure(StaticPlacementCode.InvalidFootprint);
         }
 
         if (!world.Bounds.Contains(footprint.Min) ||
             !world.Bounds.Contains(footprint.Max))
         {
-            return Failure(BuildingPlacementCode.OutsideWorld);
+            return StaticFailure(StaticPlacementCode.OutsideWorld);
         }
 
         var obstacles = world.Obstacles;
@@ -78,7 +189,8 @@ public static class BuildingPlacementValidator
         {
             if (OverlapsArea(footprint, obstacles[index]))
             {
-                return Failure(BuildingPlacementCode.StaticObstacleOverlap, index);
+                return StaticFailure(
+                    StaticPlacementCode.StaticObstacleOverlap, index);
             }
         }
 
@@ -87,22 +199,9 @@ public static class BuildingPlacementValidator
         {
             if (OverlapsArea(footprint, dynamicFootprints[index].Bounds))
             {
-                return Failure(
-                    BuildingPlacementCode.DynamicFootprintOverlap,
+                return StaticFailure(
+                    StaticPlacementCode.DynamicFootprintOverlap,
                     dynamicFootprints[index].Id.Value);
-            }
-        }
-
-        for (var unit = 0; unit < units.Count; unit++)
-        {
-            if (!units.Alive[unit])
-            {
-                continue;
-            }
-            if (footprint.Expanded(units.Radii[unit] + rules.UnitPadding)
-                .Contains(units.Positions[unit]))
-            {
-                return Failure(BuildingPlacementCode.UnitOverlap, unit);
             }
         }
 
@@ -110,14 +209,16 @@ public static class BuildingPlacementValidator
             rules.MinimumPassageClass).RequiredWidth;
         if (CreatesNarrowBoundaryGap(world.Bounds, footprint, requiredWidth))
         {
-            return Failure(BuildingPlacementCode.InsufficientClearance, -1);
+            return StaticFailure(
+                StaticPlacementCode.InsufficientClearance, -1);
         }
 
         for (var index = 0; index < obstacles.Length; index++)
         {
             if (CreatesNarrowGap(footprint, obstacles[index], requiredWidth))
             {
-                return Failure(BuildingPlacementCode.InsufficientClearance, index);
+                return StaticFailure(
+                    StaticPlacementCode.InsufficientClearance, index);
             }
         }
 
@@ -126,8 +227,8 @@ public static class BuildingPlacementValidator
             if (CreatesNarrowGap(
                     footprint, dynamicFootprints[index].Bounds, requiredWidth))
             {
-                return Failure(
-                    BuildingPlacementCode.InsufficientClearance,
+                return StaticFailure(
+                    StaticPlacementCode.InsufficientClearance,
                     dynamicFootprints[index].Id.Value);
             }
         }
@@ -138,14 +239,40 @@ public static class BuildingPlacementValidator
                 footprint, rules.MinimumPassageClass);
             if (!connectivity.Preserved)
             {
-                return Failure(
-                    BuildingPlacementCode.DisconnectsNavigation,
+                return StaticFailure(
+                    StaticPlacementCode.DisconnectsNavigation,
                     connectivity.FirstSplitComponentId);
             }
         }
 
-        return new BuildingPlacementResult(
-            BuildingPlacementCode.Success, default, -1);
+        return new StaticPlacementResult(StaticPlacementCode.Success, -1);
+    }
+
+    public static DynamicStartValidationResult ValidateDynamicStart(
+        UnitStore units,
+        SimRect footprint,
+        BuildingPlacementRules rules)
+    {
+        if (!ValidRequest(footprint, rules))
+        {
+            return new DynamicStartValidationResult(
+                DynamicStartValidationCode.InvalidFootprint, -1);
+        }
+
+        for (var unit = 0; unit < units.Count; unit++)
+        {
+            if (!units.Alive[unit])
+                continue;
+            if (footprint.Expanded(units.Radii[unit] + rules.UnitPadding)
+                .Contains(units.Positions[unit]))
+            {
+                return new DynamicStartValidationResult(
+                    DynamicStartValidationCode.UnitOverlap, unit);
+            }
+        }
+
+        return new DynamicStartValidationResult(
+            DynamicStartValidationCode.Success, -1);
     }
 
     private static bool CreatesNarrowBoundaryGap(
@@ -196,8 +323,22 @@ public static class BuildingPlacementValidator
     private static bool IsFinite(Vector2 value) =>
         float.IsFinite(value.X) && float.IsFinite(value.Y);
 
-    private static BuildingPlacementResult Failure(
-        BuildingPlacementCode code,
+    private static bool ValidRequest(
+        SimRect footprint,
+        BuildingPlacementRules rules) =>
+        IsFinite(footprint.Min) && IsFinite(footprint.Max) &&
+        footprint.Width > 0f && footprint.Height > 0f &&
+        float.IsFinite(rules.UnitPadding) && rules.UnitPadding >= 0f &&
+        Enum.IsDefined(rules.MinimumPassageClass);
+
+    private static bool BlocksDynamicEvaluation(StaticPlacementCode code) =>
+        code is StaticPlacementCode.InvalidFootprint or
+            StaticPlacementCode.OutsideWorld or
+            StaticPlacementCode.StaticObstacleOverlap or
+            StaticPlacementCode.DynamicFootprintOverlap;
+
+    private static StaticPlacementResult StaticFailure(
+        StaticPlacementCode code,
         int conflictId = -1) =>
-        new(code, default, conflictId);
+        new(code, conflictId);
 }

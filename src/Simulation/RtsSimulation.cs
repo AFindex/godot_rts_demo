@@ -581,16 +581,34 @@ public sealed class RtsSimulation : ICombatMovementDriver
         SimRect footprint,
         BuildingPlacementRules rules)
     {
-        var validation = BuildingPlacementValidator.Validate(
+        var commit = TryCommitHardFootprint(footprint, rules);
+        return commit.Assessment.ToPlacementResult(commit.FootprintId);
+    }
+
+    public BuildingPlacementAssessment AssessBuildingPlacement(
+        SimRect footprint,
+        BuildingPlacementRules rules) =>
+        BuildingPlacementValidator.Evaluate(
             World, Units, footprint, rules, _buildingConnectivityGuard);
-        if (!validation.Succeeded)
+
+    public HardFootprintCommitResult TryCommitHardFootprint(
+        SimRect footprint,
+        BuildingPlacementRules rules)
+    {
+        var assessment = AssessBuildingPlacement(footprint, rules);
+        if (!assessment.Succeeded)
         {
-            return validation;
+            return new HardFootprintCommitResult(
+                assessment.Code == BuildingPlacementCode.UnitOverlap
+                    ? HardFootprintCommitCode.DynamicOccupantRejected
+                    : HardFootprintCommitCode.StaticPlacementRejected,
+                default,
+                assessment);
         }
 
         var id = PlaceBuilding(footprint);
-        return new BuildingPlacementResult(
-            BuildingPlacementCode.Success, id, -1);
+        return new HardFootprintCommitResult(
+            HardFootprintCommitCode.Success, id, assessment);
     }
 
     public BuildingPlacementResult TryPlaceBuilding(
@@ -917,7 +935,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var halfSize = placementProfile.Size * 0.5f;
         var footprint = new SimRect(
             resolvedCenter - halfSize, resolvedCenter + halfSize);
-        var placement = BuildingPlacementValidator.Validate(
+        var placement = BuildingPlacementValidator.Evaluate(
             World, Units, footprint,
             new BuildingPlacementRules(
                 placementProfile.MinimumPassageClass,

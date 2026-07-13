@@ -137,7 +137,7 @@ flowchart TD
 
 输出合同：新增 `docs/SC2_EXPERIMENT_RESULTS.md`。未知项保留 `Unknown`，禁止用“看起来像”替代结论。录像不是本项目自动测试视频，可以独立归档，不强迫进入每次全量录制。
 
-### C0：拆开放置校验，保持现有行为
+### C0：拆开放置校验，保持现有行为（已完成）
 
 目标：先重构语义，不改变玩家能观察到的结果。
 
@@ -153,6 +153,8 @@ flowchart TD
 不允许修改：施工生命周期、扣费时点、导航行为、UI 表现。
 
 收口门禁：现有全部测试行为不变；小/中/大/Huge、资源节点、边界、静态/动态建筑重叠、clearance 与 Connectivity Guard 均有独立结果码回归。
+
+完成结果（2026-07-13）：新增 `StaticPlacementResult`、`DynamicStartValidationResult`、`BuildingPlacementAssessment` 和 `HardFootprintCommitResult`。静态层独立负责请求合法性、边界、静态障碍、既有结构、clearance 与 Connectivity Guard；动态层只负责活单位占位；Hard Commit 在同一模拟调用中重新组合评估，通过后才创建 Dynamic Footprint。组合器保留旧优先级：早期结构失败优先于单位，单位优先于窄缝/连通性。`building-placement-rules` 通过稳定测试门面分别验证 Invalid、Outside、Static/Dynamic Footprint、UnitOverlap、InsufficientClearance 和成功提交，最终仍只创建两座合法建筑；施工、Preview、导航失效和 UI 可观察行为不变。未新增权威未来态，因此本包不升级 Replay/Hot/Hash。
 
 ### C1：引入 Reservation 与 Ghost
 

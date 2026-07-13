@@ -1179,6 +1179,18 @@ H3 提供后续复杂玩法的集成基线。新单位、技能、科技或 AI P
 
 M0 已收口，不继续调整采矿 Steering。下一项按 [SC2 对齐实施计划](SC2_ALIGNMENT_PLAN.md) 进入 `C0`：把静态 Placement、动态开工占位校验与 Hard Footprint Commit 拆成独立合同，同时保持当前玩家可观察行为不变。
 
+### AZ：C0 建筑放置校验分层（已完成）
+
+- `BuildingPlacementValidator` 不再用单次 `Validate` 混合全部语义；新增 `StaticPlacementResult`、`DynamicStartValidationResult` 和 `BuildingPlacementAssessment`，静态层负责请求合法性、世界边界、静态障碍、既有建筑、clearance 与 Connectivity Guard，动态层只负责活单位占位。
+- 新增 `HardFootprintCommitResult` 与 `RtsSimulation.TryCommitHardFootprint`：Hard Commit 在同一权威调用中重新评估分层结果，成功后才原子创建 Dynamic Footprint、触发导航失效和回放世界变更。
+- 保留旧组合错误优先级：Invalid/Outside/StaticObstacle/DynamicFootprint 等早期静态失败先返回；随后是 UnitOverlap；最后才是 InsufficientClearance/DisconnectsNavigation。现有 Preview、TryPlaceBuilding、IssueConstruction 的对外结果码和时序不变。
+- 稳定 `MovementTestRig` 新增分层评估与 Hard Commit 快照，不暴露 UnitStore、DynamicOccupancyGrid 或 Validator 内部；`building-placement-rules` 独立验证成功、非法尺寸、越界、静态障碍、既有结构、单位占位和窄缝，并保持最终仅两座合法建筑。
+- 本包没有新增权威未来态，不升级 Replay Package、Runtime Hot Snapshot 或 State Hash；Reservation 生命周期留给 C1/C4。
+- Release/Debug 构建 0 错误、0 警告；102/102 全量黑盒回归通过。Release 移动 256/512/1000 单位 P95 为 1.406/3.789/8.168ms，战斗 128/256 单位 P95 为 0.778/2.245ms，全部通过预算。
+- 更新 AV1/WebM 位于 `test_videos/20260713_114013/`：1280×720、182 帧、CRF 32、preset 8；全仓录像校验通过 134 个视频、78 个 manifest、133 个场景引用，编码均为 AV1。
+
+C0 已收口，下一项进入 `C1` Construction Reservation/Ghost：接受建造命令后保存施工意图和扣费，但 Builder 到达前不再创建硬 Pathing Footprint。C1 必须和 C4 的最小持久化骨架连续推进，不能把只存在内存中的 Reservation 合入主线。
+
 ## 8. 可以并行但不能提前耦合的优化
 
 - Steering 预计算候选方向。

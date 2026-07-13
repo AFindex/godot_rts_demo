@@ -3335,57 +3335,99 @@ public static class VisualTestCatalog
     {
         var rig = MovementTestRig.CreateClearanceChoiceMap(8);
         var unit = rig.Spawn(new Vector2(1000f, 600f));
-        var anchor = rig.TryPlaceBuilding(
+        var anchor = rig.TryCommitHardFootprint(
             new Vector2(300f, 350f),
             TestBuildingFootprintClass.Medium,
             TestMovementClass.Large);
-        var dynamicOverlap = rig.TryPlaceBuilding(
+        var dynamicOverlap = rig.TryCommitHardFootprint(
             new Vector2(300f, 350f),
             TestBuildingFootprintClass.Small,
             TestMovementClass.Large);
-        var staticOverlap = rig.TryPlaceBuilding(
+        var staticOverlap = rig.TryCommitHardFootprint(
             new Vector2(600f, 350f),
             TestBuildingFootprintClass.Small,
             TestMovementClass.Large);
-        var outside = rig.TryPlaceBuilding(
+        var outside = rig.TryCommitHardFootprint(
             new Vector2(5f, 100f),
             TestBuildingFootprintClass.Small,
             TestMovementClass.Large);
-        var unitOverlap = rig.TryPlaceBuilding(
+        var unitOverlap = rig.TryCommitHardFootprint(
             new Vector2(1000f, 600f),
             TestBuildingFootprintClass.Small,
             TestMovementClass.Large);
-        var narrowGap = rig.TryPlaceBuilding(
+        var narrowGap = rig.TryCommitHardFootprint(
             new Vector2(36f, 100f),
             TestBuildingFootprintClass.Small,
             TestMovementClass.Large);
-        var flushWall = rig.TryPlaceBuilding(
+        var flushWall = rig.TryCommitHardFootprint(
             new Vector2(16f, 100f),
             TestBuildingFootprintClass.Small,
             TestMovementClass.Large);
+        var invalid = rig.TryCommitHardFootprint(
+            new Vector2(800f, 100f),
+            new Vector2(float.NaN, 32f),
+            TestMovementClass.Large);
         return new VisualTestSession(
             "building-placement-rules",
-            "Business placement rejects overlap, occupancy and fake gaps",
+            "Static placement, dynamic start validation and hard commit layers",
             360,
             rig,
             [unit],
             runtime =>
             {
-                var codesCorrect = anchor.Succeeded && flushWall.Succeeded &&
+                var acceptedLayers = anchor.Succeeded && flushWall.Succeeded &&
+                    anchor.Assessment.StaticCode == TestStaticPlacementCode.Success &&
+                    anchor.Assessment.DynamicCode ==
+                        TestDynamicStartValidationCode.Success &&
+                    flushWall.Assessment.Succeeded;
+                var earlyStaticLayers =
                     dynamicOverlap.Code ==
-                        TestBuildingPlacementCode.DynamicFootprintOverlap &&
-                    staticOverlap.Code ==
-                        TestBuildingPlacementCode.StaticObstacleOverlap &&
-                    outside.Code == TestBuildingPlacementCode.OutsideWorld &&
-                    unitOverlap.Code == TestBuildingPlacementCode.UnitOverlap &&
+                        TestHardFootprintCommitCode.StaticPlacementRejected &&
+                    dynamicOverlap.Assessment.StaticCode ==
+                        TestStaticPlacementCode.DynamicFootprintOverlap &&
+                    dynamicOverlap.Assessment.DynamicCode ==
+                        TestDynamicStartValidationCode.NotEvaluated &&
+                    staticOverlap.Assessment.StaticCode ==
+                        TestStaticPlacementCode.StaticObstacleOverlap &&
+                    staticOverlap.Assessment.DynamicCode ==
+                        TestDynamicStartValidationCode.NotEvaluated &&
+                    outside.Assessment.StaticCode ==
+                        TestStaticPlacementCode.OutsideWorld &&
+                    outside.Assessment.DynamicCode ==
+                        TestDynamicStartValidationCode.NotEvaluated &&
+                    invalid.Assessment.StaticCode ==
+                        TestStaticPlacementCode.InvalidFootprint &&
+                    invalid.Assessment.DynamicCode ==
+                        TestDynamicStartValidationCode.NotEvaluated;
+                var dynamicLayer =
+                    unitOverlap.Code ==
+                        TestHardFootprintCommitCode.DynamicOccupantRejected &&
+                    unitOverlap.Assessment.StaticCode ==
+                        TestStaticPlacementCode.Success &&
+                    unitOverlap.Assessment.DynamicCode ==
+                        TestDynamicStartValidationCode.UnitOverlap &&
+                    unitOverlap.Assessment.CombinedCode ==
+                        TestBuildingPlacementCode.UnitOverlap;
+                var lateStaticLayer =
                     narrowGap.Code ==
+                        TestHardFootprintCommitCode.StaticPlacementRejected &&
+                    narrowGap.Assessment.StaticCode ==
+                        TestStaticPlacementCode.InsufficientClearance &&
+                    narrowGap.Assessment.DynamicCode ==
+                        TestDynamicStartValidationCode.Success &&
+                    narrowGap.Assessment.CombinedCode ==
                         TestBuildingPlacementCode.InsufficientClearance;
+                var codesCorrect = acceptedLayers && earlyStaticLayers &&
+                    dynamicLayer && lateStaticLayer;
                 return new ScenarioResult(
                     codesCorrect && runtime.BuildingCount == 2,
-                    $"anchor={anchor.Code}, dynamic={dynamicOverlap.Code}, " +
-                    $"static={staticOverlap.Code}, outside={outside.Code}, " +
-                    $"unit={unitOverlap.Code}, gap={narrowGap.Code}, " +
-                    $"flush={flushWall.Code}, buildings={runtime.BuildingCount}");
+                    $"accepted={acceptedLayers}, early-static={earlyStaticLayers}, " +
+                    $"dynamic={dynamicLayer}, late-static={lateStaticLayer}, " +
+                    $"codes={dynamicOverlap.Assessment.CombinedCode}/" +
+                    $"{staticOverlap.Assessment.CombinedCode}/" +
+                    $"{unitOverlap.Assessment.CombinedCode}/" +
+                    $"{narrowGap.Assessment.CombinedCode}, " +
+                    $"buildings={runtime.BuildingCount}");
             });
     }
 
