@@ -45,7 +45,7 @@ internal sealed class SimulationRuntimeStateCapture
 /// </summary>
 public sealed class SimulationHotSnapshot
 {
-    public const int CurrentFormatVersion = 24;
+    public const int CurrentFormatVersion = 25;
 
     internal SimulationHotSnapshot(
         ulong packageHash,

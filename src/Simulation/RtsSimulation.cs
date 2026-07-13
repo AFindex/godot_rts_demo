@@ -846,6 +846,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         _economyCommandRecorder?.RecordGather(
             Metrics.Tick, issuingPlayerId, unit, nodeId.Value);
+        ClearConstructionEvacuation(unit);
         CommandQueues.ClearPending(unit);
         CommandQueues.HasActiveOrders[unit] = false;
         Span<int> gatheringWorker = stackalloc int[1];
@@ -903,6 +904,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
         _economyCommandRecorder?.RecordReturnCargo(
             Metrics.Tick, issuingPlayerId, unit);
+        ClearConstructionEvacuation(unit);
         CommandQueues.ClearPending(unit);
         CommandQueues.HasActiveOrders[unit] = false;
         Span<int> worker = stackalloc int[1];
@@ -1035,6 +1037,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
 
         Economy.Cancel([builderUnit]);
+        ClearConstructionEvacuation(builderUnit);
         CommandQueues.ClearPending(builderUnit);
         CommandQueues.HasActiveOrders[builderUnit] = false;
         var accessPoint = ResolveConstructionAccessPoint(
@@ -1170,6 +1173,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Economy.Cancel(builder);
         if (replaceUnitOrders)
         {
+            ClearConstructionEvacuation(builderUnit);
             CommandQueues.ClearPending(builderUnit);
             CommandQueues.HasActiveOrders[builderUnit] = false;
         }
@@ -1662,6 +1666,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             ValidateUnitIndex(unitIndices[index]);
             ValidateLivingUnit(unitIndices[index]);
+            if (!_issuingSystemOrder &&
+                (!queued || order.Kind is UnitOrderKind.Stop or UnitOrderKind.Hold))
+            {
+                ClearConstructionEvacuation(unitIndices[index]);
+            }
         }
         if (recordCommand)
             _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
@@ -2274,6 +2283,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _pendingNavigationInvalidations = 0;
 
         var phaseStart = Stopwatch.GetTimestamp();
+        UpdateConstructionEvacuations();
         Construction.Update(
             delta,
             Units,
@@ -3560,7 +3570,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var readyCount = 0;
         for (var unit = 0; unit < Units.Count; unit++)
         {
-            if (!Units.Alive[unit] || !IsActiveOrderComplete(unit))
+            if (!Units.Alive[unit] ||
+                CommandQueues.ConstructionEvacuationActive[unit] ||
+                !IsActiveOrderComplete(unit))
             {
                 continue;
             }
@@ -3990,41 +4002,166 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private void EvacuateConstructionStartOccupant(
         int playerId,
         int builderUnit,
+        GameplayBuildingId buildingId,
         SimRect footprint,
         BuildingPlacementRules rules,
         int occupantUnit)
     {
         if ((uint)occupantUnit >= (uint)Units.Count ||
-            !Units.Alive[occupantUnit] || occupantUnit == builderUnit ||
-            Combat.Teams[occupantUnit] != playerId ||
-            Construction.IsAssignedBuilder(occupantUnit))
+            !Units.Alive[occupantUnit])
+        {
+            return;
+        }
+
+        Span<ConstructionBlocker> blockers = stackalloc ConstructionBlocker[
+            ConstructionEvictionPlanner.MaximumBlockers];
+        var blockerCount = 0;
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] || unit == builderUnit ||
+                !footprint.Expanded(Units.Radii[unit] + rules.UnitPadding)
+                    .Contains(Units.Positions[unit]))
+            {
+                continue;
+            }
+            if (blockerCount == blockers.Length)
+                return;
+            blockers[blockerCount++] = new ConstructionBlocker(
+                unit,
+                ClassifyConstructionBlocker(
+                    unit, playerId, buildingId));
+        }
+
+        var allAlreadyEvacuating = blockerCount > 0;
+        for (var index = 0; index < blockerCount; index++)
+        {
+            var unit = blockers[index].Unit;
+            allAlreadyEvacuating &=
+                CommandQueues.ConstructionEvacuationActive[unit] &&
+                CommandQueues.ConstructionEvacuationBuildings[unit] ==
+                    buildingId.Value;
+        }
+        if (allAlreadyEvacuating)
             return;
 
-        if (!ConstructionStartEvacuation.TryFindExit(
+        var plan = ConstructionEvictionPlanner.Plan(
                 World,
+                Units,
                 footprint,
-                Units.Positions[occupantUnit],
-                Units.Radii[occupantUnit],
                 rules.UnitPadding,
-                out var exit))
+                blockers[..blockerCount],
+                ConstructionBlockerPolicy.ProjectDefault);
+        if (!plan.CanIssue)
+        {
             return;
-        if (Vector2.DistanceSquared(Units.MoveGoals[occupantUnit], exit) <= 1f &&
-            Units.Modes[occupantUnit] is not UnitMoveMode.Idle)
-            return;
+        }
 
-        Span<int> occupant = stackalloc int[1];
-        occupant[0] = occupantUnit;
-        if (Economy.IsWorker(occupantUnit))
-            Economy.Cancel(occupant);
-        _issuingSystemOrder = true;
-        try
+        for (var index = 0; index < plan.Assignments.Length; index++)
         {
-            IssueMove(occupant, exit);
+            var assignment = plan.Assignments[index];
+            if (CommandQueues.ConstructionEvacuationActive[assignment.Unit] &&
+                CommandQueues.ConstructionEvacuationBuildings[assignment.Unit] ==
+                    buildingId.Value &&
+                Vector2.DistanceSquared(
+                    CommandQueues.ConstructionEvacuationTargets[assignment.Unit],
+                    assignment.Target) <= 1f)
+            {
+                continue;
+            }
+            CommandQueues.ConstructionEvacuationActive[assignment.Unit] = true;
+            CommandQueues.ConstructionEvacuationBuildings[assignment.Unit] =
+                buildingId.Value;
+            CommandQueues.ConstructionEvacuationTargets[assignment.Unit] =
+                assignment.Target;
+            CommandQueues.ConstructionEvacuationFootprints[assignment.Unit] =
+                footprint;
+            SetCombatDestination(assignment.Unit, assignment.Target);
         }
-        finally
+    }
+
+    private ConstructionBlockerKind ClassifyConstructionBlocker(
+        int unit,
+        int playerId,
+        GameplayBuildingId buildingId)
+    {
+        if (Combat.Teams[unit] != playerId)
+            return ConstructionBlockerKind.AuthorityEnemy;
+        if (Construction.IsAssignedBuilder(unit))
+            return ConstructionBlockerKind.FriendlyAssignedBuilder;
+        if (CommandQueues.ConstructionEvacuationActive[unit] &&
+            CommandQueues.ConstructionEvacuationBuildings[unit] !=
+                buildingId.Value)
         {
-            _issuingSystemOrder = false;
+            return ConstructionBlockerKind.FriendlyOtherOrder;
         }
+        if (Economy.IsWorker(unit))
+        {
+            var state = Economy.Worker(unit).State;
+            if (state is not WorkerEconomyState.None and
+                not WorkerEconomyState.Idle)
+            {
+                return ConstructionBlockerKind.FriendlyEconomyTask;
+            }
+        }
+        if (Units.Modes[unit] == UnitMoveMode.Hold)
+            return ConstructionBlockerKind.FriendlyHold;
+        if (!CommandQueues.HasActiveOrders[unit] ||
+            CommandQueues.ActiveKinds[unit] is
+                UnitOrderKind.Move or UnitOrderKind.Stop)
+        {
+            return ConstructionBlockerKind.MovableFriendly;
+        }
+        return ConstructionBlockerKind.FriendlyOtherOrder;
+    }
+
+    private void UpdateConstructionEvacuations()
+    {
+        Span<int> single = stackalloc int[1];
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!CommandQueues.ConstructionEvacuationActive[unit])
+                continue;
+            if (!Units.Alive[unit])
+            {
+                ClearConstructionEvacuation(unit);
+                continue;
+            }
+            var buildingId = new GameplayBuildingId(
+                CommandQueues.ConstructionEvacuationBuildings[unit]);
+            var pending = Construction.IsAlive(buildingId) &&
+                          Construction.Observe(buildingId).State is
+                              BuildingLifecycleState.ReservedApproach or
+                              BuildingLifecycleState.BlockedAtStart;
+            if (pending)
+            {
+                var target =
+                    CommandQueues.ConstructionEvacuationTargets[unit];
+                if (Vector2.DistanceSquared(Units.MoveGoals[unit], target) > 1f)
+                    SetCombatDestination(unit, target);
+                continue;
+            }
+
+            ClearConstructionEvacuation(unit);
+            single[0] = unit;
+            if (CommandQueues.HasActiveOrders[unit] &&
+                CommandQueues.ActiveKinds[unit] == UnitOrderKind.Move)
+            {
+                SetCombatDestination(
+                    unit, CommandQueues.ActivePositions[unit]);
+            }
+            else
+            {
+                ExecuteStop(single);
+            }
+        }
+    }
+
+    private void ClearConstructionEvacuation(int unit)
+    {
+        CommandQueues.ConstructionEvacuationActive[unit] = false;
+        CommandQueues.ConstructionEvacuationBuildings[unit] = -1;
+        CommandQueues.ConstructionEvacuationTargets[unit] = Vector2.Zero;
+        CommandQueues.ConstructionEvacuationFootprints[unit] = default;
     }
 
 

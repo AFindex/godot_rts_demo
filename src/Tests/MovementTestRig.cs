@@ -483,7 +483,10 @@ public readonly record struct TestOrderSnapshot(
     int CompletedQueuedOrders,
     int QueueOverflows,
     int ActiveTargetBuilding,
-    int ActiveTargetUnit);
+    int ActiveTargetUnit,
+    bool ConstructionEvacuationActive,
+    int ConstructionEvacuationBuilding,
+    Vector2 ConstructionEvacuationTarget);
 
 public sealed class TestCommandLog
 {
@@ -3202,7 +3205,10 @@ public sealed partial class MovementTestRig
             _simulation.CommandQueues.CompletedQueuedOrders[index],
             _simulation.CommandQueues.QueueOverflowCounts[index],
             _simulation.CommandQueues.ActiveTargetBuildings[index],
-            _simulation.CommandQueues.ActiveTargetUnits[index]);
+            _simulation.CommandQueues.ActiveTargetUnits[index],
+            _simulation.CommandQueues.ConstructionEvacuationActive[index],
+            _simulation.CommandQueues.ConstructionEvacuationBuildings[index],
+            _simulation.CommandQueues.ConstructionEvacuationTargets[index]);
     }
 
     public TestUnitSnapshot[] Observe(IReadOnlyList<TestUnitId> units)

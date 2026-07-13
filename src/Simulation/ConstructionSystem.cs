@@ -381,7 +381,7 @@ public sealed class ConstructionSystem
         Func<ConstructionReservationId, SimRect, BuildingPlacementRules,
             HardFootprintCommitResult>
             commitHardFootprint,
-        Action<int, int, SimRect, BuildingPlacementRules, int>
+        Action<int, int, GameplayBuildingId, SimRect, BuildingPlacementRules, int>
             evacuateStartOccupant)
     {
         for (var index = 0; index < _buildings.Count; index++)
@@ -442,6 +442,7 @@ public sealed class ConstructionSystem
                         evacuateStartOccupant(
                             building.PlayerId,
                             building.BuilderUnit,
+                            building.Id,
                             building.Bounds,
                             new BuildingPlacementRules(
                                 placement.MinimumPassageClass,

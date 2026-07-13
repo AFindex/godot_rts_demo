@@ -87,6 +87,7 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 - `BuildTargetPreviewSnapshot` 只向 Overlay 提供 bounds、builder、resource、CanPlace 和稳定状态；Overlay 绿色显示 Success，红色显示具体 Construction/Placement Code。
 - 左键只在最新正式预览通过时调用 `IssueConstruction`；失败保留目标模式以便改位置。普通成功退出；Shift 成功创建软 Reservation 并保持目标模式，可继续摆放下一座。右键/Escape 始终无副作用取消。
 - Shift Build 接受时预扣资源并保存完整解析后 Profile，但未轮到的 Reservation 不创建 Hard Footprint。执行时重新验证静态放置；失效项全退并继续，动态友军仍走既有确定性撤离；玩家主动取消保持 75% 退款。
+- 施工多单位让位使用独立系统临时覆盖层：Idle/Stop/Move 友军可被分配到唯一外沿槽，但其活动 Move 和 Shift 队列不被改写；Hard Commit 后继续原订单。Hold、采集、其他施工者/订单和敌军在 E0 证据冻结前保持等待。
 - 施工和经济系统派生的 Stop 不会清空玩家 Shift 队列。Builder 死亡时，已经轮到的可续建 Reservation 保持 `WaitingForBuilder`，其未开始未来项全退并取消。
 
 ### 同类型多建筑生产
@@ -123,6 +124,7 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `operation-target-command-mode`：两段 Shift Move、右键取消、Ground Rally、Attack Move 全部通过稳定测试 Facade，目标模式保持/退出状态正确且 3/3 单位到达。
 - `operation-build-placement-mode`：静态障碍返回 `StaticObstacleOverlap`、不修改世界并保持目标模式；合法预览选择最近 worker 1，提交后 Supply Depot 完成。
 - `construction-queued-builds`：八次 Shift Build 覆盖三种尺寸、预扣、软 Reservation、晚期静态失效、动态撤离、75% 取消、Builder 死亡、继续回矿、Replay 与热恢复。
+- `construction-multi-unit-eviction`：四档建筑覆盖 1/8/8/32 友军唯一分槽、Hold 保守等待、Move/Shift 队列保留，以及活动撤离期间的 Replay/Hot 精确恢复。
 - `operation-production-group-batch`：3 座 Barracks 两次批量 Train 得到 6 个订单；每建筑取消最新订单后剩 3 个，最终出生 3 个 Marine。
 
 ## 当前收口

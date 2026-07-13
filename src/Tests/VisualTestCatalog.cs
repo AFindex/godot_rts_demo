@@ -93,6 +93,7 @@ public static class VisualTestCatalog
         "ai-continuous-encounter",
         "construction-gameplay-buildings",
         "construction-reservation-hard-commit",
+        "construction-multi-unit-eviction",
         "construction-queued-builds",
         "construction-under-build-defense",
         "building-type-resource-runtime",
@@ -265,6 +266,8 @@ public static class VisualTestCatalog
         "construction-reservation-hard-commit" =>
             CreateConstructionReservationHardCommit(
                 navigationMap, gameplayProfiles, clearanceBake),
+        "construction-multi-unit-eviction" =>
+            CreateConstructionMultiUnitEviction(gameplayProfiles),
         "construction-queued-builds" => CreateConstructionQueuedBuilds(
             navigationMap, gameplayProfiles, clearanceBake),
         "construction-under-build-defense" =>
@@ -6763,9 +6766,9 @@ public static class VisualTestCatalog
                                           last.ReservationId > 0 &&
                                           last.FootprintId.Value == 0;
         });
-        session.At(65, "Hold the dynamic occupant inside the future footprint", runtime =>
+        session.At(65, "Settle the movable occupant inside the future footprint", runtime =>
         {
-            runtime.Hold([dynamicBlocker]);
+            runtime.Stop([dynamicBlocker]);
             var blocker = runtime.Observe(dynamicBlocker).Position;
             dynamicEntered = MathF.Abs(blocker.X - mainCenters[2].X) <=
                                  commandCenter.Size.X * 0.5f &&
@@ -6800,6 +6803,343 @@ public static class VisualTestCatalog
             });
         }
         return session;
+    }
+
+    private static VisualTestSession CreateConstructionMultiUnitEviction(
+        GameplayProfileCatalogSnapshot? gameplayProfiles)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var created = NavigationMapSnapshot.TryCreate(
+            NavigationMapSnapshot.CurrentFormatVersion,
+            new SimRect(Vector2.Zero, new Vector2(1500f, 900f)),
+            [], [], [], [],
+            out var navigation,
+            out var navigationValidation);
+        if (!created || navigation is null)
+        {
+            throw new InvalidOperationException(
+                $"Construction eviction map is invalid: " +
+                $"{navigationValidation.FirstError}.");
+        }
+
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            128, navigation, gameplayProfiles, clearanceBake: null);
+        rig.RegisterPlayer(1, 20000, 5000, 120, 0);
+        var profiles = new[]
+        {
+            DemoBuildingTypes.SupplyDepot with { BuildSeconds = 0.5f },
+            DemoBuildingTypes.SupplyDepot with
+            {
+                Id = 100,
+                Name = "Medium Eviction Test",
+                Size = new Vector2(72f, 64f),
+                BuildSeconds = 0.5f
+            },
+            DemoBuildingTypes.Barracks with { BuildSeconds = 0.5f },
+            DemoBuildingTypes.CommandCenter with { BuildSeconds = 0.5f }
+        };
+        Vector2[] centers =
+        [
+            new(150f, 220f),
+            new(450f, 220f),
+            new(800f, 220f),
+            new(1240f, 240f)
+        ];
+        int[] blockerCounts = [1, 8, 8, 32];
+        var builders = centers.Select(center => rig.SpawnWorker(
+            center + new Vector2(0f, 390f),
+            1,
+            maximumSpeed: 105f)).ToArray();
+        var blockerProfile = TestCombatProfile.Standard with
+        {
+            MaximumHealth = 10000f,
+            AttackDamage = 0f,
+            AttackRange = 0f,
+            AcquisitionRange = 0f
+        };
+        var blockersByBuilding = new TestUnitId[centers.Length][];
+        var targetsByBuilding = new Vector2[centers.Length][];
+        for (var group = 0; group < centers.Length; group++)
+        {
+            var targets = CreateConstructionOccupantGrid(
+                centers[group], profiles[group].Size, blockerCounts[group]);
+            targetsByBuilding[group] = targets;
+            blockersByBuilding[group] = targets.Select((target, index) =>
+                rig.SpawnCombat(
+                    target + new Vector2(0f, 180f),
+                    1,
+                    blockerProfile,
+                    radius: 4f,
+                    maximumSpeed: 260f,
+                    acceleration: 1200f)).ToArray();
+        }
+
+        var holdCenter = new Vector2(500f, 700f);
+        var holdBuilder = rig.SpawnWorker(
+            holdCenter + new Vector2(230f, 0f),
+            1,
+            maximumSpeed: 100f);
+        var holdBlocker = rig.SpawnCombat(
+            holdCenter + new Vector2(0f, 120f),
+            1,
+            blockerProfile,
+            radius: 5f,
+            maximumSpeed: 220f,
+            acceleration: 1000f);
+        var holdProfile = profiles[1] with
+        {
+            Id = 101,
+            Name = "Conservative Hold Test"
+        };
+        rig.StartReplayPackageRecording();
+
+        var buildings = new TestConstructionResult[centers.Length];
+        var holdBuilding = default(TestConstructionResult);
+        var issued = false;
+        var maximumEvacuations = new int[centers.Length];
+        var insideAtResume = new int[centers.Length];
+        var holdWaited = false;
+        var moveOrderInjected = false;
+        var moveOrderPreserved = false;
+        var moveOrderResumed = false;
+        var mover = blockersByBuilding[2][0];
+        var moverFinal = new Vector2(1040f, 520f);
+        TestRuntimeStateCapture? hotCapture = null;
+        long hotTick = -1;
+
+        var session = new VisualTestSession(
+                "construction-multi-unit-eviction",
+                "Stable 1/8/32 occupant evacuation with conservative Hold policy",
+                760,
+                rig,
+                [.. builders,
+                    .. blockersByBuilding.SelectMany(value => value),
+                    holdBuilder, holdBlocker],
+                runtime =>
+                {
+                    var package = runtime.CaptureReplayPackage();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(
+                        out var decoded);
+                    var replay = packageRoundTrip
+                        ? runtime.ReplayPackage(decoded!, runtime.Tick)
+                        : null;
+                    var replayExact = replay is not null &&
+                                      replay.FinalHash == runtime.StateHash;
+                    var hotExact = false;
+                    var hotFinal = false;
+                    var hotTrace = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotFinal = resumed.FinalHash == runtime.StateHash;
+                            hotTrace = replay is not null &&
+                                       replay.MatchesFrom(resumed, hotTick + 1);
+                            hotExact = hotFinal && hotTrace;
+                        }
+                    }
+
+                    var completed = buildings.All(value =>
+                        value.Succeeded &&
+                        runtime.ObserveGameplayBuilding(value.BuildingId).State ==
+                            TestBuildingLifecycleState.Completed) &&
+                        holdBuilding.Succeeded &&
+                        runtime.ObserveGameplayBuilding(
+                            holdBuilding.BuildingId).State ==
+                            TestBuildingLifecycleState.Completed;
+                    var exactCounts =
+                        maximumEvacuations[0] == 1 &&
+                        maximumEvacuations[1] == 8 &&
+                        maximumEvacuations[2] == 8 &&
+                        maximumEvacuations[3] == 32;
+                    var moverOrder = runtime.ObserveOrders(mover);
+                    moveOrderResumed |=
+                        !moverOrder.ConstructionEvacuationActive &&
+                        moverOrder.CompletedQueuedOrders >= 1 &&
+                        Vector2.Distance(
+                            runtime.Observe(mover).Position, moverFinal) < 28f;
+                    var passed = issued && completed && exactCounts &&
+                                 holdWaited && moveOrderInjected &&
+                                 moveOrderPreserved && moveOrderResumed &&
+                                 packageRoundTrip && replayExact && hotExact &&
+                                 package.FormatVersion ==
+                                     SimulationReplayPackageSnapshot
+                                         .CurrentFormatVersion &&
+                                 hotVersion ==
+                                     SimulationHotSnapshot.CurrentFormatVersion;
+                    return new ScenarioResult(
+                        passed,
+                        $"build={issued}/{completed}, " +
+                        $"states={string.Join('/', buildings.Select(value => runtime.ObserveGameplayBuilding(value.BuildingId).State))}/" +
+                        $"{runtime.ObserveGameplayBuilding(holdBuilding.BuildingId).State}, " +
+                        $"inside={string.Join('/', insideAtResume)}, " +
+                        $"evacuations={string.Join('/', maximumEvacuations)}, " +
+                        $"hold={holdWaited}, " +
+                        $"orders={moveOrderInjected}/{moveOrderPreserved}/" +
+                        $"{moveOrderResumed}, replay={replayExact}, " +
+                        $"hot={hotExact}/{hotFinal}/{hotTrace}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(740f, 300f), 0.68f)
+            .CameraKeyframe(250, new Vector2(730f, 240f), 0.78f)
+            .CameraKeyframe(450, new Vector2(500f, 650f), 1.02f)
+            .CameraKeyframe(600, new Vector2(1030f, 350f), 0.76f)
+            .CameraKeyframe(755, new Vector2(740f, 420f), 0.7f)
+            .Highlight(
+                new SimRect(new Vector2(80f, 120f), new Vector2(1400f, 350f)),
+                "1 / 8 / 8 / 32 FRIENDLY OCCUPANTS -> UNIQUE EXIT SLOTS",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(380f, 600f), new Vector2(620f, 800f)),
+                "HOLD WAITS UNTIL PLAYER RELEASES IT",
+                TestDiagnosticKind.Info);
+
+        session.At(1, "Accept four footprint sizes before occupants enter", runtime =>
+        {
+            issued = true;
+            for (var index = 0; index < buildings.Length; index++)
+            {
+                buildings[index] = runtime.Build(
+                    1, builders[index], profiles[index], centers[index]);
+                issued &= buildings[index].Succeeded;
+            }
+            holdBuilding = runtime.Build(
+                1, holdBuilder, holdProfile, holdCenter);
+            issued &= holdBuilding.Succeeded;
+            runtime.Hold(builders);
+            runtime.Hold([holdBuilder]);
+        });
+        session.At(20, "Move late friendly occupants into reserved footprints", runtime =>
+        {
+            for (var group = 0; group < blockersByBuilding.Length; group++)
+            {
+                for (var index = 0;
+                     index < blockersByBuilding[group].Length;
+                     index++)
+                {
+                    runtime.Move(
+                        [blockersByBuilding[group][index]],
+                        targetsByBuilding[group][index]);
+                }
+            }
+            runtime.Move([holdBlocker], holdCenter);
+        });
+        session.At(150, "Settle ordinary occupants and preserve one Hold blocker", runtime =>
+        {
+            foreach (var group in blockersByBuilding)
+                runtime.Stop(group);
+            runtime.Hold([holdBlocker]);
+        });
+        session.At(180, "Resume builders only after late occupants have settled", runtime =>
+        {
+            for (var index = 0; index < buildings.Length; index++)
+            {
+                var bounds = new SimRect(
+                    centers[index] - profiles[index].Size * 0.5f,
+                    centers[index] + profiles[index].Size * 0.5f);
+                insideAtResume[index] = blockersByBuilding[index].Count(unit =>
+                    bounds.Contains(runtime.Observe(unit).Position));
+                issued &= runtime.ResumeConstruction(
+                    1, buildings[index].BuildingId, builders[index]);
+            }
+            issued &= runtime.ResumeConstruction(
+                1, holdBuilding.BuildingId, holdBuilder);
+        });
+        for (var tick = 180; tick <= 560; tick++)
+        {
+            session.At(tick, "Observe policy-driven evacuation without internals", runtime =>
+            {
+                for (var group = 0; group < buildings.Length; group++)
+                {
+                    if (!buildings[group].Succeeded)
+                        continue;
+                    var active = blockersByBuilding[group].Count(unit =>
+                    {
+                        var order = runtime.ObserveOrders(unit);
+                        return order.ConstructionEvacuationActive &&
+                               order.ConstructionEvacuationBuilding ==
+                                   buildings[group].BuildingId.Value;
+                    });
+                    maximumEvacuations[group] = Math.Max(
+                        maximumEvacuations[group], active);
+                }
+
+                if (holdBuilding.Succeeded &&
+                    runtime.ObserveGameplayBuilding(holdBuilding.BuildingId).State ==
+                        TestBuildingLifecycleState.BlockedAtStart)
+                {
+                    holdWaited |=
+                        !runtime.ObserveOrders(holdBlocker)
+                            .ConstructionEvacuationActive;
+                }
+
+                if (!moveOrderInjected && buildings[2].Succeeded &&
+                    runtime.ObserveGameplayBuilding(buildings[2].BuildingId).State ==
+                        TestBuildingLifecycleState.BlockedAtStart)
+                {
+                    runtime.Move([mover], new Vector2(980f, 220f));
+                    runtime.Move([mover], moverFinal, queued: true);
+                    moveOrderInjected = true;
+                }
+
+                if (moveOrderInjected)
+                {
+                    var order = runtime.ObserveOrders(mover);
+                    moveOrderPreserved |=
+                        order.ConstructionEvacuationActive &&
+                        order.ActiveOrder == TestOrderKind.Move &&
+                        order.PendingOrders == 1;
+                }
+
+                var totalActive = blockersByBuilding
+                    .SelectMany(value => value)
+                    .Count(unit => runtime.ObserveOrders(unit)
+                        .ConstructionEvacuationActive);
+                if (hotCapture is null && totalActive >= 32)
+                {
+                    hotCapture = runtime.CaptureRuntimeState();
+                    hotTick = runtime.Tick;
+                }
+            });
+        }
+        session.At(480, "Release the conservative Hold blocker explicitly", runtime =>
+            runtime.Move([holdBlocker], holdCenter + new Vector2(0f, 150f)));
+        return session;
+    }
+
+    private static Vector2[] CreateConstructionOccupantGrid(
+        Vector2 center,
+        Vector2 size,
+        int count)
+    {
+        if (count <= 0)
+            return [];
+        var columns = count switch
+        {
+            1 => 1,
+            <= 8 => 4,
+            _ => 8
+        };
+        var rows = (count + columns - 1) / columns;
+        var usable = size - new Vector2(36f, 36f);
+        var stepX = columns == 1 ? 0f : usable.X / (columns - 1);
+        var stepY = rows == 1 ? 0f : usable.Y / (rows - 1);
+        var result = new Vector2[count];
+        for (var index = 0; index < count; index++)
+        {
+            var column = index % columns;
+            var row = index / columns;
+            result[index] = center + new Vector2(
+                columns == 1 ? 0f : -usable.X * 0.5f + column * stepX,
+                rows == 1 ? 0f : -usable.Y * 0.5f + row * stepY);
+        }
+        return result;
     }
 
     private static VisualTestSession CreateConstructionReservationHardCommit(

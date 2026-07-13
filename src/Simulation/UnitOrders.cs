@@ -73,6 +73,10 @@ public sealed class UnitCommandQueueStore
         ActiveOrdersWereQueued = new bool[capacity];
         CompletedQueuedOrders = new int[capacity];
         QueueOverflowCounts = new int[capacity];
+        ConstructionEvacuationActive = new bool[capacity];
+        ConstructionEvacuationBuildings = new int[capacity];
+        ConstructionEvacuationTargets = new Vector2[capacity];
+        ConstructionEvacuationFootprints = new SimRect[capacity];
         _heads = new byte[capacity];
         _pendingKinds = new UnitOrderKind[capacity * MaximumPendingOrders];
         _pendingPositions = new Vector2[capacity * MaximumPendingOrders];
@@ -86,6 +90,7 @@ public sealed class UnitCommandQueueStore
         Array.Fill(_pendingTargetBuildings, -1);
         Array.Fill(ActiveTargetResourceNodes, -1);
         Array.Fill(_pendingTargetResourceNodes, -1);
+        Array.Fill(ConstructionEvacuationBuildings, -1);
     }
 
     public byte[] PendingCounts { get; }
@@ -99,6 +104,10 @@ public sealed class UnitCommandQueueStore
     public bool[] ActiveOrdersWereQueued { get; }
     public int[] CompletedQueuedOrders { get; }
     public int[] QueueOverflowCounts { get; }
+    public bool[] ConstructionEvacuationActive { get; }
+    public int[] ConstructionEvacuationBuildings { get; }
+    public Vector2[] ConstructionEvacuationTargets { get; }
+    public SimRect[] ConstructionEvacuationFootprints { get; }
 
     public void Begin(int unit, UnitOrder order, bool wasQueued)
     {
@@ -179,6 +188,11 @@ public sealed class UnitCommandQueueStore
             hash.Add(PendingCounts[unit]);
             hash.Add(CompletedQueuedOrders[unit]);
             hash.Add(QueueOverflowCounts[unit]);
+            hash.Add(ConstructionEvacuationActive[unit]);
+            hash.Add(ConstructionEvacuationBuildings[unit]);
+            hash.Add(ConstructionEvacuationTargets[unit]);
+            hash.Add(ConstructionEvacuationFootprints[unit].Min);
+            hash.Add(ConstructionEvacuationFootprints[unit].Max);
 
             for (var pending = 0; pending < PendingCounts[unit]; pending++)
             {
@@ -211,6 +225,13 @@ public sealed class UnitCommandQueueStore
         Copy(source.ActiveOrdersWereQueued, ActiveOrdersWereQueued);
         Copy(source.CompletedQueuedOrders, CompletedQueuedOrders);
         Copy(source.QueueOverflowCounts, QueueOverflowCounts);
+        Copy(source.ConstructionEvacuationActive, ConstructionEvacuationActive);
+        Copy(source.ConstructionEvacuationBuildings,
+            ConstructionEvacuationBuildings);
+        Copy(source.ConstructionEvacuationTargets,
+            ConstructionEvacuationTargets);
+        Copy(source.ConstructionEvacuationFootprints,
+            ConstructionEvacuationFootprints);
         Copy(source._heads, _heads);
         Copy(source._pendingKinds, _pendingKinds);
         Copy(source._pendingPositions, _pendingPositions);

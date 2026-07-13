@@ -155,7 +155,7 @@ SC2 Editor 的 Footprint 资料进一步区分 Placement Check、Placement Apply
 - SCV 在真正开始施工前会走向目标；玩家资料反复描述这一阶段可显示绿色透明建筑幽灵。[Placement-model discussion](https://www.reddit.com/r/starcraft/comments/161xx3i)（C）
 - 这一阶段应保存稳定的 Build Intent、目标 Footprint、资源扣费、Builder 和队列顺序。
 - 它可以阻止同一玩家重复预订同一位置，但不应直接等价于完整硬建筑碰撞。
-- 当前 Demo **未对齐**：`IssueConstruction` 成功时立即 `TryPlaceBuilding`，在工人尚未到达时就创建 Dynamic Footprint，其他单位开始绕行，Godot 也立刻画出实体施工建筑。
+- 当前 Demo **已对齐架构时序**：接受命令时只创建 Reservation/Ghost，Builder 到达前 `FootprintId=0`，不会修改导航；到场动态重验成功后才原子创建 Hard Footprint。
 
 #### 阶段 C：施工开始 / Hard Commit
 
@@ -217,18 +217,20 @@ Reservation 与 Hard Footprint 必须使用不同 ID/不同集合。前者只解
 4. 让位有 Tick 预算和失败状态，不能无限挤压；
 5. 让位订单是系统派生命令，不污染玩家 Replay Command Log，但必须进入 Hot Snapshot/State Hash 的未来态。
 
+当前项目已经把上述工程合同落地为 `ConstructionBlockerPolicy + ConstructionEvictionPlanner + UnitCommandQueueStore 临时覆盖层`。多单位按稳定 ID 获得不同外沿槽位，活动 Move 和后续队列不会被施工系统改写；Hard Commit 后恢复。由于 E0 仍未完成，当前只把 Idle/Stop/Move 视为 MovableFriendly，Hold、Harvest、其他 Builder、其他订单和 AuthorityEnemy 都保守等待。这里冻结的是可替换机制，不是对 SC2 未公开策略的宣称。
+
 ### 4.5 当前实现差距
 
 | 细节 | 当前实现 | 对齐判断 |
 |---|---|---|
 | 光标 Preview | 无副作用，共用正式校验 | 部分对齐 |
 | 网格吸附 | 8px | 内容参数可调 |
-| 单位重叠 | Preview/下单仍统一 `UnitOverlap`；开工会重新分类动态阻挡 | 部分对齐/待实机 |
+| 单位重叠 | Preview 保持无副作用；开工按策略分类动态阻挡 | 部分对齐/待实机 |
 | 隐藏敌人 | 放置校验读取全体 UnitStore | 未对齐，可能泄露信息 |
 | 下单后 Ghost | 独立权威 Reservation + 不可变 Ghost 快照 | 已对齐架构时序 |
 | 工人接近期间占地 | Reservation 不进入 Pathing，普通单位可穿越 | 已对齐架构时序 |
 | 开工动态重检 | Builder 到场重新评估后才原子 Hard Commit | 主路径已对齐 |
-| 友军让位 | 单个可移动己方单位确定性撤离；Builder 接近期临时忽略单位碰撞 | 部分对齐/待 E0 矩阵 |
+| 友军让位 | 最多 64 人稳定外沿分槽；Idle/Stop/Move 临时覆盖并恢复，Hold/Harvest 保守等待 | 工程主链已完成/策略待 E0 |
 | SCV 持续施工 | `ContinuousWorker` | 已对齐主路径 |
 | Probe 开始后离开 | `StartAndRelease` | 只有策略骨架，无种族内容 |
 | Drone 消耗/取消恢复 | 没有 `ConsumeWorker` | 未对齐，内容层后置 |

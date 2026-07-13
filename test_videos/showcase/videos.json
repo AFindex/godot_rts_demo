@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T17:31:30.8539836+08:00",
+    "generated_at":  "2026-07-13T18:55:48.5347947+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  144,
-    "case_count":  113,
+    "recording_count":  145,
+    "case_count":  114,
     "recordings":  [
+                       {
+                           "id":  "construction-multi-unit-eviction",
+                           "display_name":  "Stable 1/8/32 occupant evacuation with conservative Hold policy",
+                           "batch":  "20260713_185509",
+                           "created_at":  "2026-07-13T18:55:46.0749976+08:00",
+                           "video":  "../20260713_185509/construction-multi-unit-eviction.webm",
+                           "log":  "../20260713_185509/construction-multi-unit-eviction.log",
+                           "bytes":  4598705,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS construction-multi-unit-eviction: ticks=760, build=True/True, states=Completed/Completed/Completed/Completed/Completed, inside=1/8/8/32, evacuations=1/8/8/32, hold=True, orders=True/True/True, replay=True, hot=True/True/True/v25",
+                           "metrics":  "ticks=760, build=True/True, states=Completed/Completed/Completed/Completed/Completed, inside=1/8/8/32, evacuations=1/8/8/32, hold=True, orders=True/True/True, replay=True, hot=True/True/True/v25"
+                       },
                        {
                            "id":  "production-exit-rally-boundaries",
                            "display_name":  "Four-way exits, soft friendly evacuation and Rally death boundaries",

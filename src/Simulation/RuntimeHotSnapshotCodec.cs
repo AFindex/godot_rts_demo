@@ -95,7 +95,8 @@ internal static class RuntimeHotSnapshotCodec
                 reader, units.Count, construction, economy);
             var technology = ReadTechnology(reader, construction, economy);
             ValidateCombatTargets(combat, units.Count, construction);
-            var queues = ReadQueues(reader, capacity, units.Count);
+            var queues = ReadQueues(
+                reader, capacity, units.Count, construction.Buildings.Length);
             var choke = ReadChoke(reader);
             var privateState = ReadPrivate(reader);
             if (stream.Position != stream.Length)
@@ -1269,6 +1270,10 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(queues.ActiveOrdersWereQueued[unit]);
             writer.Write(queues.CompletedQueuedOrders[unit]);
             writer.Write(queues.QueueOverflowCounts[unit]);
+            writer.Write(queues.ConstructionEvacuationActive[unit]);
+            writer.Write(queues.ConstructionEvacuationBuildings[unit]);
+            WriteVector(writer, queues.ConstructionEvacuationTargets[unit]);
+            WriteRect(writer, queues.ConstructionEvacuationFootprints[unit]);
             writer.Write(queues.PendingCounts[unit]);
             for (var pending = 0; pending < queues.PendingCounts[unit]; pending++)
             {
@@ -1308,7 +1313,7 @@ internal static class RuntimeHotSnapshotCodec
     }
 
     private static UnitCommandQueueStore ReadQueues(
-        BinaryReader reader, int capacity, int count)
+        BinaryReader reader, int capacity, int count, int buildingCount)
     {
         var queues = new UnitCommandQueueStore(capacity);
         for (var unit = 0; unit < count; unit++)
@@ -1323,6 +1328,28 @@ internal static class RuntimeHotSnapshotCodec
             queues.ActiveOrdersWereQueued[unit] = reader.ReadBoolean();
             queues.CompletedQueuedOrders[unit] = reader.ReadInt32();
             queues.QueueOverflowCounts[unit] = reader.ReadInt32();
+            queues.ConstructionEvacuationActive[unit] = reader.ReadBoolean();
+            queues.ConstructionEvacuationBuildings[unit] = reader.ReadInt32();
+            queues.ConstructionEvacuationTargets[unit] = ReadVector(reader);
+            queues.ConstructionEvacuationFootprints[unit] = ReadRect(reader);
+            var evacuationActive =
+                queues.ConstructionEvacuationActive[unit];
+            var evacuationFootprint =
+                queues.ConstructionEvacuationFootprints[unit];
+            if (evacuationActive
+                    ? (uint)queues.ConstructionEvacuationBuildings[unit] >=
+                          (uint)buildingCount ||
+                      !Finite(queues.ConstructionEvacuationTargets[unit]) ||
+                      !Finite(evacuationFootprint.Min) ||
+                      !Finite(evacuationFootprint.Max) ||
+                      evacuationFootprint.Width <= 0f ||
+                      evacuationFootprint.Height <= 0f
+                    : queues.ConstructionEvacuationBuildings[unit] != -1 ||
+                      queues.ConstructionEvacuationTargets[unit] != Vector2.Zero ||
+                      evacuationFootprint != default)
+            {
+                throw new InvalidDataException();
+            }
             if (queues.HasActiveOrders[unit] &&
                 !UnitOrderContract.IsStructurallyValid(new UnitOrder(
                     queues.ActiveKinds[unit],
