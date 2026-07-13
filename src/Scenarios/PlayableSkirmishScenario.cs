@@ -125,7 +125,7 @@ public static class PlayableSkirmishScenario
             minerals[index] = simulation.Economy.AddResourceNode(
                 EconomyResourceKind.Minerals, position, mineralAmount,
                 harvestBatch: 6, harvestSeconds: 0.55f,
-                harvesterCapacity: 3);
+                harvesterCapacity: 2);
             allNodes.Add(minerals[index]);
         }
 
@@ -157,7 +157,7 @@ public static class PlayableSkirmishScenario
                 allNodes.Add(simulation.Economy.AddResourceNode(
                     EconomyResourceKind.Minerals, position, 10_000,
                     harvestBatch: 8, harvestSeconds: 0.5f,
-                    harvesterCapacity: 3));
+                    harvesterCapacity: 2));
             }
         }
     }

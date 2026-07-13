@@ -124,6 +124,7 @@ public static class TestShowcaseCatalog
             M("resource-file-watch-workflow", "资源文件监听", "数据工作流", "验证写入风暴去抖、有限重试和安全自动提交。"),
             M("building-connectivity-diff-preview", "放置连通差异面板", "数据工作流", "展示建筑放置前三档拓扑变化与受影响 Chunk。"),
             M("economy-dual-resource", "双资源采集", "经济玩法", "验证矿物、瓦斯、Refinery、容量、枯竭和再次采集。"),
+            M("economy-auto-patch-distribution", "自动分矿与饱和槽位", "经济玩法", "同一次右键把 12/16/24/32 个普通农民确定性分散到八片矿，验证每片矿一个并发采集槽、两个理想分配位、等待队列以及回放和热恢复。"),
             M("economy-mineral-walk-collision-matrix", "采矿穿行碰撞矩阵", "经济玩法", "24 个农民在采矿与返矿途中穿过友军 Hold、敌军和大型单位，但仍绕过正式建筑；Stop、Hold、Attack 后恢复正常碰撞。"),
             M("economy-mass-mining", "大规模多基地采矿", "经济玩法", "96 个农民在四个基地与 32 片矿之间持续往返，验证最近投递边界、完整循环和高密度穿行。"),
             M("economy-expansion-saturation", "扩张与饱和度", "经济玩法", "验证双基地归属、工人转场、饱和度和基地摧毁。"),

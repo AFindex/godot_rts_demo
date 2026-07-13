@@ -1465,8 +1465,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 IssueMove(movers.ToArray(), target.Position, queued: true);
             return new(PlayerOrderCommandCode.Success);
         }
-        for (var index = 0; index < workers.Count; index++)
-            IssueGather(playerId, workers[index], resource);
+        var workerArray = workers.ToArray();
+        var assignments = Economy.AssignGatherTargets(
+            playerId, workerArray, resource, Units);
+        for (var index = 0; index < workerArray.Length; index++)
+            IssueGather(playerId, workerArray[index], assignments[index]);
         if (movers.Count > 0)
             IssueMove(movers.ToArray(), target.Position);
         return new(PlayerOrderCommandCode.Success);
@@ -2020,17 +2023,29 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int targetResourceNode)
     {
         var resource = new EconomyResourceNodeId(targetResourceNode);
-        Span<int> worker = stackalloc int[1];
+        var workers = new List<int>(unitIndices.Length);
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
             var playerId = Combat.Teams[unit];
-            if (!Economy.ValidateGather(playerId, unit, resource).Succeeded)
-                continue;
+            if (Economy.ValidateGather(playerId, unit, resource).Succeeded)
+                workers.Add(unit);
+        }
+        if (workers.Count == 0)
+            return;
+        var owner = Combat.Teams[workers[0]];
+        var workerArray = workers.ToArray();
+        var assignments = Economy.AssignGatherTargets(
+            owner, workerArray, resource, Units);
+        Span<int> worker = stackalloc int[1];
+        for (var index = 0; index < workerArray.Length; index++)
+        {
+            var unit = workerArray[index];
             worker[0] = unit;
             Construction.InterruptBuilders(worker);
             Economy.BeginGather(
-                unit, resource, Units.Positions[unit], Units.Radii[unit],
+                unit, assignments[index],
+                Units.Positions[unit], Units.Radii[unit],
                 _economyMoveWorker);
         }
     }
@@ -2260,8 +2275,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
                         Economy.ValidateGather(
                             playerId, unit, rally.ResourceNode).Succeeded)
                     {
+                        var assignment = Economy.AssignGatherTargets(
+                            playerId, produced, rally.ResourceNode, Units,
+                            distributeSingle: true)[0];
                         Economy.BeginGather(
-                            unit, rally.ResourceNode,
+                            unit, assignment,
                             Units.Positions[unit], Units.Radii[unit],
                             _economyMoveWorker);
                     }

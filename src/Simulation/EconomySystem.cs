@@ -270,10 +270,19 @@ public readonly record struct EconomyResourceNodeSnapshot(
     EconomyResourceKind Kind,
     Vector2 Position,
     int Remaining,
-    int ActiveHarvesters,
-    int HarvesterCapacity,
+    int ActiveNormal,
+    int AssignedNormal,
+    int WaitingNormal,
+    int NormalActiveSlots,
+    int IdealNormalAssignments,
+    int ActiveMules,
+    int AssignedMules,
     bool RequiresRefinery,
-    bool Operational);
+    bool Operational)
+{
+    public int ActiveHarvesters => ActiveNormal + ActiveMules;
+    public int HarvesterCapacity => IdealNormalAssignments;
+}
 
 public enum WorkerEconomyState : byte
 {
@@ -306,10 +315,15 @@ public readonly record struct EconomyResourceNodeRuntimeEntry(
     int Remaining,
     int HarvestBatch,
     float HarvestSeconds,
-    int HarvesterCapacity,
+    int NormalActiveSlots,
+    int IdealNormalAssignments,
     bool RequiresRefinery,
     bool Operational,
-    int ActiveHarvesters);
+    int ActiveNormal,
+    int AssignedNormal,
+    int WaitingNormal,
+    int ActiveMules,
+    int AssignedMules);
 
 public readonly record struct EconomyDropOffRuntimeEntry(
     EconomyDropOffId Id,
@@ -355,9 +369,32 @@ public readonly record struct EconomyBaseSnapshot(
     bool Operational,
     int MineralNodes,
     int VespeneNodes,
-    int AssignedWorkers,
-    int IdealWorkers)
+    int AssignedMineralWorkers,
+    int IdealMineralWorkers,
+    int AssignedVespeneWorkers,
+    int IdealVespeneWorkers)
 {
+    public EconomyBaseSnapshot(
+        EconomyBaseId id,
+        int playerId,
+        GameplayBuildingId townHall,
+        EconomyDropOffId dropOff,
+        Vector2 position,
+        bool operational,
+        int mineralNodes,
+        int vespeneNodes,
+        int assignedWorkers,
+        int idealWorkers)
+        : this(
+            id, playerId, townHall, dropOff, position, operational,
+            mineralNodes, vespeneNodes,
+            assignedWorkers, idealWorkers, 0, 0)
+    {
+    }
+
+    public int AssignedWorkers =>
+        AssignedMineralWorkers + AssignedVespeneWorkers;
+    public int IdealWorkers => IdealMineralWorkers + IdealVespeneWorkers;
     public float Saturation => IdealWorkers == 0
         ? 0f
         : AssignedWorkers / (float)IdealWorkers;
@@ -532,18 +569,26 @@ public sealed class EconomySystem
         float harvestSeconds,
         int harvesterCapacity,
         bool requiresRefinery = false,
-        bool operational = true)
+        bool operational = true,
+        int activeHarvesterSlots = 0)
     {
         if (!Enum.IsDefined(kind) || !IsFinite(position) || amount <= 0 ||
             harvestBatch <= 0 || !float.IsFinite(harvestSeconds) ||
-            harvestSeconds <= 0f || harvesterCapacity <= 0)
+            harvestSeconds <= 0f || harvesterCapacity <= 0 ||
+            activeHarvesterSlots < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(amount));
         }
         var id = new EconomyResourceNodeId(_nodes.Count);
+        var resolvedActiveSlots = activeHarvesterSlots > 0
+            ? activeHarvesterSlots
+            : kind == EconomyResourceKind.Minerals
+                ? 1
+                : harvesterCapacity;
         _nodes.Add(new ResourceNode(
             id, kind, position, amount, harvestBatch, harvestSeconds,
-            harvesterCapacity, requiresRefinery, operational));
+            resolvedActiveSlots, harvesterCapacity,
+            requiresRefinery, operational));
         return id;
     }
 
@@ -644,36 +689,45 @@ public sealed class EconomySystem
             }
             var minerals = 0;
             var vespene = 0;
-            var ideal = 0;
+            var idealMinerals = 0;
+            var idealVespene = 0;
             for (var node = 0; node < _nodes.Count; node++)
             {
                 if (OwningBase(node) != baseIndex)
                 {
                     continue;
                 }
-                ideal += _nodes[node].HarvesterCapacity;
                 if (_nodes[node].Kind == EconomyResourceKind.Minerals)
                 {
                     minerals++;
+                    idealMinerals += _nodes[node].IdealNormalAssignments;
                 }
                 else
                 {
                     vespene++;
+                    idealVespene += _nodes[node].IdealNormalAssignments;
                 }
             }
-            var assigned = 0;
+            var assignedMinerals = 0;
+            var assignedVespene = 0;
             for (var unit = 0; unit < unitCount; unit++)
             {
                 if (_workers[unit] && _workerPlayers[unit] == playerId &&
                     OwningBase(_workerNodes[unit]) == baseIndex)
                 {
-                    assigned++;
+                    if (_nodes[_workerNodes[unit]].Kind ==
+                        EconomyResourceKind.Minerals)
+                        assignedMinerals++;
+                    else
+                        assignedVespene++;
                 }
             }
             result.Add(new EconomyBaseSnapshot(
                 economyBase.Id, economyBase.PlayerId, economyBase.TownHall,
                 economyBase.DropOff, economyBase.Position,
-                economyBase.Operational, minerals, vespene, assigned, ideal));
+                economyBase.Operational, minerals, vespene,
+                assignedMinerals, idealMinerals,
+                assignedVespene, idealVespene));
         }
         return result.ToArray();
     }
@@ -718,21 +772,16 @@ public sealed class EconomySystem
         if (candidates.Length == 0)
             return TransferFailure(WorkerTransferCommandCode.NoEligibleWorkers);
 
-        var loads = new int[_nodes.Count];
-        for (var unit = 0; unit < units.Count; unit++)
+        var assignments = AssignGatherTargets(
+            playerId, candidates,
+            new EconomyResourceNodeId(targetNodes[0]), units,
+            distributeSingle: true);
+        for (var index = 0; index < candidates.Length; index++)
         {
-            if (_workers[unit] && (uint)_workerNodes[unit] < (uint)loads.Length)
-                loads[_workerNodes[unit]]++;
-        }
-        foreach (var unit in candidates)
-        {
-            var node = targetNodes
-                .OrderBy(value => loads[value] / (float)_nodes[value].HarvesterCapacity)
-                .ThenBy(value => value)
-                .First();
             RetargetTransferredWorker(
-                unit, node, units.Positions[unit], units.Radii[unit], moveWorker);
-            loads[node]++;
+                candidates[index], assignments[index].Value,
+                units.Positions[candidates[index]], units.Radii[candidates[index]],
+                moveWorker);
         }
         return new WorkerTransferCommandResult(
             WorkerTransferCommandCode.Success, sourceId, targetId,
@@ -752,6 +801,10 @@ public sealed class EconomySystem
         if (!_workers[unit])
         {
             _registeredWorkerCount++;
+        }
+        else
+        {
+            TransitionWorker(unit, WorkerEconomyState.Idle, -1);
         }
         _workers[unit] = true;
         _workerPlayers[unit] = playerId;
@@ -807,6 +860,58 @@ public sealed class EconomySystem
         return new GatherCommandResult(GatherCommandCode.Success, unit, nodeId);
     }
 
+    public EconomyResourceNodeId[] AssignGatherTargets(
+        int playerId,
+        ReadOnlySpan<int> workers,
+        EconomyResourceNodeId preferredNode,
+        UnitStore units,
+        bool distributeSingle = false)
+    {
+        if ((uint)preferredNode.Value >= (uint)_nodes.Count ||
+            workers.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(preferredNode));
+        var copiedWorkers = workers.ToArray();
+        var orderedIndices = Enumerable.Range(0, copiedWorkers.Length)
+            .OrderBy(index => copiedWorkers[index])
+            .ToArray();
+        var result = new EconomyResourceNodeId[copiedWorkers.Length];
+        if (copiedWorkers.Length == 1 && !distributeSingle)
+        {
+            result[0] = preferredNode;
+            return result;
+        }
+
+        var plannedAssigned = _nodes
+            .Select(node => node.AssignedNormal)
+            .ToArray();
+        for (var index = 0; index < copiedWorkers.Length; index++)
+        {
+            var unit = copiedWorkers[index];
+            if (!IsWorkerOwnedBy(unit, playerId) ||
+                (uint)unit >= (uint)units.Count || !units.Alive[unit])
+                throw new ArgumentOutOfRangeException(nameof(workers));
+            var current = _workerNodes[unit];
+            if ((uint)current < (uint)plannedAssigned.Length &&
+                IsAssignedState(_workerStates[unit]))
+                plannedAssigned[current]--;
+        }
+
+        foreach (var inputIndex in orderedIndices)
+        {
+            var unit = copiedWorkers[inputIndex];
+            var target = SelectAssignedNode(
+                playerId,
+                preferredNode.Value,
+                units.Positions[unit],
+                plannedAssigned);
+            if (target < 0)
+                target = preferredNode.Value;
+            result[inputIndex] = new EconomyResourceNodeId(target);
+            plannedAssigned[target]++;
+        }
+        return result;
+    }
+
     public ReturnCargoCommandResult ValidateReturnCargo(
         int issuingPlayerId,
         int unit)
@@ -833,15 +938,16 @@ public sealed class EconomySystem
         float unitRadius,
         Action<int, Vector2> moveWorker)
     {
-        ReleaseClaim(unit);
-        _workerNodes[unit] = nodeId.Value;
         _workRemaining[unit] = 0f;
         if (_cargoAmounts[unit] > 0)
         {
+            TransitionWorker(
+                unit, WorkerEconomyState.ReturningCargo, nodeId.Value);
             BeginReturningCargo(unit, position, unitRadius, moveWorker);
             return;
         }
-        _workerStates[unit] = WorkerEconomyState.GoingToResource;
+        TransitionWorker(
+            unit, WorkerEconomyState.GoingToResource, nodeId.Value);
         moveWorker(unit, _nodes[nodeId.Value].Position);
     }
 
@@ -851,7 +957,6 @@ public sealed class EconomySystem
         float unitRadius,
         Action<int, Vector2> moveWorker)
     {
-        ReleaseClaim(unit);
         _workRemaining[unit] = 0f;
         BeginReturningCargo(unit, position, unitRadius, moveWorker);
     }
@@ -865,9 +970,7 @@ public sealed class EconomySystem
             {
                 continue;
             }
-            ReleaseClaim(unit);
-            _workerStates[unit] = WorkerEconomyState.Idle;
-            _workerNodes[unit] = -1;
+            TransitionWorker(unit, WorkerEconomyState.Idle, -1);
             _workRemaining[unit] = 0f;
         }
     }
@@ -891,8 +994,7 @@ public sealed class EconomySystem
             }
             if (!units.Alive[unit])
             {
-                ReleaseClaim(unit);
-                _workerStates[unit] = WorkerEconomyState.Idle;
+                TransitionWorker(unit, WorkerEconomyState.Idle, -1);
                 continue;
             }
             switch (_workerStates[unit])
@@ -922,7 +1024,9 @@ public sealed class EconomySystem
         var node = Node(id);
         return new EconomyResourceNodeSnapshot(
             node.Id, node.Kind, node.Position, node.Remaining,
-            node.ActiveHarvesters, node.HarvesterCapacity,
+            node.ActiveNormal, node.AssignedNormal, node.WaitingNormal,
+            node.NormalActiveSlots, node.IdealNormalAssignments,
+            node.ActiveMules, node.AssignedMules,
             node.RequiresRefinery, node.Operational);
     }
 
@@ -1018,7 +1122,10 @@ public sealed class EconomySystem
                 return false;
             }
         }
-        return _nodes.All(node => node.ActiveHarvesters == 0);
+        return _nodes.All(node =>
+            node.ActiveNormal == 0 && node.AssignedNormal == 0 &&
+            node.WaitingNormal == 0 && node.ActiveMules == 0 &&
+            node.AssignedMules == 0);
     }
 
     public EconomyRuntimeSnapshot CaptureRuntimeState(int unitCount)
@@ -1029,9 +1136,11 @@ public sealed class EconomySystem
         }
         var nodes = _nodes.Select(node => new EconomyResourceNodeRuntimeEntry(
             node.Id, node.Kind, node.Position, node.Remaining,
-            node.HarvestBatch, node.HarvestSeconds, node.HarvesterCapacity,
+            node.HarvestBatch, node.HarvestSeconds,
+            node.NormalActiveSlots, node.IdealNormalAssignments,
             node.RequiresRefinery, node.Operational,
-            node.ActiveHarvesters)).ToArray();
+            node.ActiveNormal, node.AssignedNormal, node.WaitingNormal,
+            node.ActiveMules, node.AssignedMules)).ToArray();
         var dropOffs = _dropOffs.Select(dropOff => new EconomyDropOffRuntimeEntry(
             dropOff.Id, dropOff.PlayerId, dropOff.Position,
             dropOff.HalfExtents,
@@ -1071,10 +1180,15 @@ public sealed class EconomySystem
             _nodes.Add(new ResourceNode(
                 value.Id, value.Kind, value.Position, value.Remaining,
                 value.HarvestBatch, value.HarvestSeconds,
-                value.HarvesterCapacity, value.RequiresRefinery,
+                value.NormalActiveSlots, value.IdealNormalAssignments,
+                value.RequiresRefinery,
                 value.Operational)
             {
-                ActiveHarvesters = value.ActiveHarvesters
+                ActiveNormal = value.ActiveNormal,
+                AssignedNormal = value.AssignedNormal,
+                WaitingNormal = value.WaitingNormal,
+                ActiveMules = value.ActiveMules,
+                AssignedMules = value.AssignedMules
             });
         }
         _dropOffs.Clear();
@@ -1150,8 +1264,13 @@ public sealed class EconomySystem
             hash.Add(node.Remaining);
             hash.Add(node.HarvestBatch);
             hash.Add(node.HarvestSeconds);
-            hash.Add(node.ActiveHarvesters);
-            hash.Add(node.HarvesterCapacity);
+            hash.Add(node.NormalActiveSlots);
+            hash.Add(node.IdealNormalAssignments);
+            hash.Add(node.ActiveNormal);
+            hash.Add(node.AssignedNormal);
+            hash.Add(node.WaitingNormal);
+            hash.Add(node.ActiveMules);
+            hash.Add(node.AssignedMules);
             hash.Add(node.RequiresRefinery);
             hash.Add(node.Operational);
         }
@@ -1217,7 +1336,9 @@ public sealed class EconomySystem
         if (Vector2.DistanceSquared(units.Positions[unit], node.Position) <=
             arrival * arrival)
         {
-            TryStartGathering(unit, stopWorker);
+            TryStartGathering(
+                unit, units, moveWorker, stopWorker,
+                allowReassignment: true);
         }
     }
 
@@ -1232,25 +1353,49 @@ public sealed class EconomySystem
             RetargetOrIdle(unit, units.Positions[unit], moveWorker);
             return;
         }
-        TryStartGathering(unit, stopWorker);
+        TryStartGathering(
+            unit, units, moveWorker, stopWorker,
+            allowReassignment: false);
     }
 
-    private void TryStartGathering(int unit, Action<int> stopWorker)
+    private void TryStartGathering(
+        int unit,
+        UnitStore units,
+        Action<int, Vector2> moveWorker,
+        Action<int> stopWorker,
+        bool allowReassignment)
     {
         var nodeIndex = _workerNodes[unit];
         if (!IsNodeAvailable(nodeIndex))
         {
-            _workerStates[unit] = WorkerEconomyState.Idle;
+            TransitionWorker(unit, WorkerEconomyState.Idle, -1);
             return;
         }
         var node = _nodes[nodeIndex];
-        if (node.ActiveHarvesters >= node.HarvesterCapacity)
+        if (node.ActiveNormal >= node.NormalActiveSlots)
         {
-            _workerStates[unit] = WorkerEconomyState.WaitingForResource;
+            if (allowReassignment)
+            {
+                var assigned = _nodes
+                    .Select(value => value.AssignedNormal)
+                    .ToArray();
+                assigned[nodeIndex]--;
+                var replacement = SelectAssignedNode(
+                    _workerPlayers[unit], nodeIndex,
+                    units.Positions[unit], assigned);
+                if (replacement >= 0 && replacement != nodeIndex)
+                {
+                    TransitionWorker(
+                        unit, WorkerEconomyState.GoingToResource, replacement);
+                    moveWorker(unit, _nodes[replacement].Position);
+                    return;
+                }
+            }
+            TransitionWorker(
+                unit, WorkerEconomyState.WaitingForResource, nodeIndex);
             return;
         }
-        node.ActiveHarvesters++;
-        _workerStates[unit] = WorkerEconomyState.Gathering;
+        TransitionWorker(unit, WorkerEconomyState.Gathering, nodeIndex);
         _workRemaining[unit] = node.HarvestSeconds;
         stopWorker(unit);
     }
@@ -1270,7 +1415,6 @@ public sealed class EconomySystem
         var node = _nodes[_workerNodes[unit]];
         var amount = Math.Min(node.HarvestBatch, node.Remaining);
         node.Remaining -= amount;
-        node.ActiveHarvesters--;
         if (amount <= 0)
         {
             RetargetOrIdle(unit, units.Positions[unit], moveWorker);
@@ -1283,10 +1427,13 @@ public sealed class EconomySystem
             _workerPlayers[unit], node.Kind, units.Positions[unit], clearance);
         if (dropOff < 0)
         {
-            _workerStates[unit] = WorkerEconomyState.WaitingForDropOff;
+            TransitionWorker(
+                unit, WorkerEconomyState.WaitingForDropOff,
+                _workerNodes[unit]);
             return;
         }
-        _workerStates[unit] = WorkerEconomyState.ReturningCargo;
+        TransitionWorker(
+            unit, WorkerEconomyState.ReturningCargo, _workerNodes[unit]);
         moveWorker(unit, _dropOffs[dropOff].ApproachPoint(
             units.Positions[unit],
             clearance));
@@ -1304,7 +1451,9 @@ public sealed class EconomySystem
             clearance);
         if (dropOffIndex < 0)
         {
-            _workerStates[unit] = WorkerEconomyState.WaitingForDropOff;
+            TransitionWorker(
+                unit, WorkerEconomyState.WaitingForDropOff,
+                _workerNodes[unit]);
             stopWorker(unit);
             return;
         }
@@ -1327,24 +1476,21 @@ public sealed class EconomySystem
         var nodeIndex = _workerNodes[unit];
         if (nodeIndex < 0)
         {
-            _workerStates[unit] = WorkerEconomyState.Idle;
+            TransitionWorker(unit, WorkerEconomyState.Idle, -1);
             return;
         }
         if (!IsNodeAvailable(nodeIndex))
         {
-            var desiredKind = (uint)nodeIndex < (uint)_nodes.Count
-                ? _nodes[nodeIndex].Kind
-                : _cargoKinds[unit];
-            nodeIndex = FindNearestNode(
-                desiredKind, units.Positions[unit]);
-            _workerNodes[unit] = nodeIndex;
+            nodeIndex = SelectReplacementNode(
+                unit, nodeIndex, units.Positions[unit]);
         }
         if (nodeIndex < 0)
         {
-            _workerStates[unit] = WorkerEconomyState.Idle;
+            TransitionWorker(unit, WorkerEconomyState.Idle, -1);
             return;
         }
-        _workerStates[unit] = WorkerEconomyState.GoingToResource;
+        TransitionWorker(
+            unit, WorkerEconomyState.GoingToResource, nodeIndex);
         moveWorker(unit, _nodes[nodeIndex].Position);
     }
 
@@ -1359,7 +1505,8 @@ public sealed class EconomySystem
             clearance);
         if (dropOff < 0)
             return;
-        _workerStates[unit] = WorkerEconomyState.ReturningCargo;
+        TransitionWorker(
+            unit, WorkerEconomyState.ReturningCargo, _workerNodes[unit]);
         moveWorker(unit, _dropOffs[dropOff].ApproachPoint(
             units.Positions[unit], clearance));
     }
@@ -1375,10 +1522,13 @@ public sealed class EconomySystem
             _workerPlayers[unit], _cargoKinds[unit], position, clearance);
         if (dropOff < 0)
         {
-            _workerStates[unit] = WorkerEconomyState.WaitingForDropOff;
+            TransitionWorker(
+                unit, WorkerEconomyState.WaitingForDropOff,
+                _workerNodes[unit]);
             return;
         }
-        _workerStates[unit] = WorkerEconomyState.ReturningCargo;
+        TransitionWorker(
+            unit, WorkerEconomyState.ReturningCargo, _workerNodes[unit]);
         moveWorker(unit, _dropOffs[dropOff].ApproachPoint(position, clearance));
     }
 
@@ -1387,14 +1537,14 @@ public sealed class EconomySystem
         Vector2 position,
         Action<int, Vector2> moveWorker)
     {
-        var kind = _workerNodes[unit] >= 0
-            ? _nodes[_workerNodes[unit]].Kind
-            : _cargoKinds[unit];
-        var replacement = FindNearestNode(kind, position);
-        _workerNodes[unit] = replacement;
-        _workerStates[unit] = replacement >= 0
-            ? WorkerEconomyState.GoingToResource
-            : WorkerEconomyState.Idle;
+        var replacement = SelectReplacementNode(
+            unit, _workerNodes[unit], position);
+        TransitionWorker(
+            unit,
+            replacement >= 0
+                ? WorkerEconomyState.GoingToResource
+                : WorkerEconomyState.Idle,
+            replacement);
         if (replacement >= 0)
         {
             moveWorker(unit, _nodes[replacement].Position);
@@ -1408,15 +1558,14 @@ public sealed class EconomySystem
         float unitRadius,
         Action<int, Vector2> moveWorker)
     {
-        ReleaseClaim(unit);
-        _workerNodes[unit] = node;
         _workRemaining[unit] = 0f;
         if (_cargoAmounts[unit] > 0)
         {
+            TransitionWorker(unit, WorkerEconomyState.ReturningCargo, node);
             BeginReturningCargo(unit, position, unitRadius, moveWorker);
             return;
         }
-        _workerStates[unit] = WorkerEconomyState.GoingToResource;
+        TransitionWorker(unit, WorkerEconomyState.GoingToResource, node);
         moveWorker(unit, _nodes[node].Position);
     }
 
@@ -1438,6 +1587,64 @@ public sealed class EconomySystem
             }
         }
         return best;
+    }
+
+    private int SelectReplacementNode(
+        int unit,
+        int preferredNode,
+        Vector2 position)
+    {
+        if ((uint)preferredNode >= (uint)_nodes.Count)
+            return FindNearestNode(_cargoKinds[unit], position);
+        var assigned = _nodes.Select(node => node.AssignedNormal).ToArray();
+        var currentNode = _workerNodes[unit];
+        if (IsAssignedState(_workerStates[unit]) &&
+            (uint)currentNode < (uint)assigned.Length)
+            assigned[currentNode]--;
+        return SelectAssignedNode(
+            _workerPlayers[unit], preferredNode, position, assigned);
+    }
+
+    private int SelectAssignedNode(
+        int playerId,
+        int preferredNode,
+        Vector2 workerPosition,
+        int[]? assignedOverride = null)
+    {
+        if ((uint)preferredNode >= (uint)_nodes.Count)
+            return -1;
+        var preferred = _nodes[preferredNode];
+        var preferredBase = OwningBase(preferredNode);
+        var candidates = new List<ResourceAssignmentCandidate>();
+        var clusterRadiusSquared = BaseResourceRadius * BaseResourceRadius;
+        for (var nodeIndex = 0; nodeIndex < _nodes.Count; nodeIndex++)
+        {
+            var node = _nodes[nodeIndex];
+            if (node.Kind != preferred.Kind || !IsNodeAvailable(nodeIndex))
+                continue;
+            var sameCluster = preferredBase >= 0
+                ? OwningBase(nodeIndex) == preferredBase
+                : Vector2.DistanceSquared(
+                    node.Position, preferred.Position) <= clusterRadiusSquared;
+            if (!sameCluster)
+                continue;
+            var dropOffIndex = FindNearestDropOff(
+                playerId,
+                preferred.Kind,
+                node.Position);
+            var dropOffDistance = dropOffIndex >= 0
+                ? _dropOffs[dropOffIndex].DistanceSquaredTo(node.Position, 0f)
+                : float.PositiveInfinity;
+            candidates.Add(new ResourceAssignmentCandidate(
+                nodeIndex,
+                assignedOverride?[nodeIndex] ?? node.AssignedNormal,
+                node.IdealNormalAssignments,
+                nodeIndex == preferredNode,
+                Vector2.DistanceSquared(workerPosition, node.Position),
+                dropOffDistance));
+        }
+        return ResourceAssignmentPolicy.Select(
+            candidates.ToArray());
     }
 
     private int FindNearestDropOff(
@@ -1509,15 +1716,43 @@ public sealed class EconomySystem
         return false;
     }
 
-    private void ReleaseClaim(int unit)
+    private void TransitionWorker(
+        int unit,
+        WorkerEconomyState state,
+        int nodeIndex)
     {
-        if (_workerStates[unit] == WorkerEconomyState.Gathering &&
-            (uint)_workerNodes[unit] < (uint)_nodes.Count)
+        var previousState = _workerStates[unit];
+        var previousNode = _workerNodes[unit];
+        if ((uint)previousNode < (uint)_nodes.Count &&
+            IsAssignedState(previousState))
         {
-            _nodes[_workerNodes[unit]].ActiveHarvesters = Math.Max(
-                0, _nodes[_workerNodes[unit]].ActiveHarvesters - 1);
+            var node = _nodes[previousNode];
+            node.AssignedNormal--;
+            if (previousState == WorkerEconomyState.Gathering)
+                node.ActiveNormal--;
+            if (previousState == WorkerEconomyState.WaitingForResource)
+                node.WaitingNormal--;
+            if (node.AssignedNormal < 0 || node.ActiveNormal < 0 ||
+                node.WaitingNormal < 0)
+                throw new InvalidOperationException(
+                    "Worker assignment counters became negative.");
+        }
+
+        _workerStates[unit] = state;
+        _workerNodes[unit] = nodeIndex;
+        if ((uint)nodeIndex < (uint)_nodes.Count && IsAssignedState(state))
+        {
+            var node = _nodes[nodeIndex];
+            node.AssignedNormal++;
+            if (state == WorkerEconomyState.Gathering)
+                node.ActiveNormal++;
+            if (state == WorkerEconomyState.WaitingForResource)
+                node.WaitingNormal++;
         }
     }
+
+    private static bool IsAssignedState(WorkerEconomyState state) =>
+        state is not WorkerEconomyState.None and not WorkerEconomyState.Idle;
 
     private ResourceNode Node(EconomyResourceNodeId id)
     {
@@ -1555,7 +1790,8 @@ public sealed class EconomySystem
         int remaining,
         int harvestBatch,
         float harvestSeconds,
-        int harvesterCapacity,
+        int normalActiveSlots,
+        int idealNormalAssignments,
         bool requiresRefinery,
         bool operational)
     {
@@ -1565,10 +1801,15 @@ public sealed class EconomySystem
         public int Remaining { get; set; } = remaining;
         public int HarvestBatch { get; } = harvestBatch;
         public float HarvestSeconds { get; } = harvestSeconds;
-        public int HarvesterCapacity { get; } = harvesterCapacity;
+        public int NormalActiveSlots { get; } = normalActiveSlots;
+        public int IdealNormalAssignments { get; } = idealNormalAssignments;
         public bool RequiresRefinery { get; } = requiresRefinery;
         public bool Operational { get; set; } = operational;
-        public int ActiveHarvesters { get; set; }
+        public int ActiveNormal { get; set; }
+        public int AssignedNormal { get; set; }
+        public int WaitingNormal { get; set; }
+        public int ActiveMules { get; set; }
+        public int AssignedMules { get; set; }
     }
 
     private sealed class DropOff(

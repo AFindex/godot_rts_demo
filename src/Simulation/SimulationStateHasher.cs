@@ -6,7 +6,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public static class SimulationStateHasher
 {
-    public const int CurrentFormatVersion = 22;
+    public const int CurrentFormatVersion = 23;
 
     public static ulong Compute(RtsSimulation simulation)
     {

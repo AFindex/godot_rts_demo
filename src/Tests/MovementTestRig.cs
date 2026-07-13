@@ -305,9 +305,18 @@ public readonly record struct TestResourceNodeSnapshot(
     TestEconomyResourceKind Kind,
     Vector2 Position,
     int Remaining,
-    int ActiveHarvesters,
-    int HarvesterCapacity,
-    bool Operational);
+    int ActiveNormal,
+    int AssignedNormal,
+    int WaitingNormal,
+    int NormalActiveSlots,
+    int IdealNormalAssignments,
+    int ActiveMules,
+    int AssignedMules,
+    bool Operational)
+{
+    public int ActiveHarvesters => ActiveNormal + ActiveMules;
+    public int HarvesterCapacity => IdealNormalAssignments;
+}
 
 public readonly record struct TestWorkerEconomySnapshot(
     TestWorkerEconomyState State,
@@ -407,9 +416,18 @@ public readonly record struct TestEconomyBaseSnapshot(
     bool Operational,
     int MineralNodes,
     int VespeneNodes,
-    int AssignedWorkers,
-    int IdealWorkers,
-    float Saturation);
+    int AssignedMineralWorkers,
+    int IdealMineralWorkers,
+    int AssignedVespeneWorkers,
+    int IdealVespeneWorkers)
+{
+    public int AssignedWorkers =>
+        AssignedMineralWorkers + AssignedVespeneWorkers;
+    public int IdealWorkers => IdealMineralWorkers + IdealVespeneWorkers;
+    public float Saturation => IdealWorkers > 0
+        ? AssignedWorkers / (float)IdealWorkers
+        : 0f;
+}
 
 public enum TestWorkerTransferCommandCode : byte
 {
@@ -1490,8 +1508,13 @@ public sealed partial class MovementTestRig
             (TestEconomyResourceKind)snapshot.Kind,
             snapshot.Position,
             snapshot.Remaining,
-            snapshot.ActiveHarvesters,
-            snapshot.HarvesterCapacity,
+            snapshot.ActiveNormal,
+            snapshot.AssignedNormal,
+            snapshot.WaitingNormal,
+            snapshot.NormalActiveSlots,
+            snapshot.IdealNormalAssignments,
+            snapshot.ActiveMules,
+            snapshot.AssignedMules,
             snapshot.Operational);
     }
 
@@ -1670,9 +1693,10 @@ public sealed partial class MovementTestRig
                 value.Operational,
                 value.MineralNodes,
                 value.VespeneNodes,
-                value.AssignedWorkers,
-                value.IdealWorkers,
-                value.Saturation))
+                value.AssignedMineralWorkers,
+                value.IdealMineralWorkers,
+                value.AssignedVespeneWorkers,
+                value.IdealVespeneWorkers))
             .ToArray();
 
     public TestWorkerTransferResult TransferWorkers(

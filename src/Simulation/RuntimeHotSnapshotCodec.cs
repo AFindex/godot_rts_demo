@@ -493,10 +493,15 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(node.Remaining);
             writer.Write(node.HarvestBatch);
             writer.Write(node.HarvestSeconds);
-            writer.Write(node.HarvesterCapacity);
+            writer.Write(node.NormalActiveSlots);
+            writer.Write(node.IdealNormalAssignments);
             writer.Write(node.RequiresRefinery);
             writer.Write(node.Operational);
-            writer.Write(node.ActiveHarvesters);
+            writer.Write(node.ActiveNormal);
+            writer.Write(node.AssignedNormal);
+            writer.Write(node.WaitingNormal);
+            writer.Write(node.ActiveMules);
+            writer.Write(node.AssignedMules);
         }
         writer.Write(economy.DropOffs.Length);
         foreach (var dropOff in economy.DropOffs)
@@ -571,14 +576,26 @@ internal static class RuntimeHotSnapshotCodec
                 reader.ReadInt32(),
                 reader.ReadSingle(),
                 reader.ReadInt32(),
+                reader.ReadInt32(),
                 reader.ReadBoolean(),
                 reader.ReadBoolean(),
+                reader.ReadInt32(),
+                reader.ReadInt32(),
+                reader.ReadInt32(),
+                reader.ReadInt32(),
                 reader.ReadInt32());
             if (value.Id.Value != index || !Enum.IsDefined(value.Kind) ||
                 !Finite(value.Position) || value.Remaining < 0 ||
                 value.HarvestBatch <= 0 || !Positive(value.HarvestSeconds) ||
-                value.HarvesterCapacity <= 0 || value.ActiveHarvesters < 0 ||
-                value.ActiveHarvesters > value.HarvesterCapacity)
+                value.NormalActiveSlots <= 0 ||
+                value.IdealNormalAssignments <= 0 ||
+                value.ActiveNormal < 0 ||
+                value.ActiveNormal > value.NormalActiveSlots ||
+                value.AssignedNormal < value.ActiveNormal ||
+                value.WaitingNormal < 0 ||
+                value.WaitingNormal > value.AssignedNormal ||
+                value.ActiveMules < 0 || value.ActiveMules > 1 ||
+                value.AssignedMules < value.ActiveMules)
             {
                 throw new InvalidDataException();
             }
@@ -639,6 +656,8 @@ internal static class RuntimeHotSnapshotCodec
         }
         var workers = new WorkerEconomyRuntimeEntry[workerCount];
         var gatheringCounts = new int[nodeCount];
+        var assignedCounts = new int[nodeCount];
+        var waitingCounts = new int[nodeCount];
         for (var unit = 0; unit < workerCount; unit++)
         {
             var value = new WorkerEconomyRuntimeEntry(
@@ -663,11 +682,21 @@ internal static class RuntimeHotSnapshotCodec
                 }
                 gatheringCounts[value.TargetNodeId]++;
             }
+            if (value.Registered && value.TargetNodeId >= 0 &&
+                value.State is not WorkerEconomyState.None and
+                    not WorkerEconomyState.Idle)
+            {
+                assignedCounts[value.TargetNodeId]++;
+                if (value.State == WorkerEconomyState.WaitingForResource)
+                    waitingCounts[value.TargetNodeId]++;
+            }
             workers[unit] = value;
         }
         for (var node = 0; node < nodeCount; node++)
         {
-            if (gatheringCounts[node] != nodes[node].ActiveHarvesters)
+            if (gatheringCounts[node] != nodes[node].ActiveNormal ||
+                assignedCounts[node] != nodes[node].AssignedNormal ||
+                waitingCounts[node] != nodes[node].WaitingNormal)
             {
                 throw new InvalidDataException();
             }

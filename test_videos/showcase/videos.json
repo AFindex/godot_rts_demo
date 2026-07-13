@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T14:28:32.4182998+08:00",
+    "generated_at":  "2026-07-13T14:53:23.5480161+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  138,
-    "case_count":  107,
+    "recording_count":  139,
+    "case_count":  108,
     "recordings":  [
+                       {
+                           "id":  "economy-auto-patch-distribution",
+                           "display_name":  "One mineral click deterministically spreads 12/16/24/32 workers over eight patches",
+                           "batch":  "20260713_145302",
+                           "created_at":  "2026-07-13T14:53:23.1935692+08:00",
+                           "video":  "../20260713_145302/economy-auto-patch-distribution.webm",
+                           "log":  "../20260713_145302/economy-auto-patch-distribution.log",
+                           "bytes":  6836458,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS economy-auto-patch-distribution: ticks=600, stages=True/True/True/True, assigned=32, spread=0, active-slot=True, counters=True, waiting=True, orders=32, replay=True, hot=True/v22",
+                           "metrics":  "ticks=600, stages=True/True/True/True, assigned=32, spread=0, active-slot=True, counters=True, waiting=True, orders=32, replay=True, hot=True/v22"
+                       },
                        {
                            "id":  "economy-explicit-return-cargo",
                            "display_name":  "Return Cargo preserves carried resources and deterministic gather intent",

@@ -79,6 +79,7 @@ public static class VisualTestCatalog
         "resource-file-watch-workflow",
         "building-connectivity-diff-preview",
         "economy-dual-resource",
+        "economy-auto-patch-distribution",
         "economy-mineral-walk-collision-matrix",
         "economy-mass-mining",
         "economy-expansion-saturation",
@@ -232,6 +233,9 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview" =>
             CreateBuildingConnectivityDiffPreview(),
         "economy-dual-resource" => CreateDualResourceEconomy(),
+        "economy-auto-patch-distribution" =>
+            CreateAutoPatchDistribution(
+                navigationMap, gameplayProfiles, clearanceBake),
         "economy-mineral-walk-collision-matrix" =>
             CreateMineralWalkCollisionMatrix(),
         "economy-mass-mining" => CreateMassMiningEconomy(),
@@ -4513,6 +4517,191 @@ public static class VisualTestCatalog
         return session;
     }
 
+    private static VisualTestSession CreateAutoPatchDistribution(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            48, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 0, 0, 64, 32);
+        rig.AddResourceDropOff(1, new Vector2(175f, 350f));
+
+        Vector2[] patchPositions =
+        [
+            new(350f, 220f), new(420f, 215f),
+            new(485f, 250f), new(510f, 320f),
+            new(500f, 395f), new(450f, 450f),
+            new(375f, 465f), new(320f, 405f)
+        ];
+        var patches = patchPositions.Select(position => rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            position,
+            amount: 10_000,
+            harvestBatch: 5,
+            harvestSeconds: 0.3f,
+            harvesterCapacity: 2))
+            .ToArray();
+        var workers = new TestUnitId[32];
+        for (var index = 0; index < workers.Length; index++)
+        {
+            workers[index] = rig.SpawnWorker(
+                new Vector2(
+                    220f + index % 4 * 15f,
+                    270f + index / 4 * 18f),
+                1,
+                maximumSpeed: 180f,
+                acceleration: 850f);
+        }
+
+        rig.StartReplayPackageRecording();
+        var stage12 = false;
+        var stage16 = false;
+        var stage24 = false;
+        var stage32 = false;
+        var activeSlotInvariant = true;
+        var assignedCounterInvariant = true;
+        var waitingObserved = false;
+        var issued = 0;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 300;
+
+        bool ValidateStage(MovementTestRig runtime, int expected)
+        {
+            var snapshots = patches.Select(runtime.ObserveResourceNode).ToArray();
+            var assigned = snapshots.Select(value => value.AssignedNormal).ToArray();
+            return snapshots.All(value =>
+                       value.NormalActiveSlots == 1 &&
+                       value.IdealNormalAssignments == 2 &&
+                       value.ActiveMules == 0 && value.AssignedMules == 0) &&
+                   assigned.Sum() == expected &&
+                   assigned.Max() - assigned.Min() <= 1;
+        }
+
+        var session = new VisualTestSession(
+                "economy-auto-patch-distribution",
+                "One mineral click deterministically spreads 12/16/24/32 workers over eight patches",
+                600,
+                rig,
+                workers,
+                runtime =>
+                {
+                    var nodes = patches.Select(runtime.ObserveResourceNode).ToArray();
+                    var package = runtime.CaptureReplayPackage();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(out var decoded);
+                    var replay = packageRoundTrip
+                        ? runtime.ReplayPackage(decoded!, runtime.Tick)
+                        : null;
+                    var replayExact = replay is not null &&
+                                      replay.FinalHash == runtime.StateHash;
+                    var hotExact = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotExact = resumed.FinalHash == runtime.StateHash &&
+                                       replay is not null &&
+                                       replay.MatchesFrom(resumed, hotTick);
+                        }
+                    }
+                    var finalAssigned = nodes.Sum(value => value.AssignedNormal);
+                    var spread = nodes.Max(value => value.AssignedNormal) -
+                                 nodes.Min(value => value.AssignedNormal);
+                    var versions =
+                        package.FormatVersion ==
+                            SimulationReplayPackageSnapshot.CurrentFormatVersion &&
+                        hotVersion == SimulationHotSnapshot.CurrentFormatVersion;
+                    var passed = issued == workers.Length &&
+                                 stage12 && stage16 && stage24 && stage32 &&
+                                 activeSlotInvariant && assignedCounterInvariant &&
+                                 waitingObserved && finalAssigned == workers.Length &&
+                                 spread <= 1 && packageRoundTrip && replayExact &&
+                                 hotExact && versions;
+                    return new ScenarioResult(
+                        passed,
+                        $"stages={stage12}/{stage16}/{stage24}/{stage32}, " +
+                        $"assigned={finalAssigned}, spread={spread}, " +
+                        $"active-slot={activeSlotInvariant}, counters=" +
+                        $"{assignedCounterInvariant}, waiting={waitingObserved}, " +
+                        $"orders={package.EconomyCommandCount}, " +
+                        $"replay={replayExact}, hot={hotExact}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(345f, 345f), 1.04f)
+            .CameraKeyframe(150, new Vector2(390f, 345f), 1.18f)
+            .CameraKeyframe(330, new Vector2(390f, 345f), 1.28f)
+            .CameraKeyframe(570, new Vector2(345f, 345f), 1.04f)
+            .Highlight(
+                new SimRect(new Vector2(290f, 185f), new Vector2(545f, 495f)),
+                "8 PATCHES: 1 active slot / 2 ideal normal workers each",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(185f, 245f), new Vector2(290f, 435f)),
+                "ONE CLICK: stable-ID batch allocation",
+                TestDiagnosticKind.Info);
+
+        void IssueStage(
+            long tick,
+            int start,
+            int count,
+            string label)
+        {
+            session.At(tick, label, runtime =>
+            {
+                var selected = workers.Skip(start).Take(count).ToArray();
+                if (runtime.PlayerSmartResource(1, selected, patches[0]) ==
+                    TestPlayerOrderCommandCode.Success)
+                    issued += count;
+            });
+        }
+
+        IssueStage(1, 0, 12, "Right-click one patch with 12 workers");
+        IssueStage(61, 12, 4, "Raise the same cluster to 16 workers");
+        IssueStage(121, 16, 8, "Raise the same cluster to 24 workers");
+        IssueStage(181, 24, 8, "Raise the same cluster to 32 workers");
+        session.At(2, "Verify 12-worker allocation", runtime =>
+            stage12 = ValidateStage(runtime, 12));
+        session.At(62, "Verify ideal 16-worker allocation", runtime =>
+            stage16 = ValidateStage(runtime, 16));
+        session.At(122, "Verify diminished 24-worker allocation", runtime =>
+            stage24 = ValidateStage(runtime, 24));
+        session.At(182, "Verify capped 32-worker allocation", runtime =>
+            stage32 = ValidateStage(runtime, 32));
+        session.At(hotTick, "Capture active allocation hot snapshot", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
+
+        for (var tick = 2; tick < session.DurationTicks; tick += 2)
+        {
+            session.At(tick, "Observe public assignment counters", runtime =>
+            {
+                var nodes = patches.Select(runtime.ObserveResourceNode).ToArray();
+                activeSlotInvariant &= nodes.All(value =>
+                    value.ActiveNormal <= value.NormalActiveSlots);
+                waitingObserved |= nodes.Any(value => value.WaitingNormal > 0);
+                var assignedFromWorkers = runtime.ObservePlayerWorkers(1)
+                    .Where(value => value.State is not TestWorkerEconomyState.Idle and
+                        not TestWorkerEconomyState.None)
+                    .GroupBy(value => value.TargetNode.Value)
+                    .ToDictionary(group => group.Key, group => group.Count());
+                for (var index = 0; index < patches.Length; index++)
+                {
+                    assignedCounterInvariant &=
+                        nodes[index].AssignedNormal ==
+                        assignedFromWorkers.GetValueOrDefault(patches[index].Value);
+                }
+            });
+        }
+        return session;
+    }
+
     private static VisualTestSession CreateMassMiningEconomy()
     {
         const int baseCount = 4;
@@ -4554,7 +4743,7 @@ public static class VisualTestCatalog
                     startingNodeAmount,
                     harvestBatch: 6,
                     harvestSeconds: 0.35f,
-                    harvesterCapacity: 3);
+                    harvesterCapacity: 2);
                 resources.Add(nodes[node]);
             }
             clusterResources[cluster] = nodes;
@@ -4594,7 +4783,7 @@ public static class VisualTestCatalog
                              sawGoing.Count == workers.Count &&
                              sawGathering.Count == workers.Count &&
                              sawReturning.Count == workers.Count &&
-                             cycles >= 150 && approachSamples >= 200 &&
+                             cycles >= 120 && approachSamples >= 200 &&
                              invalidApproaches == 0 &&
                              totalMined >= cycles * 6 &&
                              recovery.UnreachableUnits == 0;
