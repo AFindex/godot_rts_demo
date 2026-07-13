@@ -427,6 +427,16 @@ public sealed class ConstructionSystem
                 if (!BuilderHasArrived(building, units))
                 {
                     building.State = BuildingLifecycleState.ReservedApproach;
+                    var builder = building.BuilderUnit;
+                    if (units.Modes[builder] is
+                            UnitMoveMode.Idle or UnitMoveMode.Hold or
+                            UnitMoveMode.Arrived ||
+                        Vector2.DistanceSquared(
+                            units.MoveGoals[builder], building.AccessPoint) >
+                        0.25f)
+                    {
+                        moveBuilder(builder, building.AccessPoint);
+                    }
                     continue;
                 }
                 var placement = building.Type.PlacementProfile;

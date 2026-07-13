@@ -50,16 +50,20 @@ AttackMove 路线
 
 | 命令 | 当前语义 |
 |---|---|
-| Move | 只移动，不主动索敌 |
+| Move | 移动途中不主动索敌；到点后转为空闲警戒 |
 | AttackMove | 沿路线索敌；追击；死亡或脱离 leash 后恢复路线 |
-| Stop | 取消原命令与恢复路线；在 acquisition 范围内自动索敌并进行有 leash 的局部追击 |
+| Idle/Stop | 空闲单位或 Stop 单位在 acquisition 范围内自动索敌并进行有 leash 的局部追击 |
 | Hold | 取消原命令与恢复路线；只攻击当前射程内目标，不追击、不离开 Hold 位置 |
 
 四种命令共享攻击结算，但移动和恢复语义互不污染。
 
+活动采集者和施工 Builder 不执行空闲警戒，避免自动战斗打断采集、返货和施工。AttackMove 的路线恢复目标按单位保存为编队槽位；接敌期间保留移动组身份，脱战后不会把整组选中单位重新塞回一个公共点。终点编队完成一次性收口后仍保留 AttackMove 警戒语义，但不会为终态槽位继续抖动。
+
 ## 黑盒验收
 
 - `attack-move-engage-resume`：偏离路线接敌、击杀、回到原路线。
+- `combat-idle-auto-acquire`：6 个无 AttackMove/显式目标命令的空闲士兵自动消灭 3 个敌人，显式攻击命令为 0。
+- `attack-move-squad-slot-resume`：16 人编队接敌后回到 16 个唯一槽位，全部停稳且长期漂移为 0。
 - `attack-move-leash-resume`：耐久目标逃离 leash，攻击者放弃追击并继续前往原终点。
 - `attack-move-command-isolation`：同图 Move 单位忽略敌人，AttackMove 单位接敌并恢复。
 - `attack-move-cancel`：Stop/Hold 取消原 AttackMove 路线；Stop 可继续局部接敌，Hold 不恢复路线。

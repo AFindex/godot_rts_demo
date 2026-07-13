@@ -226,10 +226,12 @@ public static class PlayableSkirmishScenario
         int[] workers,
         EconomyResourceNodeId[] minerals)
     {
+        var assignments = simulation.Economy.AssignGatherTargets(
+            playerId, workers, minerals[0], simulation.Units);
         for (var index = 0; index < workers.Length; index++)
         {
             var result = simulation.IssueGather(
-                playerId, workers[index], minerals[index % minerals.Length]);
+                playerId, workers[index], assignments[index]);
             if (!result.Succeeded)
                 throw new InvalidOperationException(
                     $"Initial gather failed for P{playerId}: {result.Code}.");

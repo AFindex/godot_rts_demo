@@ -111,9 +111,9 @@ public sealed class CombatSystem
             }
 
             var intent = _combat.CommandIntents[unit];
-            if (intent is not (UnitCommandIntent.AttackMove or
-                UnitCommandIntent.AttackTarget or UnitCommandIntent.Stop or
-                UnitCommandIntent.Hold))
+            if (intent is not (UnitCommandIntent.None or
+                UnitCommandIntent.AttackMove or UnitCommandIntent.AttackTarget or
+                UnitCommandIntent.Stop or UnitCommandIntent.Hold))
             {
                 continue;
             }

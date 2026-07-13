@@ -83,7 +83,6 @@ public sealed class DestinationLocalRematcher
         var anchorPosition = units.Positions[anchor];
         var anchorTarget = units.SlotTargets[anchor];
         var settledCandidates = 0;
-
         while (count < candidates.Length)
         {
             var bestUnit = -1;
@@ -105,9 +104,7 @@ public sealed class DestinationLocalRematcher
                             Vector2.DistanceSquared(
                                 units.SlotTargets[unit], anchorTarget) * 0.35f;
                 if (units.Modes[unit] == UnitMoveMode.Arrived)
-                {
                     score += 1_000_000f;
-                }
                 if (score < bestScore - 0.0001f ||
                     (MathF.Abs(score - bestScore) <= 0.0001f && unit < bestUnit))
                 {
@@ -123,9 +120,7 @@ public sealed class DestinationLocalRematcher
 
             candidates[count++] = bestUnit;
             if (units.Modes[bestUnit] == UnitMoveMode.Arrived)
-            {
                 settledCandidates++;
-            }
         }
 
         return count;

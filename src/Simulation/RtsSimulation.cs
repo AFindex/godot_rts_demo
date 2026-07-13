@@ -6,10 +6,12 @@ namespace RtsDemo.Simulation;
 public sealed class RtsSimulation : ICombatMovementDriver
 {
     private const float WaypointRadius = 13f;
-    private const float ArrivalStopRadius = 3.5f;
+    private const float MinimumArrivalStopRadius = 3.5f;
+    private const float MaximumArrivalStopRadius = 8f;
     private const float BaseArrivalResponseRadius = 58f;
     private const float MinimumArrivalSpeedFactor = 0.45f;
     private const float MaximumMinimumArrivalSpeed = 64f;
+    private const float FriendlyBuildingInteractionPadding = 8f;
     private const int CollisionIterations = 3;
     private const int DestinationReflowIntervalTicks = 12;
     private const int DestinationReflowCooldownTicks = 90;
@@ -23,7 +25,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private const int MaximumActiveDestinationYields = 4;
     private const int DestinationYieldDeadlineTicks = 360;
     private const int DestinationYieldReturnDeadlineTicks = 180;
-    private const int DestinationYieldCooldownTicks = 600;
+    private const int TerminalSettleMinimumGroupSize = 4;
+    private const float TerminalSettleQuorum = 0.9f;
+    private const float TerminalSettleMaximumDistance = 180f;
 
     private readonly IPathProvider _pathProvider;
     private readonly Queue<PathRequest> _pathRequests = new();
@@ -1775,10 +1779,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         if (builder < 0)
         {
-            IssueMove(
-                units,
-                ResolveFriendlyBuildingMoveTarget(building, units),
-                queued);
+            IssueFriendlyBuildingMove(building, units, queued);
             return new(PlayerOrderCommandCode.Success);
         }
         if (!Construction.CanResume(
@@ -1800,11 +1801,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 queued: true);
             if (movers.Count > 0)
             {
-                var movingUnits = movers.ToArray();
-                IssueMove(
-                    movingUnits,
-                    ResolveFriendlyBuildingMoveTarget(building, movingUnits),
-                    queued: true);
+                IssueFriendlyBuildingMove(
+                    building, movers.ToArray(), queued: true);
             }
             return new(PlayerOrderCommandCode.Success);
         }
@@ -1812,38 +1810,32 @@ public sealed class RtsSimulation : ICombatMovementDriver
             return new(PlayerOrderCommandCode.ContextActionUnavailable);
         if (movers.Count > 0)
         {
-            var movingUnits = movers.ToArray();
-            IssueMove(
-                movingUnits,
-                ResolveFriendlyBuildingMoveTarget(building, movingUnits));
+            IssueFriendlyBuildingMove(building, movers.ToArray(), queued: false);
         }
         return new(PlayerOrderCommandCode.Success);
     }
 
-    private Vector2 ResolveFriendlyBuildingMoveTarget(
+    private void IssueFriendlyBuildingMove(
         GameplayBuildingSnapshot building,
-        ReadOnlySpan<int> units)
+        ReadOnlySpan<int> units,
+        bool queued)
     {
-        var origin = Vector2.Zero;
-        var collisionRadius = 0f;
-        var navigationRadius = 0f;
+        Span<int> single = stackalloc int[1];
         for (var index = 0; index < units.Length; index++)
         {
-            origin += Units.Positions[units[index]];
-            collisionRadius = MathF.Max(
-                collisionRadius, Units.Radii[units[index]]);
-            navigationRadius = MathF.Max(
-                navigationRadius, Units.NavigationRadii[units[index]]);
+            var unit = units[index];
+            single[0] = unit;
+            var target = ConstructionAccessPointResolver.ResolveInteraction(
+                World,
+                _pathProvider,
+                building.Bounds,
+                Units.Positions[unit],
+                Units.Radii[unit],
+                Units.NavigationRadii[unit],
+                building.Type.PlacementProfile.UnitPadding +
+                FriendlyBuildingInteractionPadding);
+            IssueMove(single, target, queued);
         }
-        origin /= units.Length;
-        return ConstructionAccessPointResolver.Resolve(
-            World,
-            _pathProvider,
-            building.Bounds,
-            origin,
-            collisionRadius,
-            navigationRadius,
-            building.Type.PlacementProfile.UnitPadding);
     }
 
     private bool IssueDeferredWorkerOrder(
@@ -1956,9 +1948,16 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return true;
     }
 
-    private bool CanUnitAttack(int unit) =>
-        Concealment.CanAttack(unit) &&
-        !Construction.SuppressesBuilderCombat(unit);
+    private bool CanUnitAttack(int unit)
+    {
+        if (!Concealment.CanAttack(unit) ||
+            Construction.SuppressesBuilderCombat(unit))
+            return false;
+        if (!Economy.IsGatherer(unit))
+            return true;
+        return Economy.Worker(unit).State is
+            WorkerEconomyState.None or WorkerEconomyState.Idle;
+    }
 
     private MatchCommandBlock MatchCommandBlockFor(int playerId)
     {
@@ -2082,7 +2081,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private void ExecuteMoveOrder(
         ReadOnlySpan<int> unitIndices,
         Vector2 target,
-        UnitCommandIntent intent)
+        UnitCommandIntent intent,
+        bool exactDestination = false)
     {
         if (unitIndices.IsEmpty)
         {
@@ -2095,7 +2095,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
             ValidateLivingUnit(unitIndices[index]);
         }
 
-        var assignments = _slotAllocator.Allocate(Units, unitIndices, target);
         var centroid = Vector2.Zero;
         var maximumRadius = 0f;
         var maximumNavigationRadius = 0f;
@@ -2110,9 +2109,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
         centroid /= unitIndices.Length;
         var groupGoal = World.Bounds.Inset(maximumRadius + 2f).Clamp(target);
+        var assignments = exactDestination
+            ? null
+            : _slotAllocator.Allocate(Units, unitIndices, groupGoal);
         LastIssuedGroupRoute = PlanGroupRoute(
             centroid, groupGoal, maximumNavigationRadius);
-        var movementGroupId = NextMovementGroupId();
+        var movementGroupId = exactDestination ? 0 : NextMovementGroupId();
         if (unitIndices.Length > 1 && LastIssuedGroupRoute.Waypoints.Length > 0)
         {
             Metrics.SharedRouteAssignments += unitIndices.Length;
@@ -2127,23 +2129,33 @@ public sealed class RtsSimulation : ICombatMovementDriver
         for (var i = 0; i < unitIndices.Length; i++)
         {
             var unit = unitIndices[i];
+            var assignedTarget = exactDestination
+                ? groupGoal
+                : assignments![unit];
             ValidateUnitIndex(unit);
             ValidateLivingUnit(unit);
-            Combat.SetCommand(unit, intent, groupGoal);
+            Combat.SetCommand(
+                unit,
+                intent,
+                intent == UnitCommandIntent.AttackMove
+                    ? assignedTarget
+                    : groupGoal);
             Units.CommandVersions[unit]++;
-            Units.SlotTargets[unit] = assignments[unit];
+            Units.SlotTargets[unit] = assignedTarget;
             Units.MoveGoals[unit] = groupGoal;
             Units.MovementGroupIds[unit] = movementGroupId;
-            Units.MovementGroupSizes[unit] = unitIndices.Length;
+            Units.MovementGroupSizes[unit] = exactDestination
+                ? 1
+                : unitIndices.Length;
             Units.SlotReflowCooldownTicks[unit] = 0;
             Units.DestinationBestDistances[unit] = Vector2.Distance(
-                Units.Positions[unit], assignments[unit]);
+                Units.Positions[unit], assignedTarget);
             Units.DestinationStallTicks[unit] = 0;
             Units.DestinationNearTicks[unit] = 0;
             Units.DestinationOverflowed[unit] = false;
             Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
-            Units.DestinationYieldReturnTargets[unit] = assignments[unit];
-            Units.DestinationYieldPoints[unit] = assignments[unit];
+            Units.DestinationYieldReturnTargets[unit] = assignedTarget;
+            Units.DestinationYieldPoints[unit] = assignedTarget;
             Units.DestinationYieldForUnits[unit] = -1;
             Units.DestinationYieldForCommandVersions[unit] = 0;
             Units.DestinationYieldDeadlines[unit] = 0;
@@ -2653,11 +2665,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
         phaseStart = Stopwatch.GetTimestamp();
         UpdateProgress(delta);
-        _overflowResolver.UpdateStallTracking(Units);
+        _overflowResolver.UpdateStallTracking(Units, Combat.TargetKinds);
         UpdateDestinationLocalRematch();
         UpdateDestinationReflow();
         UpdateDestinationYielding();
         UpdateDestinationOverflow();
+        FinalizeSettledMovementGroups();
         UpdateMetrics();
         Metrics.RecoveryMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -3253,16 +3266,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
             {
                 continue;
             }
-            if (Units.Modes[unit] == UnitMoveMode.Arrived &&
-                Vector2.DistanceSquared(Units.Positions[unit], Units.SlotTargets[unit]) >
-                8f * 8f)
-            {
-                Units.Paths[unit] = new UnitPath(
-                    [Units.Positions[unit], Units.SlotTargets[unit]],
-                    Units.CommandVersions[unit]);
-                Units.Modes[unit] = UnitMoveMode.Moving;
-            }
-
             if (Units.Modes[unit] != UnitMoveMode.Moving)
             {
                 continue;
@@ -3280,11 +3283,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
             var waypoint = path.Points[path.Cursor];
             var toWaypoint = waypoint - Units.Positions[unit];
             var distance = toWaypoint.Length();
+            var arrivalStopRadius = ArrivalStopDistance(unit);
 
-            if (finalPoint && distance <= ArrivalStopRadius)
+            if (finalPoint && distance <= arrivalStopRadius)
             {
                 Units.Modes[unit] = UnitMoveMode.Arrived;
                 Units.Paths[unit] = null;
+                Units.Velocities[unit] = Vector2.Zero;
+                Units.NextVelocities[unit] = Vector2.Zero;
+                if (Combat.CommandIntents[unit] == UnitCommandIntent.Move)
+                    Combat.SetCommand(
+                        unit, UnitCommandIntent.None, Units.Positions[unit]);
                 continue;
             }
 
@@ -3297,12 +3306,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
             if (finalPoint)
             {
                 var physicalBrakingRadius = speed * speed /
-                    (2f * Units.Accelerations[unit]) + ArrivalStopRadius;
+                    (2f * Units.Accelerations[unit]) + arrivalStopRadius;
                 var responseRadius = MathF.Max(
                     BaseArrivalResponseRadius, physicalBrakingRadius);
                 var normalized = Math.Clamp(
-                    (distance - ArrivalStopRadius) /
-                    (responseRadius - ArrivalStopRadius), 0f, 1f);
+                    (distance - arrivalStopRadius) /
+                    (responseRadius - arrivalStopRadius), 0f, 1f);
                 var smooth = normalized * normalized *
                              (3f - 2f * normalized);
                 var minimumSpeed = MathF.Min(
@@ -3561,6 +3570,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             if (!_slotReflow.TryFindSwap(
                     Units,
+                    Combat.TargetKinds,
                     Metrics.Tick,
                     out var firstUnit,
                     out var secondUnit))
@@ -3632,6 +3642,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             if (!_overflowResolver.TryFindOverflowAssignment(
                     Units,
+                    Combat.TargetKinds,
                     out var unit,
                     out var overflowTarget))
             {
@@ -3643,6 +3654,172 @@ public sealed class RtsSimulation : ICombatMovementDriver
             QueueDestinationRetarget(unit);
             Metrics.DestinationOverflowAssignments++;
         }
+    }
+
+    private void FinalizeSettledMovementGroups()
+    {
+        for (var leader = 0; leader < Units.Count; leader++)
+        {
+            var groupId = Units.MovementGroupIds[leader];
+            if (!Units.Alive[leader] || groupId <= 0 ||
+                Units.MovementGroupSizes[leader] < TerminalSettleMinimumGroupSize ||
+                HasEarlierGroupMember(leader, groupId))
+                continue;
+
+            var members = 0;
+            var arrived = 0;
+            var remainingEligible = true;
+            var compactGroup = Units.MovementGroupSizes[leader] <= 8;
+            for (var unit = leader; unit < Units.Count; unit++)
+            {
+                if (!Units.Alive[unit] ||
+                    Units.MovementGroupIds[unit] != groupId)
+                    continue;
+                members++;
+                if (Combat.TargetKinds[unit] != CombatTargetKind.None)
+                {
+                    remainingEligible = false;
+                    continue;
+                }
+                if (Units.Modes[unit] == UnitMoveMode.Arrived)
+                {
+                    arrived++;
+                    continue;
+                }
+                var distance = Vector2.Distance(
+                    Units.Positions[unit], Units.SlotTargets[unit]);
+                var maximumDistance = compactGroup
+                    ? 60f
+                    : TerminalSettleMaximumDistance;
+                remainingEligible &=
+                    Units.Modes[unit] is
+                        UnitMoveMode.Moving or UnitMoveMode.WaitingForPath &&
+                    distance <= maximumDistance;
+            }
+
+            var required = compactGroup
+                ? members - 1
+                : (int)MathF.Ceiling(members * TerminalSettleQuorum);
+            if (members < TerminalSettleMinimumGroupSize ||
+                arrived < required || !remainingEligible)
+                continue;
+
+            var groupUnits = new int[members];
+            var memberIndex = 0;
+            for (var unit = leader; unit < Units.Count; unit++)
+            {
+                if (!Units.Alive[unit] ||
+                    Units.MovementGroupIds[unit] != groupId)
+                    continue;
+                groupUnits[memberIndex++] = unit;
+            }
+            var terminalAssignments = ResolveTerminalReservations(groupUnits);
+
+            for (var index = 0; index < groupUnits.Length; index++)
+            {
+                var unit = groupUnits[index];
+                Units.SlotTargets[unit] = terminalAssignments[index];
+                if (Combat.CommandIntents[unit] == UnitCommandIntent.AttackMove)
+                    Combat.AttackMoveGoals[unit] = terminalAssignments[index];
+                Units.Paths[unit] = null;
+                Units.RouteWaypoints[unit] = [];
+                Units.PathPending[unit] = false;
+                Units.Modes[unit] = UnitMoveMode.Arrived;
+                Units.PreferredVelocities[unit] = Vector2.Zero;
+                Units.Velocities[unit] = Vector2.Zero;
+                Units.NextVelocities[unit] = Vector2.Zero;
+                Units.DestinationYieldPhases[unit] =
+                    DestinationYieldPhase.None;
+                Units.MovementGroupIds[unit] = 0;
+                Units.MovementGroupSizes[unit] = 1;
+                if (Combat.CommandIntents[unit] == UnitCommandIntent.Move)
+                    Combat.SetCommand(
+                        unit, UnitCommandIntent.None, Units.Positions[unit]);
+            }
+        }
+    }
+
+    private Vector2[] ResolveTerminalReservations(int[] groupUnits)
+    {
+        var targets = new Vector2[groupUnits.Length];
+        var selectedIndices = new int[Units.Count];
+        Array.Fill(selectedIndices, -1);
+        for (var index = 0; index < groupUnits.Length; index++)
+        {
+            var unit = groupUnits[index];
+            targets[index] = Units.Positions[unit];
+            selectedIndices[unit] = index;
+        }
+
+        const int relaxationPasses = 16;
+        const float reservationPadding = 2f;
+        for (var pass = 0; pass < relaxationPasses; pass++)
+        {
+            for (var leftIndex = 0; leftIndex < groupUnits.Length; leftIndex++)
+            {
+                var left = groupUnits[leftIndex];
+                for (var right = 0; right < Units.Count; right++)
+                {
+                    if (right == left || !Units.Alive[right])
+                        continue;
+                    var rightIndex = selectedIndices[right];
+                    if (rightIndex >= 0 && rightIndex <= leftIndex)
+                        continue;
+
+                    var rightTarget = rightIndex >= 0
+                        ? targets[rightIndex]
+                        : Units.SlotTargets[right];
+                    var offset = targets[leftIndex] - rightTarget;
+                    var distance = offset.Length();
+                    var required = Units.Radii[left] + Units.Radii[right] +
+                                   reservationPadding;
+                    if (distance >= required)
+                        continue;
+
+                    var normal = distance > 0.0001f
+                        ? offset / distance
+                        : DeterministicNormal(left, right);
+                    var correction = required - distance;
+                    if (rightIndex >= 0)
+                    {
+                        MoveTerminalReservation(
+                            left, ref targets[leftIndex], normal * correction * 0.5f);
+                        MoveTerminalReservation(
+                            right, ref targets[rightIndex], -normal * correction * 0.5f);
+                    }
+                    else
+                    {
+                        MoveTerminalReservation(
+                            left, ref targets[leftIndex], normal * correction);
+                    }
+                }
+            }
+        }
+
+        return targets;
+    }
+
+    private void MoveTerminalReservation(
+        int unit,
+        ref Vector2 target,
+        Vector2 displacement)
+    {
+        var candidate = World.Bounds
+            .Inset(Units.Radii[unit] + 2f)
+            .Clamp(target + displacement);
+        if (World.IsDiscFree(candidate, Units.Radii[unit]))
+            target = candidate;
+    }
+
+    private bool HasEarlierGroupMember(int unit, int groupId)
+    {
+        for (var candidate = 0; candidate < unit; candidate++)
+        {
+            if (Units.Alive[candidate] &&
+                Units.MovementGroupIds[candidate] == groupId)
+                return true;
+        }
+        return false;
     }
 
     private void UpdateDestinationYielding()
@@ -3707,6 +3884,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             if (!_yieldResolver.TryFindYield(
                     Units,
+                    Combat.TargetKinds,
                     Metrics.Tick,
                     out var blockedUnit,
                     out var blockerUnit,
@@ -3776,8 +3954,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.DestinationYieldForUnits[unit] = -1;
         Units.DestinationYieldForCommandVersions[unit] = 0;
         Units.DestinationYieldDeadlines[unit] = 0;
-        Units.DestinationYieldCooldownTicks[unit] =
-            Metrics.Tick + DestinationYieldCooldownTicks;
+        Units.DestinationYieldCooldownTicks[unit] = long.MaxValue;
     }
 
     private void QueueDestinationRetarget(
@@ -4076,8 +4253,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
             return;
         }
 
+        var arrivalStopRadius = ArrivalStopDistance(unit);
         if (Vector2.DistanceSquared(Units.Positions[unit], target) <=
-            ArrivalStopRadius * ArrivalStopRadius)
+            arrivalStopRadius * arrivalStopRadius)
         {
             Units.Modes[unit] = UnitMoveMode.Arrived;
             Units.SlotTargets[unit] = target;
@@ -4201,11 +4379,28 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var clamped = World.Bounds.Inset(Units.Radii[unit] + 2f).Clamp(target);
         Units.SlotTargets[unit] = clamped;
         Units.MoveGoals[unit] = clamped;
-        Units.MovementGroupIds[unit] = 0;
-        Units.MovementGroupSizes[unit] = 1;
+        if (Combat.CommandIntents[unit] != UnitCommandIntent.AttackMove)
+        {
+            Units.MovementGroupIds[unit] = 0;
+            Units.MovementGroupSizes[unit] = 1;
+        }
         Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
         Units.DestinationOverflowed[unit] = false;
         QueueNavigationReplan(unit, countInvalidation: false);
+    }
+
+    private float ArrivalStopDistance(int unit)
+    {
+        if (Construction.IsAssignedBuilder(unit) ||
+            CommandQueues.ConstructionEvacuationActive[unit] ||
+            Combat.TargetKinds[unit] != CombatTargetKind.None ||
+            Economy.IsGatherer(unit) && Economy.Worker(unit).State is not
+                (WorkerEconomyState.None or WorkerEconomyState.Idle))
+            return MinimumArrivalStopRadius;
+        return Math.Clamp(
+            Units.Radii[unit],
+            MinimumArrivalStopRadius,
+            MaximumArrivalStopRadius);
     }
 
     private CombatContactSnapshot EvaluateCombatContact(int unit) =>
@@ -4250,7 +4445,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _issuingSystemOrder = true;
         try
         {
-            IssueMove(worker, target);
+            ExecuteMoveOrder(
+                worker, target, UnitCommandIntent.Move,
+                exactDestination: true);
         }
         finally
         {
@@ -4282,7 +4479,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _issuingSystemOrder = true;
         try
         {
-            IssueMove(worker, target);
+            ExecuteMoveOrder(
+                worker, target, UnitCommandIntent.Move,
+                exactDestination: true);
         }
         finally
         {

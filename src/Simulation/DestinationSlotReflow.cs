@@ -13,7 +13,7 @@ public sealed class DestinationSlotReflow
     private const float MaximumDistanceToReflow = 140f;
     private const float MinimumSquaredCostImprovement = 64f;
     private const float MaximumIndividualRegression = 10f;
-    private const int MinimumGroupSize = 32;
+    private const int MinimumGroupSize = 8;
 
     private readonly StaticWorld _world;
 
@@ -24,6 +24,7 @@ public sealed class DestinationSlotReflow
 
     public bool TryFindSwap(
         UnitStore units,
+        ReadOnlySpan<CombatTargetKind> combatTargets,
         long tick,
         out int firstUnit,
         out int secondUnit)
@@ -34,7 +35,9 @@ public sealed class DestinationSlotReflow
 
         for (var first = 0; first < units.Count; first++)
         {
-            if (!IsCandidate(units, first, tick, out var firstDistanceSquared))
+            if (!IsCandidate(
+                    units, combatTargets, first, tick,
+                    out var firstDistanceSquared))
             {
                 continue;
             }
@@ -43,7 +46,9 @@ public sealed class DestinationSlotReflow
             for (var second = first + 1; second < units.Count; second++)
             {
                 if (units.MovementGroupIds[second] != groupId ||
-                    !IsCandidate(units, second, tick, out var secondDistanceSquared))
+                    !IsCandidate(
+                        units, combatTargets, second, tick,
+                        out var secondDistanceSquared))
                 {
                     continue;
                 }
@@ -88,23 +93,40 @@ public sealed class DestinationSlotReflow
 
     private static bool IsCandidate(
         UnitStore units,
+        ReadOnlySpan<CombatTargetKind> combatTargets,
         int unit,
         long tick,
         out float distanceSquared)
     {
         distanceSquared = Vector2.DistanceSquared(
             units.Positions[unit], units.SlotTargets[unit]);
-        if (units.MovementGroupIds[unit] <= 0 ||
+        if (combatTargets[unit] != CombatTargetKind.None ||
+            units.MovementGroupIds[unit] <= 0 ||
             units.MovementGroupSizes[unit] < MinimumGroupSize ||
             units.DestinationOverflowed[unit] ||
             units.DestinationYieldPhases[unit] != DestinationYieldPhase.None ||
             units.SlotReflowCooldownTicks[unit] > tick ||
-            units.Modes[unit] is not (UnitMoveMode.Moving or UnitMoveMode.Arrived))
+            units.Modes[unit] is not (UnitMoveMode.Moving or UnitMoveMode.Arrived) ||
+            units.Modes[unit] == UnitMoveMode.Arrived &&
+            !HasMovingCohort(units, unit))
         {
             return false;
         }
 
         return distanceSquared >= MinimumDistanceToReflow * MinimumDistanceToReflow &&
                distanceSquared <= MaximumDistanceToReflow * MaximumDistanceToReflow;
+    }
+
+    private static bool HasMovingCohort(UnitStore units, int unit)
+    {
+        var groupId = units.MovementGroupIds[unit];
+        for (var candidate = 0; candidate < units.Count; candidate++)
+        {
+            if (units.Alive[candidate] &&
+                units.MovementGroupIds[candidate] == groupId &&
+                units.Modes[candidate] == UnitMoveMode.Moving)
+                return true;
+        }
+        return false;
     }
 }

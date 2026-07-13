@@ -9,7 +9,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public sealed class DestinationOverflowResolver
 {
-    private const int MinimumGroupSize = 32;
+    private const int MinimumGroupSize = 8;
     private const int MinimumStallTicks = 150;
     private const int MaximumNearGoalTicks = 900;
     private const float MinimumTrackedDistance = 9f;
@@ -25,12 +25,21 @@ public sealed class DestinationOverflowResolver
         _world = world;
     }
 
-    public void UpdateStallTracking(UnitStore units)
+    public void UpdateStallTracking(
+        UnitStore units,
+        ReadOnlySpan<CombatTargetKind> combatTargets)
     {
         for (var unit = 0; unit < units.Count; unit++)
         {
             if (!units.Alive[unit])
             {
+                continue;
+            }
+            if (combatTargets[unit] != CombatTargetKind.None)
+            {
+                units.DestinationStallTicks[unit] = 0;
+                units.DestinationNearTicks[unit] = 0;
+                units.DestinationBestDistances[unit] = 0f;
                 continue;
             }
             var distance = Vector2.Distance(
@@ -95,12 +104,14 @@ public sealed class DestinationOverflowResolver
 
     public bool TryFindOverflowAssignment(
         UnitStore units,
+        ReadOnlySpan<CombatTargetKind> combatTargets,
         out int unit,
         out Vector2 overflowTarget)
     {
         for (var candidateUnit = 0; candidateUnit < units.Count; candidateUnit++)
         {
-            if (!units.Alive[candidateUnit])
+            if (!units.Alive[candidateUnit] ||
+                combatTargets[candidateUnit] != CombatTargetKind.None)
             {
                 continue;
             }

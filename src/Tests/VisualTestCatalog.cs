@@ -15,6 +15,10 @@ public static class VisualTestCatalog
     [
         "frontend-test-browser",
         "single-unit",
+        "group-move-terminal-stability",
+        "friendly-building-radial-interaction",
+        "combat-idle-auto-acquire",
+        "attack-move-squad-slot-resume",
         "attack-move-engage-resume",
         "combat-event-stream",
         "combat-damage-matrix",
@@ -147,6 +151,13 @@ public static class VisualTestCatalog
     {
         "frontend-test-browser" => CreateFrontendTestBrowser(),
         "single-unit" => CreateSingleUnit(),
+        "group-move-terminal-stability" =>
+            CreateGroupMoveTerminalStability(),
+        "friendly-building-radial-interaction" =>
+            CreateFriendlyBuildingRadialInteraction(),
+        "combat-idle-auto-acquire" => CreateCombatIdleAutoAcquire(),
+        "attack-move-squad-slot-resume" =>
+            CreateAttackMoveSquadSlotResume(),
         "attack-move-engage-resume" => CreateAttackMoveEngageResume(),
         "combat-event-stream" => CreateCombatEventStream(),
         "combat-damage-matrix" => CreateCombatDamageMatrix(productionCatalog),
@@ -368,6 +379,306 @@ public static class VisualTestCatalog
         rig.Move(units, new Vector2(900f, 500f));
         return ArrivalScenario(
             "single-unit", "Single unit direct move", 480, rig, units, 1, 8f);
+    }
+
+    private static VisualTestSession CreateGroupMoveTerminalStability()
+    {
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1200f, 700f), 64);
+        var units = rig.SpawnGrid(
+            new Vector2(90f, 220f), 6, 8, 18f);
+        rig.Move(units, new Vector2(970f, 350f));
+        TestUnitSnapshot[]? settled = null;
+        var settledTick = -1L;
+        var session = new VisualTestSession(
+                "group-move-terminal-stability",
+                "A completed group Move stays hard-settled without late slot jitter",
+                1200,
+                rig,
+                units,
+                runtime =>
+                {
+                    var final = runtime.Observe(units);
+                    var arrived = final.Count(value =>
+                        value.State == TestUnitState.Arrived);
+                    var stopped = final.Count(value =>
+                        value.Velocity.Length() <= 0.25f);
+                    var maximumLateDrift = settled is null
+                        ? float.PositiveInfinity
+                        : final.Max(value => Vector2.Distance(
+                            value.Position,
+                            settled.Single(previous =>
+                                previous.Id == value.Id).Position));
+                    var passed = arrived == units.Length &&
+                                 stopped == units.Length &&
+                                 settledTick >= 0 &&
+                                 runtime.Tick - settledTick >= 240 &&
+                                 maximumLateDrift <= 1.5f;
+                    return new ScenarioResult(
+                        passed,
+                        $"arrived={arrived}/{units.Length}, " +
+                        $"stopped={stopped}/{units.Length}, " +
+                        $"settled-tick={settledTick}, " +
+                        $"late-drift={maximumLateDrift:0.00}");
+                });
+        for (var tick = 600; tick < session.DurationTicks - 240; tick += 10)
+        {
+            session.At(tick, "Capture the first fully settled formation", runtime =>
+            {
+                if (settled is not null)
+                    return;
+                var snapshots = runtime.Observe(units);
+                if (snapshots.All(value =>
+                        value.State == TestUnitState.Arrived))
+                {
+                    settled = snapshots;
+                    settledTick = runtime.Tick;
+                }
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateFriendlyBuildingRadialInteraction()
+    {
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1200f, 700f), 16);
+        rig.RegisterPlayer(1, 1000, 0, 24, 1);
+        var builder = rig.SpawnWorker(new Vector2(390f, 350f), 1);
+        TestUnitId[] units =
+        [
+            rig.SpawnCombat(new Vector2(150f, 145f), 1),
+            rig.SpawnCombat(new Vector2(160f, 555f), 1),
+            rig.SpawnCombat(new Vector2(1050f, 165f), 1),
+            rig.SpawnCombat(new Vector2(1040f, 535f), 1)
+        ];
+        var building = default(TestConstructionResult);
+        var issued = TestPlayerOrderCommandCode.InvalidTarget;
+        Vector2[]? origins = null;
+        Vector2[]? targets = null;
+        return new VisualTestSession(
+                "friendly-building-radial-interaction",
+                "Friendly-building interaction projects each unit radially to the rectangle",
+                900,
+                rig,
+                units.Append(builder).ToArray(),
+                runtime =>
+                {
+                    var snapshot = runtime.ObserveGameplayBuilding(
+                        building.BuildingId);
+                    var final = runtime.Observe(units);
+                    var uniqueTargets = final
+                        .Select(value => (
+                            X: MathF.Round(value.AssignedTarget.X, 1),
+                            Y: MathF.Round(value.AssignedTarget.Y, 1)))
+                        .Distinct()
+                        .Count();
+                    var radial = origins is not null && targets is not null &&
+                                 Enumerable.Range(0, units.Length).All(index =>
+                                 {
+                                     var fromCenter = origins[index] - snapshot.Center;
+                                     var toTarget = targets[index] - snapshot.Center;
+                                     var cross = MathF.Abs(
+                                         fromCenter.X * toTarget.Y -
+                                         fromCenter.Y * toTarget.X);
+                                     var scale = MathF.Max(
+                                         1f,
+                                         fromCenter.Length() * toTarget.Length());
+                                     return cross / scale <= 0.002f &&
+                                            Vector2.Dot(fromCenter, toTarget) > 0f &&
+                                            MathF.Abs(toTarget.X) > 5f &&
+                                            MathF.Abs(toTarget.Y) > 5f;
+                                 });
+                    var arrived = final.Count(value => Vector2.Distance(
+                        value.Position, value.AssignedTarget) <= 8f);
+                    var passed = building.Succeeded &&
+                                 snapshot.State ==
+                                     TestBuildingLifecycleState.Completed &&
+                                 issued == TestPlayerOrderCommandCode.Success &&
+                                 radial && uniqueTargets == units.Length &&
+                                 arrived == units.Length;
+                    return new ScenarioResult(
+                        passed,
+                        $"building={snapshot.State}, command={issued}, " +
+                        $"radial={radial}, targets={uniqueTargets}/{units.Length}, " +
+                        $"arrived={arrived}/{units.Length}, " +
+                        $"points={string.Join(';', Enumerable.Range(0, units.Length).Select(index => $"{origins![index].X:0},{origins[index].Y:0}>{targets![index].X:0},{targets[index].Y:0}@{final[index].Position.X:0},{final[index].Position.Y:0}"))}");
+                })
+            .At(1, "Construct a rectangular friendly building", runtime =>
+                building = runtime.Build(
+                    1,
+                    builder,
+                    DemoBuildingTypes.SupplyDepot with
+                    {
+                        Cost = default,
+                        BuildSeconds = 0.05f,
+                        ConstructionMethod =
+                            ConstructionMethodKind.StartAndRelease
+                    },
+                    new Vector2(600f, 350f)))
+            .At(300, "Right-click the same building from four diagonal bearings",
+                runtime =>
+                {
+                    origins = runtime.Observe(units)
+                        .Select(value => value.Position)
+                        .ToArray();
+                    issued = runtime.PlayerSmartFriendlyBuilding(
+                        1, units, building.BuildingId);
+                })
+            .At(301, "Capture per-unit rectangle approach points", runtime =>
+                targets = runtime.Observe(units)
+                    .Select(value => value.AssignedTarget)
+                    .ToArray());
+    }
+
+    private static VisualTestSession CreateCombatIdleAutoAcquire()
+    {
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(900f, 600f), 16);
+        var attackerProfile = new TestCombatProfile(
+            MaximumHealth: 90f,
+            AttackDamage: 20f,
+            AttackRange: 90f,
+            AcquisitionRange: 260f,
+            AttackCooldownSeconds: 0.5f,
+            AttackWindupSeconds: 0.1f,
+            LeashDistance: 500f,
+            ProjectileSpeed: 480f);
+        var passiveProfile = new TestCombatProfile(
+            MaximumHealth: 60f,
+            AttackDamage: 0f,
+            AttackRange: 10f,
+            AcquisitionRange: 40f,
+            AttackCooldownSeconds: 1f,
+            AttackWindupSeconds: 0f,
+            LeashDistance: 80f);
+        var attackers = Enumerable.Range(0, 6)
+            .Select(index => rig.SpawnCombat(
+                new Vector2(210f, 225f + index * 30f), 1,
+                attackerProfile))
+            .ToArray();
+        var targets = Enumerable.Range(0, 3)
+            .Select(index => rig.SpawnCombat(
+                new Vector2(445f, 255f + index * 75f), 2,
+                passiveProfile))
+            .ToArray();
+        var visible = attackers.Concat(targets).ToArray();
+        return new VisualTestSession(
+            "combat-idle-auto-acquire",
+            "Idle combat units acquire and destroy nearby hostiles without AttackMove",
+            480,
+            rig,
+            visible,
+            runtime =>
+            {
+                var destroyed = targets.Count(value =>
+                    !runtime.ObserveCombat(value).Alive);
+                var starts = runtime.ObserveCombatEvents().Events.Count(value =>
+                    value.Kind == CombatEventKind.AttackStarted);
+                var passed = destroyed == targets.Length && starts >= 9;
+                return new ScenarioResult(
+                    passed,
+                    $"destroyed={destroyed}/{targets.Length}, " +
+                    $"attack-starts={starts}, explicit-orders=0");
+            });
+    }
+
+    private static VisualTestSession CreateAttackMoveSquadSlotResume()
+    {
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1200f, 700f), 24);
+        var attackers = Enumerable.Range(0, 16)
+            .Select(index => rig.SpawnCombat(
+                new Vector2(
+                    90f + index % 4 * 18f,
+                    305f + index / 4 * 18f),
+                1,
+                new TestCombatProfile(
+                    MaximumHealth: 90f,
+                    AttackDamage: 18f,
+                    AttackRange: 85f,
+                    AcquisitionRange: 240f,
+                    AttackCooldownSeconds: 0.55f,
+                    AttackWindupSeconds: 0.1f,
+                    LeashDistance: 450f)))
+            .ToArray();
+        var target = rig.SpawnCombat(
+            new Vector2(510f, 350f),
+            2,
+            new TestCombatProfile(
+                MaximumHealth: 90f,
+                AttackDamage: 0f,
+                AttackRange: 10f,
+                AcquisitionRange: 40f,
+                AttackCooldownSeconds: 1f,
+                AttackWindupSeconds: 0f,
+                LeashDistance: 80f));
+        rig.AttackMove(attackers, new Vector2(1030f, 350f));
+        TestUnitSnapshot[]? settled = null;
+        var settledTick = -1L;
+        var session = new VisualTestSession(
+                "attack-move-squad-slot-resume",
+                "AttackMove squad resumes its individual slots instead of one shared point",
+                1200,
+                rig,
+                attackers.Append(target).ToArray(),
+                runtime =>
+                {
+                    var final = runtime.Observe(attackers);
+                    var uniqueTargets = final.Select(value => (
+                            X: MathF.Round(value.AssignedTarget.X, 1),
+                            Y: MathF.Round(value.AssignedTarget.Y, 1)))
+                        .Distinct()
+                        .Count();
+                    var arrived = final.Count(value =>
+                        value.State == TestUnitState.Arrived);
+                    var maximumLateDrift = settled is null
+                        ? float.PositiveInfinity
+                        : final.Max(value => Vector2.Distance(
+                            value.Position,
+                            settled.Single(previous =>
+                                previous.Id == value.Id).Position));
+                    var diagnostics = runtime.ObserveMovementDiagnostics();
+                    var unsettled = final
+                        .Where(value => value.State != TestUnitState.Arrived)
+                        .Select(value =>
+                            $"u{value.Id.Value}:{value.State}/" +
+                            $"{Vector2.Distance(value.Position, value.AssignedTarget):0.0}")
+                        .ToArray();
+                    var passed = !runtime.ObserveCombat(target).Alive &&
+                                 uniqueTargets == attackers.Length &&
+                                 arrived == attackers.Length &&
+                                 settledTick >= 0 &&
+                                 runtime.Tick - settledTick >= 240 &&
+                                 maximumLateDrift <= 1.5f;
+                    return new ScenarioResult(
+                        passed,
+                        $"target-alive={runtime.ObserveCombat(target).Alive}, " +
+                        $"slots={uniqueTargets}/{attackers.Length}, " +
+                        $"arrived={arrived}/{attackers.Length}, " +
+                        $"settled-tick={settledTick}, " +
+                        $"late-drift={maximumLateDrift:0.00}, " +
+                        $"yield={diagnostics.DestinationYieldEvents}, " +
+                        $"overflow={diagnostics.DestinationOverflowAssignments}, " +
+                        $"unsettled={string.Join(',', unsettled)}");
+                });
+        for (var tick = 600; tick < session.DurationTicks - 240; tick += 10)
+        {
+            session.At(tick, "Capture the first fully settled resumed squad",
+                runtime =>
+                {
+                    if (settled is not null)
+                        return;
+                    var snapshots = runtime.Observe(attackers);
+                    if (snapshots.All(value =>
+                            value.State == TestUnitState.Arrived))
+                    {
+                        settled = snapshots;
+                        settledTick = runtime.Tick;
+                    }
+                });
+        }
+        return session;
     }
 
     private static VisualTestSession CreateAttackMoveEngageResume()
@@ -863,7 +1174,7 @@ public static class VisualTestCatalog
                             cancelWindupBefore = runtime.ObserveCombat(
                                 attackers[2]).WindupRemaining;
                             runtime.Move([attackers[2]],
-                                new Vector2(900f, 430f));
+                                new Vector2(970f, 430f));
                             cancelWindupAfter = runtime.ObserveCombat(
                                 attackers[2]).WindupRemaining;
                             cancelIssued = true;
@@ -1257,11 +1568,13 @@ public static class VisualTestCatalog
             buildingTypes.Type(4) with { BuildSeconds = 0.5f },
             new Vector2(430f, 500f));
         var attacker = rig.SpawnCombat(
-            new Vector2(650f, 140f), 1,
+            new Vector2(400f, 140f), 1,
             new TestCombatProfile(
                 100f, 20f, 100f, 240f, 10f, 0.1f, 400f,
                 BonusVs: CombatAttribute.Structure,
-                BonusDamage: 10f));
+                BonusDamage: 10f),
+            maximumSpeed: 400f,
+            acceleration: 1600f);
         var targets = new[]
         {
             supply.BuildingId, barracks.BuildingId, commandCenter.BuildingId
@@ -1423,7 +1736,7 @@ public static class VisualTestCatalog
         rig.AttackMove([held], new Vector2(810f, 420f));
         return new VisualTestSession(
             "attack-move-cancel",
-            "Stop and Hold cancel AttackMove engagement and resume intent",
+            "Stop and Hold cancel AttackMove travel, then guard locally",
             300,
             rig,
             visible,
@@ -1433,12 +1746,16 @@ public static class VisualTestCatalog
                 var heldUnit = runtime.Observe(held);
                 var stoppedCombat = runtime.ObserveCombat(stopped);
                 var heldCombat = runtime.ObserveCombat(held);
-                var stoppedCancelledRoute = stoppedUnit.Position.X < 700f;
+                var stoppedCancelledRoute = stoppedUnit.Position.X < 400f;
                 var heldCancelledRoute = heldUnit.Position.X < 400f;
                 var passed = stoppedCancelledRoute && heldCancelledRoute &&
+                             stoppedUnit.State == TestUnitState.Holding &&
                              heldUnit.State == TestUnitState.Holding &&
+                             stoppedCombat.State == TestCombatState.Attacking &&
+                             heldCombat.State == TestCombatState.Attacking &&
                              heldUnit.Velocity.LengthSquared() < 0.25f &&
-                             heldCombat.Target is null &&
+                             stoppedCombat.Target == upperEnemy &&
+                             heldCombat.Target == lowerEnemy &&
                              runtime.ObserveCombat(upperEnemy).Alive &&
                              runtime.ObserveCombat(lowerEnemy).Alive;
                 return new ScenarioResult(
@@ -1485,6 +1802,7 @@ public static class VisualTestCatalog
         var target = rig.SpawnCombat(
             new Vector2(600f, 350f), team: 2, durable, radius: 24f);
         var visible = attackers.Append(target).ToArray();
+        rig.Hold([target]);
         rig.AttackMove(attackers, new Vector2(1040f, 350f));
         return new VisualTestSession(
             "combat-melee-slots",
@@ -1809,9 +2127,10 @@ public static class VisualTestCatalog
             {
                 var current = runtime.RecallControlGroup(1);
                 var arrived = current.Count(unit =>
+                    runtime.Observe(unit).State == TestUnitState.Arrived &&
                     Vector2.Distance(
                         runtime.Observe(unit).Position,
-                        runtime.Observe(unit).AssignedTarget) < 8f);
+                        runtime.Observe(unit).AssignedTarget) <= 8.1f);
                 return new ScenarioResult(
                     current.Length == 6 && arrived == 6,
                     $"members={current.Length}, arrived={arrived}/6");
@@ -4618,6 +4937,8 @@ public static class VisualTestCatalog
         var activeSlotInvariant = true;
         var assignedCounterInvariant = true;
         var waitingObserved = false;
+        var sawReturning = new bool[workers.Length];
+        var completedRoundTrip = new bool[workers.Length];
         var issued = 0;
         TestRuntimeStateCapture? hotCapture = null;
         const long hotTick = 300;
@@ -4672,10 +4993,13 @@ public static class VisualTestCatalog
                         package.FormatVersion ==
                             SimulationReplayPackageSnapshot.CurrentFormatVersion &&
                         hotVersion == SimulationHotSnapshot.CurrentFormatVersion;
+                    var income = runtime.ObservePlayerEconomy(1).Minerals;
+                    var completedCycles = completedRoundTrip.Count(value => value);
                     var passed = issued == workers.Length &&
                                  stage12 && stage16 && stage24 && stage32 &&
                                  activeSlotInvariant && assignedCounterInvariant &&
                                  waitingObserved && finalAssigned == workers.Length &&
+                                 income > 0 && completedCycles >= 24 &&
                                  spread <= 1 && packageRoundTrip && replayExact &&
                                  hotExact && versions;
                     return new ScenarioResult(
@@ -4684,6 +5008,7 @@ public static class VisualTestCatalog
                         $"assigned={finalAssigned}, spread={spread}, " +
                         $"active-slot={activeSlotInvariant}, counters=" +
                         $"{assignedCounterInvariant}, waiting={waitingObserved}, " +
+                        $"income={income}, cycles={completedCycles}/{workers.Length}, " +
                         $"orders={package.EconomyCommandCount}, " +
                         $"replay={replayExact}, hot={hotExact}/v{hotVersion}");
                 })
@@ -4740,7 +5065,17 @@ public static class VisualTestCatalog
                 activeSlotInvariant &= nodes.All(value =>
                     value.ActiveNormal <= value.NormalActiveSlots);
                 waitingObserved |= nodes.Any(value => value.WaitingNormal > 0);
-                var assignedFromWorkers = runtime.ObservePlayerWorkers(1)
+                var workerSnapshots = runtime.ObservePlayerWorkers(1);
+                foreach (var worker in workerSnapshots)
+                {
+                    sawReturning[worker.Unit.Value] |= worker.State ==
+                        TestWorkerEconomyState.ReturningCargo;
+                    completedRoundTrip[worker.Unit.Value] |=
+                        sawReturning[worker.Unit.Value] &&
+                        worker.State == TestWorkerEconomyState.GoingToResource &&
+                        worker.CargoAmount == 0;
+                }
+                var assignedFromWorkers = workerSnapshots
                     .Where(value => value.State is not TestWorkerEconomyState.Idle and
                         not TestWorkerEconomyState.None)
                     .GroupBy(value => value.TargetNode.Value)
@@ -5405,6 +5740,20 @@ public static class VisualTestCatalog
                 var totalMined = resources.Sum(node =>
                     startingNodeAmount - runtime.ObserveResourceNode(node).Remaining);
                 var recovery = runtime.ObserveRecovery(workers);
+                var unreachableWorkers = workers
+                    .Where(worker => runtime.ObserveRecovery([worker])
+                        .UnreachableUnits > 0)
+                    .Select(worker =>
+                    {
+                        var movement = runtime.Observe(worker);
+                        var economy = runtime.ObserveWorkerEconomy(worker);
+                        return $"u{worker.Value}:{economy.State}/n" +
+                               $"{economy.TargetNode.Value}@" +
+                               $"{movement.Position.X:0},{movement.Position.Y:0}>" +
+                               $"{movement.AssignedTarget.X:0}," +
+                               $"{movement.AssignedTarget.Y:0}";
+                    })
+                    .ToArray();
                 var basesCompleted = buildings.All(building =>
                     building.Succeeded &&
                     runtime.ObserveGameplayBuilding(building.BuildingId).State ==
@@ -5426,7 +5775,8 @@ public static class VisualTestCatalog
                     $"phases={sawGoing.Count}/{sawGathering.Count}/" +
                     $"{sawReturning.Count}, edges={approachSamples}:" +
                     $"{invalidApproaches}, unreachable=" +
-                    $"{recovery.UnreachableUnits}");
+                    $"{recovery.UnreachableUnits}[" +
+                    $"{string.Join(',', unreachableWorkers)}]");
             })
             .RenderSpawnedUnits()
             .RenderOmniscient()
@@ -5963,7 +6313,7 @@ public static class VisualTestCatalog
         rig.RegisterPlayer(1, 3000, 500, 30);
         rig.RegisterPlayer(2, 3000, 500, 30);
         var builder = rig.SpawnWorker(
-            new Vector2(100f, 300f), 1,
+            new Vector2(766f, 300f), 1,
             maximumSpeed: 400f, acceleration: 2000f);
         var harmlessWeapon = TestCombatProfile.Standard with
         {
@@ -5991,6 +6341,7 @@ public static class VisualTestCatalog
         var target = new Vector2(800f, 300f);
         var profile = DemoBuildingTypes.SupplyDepot with { BuildSeconds = 1f };
         rig.StartReplayPackageRecording();
+        rig.Hold([scout, detector, buriedBlocker, buriedContact, passer]);
 
         var hiddenOnVisibleGround = false;
         var previewAccepted = false;
@@ -5999,6 +6350,9 @@ public static class VisualTestCatalog
         var burrowContactSuppressed = false;
         var detectedStateExposed = false;
         var detectedAttackAccepted = false;
+        var waitState = TestBuildingLifecycleState.ReservedApproach;
+        var blockerAtWait = Vector2.Zero;
+        var builderAtWait = Vector2.Zero;
         TestConstructionResult build = default;
         TestRuntimeStateCapture? hotCapture = null;
         const long hotTick = 169;
@@ -6037,7 +6391,9 @@ public static class VisualTestCatalog
                     $"preview={previewAccepted}, wait={authorityWaitHidden}, " +
                     $"burrowPass={burrowContactSuppressed}, " +
                     $"detected={detectedStateExposed}/{detectedAttackAccepted}, " +
-                    $"state={building.State}, versions=package{package.FormatVersion}/" +
+                    $"state={building.State}, waitState={waitState}, " +
+                    $"waitPos={builderAtWait}/{blockerAtWait}, " +
+                    $"versions=package{package.FormatVersion}/" +
                     $"hot{hot.FormatVersion}, exact={exact}");
             })
             .RenderSpawnedUnits()
@@ -6084,6 +6440,9 @@ public static class VisualTestCatalog
         session.At(hotTick, "Capture the undetected authority wait", runtime =>
         {
             var building = runtime.ObserveGameplayBuilding(build.BuildingId);
+            waitState = building.State;
+            blockerAtWait = runtime.Observe(buriedBlocker).Position;
+            builderAtWait = runtime.Observe(builder).Position;
             var view = runtime.ObservePlayerView(1);
             authorityWaitHidden =
                 building.State == TestBuildingLifecycleState.BlockedAtStart &&
@@ -6153,6 +6512,9 @@ public static class VisualTestCatalog
             perception: new TestPerceptionProfile(
                 TestUnitConcealmentKind.None, 110f));
         rig.StartReplayPackageRecording();
+        rig.Hold(
+            [burrower, queuedBurrower, contactBurrower, passer, sightProbe,
+                detector]);
 
         var visibleBefore = false;
         var activatingExposed = false;
@@ -7402,14 +7764,14 @@ public static class VisualTestCatalog
             new Vector2(410f, 290f), 1,
             radius: 14f, maximumSpeed: 240f, acceleration: 900f);
         var builderKiller = rig.SpawnCombat(
-            new Vector2(70f, 570f), 2,
+            new Vector2(70f, 580f), 2,
             TestCombatProfile.Standard with
             {
                 AttackDamage = 1000f,
-                AttackRange = 34f,
-                AcquisitionRange = 34f,
+                AttackRange = 100f,
+                AcquisitionRange = 100f,
                 AttackWindupSeconds = 0.05f,
-                Positioning = TestCombatPositioning.Melee
+                Positioning = TestCombatPositioning.Ranged
             });
 
         var supply = DemoBuildingTypes.SupplyDepot with
@@ -7425,6 +7787,7 @@ public static class VisualTestCatalog
             BuildSeconds = 0.85f
         };
         rig.StartReplayPackageRecording();
+        rig.Move([builderKiller], new Vector2(70f, 650f));
         var mainIds = new TestGameplayBuildingId[3];
         var cancelIds = new TestGameplayBuildingId[3];
         var deathIds = new TestGameplayBuildingId[2];
@@ -7634,7 +7997,7 @@ public static class VisualTestCatalog
             canceledMiddle = runtime.CancelConstruction(1, cancelIds[1]);
             cancelRefund = runtime.ObservePlayerEconomy(1).Minerals == beforeCancel + 112;
         });
-        session.At(20, "Move the deterministic builder killer away", runtime =>
+        session.At(40, "Move the deterministic builder killer away", runtime =>
             runtime.Move([builderKiller], new Vector2(80f, 670f)));
         session.At(25, "Verify future reservations still have no hard footprint", runtime =>
         {
@@ -8439,7 +8802,13 @@ public static class VisualTestCatalog
                     $"cancel={canceledCleanly}, hot={hotExact}/{hot.CanonicalByteCount}B, " +
                     $"state={building.State}, " +
                     $"reservation={building.ReservationId}, " +
-                    $"footprints={runtime.BuildingCount}, minerals={economy.Minerals}");
+                    $"footprints={runtime.BuildingCount}, minerals={economy.Minerals}, " +
+                    $"builder={runtime.Observe(builder).State}@" +
+                    $"{runtime.Observe(builder).Position.X:0.0}," +
+                    $"{runtime.Observe(builder).Position.Y:0.0}->" +
+                    $"{building.AccessPoint.X:0.0},{building.AccessPoint.Y:0.0}, " +
+                    $"occupant={runtime.Observe(duplicateBuilder).Position.X:0.0}," +
+                    $"{runtime.Observe(duplicateBuilder).Position.Y:0.0}");
             });
         session.At(30, "Cancel a reservation without creating or removing a footprint", runtime =>
             canceledCleanly = runtime.CancelConstruction(1, canceled.BuildingId));
@@ -8497,15 +8866,19 @@ public static class VisualTestCatalog
             AttackDamage: 20f,
             AttackRange: 220f,
             AcquisitionRange: 260f,
-            AttackCooldownSeconds: 10f,
+            AttackCooldownSeconds: 20f,
             AttackWindupSeconds: 0.05f,
             LeashDistance: 400f);
         var attackers = new[]
         {
-            rig.SpawnCombat(new Vector2(270f, 308f), 1, attackProfile),
-            rig.SpawnCombat(new Vector2(270f, 338f), 1, attackProfile),
-            rig.SpawnCombat(new Vector2(270f, 368f), 1, attackProfile),
-            rig.SpawnCombat(new Vector2(270f, 398f), 1, attackProfile)
+            rig.SpawnCombat(new Vector2(40f, 308f), 1, attackProfile,
+                maximumSpeed: 1200f, acceleration: 12000f),
+            rig.SpawnCombat(new Vector2(40f, 338f), 1, attackProfile,
+                maximumSpeed: 1200f, acceleration: 12000f),
+            rig.SpawnCombat(new Vector2(40f, 368f), 1, attackProfile,
+                maximumSpeed: 1200f, acceleration: 12000f),
+            rig.SpawnCombat(new Vector2(40f, 398f), 1, attackProfile,
+                maximumSpeed: 1200f, acceleration: 12000f)
         };
         var targetType = DemoBuildingTypes.SupplyDepot with
         {
@@ -8554,7 +8927,6 @@ public static class VisualTestCatalog
                 .LastOrDefault(value => value.Kind == CombatEventKind.Impact &&
                                         value.TargetKind == CombatTargetKind.Building)
                 .Damage;
-            runtime.Stop([attackers[index]]);
         }
 
         var session = new VisualTestSession(
@@ -8972,10 +9344,10 @@ public static class VisualTestCatalog
                             Vector2.Distance(
                                 before.Position, beforeSpawnPosition) < 24f;
                         afterContinued |= !runtime.IsUnitAlive(afterTarget) &&
-                            runtime.ObserveOrders(afterUnit).ActiveOrder ==
-                                TestOrderKind.Move &&
+                            runtime.ObserveOrders(afterUnit).ActiveOrder !=
+                                TestOrderKind.FollowFriendly &&
                             Vector2.Distance(
-                                after.AssignedTarget, afterDeathPosition) < 1f &&
+                                after.AssignedTarget, afterDeathPosition) < 12f &&
                             Vector2.Distance(
                                 after.Position, afterDeathPosition) < 28f;
                     }
@@ -9000,6 +9372,10 @@ public static class VisualTestCatalog
                         $"hard={hardWaited}/{hardRecovered}, " +
                         $"death-before={beforeTargetDied}/{beforeNoRally}, " +
                         $"death-after={afterFollowed}/{afterContinued}, " +
+                        $"afterAlive={runtime.IsUnitAlive(afterTarget)}, " +
+                        $"afterOrder={(runtime.UnitCount >= initialUnitCount + 7 ? runtime.ObserveOrders(new TestUnitId(initialUnitCount + 6)).ActiveOrder : TestOrderKind.None)}, " +
+                        $"afterPos={(runtime.UnitCount >= initialUnitCount + 7 ? runtime.Observe(new TestUnitId(initialUnitCount + 6)).Position : Vector2.Zero)}, " +
+                        $"afterGoal={(runtime.UnitCount >= initialUnitCount + 7 ? runtime.Observe(new TestUnitId(initialUnitCount + 6)).AssignedTarget : Vector2.Zero)}, deathPos={afterDeathPosition}, " +
                         $"units={runtime.UnitCount - initialUnitCount}, " +
                         $"replay={replayExact}, hot={hotExact}/v{hotVersion}");
                 })

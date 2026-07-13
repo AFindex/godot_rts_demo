@@ -1,0 +1,13 @@
+Godot Engine v4.7.stable.mono.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 595.95 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 2060 SUPER
+
+Movie Maker mode enabled, recording movie in 1280×720 @ 30 FPS...
+RTS_NAVIGATION_RESOURCE PASS path=res://data/demo_navigation_map.tres format=1 hash=B8441F9F1544B950
+RTS_GAMEPLAY_PROFILES PASS path=res://data/demo_gameplay_profiles.tres format=1 hash=5A0A6FD9EA3985BF units=3 buildings=4
+RTS_BUILDING_TYPES PASS path=res://data/demo_building_types.tres format=2 hash=8706BAAF85DDD1B7 types=5
+RTS_PRODUCTION_CATALOG PASS path=res://data/demo_production_catalog.tres format=6 hash=BB56752D5A3C32E2 units=3 recipes=3
+RTS_TECHNOLOGY_CATALOG PASS path=res://data/demo_technology_catalog.tres format=1 hash=8F9990031AA55B5E technologies=3
+RTS_AI_CONFIG PASS path=res://data/demo_ai_configurations.tres format=1 hash=509CED7A999A2BD0 profiles=2
+RTS_CLEARANCE_BAKE PASS path=res://data/demo_clearance_bake.tres format=1 hash=A1BCA2BD6C885350 source=B8441F9F1544B950 grid=77x40 chunks=5x3
+RTS_VISUAL_TEST_START economy-mass-mining: ticks=600, units=4
+RTS_VISUAL_TEST_PASS economy-mass-mining: ticks=600, workers=96, nodes=32, bases=4/True, cycles=535, mined=4410, phases=96/96/96, edges=735:0, unreachable=0[]

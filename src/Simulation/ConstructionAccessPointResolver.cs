@@ -4,6 +4,27 @@ namespace RtsDemo.Simulation;
 
 public static class ConstructionAccessPointResolver
 {
+    public static Vector2 ProjectFromCenter(
+        SimRect bounds,
+        Vector2 origin,
+        float clearance)
+    {
+        var expanded = bounds.Expanded(clearance);
+        var center = (expanded.Min + expanded.Max) * 0.5f;
+        var half = (expanded.Max - expanded.Min) * 0.5f;
+        var direction = origin - center;
+        if (direction.LengthSquared() <= 0.0001f)
+            return new Vector2(expanded.Min.X, center.Y);
+
+        var xScale = MathF.Abs(direction.X) <= 0.0001f
+            ? float.PositiveInfinity
+            : half.X / MathF.Abs(direction.X);
+        var yScale = MathF.Abs(direction.Y) <= 0.0001f
+            ? float.PositiveInfinity
+            : half.Y / MathF.Abs(direction.Y);
+        return center + direction * MathF.Min(xScale, yScale);
+    }
+
     public static Vector2 Resolve(
         StaticWorld world,
         IPathProvider pathProvider,
@@ -52,6 +73,35 @@ public static class ConstructionAccessPointResolver
         return candidates
             .OrderBy(candidate => Vector2.DistanceSquared(origin, candidate))
             .First();
+    }
+
+    public static Vector2 ResolveInteraction(
+        StaticWorld world,
+        IPathProvider pathProvider,
+        SimRect bounds,
+        Vector2 origin,
+        float collisionRadius,
+        float navigationRadius,
+        float interactionPadding)
+    {
+        var clearance = collisionRadius + interactionPadding + 1f;
+        var projected = ProjectFromCenter(bounds, origin, clearance);
+        if (world.IsDiscFree(projected, collisionRadius))
+        {
+            var path = pathProvider.IsReady
+                ? pathProvider.FindPath(origin, projected, navigationRadius)
+                : [origin, projected];
+            if (path.Length > 0)
+                return projected;
+        }
+        return Resolve(
+            world,
+            pathProvider,
+            bounds,
+            origin,
+            collisionRadius,
+            navigationRadius,
+            interactionPadding);
     }
 
     private static float PathLength(ReadOnlySpan<Vector2> path)

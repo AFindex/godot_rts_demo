@@ -25,10 +25,37 @@ public static class PlayableSkirmishScenarioSelfTest
             bake);
         var runtime = PlayableSkirmishScenario.Prepare(
             simulation, buildings, production, technologies);
+        var initialAssignments = runtime.PlayerWorkers
+            .Select(unit => simulation.Economy.Worker(unit).TargetNode.Value)
+            .ToArray();
+        var initialSpread = initialAssignments.Distinct().Count();
+        var initialMaximumLoad = initialAssignments
+            .GroupBy(value => value)
+            .Max(group => group.Count());
+        var sawOutbound = new bool[runtime.PlayerWorkers.Length];
+        var sawGathering = new bool[runtime.PlayerWorkers.Length];
+        var sawReturning = new bool[runtime.PlayerWorkers.Length];
+        var midpointMinerals = 0;
         for (var tick = 0; tick < 1_800; tick++)
         {
             runtime.AiDirector.Update(simulation.Metrics.Tick);
             simulation.Tick(1f / 60f);
+            for (var index = 0; index < runtime.PlayerWorkers.Length; index++)
+            {
+                var worker = simulation.Economy.Worker(
+                    runtime.PlayerWorkers[index]);
+                sawOutbound[index] |= worker.State ==
+                                      WorkerEconomyState.GoingToResource;
+                sawGathering[index] |= worker.State ==
+                                       WorkerEconomyState.Gathering;
+                sawReturning[index] |= worker.State ==
+                                       WorkerEconomyState.ReturningCargo;
+            }
+            if (tick == 899)
+            {
+                midpointMinerals = simulation.Economy.Players.Snapshot(
+                    PlayableSkirmishScenario.PlayerId).Minerals;
+            }
         }
 
         var match = simulation.Match.CreateSnapshot(
@@ -44,11 +71,25 @@ public static class PlayableSkirmishScenarioSelfTest
             .Count(value => !value.IsTerminal &&
                 value.PlayerId == PlayableSkirmishScenario.EnemyId);
         var resourceCount = runtime.ResourceNodes.Length;
+        var completedCycles = Enumerable.Range(
+                0, runtime.PlayerWorkers.Length)
+            .Count(index => sawOutbound[index] && sawGathering[index] &&
+                            sawReturning[index]);
+        var activeWorkers = runtime.PlayerWorkers.Count(unit =>
+            simulation.Economy.Worker(unit).State is not
+                (WorkerEconomyState.None or WorkerEconomyState.Idle));
+        var unreachableWorkers = runtime.PlayerWorkers.Count(unit =>
+            simulation.Units.RecoveryStages[unit] == RecoveryStage.Unreachable);
         var passed = navigation.WorldBounds.Width >= 3_000f &&
                      navigation.WorldBounds.Height >= 1_600f &&
                      resourceCount >= 60 &&
                      runtime.PlayerWorkers.Length == 12 &&
                      runtime.EnemyWorkers.Length == 12 &&
+                     initialSpread >= 8 && initialMaximumLoad <= 2 &&
+                     completedCycles == runtime.PlayerWorkers.Length &&
+                     activeWorkers == runtime.PlayerWorkers.Length &&
+                     unreachableWorkers == 0 &&
+                     playerBank.Minerals > midpointMinerals &&
                      player.TownHalls >= 1 && enemy.TownHalls >= 1 &&
                      playerBank.Minerals > 1_800 &&
                      enemyFacilities >= 3 &&
@@ -60,6 +101,9 @@ public static class PlayableSkirmishScenarioSelfTest
             $"workers={runtime.PlayerWorkers.Length}/" +
             $"{runtime.EnemyWorkers.Length}, bank={playerBank.Minerals}/" +
             $"{playerBank.VespeneGas}, enemyFacilities={enemyFacilities}, " +
-            $"match={match.Phase}");
+            $"spread={initialSpread}/max{initialMaximumLoad}, " +
+            $"cycles={completedCycles}/{runtime.PlayerWorkers.Length}, " +
+            $"active={activeWorkers}, unreachable={unreachableWorkers}, " +
+            $"midbank={midpointMinerals}, match={match.Phase}");
     }
 }

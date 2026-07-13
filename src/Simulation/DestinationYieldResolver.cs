@@ -8,7 +8,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public sealed class DestinationYieldResolver
 {
-    private const int MinimumGroupSize = 32;
+    private const int MinimumGroupSize = 8;
     private const int MinimumStallTicks = 120;
     private const int MinimumNearTicks = 240;
     private const int MaximumNearTicks = 720;
@@ -23,6 +23,7 @@ public sealed class DestinationYieldResolver
 
     public bool TryFindYield(
         UnitStore units,
+        ReadOnlySpan<CombatTargetKind> combatTargets,
         long tick,
         out int blockedUnit,
         out int blockerUnit,
@@ -31,6 +32,7 @@ public sealed class DestinationYieldResolver
         for (var candidate = 0; candidate < units.Count; candidate++)
         {
             if (!units.Alive[candidate] ||
+                combatTargets[candidate] != CombatTargetKind.None ||
                 units.Modes[candidate] != UnitMoveMode.Moving ||
                 units.PathPending[candidate] ||
                 units.MovementGroupSizes[candidate] < MinimumGroupSize ||
@@ -39,7 +41,8 @@ public sealed class DestinationYieldResolver
                 units.DestinationNearTicks[candidate] > MaximumNearTicks ||
                 (units.DestinationStallTicks[candidate] < MinimumStallTicks &&
                  units.DestinationNearTicks[candidate] < MinimumNearTicks) ||
-                !TryFindBlocker(units, candidate, tick, out var blocker) ||
+                !TryFindBlocker(
+                    units, combatTargets, candidate, tick, out var blocker) ||
                 !TryFindYieldPoint(units, candidate, blocker, out yieldPoint))
             {
                 continue;
@@ -58,6 +61,7 @@ public sealed class DestinationYieldResolver
 
     private static bool TryFindBlocker(
         UnitStore units,
+        ReadOnlySpan<CombatTargetKind> combatTargets,
         int blockedUnit,
         long tick,
         out int blockerUnit)
@@ -76,6 +80,7 @@ public sealed class DestinationYieldResolver
         for (var other = 0; other < units.Count; other++)
         {
             if (other == blockedUnit || !units.Alive[other] ||
+                combatTargets[other] != CombatTargetKind.None ||
                 !IsSettledBlocker(units, other) ||
                 units.DestinationOverflowed[other] ||
                 units.DestinationYieldPhases[other] != DestinationYieldPhase.None ||

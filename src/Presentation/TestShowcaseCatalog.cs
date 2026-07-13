@@ -58,6 +58,10 @@ public static class TestShowcaseCatalog
     {
         var values = new[]
         {
+            M("group-move-terminal-stability", "编队移动终点稳定", "基础移动", "验证整队右键移动完成后速度归零，且长时间不再换槽、回拉或抖动。"),
+            M("friendly-building-radial-interaction", "建筑矩形径向交互", "操作", "验证单位从自身方向沿建筑中心射线接近真实矩形边缘，而不是被吸到四个面中点。"),
+            M("combat-idle-auto-acquire", "空闲单位自动警戒", "战斗", "验证普通战斗单位无需 AttackMove 也会自动索敌、追击并攻击警戒范围内的敌人。"),
+            M("attack-move-squad-slot-resume", "攻击移动编队续行", "战斗移动", "验证编队接敌后恢复各自落点，不会丢失槽位并重新挤向同一个中心点。"),
             M("frontend-test-browser", "启动页与测试中心", "操作界面", "验证启动入口、测试目录、分类搜索、中文业务说明，以及通过统一 case id 切换测试。"),
             M("single-unit", "单单位基础移动", "基础移动", "验证单个单位寻路、减速抵达、边界约束与最终无重叠。"),
             M("attack-move-engage-resume", "攻击移动接敌后续行", "战斗", "验证 AttackMove 偏离路线接敌、击杀目标后恢复原终点。"),
