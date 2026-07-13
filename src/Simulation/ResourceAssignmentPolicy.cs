@@ -2,8 +2,8 @@ namespace RtsDemo.Simulation;
 
 public readonly record struct ResourceAssignmentCandidate(
     int NodeId,
-    int AssignedNormal,
-    int IdealNormalAssignments,
+    int Assigned,
+    int IdealAssignments,
     bool Preferred,
     float WorkerToNodeDistanceSquared,
     float NodeToDropOffDistanceSquared);
@@ -33,10 +33,8 @@ public static class ResourceAssignmentPolicy
         ResourceAssignmentCandidate left,
         ResourceAssignmentCandidate right)
     {
-        var leftLoad = (long)left.AssignedNormal *
-                       right.IdealNormalAssignments;
-        var rightLoad = (long)right.AssignedNormal *
-                        left.IdealNormalAssignments;
+        var leftLoad = (long)left.Assigned * right.IdealAssignments;
+        var rightLoad = (long)right.Assigned * left.IdealAssignments;
         var comparison = leftLoad.CompareTo(rightLoad);
         if (comparison != 0)
             return comparison;

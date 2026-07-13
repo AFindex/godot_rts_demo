@@ -535,6 +535,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(worker.UnitId);
             writer.Write(worker.Registered);
             writer.Write(worker.PlayerId);
+            writer.Write((byte)worker.Capability);
             writer.Write((byte)worker.State);
             writer.Write(worker.TargetNodeId);
             writer.Write((byte)worker.CargoKind);
@@ -655,17 +656,23 @@ internal static class RuntimeHotSnapshotCodec
             throw new InvalidDataException();
         }
         var workers = new WorkerEconomyRuntimeEntry[workerCount];
-        var gatheringCounts = new int[nodeCount];
-        var assignedCounts = new int[nodeCount];
-        var waitingCounts = new int[nodeCount];
+        var activeNormalCounts = new int[nodeCount];
+        var assignedNormalCounts = new int[nodeCount];
+        var waitingNormalCounts = new int[nodeCount];
+        var activeMuleCounts = new int[nodeCount];
+        var assignedMuleCounts = new int[nodeCount];
         for (var unit = 0; unit < workerCount; unit++)
         {
             var value = new WorkerEconomyRuntimeEntry(
                 reader.ReadInt32(), reader.ReadBoolean(), reader.ReadInt32(),
+                (GathererCapability)reader.ReadByte(),
                 (WorkerEconomyState)reader.ReadByte(), reader.ReadInt32(),
                 (EconomyResourceKind)reader.ReadByte(), reader.ReadInt32(),
                 reader.ReadSingle());
             if (value.UnitId != unit || !Enum.IsDefined(value.State) ||
+                !Enum.IsDefined(value.Capability) ||
+                value.Registered && value.Capability == GathererCapability.None ||
+                !value.Registered && value.Capability != GathererCapability.None ||
                 !Enum.IsDefined(value.CargoKind) || value.CargoAmount < 0 ||
                 !float.IsFinite(value.WorkRemaining) || value.WorkRemaining < 0f ||
                 value.Registered &&
@@ -680,23 +687,35 @@ internal static class RuntimeHotSnapshotCodec
                 {
                     throw new InvalidDataException();
                 }
-                gatheringCounts[value.TargetNodeId]++;
+                if (value.Capability == GathererCapability.Mule)
+                    activeMuleCounts[value.TargetNodeId]++;
+                else
+                    activeNormalCounts[value.TargetNodeId]++;
             }
             if (value.Registered && value.TargetNodeId >= 0 &&
                 value.State is not WorkerEconomyState.None and
                     not WorkerEconomyState.Idle)
             {
-                assignedCounts[value.TargetNodeId]++;
-                if (value.State == WorkerEconomyState.WaitingForResource)
-                    waitingCounts[value.TargetNodeId]++;
+                if (value.Capability == GathererCapability.Mule)
+                {
+                    assignedMuleCounts[value.TargetNodeId]++;
+                }
+                else
+                {
+                    assignedNormalCounts[value.TargetNodeId]++;
+                    if (value.State == WorkerEconomyState.WaitingForResource)
+                        waitingNormalCounts[value.TargetNodeId]++;
+                }
             }
             workers[unit] = value;
         }
         for (var node = 0; node < nodeCount; node++)
         {
-            if (gatheringCounts[node] != nodes[node].ActiveNormal ||
-                assignedCounts[node] != nodes[node].AssignedNormal ||
-                waitingCounts[node] != nodes[node].WaitingNormal)
+            if (activeNormalCounts[node] != nodes[node].ActiveNormal ||
+                assignedNormalCounts[node] != nodes[node].AssignedNormal ||
+                waitingNormalCounts[node] != nodes[node].WaitingNormal ||
+                activeMuleCounts[node] != nodes[node].ActiveMules ||
+                assignedMuleCounts[node] != nodes[node].AssignedMules)
             {
                 throw new InvalidDataException();
             }

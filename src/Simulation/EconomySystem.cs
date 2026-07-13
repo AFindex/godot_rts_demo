@@ -295,6 +295,13 @@ public enum WorkerEconomyState : byte
     WaitingForDropOff
 }
 
+public enum GathererCapability : byte
+{
+    None,
+    NormalWorker,
+    Mule
+}
+
 public readonly record struct WorkerEconomySnapshot(
     int UnitId,
     int PlayerId,
@@ -302,7 +309,8 @@ public readonly record struct WorkerEconomySnapshot(
     EconomyResourceNodeId TargetNode,
     EconomyResourceKind CargoKind,
     int CargoAmount,
-    float WorkRemaining);
+    float WorkRemaining,
+    GathererCapability Capability);
 
 public readonly record struct PlayerEconomyRuntimeEntry(
     int PlayerId, int Minerals, int VespeneGas,
@@ -347,6 +355,7 @@ public readonly record struct WorkerEconomyRuntimeEntry(
     int UnitId,
     bool Registered,
     int PlayerId,
+    GathererCapability Capability,
     WorkerEconomyState State,
     int TargetNodeId,
     EconomyResourceKind CargoKind,
@@ -474,7 +483,8 @@ public enum GatherCommandCode : byte
     MissingDropOff,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    CapabilityUnavailable
 }
 
 public readonly record struct GatherCommandResult(
@@ -513,6 +523,7 @@ public sealed class EconomySystem
     private const float BaseResourceRadius = 360f;
     private readonly bool[] _workers;
     private readonly int[] _workerPlayers;
+    private readonly GathererCapability[] _gathererCapabilities;
     private readonly WorkerEconomyState[] _workerStates;
     private readonly int[] _workerNodes;
     private readonly EconomyResourceKind[] _cargoKinds;
@@ -528,6 +539,7 @@ public sealed class EconomySystem
         Players = new PlayerEconomyStore();
         _workers = new bool[unitCapacity];
         _workerPlayers = new int[unitCapacity];
+        _gathererCapabilities = new GathererCapability[unitCapacity];
         _workerStates = new WorkerEconomyState[unitCapacity];
         _workerNodes = new int[unitCapacity];
         _cargoKinds = new EconomyResourceKind[unitCapacity];
@@ -545,13 +557,25 @@ public sealed class EconomySystem
         _workers.Any(value => value);
 
     public bool IsWorker(int unit) =>
+        IsGatherer(unit) &&
+        _gathererCapabilities[unit] == GathererCapability.NormalWorker;
+
+    public bool IsGatherer(int unit) =>
         (uint)unit < (uint)_workers.Length && _workers[unit];
 
     public bool IsWorkerOwnedBy(int unit, int playerId) =>
         IsWorker(unit) && _workerPlayers[unit] == playerId;
 
+    public bool IsGathererOwnedBy(int unit, int playerId) =>
+        IsGatherer(unit) && _workerPlayers[unit] == playerId;
+
+    public GathererCapability GathererCapabilityOf(int unit) =>
+        IsGatherer(unit)
+            ? _gathererCapabilities[unit]
+            : GathererCapability.None;
+
     public bool SuppressesUnitCollision(int unit) =>
-        IsWorker(unit) && WorkerCollisionPolicy.SuppressesUnitCollision(
+        IsGatherer(unit) && WorkerCollisionPolicy.SuppressesUnitCollision(
             _workerStates[unit]);
 
     public bool IsVespeneNode(EconomyResourceNodeId id) =>
@@ -712,7 +736,7 @@ public sealed class EconomySystem
             var assignedVespene = 0;
             for (var unit = 0; unit < unitCount; unit++)
             {
-                if (_workers[unit] && _workerPlayers[unit] == playerId &&
+                if (IsWorker(unit) && _workerPlayers[unit] == playerId &&
                     OwningBase(_workerNodes[unit]) == baseIndex)
                 {
                     if (_nodes[_workerNodes[unit]].Kind ==
@@ -761,7 +785,7 @@ public sealed class EconomySystem
             return TransferFailure(WorkerTransferCommandCode.NoTargetResources);
 
         var candidates = Enumerable.Range(0, units.Count)
-            .Where(unit => units.Alive[unit] && _workers[unit] &&
+            .Where(unit => units.Alive[unit] && IsWorker(unit) &&
                            _workerPlayers[unit] == playerId &&
                            OwningBase(_workerNodes[unit]) == sourceId.Value)
             .OrderBy(unit => Vector2.DistanceSquared(
@@ -793,8 +817,18 @@ public sealed class EconomySystem
 
     public void RegisterWorker(int unit, int playerId)
     {
+        RegisterGatherer(unit, playerId, GathererCapability.NormalWorker);
+    }
+
+    public void RegisterGatherer(
+        int unit,
+        int playerId,
+        GathererCapability capability)
+    {
         ValidateUnit(unit);
-        if (!Players.IsRegistered(playerId))
+        if (!Players.IsRegistered(playerId) ||
+            capability == GathererCapability.None ||
+            !Enum.IsDefined(capability))
         {
             throw new ArgumentOutOfRangeException(nameof(playerId));
         }
@@ -808,6 +842,7 @@ public sealed class EconomySystem
         }
         _workers[unit] = true;
         _workerPlayers[unit] = playerId;
+        _gathererCapabilities[unit] = capability;
         _workerStates[unit] = WorkerEconomyState.Idle;
         _workerNodes[unit] = -1;
     }
@@ -845,6 +880,12 @@ public sealed class EconomySystem
             return Failure(GatherCommandCode.InvalidNode, unit, nodeId);
         }
         var node = _nodes[nodeId.Value];
+        if (_gathererCapabilities[unit] == GathererCapability.Mule &&
+            node.Kind != EconomyResourceKind.Minerals)
+        {
+            return Failure(
+                GatherCommandCode.CapabilityUnavailable, unit, nodeId);
+        }
         if (node.Remaining <= 0)
         {
             return Failure(GatherCommandCode.ResourceDepleted, unit, nodeId);
@@ -881,19 +922,27 @@ public sealed class EconomySystem
             return result;
         }
 
-        var plannedAssigned = _nodes
+        var plannedNormal = _nodes
             .Select(node => node.AssignedNormal)
+            .ToArray();
+        var plannedMules = _nodes
+            .Select(node => node.AssignedMules)
             .ToArray();
         for (var index = 0; index < copiedWorkers.Length; index++)
         {
             var unit = copiedWorkers[index];
-            if (!IsWorkerOwnedBy(unit, playerId) ||
+            if (!IsGathererOwnedBy(unit, playerId) ||
                 (uint)unit >= (uint)units.Count || !units.Alive[unit])
                 throw new ArgumentOutOfRangeException(nameof(workers));
             var current = _workerNodes[unit];
-            if ((uint)current < (uint)plannedAssigned.Length &&
+            if ((uint)current < (uint)plannedNormal.Length &&
                 IsAssignedState(_workerStates[unit]))
-                plannedAssigned[current]--;
+            {
+                if (_gathererCapabilities[unit] == GathererCapability.Mule)
+                    plannedMules[current]--;
+                else
+                    plannedNormal[current]--;
+            }
         }
 
         foreach (var inputIndex in orderedIndices)
@@ -903,11 +952,16 @@ public sealed class EconomySystem
                 playerId,
                 preferredNode.Value,
                 units.Positions[unit],
-                plannedAssigned);
+                _gathererCapabilities[unit],
+                plannedNormal,
+                plannedMules);
             if (target < 0)
                 target = preferredNode.Value;
             result[inputIndex] = new EconomyResourceNodeId(target);
-            plannedAssigned[target]++;
+            if (_gathererCapabilities[unit] == GathererCapability.Mule)
+                plannedMules[target]++;
+            else
+                plannedNormal[target]++;
         }
         return result;
     }
@@ -1040,7 +1094,8 @@ public sealed class EconomySystem
             new EconomyResourceNodeId(_workerNodes[unit]),
             _cargoKinds[unit],
             _cargoAmounts[unit],
-            _workRemaining[unit]);
+            _workRemaining[unit],
+            GathererCapabilityOf(unit));
     }
 
     public EconomyDropOffApproachSnapshot PreviewDropOffApproach(
@@ -1087,7 +1142,7 @@ public sealed class EconomySystem
         var waiting = 0;
         for (var unit = 0; unit < unitCount; unit++)
         {
-            if (!_workers[unit] || _workerPlayers[unit] != playerId)
+            if (!IsWorker(unit) || _workerPlayers[unit] != playerId)
             {
                 continue;
             }
@@ -1155,6 +1210,7 @@ public sealed class EconomySystem
         {
             workers[unit] = new WorkerEconomyRuntimeEntry(
                 unit, _workers[unit], _workerPlayers[unit],
+                _gathererCapabilities[unit],
                 _workerStates[unit], _workerNodes[unit], _cargoKinds[unit],
                 _cargoAmounts[unit], _workRemaining[unit]);
         }
@@ -1227,6 +1283,7 @@ public sealed class EconomySystem
         }
         Array.Clear(_workers);
         Array.Clear(_workerPlayers);
+        Array.Clear(_gathererCapabilities);
         Array.Clear(_workerStates);
         Array.Fill(_workerNodes, -1);
         Array.Clear(_cargoKinds);
@@ -1242,6 +1299,7 @@ public sealed class EconomySystem
             }
             _workers[unit] = value.Registered;
             _workerPlayers[unit] = value.PlayerId;
+            _gathererCapabilities[unit] = value.Capability;
             _workerStates[unit] = value.State;
             _workerNodes[unit] = value.TargetNodeId;
             _cargoKinds[unit] = value.CargoKind;
@@ -1311,6 +1369,7 @@ public sealed class EconomySystem
                 continue;
             }
             hash.Add(_workerPlayers[unit]);
+            hash.Add((byte)_gathererCapabilities[unit]);
             hash.Add((byte)_workerStates[unit]);
             hash.Add(_workerNodes[unit]);
             hash.Add((byte)_cargoKinds[unit]);
@@ -1372,17 +1431,31 @@ public sealed class EconomySystem
             return;
         }
         var node = _nodes[nodeIndex];
-        if (node.ActiveNormal >= node.NormalActiveSlots)
+        var capability = _gathererCapabilities[unit];
+        var active = capability == GathererCapability.Mule
+            ? node.ActiveMules
+            : node.ActiveNormal;
+        var activeSlots = capability == GathererCapability.Mule
+            ? 1
+            : node.NormalActiveSlots;
+        if (active >= activeSlots)
         {
             if (allowReassignment)
             {
-                var assigned = _nodes
+                var assignedNormal = _nodes
                     .Select(value => value.AssignedNormal)
                     .ToArray();
-                assigned[nodeIndex]--;
+                var assignedMules = _nodes
+                    .Select(value => value.AssignedMules)
+                    .ToArray();
+                if (capability == GathererCapability.Mule)
+                    assignedMules[nodeIndex]--;
+                else
+                    assignedNormal[nodeIndex]--;
                 var replacement = SelectAssignedNode(
                     _workerPlayers[unit], nodeIndex,
-                    units.Positions[unit], assigned);
+                    units.Positions[unit], capability,
+                    assignedNormal, assignedMules);
                 if (replacement >= 0 && replacement != nodeIndex)
                 {
                     TransitionWorker(
@@ -1596,20 +1669,33 @@ public sealed class EconomySystem
     {
         if ((uint)preferredNode >= (uint)_nodes.Count)
             return FindNearestNode(_cargoKinds[unit], position);
-        var assigned = _nodes.Select(node => node.AssignedNormal).ToArray();
+        var assignedNormal = _nodes
+            .Select(node => node.AssignedNormal)
+            .ToArray();
+        var assignedMules = _nodes
+            .Select(node => node.AssignedMules)
+            .ToArray();
         var currentNode = _workerNodes[unit];
         if (IsAssignedState(_workerStates[unit]) &&
-            (uint)currentNode < (uint)assigned.Length)
-            assigned[currentNode]--;
+            (uint)currentNode < (uint)assignedNormal.Length)
+        {
+            if (_gathererCapabilities[unit] == GathererCapability.Mule)
+                assignedMules[currentNode]--;
+            else
+                assignedNormal[currentNode]--;
+        }
         return SelectAssignedNode(
-            _workerPlayers[unit], preferredNode, position, assigned);
+            _workerPlayers[unit], preferredNode, position,
+            _gathererCapabilities[unit], assignedNormal, assignedMules);
     }
 
     private int SelectAssignedNode(
         int playerId,
         int preferredNode,
         Vector2 workerPosition,
-        int[]? assignedOverride = null)
+        GathererCapability capability,
+        int[]? assignedNormalOverride = null,
+        int[]? assignedMuleOverride = null)
     {
         if ((uint)preferredNode >= (uint)_nodes.Count)
             return -1;
@@ -1637,8 +1723,12 @@ public sealed class EconomySystem
                 : float.PositiveInfinity;
             candidates.Add(new ResourceAssignmentCandidate(
                 nodeIndex,
-                assignedOverride?[nodeIndex] ?? node.AssignedNormal,
-                node.IdealNormalAssignments,
+                capability == GathererCapability.Mule
+                    ? assignedMuleOverride?[nodeIndex] ?? node.AssignedMules
+                    : assignedNormalOverride?[nodeIndex] ?? node.AssignedNormal,
+                capability == GathererCapability.Mule
+                    ? 1
+                    : node.IdealNormalAssignments,
                 nodeIndex == preferredNode,
                 Vector2.DistanceSquared(workerPosition, node.Position),
                 dropOffDistance));
@@ -1727,13 +1817,23 @@ public sealed class EconomySystem
             IsAssignedState(previousState))
         {
             var node = _nodes[previousNode];
-            node.AssignedNormal--;
-            if (previousState == WorkerEconomyState.Gathering)
-                node.ActiveNormal--;
-            if (previousState == WorkerEconomyState.WaitingForResource)
-                node.WaitingNormal--;
+            if (_gathererCapabilities[unit] == GathererCapability.Mule)
+            {
+                node.AssignedMules--;
+                if (previousState == WorkerEconomyState.Gathering)
+                    node.ActiveMules--;
+            }
+            else
+            {
+                node.AssignedNormal--;
+                if (previousState == WorkerEconomyState.Gathering)
+                    node.ActiveNormal--;
+                if (previousState == WorkerEconomyState.WaitingForResource)
+                    node.WaitingNormal--;
+            }
             if (node.AssignedNormal < 0 || node.ActiveNormal < 0 ||
-                node.WaitingNormal < 0)
+                node.WaitingNormal < 0 || node.AssignedMules < 0 ||
+                node.ActiveMules < 0)
                 throw new InvalidOperationException(
                     "Worker assignment counters became negative.");
         }
@@ -1743,11 +1843,20 @@ public sealed class EconomySystem
         if ((uint)nodeIndex < (uint)_nodes.Count && IsAssignedState(state))
         {
             var node = _nodes[nodeIndex];
-            node.AssignedNormal++;
-            if (state == WorkerEconomyState.Gathering)
-                node.ActiveNormal++;
-            if (state == WorkerEconomyState.WaitingForResource)
-                node.WaitingNormal++;
+            if (_gathererCapabilities[unit] == GathererCapability.Mule)
+            {
+                node.AssignedMules++;
+                if (state == WorkerEconomyState.Gathering)
+                    node.ActiveMules++;
+            }
+            else
+            {
+                node.AssignedNormal++;
+                if (state == WorkerEconomyState.Gathering)
+                    node.ActiveNormal++;
+                if (state == WorkerEconomyState.WaitingForResource)
+                    node.WaitingNormal++;
+            }
         }
     }
 

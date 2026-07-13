@@ -80,6 +80,7 @@ public static class VisualTestCatalog
         "building-connectivity-diff-preview",
         "economy-dual-resource",
         "economy-auto-patch-distribution",
+        "economy-mule-independent-mining",
         "economy-mineral-walk-collision-matrix",
         "economy-mass-mining",
         "economy-expansion-saturation",
@@ -235,6 +236,9 @@ public static class VisualTestCatalog
         "economy-dual-resource" => CreateDualResourceEconomy(),
         "economy-auto-patch-distribution" =>
             CreateAutoPatchDistribution(
+                navigationMap, gameplayProfiles, clearanceBake),
+        "economy-mule-independent-mining" =>
+            CreateMuleIndependentMining(
                 navigationMap, gameplayProfiles, clearanceBake),
         "economy-mineral-walk-collision-matrix" =>
             CreateMineralWalkCollisionMatrix(),
@@ -4697,6 +4701,249 @@ public static class VisualTestCatalog
                         nodes[index].AssignedNormal ==
                         assignedFromWorkers.GetValueOrDefault(patches[index].Value);
                 }
+            });
+        }
+        return session;
+    }
+
+    private static VisualTestSession CreateMuleIndependentMining(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            48, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 0, 0, 64, 18);
+        rig.AddResourceDropOff(1, new Vector2(165f, 180f));
+        rig.AddResourceDropOff(1, new Vector2(675f, 430f));
+
+        var isolatedPatch = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(330f, 180f),
+            amount: 10_000,
+            harvestBatch: 5,
+            harvestSeconds: 0.45f,
+            harvesterCapacity: 2);
+        var gas = rig.AddResourceNode(
+            TestEconomyResourceKind.VespeneGas,
+            new Vector2(330f, 285f),
+            amount: 10_000,
+            harvestBatch: 4,
+            harvestSeconds: 0.5f,
+            harvesterCapacity: 3,
+            requiresRefinery: true,
+            operational: true);
+
+        var clusterCenter = new Vector2(900f, 430f);
+        var clusterPatches = Enumerable.Range(0, 8)
+            .Select(index =>
+            {
+                var angle = index * MathF.Tau / 8f;
+                return rig.AddResourceNode(
+                    TestEconomyResourceKind.Minerals,
+                    clusterCenter + new Vector2(
+                        MathF.Cos(angle), MathF.Sin(angle)) * 120f,
+                    amount: 10_000,
+                    harvestBatch: 5,
+                    harvestSeconds: 0.45f,
+                    harvesterCapacity: 2);
+            })
+            .ToArray();
+
+        var isolatedScvs = new[]
+        {
+            rig.SpawnWorker(new Vector2(245f, 155f), 1),
+            rig.SpawnWorker(new Vector2(255f, 205f), 1)
+        };
+        var isolatedMules = new[]
+        {
+            rig.SpawnMule(new Vector2(225f, 130f), 1),
+            rig.SpawnMule(new Vector2(225f, 230f), 1)
+        };
+        var clusterScvs = Enumerable.Range(0, 16)
+            .Select(index => rig.SpawnWorker(
+                new Vector2(
+                    755f + index % 4 * 17f,
+                    360f + index / 4 * 38f),
+                1))
+            .ToArray();
+        var clusterMules = Enumerable.Range(0, 8)
+            .Select(index => rig.SpawnMule(
+                new Vector2(
+                    730f + index % 2 * 22f,
+                    335f + index / 2 * 54f),
+                1))
+            .ToArray();
+        var allUnits = isolatedScvs
+            .Concat(isolatedMules)
+            .Concat(clusterScvs)
+            .Concat(clusterMules)
+            .ToArray();
+
+        rig.StartReplayPackageRecording();
+        var normalOrdersIssued = false;
+        var firstMuleIssued = false;
+        var secondMuleIssued = false;
+        var clusterMulesIssued = false;
+        var muleGasRejected =
+            rig.Gather(1, isolatedMules[0], gas) ==
+            TestGatherCommandCode.CapabilityUnavailable;
+        var samePatchDualActive = false;
+        var secondMuleWaiting = false;
+        var clusterMulesDistributed = false;
+        var normalSaturationIntact = true;
+        var activeSlotInvariant = true;
+        var normalWorkerCountInvariant = true;
+        var muleCapabilitiesVisible = true;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 360;
+
+        var session = new VisualTestSession(
+                "economy-mule-independent-mining",
+                "MULE uses a separate one-per-patch mining channel without changing normal saturation",
+                720,
+                rig,
+                allUnits,
+                runtime =>
+                {
+                    var isolated = runtime.ObserveResourceNode(isolatedPatch);
+                    var cluster = clusterPatches
+                        .Select(runtime.ObserveResourceNode)
+                        .ToArray();
+                    var package = runtime.CaptureReplayPackage();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(
+                        out var decoded);
+                    var replay = packageRoundTrip
+                        ? runtime.ReplayPackage(decoded!, runtime.Tick)
+                        : null;
+                    var replayExact = replay is not null &&
+                                      replay.FinalHash == runtime.StateHash;
+                    var hotExact = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotExact = resumed.FinalHash == runtime.StateHash &&
+                                       replay is not null &&
+                                       replay.MatchesFrom(resumed, hotTick);
+                        }
+                    }
+                    var normalAssigned = cluster.Sum(
+                        value => value.AssignedNormal);
+                    var muleAssigned = cluster.Sum(
+                        value => value.AssignedMules);
+                    var versions = package.FormatVersion ==
+                                       SimulationReplayPackageSnapshot
+                                           .CurrentFormatVersion &&
+                                   hotVersion ==
+                                       SimulationHotSnapshot.CurrentFormatVersion;
+                    var passed = muleGasRejected && normalOrdersIssued &&
+                                 firstMuleIssued && secondMuleIssued &&
+                                 clusterMulesIssued && samePatchDualActive &&
+                                 secondMuleWaiting && clusterMulesDistributed &&
+                                 normalSaturationIntact && activeSlotInvariant &&
+                                 normalWorkerCountInvariant &&
+                                 muleCapabilitiesVisible &&
+                                 isolated.AssignedNormal == 2 &&
+                                 isolated.AssignedMules == 2 &&
+                                 normalAssigned == 16 && muleAssigned == 8 &&
+                                 package.EconomyCommandCount == 28 &&
+                                 packageRoundTrip && replayExact && hotExact &&
+                                 versions;
+                    return new ScenarioResult(
+                        passed,
+                        $"same-patch={samePatchDualActive}, second-waits=" +
+                        $"{secondMuleWaiting}, cluster={normalAssigned}/16+" +
+                        $"{muleAssigned}/8, spread={clusterMulesDistributed}, " +
+                        $"gas-reject={muleGasRejected}, active=" +
+                        $"{activeSlotInvariant}, workers=" +
+                        $"{normalWorkerCountInvariant}, orders=" +
+                        $"{package.EconomyCommandCount}, replay={replayExact}, " +
+                        $"hot={hotExact}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(560f, 330f), 0.78f)
+            .CameraKeyframe(100, new Vector2(280f, 180f), 1.45f)
+            .CameraKeyframe(250, new Vector2(280f, 180f), 1.55f)
+            .CameraKeyframe(390, clusterCenter, 1.05f)
+            .CameraKeyframe(690, new Vector2(600f, 340f), 0.8f)
+            .Highlight(
+                new SimRect(new Vector2(285f, 125f), new Vector2(375f, 235f)),
+                "1 NORMAL SLOT + 1 MULE SLOT",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(755f, 285f), new Vector2(1045f, 575f)),
+                "8 PATCHES: normal 16/16 remains unchanged",
+                TestDiagnosticKind.Info);
+
+        session.At(1, "Start two SCVs on the isolated patch", runtime =>
+        {
+            normalOrdersIssued =
+                runtime.Gather(1, isolatedScvs[0], isolatedPatch) ==
+                    TestGatherCommandCode.Success &&
+                runtime.Gather(1, isolatedScvs[1], isolatedPatch) ==
+                    TestGatherCommandCode.Success &&
+                runtime.PlayerSmartResource(
+                    1, clusterScvs, clusterPatches[0]) ==
+                    TestPlayerOrderCommandCode.Success;
+        });
+        session.At(90, "Add one MULE to mine alongside the active SCV", runtime =>
+            firstMuleIssued =
+                runtime.Gather(1, isolatedMules[0], isolatedPatch) ==
+                TestGatherCommandCode.Success);
+        session.At(180, "Add a second MULE to the same isolated patch", runtime =>
+            secondMuleIssued =
+                runtime.Gather(1, isolatedMules[1], isolatedPatch) ==
+                TestGatherCommandCode.Success);
+        session.At(270, "Batch eight MULEs onto one patch in the main cluster", runtime =>
+            clusterMulesIssued = runtime.PlayerSmartResource(
+                1, clusterMules, clusterPatches[0]) ==
+                TestPlayerOrderCommandCode.Success);
+        session.At(hotTick, "Capture both gatherer channels in a hot snapshot", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
+
+        for (var tick = 2; tick < session.DurationTicks; tick += 2)
+        {
+            session.At(tick, "Observe independent gatherer channels", runtime =>
+            {
+                var isolated = runtime.ObserveResourceNode(isolatedPatch);
+                samePatchDualActive |=
+                    isolated.ActiveNormal == 1 && isolated.ActiveMules == 1;
+                var muleStates = isolatedMules
+                    .Select(runtime.ObserveWorkerEconomy)
+                    .ToArray();
+                secondMuleWaiting |= isolated.AssignedMules == 2 &&
+                    isolated.ActiveMules == 1 && muleStates.Any(value =>
+                        value.State == TestWorkerEconomyState.WaitingForResource);
+                muleCapabilitiesVisible &= muleStates.All(value =>
+                    value.Capability == TestGathererCapability.Mule);
+
+                var cluster = clusterPatches
+                    .Select(runtime.ObserveResourceNode)
+                    .ToArray();
+                activeSlotInvariant &= cluster
+                    .Append(isolated)
+                    .All(value =>
+                        value.ActiveNormal <= value.NormalActiveSlots &&
+                        value.ActiveMules <= 1);
+                if (clusterMulesIssued)
+                {
+                    clusterMulesDistributed |= cluster.All(value =>
+                        value.AssignedMules == 1);
+                    normalSaturationIntact &=
+                        cluster.Sum(value => value.AssignedNormal) == 16 &&
+                        cluster.All(value => value.AssignedNormal == 2);
+                }
+                normalWorkerCountInvariant &=
+                    runtime.ObservePlayerWorkers(1).Length == 18;
             });
         }
         return session;

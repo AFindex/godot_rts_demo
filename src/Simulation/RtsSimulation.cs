@@ -780,6 +780,25 @@ public sealed class RtsSimulation : ICombatMovementDriver
         float maxSpeed = 128f,
         float acceleration = 720f)
     {
+        return AddGatherer(
+            position, playerId, GathererCapability.NormalWorker,
+            radius, maxSpeed, acceleration);
+    }
+
+    public int AddGatherer(
+        Vector2 position,
+        int playerId,
+        GathererCapability capability,
+        float radius = 7.5f,
+        float maxSpeed = 128f,
+        float acceleration = 720f)
+    {
+        if (!Economy.Players.IsRegistered(playerId) ||
+            capability == GathererCapability.None ||
+            !Enum.IsDefined(capability))
+        {
+            throw new ArgumentOutOfRangeException(nameof(playerId));
+        }
         var unit = AddUnit(
             position,
             playerId,
@@ -787,7 +806,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             radius,
             maxSpeed,
             acceleration);
-        Economy.RegisterWorker(unit, playerId);
+        Economy.RegisterGatherer(unit, playerId, capability);
         return unit;
     }
 
@@ -1350,7 +1369,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         for (var index = 0; index < units.Length; index++)
         {
             var unit = units[index];
-            if (!Economy.IsWorkerOwnedBy(unit, playerId) ||
+            if (!Economy.IsGathererOwnedBy(unit, playerId) ||
                 Economy.Worker(unit).CargoAmount <= 0)
                 continue;
             var result = IssueReturnCargo(playerId, unit, queued);
@@ -1439,7 +1458,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         for (var index = 0; index < units.Length; index++)
         {
             var unit = units[index];
-            (Economy.IsWorkerOwnedBy(unit, playerId) ? workers : movers).Add(unit);
+            (Economy.IsGathererOwnedBy(unit, playerId) ? workers : movers).Add(unit);
         }
         if (workers.Count == 0)
         {
@@ -3417,7 +3436,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             UnitOrderKind.GatherResource =>
                 IsGatherResourceOrderComplete(unit),
             UnitOrderKind.ReturnCargo =>
-                !Economy.IsWorker(unit) ||
+                !Economy.IsGatherer(unit) ||
                 Economy.Worker(unit).CargoAmount <= 0,
             UnitOrderKind.ResumeConstruction =>
                 IsResumeConstructionOrderComplete(unit),
@@ -3428,7 +3447,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     private bool IsGatherResourceOrderComplete(int unit)
     {
-        if (!Economy.IsWorker(unit)) return true;
+        if (!Economy.IsGatherer(unit)) return true;
         var worker = Economy.Worker(unit);
         return worker.State is WorkerEconomyState.None or WorkerEconomyState.Idle ||
                worker.TargetNode.Value !=

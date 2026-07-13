@@ -159,7 +159,7 @@ public sealed class MatchSystem
                 if (!units.Alive[unit] || combat.Teams[unit] != state.PlayerId)
                     continue;
                 if (economy.IsWorker(unit)) workers++;
-                else combatUnits++;
+                else if (!economy.IsGatherer(unit)) combatUnits++;
             }
             players[index] = new PlayerCapabilitySnapshot(
                 state.PlayerId, state.Status, state.EstablishedPresence,

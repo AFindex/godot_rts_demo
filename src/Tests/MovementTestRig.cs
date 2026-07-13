@@ -267,7 +267,8 @@ public enum TestGatherCommandCode : byte
     MissingDropOff,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    CapabilityUnavailable
 }
 
 public enum TestReturnCargoCommandCode : byte
@@ -292,6 +293,13 @@ public enum TestWorkerEconomyState : byte
     Gathering,
     ReturningCargo,
     WaitingForDropOff
+}
+
+public enum TestGathererCapability : byte
+{
+    None,
+    NormalWorker,
+    Mule
 }
 
 public readonly record struct TestPlayerEconomySnapshot(
@@ -322,7 +330,8 @@ public readonly record struct TestWorkerEconomySnapshot(
     TestWorkerEconomyState State,
     TestResourceNodeId TargetNode,
     TestEconomyResourceKind CargoKind,
-    int CargoAmount);
+    int CargoAmount,
+    TestGathererCapability Capability);
 
 public readonly record struct TestWorkerCycleSnapshot(
     TestUnitId Unit,
@@ -1412,6 +1421,16 @@ public sealed partial class MovementTestRig
         new(_simulation.AddWorker(
             position, playerId, radius, maximumSpeed, acceleration));
 
+    public TestUnitId SpawnMule(
+        Vector2 position,
+        int playerId,
+        float radius = 10f,
+        float maximumSpeed = 165f,
+        float acceleration = 800f) =>
+        new(_simulation.AddGatherer(
+            position, playerId, GathererCapability.Mule,
+            radius, maximumSpeed, acceleration));
+
     public TestResourceNodeId AddResourceNode(
         TestEconomyResourceKind kind,
         Vector2 position,
@@ -1525,7 +1544,8 @@ public sealed partial class MovementTestRig
             (TestWorkerEconomyState)snapshot.State,
             new TestResourceNodeId(snapshot.TargetNode.Value),
             (TestEconomyResourceKind)snapshot.CargoKind,
-            snapshot.CargoAmount);
+            snapshot.CargoAmount,
+            (TestGathererCapability)snapshot.Capability);
     }
 
     public TestWorkerCycleSnapshot[] ObservePlayerWorkers(int playerId)

@@ -25,7 +25,7 @@
 | Harvest/ReturningCargo 单位碰撞豁免 | 核心已对齐 | 只补独立矩阵回归，不重写 Steering |
 | 建筑与地形仍阻挡采矿农民 | 已对齐 | 作为碰撞矩阵硬门禁 |
 | 最近有效 DropOff 与最近建筑边缘 | 主路径已对齐 | 补显式 Return Cargo 与包围边界实验 |
-| 玩家批量右键资源后的自动分矿 | 普通 Worker 已对齐 | E2b 只剩 MULE 独立通道和收入曲线门禁 |
+| 玩家批量右键资源后的自动分矿 | 普通 Worker/MULE 槽位已对齐 | E2c 只剩 Rally/枯竭/近远矿收入曲线门禁 |
 | Preview 无副作用 | 部分对齐 | 拆成静态可见校验快照 |
 | 下单后的 Ghost/Reservation | 未对齐 | P0 新增权威施工意图 |
 | 工人到达前的建筑占地 | 未对齐，当前过早硬占地 | P0 延迟到 Hard Commit |
@@ -313,6 +313,10 @@ P0 综合完成条件：C0～C5 全部通过，E0 已确认的规则有来源和
 当前完成边界（E2a）：普通 Worker 通道已经拆成 `NormalActiveSlots`、`IdealNormalAssignments`、`ActiveNormal`、`AssignedNormal` 和 `WaitingNormal`，普通矿默认/可玩关卡采用 `1/2`；基地快照按矿物/瓦斯分别暴露 Assigned/Ideal。无状态 `ResourceAssignmentPolicy` 已接入非 Shift 批量资源 SmartCommand、Shift Gather 真正出队、资源 Rally、新基地转场、到矿占用和资源失效重选，并以 Worker/Node 稳定 ID 决胜，不执行逐 Tick 全局重排。节点增量计数进入 Replay Package/Hot Snapshot v22 与 State Hash v23，恢复时会按 Worker 状态交叉校验计数。
 
 `economy-auto-patch-distribution` 已通过同一片矿四阶段点击 `12/16/24/32` Worker：八片矿 Assigned 差始终不超过 1，16 人为每片 2 人，24/32 人进入 3/4 人分配但 `ActiveNormal<=1`，Waiting 队列被实际观察到；32 条经济命令回放与 Tick 300 热恢复精确一致。原 96 Worker/32 矿压力场景也已改用 `1` 个并发槽和 `2` 个理想位并通过。专项 AV1/WebM 位于 `test_videos/20260713_145302/`。E2 尚未整体收口：下一段只补 MULE 独立能力通道与 `economy-mule-independent-mining`，再补 Rally 填空、枯竭收缩和近/远矿边际收入的专项门禁；不回头继续微调普通分配器。
+
+当前完成边界（E2b）：`GathererCapability` 已将 `NormalWorker` 与 `Mule` 从“是否能施工”中解耦。MULE 可走正式 Gather/Return Cargo、批量资源 SmartCommand 和采矿穿行，但不属于普通 Worker，不计入基地 Assigned/Ideal、经济 UI Worker 数、施工资格或比赛 Worker/CombatUnit 能力；MULE 只能采矿，采气返回 `CapabilityUnavailable`。每个矿点的 `ActiveMules<=1`，MULE 分配使用独立 `AssignedMules/1` 负载率，与普通 `AssignedNormal/IdealNormalAssignments` 互不影响。能力进入 Worker 运行时条目、规范二进制、热恢复校验和状态 Hash，Replay Package/Hot Snapshot 升级 v23，State Hash 升级 v24。
+
+`economy-mule-independent-mining` 已通过：隔离矿片上 `2 SCV + 1 MULE` 实际出现普通/MULE 同时采集，加入第二个 MULE 后观察到一个 Active、一个 Waiting；主矿簇保持普通 `16/16`，八个 MULE 批量点同一矿后形成 `8/8` 独立分散，普通饱和度不变。MULE 不进入公开 Worker 列表，28 条经济命令 Replay 与 Tick 360 热恢复精确一致。专项 AV1/WebM 位于 `test_videos/20260713_150930/`。E2 下一段只做 E2c：Rally 填空、枯竭收缩、近/远矿和第二/第三/第四 Worker 边际收入门禁；不实现 Orbital、召唤、寿命、修理或完整 MULE 数值内容。
 
 ### Q1：Shift Build Queue
 
