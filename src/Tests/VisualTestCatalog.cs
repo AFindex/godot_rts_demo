@@ -93,6 +93,7 @@ public static class VisualTestCatalog
         "ai-continuous-encounter",
         "construction-gameplay-buildings",
         "construction-reservation-hard-commit",
+        "construction-queued-builds",
         "construction-under-build-defense",
         "building-type-resource-runtime",
         "production-queue-exit-rally",
@@ -263,6 +264,8 @@ public static class VisualTestCatalog
         "construction-reservation-hard-commit" =>
             CreateConstructionReservationHardCommit(
                 navigationMap, gameplayProfiles, clearanceBake),
+        "construction-queued-builds" => CreateConstructionQueuedBuilds(
+            navigationMap, gameplayProfiles, clearanceBake),
         "construction-under-build-defense" =>
             CreateConstructionUnderBuildDefense(
                 navigationMap, gameplayProfiles, clearanceBake),
@@ -6480,6 +6483,320 @@ public static class VisualTestCatalog
                 new SimRect(new Vector2(730f, 470f), new Vector2(830f, 570f)),
                 "REFINERY: bound to Vespene node",
                 TestDiagnosticKind.Accepted);
+    }
+
+    private static VisualTestSession CreateConstructionQueuedBuilds(
+        NavigationMapSnapshot? navigationMap,
+        GameplayProfileCatalogSnapshot? gameplayProfiles,
+        ClearanceBakeSnapshot? clearanceBake)
+    {
+        navigationMap ??= DemoMapDefinition.CreateSnapshot();
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            32, navigationMap, gameplayProfiles, clearanceBake);
+        rig.RegisterPlayer(1, 5000, 0, 40, 3);
+        rig.AddResourceDropOff(1, new Vector2(80f, 110f));
+        var minerals = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            new Vector2(500f, 110f),
+            amount: 10_000,
+            harvestBatch: 5,
+            harvestSeconds: 0.6f,
+            harvesterCapacity: 2);
+        var mainBuilder = rig.SpawnWorker(
+            new Vector2(70f, 180f), 1, maximumSpeed: 260f);
+        var cancelBuilder = rig.SpawnWorker(
+            new Vector2(70f, 350f), 1, maximumSpeed: 260f);
+        var deadBuilder = rig.SpawnWorker(
+            new Vector2(70f, 550f), 1, maximumSpeed: 260f,
+            combatProfile: TestCombatProfile.Standard with
+            {
+                MaximumHealth = 10f
+            });
+        var dynamicBlocker = rig.SpawnCombat(
+            new Vector2(410f, 290f), 1,
+            radius: 14f, maximumSpeed: 240f, acceleration: 900f);
+        var builderKiller = rig.SpawnCombat(
+            new Vector2(70f, 570f), 2,
+            TestCombatProfile.Standard with
+            {
+                AttackDamage = 1000f,
+                AttackRange = 34f,
+                AcquisitionRange = 34f,
+                AttackWindupSeconds = 0.05f,
+                Positioning = TestCombatPositioning.Melee
+            });
+
+        var supply = DemoBuildingTypes.SupplyDepot with
+        {
+            BuildSeconds = 0.55f
+        };
+        var barracks = DemoBuildingTypes.Barracks with
+        {
+            BuildSeconds = 0.7f
+        };
+        var commandCenter = DemoBuildingTypes.CommandCenter with
+        {
+            BuildSeconds = 0.85f
+        };
+        rig.StartReplayPackageRecording();
+        var mainIds = new TestGameplayBuildingId[3];
+        var cancelIds = new TestGameplayBuildingId[3];
+        var deathIds = new TestGameplayBuildingId[2];
+        var deathCleanup = false;
+        var issued = false;
+        var reserveCharge = false;
+        var gatherQueued = false;
+        var canceledMiddle = false;
+        var cancelRefund = false;
+        var noPrematureHardFootprints = false;
+        var staticRejected = false;
+        var staticRefund = false;
+        var dynamicEntered = false;
+        var dynamicEvacuated = false;
+        var returnedToMining = false;
+        var balanceAfterIssue = 0;
+        var issueCodes = string.Empty;
+        TestRuntimeStateCapture? hotCapture = null;
+        const long hotTick = 90;
+        var mainCenters = new[]
+        {
+            new Vector2(120f, 180f),
+            new Vector2(220f, 180f),
+            new Vector2(410f, 180f)
+        };
+        var cancelCenters = new[]
+        {
+            new Vector2(120f, 350f),
+            new Vector2(220f, 350f),
+            new Vector2(400f, 350f)
+        };
+
+        var session = new VisualTestSession(
+                "construction-queued-builds",
+                "Shift Build queues soft reservations, revalidates each item and returns to mining",
+                420,
+                rig,
+                [mainBuilder, cancelBuilder, deadBuilder, dynamicBlocker,
+                    builderKiller],
+                runtime =>
+                {
+                    var main = mainIds.Select(
+                        runtime.ObserveGameplayBuilding).ToArray();
+                    var canceled = cancelIds.Select(
+                        runtime.ObserveGameplayBuilding).ToArray();
+                    var mainComplete =
+                        main[0].State == TestBuildingLifecycleState.Completed &&
+                        main[1].State == TestBuildingLifecycleState.Canceled &&
+                        main[2].State == TestBuildingLifecycleState.Completed;
+                    var cancelComplete =
+                        canceled[0].State == TestBuildingLifecycleState.Completed &&
+                        canceled[1].State == TestBuildingLifecycleState.Canceled &&
+                        canceled[2].State == TestBuildingLifecycleState.Completed;
+                    var mainOrders = runtime.ObserveOrders(mainBuilder);
+                    var cancelOrders = runtime.ObserveOrders(cancelBuilder);
+                    var death = deathIds.Select(
+                        runtime.ObserveGameplayBuilding).ToArray();
+                    var worker = runtime.ObserveWorkerEconomy(mainBuilder);
+                    returnedToMining |= worker.TargetNode == minerals &&
+                        worker.State is not TestWorkerEconomyState.None and
+                            not TestWorkerEconomyState.Idle;
+                    var blocker = runtime.Observe(dynamicBlocker).Position;
+                    dynamicEvacuated |=
+                        MathF.Abs(blocker.X - mainCenters[2].X) >
+                            commandCenter.Size.X * 0.5f + 14f ||
+                        MathF.Abs(blocker.Y - mainCenters[2].Y) >
+                            commandCenter.Size.Y * 0.5f + 14f;
+
+                    var package = runtime.CaptureReplayPackage();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(
+                        out var decoded);
+                    var replay = packageRoundTrip
+                        ? runtime.ReplayPackage(decoded!, runtime.Tick)
+                        : null;
+                    var replayExact = replay is not null &&
+                                      replay.FinalHash == runtime.StateHash;
+                    var hotExact = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotExact = resumed.FinalHash == runtime.StateHash &&
+                                       replay is not null &&
+                                       replay.MatchesFrom(resumed, hotTick);
+                        }
+                    }
+                    var versions = package.FormatVersion ==
+                                       SimulationReplayPackageSnapshot
+                                           .CurrentFormatVersion &&
+                                   hotVersion ==
+                                       SimulationHotSnapshot.CurrentFormatVersion;
+                    var passed = deathCleanup && issued && reserveCharge &&
+                                 gatherQueued && canceledMiddle && cancelRefund &&
+                                 noPrematureHardFootprints && staticRejected &&
+                                 staticRefund && dynamicEntered &&
+                                 dynamicEvacuated &&
+                                 returnedToMining && mainComplete &&
+                                 cancelComplete && mainOrders.PendingOrders == 0 &&
+                                 cancelOrders.PendingOrders == 0 &&
+                                 mainOrders.CompletedQueuedOrders >= 3 &&
+                                 cancelOrders.CompletedQueuedOrders >= 3 &&
+                                 packageRoundTrip && replayExact && hotExact &&
+                                 versions;
+                    return new ScenarioResult(
+                        passed,
+                        $"issued/charge={issued}/{reserveCharge}" +
+                        $"[{issueCodes}]@{balanceAfterIssue}, " +
+                        $"hard-late={noPrematureHardFootprints}, " +
+                        $"static-skip/refund={staticRejected}/{staticRefund}, " +
+                        $"dynamic-enter/evict={dynamicEntered}/" +
+                        $"{dynamicEvacuated}, cancel=" +
+                        $"{canceledMiddle}/{cancelRefund}, death={deathCleanup}, " +
+                        $"mine={returnedToMining}, complete=" +
+                        $"{mainComplete}/{cancelComplete}, queue=" +
+                        $"{mainOrders.CompletedQueuedOrders}/" +
+                        $"{cancelOrders.CompletedQueuedOrders}, states=" +
+                        $"{string.Join('/', main.Select(value => $"{value.State}:{value.Progress:0.00}"))}|" +
+                        $"{string.Join('/', canceled.Select(value => $"{value.State}:{value.Progress:0.00}"))}|" +
+                        $"deadAlive={runtime.IsUnitAlive(deadBuilder)}/" +
+                        $"{string.Join('/', death.Select(value => value.State))}, " +
+                        $"alive={runtime.IsUnitAlive(mainBuilder)}/" +
+                        $"{runtime.IsUnitAlive(cancelBuilder)}, active=" +
+                        $"{mainOrders.ActiveOrder}:{mainOrders.ActiveTargetBuilding}:" +
+                        $"{mainOrders.PendingOrders}/" +
+                        $"{cancelOrders.ActiveOrder}:{cancelOrders.ActiveTargetBuilding}:" +
+                        $"{cancelOrders.PendingOrders}, replay=" +
+                        $"{replayExact}, hot={hotExact}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(280f, 340f), 0.92f)
+            .CameraKeyframe(120, new Vector2(260f, 270f), 1.02f)
+            .CameraKeyframe(230, new Vector2(400f, 260f), 1.1f)
+            .CameraKeyframe(330, new Vector2(280f, 280f), 0.98f)
+            .CameraKeyframe(410, new Vector2(210f, 180f), 1.05f)
+            .Highlight(
+                new SimRect(new Vector2(90f, 110f), new Vector2(505f, 250f)),
+                "MAIN: BUILD -> STATIC SKIP -> DYNAMIC EVICT -> MINE",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(90f, 290f), new Vector2(455f, 410f)),
+                "CANCEL: REMOVE ONE QUEUED ITEM, CONTINUE",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(90f, 490f), new Vector2(285f, 610f)),
+                "DEATH: KEEP STARTED / REFUND PENDING",
+                TestDiagnosticKind.Rejected);
+
+        session.At(1, "Queue three sizes and a final mining order", runtime =>
+        {
+            var main = new[]
+            {
+                runtime.Build(1, mainBuilder, supply, mainCenters[0], queued: true),
+                runtime.Build(1, mainBuilder, barracks, mainCenters[1], queued: true),
+                runtime.Build(1, mainBuilder, commandCenter, mainCenters[2], queued: true)
+            };
+            var canceled = new[]
+            {
+                runtime.Build(1, cancelBuilder, supply, cancelCenters[0], queued: true),
+                runtime.Build(1, cancelBuilder, barracks, cancelCenters[1], queued: true),
+                runtime.Build(1, cancelBuilder, supply, cancelCenters[2], queued: true)
+            };
+            issued = main.Concat(canceled).All(value => value.Succeeded);
+            for (var index = 0; index < 3; index++)
+            {
+                mainIds[index] = main[index].BuildingId;
+                cancelIds[index] = canceled[index].BuildingId;
+            }
+            balanceAfterIssue = runtime.ObservePlayerEconomy(1).Minerals;
+            reserveCharge = balanceAfterIssue == 3750;
+            var death = new[]
+            {
+                runtime.Build(
+                    1, deadBuilder, supply,
+                    new Vector2(120f, 550f), queued: true),
+                runtime.Build(
+                    1, deadBuilder, barracks,
+                    new Vector2(220f, 550f), queued: true)
+            };
+            issued &= death.All(value => value.Succeeded);
+            issueCodes = string.Join('/', main.Concat(canceled).Concat(death)
+                .Select(value => value.Code));
+            deathIds[0] = death[0].BuildingId;
+            deathIds[1] = death[1].BuildingId;
+            balanceAfterIssue = runtime.ObservePlayerEconomy(1).Minerals;
+            reserveCharge = balanceAfterIssue == 3750;
+        });
+        session.At(2, "Queue the final return-to-mining command", runtime =>
+            gatherQueued = runtime.PlayerSmartResource(
+                1, [mainBuilder], minerals, queued: true) ==
+                TestPlayerOrderCommandCode.Success);
+        session.At(8, "Move a friendly unit into the future large footprint", runtime =>
+        {
+            runtime.Move([dynamicBlocker], mainCenters[2]);
+            runtime.AttackTarget([builderKiller], deadBuilder);
+        });
+        session.At(12, "Invalidate only the middle main reservation", runtime =>
+            runtime.PlaceBuilding(mainCenters[1], new Vector2(44f, 44f)));
+        session.At(14, "Cancel only the middle item in a second queue", runtime =>
+        {
+            var beforeCancel = runtime.ObservePlayerEconomy(1).Minerals;
+            canceledMiddle = runtime.CancelConstruction(1, cancelIds[1]);
+            cancelRefund = runtime.ObservePlayerEconomy(1).Minerals == beforeCancel + 112;
+        });
+        session.At(20, "Move the deterministic builder killer away", runtime =>
+            runtime.Move([builderKiller], new Vector2(80f, 670f)));
+        session.At(25, "Verify future reservations still have no hard footprint", runtime =>
+        {
+            var middle = runtime.ObserveGameplayBuilding(mainIds[1]);
+            var last = runtime.ObserveGameplayBuilding(mainIds[2]);
+            noPrematureHardFootprints = middle.ReservationId > 0 &&
+                                          middle.FootprintId.Value == 0 &&
+                                          last.ReservationId > 0 &&
+                                          last.FootprintId.Value == 0;
+        });
+        session.At(65, "Hold the dynamic occupant inside the future footprint", runtime =>
+        {
+            runtime.Hold([dynamicBlocker]);
+            var blocker = runtime.Observe(dynamicBlocker).Position;
+            dynamicEntered = MathF.Abs(blocker.X - mainCenters[2].X) <=
+                                 commandCenter.Size.X * 0.5f &&
+                             MathF.Abs(blocker.Y - mainCenters[2].Y) <=
+                                 commandCenter.Size.Y * 0.5f;
+        });
+        session.At(hotTick, "Capture queued reservations and active construction", runtime =>
+            hotCapture = runtime.CaptureRuntimeState());
+        for (var tick = 30; tick < session.DurationTicks; tick += 4)
+        {
+            session.At(tick, "Observe per-item queue transitions", runtime =>
+            {
+                if (deathIds[1].Value >= 0)
+                {
+                    var first = runtime.ObserveGameplayBuilding(deathIds[0]);
+                    var pending = runtime.ObserveGameplayBuilding(deathIds[1]);
+                    deathCleanup |= !runtime.IsUnitAlive(deadBuilder) &&
+                        first.State ==
+                            TestBuildingLifecycleState.WaitingForBuilder &&
+                        pending.State == TestBuildingLifecycleState.Canceled;
+                }
+                if (mainIds[1].Value >= 0)
+                {
+                    var middle = runtime.ObserveGameplayBuilding(mainIds[1]);
+                    if (middle.State == TestBuildingLifecycleState.Canceled)
+                    {
+                        staticRejected = true;
+                        staticRefund |= runtime.ObservePlayerEconomy(1).Minerals ==
+                                        4162;
+                    }
+                }
+            });
+        }
+        return session;
     }
 
     private static VisualTestSession CreateConstructionReservationHardCommit(

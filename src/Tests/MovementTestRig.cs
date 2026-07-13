@@ -209,7 +209,8 @@ public enum TestConstructionCommandCode : byte
     RefineryAlreadyBound,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    QueueFull
 }
 
 public readonly record struct TestConstructionResult(
@@ -479,7 +480,8 @@ public readonly record struct TestOrderSnapshot(
     TestOrderKind ActiveOrder,
     int PendingOrders,
     int CompletedQueuedOrders,
-    int QueueOverflows);
+    int QueueOverflows,
+    int ActiveTargetBuilding);
 
 public sealed class TestCommandLog
 {
@@ -1417,9 +1419,13 @@ public sealed partial class MovementTestRig
         int playerId,
         float radius = 7.5f,
         float maximumSpeed = 150f,
-        float acceleration = 720f) =>
+        float acceleration = 720f,
+        TestCombatProfile? combatProfile = null) =>
         new(_simulation.AddWorker(
-            position, playerId, radius, maximumSpeed, acceleration));
+            position, playerId, radius, maximumSpeed, acceleration,
+            combatProfile.HasValue
+                ? ToBackendCombat(combatProfile.Value)
+                : null));
 
     public TestUnitId SpawnMule(
         Vector2 position,
@@ -1741,7 +1747,8 @@ public sealed partial class MovementTestRig
         TestUnitId worker,
         BuildingTypeProfile profile,
         Vector2 center,
-        TestResourceNodeId? refineryNode = null)
+        TestResourceNodeId? refineryNode = null,
+        bool queued = false)
     {
         var result = _simulation.IssueConstruction(
             playerId,
@@ -1750,7 +1757,8 @@ public sealed partial class MovementTestRig
             center,
             refineryNode.HasValue
                 ? new EconomyResourceNodeId(refineryNode.Value.Value)
-                : new EconomyResourceNodeId(-1));
+                : new EconomyResourceNodeId(-1),
+            queued);
         return new TestConstructionResult(
             (TestConstructionCommandCode)result.Code,
             new TestGameplayBuildingId(result.BuildingId.Value),
@@ -2031,29 +2039,32 @@ public sealed partial class MovementTestRig
         float acceleration = 720f)
     {
         var resolvedProfile = profile ?? TestCombatProfile.Standard;
-        var backendProfile = new CombatProfileSnapshot(
-            resolvedProfile.MaximumHealth,
-            resolvedProfile.AttackDamage,
-            resolvedProfile.AttackRange,
-            resolvedProfile.AcquisitionRange,
-            resolvedProfile.AttackCooldownSeconds,
-            resolvedProfile.AttackWindupSeconds,
-            resolvedProfile.LeashDistance,
-            (CombatPositioningKind)resolvedProfile.Positioning,
-            resolvedProfile.Armor,
-            resolvedProfile.Attributes,
-            resolvedProfile.AttacksPerVolley,
-            resolvedProfile.BonusVs,
-            resolvedProfile.BonusDamage,
-            resolvedProfile.BaseUpgradeDamage,
-            resolvedProfile.BonusUpgradeDamage,
-            resolvedProfile.ProjectileSpeed,
-            resolvedProfile.CanMoveDuringWindup,
-            resolvedProfile.CanMoveDuringCooldown,
-            resolvedProfile.AutoTargetPriority);
+        var backendProfile = ToBackendCombat(resolvedProfile);
         return new TestUnitId(_simulation.AddUnit(
             position, team, backendProfile, radius, maximumSpeed, acceleration));
     }
+
+    private static CombatProfileSnapshot ToBackendCombat(
+        TestCombatProfile profile) => new(
+        profile.MaximumHealth,
+        profile.AttackDamage,
+        profile.AttackRange,
+        profile.AcquisitionRange,
+        profile.AttackCooldownSeconds,
+        profile.AttackWindupSeconds,
+        profile.LeashDistance,
+        (CombatPositioningKind)profile.Positioning,
+        profile.Armor,
+        profile.Attributes,
+        profile.AttacksPerVolley,
+        profile.BonusVs,
+        profile.BonusDamage,
+        profile.BaseUpgradeDamage,
+        profile.BonusUpgradeDamage,
+        profile.ProjectileSpeed,
+        profile.CanMoveDuringWindup,
+        profile.CanMoveDuringCooldown,
+        profile.AutoTargetPriority);
 
     public TestUnitId[] SpawnGrid(
         Vector2 origin,
@@ -2285,7 +2296,8 @@ public sealed partial class MovementTestRig
 
         if (request.Kind == TestTargetCommandKind.Build)
         {
-            var preview = PreviewBuildTarget(request, resolution.Position);
+            var preview = PreviewBuildTarget(
+                request, resolution.Position, resolution.Queued);
             if (!preview.CanPlace)
                 return new TestTargetCommandResult(
                     false, false, false, true,
@@ -2297,9 +2309,11 @@ public sealed partial class MovementTestRig
                 preview.Builder.Value,
                 DemoBuildingTypes.CreateCatalog().Type(request.DataId),
                 preview.Center,
-                new EconomyResourceNodeId(-1));
+                new EconomyResourceNodeId(-1),
+                resolution.Queued);
             return new TestTargetCommandResult(
-                result.Succeeded, false, false, !result.Succeeded,
+                result.Succeeded, false, resolution.Queued,
+                result.Succeeded ? resolution.KeepTargeting : true,
                 result.Succeeded ? "Success" : result.Code.ToString(),
                 new TestGameplayBuildingId(result.BuildingId.Value));
         }
@@ -2328,7 +2342,8 @@ public sealed partial class MovementTestRig
 
     public TestBuildTargetPreview PreviewBuildTarget(
         TestTargetCommandRequest request,
-        Vector2 pointer)
+        Vector2 pointer,
+        bool queued = false)
     {
         if (request.Kind != TestTargetCommandKind.Build)
             throw new ArgumentException("Request is not a Build target.", nameof(request));
@@ -2345,7 +2360,7 @@ public sealed partial class MovementTestRig
         {
             var result = _simulation.PreviewConstruction(
                 request.PlayerId, candidate.Value, profile, center,
-                new EconomyResourceNodeId(-1));
+                new EconomyResourceNodeId(-1), queued);
             first ??= result;
             if (!result.Succeeded) continue;
             first = result;
@@ -3183,7 +3198,8 @@ public sealed partial class MovementTestRig
             (TestOrderKind)_simulation.CommandQueues.ActiveKinds[index],
             _simulation.CommandQueues.PendingCounts[index],
             _simulation.CommandQueues.CompletedQueuedOrders[index],
-            _simulation.CommandQueues.QueueOverflowCounts[index]);
+            _simulation.CommandQueues.QueueOverflowCounts[index],
+            _simulation.CommandQueues.ActiveTargetBuildings[index]);
     }
 
     public TestUnitSnapshot[] Observe(IReadOnlyList<TestUnitId> units)
@@ -3196,6 +3212,10 @@ public sealed partial class MovementTestRig
 
         return result;
     }
+
+    public bool IsUnitAlive(TestUnitId unit) =>
+        (uint)unit.Value < (uint)_simulation.Units.Count &&
+        _simulation.Units.Alive[unit.Value];
 
     public bool IsInsideWorld(TestUnitId unit)
     {

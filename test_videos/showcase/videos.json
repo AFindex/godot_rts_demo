@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T15:24:56.1980588+08:00",
+    "generated_at":  "2026-07-13T16:33:29.0740920+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  142,
-    "case_count":  111,
+    "recording_count":  143,
+    "case_count":  112,
     "recordings":  [
+                       {
+                           "id":  "construction-queued-builds",
+                           "display_name":  "Shift Build queues soft reservations, revalidates each item and returns to mining",
+                           "batch":  "20260713_161943",
+                           "created_at":  "2026-07-13T16:20:03.0224253+08:00",
+                           "video":  "../20260713_161943/construction-queued-builds.webm",
+                           "log":  "../20260713_161943/construction-queued-builds.log",
+                           "bytes":  1778183,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS construction-queued-builds: ticks=420, issued/charge=True/True[Success/Success/Success/Success/Success/Success/Success/Success]@3750, hard-late=True, static-skip/refund=True/True, dynamic-enter/evict=True/True, cancel=True/True, death=True, mine=True, complete=True/True, queue=3/3, states=Completed:1.00/Canceled:0.00/Completed:1.00|Completed:1.00/Canceled:0.00/Completed:1.00|deadAlive=False/WaitingForBuilder/Canceled, alive=True/True, active=GatherResource:-1:0/ResumeConstruction:5:0, replay=True, hot=True/v23",
+                           "metrics":  "ticks=420, issued/charge=True/True[Success/Success/Success/Success/Success/Success/Success/Success]@3750, hard-late=True, static-skip/refund=True/True, dynamic-enter/evict=True/True, cancel=True/True, death=True, mine=True, complete=True/True, queue=3/3, states=Completed:1.00/Canceled:0.00/Completed:1.00|Completed:1.00/Canceled:0.00/Completed:1.00|deadAlive=False/WaitingForBuilder/Canceled, alive=True/True, active=GatherResource:-1:0/ResumeConstruction:5:0, replay=True, hot=True/v23"
+                       },
                        {
                            "id":  "economy-assignment-lifecycle",
                            "display_name":  "Resource Rally fills the least-loaded patch and depletion shrinks assignment counters",

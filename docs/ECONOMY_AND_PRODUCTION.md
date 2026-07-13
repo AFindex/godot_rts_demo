@@ -56,7 +56,14 @@ Idle
 
 `EconomyOverviewSnapshot` 是 UI 边界。`RtsEconomyControl` 只绘制资源、人口、工人阶段和节点汇总；Godot 世界表现也只读取节点快照，不访问经济内部数组。
 
-经济、建造、建筑战斗、生产、研究和 Shift 工人任务现已纳入 Replay Package v14 与持久化热快照 v14。Research/CancelResearch 使用设施命令日志独立语义。
+经济、建造、建筑战斗、生产、研究和 Shift 工人任务现已纳入 Replay Package 与持久化热快照。当前 Replay Package v24、Hot Snapshot v23、State Hash v24；Research/CancelResearch 使用设施命令日志独立语义。
+
+### Shift 连续建造合同
+
+- Shift Build 在接受时原子扣费，并为每项保存完整 Building Profile、目标 Bounds、Refinery 目标与软 Reservation；未轮到的项不创建 Hard Footprint。
+- 轮到执行时重新验证静态放置，然后复用 Builder 接近、动态占位撤离和 Hard Commit 生命周期。晚期静态失败全额退款并继续下一项；主动取消仍返还 75%。
+- Builder 死亡保留当前已开始或已轮到的可续建项，取消并全退尚未开始的未来 Reservation；最后可继续排 Gather 回矿。
+- 上述未知 SC2 内部细节集中在 `QueuedConstructionPolicy`，不会散落为 UI 或状态机特判。
 
 ## 黑盒验收
 

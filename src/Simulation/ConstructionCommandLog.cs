@@ -18,7 +18,8 @@ public readonly record struct RecordedConstructionCommand(
     GameplayBuildingId BuildingId,
     BuildingTypeProfile Type,
     Vector2 Center,
-    EconomyResourceNodeId RefineryNode);
+    EconomyResourceNodeId RefineryNode,
+    bool Queued);
 
 public enum ConstructionCommandLogValidationCode : byte
 {
@@ -36,7 +37,7 @@ public sealed class ConstructionCommandLogSnapshot
 {
     private const uint Magic = 0x43435452; // RTCC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
 
     public ConstructionCommandLogSnapshot(RecordedConstructionCommand[] entries)
     {
@@ -94,7 +95,8 @@ public sealed class ConstructionCommandLogSnapshot
                         tick, kind, playerId, reader.ReadInt32(), default,
                         ConstructionSerialization.ReadProfile(reader),
                         ConstructionSerialization.ReadVector(reader),
-                        new EconomyResourceNodeId(reader.ReadInt32()));
+                        new EconomyResourceNodeId(reader.ReadInt32()),
+                        reader.ReadBoolean());
                 }
                 else
                 {
@@ -104,7 +106,7 @@ public sealed class ConstructionCommandLogSnapshot
                             ? reader.ReadInt32()
                             : -1,
                         new GameplayBuildingId(reader.ReadInt32()),
-                        default, default, new EconomyResourceNodeId(-1));
+                        default, default, new EconomyResourceNodeId(-1), false);
                 }
                 if (tick < previousTick || tick < 0 || playerId < 0 ||
                     !Enum.IsDefined(kind) ||
@@ -159,6 +161,7 @@ public sealed class ConstructionCommandLogSnapshot
                 ConstructionSerialization.WriteProfile(writer, entry.Type);
                 ConstructionSerialization.WriteVector(writer, entry.Center);
                 writer.Write(entry.RefineryNode.Value);
+                writer.Write(entry.Queued);
             }
             else
             {
@@ -180,21 +183,21 @@ public sealed class ConstructionCommandRecorder
 
     public void RecordBuild(
         long tick, int playerId, int builderUnit, BuildingTypeProfile type,
-        Vector2 center, EconomyResourceNodeId refineryNode) =>
+        Vector2 center, EconomyResourceNodeId refineryNode, bool queued) =>
         _entries.Add(new RecordedConstructionCommand(
             tick, ConstructionReplayCommandKind.Build, playerId, builderUnit,
-            default, type, center, refineryNode));
+            default, type, center, refineryNode, queued));
 
     public void RecordCancel(long tick, int playerId, GameplayBuildingId id) =>
         _entries.Add(new RecordedConstructionCommand(
             tick, ConstructionReplayCommandKind.Cancel, playerId, -1,
-            id, default, default, new EconomyResourceNodeId(-1)));
+            id, default, default, new EconomyResourceNodeId(-1), false));
 
     public void RecordResume(
         long tick, int playerId, GameplayBuildingId id, int builderUnit) =>
         _entries.Add(new RecordedConstructionCommand(
             tick, ConstructionReplayCommandKind.Resume, playerId, builderUnit,
-            id, default, default, new EconomyResourceNodeId(-1)));
+            id, default, default, new EconomyResourceNodeId(-1), false));
 
     public ConstructionCommandLogSnapshot Capture() => new(_entries.ToArray());
 }

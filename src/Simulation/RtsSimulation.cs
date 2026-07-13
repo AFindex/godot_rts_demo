@@ -117,6 +117,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public UnitCommandQueueStore CommandQueues { get; }
     public EconomySystem Economy { get; }
     public ConstructionSystem Construction { get; }
+    public QueuedConstructionPolicy ConstructionQueuePolicy { get; } =
+        QueuedConstructionPolicy.ProjectDefault;
     public ProductionSystem Production { get; }
     public TechnologySystem Technology { get; }
     public PlayerVisibilitySystem Visibility { get; }
@@ -535,7 +537,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             case ConstructionReplayCommandKind.Build:
                 var result = IssueConstruction(
                     command.PlayerId, command.BuilderUnit, command.Type,
-                    command.Center, command.RefineryNode);
+                    command.Center, command.RefineryNode, command.Queued);
                 if (!result.Succeeded)
                 {
                     throw new InvalidOperationException(
@@ -778,11 +780,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int playerId,
         float radius = 7.5f,
         float maxSpeed = 128f,
-        float acceleration = 720f)
+        float acceleration = 720f,
+        CombatProfileSnapshot? combatProfile = null)
     {
         return AddGatherer(
             position, playerId, GathererCapability.NormalWorker,
-            radius, maxSpeed, acceleration);
+            radius, maxSpeed, acceleration, combatProfile);
     }
 
     public int AddGatherer(
@@ -791,7 +794,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         GathererCapability capability,
         float radius = 7.5f,
         float maxSpeed = 128f,
-        float acceleration = 720f)
+        float acceleration = 720f,
+        CombatProfileSnapshot? combatProfile = null)
     {
         if (!Economy.Players.IsRegistered(playerId) ||
             capability == GathererCapability.None ||
@@ -802,7 +806,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         var unit = AddUnit(
             position,
             playerId,
-            CombatProfileSnapshot.Standard,
+            combatProfile ?? CombatProfileSnapshot.Standard,
             radius,
             maxSpeed,
             acceleration);
@@ -960,23 +964,76 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int builderUnit,
         BuildingTypeProfile profile,
         Vector2 center,
-        EconomyResourceNodeId refineryNode = default)
+        EconomyResourceNodeId refineryNode = default,
+        bool queued = false)
     {
         var validation = ValidateConstructionRequest(
             issuingPlayerId, builderUnit, profile, center, refineryNode,
-            out center, out refineryNode);
+            out center, out refineryNode, queued);
         if (!validation.Succeeded) return validation;
+        if (queued &&
+            CommandQueues.PendingCounts[builderUnit] >=
+                UnitCommandQueueStore.MaximumPendingOrders)
+        {
+            return new ConstructionCommandResult(
+                ConstructionCommandCode.QueueFull, default);
+        }
+        if (queued && ConstructionQueuePolicy.PaymentTiming !=
+            QueuedConstructionPaymentTiming.ReserveOnIssue)
+        {
+            throw new InvalidOperationException(
+                "Unsupported queued construction payment policy.");
+        }
         var charged = Economy.Players.TrySpend(issuingPlayerId, profile.Cost);
         if (!charged.Succeeded)
         {
             throw new InvalidOperationException(
                 "Construction cost changed between validation and commit.");
         }
+        var halfSize = profile.Size * 0.5f;
+        var bounds = new SimRect(center - halfSize, center + halfSize);
+        if (queued)
+        {
+            var queuedId = Construction.AddQueued(
+                issuingPlayerId, profile, bounds, refineryNode, Metrics.Tick);
+            if (CommandQueues.PendingCounts[builderUnit] == 0 &&
+                CommandQueues.ActiveKinds[builderUnit] ==
+                    UnitOrderKind.GatherResource)
+            {
+                Economy.Cancel([builderUnit]);
+                CommandQueues.HasActiveOrders[builderUnit] = false;
+            }
+            Span<int> queuedBuilder = stackalloc int[1];
+            queuedBuilder[0] = builderUnit;
+            var accepted = IssueDeferredWorkerOrder(
+                queuedBuilder,
+                new UnitOrder(
+                    UnitOrderKind.ResumeConstruction,
+                    center,
+                    TargetBuilding: queuedId.Value),
+                queued: true,
+                recordCommand: false);
+            if (!accepted)
+            {
+                if (!Construction.RejectQueuedReservation(
+                        queuedId, issuingPlayerId, Economy))
+                {
+                    throw new InvalidOperationException(
+                        "Queued construction could not roll back its reservation.");
+                }
+                return new ConstructionCommandResult(
+                    ConstructionCommandCode.QueueFull, default);
+            }
+            _constructionCommandRecorder?.RecordBuild(
+                Metrics.Tick, issuingPlayerId, builderUnit, profile, center,
+                refineryNode, queued: true);
+            return new ConstructionCommandResult(
+                ConstructionCommandCode.Success, queuedId);
+        }
+
         Economy.Cancel([builderUnit]);
         CommandQueues.ClearPending(builderUnit);
         CommandQueues.HasActiveOrders[builderUnit] = false;
-        var halfSize = profile.Size * 0.5f;
-        var bounds = new SimRect(center - halfSize, center + halfSize);
         var accessPoint = ResolveConstructionAccessPoint(
             bounds, builderUnit, profile.PlacementProfile.UnitPadding);
         var id = Construction.Add(
@@ -989,7 +1046,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Metrics.Tick);
         MoveConstructionWorker(builderUnit, Construction.BuilderAccessPoint(id));
         _constructionCommandRecorder?.RecordBuild(
-            Metrics.Tick, issuingPlayerId, builderUnit, profile, center, refineryNode);
+            Metrics.Tick, issuingPlayerId, builderUnit, profile, center,
+            refineryNode, queued: false);
         return new ConstructionCommandResult(
             ConstructionCommandCode.Success, id);
     }
@@ -999,10 +1057,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int builderUnit,
         BuildingTypeProfile profile,
         Vector2 center,
-        EconomyResourceNodeId refineryNode = default) =>
+        EconomyResourceNodeId refineryNode = default,
+        bool queued = false) =>
         ValidateConstructionRequest(
             issuingPlayerId, builderUnit, profile, center, refineryNode,
-            out _, out _);
+            out _, out _, queued);
 
     private ConstructionCommandResult ValidateConstructionRequest(
         int issuingPlayerId,
@@ -1011,7 +1070,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Vector2 requestedCenter,
         EconomyResourceNodeId requestedRefineryNode,
         out Vector2 resolvedCenter,
-        out EconomyResourceNodeId resolvedRefineryNode)
+        out EconomyResourceNodeId resolvedRefineryNode,
+        bool allowBusyBuilder = false)
     {
         resolvedCenter = requestedCenter;
         resolvedRefineryNode = requestedRefineryNode;
@@ -1030,7 +1090,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             resolvedRefineryNode = new EconomyResourceNodeId(-1);
         var validation = Construction.ValidateRequest(
             Economy, Units, issuingPlayerId, builderUnit, profile,
-            resolvedRefineryNode);
+            resolvedRefineryNode, allowBusyBuilder);
         if (!validation.Succeeded) return validation;
 
         var spend = Economy.Players.ValidateSpend(issuingPlayerId, profile.Cost);
@@ -1587,10 +1647,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
             ConstructionSystem.BuilderArrivalTolerance);
     }
 
-    private void IssueDeferredWorkerOrder(
+    private bool IssueDeferredWorkerOrder(
         ReadOnlySpan<int> unitIndices,
         UnitOrder order,
-        bool queued)
+        bool queued,
+        bool recordCommand = true)
     {
         if (!UnitOrderContract.IsStructurallyValid(order) || unitIndices.IsEmpty)
             throw new ArgumentException("Deferred worker order is invalid.", nameof(order));
@@ -1599,22 +1660,29 @@ public sealed class RtsSimulation : ICombatMovementDriver
             ValidateUnitIndex(unitIndices[index]);
             ValidateLivingUnit(unitIndices[index]);
         }
-        _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
+        if (recordCommand)
+            _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
         order = order with { SequenceId = NextOrderSequenceId() };
         if (!queued)
         {
             ExecuteOrderGroup(unitIndices, order, wasQueued: false);
-            return;
+            return true;
         }
         var immediateCount = 0;
+        var accepted = 0;
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
             if (CommandQueues.PendingCounts[unit] == 0 &&
                 IsActiveOrderComplete(unit))
+            {
                 _orderDispatchUnits[immediateCount++] = unit;
-            else
-                CommandQueues.TryEnqueue(unit, order);
+                accepted++;
+            }
+            else if (CommandQueues.TryEnqueue(unit, order))
+            {
+                accepted++;
+            }
         }
         if (immediateCount > 0)
         {
@@ -1623,6 +1691,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 order,
                 wasQueued: true);
         }
+        return accepted == unitIndices.Length;
     }
 
     public void IssueMove(
@@ -1952,7 +2021,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         order = order with { SequenceId = NextOrderSequenceId() };
         if (!queued || order.Kind is UnitOrderKind.Stop or UnitOrderKind.Hold)
         {
-            for (var index = 0; index < unitIndices.Length; index++)
+            for (var index = 0;
+                 !_issuingSystemOrder && index < unitIndices.Length;
+                 index++)
             {
                 CommandQueues.ClearPending(unitIndices[index]);
             }
@@ -2094,6 +2165,32 @@ public sealed class RtsSimulation : ICombatMovementDriver
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
+            if (!Construction.IsAlive(building))
+                continue;
+            var snapshot = Construction.Observe(building);
+            if (snapshot.State == BuildingLifecycleState.WaitingForBuilder &&
+                snapshot.BuilderUnit == -1 && snapshot.ReservationId.IsValid)
+            {
+                var placement = snapshot.Type.PlacementProfile;
+                var assessment = AssessBuildingPlacement(
+                    snapshot.Bounds,
+                    new BuildingPlacementRules(
+                        placement.MinimumPassageClass,
+                        placement.UnitPadding),
+                    snapshot.ReservationId);
+                if (!assessment.Static.Succeeded &&
+                    ConstructionQueuePolicy.StaticFailureAction ==
+                        QueuedConstructionStaticFailureAction.RefundAndContinue)
+                {
+                    if (!Construction.RejectQueuedReservation(
+                            building, snapshot.PlayerId, Economy))
+                    {
+                        throw new InvalidOperationException(
+                            "Invalid queued construction could not be rejected.");
+                    }
+                    continue;
+                }
+            }
             TryResumeConstruction(
                 Combat.Teams[unit], building, unit,
                 replaceUnitOrders: false, recordCommand: false);
@@ -3414,6 +3511,36 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
+    private void RejectPendingConstructionsForUnit(int unit)
+    {
+        if (ConstructionQueuePolicy.BuilderDeathAction !=
+            QueuedConstructionBuilderDeathAction.RefundPendingReservations)
+        {
+            return;
+        }
+        for (var pending = 0;
+             pending < CommandQueues.PendingCounts[unit];
+             pending++)
+        {
+            var order = CommandQueues.PendingAt(unit, pending);
+            if (order.Kind != UnitOrderKind.ResumeConstruction ||
+                order.TargetBuilding < 0)
+            {
+                continue;
+            }
+            var buildingId = new GameplayBuildingId(order.TargetBuilding);
+            if (!Construction.IsAlive(buildingId))
+                continue;
+            var building = Construction.Observe(buildingId);
+            if (building.State == BuildingLifecycleState.WaitingForBuilder &&
+                building.BuilderUnit == -1 && building.ReservationId.IsValid)
+            {
+                Construction.RejectQueuedReservation(
+                    buildingId, building.PlayerId, Economy);
+            }
+        }
+    }
+
     private bool IsActiveOrderComplete(int unit)
     {
         if (!CommandQueues.HasActiveOrders[unit])
@@ -3560,6 +3687,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.MovementGroupIds[unit] = 0;
         Units.MovementGroupSizes[unit] = 0;
         Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+        RejectPendingConstructionsForUnit(unit);
         CommandQueues.ClearPending(unit);
         CommandQueues.HasActiveOrders[unit] = false;
     }

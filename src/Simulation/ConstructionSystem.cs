@@ -19,6 +19,32 @@ public enum ConstructionMethodKind : byte
     StartAndRelease
 }
 
+public enum QueuedConstructionPaymentTiming : byte
+{
+    ReserveOnIssue
+}
+
+public enum QueuedConstructionStaticFailureAction : byte
+{
+    RefundAndContinue
+}
+
+public enum QueuedConstructionBuilderDeathAction : byte
+{
+    RefundPendingReservations
+}
+
+public readonly record struct QueuedConstructionPolicy(
+    QueuedConstructionPaymentTiming PaymentTiming,
+    QueuedConstructionStaticFailureAction StaticFailureAction,
+    QueuedConstructionBuilderDeathAction BuilderDeathAction)
+{
+    public static QueuedConstructionPolicy ProjectDefault { get; } = new(
+        QueuedConstructionPaymentTiming.ReserveOnIssue,
+        QueuedConstructionStaticFailureAction.RefundAndContinue,
+        QueuedConstructionBuilderDeathAction.RefundPendingReservations);
+}
+
 public readonly record struct BuildingTypeProfile(
     int Id,
     string Name,
@@ -143,7 +169,8 @@ public enum ConstructionCommandCode : byte
     RefineryAlreadyBound,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    QueueFull
 }
 
 public readonly record struct ConstructionCommandResult(
@@ -231,7 +258,8 @@ public sealed class ConstructionSystem
         int playerId,
         int builderUnit,
         BuildingTypeProfile profile,
-        EconomyResourceNodeId refineryNode)
+        EconomyResourceNodeId refineryNode,
+        bool allowBusyBuilder = false)
     {
         if (!economy.Players.IsRegistered(playerId))
         {
@@ -246,7 +274,7 @@ public sealed class ConstructionSystem
         {
             return Failure(ConstructionCommandCode.WrongOwner);
         }
-        if (_buildings.Any(value =>
+        if (!allowBusyBuilder && _buildings.Any(value =>
                 !value.IsTerminal && value.BuilderUnit == builderUnit &&
                 value.State != BuildingLifecycleState.Completed))
         {
@@ -295,6 +323,53 @@ public sealed class ConstructionSystem
             _boundRefineryNodes.Add(refineryNode.Value);
         }
         return id;
+    }
+
+    public GameplayBuildingId AddQueued(
+        int playerId,
+        BuildingTypeProfile profile,
+        SimRect bounds,
+        EconomyResourceNodeId refineryNode,
+        long acceptedTick)
+    {
+        var id = new GameplayBuildingId(_buildings.Count);
+        var reservationId = Reservations.Add(
+            id, playerId, bounds, acceptedTick);
+        _buildings.Add(new BuildingEntity(
+            id, playerId, profile, bounds, reservationId, default, -1,
+            refineryNode, (bounds.Min + bounds.Max) * 0.5f)
+        {
+            State = BuildingLifecycleState.WaitingForBuilder
+        });
+        if (refineryNode.Value >= 0)
+        {
+            _boundRefineryNodes.Add(refineryNode.Value);
+        }
+        return id;
+    }
+
+    public bool RejectQueuedReservation(
+        GameplayBuildingId id,
+        int playerId,
+        EconomySystem economy)
+    {
+        if (!TryGet(id, out var building) || building.PlayerId != playerId ||
+            building.State != BuildingLifecycleState.WaitingForBuilder ||
+            building.BuilderUnit != -1 || !building.ReservationId.IsValid ||
+            building.FootprintId.Value > 0)
+        {
+            return false;
+        }
+        if (!Reservations.Remove(building.ReservationId))
+        {
+            throw new InvalidOperationException(
+                "Queued construction reservation disappeared before rejection.");
+        }
+        building.ReservationId = default;
+        economy.Players.Refund(playerId, building.Type.Cost, 1f);
+        ReleaseRefinery(building, economy);
+        building.State = BuildingLifecycleState.Canceled;
+        return true;
     }
 
     public void Update(

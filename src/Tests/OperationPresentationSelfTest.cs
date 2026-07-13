@@ -85,7 +85,7 @@ public static class OperationPresentationSelfTest
                   rallyTarget.BuildingIds.SequenceEqual([4, 7]) &&
                   buildTarget.UnitIds.SequenceEqual([1, 3]) &&
                   buildTarget.DataId == 0 &&
-                  !buildResolution.Queued && !buildResolution.KeepTargeting &&
+                  buildResolution.Queued && buildResolution.KeepTargeting &&
                   snappedBuild == new Vector2(104f, 96f) &&
                   invalidTargetRejected;
         return new SelfTestResult(
@@ -93,6 +93,9 @@ public static class OperationPresentationSelfTest
             $"entities={selection.Entities.Length}, groups={selection.Subgroups.Length}, " +
             $"active={selection.ActiveSubgroup?.Name}, actions={card.Actions.Length}, " +
             $"building={(buildingCard.Actions.Length > 0 ? buildingCard.Actions[0].Status : "missing")}, " +
-            $"target={queuedTarget.Kind}/{queuedTarget.KeepTargeting}");
+            $"target={queuedTarget.Kind}/{queuedTarget.Queued}/" +
+            $"{queuedTarget.KeepTargeting}, build={buildResolution.Kind}/" +
+            $"{buildResolution.Queued}/{buildResolution.KeepTargeting}/" +
+            $"{snappedBuild}, invalid={invalidTargetRejected}");
     }
 }

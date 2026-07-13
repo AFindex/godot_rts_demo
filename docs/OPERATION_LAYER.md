@@ -72,7 +72,7 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 ## 命令卡目标模式
 
 - `TargetCommandRequest` 冻结命令类型与当前活动子组的稳定 Unit/Building ID；不会持有选择控件、Node 或模拟引用。
-- `TargetCommandResolver` 只解析 Primary/Secondary、世界坐标和 Shift：左键确认，右键取消；Move/AttackMove 的 Shift 确认进入队列并保持目标模式，后续以右键或 Escape 退出。
+- `TargetCommandResolver` 只解析 Primary/Secondary、世界坐标和 Shift：左键确认，右键取消；Move/AttackMove/Build 的 Shift 确认进入队列并保持目标模式，后续以右键或 Escape 退出。
 - Move、Attack Move 分别进入正式 `IssuePlayerMove` / `IssuePlayerAttackMove` 玩家门禁；Rally 对活动同类型生产建筑子组执行正式 `SetProductionRallyTarget`，继续支持 Ground/Resource/FriendlyUnit。
 - `RtsTargetCommandOverlay` 只消费请求与光标世界坐标，独立绘制颜色、准星和提示；换样式、文案和动画不修改输入解析或业务命令。
 - 编组召回、Space 全选会取消未完成目标模式；请求中的实体在确认时仍由正式业务 API 再验证生命期、所有权和比赛状态。
@@ -85,7 +85,9 @@ Godot Demo 中普通命令显示单圈反馈，Shift 队列显示双圈反馈；
 - 多选 Worker 按目标距离、Unit ID 稳定排序，逐个调用正式预览并选第一个合格工人；因此忙碌或失效工人不会阻塞仍可用的近邻工人。
 - 预览按吸附位置缓存，并至多每 6 Tick 刷新相同位置的资源/生命期状态，避免每渲染帧重复执行 Connectivity Guard。
 - `BuildTargetPreviewSnapshot` 只向 Overlay 提供 bounds、builder、resource、CanPlace 和稳定状态；Overlay 绿色显示 Success，红色显示具体 Construction/Placement Code。
-- 左键只在最新正式预览通过时调用 `IssueConstruction`；失败保留目标模式以便改位置，成功退出。右键/Escape 始终无副作用取消。
+- 左键只在最新正式预览通过时调用 `IssueConstruction`；失败保留目标模式以便改位置。普通成功退出；Shift 成功创建软 Reservation 并保持目标模式，可继续摆放下一座。右键/Escape 始终无副作用取消。
+- Shift Build 接受时预扣资源并保存完整解析后 Profile，但未轮到的 Reservation 不创建 Hard Footprint。执行时重新验证静态放置；失效项全退并继续，动态友军仍走既有确定性撤离；玩家主动取消保持 75% 退款。
+- 施工和经济系统派生的 Stop 不会清空玩家 Shift 队列。Builder 死亡时，已经轮到的可续建 Reservation 保持 `WaitingForBuilder`，其未开始未来项全退并取消。
 
 ### 同类型多建筑生产
 
@@ -120,6 +122,7 @@ Minimap 按三层组合，表现层可以高频换皮、改布局或加入动效
 - `operation-mixed-command-card`：2 Worker、1 Combat Unit、1 Barracks 形成 3 个子组；快照命令卡完成生产、取消和重新生产，最终出生单位。
 - `operation-target-command-mode`：两段 Shift Move、右键取消、Ground Rally、Attack Move 全部通过稳定测试 Facade，目标模式保持/退出状态正确且 3/3 单位到达。
 - `operation-build-placement-mode`：静态障碍返回 `StaticObstacleOverlap`、不修改世界并保持目标模式；合法预览选择最近 worker 1，提交后 Supply Depot 完成。
+- `construction-queued-builds`：八次 Shift Build 覆盖三种尺寸、预扣、软 Reservation、晚期静态失效、动态撤离、75% 取消、Builder 死亡、继续回矿、Replay 与热恢复。
 - `operation-production-group-batch`：3 座 Barracks 两次批量 Train 得到 6 个订单；每建筑取消最新订单后剩 3 个，最终出生 3 个 Marine。
 
 ## 当前收口

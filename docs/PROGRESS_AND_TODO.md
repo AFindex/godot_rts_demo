@@ -10,15 +10,15 @@
 
 - Godot 4.7 .NET 负责输入、绘制、NavMesh 查询和调试表现。
 - 固定 Tick 模拟、单位数据、群组目标、Steering、碰撞、动态建筑、Portal 和狭口交通位于纯 C# 层。
-- 110 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
+- 111 个黑盒业务场景通过稳定测试接口驱动，不直接读取路径点、Steering、UnitStore、CombatStore、EconomySystem、ConstructionSystem、ProductionSystem、TechnologySystem 或队列内部数组。
 - 测试自动录制后转为经过逐帧验证的 AV1/WebM，并通过 Git LFS 保存在仓库中。
 - 独立纯 C# Release 基准覆盖 256、512、1000 单位移动，以及 128/256 总单位持续 AttackMove 与高密度飞行投射物。
 
 当前规模：
 
 - 147 个 C# 源文件。
-- 约 48,432 行 C#（按 `src/**/*.cs` 统计，含空行）。
-- 110 个黑盒场景。
+- 约 48,984 行 C#（按 `src/**/*.cs` 统计，含空行）。
+- 111 个黑盒场景。
 - AV1/WebM 采用固定 AV1/WebM 规范保存；当前里程碑新增场景有独立录像。
 - Release 1000 单位移动 P95：约 10.07ms。
 - Release 1000 单位当前线程分配：约 685B/Tick。
@@ -1262,6 +1262,17 @@ E2b 至此收口。下一项 E2c 只补现有机制的业务门禁：Rally 新 W
 - 当前 147 个 C# 文件、约 48,432 行（含空行）；Debug/Release 构建 0 警告，110/110 Godot 黑盒回归通过；全库媒体校验通过 143 个视频、85 个 manifest、142 个场景引用，均为 AV1。Replay Package/Hot Snapshot 保持 v23，State Hash 保持 v24，本段未修改运行时序列化合同。
 
 E2 自动分矿至此整体收口。后续只允许通过内容 Profile 调整携带量、采集时间与地图矿距；除非真实玩法或新的 SC2 实机证据击穿现有门禁，不再继续优化分配权重。按 [SC2 对齐实施计划](SC2_ALIGNMENT_PLAN.md)，下一项选择已经具备 Reservation/持久化前置条件、且不依赖 E0 未决实机矩阵的 P1 `Q1 Shift Build Queue`；C2/C3 的多单位让位和隐藏敌军策略继续等待实机证据，不凭猜测冻结。
+
+### BG：Q1 Shift 连续建造队列（已完成）
+
+- Build 进入正式 Shift UnitOrder 链：每一项接受时保存完整 Building Profile、Bounds、Refinery 目标和独立 Reservation，资源原子预扣；未来项不创建 Hard Footprint，轮到时重新做静态放置校验，再复用既有动态友军撤离与 Hard Commit 主链。
+- 新增只读 `QueuedConstructionPolicy`，明确当前未知项为 `ReserveOnIssue / RefundAndContinue / RefundPendingReservations`。晚期静态失效全额退款并继续；玩家主动取消仍退 75%；Builder 死亡保留当前可续建项，未开始的未来 Reservation 全额退款并取消。
+- 修复系统派生 Stop 会误清玩家 Shift 队列的问题：施工/经济内部 Stop 现在只改变移动状态，不覆盖玩家待执行工作流。
+- `construction-queued-builds` 只使用测试业务门面，覆盖 8 次 Shift Build、三种不同尺寸、下单扣费、未来硬占地为零、静态失败跳过/全退、动态单位进入/撤离、单项主动取消、Builder 死亡、继续建造、最终回矿、Replay 与 Tick 90 Hot Restore。
+- 专项结果：8 次下单均成功，余额 `5000→3750`；两条有效队列完成 `Completed/Canceled/Completed`，死亡 Builder 队列为 `WaitingForBuilder/Canceled`；Replay 与热恢复最终 Hash 精确一致。专项 AV1/WebM、日志与 manifest 位于 `test_videos/20260713_161943/`。
+- Construction Command Log 升级 v4，Replay Package 升级 v24；Hot Snapshot 保持 v23、State Hash 保持 v24。当前 147 个 C# 文件、约 48,984 行；Debug/Release 构建 0 警告，111/111 Godot 黑盒回归通过；全库媒体校验通过 144 个视频、86 个 manifest、143 个场景引用，均为 AV1。
+
+Q1 至此收口。下一项按对齐计划进入 X1：生产出口与 Rally 边界，只补方向、软/硬封口、解除恢复及目标死亡时点，不借此重写生产系统或单位碰撞。
 
 ## 8. 可以并行但不能提前耦合的优化
 

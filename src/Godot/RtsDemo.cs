@@ -2473,7 +2473,7 @@ public partial class RtsDemo : Node2D
             TargetCommandKind.Rally => SetTargetCommandRally(
                 request.BuildingIds, resolution.Position),
             TargetCommandKind.Build => IssueTargetConstruction(
-                request, resolution.Position),
+                request, resolution.Position, resolution.Queued),
             _ => false
         };
         if (!succeeded) return;
@@ -2504,12 +2504,14 @@ public partial class RtsDemo : Node2D
         _buildPreviewRequest = _targetCommand;
         _buildPreviewPointer = GodotPathProvider.ToGodot(snapped);
         _buildPreviewTick = tick;
-        _buildTargetPreview = ComputeBuildTargetPreview(_targetCommand, snapped);
+        _buildTargetPreview = ComputeBuildTargetPreview(
+            _targetCommand, snapped, Input.IsKeyPressed(Key.Shift));
     }
 
     private BuildTargetPreviewSnapshot ComputeBuildTargetPreview(
         TargetCommandRequest request,
-        NVector2 pointer)
+        NVector2 pointer,
+        bool queued = false)
     {
         if (_simulation is null || _buildingTypes is null ||
             (uint)request.DataId >= (uint)_buildingTypes.Types.Length)
@@ -2548,7 +2550,7 @@ public partial class RtsDemo : Node2D
         foreach (var unit in candidates)
         {
             var preview = _simulation.PreviewConstruction(
-                PlayerTeam, unit, profile, center, resourceNode);
+                PlayerTeam, unit, profile, center, resourceNode, queued);
             first ??= preview;
             if (!preview.Succeeded) continue;
             builder = unit;
@@ -2571,10 +2573,11 @@ public partial class RtsDemo : Node2D
 
     private bool IssueTargetConstruction(
         TargetCommandRequest request,
-        NVector2 pointer)
+        NVector2 pointer,
+        bool queued)
     {
         if (_simulation is null || _buildingTypes is null) return false;
-        var preview = ComputeBuildTargetPreview(request, pointer);
+        var preview = ComputeBuildTargetPreview(request, pointer, queued);
         _buildTargetPreview = preview;
         if (!preview.CanPlace || preview.BuilderUnit < 0) return false;
         var center = (preview.Bounds.Min + preview.Bounds.Max) * 0.5f;
@@ -2583,7 +2586,8 @@ public partial class RtsDemo : Node2D
             preview.BuilderUnit,
             _buildingTypes.Type(request.DataId),
             center,
-            new EconomyResourceNodeId(preview.ResourceNode));
+            new EconomyResourceNodeId(preview.ResourceNode),
+            queued);
         return result.Succeeded;
     }
 

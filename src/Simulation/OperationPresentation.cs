@@ -197,7 +197,8 @@ public static class TargetCommandResolver
         if (!float.IsFinite(position.X) || !float.IsFinite(position.Y))
             throw new ArgumentOutOfRangeException(nameof(position));
         var queueable = request.Kind is
-            TargetCommandKind.Move or TargetCommandKind.AttackMove;
+            TargetCommandKind.Move or TargetCommandKind.AttackMove or
+            TargetCommandKind.Build;
         return new TargetCommandResolution(
             TargetCommandResolutionKind.Issue,
             request.Kind,

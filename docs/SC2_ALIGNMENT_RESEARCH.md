@@ -236,7 +236,7 @@ Reservation 与 Hard Footprint 必须使用不同 ID/不同集合。前者只解
 | 建造中生命增长 | 10%→100% 随进度增长 | 方向对齐，数值待校准 |
 | 建造中护甲 | 施工期有效护甲 0，完成 Tick 后应用基础/升级护甲 | 已对齐；由生命周期派生快照和正式战斗伤害共同验证 |
 | Builder 死亡/打断 | `WaitingForBuilder`，可续建 | 已对齐主路径 |
-| Shift 连续造建筑 | Build 不进入正式 Shift 队列 | 未对齐；官方明确支持结构队列 |
+| Shift 连续造建筑 | 正式 Build 队列保存软 Reservation，逐项开工并可接回矿 | 已对齐；扣费/晚期失败采用显式项目策略 |
 | Refinery 绑定气矿 | 可见未启用气矿吸附并独占 | 已对齐主路径 |
 | 全局连通保护 | 默认拒绝切断地图连通 | 非 SC2 原样机制，是本项目安全策略 |
 
@@ -270,7 +270,9 @@ Blizzard 对四种命令的差异有清晰定义：Move 忽略敌人继续前进
 
 Blizzard 明确支持 Move、Attack、Stop、Hold、Patrol、装卸和施工等多类命令排队，并给出“建造完成后立刻回矿”的工人队列例子。[Blizzard Special Control](https://news.blizzard.com/en-us/article/4552955/game-guide-special-control)（A）
 
-当前 Demo 已支持移动、战斗、Gather 和 ResumeConstruction 的确定性队列，但 Build 本身不能排队。建筑 Ghost/Reservation 引入后，Build Queue 应保存每一项的目标 Footprint 和解析后的 Building Profile，并在真正轮到该项时重验，而不是提前为所有队列项创建硬占地。
+当前 Demo 已支持移动、战斗、Gather、ResumeConstruction 和 Build 的确定性队列。Build Queue 保存每一项的目标 Footprint、解析后的 Building Profile 与 Reservation；接受时预扣资源并创建软 Reservation，真正轮到该项时重验，未来项不会提前创建硬占地。建造目标模式在按住 Shift 时保持开启，可连续放置，最后再排资源命令回矿。
+
+官方资料能支撑“Shift 可排结构”与“工人建造后可继续排回资源”的玩家可观察语义，但没有充分公开资料说明每种晚期失败的精确扣费和队列终止规则。因此当前实现将这些不确定项显式放入 `QueuedConstructionPolicy`：下单预扣；晚期静态失效全退并继续；玩家主动取消仍退 75%；Builder 死亡保留当前可续建项并全退未开始的未来项。它是本项目稳定、可替换的确定性政策，不声称是 SC2 内部实现。
 
 ### 5.3 加速度是手感参数
 
