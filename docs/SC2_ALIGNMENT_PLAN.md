@@ -29,9 +29,9 @@
 | Preview 无副作用 | 部分对齐 | 拆成静态可见校验快照 |
 | 下单后的 Ghost/Reservation | 已对齐架构时序 | 权威施工意图独立于 Hard Footprint |
 | 工人到达前的建筑占地 | 已对齐 | ReservedApproach 不进入 Pathing，开工才 Hard Commit |
-| 开工前动态重验 | 主路径已对齐 | 已覆盖静态晚期失效与单友军撤离；完整矩阵仍待 E0 |
-| 己方单位让位 | 工程主链完成、策略待实机 | 1/8/32 分槽与订单恢复已锁定；E0 决定 Hold/Harvest 等动作 |
-| 隐藏敌人不泄露 | 普通战争迷雾与侦测边界已对齐 | PlayerKnown 不读当前不可见/未侦测单位、建筑或 Reservation；Ally 待正式系统 |
+| 开工前动态重验 | 工程矩阵已对齐 | 静态晚期失效、己方清场、Hold/Gather/Ally/Enemy 保守等待均有门禁；SC2 动作仍待 E0 实机 |
+| 己方单位让位 | 工程主链与保守门禁完成、策略待实机 | 1/8/32 分槽、订单恢复和五类策略矩阵已锁定；E0 只决定 Hold/Harvest 等映射 |
+| 隐藏敌人不泄露 | 普通战争迷雾、侦测与 Ally 边界已对齐 | PlayerKnown 不读当前不可见/未侦测对象；共享视野中的 Ally 正式分类，Authority 不越权 |
 | 施工中建筑护甲 | 已对齐 | C5 已修正为 0，完成 Tick 后生效 |
 | 取消返还 75% | 已对齐 | Reservation 取消时保持一致 |
 | Builder 中断与续建 | 主路径已对齐 | 新状态机回归保护 |
@@ -118,7 +118,7 @@ flowchart TD
 
 ## 5. P0 工作包：施工正确性
 
-### E0：SC2 当前客户端实机证据矩阵
+### E0：SC2 当前客户端实机证据矩阵（在线证据与工程门禁完成，客户端实机待执行）
 
 目的：只冻结公开资料无法确定的动态占位时序，不重新研究已有 A/B 级事实。
 
@@ -135,7 +135,9 @@ flowchart TD
 
 每条结果只记录：SC2 客户端版本、模式/地图、对象与订单状态、Preview 颜色、命令是否接受、Ghost 是否存在、原单位订单是否改变、Hard Footprint 出现时点、失败/退款/队列后续，以及对应原始录像。
 
-输出合同：新增 `docs/SC2_EXPERIMENT_RESULTS.md`。未知项保留 `Unknown`，禁止用“看起来像”替代结论。录像不是本项目自动测试视频，可以独立归档，不强迫进入每次全量录制。
+输出合同：[SC2 施工占位实验结果](SC2_EXPERIMENT_RESULTS.md) 已建立证据台账、项目策略矩阵和最小实机 TODO。未知项保留 `Unknown`，禁止用“看起来像”替代结论。录像不是本项目自动测试视频，可以独立归档，不强迫进入每次全量录制。
+
+2026-07-13 收敛边界：当前机器未安装 SC2，不能声明完成当前客户端实机实验。在线 A/B/C 级资料确认建筑最终不可与单位重叠、敌方工人能够阻止施工，以及 Hold 必须与普通 Idle 分开；仍无法确认 Hold、采矿/返矿和盟友是否会被建造命令强制改派。项目侧新增 `construction-blocker-policy-matrix`，把 `MovableFriendly → BeginEviction` 与 Hold/Gather/Ally/Enemy `Wait` 的保守策略锁成可替换黑盒门禁。E0 剩余工作只是在真实客户端填充动作格子，不再阻塞工程架构，也不允许继续凭猜测加启发式。
 
 ### C0：拆开放置校验，保持现有行为（已完成）
 
@@ -217,9 +219,9 @@ PlayerKnown 边界现已落地：Preview/Issue 忽略己方软占位和当前不
 
 D1 阵营合同已经完成：`PlayerDiplomacySystem` 提供 Own/Ally/Neutral/Enemy、显式 alliance ID 和联盟级 Shared Vision；视野与 Detection 共享、玩家视图、显式/自动攻击、SmartCommand、施工阻挡和联盟胜负均消费同一关系查询。盟友施工占位独立分类为 `AuthorityAlly` 并保守 Wait，不在 E0 前擅自移动盟友。Replay Package v28、Hot Snapshot v27、State Hash v28 保存并校验外交、联盟胜方和多 Victorious 状态。
 
-`alliance-shared-vision-team-victory` 的 2v2 黑盒覆盖共享侦测、`ConcealedAlly/ConcealedDetected`、友军攻击拒绝、盟友 `UnitOverlap` 和 alliance 100 双人胜利；116/116 全量 Godot 黑盒回归通过。专项 1280×720、212 帧 AV1/WebM 位于 `test_videos/20260713_211815/`；全库媒体门禁通过 149 个视频、91 个 manifest、148 个场景引用，均为 AV1。
+`alliance-shared-vision-team-victory` 的 2v2 黑盒覆盖共享侦测、`ConcealedAlly/ConcealedDetected`、友军攻击拒绝、盟友 `UnitOverlap` 和 alliance 100 双人胜利。新增 `construction-blocker-policy-matrix` 进一步覆盖五类施工动作、权限释放和多阶段 Replay/Hot 精确恢复；117/117 全量 Godot 黑盒回归通过。专项 1280×720、362 帧 AV1/WebM 位于 `test_videos/20260713_214756/`；全库媒体门禁通过 150 个视频、92 个 manifest、149 个场景引用，均为 AV1。
 
-尚未完成：E0 对 Hold、Harvest、可见敌军和盟友自动让位动作的 SC2 实机策略冻结。Cloak/Burrow 的开关、能量/研究、扫描和特殊单位例外属于后续内容能力，不重写 D0/D1 或施工入口。
+尚未完成：E0 对 Hold、Harvest/ReturningCargo、可见或晚到敌军和盟友自动让位动作的 SC2 当前客户端实机策略冻结。工程保守策略与回归已经完成；没有实机证据时不再修改。Cloak/Burrow 的开关、能量/研究、扫描和特殊单位例外属于后续内容能力，不重写 D0/D1 或施工入口。
 
 ### C3：确定性友军让位（有限工程闭环完成）
 
@@ -242,6 +244,8 @@ D1 阵营合同已经完成：`PlayerDiplomacySystem` 提供 Own/Ally/Neutral/En
 当前完成边界：新增无状态 `ConstructionEvictionPlanner`，按 Unit ID 处理最多 64 个阻挡者，在三圈稳定外沿候选中为不同半径单位分配互不重叠且通过静态通行检查的目标；只在占位集合变化时重新规划，活动计划每 Tick 只重申已有目标。施工撤离不再调用玩家 Move，也不清活动订单或 Shift 队列，而是使用 `UnitCommandQueueStore` 中独立的系统临时覆盖层；Hard Commit 或取消后，原 Move 目标/待处理队列恢复，原 Idle/Stop 在外侧停止。玩家新下达的非 Shift 命令仍可显式覆盖临时让位。
 
 `construction-multi-unit-eviction` 只使用正式 Build、Hold、ResumeConstruction、Move、Stop 和稳定观察快照，覆盖四档尺寸与 `1/8/8/32` 占位单位；观察到的临时撤离数精确为 `1/8/8/32`，Hold 建筑保持 `BlockedAtStart` 直到玩家解除，活动 Move 和一个后续队列项在让位期间保持并最终完成。Replay 与活动 32 人撤离期间的 Hot Restore 逐 Tick 一致。专项 AV1/WebM 位于 `test_videos/20260713_185509/`。
+
+`construction-blocker-policy-matrix` 只使用稳定业务门面，把 Idle、Hold、Gather、晚到 Ally 和晚到 Enemy 放在五条独立施工车道：Idle 自动撤离；Hold/Gather/Ally/Enemy 保持 `BlockedAtStart` 且不产生越权撤离；采矿 Worker 的 `Gathering + TargetNode` 不变；对应 Owner 解除后继续，采矿车道主动取消施工而不打断经济任务。另两处已知 Ally/可见 Enemy 的 Preview 均返回 `UnitOverlap`。初始态、9 个阶段检查点、最终 Replay Package v28 和阻挡态 Hot Snapshot v27 均精确一致。专项 AV1/WebM 位于 `test_videos/20260713_214756/`。
 
 系统覆盖层进入 Replay Package v26、Hot Snapshot v25 和 State Hash v26；Unit Command Log 保持 v4，因为让位不是玩家意图。C3 的工程机制至此不再需要重写；普通战争迷雾敌军的预览/到场边界已补齐。后续 D0 已补 Cloak/Burrow/Detection，D1 已补 Ally/共享视野和保守 `AuthorityAlly`；剩余是 E0 决定动作策略表。
 

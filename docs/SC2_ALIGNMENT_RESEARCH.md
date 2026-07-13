@@ -186,6 +186,8 @@ SC2 Editor 的 Footprint 资料进一步区分 Placement Check、Placement Apply
 
 每次实验必须记录：资源何时扣除、SCV Order 队列、Ghost 出现/消失 Tick、单位是否收到新 Move、正式 Footprint 出现 Tick、失败提示、退款比例和 Shift 后续命令是否继续。
 
+2026-07-13 的在线证据收敛进一步确认：Liquipedia 明确把单位列为最终不可建占位，并记录用工人站位阻止敌方施工的战术；Blizzard 官方 Hold 资料只确认单位应留在原地，不说明建造命令是否具有覆盖权。论坛、Arqade 与 Reddit 能支持“敌军/潜地单位阻止开工”和“普通己方单位可能自动让位”，但仍不足以冻结 Hold、采矿和盟友动作。当前机器没有 SC2 客户端，因此这些格子继续为 `Unknown`。逐条证据和项目策略见 [SC2 施工占位实验结果](SC2_EXPERIMENT_RESULTS.md)。
+
 ### 4.4 推荐的本项目施工状态机
 
 ```text
@@ -219,6 +221,8 @@ Reservation 与 Hard Footprint 必须使用不同 ID/不同集合。前者只解
 
 当前项目已经把上述工程合同落地为 `ConstructionBlockerPolicy + ConstructionEvictionPlanner + UnitCommandQueueStore 临时覆盖层`。多单位按稳定 ID 获得不同外沿槽位，活动 Move 和后续队列不会被施工系统改写；Hard Commit 后恢复。由于 E0 仍未完成，当前只把 Idle/Stop/Move 视为 MovableFriendly，Hold、Harvest、其他 Builder、其他订单和 AuthorityEnemy 都保守等待。这里冻结的是可替换机制，不是对 SC2 未公开策略的宣称。
 
+`construction-blocker-policy-matrix` 把保守表变成了独立业务门禁：五条并行施工分别覆盖己方 Idle、Hold、Gather、盟友和敌军。只有 Idle 产生临时撤离；Hold/Gather/Ally/Enemy 保持等待且不改原订单，由玩家或对应 Owner 解除后继续。已知盟友和可见敌军在 Preview 阶段拒绝。场景同时锁定多个 Replay 检查点与阻挡态 Hot Restore。它证明项目策略可维护、可恢复、不会越权，不等同于完成 SC2 当前客户端实机矩阵。
+
 PlayerKnown 与 Authority 现已形成独立运行时合同。玩家 Preview/Issue 允许己方单位内预放置，只读取当前可见敌军和已知硬占地；当前不可见或未侦测的敌军单位、Gameplay Building 与 Reservation 不改变颜色或接受码。Builder 到场后 Authority 使用完整世界重验。公开 `PublicConstructionStatus` 只表达清场、已知占位或等待空间，不返回隐藏对象身份；全局 Connectivity 也延迟到 Authority Hard Commit，避免通过全局拓扑产生侧信道。普通战争迷雾和 Cloak/Burrow/Detection 现在共用该合同。
 
 ### 4.5 当前实现差距
@@ -232,7 +236,7 @@ PlayerKnown 与 Authority 现已形成独立运行时合同。玩家 Preview/Iss
 | 下单后 Ghost | 独立权威 Reservation + 不可变 Ghost 快照 | 已对齐架构时序 |
 | 工人接近期间占地 | Reservation 不进入 Pathing，普通单位可穿越 | 已对齐架构时序 |
 | 开工动态重检 | Builder 到场重新评估后才原子 Hard Commit | 主路径已对齐 |
-| 友军让位 | 最多 64 人稳定外沿分槽；Idle/Stop/Move 临时覆盖并恢复，Hold/Harvest 保守等待 | 工程主链已完成/策略待 E0 |
+| 友军让位 | 最多 64 人稳定外沿分槽；Idle/Stop/Move 临时覆盖并恢复，Hold/Harvest/Ally/Enemy 保守等待；独立策略矩阵门禁已覆盖 | 工程主链与保守门禁已完成/SC2 动作待 E0 实机 |
 | SCV 持续施工 | `ContinuousWorker` | 已对齐主路径 |
 | Probe 开始后离开 | `StartAndRelease` | 只有策略骨架，无种族内容 |
 | Drone 消耗/取消恢复 | 没有 `ConsumeWorker` | 未对齐，内容层后置 |

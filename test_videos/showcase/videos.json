@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-13T21:18:32.8721871+08:00",
+    "generated_at":  "2026-07-13T21:48:19.6794211+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  148,
-    "case_count":  117,
+    "recording_count":  149,
+    "case_count":  118,
     "recordings":  [
+                       {
+                           "id":  "construction-blocker-policy-matrix",
+                           "display_name":  "Construction blocker policy: evict owned idle, wait on protected orders and foreign authority",
+                           "batch":  "20260713_214756",
+                           "created_at":  "2026-07-13T21:48:19.1275864+08:00",
+                           "video":  "../20260713_214756/construction-blocker-policy-matrix.webm",
+                           "log":  "../20260713_214756/construction-blocker-policy-matrix.log",
+                           "bytes":  2431925,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_VISUAL_TEST_PASS construction-blocker-policy-matrix: ticks=720, build=True, preview=True, evict=True, waits=True, orders=True/True, release=True/True, states=Completed/Completed/Canceled/Completed/Completed, economy=Gathering/True, replay=True/initialTrue[2:True,4:True,6:True,9:True,11:True,180:True,379:True,381:True,600:True], hot=True/v27",
+                           "metrics":  "ticks=720, build=True, preview=True, evict=True, waits=True, orders=True/True, release=True/True, states=Completed/Completed/Canceled/Completed/Completed, economy=Gathering/True, replay=True/initialTrue[2:True,4:True,6:True,9:True,11:True,180:True,379:True,381:True,600:True], hot=True/v27"
+                       },
                        {
                            "id":  "alliance-shared-vision-team-victory",
                            "display_name":  "2v2 alliance relations, shared detection and team victory",

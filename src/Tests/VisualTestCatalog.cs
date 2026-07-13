@@ -97,6 +97,7 @@ public static class VisualTestCatalog
         "construction-gameplay-buildings",
         "construction-reservation-hard-commit",
         "construction-multi-unit-eviction",
+        "construction-blocker-policy-matrix",
         "construction-queued-builds",
         "construction-under-build-defense",
         "building-type-resource-runtime",
@@ -277,6 +278,8 @@ public static class VisualTestCatalog
                 navigationMap, gameplayProfiles, clearanceBake),
         "construction-multi-unit-eviction" =>
             CreateConstructionMultiUnitEviction(gameplayProfiles),
+        "construction-blocker-policy-matrix" =>
+            CreateConstructionBlockerPolicyMatrix(gameplayProfiles),
         "construction-queued-builds" => CreateConstructionQueuedBuilds(
             navigationMap, gameplayProfiles, clearanceBake),
         "construction-under-build-defense" =>
@@ -7649,6 +7652,336 @@ public static class VisualTestCatalog
                 rows == 1 ? 0f : -usable.Y * 0.5f + row * stepY);
         }
         return result;
+    }
+
+    private static VisualTestSession CreateConstructionBlockerPolicyMatrix(
+        GameplayProfileCatalogSnapshot? gameplayProfiles)
+    {
+        gameplayProfiles ??= DemoGameplayProfiles.CreateSnapshot();
+        var created = NavigationMapSnapshot.TryCreate(
+            NavigationMapSnapshot.CurrentFormatVersion,
+            new SimRect(Vector2.Zero, new Vector2(1500f, 900f)),
+            [], [], [], [],
+            out var navigation,
+            out var navigationValidation);
+        if (!created || navigation is null)
+        {
+            throw new InvalidOperationException(
+                $"Construction blocker policy map is invalid: " +
+                $"{navigationValidation.FirstError}.");
+        }
+
+        var rig = MovementTestRig.CreateReplayPackageMap(
+            64, navigation, gameplayProfiles, clearanceBake: null);
+        rig.RegisterPlayer(1, 20000, 5000, 120, 0);
+        rig.RegisterPlayer(2, 20000, 5000, 120, 0);
+        rig.RegisterPlayer(3, 20000, 5000, 120, 0);
+        rig.ConfigureAlliance(10, sharedVision: true, 1, 2);
+
+        var laneCenters = new[]
+        {
+            new Vector2(160f, 210f),
+            new Vector2(455f, 210f),
+            new Vector2(750f, 210f),
+            new Vector2(1045f, 210f),
+            new Vector2(1340f, 210f)
+        };
+        var profiles = laneCenters.Select((_, index) =>
+            DemoBuildingTypes.Barracks with
+            {
+                Id = 120 + index,
+                Name = $"Blocker Policy Lane {index + 1}",
+                BuildSeconds = 0.5f
+            }).ToArray();
+        var builders = laneCenters.Select(center => rig.SpawnWorker(
+            center + new Vector2(0f, 300f),
+            1,
+            maximumSpeed: 82f)).ToArray();
+        var blockerProfile = TestCombatProfile.Standard with
+        {
+            MaximumHealth = 10000f,
+            AttackDamage = 0f,
+            AttackRange = 0f,
+            AcquisitionRange = 0f
+        };
+        var movable = rig.SpawnCombat(
+            laneCenters[0], 1, blockerProfile,
+            radius: 7f, maximumSpeed: 230f, acceleration: 1000f);
+        var hold = rig.SpawnCombat(
+            laneCenters[1], 1, blockerProfile,
+            radius: 7f, maximumSpeed: 230f, acceleration: 1000f);
+        var economy = rig.SpawnWorker(
+            laneCenters[2], 1,
+            radius: 7f, maximumSpeed: 150f, acceleration: 720f);
+        var mineral = rig.AddResourceNode(
+            TestEconomyResourceKind.Minerals,
+            laneCenters[2],
+            amount: 5000,
+            harvestBatch: 5,
+            harvestSeconds: 60f,
+            harvesterCapacity: 2);
+        rig.AddResourceDropOff(1, laneCenters[2] + new Vector2(0f, 150f));
+        var ally = rig.SpawnCombat(
+            laneCenters[3] + new Vector2(-180f, 0f),
+            2, blockerProfile,
+            radius: 7f, maximumSpeed: 260f, acceleration: 1100f);
+        var enemy = rig.SpawnCombat(
+            laneCenters[4] + new Vector2(-180f, 0f),
+            3, blockerProfile,
+            radius: 7f, maximumSpeed: 260f, acceleration: 1100f);
+
+        var allyPreviewCenter = new Vector2(520f, 700f);
+        var enemyPreviewCenter = new Vector2(980f, 700f);
+        var allyPreviewBlocker = rig.SpawnCombat(
+            allyPreviewCenter, 2, blockerProfile,
+            radius: 8f, maximumSpeed: 150f, acceleration: 720f);
+        var enemyPreviewBlocker = rig.SpawnCombat(
+            enemyPreviewCenter, 3, blockerProfile,
+            radius: 8f, maximumSpeed: 150f, acceleration: 720f);
+        var allyPreviewWorker = rig.SpawnWorker(
+            allyPreviewCenter + new Vector2(0f, 105f), 1);
+        var enemyPreviewWorker = rig.SpawnWorker(
+            enemyPreviewCenter + new Vector2(0f, 105f), 1);
+        rig.StartMatch(1, 2, 3);
+        rig.StartReplayPackageRecording();
+        var initialReplayPackage = rig.CaptureReplayPackage();
+        var initialStateHash = rig.StateHash;
+
+        var buildings = new TestConstructionResult[laneCenters.Length];
+        var buildIssued = false;
+        var gatherIssued = false;
+        var lateMovesIssued = false;
+        var previewRejected = false;
+        var movableEvacuated = false;
+        var conservativeWaitObserved = false;
+        var economyOrderPreserved = false;
+        var authorityOrdersPreserved = false;
+        var released = false;
+        var harvestCanceled = false;
+        TestRuntimeStateCapture? hotCapture = null;
+        long hotTick = -1;
+        var replayCheckpoints = new Dictionary<
+            long, (TestReplayPackage Package, ulong Hash)>();
+
+        var session = new VisualTestSession(
+                "construction-blocker-policy-matrix",
+                "Construction blocker policy: evict owned idle, wait on protected orders and foreign authority",
+                720,
+                rig,
+                [.. builders, movable, hold, economy, ally, enemy,
+                    allyPreviewBlocker, enemyPreviewBlocker,
+                    allyPreviewWorker, enemyPreviewWorker],
+                runtime =>
+                {
+                    var package = runtime.CaptureReplayPackage();
+                    var packageRoundTrip = package.TryCanonicalRoundTrip(
+                        out var decoded);
+                    var replay = packageRoundTrip
+                        ? runtime.ReplayPackage(decoded!, runtime.Tick)
+                        : null;
+                    var replayExact = replay is not null &&
+                                      replay.FinalHash == runtime.StateHash;
+                    var checkpointChecks = replayCheckpoints
+                        .OrderBy(value => value.Key).Select(value =>
+                        {
+                            var checkpointReplay = runtime.ReplayPackage(
+                                value.Value.Package, value.Key);
+                            return (
+                                Tick: value.Key,
+                                Exact: checkpointReplay.FinalHash ==
+                                       value.Value.Hash);
+                        }).ToArray();
+                    var checkpointExact = checkpointChecks.All(value =>
+                        value.Exact);
+                    var checkpointResults = checkpointChecks.Select(value =>
+                        $"{value.Tick}:{value.Exact}").ToArray();
+                    var initialReplay = runtime.ReplayPackage(
+                        initialReplayPackage, 0);
+                    var initialExact = initialReplay.FinalHash ==
+                                       initialStateHash;
+                    var hotExact = false;
+                    var hotVersion = 0;
+                    if (hotCapture is not null)
+                    {
+                        var hot = runtime.BindHotSnapshot(package, hotCapture);
+                        hotVersion = hot.FormatVersion;
+                        if (hot.TryCanonicalRoundTrip(out var decodedHot))
+                        {
+                            var resumed = runtime.ResumeHotSnapshot(
+                                package, decodedHot!, runtime.Tick);
+                            hotExact = resumed.FinalHash == runtime.StateHash &&
+                                       replay is not null &&
+                                       replay.MatchesFrom(resumed, hotTick + 1);
+                        }
+                    }
+
+                    var expectedFinal =
+                        runtime.ObserveGameplayBuilding(buildings[0].BuildingId)
+                            .State == TestBuildingLifecycleState.Completed &&
+                        runtime.ObserveGameplayBuilding(buildings[1].BuildingId)
+                            .State == TestBuildingLifecycleState.Completed &&
+                        runtime.ObserveGameplayBuilding(buildings[2].BuildingId)
+                            .State == TestBuildingLifecycleState.Canceled &&
+                        runtime.ObserveGameplayBuilding(buildings[3].BuildingId)
+                            .State == TestBuildingLifecycleState.Completed &&
+                        runtime.ObserveGameplayBuilding(buildings[4].BuildingId)
+                            .State == TestBuildingLifecycleState.Completed;
+                    var economyFinal = runtime.ObserveWorkerEconomy(economy);
+                    var economyStillGathering =
+                        economyFinal.State == TestWorkerEconomyState.Gathering &&
+                        economyFinal.TargetNode == mineral;
+                    var foreignReleased =
+                        Vector2.Distance(runtime.Observe(ally).Position,
+                            laneCenters[3] + new Vector2(0f, 150f)) < 28f &&
+                        Vector2.Distance(runtime.Observe(enemy).Position,
+                            laneCenters[4] + new Vector2(0f, 150f)) < 28f;
+                    var passed = buildIssued && gatherIssued && lateMovesIssued &&
+                                 previewRejected && movableEvacuated &&
+                                 conservativeWaitObserved &&
+                                 economyOrderPreserved &&
+                                 authorityOrdersPreserved && released &&
+                                 harvestCanceled && expectedFinal &&
+                                 economyStillGathering && foreignReleased &&
+                                 packageRoundTrip && replayExact && hotExact &&
+                                 initialExact && checkpointExact &&
+                                 package.FormatVersion ==
+                                     SimulationReplayPackageSnapshot
+                                         .CurrentFormatVersion &&
+                                 hotVersion ==
+                                     SimulationHotSnapshot.CurrentFormatVersion;
+                    return new ScenarioResult(
+                        passed,
+                        $"build={buildIssued}, preview={previewRejected}, " +
+                        $"evict={movableEvacuated}, waits={conservativeWaitObserved}, " +
+                        $"orders={economyOrderPreserved}/{authorityOrdersPreserved}, " +
+                        $"release={released}/{foreignReleased}, " +
+                        $"states={string.Join('/', buildings.Select(value => runtime.ObserveGameplayBuilding(value.BuildingId).State))}, " +
+                        $"economy={economyFinal.State}/{economyStillGathering}, " +
+                        $"replay={replayExact}/initial{initialExact}" +
+                        $"[{string.Join(',', checkpointResults)}], " +
+                        $"hot={hotExact}/v{hotVersion}");
+                })
+            .RenderSpawnedUnits()
+            .RenderOmniscient()
+            .CameraKeyframe(0, new Vector2(750f, 250f), 0.7f)
+            .CameraKeyframe(260, new Vector2(750f, 230f), 0.82f)
+            .CameraKeyframe(380, new Vector2(750f, 230f), 0.82f)
+            .CameraKeyframe(560, new Vector2(750f, 430f), 0.7f)
+            .CameraKeyframe(715, new Vector2(750f, 420f), 0.7f)
+            .Highlight(
+                new SimRect(new Vector2(70f, 120f), new Vector2(280f, 300f)),
+                "OWN IDLE -> SYSTEM EVACUATION",
+                TestDiagnosticKind.Accepted)
+            .Highlight(
+                new SimRect(new Vector2(340f, 120f), new Vector2(860f, 300f)),
+                "HOLD / HARVEST -> WAIT; PLAYER ORDER IS UNTOUCHED",
+                TestDiagnosticKind.Info)
+            .Highlight(
+                new SimRect(new Vector2(930f, 120f), new Vector2(1440f, 300f)),
+                "ALLY / ENEMY -> OWNER AUTHORITY RELEASE",
+                TestDiagnosticKind.Rejected)
+            .Highlight(
+                new SimRect(new Vector2(400f, 610f), new Vector2(1100f, 790f)),
+                "KNOWN ALLY + VISIBLE ENEMY -> PREVIEW REJECTED",
+                TestDiagnosticKind.Info);
+
+        session.At(1, "Protect the explicit Hold order", runtime =>
+        {
+            runtime.Hold([hold]);
+        });
+        session.At(3, "Start the long-running harvesting task", runtime =>
+        {
+            gatherIssued = runtime.Gather(1, economy, mineral) ==
+                           TestGatherCommandCode.Success;
+        });
+        session.At(5, "Issue the five construction lanes", runtime =>
+        {
+            buildIssued = true;
+            for (var index = 0; index < buildings.Length; index++)
+            {
+                buildings[index] = runtime.Build(
+                    1, builders[index], profiles[index], laneCenters[index]);
+                buildIssued &= buildings[index].Succeeded;
+            }
+        });
+        session.At(8, "Move ally and enemy into already accepted reservations", runtime =>
+        {
+            lateMovesIssued =
+                runtime.PlayerMove(2, [ally], laneCenters[3]) ==
+                    TestPlayerOrderCommandCode.Success &&
+                runtime.PlayerMove(3, [enemy], laneCenters[4]) ==
+                    TestPlayerOrderCommandCode.Success;
+        });
+        session.At(10, "Reject known ally and visible enemy during preview", runtime =>
+        {
+            var allyPreview = runtime.PreviewBuild(
+                1, allyPreviewWorker, profiles[0], allyPreviewCenter);
+            var enemyPreview = runtime.PreviewBuild(
+                1, enemyPreviewWorker, profiles[0], enemyPreviewCenter);
+            previewRejected =
+                allyPreview.Code == TestConstructionCommandCode.PlacementRejected &&
+                allyPreview.PlacementCode == TestBuildingPlacementCode.UnitOverlap &&
+                enemyPreview.Code == TestConstructionCommandCode.PlacementRejected &&
+                enemyPreview.PlacementCode == TestBuildingPlacementCode.UnitOverlap;
+        });
+        foreach (var checkpoint in new long[] { 2, 4, 6, 9, 11, 180, 379, 381, 600 })
+        {
+            session.At(checkpoint, "Capture replay diagnostic checkpoint", runtime =>
+                replayCheckpoints[checkpoint] = (
+                    runtime.CaptureReplayPackage(), runtime.StateHash));
+        }
+        for (var tick = 180; tick <= 370; tick++)
+        {
+            session.At(tick, "Observe the policy without reaching into simulation internals", runtime =>
+            {
+                if (buildings.Any(value => !value.Succeeded))
+                    return;
+                movableEvacuated |= runtime.ObserveOrders(movable)
+                    .ConstructionEvacuationActive;
+                var holdBuilding = runtime.ObserveGameplayBuilding(
+                    buildings[1].BuildingId);
+                var economyBuilding = runtime.ObserveGameplayBuilding(
+                    buildings[2].BuildingId);
+                var allyBuilding = runtime.ObserveGameplayBuilding(
+                    buildings[3].BuildingId);
+                var enemyBuilding = runtime.ObserveGameplayBuilding(
+                    buildings[4].BuildingId);
+                var protectedBlocked =
+                    holdBuilding.State == TestBuildingLifecycleState.BlockedAtStart &&
+                    economyBuilding.State == TestBuildingLifecycleState.BlockedAtStart &&
+                    allyBuilding.State == TestBuildingLifecycleState.BlockedAtStart &&
+                    enemyBuilding.State == TestBuildingLifecycleState.BlockedAtStart;
+                conservativeWaitObserved |= protectedBlocked &&
+                    !runtime.ObserveOrders(hold).ConstructionEvacuationActive;
+                var worker = runtime.ObserveWorkerEconomy(economy);
+                economyOrderPreserved |= protectedBlocked &&
+                    worker.State == TestWorkerEconomyState.Gathering &&
+                    worker.TargetNode == mineral &&
+                    !runtime.ObserveOrders(economy)
+                        .ConstructionEvacuationActive;
+                authorityOrdersPreserved |= protectedBlocked &&
+                    !runtime.ObserveOrders(ally).ConstructionEvacuationActive &&
+                    !runtime.ObserveOrders(enemy).ConstructionEvacuationActive;
+                if (hotCapture is null && protectedBlocked && movableEvacuated)
+                {
+                    hotCapture = runtime.CaptureRuntimeState();
+                    hotTick = runtime.Tick;
+                }
+            });
+        }
+        session.At(380, "Release only the orders owned by their proper authority", runtime =>
+        {
+            runtime.Move([hold], laneCenters[1] + new Vector2(0f, 150f));
+            var allyMove = runtime.PlayerMove(
+                2, [ally], laneCenters[3] + new Vector2(0f, 150f));
+            var enemyMove = runtime.PlayerMove(
+                3, [enemy], laneCenters[4] + new Vector2(0f, 150f));
+            released = allyMove == TestPlayerOrderCommandCode.Success &&
+                       enemyMove == TestPlayerOrderCommandCode.Success;
+            harvestCanceled = runtime.CancelConstruction(
+                1, buildings[2].BuildingId);
+        });
+        return session;
     }
 
     private static VisualTestSession CreateConstructionReservationHardCommit(
