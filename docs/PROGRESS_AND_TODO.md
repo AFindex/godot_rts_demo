@@ -1156,6 +1156,17 @@ H3 提供后续复杂玩法的集成基线。新单位、技能、科技或 AI P
 
 本段只建立研究与验收合同，没有修改运行时行为。下一步应先完成 SC2 当前客户端的友军预占位实机矩阵，再设计 Reservation 格式；在证据确认前不直接实现自动推开规则。
 
+### AX：SC2 对齐实施计划（已完成规划）
+
+- 新增 [StarCraft II 对齐实施计划](SC2_ALIGNMENT_PLAN.md)，把研究基线转换为不含负责人、排期和会议噪音的纯 AI 工作包。
+- 固定五层放置边界：Terrain Buildability、Static Pathing、Structure Placement Footprint、Structure Pathing Footprint 与 Dynamic Occupants，禁止继续用一次 `UnitOverlap` 校验承担完整施工时序。
+- 固定 Preview → Reservation/Ghost → Dynamic Revalidation/Eviction → Hard Commit 生命周期；接受命令时分配稳定 Building/Reservation ID，Hard Commit 前不分配硬 Footprint。
+- 将 C0 静态/动态校验拆分和 C1 Reservation 设计为不依赖实机证据的先行工作；友军 Idle/Hold/Harvest 等精确让位策略仍由 SC2 实机 E0 矩阵冻结，缺证据时保持保守阻挡。
+- P0 分为施工正确性与独立 Mineral Walk 碰撞矩阵；P1 固定显式 Return Cargo、批量自动分矿、Shift Build Queue 和生产出口/Rally 边界；P2 内容机制不阻塞核心收口。
+- 每个工作包都限定允许修改范围、稳定合同、黑盒用例、Replay/Hot/Hash 要求、AV1 录像门禁和停止条件；每项机制最多一个隔离矩阵加一个复杂对局，防止进入启发式优化地狱。
+
+下一项建议直接实施 `M0 economy-mineral-walk-collision-matrix`：它不依赖 SC2 实机未知项，能先锁住已经正确的采矿碰撞语义；随后实施 `C0` 放置校验分层和 `C1` Reservation/Ghost。若暂时无法取得 SC2 实机录像，可以继续修施工护甲、Return Cargo 与自动分矿，但不提前写死友军让位策略。
+
 ## 8. 可以并行但不能提前耦合的优化
 
 - Steering 预计算候选方向。
