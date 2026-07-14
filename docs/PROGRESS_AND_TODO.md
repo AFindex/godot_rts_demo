@@ -1415,6 +1415,18 @@ D2a 至此收口。下一项按依赖顺序做 D2b：先建立通用 Caster Ener
 
 BR 到此收口，不再继续增加拥堵启发式。后续只有可复现的玩家操作失败、现有黑盒回归或性能时间预算越界才重新打开；下一项仍回到内容/能力计划，而不是继续无穷优化寻路。
 
+### BS：3D 遭遇战专项（第一版已完成）
+
+- 可运行场景统一进入 `demo/`：原 2D 场景在 `demo/2d/RtsDemo2D.tscn`，3D 遭遇战在 `demo/3d/RtsEncounter3D.tscn`；根 `Main.tscn` 仅保留兼容继承入口，现有命令、125 项黑盒和录像工具无需改启动路径。
+- 3D 不是第二套玩法。现有 `PlayableSkirmishScenario`、`RtsSimulation`、Grid Path、Route Planner、Choke、经济/施工/生产/科技/战斗与敌方 AI 原样复用；模拟 XY 只在表现边界映射为 Godot XZ。
+- `Rts3DWorldPresenter` 为只读表现器，按稳定实体 ID 缓存 Node，Mesh/Material 按类型和阵营共享；农民/普通兵/重甲兵使用方块/球体/六边柱，五类建筑使用不同几何并按真实矩形 footprint 缩放，矿物/气矿/静态障碍/选择环/弹道完整表现。
+- 玩家操作已覆盖点选、框选、Shift 追加/排队、右键智能命令、Attack Move、Stop、相机平移/旋转/缩放、五类建造、三类生产和三项科技；所有命令仍进入正式模拟 API。
+- 新增 `--demo-3d-smoke` 和独立 `tools/record_demo.ps1`。Debug/Release 构建均为 0 错误、0 警告；1,800 Tick smoke 通过：玩家余额 `2748/600`、敌方设施 6、presenter 实体 124。900 Tick 录像路径预验也通过：余额 `2232/600`、敌方设施 5、实体 113。
+- 125/125 全量黑盒自检通过；根兼容入口无参数启动确认 `RTS_NAV_READY=True`。15 秒、451 帧专项 AV1/WebM 位于 `test_videos/20260714_115047/`，大小 2,709,088 字节；全库媒体门禁通过 165 个视频、97 个 manifest、164 个场景引用，全部为 AV1。
+- 详细边界、操作与后续 MultiMesh/高度层升级点见 `docs/ENCOUNTER_3D_DEMO.md`。
+
+本专项当前验证的是“现有平面 RTS 核心能否由独立 3D 表现与输入层直接消费”，结论为可行且不需要修改引擎底层。真实高低层/桥梁/飞行体积导航仍是未来独立能力，不在这一版伪装完成。
+
 ## 8. 可以并行但不能提前耦合的优化
 
 - Steering 预计算候选方向。

@@ -1,5 +1,6 @@
 using Godot;
 using RtsDemo.AI;
+using RtsDemo.Demos;
 using RtsDemo.Presentation;
 using RtsDemo.Scenarios;
 using RtsDemo.Simulation;
@@ -2798,6 +2799,8 @@ public partial class RtsDemo : Node2D
         AddChild(layer);
         _launchScreen = new RtsLaunchScreen();
         _launchScreen.DemoRequested += EnterDefaultDemo;
+        _launchScreen.Demo3DRequested += () =>
+            GetTree().ChangeSceneToFile(DemoSceneCatalog.Encounter3D);
         _launchScreen.TestRequested += StartInteractiveVisualTest;
         _launchScreen.TestBrowserRequested += () =>
             ReturnToTestBrowser("已停止当前测试，可选择其他场景。 ");

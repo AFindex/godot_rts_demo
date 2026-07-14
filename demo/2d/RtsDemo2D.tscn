@@ -1,0 +1,35 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource path="res://src/Godot/RtsDemo.cs" type="Script" id="1"]
+[ext_resource path="res://data/demo_navigation_map.tres" type="Resource" id="2"]
+[ext_resource path="res://data/demo_gameplay_profiles.tres" type="Resource" id="3"]
+[ext_resource path="res://src/Godot/ClearancePreview2D.cs" type="Script" id="4"]
+[ext_resource path="res://data/demo_clearance_bake.tres" type="Resource" id="5"]
+[ext_resource path="res://data/demo_building_types.tres" type="Resource" id="6"]
+[ext_resource path="res://data/demo_production_catalog.tres" type="Resource" id="7"]
+[ext_resource path="res://data/demo_technology_catalog.tres" type="Resource" id="8"]
+[ext_resource path="res://data/demo_ai_configurations.tres" type="Resource" id="9"]
+[ext_resource path="res://src/Godot/RtsCombatProjectileLayer.cs" type="Script" id="10"]
+[ext_resource path="res://data/demo_combat_presentation_theme.tres" type="Resource" id="11"]
+
+[node name="RtsDemo" type="Node2D"]
+script = ExtResource("1")
+NavigationMapAsset = ExtResource("2")
+GameplayProfilesAsset = ExtResource("3")
+BuildingTypesAsset = ExtResource("6")
+ProductionCatalogAsset = ExtResource("7")
+TechnologyCatalogAsset = ExtResource("8")
+AiConfigurationAsset = ExtResource("9")
+ClearanceBakeAsset = ExtResource("5")
+
+[node name="CombatProjectileLayer" type="Node2D" parent="."]
+z_index = 60
+script = ExtResource("10")
+Theme = ExtResource("11")
+
+[node name="ClearancePreview" type="Node2D" parent="."]
+z_index = 20
+script = ExtResource("4")
+NavigationMapAsset = ExtResource("2")
+GameplayProfilesAsset = ExtResource("3")
+ClearanceBakeAsset = ExtResource("5")

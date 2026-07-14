@@ -18,6 +18,7 @@ public partial class RtsLaunchScreen : Control
     private OptionButton? _category;
 
     public event Action? DemoRequested;
+    public event Action? Demo3DRequested;
     public event Action<string>? TestRequested;
     public event Action? TestBrowserRequested;
 
@@ -42,7 +43,7 @@ public partial class RtsLaunchScreen : Control
         AddBackdrop();
         var center = FullRect<CenterContainer>();
         AddChild(center);
-        var panel = Panel(new Vector2(760f, 470f));
+        var panel = Panel(new Vector2(760f, 555f));
         center.AddChild(panel);
         var margin = Margin(46);
         panel.AddChild(margin);
@@ -57,6 +58,10 @@ public partial class RtsLaunchScreen : Control
             "进入大型 RTS 对局",
             "12 农民开局，对抗会采矿、扩张、攀科技和持续进攻的敌方 AI。",
             () => DemoRequested?.Invoke()));
+        content.AddChild(ActionButton(
+            "进入 3D RTS 遭遇战",
+            "同一套纯 C# 模拟与 AI；用球体、方块和低多边形展示单位、建筑与资源。",
+            () => Demo3DRequested?.Invoke()));
         content.AddChild(ActionButton(
             $"打开测试中心  ·  {_entries.Count} 项",
             "浏览每项黑盒测试的中文说明，并直接切换到对应场景。",
