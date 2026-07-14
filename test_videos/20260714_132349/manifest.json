@@ -1,0 +1,31 @@
+﻿{
+    "created_at":  "2026-07-14T13:24:04.7200247+08:00",
+    "fps":  30,
+    "codec":  "AV1 (libsvtav1)",
+    "container":  "WebM",
+    "crf":  32,
+    "preset":  8,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "3d-encounter"
+                        ],
+    "available_cases":  [
+                            "3d-encounter"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "3d-encounter",
+                      "file":  "3d-encounter.webm",
+                      "log":  "3d-encounter.log",
+                      "bytes":  2618356,
+                      "source_bytes":  32918850,
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8,
+                      "exit_code":  0,
+                      "encode_error":  null,
+                      "result":  "RTS_3D_DEMO_PASS ticks=968, bank=2232/600, enemyFacilities=5, shapes=113, presentation=True, debug=True, rallyMarkers=1"
+                  }
+              ]
+}

@@ -44,6 +44,7 @@ public static class SimulationSelfTest
                 aiConfigurations);
             var modularAiResult = ModularAiPolicySelfTest.Run();
             var operationPresentationResult = OperationPresentationSelfTest.Run();
+            var interface3DResult = Rts3DInterfaceSelfTest.Run();
             var controlGroupResult = ControlGroupSelfTest.Run();
             var productionGroupResult = ProductionGroupPresentationSelfTest.Run();
             var combatEventResult = CombatEventStreamSelfTest.Run();
@@ -64,12 +65,13 @@ public static class SimulationSelfTest
                       technologyCatalogResult.Passed &&
                        aiArchitectureResult.Passed &&
                        aiConfigurationResult.Passed && modularAiResult.Passed;
-            passed &= operationPresentationResult.Passed && controlGroupResult.Passed &&
+            passed &= operationPresentationResult.Passed && interface3DResult.Passed &&
+                      controlGroupResult.Passed &&
                       productionGroupResult.Passed && combatEventResult.Passed &&
                       combatDamageResult.Passed && combatProjectileResult.Passed &&
                       combatPresentationResult.Passed && testShowcaseResult.Passed &&
                       playableSkirmishResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 24)
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 25)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
@@ -123,6 +125,9 @@ public static class SimulationSelfTest
                 $"operation-presentation=" +
                 $"{(operationPresentationResult.Passed ? "PASS" : "FAIL")}" +
                 $"({operationPresentationResult.Summary})",
+                $"interface-3d=" +
+                $"{(interface3DResult.Passed ? "PASS" : "FAIL")}" +
+                $"({interface3DResult.Summary})",
                 $"control-group=" +
                 $"{(controlGroupResult.Passed ? "PASS" : "FAIL")}" +
                 $"({controlGroupResult.Summary})",

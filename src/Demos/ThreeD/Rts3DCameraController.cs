@@ -51,6 +51,7 @@ public partial class Rts3DCameraController : Node
     public NVector2 Target => _desiredTarget;
     public float Distance => _desiredDistance;
     public float Yaw => _desiredYaw;
+    public Func<Vector2, bool>? EdgeScrollBlocked { get; set; }
 
     private Camera3D? _camera;
     private SimRect _simulationBounds;
@@ -241,7 +242,8 @@ public partial class Rts3DCameraController : Node
             var viewport = GetViewport();
             var mouse = viewport.GetMousePosition();
             var size = viewport.GetVisibleRect().Size;
-            if (mouse.X >= 0f && mouse.Y >= 0f && mouse.X <= size.X && mouse.Y <= size.Y)
+            if (mouse.X >= 0f && mouse.Y >= 0f && mouse.X <= size.X &&
+                mouse.Y <= size.Y && EdgeScrollBlocked?.Invoke(mouse) != true)
             {
                 if (mouse.X <= EdgeScrollMargin) movement -= right;
                 else if (mouse.X >= size.X - EdgeScrollMargin) movement += right;

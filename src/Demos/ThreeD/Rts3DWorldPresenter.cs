@@ -54,7 +54,11 @@ public partial class Rts3DWorldPresenter : Node3D
     private BoxMesh? _pointerPreviewMesh;
     private StandardMaterial3D? _validPointerPreviewMaterial;
     private StandardMaterial3D? _invalidPointerPreviewMaterial;
+    private ImmediateMesh? _rallyMesh;
+    private MeshInstance3D? _rallyVisual;
+    private StandardMaterial3D? _rallyMaterial;
     private bool _debugMovementEnabled;
+    private int _rallyMarkerCount;
 
     /// <summary>
     /// Shows the selected units' high-level move goals and resolved destination
@@ -79,6 +83,7 @@ public partial class Rts3DWorldPresenter : Node3D
 
     public int PresentedEntityCount =>
         _units.Count + _buildings.Count + _resources.Count + _projectiles.Count;
+    public int RallyMarkerCount => _rallyMarkerCount;
 
     public void Initialize(RtsSimulation simulation)
     {
@@ -136,6 +141,38 @@ public partial class Rts3DWorldPresenter : Node3D
         _selectedBuildings.Clear();
         _selectedBuildings.UnionWith(buildingIds);
         SyncSelectionVisibility();
+    }
+
+    /// <summary>
+    /// Replaces the selected buildings' presentation-only rally lines. Source
+    /// points are already clipped to rectangular building edges by the UI
+    /// adapter, so the presenter never needs simulation access for this view.
+    /// </summary>
+    public void SetRallyMarkers(IReadOnlyList<Rts3DRallyMarkerSnapshot> markers)
+    {
+        ArgumentNullException.ThrowIfNull(markers);
+        EnsureDebugVisuals();
+        _rallyMarkerCount = markers.Count;
+        _rallyMesh!.ClearSurfaces();
+        _rallyVisual!.Visible = markers.Count > 0;
+        if (markers.Count == 0) return;
+
+        _rallyMesh.SurfaceBegin(Mesh.PrimitiveType.Lines, _rallyMaterial);
+        foreach (var marker in markers)
+        {
+            var color = marker.Kind switch
+            {
+                RallyTargetKind.ResourceNode => new Color("66efa2"),
+                RallyTargetKind.FriendlyUnit => new Color("62d9ff"),
+                _ => new Color("ffd35f")
+            };
+            var source = SimPlane3DTransform.ToWorld(marker.Source, 0.12f);
+            var target = SimPlane3DTransform.ToWorld(marker.Target, 0.12f);
+            AppendRallyLine(source, target, color);
+            AppendRallyRing(target, color);
+            AppendRallyArrow(source, target, color);
+        }
+        _rallyMesh.SurfaceEnd();
     }
 
     public void Sync(float interpolation = 1f)
@@ -572,6 +609,12 @@ public partial class Rts3DWorldPresenter : Node3D
         {
             _movementDebugVisual.Visible = false;
         }
+        _rallyMesh?.ClearSurfaces();
+        _rallyMarkerCount = 0;
+        if (_rallyVisual is not null)
+        {
+            _rallyVisual.Visible = false;
+        }
         HidePointerPreview();
     }
 
@@ -608,6 +651,59 @@ public partial class Rts3DWorldPresenter : Node3D
             };
             AddChild(_pointerPreviewVisual);
         }
+
+        if (_rallyVisual is null)
+        {
+            _rallyMesh = new ImmediateMesh();
+            _rallyMaterial = DebugLineMaterial();
+            _rallyVisual = new MeshInstance3D
+            {
+                Name = "SelectedBuildingRally",
+                Mesh = _rallyMesh,
+                Visible = false,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            };
+            AddChild(_rallyVisual);
+        }
+    }
+
+    private void AppendRallyLine(Vector3 from, Vector3 to, Color color)
+    {
+        _rallyMesh!.SurfaceSetColor(color);
+        _rallyMesh.SurfaceAddVertex(from);
+        _rallyMesh.SurfaceSetColor(color);
+        _rallyMesh.SurfaceAddVertex(to);
+    }
+
+    private void AppendRallyRing(Vector3 center, Color color)
+    {
+        const int segments = 28;
+        const float radius = 0.28f;
+        for (var segment = 0; segment < segments; segment++)
+        {
+            var startAngle = segment * MathF.Tau / segments;
+            var endAngle = (segment + 1) * MathF.Tau / segments;
+            AppendRallyLine(
+                center + new Vector3(
+                    MathF.Cos(startAngle) * radius, 0f,
+                    MathF.Sin(startAngle) * radius),
+                center + new Vector3(
+                    MathF.Cos(endAngle) * radius, 0f,
+                    MathF.Sin(endAngle) * radius),
+                color);
+        }
+    }
+
+    private void AppendRallyArrow(Vector3 source, Vector3 target, Color color)
+    {
+        var direction = target - source;
+        direction.Y = 0f;
+        if (direction.LengthSquared() < 0.001f) return;
+        direction = direction.Normalized();
+        var side = new Vector3(-direction.Z, 0f, direction.X);
+        var basePoint = target - direction * 0.48f;
+        AppendRallyLine(target, basePoint + side * 0.20f, color);
+        AppendRallyLine(target, basePoint - side * 0.20f, color);
     }
 
     private Mesh UnitMesh(UnitVisualKind kind)

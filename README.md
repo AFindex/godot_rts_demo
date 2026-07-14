@@ -4,9 +4,9 @@
 
 启动页现在统一提供原有 2D 对局/测试中心与新的 3D 遭遇战。场景包位于 `demo/`：`demo/2d/RtsDemo2D.tscn` 保存原有场景，`demo/3d/RtsEncounter3D.tscn` 是复用同一模拟与 AI 的 3D 表现层，根 `Main.tscn` 保留为兼容入口。详见 [3D 遭遇战 Demo](docs/ENCOUNTER_3D_DEMO.md) 与 [Demo 目录](demo/README.md)。
 
-3D 版本可选择/框选单位、右键智能命令、攻击移动、建造五种不同尺寸建筑、生产三类单位并研究科技；单位、建筑和资源仅使用可替换的球体、方块和低多边形，不引入第二套物理或寻路。
+3D 版本可选择/框选单位、右键智能命令、攻击移动、设置地面/资源/友军 Rally、建造五种不同尺寸建筑、生产三类单位并研究科技；单位、建筑和资源仅使用可替换的球体、方块和低多边形，不引入第二套物理或寻路。
 
-当前 3D UI、命令卡、小地图和相机均为独立表现模块；建筑统一显示为严格 footprint 对应的方盒/长方盒。相机支持边缘滚屏、中键拖拽、`Alt+中键` 旋转、滚轮/触控板缩放，`D` 可显示选中单位的 MoveGoal 和 SlotTarget，专门用于复查绕行、贴边、终点和卡位问题。
+当前 3D UI、命令卡、小地图和相机均为独立表现模块；HUD 已改为 SC2 式右上资源条与底部“小地图 / 选择信息 / 3×5 命令卡”三段布局，去掉全知敌军统计。建筑统一显示为严格 footprint 对应的方盒/长方盒；选中生产建筑会显示从矩形边缘到目标的 Rally 线。相机支持边缘滚屏、中键拖拽、`Alt+中键` 旋转、滚轮/触控板缩放，`D` 可显示选中单位的 MoveGoal 和 SlotTarget，专门用于复查绕行、贴边、终点和卡位问题。专项调研、边界和验收规格见 [3D Demo：SC2 操作界面与 Rally 对齐专项](docs/SC2_3D_INTERFACE_ALIGNMENT.md)。
 
 完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。SC2 机制证据与当前差距见 [StarCraft II 操作与玩法细节对齐研究](docs/SC2_ALIGNMENT_RESEARCH.md)，具体依赖顺序、协议边界、黑盒门禁与收口条件见 [StarCraft II 对齐实施计划](docs/SC2_ALIGNMENT_PLAN.md)，主动 Burrow/Cloak 边界见 [主动隐蔽能力合同](docs/ACTIVE_CONCEALMENT.md)。实际玩法见 [S11 经济、建造与生产](docs/ECONOMY_AND_PRODUCTION.md)，比赛状态见 [比赛生命周期](docs/MATCH_LIFECYCLE.md)，AI 边界见 [RTS AI 架构](docs/AI_ARCHITECTURE.md)，AI 数据见 [AI Configuration Resource](docs/AI_CONFIGURATION_RESOURCE.md)，完整演示见 [双 AI 遭遇战测试关卡](docs/AI_ENCOUNTER_LEVEL.md)，科技数据见 [Technology Catalog Resource](docs/TECHNOLOGY_RESOURCE.md)，战斗移动见 [AttackMove 与战斗占位](docs/ATTACK_MOVE.md)、[武器移动约束](docs/WEAPON_MOVEMENT.md)、[自动目标评分](docs/TARGET_SELECTION.md) 和 [战斗接触优先级](docs/COMBAT_CONTACT.md)，弹道显示见 [战斗弹道表现边界](docs/COMBAT_PRESENTATION.md)，操作层见 [命令队列、编组与 SmartCommand](docs/OPERATION_LAYER.md) 和 [混合选择与命令卡](docs/COMMAND_CARD_AND_SELECTION.md)，确定性基础见 [命令日志与回放](docs/COMMAND_REPLAY.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，资源更新见 [Resource 热重载与差异诊断](docs/RESOURCE_HOT_RELOAD.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
 

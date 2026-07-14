@@ -23,16 +23,30 @@ public partial class RtsEncounter3DDemo : Node3D
     private Camera3D? _camera;
     private Rts3DCameraController? _cameraController;
     private Rts3DHud? _hud;
+    private Rts3DInterfaceAdapter? _interfaceAdapter;
+    private BuildingTypeCatalogSnapshot? _buildingCatalog;
+    private ProductionCatalogSnapshot? _productionCatalog;
+    private TechnologyCatalogSnapshot? _technologyCatalog;
+    private GameplaySelectionSnapshot _selectionSnapshot =
+        GameplaySelectionSnapshot.Empty;
+    private SelectionSubgroupKey? _activeSelectionSubgroup;
+    private ControlGroupManager? _controlGroups;
+    private readonly ControlGroupRecallTracker _controlGroupRecallTracker = new();
     private Vector2 _dragStart;
     private Vector2 _dragCurrent;
     private bool _dragging;
+    private bool _selectionAdditive;
+    private bool _selectionSameType;
+    private bool _movePending;
     private bool _attackMovePending;
+    private bool _rallyPending;
     private int _pendingBuildingType = -1;
     private bool _debugMovement;
     private string _modeText = "普通选择";
     private string _statusText = "就绪";
     private long _lastMinimapTick = -1;
-    private int _lastCommandUiSignature = int.MinValue;
+    private int _lastIdleWorker = -1;
+    private int _baseCycleIndex = -1;
     private bool _smoke;
     private long _smokeEndTick;
     private int _smokeDurationTicks;
@@ -49,11 +63,17 @@ public partial class RtsEncounter3DDemo : Node3D
             navigation.CreateRoutePlanner(world),
             navigation.CreateChokeController(),
             bake);
+        _buildingCatalog = DemoBuildingTypes.CreateCatalog();
+        _productionCatalog = DemoProductionCatalog.CreateSnapshot();
+        _technologyCatalog = DemoTechnologies.CreateCatalog();
         _runtime = PlayableSkirmishScenario.Prepare(
             _simulation,
-            DemoBuildingTypes.CreateCatalog(),
-            DemoProductionCatalog.CreateSnapshot(),
-            DemoTechnologies.CreateCatalog());
+            _buildingCatalog,
+            _productionCatalog,
+            _technologyCatalog);
+        _interfaceAdapter = new Rts3DInterfaceAdapter(
+            PlayerId, _buildingCatalog, _productionCatalog, _technologyCatalog);
+        _controlGroups = new ControlGroupManager(_simulation.Units.Capacity);
 
         CreateLighting();
         CreateGround(world);
@@ -75,10 +95,10 @@ public partial class RtsEncounter3DDemo : Node3D
         }
         if (recording && _runtime is not null)
         {
-            _selectedUnits.UnionWith(_runtime.PlayerWorkers.Take(6));
+            PrepareRecordingPresentation();
             SetMovementDebug(true);
         }
-        UpdateCommandOptions(force: true);
+        RefreshSelectionPresentation();
         UpdateHud();
     }
 
@@ -88,8 +108,7 @@ public partial class RtsEncounter3DDemo : Node3D
         _runtime.AiDirector.Update(_simulation.Metrics.Tick);
         _simulation.Tick((float)Math.Min(delta, 0.05));
         PruneSelection();
-        _presenter?.SetSelection(_selectedUnits, _selectedBuildings);
-        UpdateCommandOptions();
+        RefreshSelectionPresentation();
 
         if (_smoke)
         {
@@ -124,7 +143,7 @@ public partial class RtsEncounter3DDemo : Node3D
                 _hud?.SetDragSelection(_dragStart, _dragCurrent, visible: true);
                 break;
             case InputEventKey key when key.Pressed && !key.Echo:
-                HandleKey(key.Keycode);
+                HandleKey(key);
                 break;
         }
     }
@@ -133,11 +152,18 @@ public partial class RtsEncounter3DDemo : Node3D
     {
         if (mouse.ButtonIndex == MouseButton.Left)
         {
+            if (HasTargetMode())
+            {
+                if (!mouse.Pressed) CompleteLeftClick(mouse.Position);
+                return;
+            }
             if (mouse.Pressed)
             {
                 _dragging = true;
                 _dragStart = mouse.Position;
                 _dragCurrent = mouse.Position;
+                _selectionAdditive = mouse.ShiftPressed;
+                _selectionSameType = mouse.CtrlPressed || mouse.DoubleClick;
                 _hud?.SetDragSelection(_dragStart, _dragCurrent, visible: true);
             }
             else if (_dragging)
@@ -150,13 +176,13 @@ public partial class RtsEncounter3DDemo : Node3D
         }
         if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed)
         {
-            if (_pendingBuildingType >= 0 || _attackMovePending)
+            if (HasTargetMode())
             {
                 CancelTargetMode();
                 return;
             }
             if (TryGroundPoint(mouse.Position, out var point))
-                IssueSmartCommand(point, queued: Input.IsKeyPressed(Key.Shift));
+                IssueContextCommand(point, queued: mouse.ShiftPressed);
         }
     }
 
@@ -169,81 +195,105 @@ public partial class RtsEncounter3DDemo : Node3D
             IssueConstruction(point, queued);
             return;
         }
+        if (_rallyPending)
+        {
+            SetSelectedRally(point);
+            return;
+        }
+        if (_movePending)
+        {
+            IssueMove(point, queued);
+            return;
+        }
         if (_attackMovePending)
         {
             IssueAttackMove(point, queued);
             return;
         }
         if (_dragStart.DistanceTo(screen) >= MinimumDragPixels)
-            SelectRectangle(_dragStart, screen, queued);
+            SelectRectangle(_dragStart, screen, _selectionAdditive);
         else
-            SelectAt(point, queued);
+            SelectAt(point, _selectionAdditive, _selectionSameType);
     }
 
-    private void HandleKey(Key key)
+    private void HandleKey(InputEventKey keyEvent)
     {
-        switch (key)
+        if (TryReadControlGroup(keyEvent, out var group))
+        {
+            HandleControlGroup(
+                group,
+                assign: keyEvent.CtrlPressed,
+                add: keyEvent.ShiftPressed,
+                steal: keyEvent.AltPressed);
+            return;
+        }
+        switch (keyEvent.Keycode)
         {
             case Key.Escape:
                 CancelTargetMode();
-                break;
-            case Key.A:
-                BeginAttackMove();
-                break;
-            case Key.S:
-                StopSelection();
-                break;
-            case Key.Q:
-                BeginBuild(DemoBuildingTypes.SupplyDepot.Id);
-                break;
-            case Key.W:
-                BeginBuild(DemoBuildingTypes.Barracks.Id);
-                break;
-            case Key.E:
-                BeginBuild(DemoBuildingTypes.Academy.Id);
-                break;
-            case Key.R:
-                BeginBuild(DemoBuildingTypes.Refinery.Id);
-                break;
-            case Key.T:
-                BeginBuild(DemoBuildingTypes.CommandCenter.Id);
-                break;
-            case Key.Z:
-                Train(0);
-                break;
-            case Key.X:
-                Train(1);
-                break;
-            case Key.C:
-                Train(2);
-                break;
-            case Key.V:
-                Research(0);
-                break;
-            case Key.B:
-                Research(1);
-                break;
-            case Key.N:
-                Research(2);
-                break;
+                return;
+            case Key.Tab:
+                CycleSelectionSubgroup(keyEvent.ShiftPressed ? -1 : 1);
+                return;
+            case Key.F1:
+                SelectIdleWorker();
+                return;
+            case Key.Backspace:
+                CycleTownHall();
+                return;
             case Key.F:
                 FocusSelection();
-                break;
+                return;
             case Key.D:
                 SetMovementDebug(!_debugMovement);
-                break;
+                return;
             case Key.Home:
                 FocusAt(PlayableSkirmishScenario.PlayerHome);
-                break;
+                return;
         }
+        _hud?.TryInvokeShortcut(keyEvent.Keycode);
+    }
+
+    private void BeginMove()
+    {
+        _movePending = _selectedUnits.Count > 0;
+        _attackMovePending = false;
+        _rallyPending = false;
+        _pendingBuildingType = -1;
+        _hud?.SetTargetMode(_movePending
+            ? new Rts3DTargetModeSnapshot(
+                TargetCommandKind.Move, "MOVE", "Left click target · RMB/Esc cancel")
+            : null);
+        SetMode(_movePending ? "Move target" : "Select units first");
     }
 
     private void BeginAttackMove()
     {
         _attackMovePending = _selectedUnits.Count > 0;
+        _movePending = false;
+        _rallyPending = false;
         _pendingBuildingType = -1;
-        _hud?.SetBuildMode(null);
+        _hud?.SetTargetMode(_attackMovePending
+            ? new Rts3DTargetModeSnapshot(
+                TargetCommandKind.AttackMove, "ATTACK MOVE",
+                "Left click target · Shift queues · RMB/Esc cancel")
+            : null);
         SetMode(_attackMovePending ? "攻击移动：左键指定目标" : "请先选择单位");
+    }
+
+    private void BeginRally()
+    {
+        var available = RallyBuildings();
+        _rallyPending = available.Length > 0;
+        _movePending = false;
+        _attackMovePending = false;
+        _pendingBuildingType = -1;
+        _hud?.SetTargetMode(_rallyPending
+            ? new Rts3DTargetModeSnapshot(
+                TargetCommandKind.Rally, "SET RALLY",
+                "Ground, resource or friendly unit · RMB/Esc cancel")
+            : null);
+        SetMode(_rallyPending ? "Set rally target" : "Select a production building");
     }
 
     private void StopSelection()
@@ -251,6 +301,23 @@ public partial class RtsEncounter3DDemo : Node3D
         if (_simulation is null || _selectedUnits.Count == 0) return;
         var result = _simulation.IssuePlayerStop(PlayerId, SelectedUnits());
         Report(result.Succeeded ? "停止" : $"停止失败：{result.Code}");
+    }
+
+    private void HoldSelection()
+    {
+        if (_simulation is null || _selectedUnits.Count == 0) return;
+        var result = _simulation.IssuePlayerHold(PlayerId, SelectedUnits());
+        Report(result.Succeeded ? "Hold position" : $"Hold failed: {result.Code}");
+    }
+
+    private void ReturnCargo()
+    {
+        if (_simulation is null || _selectedUnits.Count == 0) return;
+        var workers = _selectedUnits.Where(unit =>
+                _simulation.Economy.IsWorkerOwnedBy(unit, PlayerId))
+            .Order().ToArray();
+        var result = _simulation.IssuePlayerReturnCargo(PlayerId, workers);
+        Report(result.Succeeded ? "Return cargo" : $"Return failed: {result.Code}");
     }
 
     private void BeginBuild(int typeId)
@@ -262,16 +329,21 @@ public partial class RtsEncounter3DDemo : Node3D
             return;
         }
         _pendingBuildingType = typeId;
+        _movePending = false;
         _attackMovePending = false;
-        var profile = DemoBuildingTypes.CreateCatalog().Type(typeId);
-        _hud?.SetBuildMode(profile.Name);
+        _rallyPending = false;
+        var profile = _buildingCatalog!.Type(typeId);
+        _hud?.SetTargetMode(new Rts3DTargetModeSnapshot(
+            TargetCommandKind.Build,
+            $"BUILD {profile.Name.ToUpperInvariant()}",
+            "Left click place · Shift repeats · RMB/Esc cancel"));
         SetMode($"放置 {profile.Name}");
     }
 
     private void IssueConstruction(NVector2 point, bool queued)
     {
         if (_simulation is null || _pendingBuildingType < 0) return;
-        var profile = DemoBuildingTypes.CreateCatalog().Type(_pendingBuildingType);
+        var profile = _buildingCatalog!.Type(_pendingBuildingType);
         if (!TryResolveConstructionTarget(
                 point, profile, queued,
                 out var builder, out var center, out var refinery,
@@ -332,11 +404,13 @@ public partial class RtsEncounter3DDemo : Node3D
     private void Train(int recipeId)
     {
         if (_simulation is null) return;
-        var recipe = DemoProductionCatalog.CreateSnapshot().Recipe(recipeId);
-        var producers = _selectedBuildings
+        var recipe = _productionCatalog!.Recipe(recipeId);
+        var producers = ActiveBuildingIds()
             .Select(value => new GameplayBuildingId(value))
             .Where(id => _simulation.Construction.IsAlive(id) &&
-                         _simulation.Construction.Observe(id).PlayerId == PlayerId)
+                         _simulation.Construction.Observe(id).PlayerId == PlayerId &&
+                         _simulation.Construction.Observe(id).Type.Id ==
+                         recipe.ProducerBuildingTypeId)
             .ToArray();
         var success = 0;
         ProductionCommandCode last = ProductionCommandCode.InvalidProducer;
@@ -352,9 +426,9 @@ public partial class RtsEncounter3DDemo : Node3D
     private void Research(int technologyId)
     {
         if (_simulation is null) return;
-        var technology = DemoTechnologies.CreateCatalog().Technology(technologyId);
+        var technology = _technologyCatalog!.Technology(technologyId);
         var resultText = "请先选择己方学院";
-        foreach (var value in _selectedBuildings.Order())
+        foreach (var value in ActiveBuildingIds())
         {
             var id = new GameplayBuildingId(value);
             if (!_simulation.Construction.IsAlive(id)) continue;
@@ -378,25 +452,92 @@ public partial class RtsEncounter3DDemo : Node3D
         if (!queued) CancelTargetMode();
     }
 
-    private void IssueSmartCommand(NVector2 point, bool queued)
+    private void IssueMove(NVector2 point, bool queued)
     {
         if (_simulation is null || _selectedUnits.Count == 0) return;
+        var result = _simulation.IssuePlayerMove(
+            PlayerId, SelectedUnits(), point, queued);
+        Report(result.Succeeded ? "Move" : $"Move failed: {result.Code}");
+        if (result.Succeeded) ShowCommandMarker(point, Rts3DCommandMarkerKind.Move);
+        if (!queued) CancelTargetMode();
+    }
+
+    private void IssueContextCommand(NVector2 point, bool queued)
+    {
+        if (_simulation is null) return;
         var target = ResolveSmartTarget(point);
-        var result = _simulation.IssuePlayerSmartCommand(
-            PlayerId, SelectedUnits(), target, attackMoveModifier: false, queued);
-        Report(result.Succeeded ? $"智能命令：{target.Kind}" : $"命令失败：{result.Code}");
-        if (result.Succeeded)
+        var unitSucceeded = false;
+        if (_selectedUnits.Count > 0)
         {
-            var kind = target.Kind is SmartCommandTargetKind.EnemyUnit or
+            unitSucceeded = _simulation.IssuePlayerSmartCommand(
+                PlayerId, SelectedUnits(), target,
+                attackMoveModifier: false, queued).Succeeded;
+        }
+        var rallySucceeded = SetSelectedRally(target, report: false);
+        if (!unitSucceeded && !rallySucceeded)
+        {
+            Report("No unit or production building can use this command");
+            return;
+        }
+        var kind = rallySucceeded && !unitSucceeded
+            ? Rts3DCommandMarkerKind.Rally
+            : target.Kind is SmartCommandTargetKind.EnemyUnit or
                 SmartCommandTargetKind.EnemyBuilding
                 ? Rts3DCommandMarkerKind.Attack
                 : target.Kind is SmartCommandTargetKind.ResourceNode or
-                    SmartCommandTargetKind.FriendlyBuilding
+                    SmartCommandTargetKind.FriendlyBuilding or
+                    SmartCommandTargetKind.FriendlyUnit
                     ? Rts3DCommandMarkerKind.Interact
                     : Rts3DCommandMarkerKind.Move;
-            ShowCommandMarker(target.Position, kind);
+        ShowCommandMarker(target.Position, kind);
+        Report(unitSucceeded && rallySucceeded
+            ? $"Units: {target.Kind} · production rally updated"
+            : rallySucceeded
+                ? $"Rally: {RallyTargetFrom(target).Kind}"
+                : $"Command: {target.Kind}");
+    }
+
+    private void SetSelectedRally(NVector2 point)
+    {
+        var target = ResolveSmartTarget(point);
+        var succeeded = SetSelectedRally(target, report: true);
+        if (succeeded)
+        {
+            ShowCommandMarker(target.Position, Rts3DCommandMarkerKind.Rally);
+            CancelTargetMode();
         }
     }
+
+    private bool SetSelectedRally(SmartCommandTarget target, bool report)
+    {
+        if (_simulation is null) return false;
+        var buildings = RallyBuildings();
+        if (buildings.Length == 0) return false;
+        var rally = RallyTargetFrom(target);
+        var success = 0;
+        foreach (var value in buildings)
+        {
+            if (_simulation.SetProductionRallyTarget(
+                    PlayerId, new GameplayBuildingId(value), rally))
+                success++;
+        }
+        if (report)
+            Report(success == buildings.Length
+                ? $"Rally set for {success} building(s): {rally.Kind}"
+                : $"Rally updated {success}/{buildings.Length}");
+        RefreshSelectionPresentation();
+        return success > 0;
+    }
+
+    private static RallyTarget RallyTargetFrom(SmartCommandTarget target) =>
+        target.Kind switch
+        {
+            SmartCommandTargetKind.ResourceNode => RallyTarget.Resource(
+                new EconomyResourceNodeId(target.ResourceNode), target.Position),
+            SmartCommandTargetKind.FriendlyUnit => RallyTarget.Friendly(
+                target.Unit, target.Position),
+            _ => RallyTarget.Ground(target.Position)
+        };
 
     private SmartCommandTarget ResolveSmartTarget(NVector2 point)
     {
@@ -460,39 +601,71 @@ public partial class RtsEncounter3DDemo : Node3D
         return best;
     }
 
-    private void SelectAt(NVector2 point, bool additive)
+    private void SelectAt(NVector2 point, bool additive, bool sameType)
     {
-        if (_simulation is null) return;
-        var unit = -1;
-        var best = 42f * 42f;
-        for (var candidate = 0; candidate < _simulation.Units.Count; candidate++)
+        if (_simulation is null || _interfaceAdapter is null) return;
+        var candidates = UnitSelectionCandidates();
+        var unit = SelectionFilter.SelectPoint(candidates, point, PlayerId, 22f);
+        if (unit >= 0)
         {
-            if (!_simulation.Units.Alive[candidate] ||
-                _simulation.Combat.Teams[candidate] != PlayerId) continue;
-            var distance = NVector2.DistanceSquared(point, _simulation.Units.Positions[candidate]);
-            if (distance >= best) continue;
-            best = distance;
-            unit = candidate;
+            if (!additive)
+            {
+                _selectedUnits.Clear();
+                _selectedBuildings.Clear();
+            }
+            if (sameType)
+            {
+                _selectedUnits.UnionWith(SelectionFilter.SelectVisibleSameType(
+                    candidates, unit, VisibleWorldRect(), PlayerId));
+            }
+            else if (additive && _selectedUnits.Contains(unit))
+            {
+                _selectedUnits.Remove(unit);
+            }
+            else
+            {
+                _selectedUnits.Add(unit);
+            }
+            RefreshSelectionPresentation();
+            return;
+        }
+        GameplayBuildingSnapshot? hit = null;
+        foreach (var building in _simulation.CreateGameplayBuildingOverview())
+        {
+            if (building.PlayerId != PlayerId || building.IsTerminal ||
+                !building.Bounds.Expanded(8f).Contains(point)) continue;
+            hit = building;
+            break;
         }
         if (!additive)
         {
             _selectedUnits.Clear();
             _selectedBuildings.Clear();
         }
-        if (unit >= 0)
+        if (hit.HasValue)
         {
-            _selectedUnits.Add(unit);
-            UpdateCommandOptions(force: true);
-            return;
+            if (sameType)
+            {
+                var visible = VisibleWorldRect();
+                _selectedBuildings.UnionWith(
+                    _simulation.CreateGameplayBuildingOverview()
+                        .Where(value => value.PlayerId == PlayerId &&
+                                        !value.IsTerminal &&
+                                        value.Type.Id == hit.Value.Type.Id &&
+                                        visible.Contains((value.Bounds.Min +
+                                                          value.Bounds.Max) * 0.5f))
+                        .Select(value => value.Id.Value));
+            }
+            else if (additive && _selectedBuildings.Contains(hit.Value.Id.Value))
+            {
+                _selectedBuildings.Remove(hit.Value.Id.Value);
+            }
+            else
+            {
+                _selectedBuildings.Add(hit.Value.Id.Value);
+            }
         }
-        foreach (var building in _simulation.CreateGameplayBuildingOverview())
-        {
-            if (building.PlayerId != PlayerId || building.IsTerminal ||
-                !building.Bounds.Expanded(8f).Contains(point)) continue;
-            _selectedBuildings.Add(building.Id.Value);
-            break;
-        }
-        UpdateCommandOptions(force: true);
+        RefreshSelectionPresentation();
     }
 
     private void SelectRectangle(Vector2 from, Vector2 to, bool additive)
@@ -512,10 +685,41 @@ public partial class RtsEncounter3DDemo : Node3D
             if (!_camera.IsPositionBehind(world) && rect.HasPoint(_camera.UnprojectPosition(world)))
                 _selectedUnits.Add(unit);
         }
-        UpdateCommandOptions(force: true);
+        RefreshSelectionPresentation();
     }
 
     private int[] SelectedUnits() => _selectedUnits.Order().ToArray();
+
+    private int[] ActiveBuildingIds() =>
+        _selectionSnapshot.ActiveSubgroup?.Members
+            .Where(value => value.Kind == GameplaySelectionKind.Building)
+            .Select(value => value.EntityId)
+            .Order().ToArray() ?? [];
+
+    private int[] RallyBuildings()
+    {
+        if (_simulation is null || _interfaceAdapter is null) return [];
+        return _selectedBuildings
+            .Where(value => _interfaceAdapter.SupportsRally(_simulation, value))
+            .Order().ToArray();
+    }
+
+    private SelectionCandidate[] UnitSelectionCandidates()
+    {
+        if (_simulation is null || _interfaceAdapter is null) return [];
+        var result = new SelectionCandidate[_simulation.Units.Count];
+        for (var unit = 0; unit < result.Length; unit++)
+        {
+            result[unit] = new SelectionCandidate(
+                unit,
+                _interfaceAdapter.UnitTypeId(_simulation, unit),
+                _simulation.Combat.Teams[unit],
+                _simulation.Units.Alive[unit],
+                _simulation.Units.Positions[unit],
+                _simulation.Units.Radii[unit]);
+        }
+        return result;
+    }
 
     private void PruneSelection()
     {
@@ -546,6 +750,204 @@ public partial class RtsEncounter3DDemo : Node3D
                 new GameplayBuildingId(_selectedBuildings.Min()));
             FocusAt((building.Bounds.Min + building.Bounds.Max) * 0.5f);
         }
+    }
+
+    private void RefreshSelectionPresentation()
+    {
+        if (_simulation is null || _interfaceAdapter is null) return;
+        _selectionSnapshot = _interfaceAdapter.CreateSelection(
+            _simulation,
+            _selectedUnits,
+            _selectedBuildings,
+            _activeSelectionSubgroup);
+        _activeSelectionSubgroup = _selectionSnapshot.ActiveSubgroup?.Key;
+        _presenter?.SetSelection(_selectedUnits, _selectedBuildings);
+        _presenter?.SetRallyMarkers(
+            _interfaceAdapter.CreateRallyMarkers(
+                _simulation, _selectedBuildings));
+    }
+
+    private void CycleSelectionSubgroup(int direction)
+    {
+        if (_selectionSnapshot.Subgroups.Length == 0) return;
+        _selectionSnapshot = _selectionSnapshot.Cycle(direction);
+        _activeSelectionSubgroup = _selectionSnapshot.ActiveSubgroup?.Key;
+        UpdateHud();
+    }
+
+    private void SelectSubgroup(int index)
+    {
+        if ((uint)index >= (uint)_selectionSnapshot.Subgroups.Length) return;
+        _selectionSnapshot = _selectionSnapshot with { ActiveSubgroupIndex = index };
+        _activeSelectionSubgroup = _selectionSnapshot.ActiveSubgroup?.Key;
+        UpdateHud();
+    }
+
+    private void ExecuteHudAction(CommandCardActionSnapshot action)
+    {
+        if (!action.Enabled) return;
+        switch (action.Kind)
+        {
+            case CommandCardActionKind.Move:
+                BeginMove();
+                break;
+            case CommandCardActionKind.AttackMove:
+                BeginAttackMove();
+                break;
+            case CommandCardActionKind.Stop:
+                StopSelection();
+                break;
+            case CommandCardActionKind.Hold:
+                HoldSelection();
+                break;
+            case CommandCardActionKind.ReturnCargo:
+                ReturnCargo();
+                break;
+            case CommandCardActionKind.Rally:
+                BeginRally();
+                break;
+            case CommandCardActionKind.Build:
+                BeginBuild(action.DataId);
+                break;
+            case CommandCardActionKind.Train:
+                Train(action.DataId);
+                break;
+            case CommandCardActionKind.Research:
+                Research(action.DataId);
+                break;
+        }
+    }
+
+    private void HandleControlGroup(int group, bool assign, bool add, bool steal)
+    {
+        if (_simulation is null || _controlGroups is null) return;
+        var selected = SelectedControlGroupEntities();
+        if (steal)
+        {
+            if (add) _controlGroups.StealAdd(group, selected);
+            else _controlGroups.StealAssign(group, selected);
+            Report($"Control group {group} steal-{(add ? "add" : "assign")}");
+        }
+        else if (assign)
+        {
+            _controlGroups.Assign(group, selected);
+            Report($"Control group {group} assigned");
+        }
+        else if (add)
+        {
+            _controlGroups.Add(group, selected);
+            Report($"Added selection to control group {group}");
+        }
+        else
+        {
+            var recalled = _controlGroups.Recall(group, IsAvailableControlGroupEntity);
+            _selectedUnits.Clear();
+            _selectedBuildings.Clear();
+            foreach (var entity in recalled)
+            {
+                if (entity.Kind == ControlGroupEntityKind.Unit)
+                    _selectedUnits.Add(entity.EntityId);
+                else
+                    _selectedBuildings.Add(entity.EntityId);
+            }
+            RefreshSelectionPresentation();
+            if (_controlGroupRecallTracker.Register(
+                    group, Time.GetTicksMsec() / 1000.0) && recalled.Length > 0)
+                FocusSelection();
+        }
+        UpdateHud();
+    }
+
+    private ControlGroupEntity[] SelectedControlGroupEntities()
+    {
+        var result = new List<ControlGroupEntity>(
+            _selectedUnits.Count + _selectedBuildings.Count);
+        result.AddRange(_selectedUnits.Order().Select(value =>
+            new ControlGroupEntity(ControlGroupEntityKind.Unit, value)));
+        result.AddRange(_selectedBuildings.Order().Select(value =>
+            new ControlGroupEntity(ControlGroupEntityKind.Building, value)));
+        return result.ToArray();
+    }
+
+    private bool IsAvailableControlGroupEntity(ControlGroupEntity entity)
+    {
+        if (_simulation is null || _interfaceAdapter is null) return false;
+        return entity.Kind == ControlGroupEntityKind.Unit
+            ? _interfaceAdapter.IsOwnedUnitAvailable(_simulation, entity.EntityId)
+            : _interfaceAdapter.IsOwnedBuildingAvailable(
+                _simulation, entity.EntityId);
+    }
+
+    private Rts3DControlGroupSnapshot[] ControlGroupSnapshots()
+    {
+        if (_controlGroups is null) return [];
+        var result = new List<Rts3DControlGroupSnapshot>();
+        for (var group = 0; group < ControlGroupManager.GroupCount; group++)
+        {
+            var entities = _controlGroups.Recall(group, IsAvailableControlGroupEntity);
+            if (entities.Length == 0) continue;
+            result.Add(new Rts3DControlGroupSnapshot(
+                group,
+                entities.Count(value => value.Kind == ControlGroupEntityKind.Unit),
+                entities.Count(value => value.Kind == ControlGroupEntityKind.Building)));
+        }
+        return result.ToArray();
+    }
+
+    private void SelectIdleWorker()
+    {
+        if (_simulation is null) return;
+        var idle = Enumerable.Range(0, _simulation.Units.Count)
+            .Where(unit => _simulation.Units.Alive[unit] &&
+                           _simulation.Economy.IsWorkerOwnedBy(unit, PlayerId) &&
+                           _simulation.Economy.Worker(unit).State ==
+                           WorkerEconomyState.Idle)
+            .Order().ToArray();
+        if (idle.Length == 0)
+        {
+            Report("No idle workers");
+            return;
+        }
+        var current = Array.IndexOf(idle, _lastIdleWorker);
+        _lastIdleWorker = idle[(current + 1) % idle.Length];
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        _selectedUnits.Add(_lastIdleWorker);
+        RefreshSelectionPresentation();
+        FocusSelection();
+        Report($"Idle worker #{_lastIdleWorker}");
+    }
+
+    private void CycleTownHall()
+    {
+        if (_simulation is null) return;
+        var bases = _simulation.CreateGameplayBuildingOverview()
+            .Where(value => value.PlayerId == PlayerId && !value.IsTerminal &&
+                            value.Type.Function == BuildingFunctionKind.TownHall)
+            .OrderBy(value => value.Id.Value).ToArray();
+        if (bases.Length == 0) return;
+        _baseCycleIndex = (_baseCycleIndex + 1) % bases.Length;
+        var building = bases[_baseCycleIndex];
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        _selectedBuildings.Add(building.Id.Value);
+        RefreshSelectionPresentation();
+        FocusAt((building.Bounds.Min + building.Bounds.Max) * 0.5f);
+        Report($"Base {_baseCycleIndex + 1}/{bases.Length}");
+    }
+
+    private static bool TryReadControlGroup(InputEventKey keyEvent, out int group)
+    {
+        var code = keyEvent.Unicode != 0
+            ? keyEvent.Unicode
+            : (long)keyEvent.Keycode;
+        if (code >= '0' && code <= '9')
+        {
+            group = (int)(code - '0');
+            return true;
+        }
+        group = -1;
+        return false;
     }
 
     private bool TryGroundPoint(Vector2 screen, out NVector2 point)
@@ -648,31 +1050,69 @@ public partial class RtsEncounter3DDemo : Node3D
     private void FocusAt(NVector2 point, bool immediate = false) =>
         _cameraController?.FocusAt(point, immediate);
 
+    private void PrepareRecordingPresentation()
+    {
+        if (_simulation is null || _runtime is null || _controlGroups is null)
+            return;
+        var workers = _runtime.PlayerWorkers.Take(6).ToArray();
+        _controlGroups.Assign(1, workers);
+        var townHall = _simulation.CreateGameplayBuildingOverview()
+            .Where(value => value.PlayerId == PlayerId && !value.IsTerminal &&
+                            value.Type.Function == BuildingFunctionKind.TownHall)
+            .OrderBy(value => value.Id.Value)
+            .FirstOrDefault();
+        if (townHall.Type.Name is null) return;
+        _controlGroups.Assign(4,
+        [
+            new ControlGroupEntity(
+                ControlGroupEntityKind.Building, townHall.Id.Value)
+        ]);
+        _selectedBuildings.Add(townHall.Id.Value);
+        var center = (townHall.Bounds.Min + townHall.Bounds.Max) * 0.5f;
+        var mineral = NearestResource(center, EconomyResourceKind.Minerals, 420f);
+        if (mineral.HasValue)
+        {
+            _simulation.SetProductionRallyTarget(
+                PlayerId,
+                townHall.Id,
+                RallyTarget.Resource(mineral.Value.Id, mineral.Value.Position));
+            Report("SC-style HUD · Town Hall selected · mineral rally active");
+        }
+    }
+
     private void CancelTargetMode()
     {
         _pendingBuildingType = -1;
+        _movePending = false;
         _attackMovePending = false;
+        _rallyPending = false;
         _presenter?.HidePointerPreview();
-        _hud?.SetBuildMode(null);
+        _hud?.SetTargetMode(null);
         SetMode("普通选择模式");
     }
+
+    private bool HasTargetMode() =>
+        _pendingBuildingType >= 0 || _movePending ||
+        _attackMovePending || _rallyPending;
 
     private void CreateHud()
     {
         _hud = new Rts3DHud { Name = "EncounterHud" };
         AddChild(_hud);
-        _hud.AttackMoveRequested += BeginAttackMove;
-        _hud.StopRequested += StopSelection;
+        if (_cameraController is not null)
+            _cameraController.EdgeScrollBlocked = _hud.BlocksWorldPointer;
+        _hud.ActionRequested += ExecuteHudAction;
+        _hud.SubgroupRequested += SelectSubgroup;
+        _hud.ControlGroupRecallRequested += group =>
+            HandleControlGroup(group, assign: false, add: false, steal: false);
+        _hud.IdleWorkerRequested += SelectIdleWorker;
         _hud.FocusRequested += FocusSelection;
-        _hud.BuildRequested += BeginBuild;
-        _hud.TrainRequested += Train;
-        _hud.ResearchRequested += Research;
         _hud.ToggleDebugRequested += () => SetMovementDebug(!_debugMovement);
         _hud.Return2DRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
         _hud.MinimapFocusRequested += point => FocusAt(point);
         _hud.MinimapSmartCommandRequested += point =>
-            IssueSmartCommand(point, queued: Input.IsKeyPressed(Key.Shift));
+            IssueContextCommand(point, queued: Input.IsKeyPressed(Key.Shift));
         SetMode("普通选择");
     }
 
@@ -687,7 +1127,7 @@ public partial class RtsEncounter3DDemo : Node3D
         }
         if (_pendingBuildingType >= 0)
         {
-            var profile = DemoBuildingTypes.CreateCatalog().Type(_pendingBuildingType);
+            var profile = _buildingCatalog!.Type(_pendingBuildingType);
             var valid = TryResolveConstructionTarget(
                 point, profile, Input.IsKeyPressed(Key.Shift),
                 out _, out var center, out _, out _);
@@ -697,7 +1137,7 @@ public partial class RtsEncounter3DDemo : Node3D
         _presenter.SetPointerPreview(
             point,
             valid: true,
-            new NVector2(_attackMovePending ? 18f : 10f));
+            new NVector2(HasTargetMode() ? 18f : 10f));
     }
 
     private void ShowCommandMarker(NVector2 point, Rts3DCommandMarkerKind kind)
@@ -716,68 +1156,6 @@ public partial class RtsEncounter3DDemo : Node3D
         Report(enabled
             ? "寻路调试开启：黄色=MoveGoal，青色=SlotTarget"
             : "寻路调试关闭");
-    }
-
-    private void UpdateCommandOptions(bool force = false)
-    {
-        if (_simulation is null || _hud is null) return;
-        var workerSelected = _selectedUnits.Any(unit =>
-            _simulation.Economy.IsWorkerOwnedBy(unit, PlayerId));
-        var selectedProfiles = _selectedBuildings
-            .Select(value => new GameplayBuildingId(value))
-            .Where(_simulation.Construction.IsAlive)
-            .Select(_simulation.Construction.Observe)
-            .Where(value => value.PlayerId == PlayerId &&
-                            value.State == BuildingLifecycleState.Completed)
-            .Select(value => value.Type.Id)
-            .ToHashSet();
-        var signature = HashCode.Combine(
-            workerSelected,
-            _selectedUnits.Count,
-            _selectedBuildings.Count,
-            selectedProfiles.Aggregate(17, (hash, value) => hash * 31 + value));
-        if (!force && signature == _lastCommandUiSignature) return;
-        _lastCommandUiSignature = signature;
-
-        var buildingCatalog = DemoBuildingTypes.CreateCatalog();
-        string[] buildKeys = ["Q", "W", "T", "R", "E"];
-        _hud.SetCommandOptions(
-            Rts3DHudCommandGroup.Build,
-            buildingCatalog.Types.ToArray().Select(profile =>
-                new Rts3DHudCommandOption(
-                    profile.Id,
-                    profile.Name,
-                    buildKeys[profile.Id],
-                    $"{profile.Size.X:0}×{profile.Size.Y:0} footprint · " +
-                    $"{profile.Cost.Minerals}/{profile.Cost.VespeneGas}",
-                    workerSelected)).ToArray());
-
-        var production = DemoProductionCatalog.CreateSnapshot();
-        string[] trainKeys = ["Z", "X", "C"];
-        _hud.SetCommandOptions(
-            Rts3DHudCommandGroup.Train,
-            production.Recipes.ToArray().Select(recipe =>
-                new Rts3DHudCommandOption(
-                    recipe.Id,
-                    recipe.UnitType.Name,
-                    trainKeys[recipe.Id],
-                    $"{recipe.Cost.Minerals}/{recipe.Cost.VespeneGas} · " +
-                    $"人口 {recipe.Cost.Supply}",
-                    selectedProfiles.Contains(recipe.ProducerBuildingTypeId)))
-                .ToArray());
-
-        var technologies = DemoTechnologies.CreateCatalog();
-        string[] researchKeys = ["V", "B", "N"];
-        _hud.SetCommandOptions(
-            Rts3DHudCommandGroup.Research,
-            technologies.Technologies.ToArray().Select(technology =>
-                new Rts3DHudCommandOption(
-                    technology.Id,
-                    technology.Name,
-                    researchKeys[technology.Id],
-                    $"{technology.Cost.Minerals}/{technology.Cost.VespeneGas}",
-                    selectedProfiles.Contains(technology.ResearcherBuildingTypeId)))
-                .ToArray());
     }
 
     private void UpdateMinimap()
@@ -850,26 +1228,13 @@ public partial class RtsEncounter3DDemo : Node3D
 
     private void UpdateHud()
     {
-        if (_simulation is null || _hud is null) return;
-        var economy = _simulation.Economy.Players.Snapshot(PlayerId);
-        var match = _simulation.Match.CreateSnapshot(
-            _simulation.Construction,
-            _simulation.Economy,
-            _simulation.Units,
-            _simulation.Combat);
-        var enemy = match.Players.FirstOrDefault(value =>
-            value.PlayerId == PlayableSkirmishScenario.EnemyId);
-        _hud.UpdateSnapshot(new Rts3DHudSnapshot(
+        if (_simulation is null || _hud is null ||
+            _interfaceAdapter is null) return;
+        _hud.UpdateSnapshot(_interfaceAdapter.CreateHudSnapshot(
+            _simulation,
+            _selectionSnapshot,
+            ControlGroupSnapshots(),
             _simulation.Metrics.Tick / 60.0,
-            economy.Minerals,
-            economy.VespeneGas,
-            economy.SupplyUsed,
-            economy.SupplyCapacity,
-            _selectedUnits.Count,
-            _selectedBuildings.Count,
-            enemy.Workers,
-            enemy.CombatUnits,
-            enemy.ActiveBuildings,
             _modeText,
             _statusText));
     }
@@ -897,13 +1262,16 @@ public partial class RtsEncounter3DDemo : Node3D
         var visibleShapes = _presenter?.PresentedEntityCount ?? 0;
         var presentationReady = _cameraController?.IsInitialized == true &&
                                 _hud is not null &&
-                                (_smokeDurationTicks != 900 || _debugMovement);
+                                (_smokeDurationTicks != 900 ||
+                                 (_debugMovement &&
+                                  _presenter?.RallyMarkerCount > 0));
         var passed = player.Minerals > 1_800 && enemyFacilities >= 3 &&
                      visibleShapes >= 40 && presentationReady;
         GD.Print($"RTS_3D_DEMO_{(passed ? "PASS" : "FAIL")} " +
                  $"ticks={_simulation.Metrics.Tick}, bank={player.Minerals}/{player.VespeneGas}, " +
                  $"enemyFacilities={enemyFacilities}, shapes={visibleShapes}, " +
-                 $"presentation={presentationReady}, debug={_debugMovement}");
+                 $"presentation={presentationReady}, debug={_debugMovement}, " +
+                 $"rallyMarkers={_presenter?.RallyMarkerCount ?? 0}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
