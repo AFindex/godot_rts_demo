@@ -9,6 +9,7 @@
 - `3d/TerrainPresetGallery3D.tscn`：依次浏览 12 张可复用测试地形资产及其起终点、建造探针和动态阻挡区。
 - `3d/TerrainVisionCombat3D.tscn`：高低地视野、空中观察、共享视野、烟雾遮挡和飞行中弹道专项演示。
 - `terrain/TerrainAuthoringWorkspace.tscn`：可编辑 Godot Resource、正交笔刷、覆盖层、结构验证和不可变运行时导出的 T3 工作区/自动演示。
+- `war3/War3AssetLab.tscn`：Warcraft III 导出资源的模型、动画、贴图、粒子与 Ribbon 验收实验室。
 - 根目录 `Main.tscn`：仅为已有命令、文档和录像工具保留的兼容继承入口。
 
 ```powershell

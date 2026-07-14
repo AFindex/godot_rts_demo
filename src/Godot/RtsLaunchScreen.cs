@@ -19,6 +19,7 @@ public partial class RtsLaunchScreen : Control
 
     public event Action? DemoRequested;
     public event Action? Demo3DRequested;
+    public event Action? War3AssetLabRequested;
     public event Action<string>? TestRequested;
     public event Action? TestBrowserRequested;
 
@@ -43,17 +44,17 @@ public partial class RtsLaunchScreen : Control
         AddBackdrop();
         var center = FullRect<CenterContainer>();
         AddChild(center);
-        var panel = Panel(new Vector2(760f, 555f));
+        var panel = Panel(new Vector2(780f, 650f));
         center.AddChild(panel);
-        var margin = Margin(46);
+        var margin = Margin(36);
         panel.AddChild(margin);
-        var content = SpacedVBox(18);
+        var content = SpacedVBox(14);
         margin.AddChild(content);
         content.AddChild(Title("GODOT 4.7 · .NET RTS LAB", 34));
         content.AddChild(Text(
             "纯 C# 确定性 RTS 原型\n群体寻路 · 经济建造 · 战斗 · AI · 回放", 19,
             new Color("a9c9df")));
-        content.AddChild(Spacer(14));
+        content.AddChild(Spacer(8));
         content.AddChild(ActionButton(
             "进入大型 RTS 对局",
             "12 农民开局，对抗会采矿、扩张、攀科技和持续进攻的敌方 AI。",
@@ -63,10 +64,14 @@ public partial class RtsLaunchScreen : Control
             "同一套纯 C# 模拟与 AI；用球体、方块和低多边形展示单位、建筑与资源。",
             () => Demo3DRequested?.Invoke()));
         content.AddChild(ActionButton(
+            "打开 War3 资源实验室",
+            "浏览导出的单位、建筑、动画、透明贴图、ParticleEmitter2 与 Ribbon 特效。",
+            () => War3AssetLabRequested?.Invoke()));
+        content.AddChild(ActionButton(
             $"打开测试中心  ·  {_entries.Count} 项",
             "浏览每项黑盒测试的中文说明，并直接切换到对应场景。",
             () => ShowBrowser()));
-        content.AddChild(Spacer(10));
+        content.AddChild(Spacer(6));
         content.AddChild(Text(
             "测试中心运行的是与自动回归、录像完全相同的 VisualTestCatalog 场景。",
             14, new Color("7897ad")));

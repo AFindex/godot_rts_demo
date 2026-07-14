@@ -14,3 +14,14 @@
 /test_videos/20260710_161652/
 /test_videos/20260710_161725/
 /test_videos/20260710_163641/
+
+# Local research archive (2+ GB). Keep the loader/demo source in Git, not the
+# extracted third-party game payload.
+/assets/warcraft3/classic/models/
+/assets/warcraft3/classic/textures/
+/assets/warcraft3/classic/metadata/
+/assets/warcraft3/classic/audio/
+/assets/warcraft3/classic/fonts/
+/assets/warcraft3/classic/catalog/manifest.json
+/assets/warcraft3/classic/catalog/display_catalog.json
+/assets/warcraft3/classic/catalog/portrait_cameras.json
