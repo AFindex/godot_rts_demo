@@ -12,3 +12,5 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64.exe `
 
 \.\tools\record_demo.ps1 -Demo 3d-encounter
 ```
+
+3D 操作：左键点选/框选、右键智能命令、滚轮缩放、屏幕边缘滚屏、中键拖拽平移、`Alt+中键` 旋转；底部命令卡可建造/生产/研究，右下角小地图可移动镜头或下达命令，`D` 显示选中单位的 MoveGoal 与 SlotTarget。

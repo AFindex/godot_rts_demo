@@ -14,6 +14,9 @@ public partial class Rts3DWorldPresenter : Node3D
     private const float MinimumUnitRadius = 0.16f;
     private const float ProjectileHeight = 0.62f;
     private const float SelectionHeight = 0.035f;
+    private const float MovementDebugHeight = 0.085f;
+    private const float MovementTargetMarkerRadius = 0.13f;
+    private const float DefaultPointerFootprint = 32f;
 
     private readonly Dictionary<int, UnitVisual> _units = [];
     private readonly Dictionary<int, BuildingVisual> _buildings = [];
@@ -43,6 +46,36 @@ public partial class Rts3DWorldPresenter : Node3D
     private StandardMaterial3D? _selectionMaterial;
     private StandardMaterial3D? _mineralMaterial;
     private StandardMaterial3D? _vespeneMaterial;
+    private ImmediateMesh? _movementDebugMesh;
+    private MeshInstance3D? _movementDebugVisual;
+    private StandardMaterial3D? _moveGoalDebugMaterial;
+    private StandardMaterial3D? _slotTargetDebugMaterial;
+    private MeshInstance3D? _pointerPreviewVisual;
+    private BoxMesh? _pointerPreviewMesh;
+    private StandardMaterial3D? _validPointerPreviewMaterial;
+    private StandardMaterial3D? _invalidPointerPreviewMaterial;
+    private bool _debugMovementEnabled;
+
+    /// <summary>
+    /// Shows the selected units' high-level move goals and resolved destination
+    /// slots. This is presentation-only and never changes movement state.
+    /// </summary>
+    public bool DebugMovementEnabled
+    {
+        get => _debugMovementEnabled;
+        set
+        {
+            _debugMovementEnabled = value;
+            if (_movementDebugVisual is not null)
+            {
+                _movementDebugVisual.Visible = value;
+            }
+            if (!value)
+            {
+                _movementDebugMesh?.ClearSurfaces();
+            }
+        }
+    }
 
     public int PresentedEntityCount =>
         _units.Count + _buildings.Count + _resources.Count + _projectiles.Count;
@@ -52,8 +85,43 @@ public partial class Rts3DWorldPresenter : Node3D
         ArgumentNullException.ThrowIfNull(simulation);
         ClearVisuals();
         _simulation = simulation;
+        EnsureDebugVisuals();
         CreateStaticObstacles(simulation.World);
         Sync();
+    }
+
+    /// <summary>
+    /// Displays a ground-aligned footprint preview at a simulation position.
+    /// The optional footprint is expressed in simulation units and maps exactly
+    /// to the preview box's X/Z dimensions.
+    /// </summary>
+    public void SetPointerPreview(
+        NVector2 simulationPosition,
+        bool valid,
+        NVector2? footprintSize = null)
+    {
+        EnsureDebugVisuals();
+        var footprint = footprintSize ?? new NVector2(
+            DefaultPointerFootprint, DefaultPointerFootprint);
+        var size = SimPlane3DTransform.ToWorldSize(new NVector2(
+            MathF.Abs(footprint.X), MathF.Abs(footprint.Y)));
+        var height = MathF.Max(0.10f, MathF.Min(size.X, size.Y) * 0.16f);
+
+        _pointerPreviewVisual!.Position = SimPlane3DTransform.ToWorld(
+            simulationPosition, height * 0.5f);
+        _pointerPreviewVisual.Scale = new Vector3(size.X, height, size.Y);
+        _pointerPreviewVisual.MaterialOverride = valid
+            ? _validPointerPreviewMaterial
+            : _invalidPointerPreviewMaterial;
+        _pointerPreviewVisual.Visible = true;
+    }
+
+    public void HidePointerPreview()
+    {
+        if (_pointerPreviewVisual is not null)
+        {
+            _pointerPreviewVisual.Visible = false;
+        }
     }
 
     public void SetSelection(
@@ -82,6 +150,98 @@ public partial class Rts3DWorldPresenter : Node3D
         SyncBuildings(_simulation);
         SyncResources(_simulation);
         SyncProjectiles(_simulation);
+        SyncMovementDebug(_simulation, interpolation);
+    }
+
+    private void SyncMovementDebug(
+        RtsSimulation simulation,
+        float interpolation)
+    {
+        if (!_debugMovementEnabled || _movementDebugMesh is null ||
+            _movementDebugVisual is null)
+        {
+            return;
+        }
+
+        _movementDebugMesh.ClearSurfaces();
+        _movementDebugVisual.Visible = true;
+        if (_selectedUnits.Count == 0)
+        {
+            return;
+        }
+
+        AppendMovementDebugSurface(
+            simulation,
+            interpolation,
+            useSlotTarget: false,
+            _moveGoalDebugMaterial!,
+            new Color("f6c744"));
+        AppendMovementDebugSurface(
+            simulation,
+            interpolation,
+            useSlotTarget: true,
+            _slotTargetDebugMaterial!,
+            new Color("42e6ff"));
+    }
+
+    private void AppendMovementDebugSurface(
+        RtsSimulation simulation,
+        float interpolation,
+        bool useSlotTarget,
+        Material material,
+        Color color)
+    {
+        var hasVertices = false;
+        foreach (var unit in _selectedUnits)
+        {
+            if ((uint)unit >= (uint)simulation.Units.Count ||
+                !simulation.Units.Alive[unit])
+            {
+                continue;
+            }
+
+            if (!hasVertices)
+            {
+                _movementDebugMesh!.SurfaceBegin(
+                    Mesh.PrimitiveType.Lines, material);
+                hasVertices = true;
+            }
+
+            var simulationPosition = NVector2.Lerp(
+                simulation.Units.PreviousPositions[unit],
+                simulation.Units.Positions[unit],
+                interpolation);
+            var target = useSlotTarget
+                ? simulation.Units.SlotTargets[unit]
+                : simulation.Units.MoveGoals[unit];
+            var from = SimPlane3DTransform.ToWorld(
+                simulationPosition, MovementDebugHeight);
+            var to = SimPlane3DTransform.ToWorld(target, MovementDebugHeight);
+
+            AppendDebugLine(from, to, color);
+            AppendTargetMarker(to, color);
+        }
+
+        if (hasVertices)
+        {
+            _movementDebugMesh!.SurfaceEnd();
+        }
+    }
+
+    private void AppendTargetMarker(Vector3 target, Color color)
+    {
+        var xOffset = new Vector3(MovementTargetMarkerRadius, 0f, 0f);
+        var zOffset = new Vector3(0f, 0f, MovementTargetMarkerRadius);
+        AppendDebugLine(target - xOffset, target + xOffset, color);
+        AppendDebugLine(target - zOffset, target + zOffset, color);
+    }
+
+    private void AppendDebugLine(Vector3 from, Vector3 to, Color color)
+    {
+        _movementDebugMesh!.SurfaceSetColor(color);
+        _movementDebugMesh.SurfaceAddVertex(from);
+        _movementDebugMesh.SurfaceSetColor(color);
+        _movementDebugMesh.SurfaceAddVertex(to);
     }
 
     private void SyncUnits(RtsSimulation simulation, float interpolation)
@@ -407,6 +567,47 @@ public partial class Rts3DWorldPresenter : Node3D
         _obstacles.Clear();
         _selectedUnits.Clear();
         _selectedBuildings.Clear();
+        _movementDebugMesh?.ClearSurfaces();
+        if (_movementDebugVisual is not null)
+        {
+            _movementDebugVisual.Visible = false;
+        }
+        HidePointerPreview();
+    }
+
+    private void EnsureDebugVisuals()
+    {
+        if (_movementDebugVisual is null)
+        {
+            _movementDebugMesh = new ImmediateMesh();
+            _moveGoalDebugMaterial = DebugLineMaterial();
+            _slotTargetDebugMaterial = DebugLineMaterial();
+            _movementDebugVisual = new MeshInstance3D
+            {
+                Name = "SelectedMovementDebug",
+                Mesh = _movementDebugMesh,
+                Visible = _debugMovementEnabled,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            };
+            AddChild(_movementDebugVisual);
+        }
+
+        if (_pointerPreviewVisual is null)
+        {
+            _pointerPreviewMesh = new BoxMesh { Size = Vector3.One };
+            _validPointerPreviewMaterial = PointerPreviewMaterial(
+                new Color(0.20f, 0.95f, 0.35f, 0.38f));
+            _invalidPointerPreviewMaterial = PointerPreviewMaterial(
+                new Color(1f, 0.20f, 0.18f, 0.42f));
+            _pointerPreviewVisual = new MeshInstance3D
+            {
+                Name = "PointerFootprintPreview",
+                Mesh = _pointerPreviewMesh,
+                Visible = false,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            };
+            AddChild(_pointerPreviewVisual);
+        }
     }
 
     private Mesh UnitMesh(UnitVisualKind kind)
@@ -445,35 +646,7 @@ public partial class Rts3DWorldPresenter : Node3D
             return mesh;
         }
 
-        mesh = function switch
-        {
-            BuildingFunctionKind.Supply => new BoxMesh { Size = Vector3.One },
-            BuildingFunctionKind.Production => new PrismMesh
-            {
-                Size = Vector3.One
-            },
-            BuildingFunctionKind.TownHall => new CylinderMesh
-            {
-                TopRadius = 0.5f,
-                BottomRadius = 0.5f,
-                Height = 1f,
-                RadialSegments = 8
-            },
-            BuildingFunctionKind.Refinery => new CylinderMesh
-            {
-                TopRadius = 0.36f,
-                BottomRadius = 0.5f,
-                Height = 1f,
-                RadialSegments = 12
-            },
-            _ => new SphereMesh
-            {
-                Radius = 0.5f,
-                Height = 1f,
-                RadialSegments = 10,
-                Rings = 5
-            }
-        };
+        mesh = new BoxMesh { Size = Vector3.One };
         _buildingMeshes.Add(function, mesh);
         return mesh;
     }
@@ -602,6 +775,27 @@ public partial class Rts3DWorldPresenter : Node3D
             EmissionEnergyMultiplier = 1.3f,
             Roughness = 0.35f,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha
+        };
+
+    private static StandardMaterial3D DebugLineMaterial() => new()
+    {
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        VertexColorUseAsAlbedo = true,
+        NoDepthTest = true,
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha
+    };
+
+    private static StandardMaterial3D PointerPreviewMaterial(Color color) =>
+        new()
+        {
+            AlbedoColor = color,
+            EmissionEnabled = true,
+            Emission = new Color(color.R, color.G, color.B),
+            EmissionEnergyMultiplier = 0.32f,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+            NoDepthTest = false
         };
 
     private static StandardMaterial3D OpaqueMaterial(

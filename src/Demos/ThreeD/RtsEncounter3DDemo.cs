@@ -13,7 +13,6 @@ namespace RtsDemo.Demos.ThreeD;
 public partial class RtsEncounter3DDemo : Node3D
 {
     private const int PlayerId = PlayableSkirmishScenario.PlayerId;
-    private const float FixedDelta = 1f / 60f;
     private const float MinimumDragPixels = 7f;
 
     private readonly HashSet<int> _selectedUnits = [];
@@ -22,18 +21,18 @@ public partial class RtsEncounter3DDemo : Node3D
     private PlayableSkirmishRuntime? _runtime;
     private Rts3DWorldPresenter? _presenter;
     private Camera3D? _camera;
-    private Label? _hud;
-    private Label? _status;
-    private Label? _mode;
-    private Vector3 _cameraTarget;
-    private float _cameraDistance = 30f;
-    private float _cameraYaw = -0.55f;
-    private float _cameraPitch = 0.92f;
+    private Rts3DCameraController? _cameraController;
+    private Rts3DHud? _hud;
     private Vector2 _dragStart;
     private Vector2 _dragCurrent;
     private bool _dragging;
     private bool _attackMovePending;
     private int _pendingBuildingType = -1;
+    private bool _debugMovement;
+    private string _modeText = "普通选择";
+    private string _statusText = "就绪";
+    private long _lastMinimapTick = -1;
+    private int _lastCommandUiSignature = int.MinValue;
     private bool _smoke;
     private long _smokeEndTick;
     private int _smokeDurationTicks;
@@ -58,12 +57,12 @@ public partial class RtsEncounter3DDemo : Node3D
 
         CreateLighting();
         CreateGround(world);
-        CreateCamera();
+        CreateCamera(world);
         _presenter = new Rts3DWorldPresenter { Name = "WorldPresenter" };
         AddChild(_presenter);
         _presenter.Initialize(_simulation);
         CreateHud();
-        FocusAt(PlayableSkirmishScenario.PlayerHome);
+        FocusAt(PlayableSkirmishScenario.PlayerHome, immediate: true);
 
         var args = OS.GetCmdlineUserArgs();
         var recording = args.Contains("--demo-3d-recording");
@@ -72,8 +71,14 @@ public partial class RtsEncounter3DDemo : Node3D
         {
             _smokeDurationTicks = recording ? 900 : 1_800;
             _smokeEndTick = _simulation.Metrics.Tick + _smokeDurationTicks;
-            _status!.Text = "自动验证：镜头将巡视基地、中路与敌方发展";
+            Report("自动验证：镜头将巡视基地、中路与敌方发展");
         }
+        if (recording && _runtime is not null)
+        {
+            _selectedUnits.UnionWith(_runtime.PlayerWorkers.Take(6));
+            SetMovementDebug(true);
+        }
+        UpdateCommandOptions(force: true);
         UpdateHud();
     }
 
@@ -84,6 +89,7 @@ public partial class RtsEncounter3DDemo : Node3D
         _simulation.Tick((float)Math.Min(delta, 0.05));
         PruneSelection();
         _presenter?.SetSelection(_selectedUnits, _selectedBuildings);
+        UpdateCommandOptions();
 
         if (_smoke)
         {
@@ -94,12 +100,13 @@ public partial class RtsEncounter3DDemo : Node3D
                 return;
             }
         }
+        UpdateMinimap();
         UpdateHud();
     }
 
     public override void _Process(double delta)
     {
-        UpdateCamera((float)delta);
+        UpdatePointerPresentation();
         var interpolation = (float)Engine.GetPhysicsInterpolationFraction();
         _presenter?.Sync(interpolation);
     }
@@ -114,6 +121,7 @@ public partial class RtsEncounter3DDemo : Node3D
                 break;
             case InputEventMouseMotion motion when _dragging:
                 _dragCurrent = motion.Position;
+                _hud?.SetDragSelection(_dragStart, _dragCurrent, visible: true);
                 break;
             case InputEventKey key when key.Pressed && !key.Echo:
                 HandleKey(key.Keycode);
@@ -123,16 +131,6 @@ public partial class RtsEncounter3DDemo : Node3D
 
     private void HandleMouseButton(InputEventMouseButton mouse)
     {
-        if (mouse.ButtonIndex == MouseButton.WheelUp && mouse.Pressed)
-        {
-            _cameraDistance = MathF.Max(13f, _cameraDistance - 3f);
-            return;
-        }
-        if (mouse.ButtonIndex == MouseButton.WheelDown && mouse.Pressed)
-        {
-            _cameraDistance = MathF.Min(62f, _cameraDistance + 3f);
-            return;
-        }
         if (mouse.ButtonIndex == MouseButton.Left)
         {
             if (mouse.Pressed)
@@ -140,17 +138,23 @@ public partial class RtsEncounter3DDemo : Node3D
                 _dragging = true;
                 _dragStart = mouse.Position;
                 _dragCurrent = mouse.Position;
+                _hud?.SetDragSelection(_dragStart, _dragCurrent, visible: true);
             }
             else if (_dragging)
             {
                 _dragging = false;
+                _hud?.SetDragSelection(_dragStart, mouse.Position, visible: false);
                 CompleteLeftClick(mouse.Position);
             }
             return;
         }
         if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed)
         {
-            CancelTargetMode();
+            if (_pendingBuildingType >= 0 || _attackMovePending)
+            {
+                CancelTargetMode();
+                return;
+            }
             if (TryGroundPoint(mouse.Position, out var point))
                 IssueSmartCommand(point, queued: Input.IsKeyPressed(Key.Shift));
         }
@@ -184,13 +188,10 @@ public partial class RtsEncounter3DDemo : Node3D
                 CancelTargetMode();
                 break;
             case Key.A:
-                _attackMovePending = _selectedUnits.Count > 0;
-                _pendingBuildingType = -1;
-                SetMode(_attackMovePending ? "攻击移动：左键指定目标" : "请先选择单位");
+                BeginAttackMove();
                 break;
             case Key.S:
-                if (_simulation is not null && _selectedUnits.Count > 0)
-                    Report(_simulation.IssuePlayerStop(PlayerId, SelectedUnits()).Code.ToString());
+                StopSelection();
                 break;
             case Key.Q:
                 BeginBuild(DemoBuildingTypes.SupplyDepot.Id);
@@ -228,7 +229,28 @@ public partial class RtsEncounter3DDemo : Node3D
             case Key.F:
                 FocusSelection();
                 break;
+            case Key.D:
+                SetMovementDebug(!_debugMovement);
+                break;
+            case Key.Home:
+                FocusAt(PlayableSkirmishScenario.PlayerHome);
+                break;
         }
+    }
+
+    private void BeginAttackMove()
+    {
+        _attackMovePending = _selectedUnits.Count > 0;
+        _pendingBuildingType = -1;
+        _hud?.SetBuildMode(null);
+        SetMode(_attackMovePending ? "攻击移动：左键指定目标" : "请先选择单位");
+    }
+
+    private void StopSelection()
+    {
+        if (_simulation is null || _selectedUnits.Count == 0) return;
+        var result = _simulation.IssuePlayerStop(PlayerId, SelectedUnits());
+        Report(result.Succeeded ? "停止" : $"停止失败：{result.Code}");
     }
 
     private void BeginBuild(int typeId)
@@ -241,41 +263,70 @@ public partial class RtsEncounter3DDemo : Node3D
         }
         _pendingBuildingType = typeId;
         _attackMovePending = false;
-        SetMode($"放置 {DemoBuildingTypes.CreateCatalog().Type(typeId).Name}：左键确认，右键取消");
+        var profile = DemoBuildingTypes.CreateCatalog().Type(typeId);
+        _hud?.SetBuildMode(profile.Name);
+        SetMode($"放置 {profile.Name}");
     }
 
     private void IssueConstruction(NVector2 point, bool queued)
     {
         if (_simulation is null || _pendingBuildingType < 0) return;
-        var builder = _selectedUnits
+        var profile = DemoBuildingTypes.CreateCatalog().Type(_pendingBuildingType);
+        if (!TryResolveConstructionTarget(
+                point, profile, queued,
+                out var builder, out var center, out var refinery,
+                out var preview))
+        {
+            Report(preview);
+            return;
+        }
+        var result = _simulation.IssueConstruction(
+            PlayerId, builder, profile, center, refinery, queued);
+        Report(result.Succeeded
+            ? $"已下达建造 {profile.Name}"
+            : $"建造失败：{result.Code}/{result.PlacementCode}");
+        if (result.Succeeded)
+            ShowCommandMarker(center, Rts3DCommandMarkerKind.Build);
+        if (result.Succeeded && !Input.IsKeyPressed(Key.Shift))
+            CancelTargetMode();
+    }
+
+    private bool TryResolveConstructionTarget(
+        NVector2 point,
+        BuildingTypeProfile profile,
+        bool queued,
+        out int builder,
+        out NVector2 center,
+        out EconomyResourceNodeId refinery,
+        out string resultText)
+    {
+        builder = -1;
+        center = point;
+        refinery = default;
+        resultText = "没有可用农民";
+        if (_simulation is null) return false;
+        builder = _selectedUnits
             .Where(unit => _simulation.Economy.IsWorkerOwnedBy(unit, PlayerId))
             .OrderBy(unit => NVector2.DistanceSquared(_simulation.Units.Positions[unit], point))
             .FirstOrDefault(-1);
-        if (builder < 0)
-        {
-            Report("没有可用农民");
-            return;
-        }
-        var profile = DemoBuildingTypes.CreateCatalog().Type(_pendingBuildingType);
-        var refinery = default(EconomyResourceNodeId);
+        if (builder < 0) return false;
         if (profile.RequiresVespeneNode)
         {
             var gas = NearestResource(point, EconomyResourceKind.VespeneGas, 90f);
             if (gas is null)
             {
-                Report("精炼厂必须放在气矿上");
-                return;
+                resultText = "精炼厂必须放在气矿上";
+                return false;
             }
             refinery = gas.Value.Id;
-            point = gas.Value.Position;
+            center = gas.Value.Position;
         }
-        var result = _simulation.IssueConstruction(
-            PlayerId, builder, profile, point, refinery, queued);
-        Report(result.Succeeded
-            ? $"已下达建造 {profile.Name}"
-            : $"建造失败：{result.Code}/{result.PlacementCode}");
-        if (result.Succeeded && !Input.IsKeyPressed(Key.Shift))
-            CancelTargetMode();
+        var preview = _simulation.PreviewConstruction(
+            PlayerId, builder, profile, center, refinery, queued);
+        resultText = preview.Succeeded
+            ? "可放置"
+            : $"不可放置：{preview.Code}/{preview.PlacementCode}";
+        return preview.Succeeded;
     }
 
     private void Train(int recipeId)
@@ -322,6 +373,8 @@ public partial class RtsEncounter3DDemo : Node3D
         var result = _simulation.IssuePlayerAttackMove(
             PlayerId, SelectedUnits(), point, queued);
         Report(result.Succeeded ? "攻击移动" : $"攻击移动失败：{result.Code}");
+        if (result.Succeeded)
+            ShowCommandMarker(point, Rts3DCommandMarkerKind.Attack);
         if (!queued) CancelTargetMode();
     }
 
@@ -332,6 +385,17 @@ public partial class RtsEncounter3DDemo : Node3D
         var result = _simulation.IssuePlayerSmartCommand(
             PlayerId, SelectedUnits(), target, attackMoveModifier: false, queued);
         Report(result.Succeeded ? $"智能命令：{target.Kind}" : $"命令失败：{result.Code}");
+        if (result.Succeeded)
+        {
+            var kind = target.Kind is SmartCommandTargetKind.EnemyUnit or
+                SmartCommandTargetKind.EnemyBuilding
+                ? Rts3DCommandMarkerKind.Attack
+                : target.Kind is SmartCommandTargetKind.ResourceNode or
+                    SmartCommandTargetKind.FriendlyBuilding
+                    ? Rts3DCommandMarkerKind.Interact
+                    : Rts3DCommandMarkerKind.Move;
+            ShowCommandMarker(target.Position, kind);
+        }
     }
 
     private SmartCommandTarget ResolveSmartTarget(NVector2 point)
@@ -418,6 +482,7 @@ public partial class RtsEncounter3DDemo : Node3D
         if (unit >= 0)
         {
             _selectedUnits.Add(unit);
+            UpdateCommandOptions(force: true);
             return;
         }
         foreach (var building in _simulation.CreateGameplayBuildingOverview())
@@ -427,6 +492,7 @@ public partial class RtsEncounter3DDemo : Node3D
             _selectedBuildings.Add(building.Id.Value);
             break;
         }
+        UpdateCommandOptions(force: true);
     }
 
     private void SelectRectangle(Vector2 from, Vector2 to, bool additive)
@@ -446,6 +512,7 @@ public partial class RtsEncounter3DDemo : Node3D
             if (!_camera.IsPositionBehind(world) && rect.HasPoint(_camera.UnprojectPosition(world)))
                 _selectedUnits.Add(unit);
         }
+        UpdateCommandOptions(force: true);
     }
 
     private int[] SelectedUnits() => _selectedUnits.Order().ToArray();
@@ -483,6 +550,12 @@ public partial class RtsEncounter3DDemo : Node3D
 
     private bool TryGroundPoint(Vector2 screen, out NVector2 point)
     {
+        if (!TryGroundPointRaw(screen, out point)) return false;
+        return _simulation?.World.Bounds.Contains(point) == true;
+    }
+
+    private bool TryGroundPointRaw(Vector2 screen, out NVector2 point)
+    {
         point = default;
         if (_camera is null) return false;
         var origin = _camera.ProjectRayOrigin(screen);
@@ -491,10 +564,10 @@ public partial class RtsEncounter3DDemo : Node3D
         var distance = -origin.Y / direction.Y;
         if (distance < 0f) return false;
         point = SimPlane3DTransform.ToSimulation(origin + direction * distance);
-        return _simulation?.World.Bounds.Contains(point) == true;
+        return true;
     }
 
-    private void CreateCamera()
+    private void CreateCamera(StaticWorld world)
     {
         _camera = new Camera3D
         {
@@ -505,6 +578,9 @@ public partial class RtsEncounter3DDemo : Node3D
             Far = 240f
         };
         AddChild(_camera);
+        _cameraController = new Rts3DCameraController { Name = "CameraController" };
+        AddChild(_cameraController);
+        _cameraController.Initialize(_camera, world.Bounds);
     }
 
     private void CreateLighting()
@@ -552,38 +628,6 @@ public partial class RtsEncounter3DDemo : Node3D
         AddChild(ground);
     }
 
-    private void UpdateCamera(float delta)
-    {
-        if (_camera is null || _simulation is null) return;
-        var forward = new Vector3(-MathF.Sin(_cameraYaw), 0f, -MathF.Cos(_cameraYaw));
-        var right = new Vector3(forward.Z, 0f, -forward.X);
-        var movement = Vector3.Zero;
-        if (Input.IsKeyPressed(Key.Up)) movement += forward;
-        if (Input.IsKeyPressed(Key.Down)) movement -= forward;
-        if (Input.IsKeyPressed(Key.Left)) movement -= right;
-        if (Input.IsKeyPressed(Key.Right)) movement += right;
-        if (Input.IsKeyPressed(Key.Comma)) _cameraYaw -= delta * 1.25f;
-        if (Input.IsKeyPressed(Key.Period)) _cameraYaw += delta * 1.25f;
-        if (movement.LengthSquared() > 0f)
-            _cameraTarget += movement.Normalized() * delta * (_cameraDistance * 0.72f);
-        var bounds = _simulation.World.Bounds;
-        _cameraTarget.X = Math.Clamp(
-            _cameraTarget.X,
-            bounds.Min.X * SimPlane3DTransform.WorldScale,
-            bounds.Max.X * SimPlane3DTransform.WorldScale);
-        _cameraTarget.Z = Math.Clamp(
-            _cameraTarget.Z,
-            bounds.Min.Y * SimPlane3DTransform.WorldScale,
-            bounds.Max.Y * SimPlane3DTransform.WorldScale);
-        var horizontal = MathF.Cos(_cameraPitch) * _cameraDistance;
-        var offset = new Vector3(
-            MathF.Sin(_cameraYaw) * horizontal,
-            MathF.Sin(_cameraPitch) * _cameraDistance,
-            MathF.Cos(_cameraYaw) * horizontal);
-        _camera.Position = _cameraTarget + offset;
-        _camera.LookAt(_cameraTarget, Vector3.Up);
-    }
-
     private void UpdateSmokeCamera()
     {
         if (_simulation is null) return;
@@ -596,64 +640,212 @@ public partial class RtsEncounter3DDemo : Node3D
             < 0.75f => new NVector2(1_600f, 900f),
             _ => PlayableSkirmishScenario.EnemyHome
         };
-        var desired = SimPlane3DTransform.ToWorld(target);
-        _cameraTarget = _cameraTarget.Lerp(desired, 0.025f);
+        var distance = progress is < 0.2f or > 0.8f ? 25f : 34f;
+        var yaw = -0.72f + progress * 0.38f;
+        _cameraController?.SetAutomationTarget(target, distance, yaw);
     }
 
-    private void FocusAt(NVector2 point) =>
-        _cameraTarget = SimPlane3DTransform.ToWorld(point);
+    private void FocusAt(NVector2 point, bool immediate = false) =>
+        _cameraController?.FocusAt(point, immediate);
 
     private void CancelTargetMode()
     {
         _pendingBuildingType = -1;
         _attackMovePending = false;
+        _presenter?.HidePointerPreview();
+        _hud?.SetBuildMode(null);
         SetMode("普通选择模式");
     }
 
     private void CreateHud()
     {
-        var layer = new CanvasLayer { Layer = 20 };
-        AddChild(layer);
-        var root = new VBoxContainer
-        {
-            Position = new Vector2(16f, 14f),
-            CustomMinimumSize = new Vector2(570f, 0f),
-            MouseFilter = Control.MouseFilterEnum.Ignore
-        };
-        root.AddThemeConstantOverride("separation", 5);
-        layer.AddChild(root);
-        _hud = Label(16, new Color("e9f6ff"));
-        _mode = Label(15, new Color("79d8ff"));
-        _status = Label(14, new Color("ffd37a"));
-        root.AddChild(_hud);
-        root.AddChild(_mode);
-        root.AddChild(_status);
-        root.AddChild(new HSeparator());
-        var help = Label(13, new Color("b4c8d8"));
-        help.Text = "左键/框选 · 右键智能命令 · A攻击移动 · S停止 · F聚焦\n" +
-                    "方向键移动 · ,/.旋转 · 滚轮缩放\n" +
-                    "建造 Q补给 W兵营 E学院 R气矿 T基地 · 训练 Z陆战队 X重兵 C农民 · 科技 V/B/N";
-        root.AddChild(help);
-        var back = new Button
-        {
-            Text = "返回 2D Demo / 测试中心",
-            Position = new Vector2(16f, 650f),
-            CustomMinimumSize = new Vector2(230f, 42f)
-        };
-        back.Pressed += () => GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
-        layer.AddChild(back);
-        SetMode("普通选择模式");
+        _hud = new Rts3DHud { Name = "EncounterHud" };
+        AddChild(_hud);
+        _hud.AttackMoveRequested += BeginAttackMove;
+        _hud.StopRequested += StopSelection;
+        _hud.FocusRequested += FocusSelection;
+        _hud.BuildRequested += BeginBuild;
+        _hud.TrainRequested += Train;
+        _hud.ResearchRequested += Research;
+        _hud.ToggleDebugRequested += () => SetMovementDebug(!_debugMovement);
+        _hud.Return2DRequested += () =>
+            GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
+        _hud.MinimapFocusRequested += point => FocusAt(point);
+        _hud.MinimapSmartCommandRequested += point =>
+            IssueSmartCommand(point, queued: Input.IsKeyPressed(Key.Shift));
+        SetMode("普通选择");
     }
 
-    private static Label Label(int size, Color color)
+    private void UpdatePointerPresentation()
     {
-        var label = new Label();
-        label.AddThemeFontSizeOverride("font_size", size);
-        label.AddThemeColorOverride("font_color", color);
-        label.AddThemeColorOverride("font_shadow_color", new Color("000000cc"));
-        label.AddThemeConstantOverride("shadow_offset_x", 2);
-        label.AddThemeConstantOverride("shadow_offset_y", 2);
-        return label;
+        if (_simulation is null || _presenter is null) return;
+        var screen = GetViewport().GetMousePosition();
+        if (!TryGroundPoint(screen, out var point))
+        {
+            _presenter.HidePointerPreview();
+            return;
+        }
+        if (_pendingBuildingType >= 0)
+        {
+            var profile = DemoBuildingTypes.CreateCatalog().Type(_pendingBuildingType);
+            var valid = TryResolveConstructionTarget(
+                point, profile, Input.IsKeyPressed(Key.Shift),
+                out _, out var center, out _, out _);
+            _presenter.SetPointerPreview(center, valid, profile.Size);
+            return;
+        }
+        _presenter.SetPointerPreview(
+            point,
+            valid: true,
+            new NVector2(_attackMovePending ? 18f : 10f));
+    }
+
+    private void ShowCommandMarker(NVector2 point, Rts3DCommandMarkerKind kind)
+    {
+        if (_camera is null || _hud is null) return;
+        var world = SimPlane3DTransform.ToWorld(point, 0.1f);
+        if (_camera.IsPositionBehind(world)) return;
+        _hud.ShowCommandMarker(_camera.UnprojectPosition(world), kind);
+    }
+
+    private void SetMovementDebug(bool enabled)
+    {
+        _debugMovement = enabled;
+        if (_presenter is not null) _presenter.DebugMovementEnabled = enabled;
+        _hud?.SetDebugEnabled(enabled);
+        Report(enabled
+            ? "寻路调试开启：黄色=MoveGoal，青色=SlotTarget"
+            : "寻路调试关闭");
+    }
+
+    private void UpdateCommandOptions(bool force = false)
+    {
+        if (_simulation is null || _hud is null) return;
+        var workerSelected = _selectedUnits.Any(unit =>
+            _simulation.Economy.IsWorkerOwnedBy(unit, PlayerId));
+        var selectedProfiles = _selectedBuildings
+            .Select(value => new GameplayBuildingId(value))
+            .Where(_simulation.Construction.IsAlive)
+            .Select(_simulation.Construction.Observe)
+            .Where(value => value.PlayerId == PlayerId &&
+                            value.State == BuildingLifecycleState.Completed)
+            .Select(value => value.Type.Id)
+            .ToHashSet();
+        var signature = HashCode.Combine(
+            workerSelected,
+            _selectedUnits.Count,
+            _selectedBuildings.Count,
+            selectedProfiles.Aggregate(17, (hash, value) => hash * 31 + value));
+        if (!force && signature == _lastCommandUiSignature) return;
+        _lastCommandUiSignature = signature;
+
+        var buildingCatalog = DemoBuildingTypes.CreateCatalog();
+        string[] buildKeys = ["Q", "W", "T", "R", "E"];
+        _hud.SetCommandOptions(
+            Rts3DHudCommandGroup.Build,
+            buildingCatalog.Types.ToArray().Select(profile =>
+                new Rts3DHudCommandOption(
+                    profile.Id,
+                    profile.Name,
+                    buildKeys[profile.Id],
+                    $"{profile.Size.X:0}×{profile.Size.Y:0} footprint · " +
+                    $"{profile.Cost.Minerals}/{profile.Cost.VespeneGas}",
+                    workerSelected)).ToArray());
+
+        var production = DemoProductionCatalog.CreateSnapshot();
+        string[] trainKeys = ["Z", "X", "C"];
+        _hud.SetCommandOptions(
+            Rts3DHudCommandGroup.Train,
+            production.Recipes.ToArray().Select(recipe =>
+                new Rts3DHudCommandOption(
+                    recipe.Id,
+                    recipe.UnitType.Name,
+                    trainKeys[recipe.Id],
+                    $"{recipe.Cost.Minerals}/{recipe.Cost.VespeneGas} · " +
+                    $"人口 {recipe.Cost.Supply}",
+                    selectedProfiles.Contains(recipe.ProducerBuildingTypeId)))
+                .ToArray());
+
+        var technologies = DemoTechnologies.CreateCatalog();
+        string[] researchKeys = ["V", "B", "N"];
+        _hud.SetCommandOptions(
+            Rts3DHudCommandGroup.Research,
+            technologies.Technologies.ToArray().Select(technology =>
+                new Rts3DHudCommandOption(
+                    technology.Id,
+                    technology.Name,
+                    researchKeys[technology.Id],
+                    $"{technology.Cost.Minerals}/{technology.Cost.VespeneGas}",
+                    selectedProfiles.Contains(technology.ResearcherBuildingTypeId)))
+                .ToArray());
+    }
+
+    private void UpdateMinimap()
+    {
+        if (_simulation is null || _hud is null ||
+            _lastMinimapTick == _simulation.Metrics.Tick ||
+            _simulation.Metrics.Tick % 6 != 0)
+        {
+            return;
+        }
+        _lastMinimapTick = _simulation.Metrics.Tick;
+        var markers = new List<MinimapMarker>(
+            _simulation.Units.Count + _simulation.Construction.Count);
+        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        {
+            if (!_simulation.Units.Alive[unit]) continue;
+            markers.Add(new MinimapMarker(
+                unit,
+                MinimapMarkerKind.Unit,
+                _simulation.Combat.Teams[unit],
+                _simulation.Units.Positions[unit],
+                new NVector2(_simulation.Units.Radii[unit] * 2f),
+                _selectedUnits.Contains(unit)));
+        }
+        foreach (var building in _simulation.CreateGameplayBuildingOverview())
+        {
+            if (building.IsTerminal) continue;
+            markers.Add(new MinimapMarker(
+                building.Id.Value,
+                MinimapMarkerKind.Building,
+                building.PlayerId,
+                (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                building.Bounds.Max - building.Bounds.Min,
+                _selectedBuildings.Contains(building.Id.Value)));
+        }
+        _hud.SetMinimapSnapshot(new MinimapSnapshot(
+            _simulation.World.Bounds,
+            VisibleWorldRect(),
+            _simulation.World.Obstacles.ToArray(),
+            markers.ToArray()));
+    }
+
+    private SimRect VisibleWorldRect()
+    {
+        if (_simulation is null || _camera is null) return default;
+        var size = GetViewport().GetVisibleRect().Size;
+        Vector2[] corners =
+        [
+            Vector2.Zero,
+            new Vector2(size.X, 0f),
+            size,
+            new Vector2(0f, size.Y)
+        ];
+        var points = new List<NVector2>(4);
+        foreach (var corner in corners)
+        {
+            if (TryGroundPointRaw(corner, out var point))
+                points.Add(_simulation.World.Bounds.Clamp(point));
+        }
+        if (points.Count == 0)
+        {
+            var target = _cameraController?.Target ??
+                         (_simulation.World.Bounds.Min + _simulation.World.Bounds.Max) * 0.5f;
+            return new SimRect(target - new NVector2(200f), target + new NVector2(200f));
+        }
+        var minimum = points.Aggregate(NVector2.Min);
+        var maximum = points.Aggregate(NVector2.Max);
+        return new SimRect(minimum, maximum);
     }
 
     private void UpdateHud()
@@ -667,21 +859,31 @@ public partial class RtsEncounter3DDemo : Node3D
             _simulation.Combat);
         var enemy = match.Players.FirstOrDefault(value =>
             value.PlayerId == PlayableSkirmishScenario.EnemyId);
-        _hud.Text = $"3D 遭遇战  t={_simulation.Metrics.Tick / 60f:0.0}s   " +
-                    $"矿物 {economy.Minerals}  气体 {economy.VespeneGas}  " +
-                    $"人口 {economy.SupplyUsed}/{economy.SupplyCapacity}\n" +
-                    $"选择 {_selectedUnits.Count} 单位 / {_selectedBuildings.Count} 建筑   " +
-                    $"敌方：{enemy.Workers} 农民 / {enemy.CombatUnits} 军队 / {enemy.ActiveBuildings} 建筑";
+        _hud.UpdateSnapshot(new Rts3DHudSnapshot(
+            _simulation.Metrics.Tick / 60.0,
+            economy.Minerals,
+            economy.VespeneGas,
+            economy.SupplyUsed,
+            economy.SupplyCapacity,
+            _selectedUnits.Count,
+            _selectedBuildings.Count,
+            enemy.Workers,
+            enemy.CombatUnits,
+            enemy.ActiveBuildings,
+            _modeText,
+            _statusText));
     }
 
     private void SetMode(string value)
     {
-        if (_mode is not null) _mode.Text = value;
+        _modeText = value;
+        _hud?.SetMode(value);
     }
 
     private void Report(string value)
     {
-        if (_status is not null) _status.Text = value;
+        _statusText = value;
+        _hud?.SetStatus(value);
     }
 
     private void FinishSmoke()
@@ -693,10 +895,15 @@ public partial class RtsEncounter3DDemo : Node3D
         var enemyFacilities = buildings.Count(value =>
             !value.IsTerminal && value.PlayerId == PlayableSkirmishScenario.EnemyId);
         var visibleShapes = _presenter?.PresentedEntityCount ?? 0;
-        var passed = player.Minerals > 1_800 && enemyFacilities >= 3 && visibleShapes >= 40;
+        var presentationReady = _cameraController?.IsInitialized == true &&
+                                _hud is not null &&
+                                (_smokeDurationTicks != 900 || _debugMovement);
+        var passed = player.Minerals > 1_800 && enemyFacilities >= 3 &&
+                     visibleShapes >= 40 && presentationReady;
         GD.Print($"RTS_3D_DEMO_{(passed ? "PASS" : "FAIL")} " +
                  $"ticks={_simulation.Metrics.Tick}, bank={player.Minerals}/{player.VespeneGas}, " +
-                 $"enemyFacilities={enemyFacilities}, shapes={visibleShapes}");
+                 $"enemyFacilities={enemyFacilities}, shapes={visibleShapes}, " +
+                 $"presentation={presentationReady}, debug={_debugMovement}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }
