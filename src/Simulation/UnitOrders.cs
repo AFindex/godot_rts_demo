@@ -37,8 +37,10 @@ public static class UnitOrderContract
             ? order.TargetUnit >= 0
             : order.TargetUnit == -1) &&
         (order.Kind is UnitOrderKind.AttackBuilding or
-            UnitOrderKind.ResumeConstruction
+            UnitOrderKind.ResumeConstruction or UnitOrderKind.Move
             ? order.TargetBuilding >= 0
+                || order.Kind == UnitOrderKind.Move &&
+                   order.TargetBuilding == -1
             : order.TargetBuilding == -1) &&
         (order.Kind == UnitOrderKind.GatherResource
             ? order.TargetResourceNode >= 0
@@ -79,6 +81,9 @@ public sealed class UnitCommandQueueStore
         ConstructionEvacuationBuildings = new int[capacity];
         ConstructionEvacuationTargets = new Vector2[capacity];
         ConstructionEvacuationFootprints = new SimRect[capacity];
+        ProductionEvacuationActive = new bool[capacity];
+        ProductionEvacuationTargets = new Vector2[capacity];
+        ProductionEvacuationFootprints = new SimRect[capacity];
         _heads = new byte[capacity];
         _pendingKinds = new UnitOrderKind[capacity * MaximumPendingOrders];
         _pendingPositions = new Vector2[capacity * MaximumPendingOrders];
@@ -110,6 +115,9 @@ public sealed class UnitCommandQueueStore
     public int[] ConstructionEvacuationBuildings { get; }
     public Vector2[] ConstructionEvacuationTargets { get; }
     public SimRect[] ConstructionEvacuationFootprints { get; }
+    public bool[] ProductionEvacuationActive { get; }
+    public Vector2[] ProductionEvacuationTargets { get; }
+    public SimRect[] ProductionEvacuationFootprints { get; }
 
     public void Begin(int unit, UnitOrder order, bool wasQueued)
     {
@@ -195,6 +203,10 @@ public sealed class UnitCommandQueueStore
             hash.Add(ConstructionEvacuationTargets[unit]);
             hash.Add(ConstructionEvacuationFootprints[unit].Min);
             hash.Add(ConstructionEvacuationFootprints[unit].Max);
+            hash.Add(ProductionEvacuationActive[unit]);
+            hash.Add(ProductionEvacuationTargets[unit]);
+            hash.Add(ProductionEvacuationFootprints[unit].Min);
+            hash.Add(ProductionEvacuationFootprints[unit].Max);
 
             for (var pending = 0; pending < PendingCounts[unit]; pending++)
             {
@@ -234,6 +246,12 @@ public sealed class UnitCommandQueueStore
             ConstructionEvacuationTargets);
         Copy(source.ConstructionEvacuationFootprints,
             ConstructionEvacuationFootprints);
+        Copy(source.ProductionEvacuationActive,
+            ProductionEvacuationActive);
+        Copy(source.ProductionEvacuationTargets,
+            ProductionEvacuationTargets);
+        Copy(source.ProductionEvacuationFootprints,
+            ProductionEvacuationFootprints);
         Copy(source._heads, _heads);
         Copy(source._pendingKinds, _pendingKinds);
         Copy(source._pendingPositions, _pendingPositions);

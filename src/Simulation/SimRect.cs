@@ -29,6 +29,78 @@ public readonly record struct SimRect(Vector2 Min, Vector2 Max)
         return Vector2.DistanceSquared(point, closest);
     }
 
+    public bool OverlapsDisc(Vector2 center, float radius)
+    {
+        if (Contains(center))
+            return true;
+        return radius > 0f && DistanceSquaredTo(center) < radius * radius;
+    }
+
+    public bool IntersectsSweptDisc(Vector2 from, Vector2 to, float radius)
+    {
+        if (SegmentIntersects(from, to))
+            return true;
+        if (radius <= 0f)
+            return false;
+
+        var topLeft = Min;
+        var topRight = new Vector2(Max.X, Min.Y);
+        var bottomRight = Max;
+        var bottomLeft = new Vector2(Min.X, Max.Y);
+        var distanceSquared = MathF.Min(
+            SegmentDistanceSquared(from, to, topLeft, topRight),
+            MathF.Min(
+                SegmentDistanceSquared(from, to, topRight, bottomRight),
+                MathF.Min(
+                    SegmentDistanceSquared(
+                        from, to, bottomRight, bottomLeft),
+                    SegmentDistanceSquared(
+                        from, to, bottomLeft, topLeft))));
+        return distanceSquared < radius * radius;
+    }
+
+    public Vector2 ConstrainDiscOutside(
+        Vector2 previous,
+        Vector2 proposed,
+        float radius)
+    {
+        if (!Contains(proposed))
+        {
+            var closest = Clamp(proposed);
+            var offset = proposed - closest;
+            var distanceSquared = offset.LengthSquared();
+            if (radius <= 0f || distanceSquared >= radius * radius)
+                return proposed;
+            if (distanceSquared > 0f)
+                return closest + offset / MathF.Sqrt(distanceSquared) * radius;
+        }
+
+        Span<Vector2> candidates = stackalloc Vector2[4];
+        candidates[0] = new Vector2(Min.X - radius, proposed.Y);
+        candidates[1] = new Vector2(Max.X + radius, proposed.Y);
+        candidates[2] = new Vector2(proposed.X, Min.Y - radius);
+        candidates[3] = new Vector2(proposed.X, Max.Y + radius);
+        var best = candidates[0];
+        var bestCorrection = Vector2.DistanceSquared(proposed, best);
+        var bestContinuity = Vector2.DistanceSquared(previous, best);
+        for (var index = 1; index < candidates.Length; index++)
+        {
+            var correction = Vector2.DistanceSquared(
+                proposed, candidates[index]);
+            var continuity = Vector2.DistanceSquared(
+                previous, candidates[index]);
+            if (correction > bestCorrection ||
+                correction == bestCorrection && continuity >= bestContinuity)
+            {
+                continue;
+            }
+            best = candidates[index];
+            bestCorrection = correction;
+            bestContinuity = continuity;
+        }
+        return best;
+    }
+
     public bool SegmentIntersects(Vector2 from, Vector2 to)
     {
         var direction = to - from;
@@ -100,5 +172,40 @@ public readonly record struct SimRect(Vector2 Min, Vector2 Max)
         tMin = MathF.Max(tMin, a);
         tMax = MathF.Min(tMax, b);
         return tMin <= tMax;
+    }
+
+    private static float SegmentDistanceSquared(
+        Vector2 firstStart,
+        Vector2 firstEnd,
+        Vector2 secondStart,
+        Vector2 secondEnd)
+    {
+        return MathF.Min(
+            MathF.Min(
+                PointSegmentDistanceSquared(
+                    firstStart, secondStart, secondEnd),
+                PointSegmentDistanceSquared(
+                    firstEnd, secondStart, secondEnd)),
+            MathF.Min(
+                PointSegmentDistanceSquared(
+                    secondStart, firstStart, firstEnd),
+                PointSegmentDistanceSquared(
+                    secondEnd, firstStart, firstEnd)));
+    }
+
+    private static float PointSegmentDistanceSquared(
+        Vector2 point,
+        Vector2 start,
+        Vector2 end)
+    {
+        var segment = end - start;
+        var lengthSquared = segment.LengthSquared();
+        if (lengthSquared <= 0f)
+            return Vector2.DistanceSquared(point, start);
+        var amount = Math.Clamp(
+            Vector2.Dot(point - start, segment) / lengthSquared,
+            0f,
+            1f);
+        return Vector2.DistanceSquared(point, start + segment * amount);
     }
 }

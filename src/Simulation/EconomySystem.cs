@@ -278,7 +278,9 @@ public readonly record struct EconomyResourceNodeSnapshot(
     int ActiveMules,
     int AssignedMules,
     bool RequiresRefinery,
-    bool Operational)
+    bool Operational,
+    Vector2 InteractionHalfExtents,
+    float InteractionRadius)
 {
     public int ActiveHarvesters => ActiveNormal + ActiveMules;
     public int HarvesterCapacity => IdealNormalAssignments;
@@ -331,7 +333,8 @@ public readonly record struct EconomyResourceNodeRuntimeEntry(
     int AssignedNormal,
     int WaitingNormal,
     int ActiveMules,
-    int AssignedMules);
+    int AssignedMules,
+    Vector2 InteractionHalfExtents);
 
 public readonly record struct EconomyDropOffRuntimeEntry(
     EconomyDropOffId Id,
@@ -414,6 +417,7 @@ public readonly record struct EconomyDropOffApproachSnapshot(
     Vector2 Center,
     Vector2 HalfExtents,
     Vector2 InteractionHalfExtents,
+    float InteractionRadius,
     Vector2 Target,
     float DistanceSquared)
 {
@@ -519,8 +523,6 @@ public sealed class EconomySystem
 {
     private const float NodeArrivalPadding = 30f;
     private const float DefaultDropOffArrivalRadius = 52f;
-    private const float DropOffClearancePadding = 12f;
-    private const float RectangularDropOffArrivalTolerance = 8f;
     private const float BaseResourceRadius = 360f;
     private readonly bool[] _workers;
     private readonly int[] _workerPlayers;
@@ -534,6 +536,9 @@ public sealed class EconomySystem
     private readonly List<DropOff> _dropOffs = [];
     private readonly List<EconomyBase> _bases = [];
     private int _registeredWorkerCount;
+
+    internal Func<int, EconomyResourceKind, Vector2, float,
+        EconomyDropOffApproachSnapshot>? ReachableDropOffResolver { get; set; }
 
     public EconomySystem(int unitCapacity)
     {
@@ -866,7 +871,10 @@ public sealed class EconomySystem
         _workerNodes[unit] = -1;
     }
 
-    public void SetRefineryOperational(EconomyResourceNodeId nodeId, bool value)
+    public void SetRefineryOperational(
+        EconomyResourceNodeId nodeId,
+        bool value,
+        SimRect? refineryBounds = null)
     {
         var node = Node(nodeId);
         if (!node.RequiresRefinery)
@@ -875,6 +883,11 @@ public sealed class EconomySystem
                 "Only a refinery resource node can change operational state.");
         }
         node.Operational = value;
+        if (refineryBounds.HasValue)
+        {
+            var bounds = refineryBounds.Value;
+            node.InteractionHalfExtents = (bounds.Max - bounds.Min) * 0.5f;
+        }
     }
 
     public GatherCommandResult ValidateGather(
@@ -1050,9 +1063,12 @@ public sealed class EconomySystem
 
     public void Update(
         float delta,
+        long tick,
+        GameplayEventStream events,
         UnitStore units,
         Action<int, Vector2> moveWorker,
-        Action<int> stopWorker)
+        Action<int> stopWorker,
+        Action<int, UnitMovementLegResult> finishDropOffMovement)
     {
         if (_registeredWorkerCount == 0)
         {
@@ -1070,6 +1086,11 @@ public sealed class EconomySystem
                 TransitionWorker(unit, WorkerEconomyState.Idle, -1);
                 continue;
             }
+            if (units.MovementGoalKinds[unit] ==
+                    UnitMovementGoalKind.ProductionExit &&
+                units.MovementLegResults[unit] ==
+                    UnitMovementLegResult.InProgress)
+                continue;
             switch (_workerStates[unit])
             {
                 case WorkerEconomyState.GoingToResource:
@@ -1080,10 +1101,14 @@ public sealed class EconomySystem
                         unit, units, moveWorker, stopWorker);
                     break;
                 case WorkerEconomyState.Gathering:
-                    UpdateGathering(unit, delta, units, moveWorker);
+                    UpdateGathering(
+                        unit, delta, tick, events, units, moveWorker,
+                        finishDropOffMovement);
                     break;
                 case WorkerEconomyState.ReturningCargo:
-                    UpdateReturning(unit, units, moveWorker, stopWorker);
+                    UpdateReturning(
+                        unit, tick, events, units, moveWorker, stopWorker,
+                        finishDropOffMovement);
                     break;
                 case WorkerEconomyState.WaitingForDropOff:
                     UpdateWaitingForDropOff(unit, units, moveWorker);
@@ -1100,7 +1125,37 @@ public sealed class EconomySystem
             node.ActiveNormal, node.AssignedNormal, node.WaitingNormal,
             node.NormalActiveSlots, node.IdealNormalAssignments,
             node.ActiveMules, node.AssignedMules,
-            node.RequiresRefinery, node.Operational);
+            node.RequiresRefinery, node.Operational,
+            node.InteractionHalfExtents, NodeArrivalPadding);
+    }
+
+    public EconomyDropOffApproachSnapshot[] CreateDropOffApproaches(
+        int playerId,
+        EconomyResourceKind kind,
+        Vector2 origin,
+        float unitRadius)
+    {
+        if (!Players.IsRegistered(playerId) || !Enum.IsDefined(kind) ||
+            !IsFinite(origin) || !float.IsFinite(unitRadius) || unitRadius < 0f)
+            throw new ArgumentOutOfRangeException(nameof(playerId));
+        var result = new List<EconomyDropOffApproachSnapshot>();
+        for (var index = 0; index < _dropOffs.Count; index++)
+        {
+            var dropOff = _dropOffs[index];
+            if (!dropOff.Operational || dropOff.PlayerId != playerId ||
+                !dropOff.Accepts(kind))
+                continue;
+            var target = dropOff.ApproachPoint(origin, unitRadius);
+            result.Add(new EconomyDropOffApproachSnapshot(
+                dropOff.Id,
+                dropOff.Position,
+                dropOff.HalfExtents,
+                dropOff.HalfExtents + new Vector2(unitRadius),
+                dropOff.ArrivalRadius,
+                target,
+                Vector2.DistanceSquared(origin, target)));
+        }
+        return result.ToArray();
     }
 
     public WorkerEconomySnapshot Worker(int unit)
@@ -1126,11 +1181,11 @@ public sealed class EconomySystem
         if (!Players.IsRegistered(playerId) || !Enum.IsDefined(kind) ||
             !IsFinite(origin) || !float.IsFinite(unitRadius) || unitRadius < 0f)
             throw new ArgumentOutOfRangeException(nameof(playerId));
-        var clearance = unitRadius + DropOffClearancePadding;
+        var clearance = unitRadius;
         var index = FindNearestDropOff(playerId, kind, origin, clearance);
         if (index < 0)
             return new EconomyDropOffApproachSnapshot(
-                new EconomyDropOffId(-1), default, default, default, default,
+                new EconomyDropOffId(-1), default, default, default, 0f, default,
                 float.PositiveInfinity);
         var dropOff = _dropOffs[index];
         var target = dropOff.ApproachPoint(origin, clearance);
@@ -1139,7 +1194,8 @@ public sealed class EconomySystem
             dropOff.Position,
             dropOff.HalfExtents,
             dropOff.HalfExtents + new Vector2(
-                unitRadius + DropOffClearancePadding),
+                unitRadius),
+            dropOff.ArrivalRadius,
             target,
             Vector2.DistanceSquared(origin, target));
     }
@@ -1214,7 +1270,8 @@ public sealed class EconomySystem
             node.NormalActiveSlots, node.IdealNormalAssignments,
             node.RequiresRefinery, node.Operational,
             node.ActiveNormal, node.AssignedNormal, node.WaitingNormal,
-            node.ActiveMules, node.AssignedMules)).ToArray();
+            node.ActiveMules, node.AssignedMules,
+            node.InteractionHalfExtents)).ToArray();
         var dropOffs = _dropOffs.Select(dropOff => new EconomyDropOffRuntimeEntry(
             dropOff.Id, dropOff.PlayerId, dropOff.Position,
             dropOff.HalfExtents,
@@ -1263,7 +1320,8 @@ public sealed class EconomySystem
                 AssignedNormal = value.AssignedNormal,
                 WaitingNormal = value.WaitingNormal,
                 ActiveMules = value.ActiveMules,
-                AssignedMules = value.AssignedMules
+                AssignedMules = value.AssignedMules,
+                InteractionHalfExtents = value.InteractionHalfExtents
             });
         }
         _dropOffs.Clear();
@@ -1350,6 +1408,7 @@ public sealed class EconomySystem
             hash.Add(node.AssignedMules);
             hash.Add(node.RequiresRefinery);
             hash.Add(node.Operational);
+            hash.Add(node.InteractionHalfExtents);
         }
         hash.Add(_dropOffs.Count);
         for (var index = 0; index < _dropOffs.Count; index++)
@@ -1410,14 +1469,17 @@ public sealed class EconomySystem
             return;
         }
         var node = _nodes[nodeIndex];
-        var arrival = NodeArrivalPadding + units.Radii[unit];
-        if (Vector2.DistanceSquared(units.Positions[unit], node.Position) <=
-            arrival * arrival)
+        if (NodeHasArrived(node, units.Positions[unit], units.Radii[unit]))
         {
             TryStartGathering(
                 unit, units, moveWorker, stopWorker,
                 allowReassignment: true);
+            return;
         }
+        if (units.MovementLegResults[unit] is
+                UnitMovementLegResult.Unreachable or
+                UnitMovementLegResult.SettledShort)
+            TransitionWorker(unit, WorkerEconomyState.Idle, -1);
     }
 
     private void UpdateWaitingForResource(
@@ -1429,6 +1491,14 @@ public sealed class EconomySystem
         if (!IsNodeAvailable(_workerNodes[unit]))
         {
             RetargetOrIdle(unit, units.Positions[unit], moveWorker);
+            return;
+        }
+        var node = _nodes[_workerNodes[unit]];
+        if (!NodeHasArrived(node, units.Positions[unit], units.Radii[unit]))
+        {
+            TransitionWorker(
+                unit, WorkerEconomyState.GoingToResource, node.Id.Value);
+            moveWorker(unit, node.Position);
             return;
         }
         TryStartGathering(
@@ -1450,6 +1520,13 @@ public sealed class EconomySystem
             return;
         }
         var node = _nodes[nodeIndex];
+        if (!NodeHasArrived(node, units.Positions[unit], units.Radii[unit]))
+        {
+            TransitionWorker(
+                unit, WorkerEconomyState.GoingToResource, nodeIndex);
+            moveWorker(unit, node.Position);
+            return;
+        }
         var capability = _gathererCapabilities[unit];
         var active = capability == GathererCapability.Mule
             ? node.ActiveMules
@@ -1495,16 +1572,33 @@ public sealed class EconomySystem
     private void UpdateGathering(
         int unit,
         float delta,
+        long tick,
+        GameplayEventStream events,
         UnitStore units,
-        Action<int, Vector2> moveWorker)
+        Action<int, Vector2> moveWorker,
+        Action<int, UnitMovementLegResult> finishDropOffMovement)
     {
+        var nodeIndex = _workerNodes[unit];
+        if (!IsNodeAvailable(nodeIndex))
+        {
+            RetargetOrIdle(unit, units.Positions[unit], moveWorker);
+            return;
+        }
+        var node = _nodes[nodeIndex];
+        if (!NodeHasArrived(node, units.Positions[unit], units.Radii[unit]))
+        {
+            _workRemaining[unit] = 0f;
+            TransitionWorker(
+                unit, WorkerEconomyState.GoingToResource, nodeIndex);
+            moveWorker(unit, node.Position);
+            return;
+        }
         _workRemaining[unit] -= delta;
         if (_workRemaining[unit] > 0f)
         {
             return;
         }
         _workRemaining[unit] = 0f;
-        var node = _nodes[_workerNodes[unit]];
         var amount = Math.Min(node.HarvestBatch, node.Remaining);
         node.Remaining -= amount;
         if (amount <= 0)
@@ -1514,56 +1608,76 @@ public sealed class EconomySystem
         }
         _cargoKinds[unit] = node.Kind;
         _cargoAmounts[unit] = amount;
-        var clearance = units.Radii[unit] + DropOffClearancePadding;
-        var dropOff = FindNearestDropOff(
-            _workerPlayers[unit], node.Kind, units.Positions[unit], clearance);
-        if (dropOff < 0)
+        events.Publish(
+            tick,
+            GameplayEventKind.HarvestCompleted,
+            unit,
+            resourceNode: node.Id.Value,
+            resourceKind: node.Kind,
+            amount: amount,
+            worldPosition: units.Positions[unit]);
+        var approach = ResolveDropOffApproach(
+            _workerPlayers[unit], node.Kind,
+            units.Positions[unit], units.Radii[unit]);
+        if (!approach.Found)
         {
             TransitionWorker(
                 unit, WorkerEconomyState.WaitingForDropOff,
                 _workerNodes[unit]);
+            finishDropOffMovement(
+                unit, UnitMovementLegResult.TargetInvalidated);
             return;
         }
         TransitionWorker(
             unit, WorkerEconomyState.ReturningCargo, _workerNodes[unit]);
-        moveWorker(unit, _dropOffs[dropOff].ApproachPoint(
-            units.Positions[unit],
-            clearance));
+        moveWorker(unit, approach.Target);
     }
 
     private void UpdateReturning(
         int unit,
+        long tick,
+        GameplayEventStream events,
         UnitStore units,
         Action<int, Vector2> moveWorker,
-        Action<int> stopWorker)
+        Action<int> stopWorker,
+        Action<int, UnitMovementLegResult> finishDropOffMovement)
     {
-        var clearance = units.Radii[unit] + DropOffClearancePadding;
-        var dropOffIndex = FindNearestDropOff(
-            _workerPlayers[unit], _cargoKinds[unit], units.Positions[unit],
-            clearance);
-        if (dropOffIndex < 0)
+        var approach = ResolveDropOffApproach(
+            _workerPlayers[unit], _cargoKinds[unit],
+            units.Positions[unit], units.Radii[unit]);
+        if (!approach.Found)
         {
             TransitionWorker(
                 unit, WorkerEconomyState.WaitingForDropOff,
                 _workerNodes[unit]);
-            stopWorker(unit);
+            finishDropOffMovement(
+                unit, UnitMovementLegResult.TargetInvalidated);
             return;
         }
-        var dropOff = _dropOffs[dropOffIndex];
-        if (!dropOff.HasArrived(
-                units.Positions[unit],
-                clearance))
+        if (!DropOffHasArrived(
+                approach, units.Positions[unit], units.Radii[unit]))
         {
-            if (!dropOff.IsApproachTarget(
-                    units.MoveGoals[unit], clearance))
+            if (units.MovementGoalKinds[unit] !=
+                    UnitMovementGoalKind.DropOffBoundary ||
+                units.MovementGoalTargetIds[unit] != approach.Id.Value ||
+                units.MovementLegResults[unit] is
+                    UnitMovementLegResult.Unreachable or
+                    UnitMovementLegResult.SettledShort)
             {
-                moveWorker(unit, dropOff.ApproachPoint(
-                    units.Positions[unit], clearance));
+                moveWorker(unit, approach.Target);
             }
             return;
         }
         Players.Credit(
             _workerPlayers[unit], _cargoKinds[unit], _cargoAmounts[unit]);
+        events.Publish(
+            tick,
+            GameplayEventKind.CargoDelivered,
+            unit,
+            resourceNode: _workerNodes[unit],
+            resourceKind: _cargoKinds[unit],
+            amount: _cargoAmounts[unit],
+            worldPosition: units.Positions[unit]);
         _cargoAmounts[unit] = 0;
         var nodeIndex = _workerNodes[unit];
         if (nodeIndex < 0)
@@ -1591,16 +1705,16 @@ public sealed class EconomySystem
         UnitStore units,
         Action<int, Vector2> moveWorker)
     {
-        var clearance = units.Radii[unit] + DropOffClearancePadding;
-        var dropOff = FindNearestDropOff(
-            _workerPlayers[unit], _cargoKinds[unit], units.Positions[unit],
-            clearance);
-        if (dropOff < 0)
+        var approach = ResolveDropOffApproach(
+            _workerPlayers[unit], _cargoKinds[unit],
+            units.Positions[unit], units.Radii[unit]);
+        if (!approach.Found)
+        {
             return;
+        }
         TransitionWorker(
             unit, WorkerEconomyState.ReturningCargo, _workerNodes[unit]);
-        moveWorker(unit, _dropOffs[dropOff].ApproachPoint(
-            units.Positions[unit], clearance));
+        moveWorker(unit, approach.Target);
     }
 
     private void BeginReturningCargo(
@@ -1609,10 +1723,9 @@ public sealed class EconomySystem
         float unitRadius,
         Action<int, Vector2> moveWorker)
     {
-        var clearance = unitRadius + DropOffClearancePadding;
-        var dropOff = FindNearestDropOff(
-            _workerPlayers[unit], _cargoKinds[unit], position, clearance);
-        if (dropOff < 0)
+        var approach = ResolveDropOffApproach(
+            _workerPlayers[unit], _cargoKinds[unit], position, unitRadius);
+        if (!approach.Found)
         {
             TransitionWorker(
                 unit, WorkerEconomyState.WaitingForDropOff,
@@ -1621,7 +1734,60 @@ public sealed class EconomySystem
         }
         TransitionWorker(
             unit, WorkerEconomyState.ReturningCargo, _workerNodes[unit]);
-        moveWorker(unit, _dropOffs[dropOff].ApproachPoint(position, clearance));
+        moveWorker(unit, approach.Target);
+    }
+
+    private EconomyDropOffApproachSnapshot ResolveDropOffApproach(
+        int playerId,
+        EconomyResourceKind kind,
+        Vector2 origin,
+        float unitRadius) =>
+        ReachableDropOffResolver is not null
+            ? ReachableDropOffResolver(playerId, kind, origin, unitRadius)
+            : PreviewDropOffApproach(playerId, kind, origin, unitRadius);
+
+    private static bool DropOffHasArrived(
+        EconomyDropOffApproachSnapshot approach,
+        Vector2 position,
+        float unitRadius)
+    {
+        if (approach.HalfExtents != Vector2.Zero)
+        {
+            return InteractionGeometry.DiscTouchesRectangle(
+                position,
+                unitRadius,
+                new SimRect(
+                    approach.Center - approach.HalfExtents,
+                    approach.Center + approach.HalfExtents));
+        }
+        var allowed = approach.InteractionRadius + unitRadius +
+                      InteractionGeometry.NumericTolerance(
+                          position,
+                          new SimRect(approach.Center, approach.Center));
+        return Vector2.DistanceSquared(position, approach.Center) <=
+               allowed * allowed;
+    }
+
+    private static bool NodeHasArrived(
+        ResourceNode node,
+        Vector2 position,
+        float unitRadius)
+    {
+        if (node.InteractionHalfExtents != Vector2.Zero)
+        {
+            return InteractionGeometry.DiscTouchesRectangle(
+                position,
+                unitRadius,
+                new SimRect(
+                    node.Position - node.InteractionHalfExtents,
+                    node.Position + node.InteractionHalfExtents));
+        }
+        var allowed = NodeArrivalPadding + unitRadius +
+                      InteractionGeometry.NumericTolerance(
+                          position,
+                          new SimRect(node.Position, node.Position));
+        return Vector2.DistanceSquared(position, node.Position) <=
+               allowed * allowed;
     }
 
     private void RetargetOrIdle(
@@ -1933,6 +2099,7 @@ public sealed class EconomySystem
         public int IdealNormalAssignments { get; } = idealNormalAssignments;
         public bool RequiresRefinery { get; } = requiresRefinery;
         public bool Operational { get; set; } = operational;
+        public Vector2 InteractionHalfExtents { get; set; }
         public int ActiveNormal { get; set; }
         public int AssignedNormal { get; set; }
         public int WaitingNormal { get; set; }
@@ -2008,27 +2175,6 @@ public sealed class EconomySystem
             return bounds.DistanceSquaredTo(origin);
         }
 
-        public bool HasArrived(Vector2 origin, float clearance)
-        {
-            var tolerance = HalfExtents == Vector2.Zero
-                ? ArrivalRadius
-                : RectangularDropOffArrivalTolerance;
-            return DistanceSquaredTo(origin, clearance) <=
-                   tolerance * tolerance;
-        }
-
-        public bool IsApproachTarget(Vector2 target, float clearance)
-        {
-            if (HalfExtents == Vector2.Zero)
-                return Vector2.DistanceSquared(target, Position) <= 0.0625f;
-            var half = HalfExtents + new Vector2(clearance);
-            var delta = Vector2.Abs(target - Position);
-            const float tolerance = 0.25f;
-            return MathF.Abs(delta.X - half.X) <= tolerance &&
-                       delta.Y <= half.Y + tolerance ||
-                   MathF.Abs(delta.Y - half.Y) <= tolerance &&
-                       delta.X <= half.X + tolerance;
-        }
     }
 
     private sealed class EconomyBase(

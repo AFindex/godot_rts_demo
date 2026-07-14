@@ -193,6 +193,11 @@ internal static class RuntimeHotSnapshotCodec
             WriteVector(writer, units.NextVelocities[unit]);
             WriteVector(writer, units.SlotTargets[unit]);
             WriteVector(writer, units.MoveGoals[unit]);
+            writer.Write((byte)units.MovementGoalKinds[unit]);
+            WriteRect(writer, units.MovementGoalBounds[unit]);
+            writer.Write(units.MovementGoalRadii[unit]);
+            writer.Write(units.MovementGoalTargetIds[unit]);
+            writer.Write((byte)units.MovementLegResults[unit]);
             writer.Write(units.Radii[unit]);
             writer.Write((byte)units.MovementClasses[unit]);
             writer.Write(units.NavigationRadii[unit]);
@@ -264,6 +269,20 @@ internal static class RuntimeHotSnapshotCodec
             units.NextVelocities[unit] = ReadVector(reader);
             units.SlotTargets[unit] = ReadVector(reader);
             units.MoveGoals[unit] = ReadVector(reader);
+            units.MovementGoalKinds[unit] =
+                (UnitMovementGoalKind)reader.ReadByte();
+            units.MovementGoalBounds[unit] = ReadRect(reader);
+            units.MovementGoalRadii[unit] = reader.ReadSingle();
+            units.MovementGoalTargetIds[unit] = reader.ReadInt32();
+            units.MovementLegResults[unit] =
+                (UnitMovementLegResult)reader.ReadByte();
+            if (!Enum.IsDefined(units.MovementGoalKinds[unit]) ||
+                !Enum.IsDefined(units.MovementLegResults[unit]) ||
+                !float.IsFinite(units.MovementGoalRadii[unit]) ||
+                units.MovementGoalRadii[unit] < 0f)
+            {
+                throw new InvalidDataException();
+            }
             units.Radii[unit] = reader.ReadSingle();
             units.MovementClasses[unit] = (MovementClass)reader.ReadByte();
             units.NavigationRadii[unit] = reader.ReadSingle();
@@ -591,6 +610,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(node.WaitingNormal);
             writer.Write(node.ActiveMules);
             writer.Write(node.AssignedMules);
+            WriteVector(writer, node.InteractionHalfExtents);
         }
         writer.Write(economy.DropOffs.Length);
         foreach (var dropOff in economy.DropOffs)
@@ -673,7 +693,8 @@ internal static class RuntimeHotSnapshotCodec
                 reader.ReadInt32(),
                 reader.ReadInt32(),
                 reader.ReadInt32(),
-                reader.ReadInt32());
+                reader.ReadInt32(),
+                ReadVector(reader));
             if (value.Id.Value != index || !Enum.IsDefined(value.Kind) ||
                 !Finite(value.Position) || value.Remaining < 0 ||
                 value.HarvestBatch <= 0 || !Positive(value.HarvestSeconds) ||
@@ -685,7 +706,10 @@ internal static class RuntimeHotSnapshotCodec
                 value.WaitingNormal < 0 ||
                 value.WaitingNormal > value.AssignedNormal ||
                 value.ActiveMules < 0 || value.ActiveMules > 1 ||
-                value.AssignedMules < value.ActiveMules)
+                value.AssignedMules < value.ActiveMules ||
+                !Finite(value.InteractionHalfExtents) ||
+                value.InteractionHalfExtents.X < 0f ||
+                value.InteractionHalfExtents.Y < 0f)
             {
                 throw new InvalidDataException();
             }
@@ -1403,6 +1427,9 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(queues.ConstructionEvacuationBuildings[unit]);
             WriteVector(writer, queues.ConstructionEvacuationTargets[unit]);
             WriteRect(writer, queues.ConstructionEvacuationFootprints[unit]);
+            writer.Write(queues.ProductionEvacuationActive[unit]);
+            WriteVector(writer, queues.ProductionEvacuationTargets[unit]);
+            WriteRect(writer, queues.ProductionEvacuationFootprints[unit]);
             writer.Write(queues.PendingCounts[unit]);
             for (var pending = 0; pending < queues.PendingCounts[unit]; pending++)
             {
@@ -1461,6 +1488,9 @@ internal static class RuntimeHotSnapshotCodec
             queues.ConstructionEvacuationBuildings[unit] = reader.ReadInt32();
             queues.ConstructionEvacuationTargets[unit] = ReadVector(reader);
             queues.ConstructionEvacuationFootprints[unit] = ReadRect(reader);
+            queues.ProductionEvacuationActive[unit] = reader.ReadBoolean();
+            queues.ProductionEvacuationTargets[unit] = ReadVector(reader);
+            queues.ProductionEvacuationFootprints[unit] = ReadRect(reader);
             var evacuationActive =
                 queues.ConstructionEvacuationActive[unit];
             var evacuationFootprint =
@@ -1476,6 +1506,19 @@ internal static class RuntimeHotSnapshotCodec
                     : queues.ConstructionEvacuationBuildings[unit] != -1 ||
                       queues.ConstructionEvacuationTargets[unit] != Vector2.Zero ||
                       evacuationFootprint != default)
+            {
+                throw new InvalidDataException();
+            }
+            var productionEvacuationFootprint =
+                queues.ProductionEvacuationFootprints[unit];
+            if (queues.ProductionEvacuationActive[unit]
+                    ? !Finite(queues.ProductionEvacuationTargets[unit]) ||
+                      !Finite(productionEvacuationFootprint.Min) ||
+                      !Finite(productionEvacuationFootprint.Max) ||
+                      productionEvacuationFootprint.Width <= 0f ||
+                      productionEvacuationFootprint.Height <= 0f
+                    : queues.ProductionEvacuationTargets[unit] != Vector2.Zero ||
+                      productionEvacuationFootprint != default)
             {
                 throw new InvalidDataException();
             }

@@ -551,19 +551,36 @@ public sealed class MovementTestRigAiEncounterRuntime(
         {
             var nearest = rig.PreviewDropOffApproach(
                 playerId, value.CargoKind, value.Unit);
-            var delta = Vector2.Abs(value.MovementGoal - nearest.Center);
-            var onVerticalEdge = MathF.Abs(
-                    delta.X - nearest.InteractionHalfExtents.X) <= 0.25f &&
-                delta.Y <= nearest.InteractionHalfExtents.Y + 0.25f;
-            var onHorizontalEdge = MathF.Abs(
-                    delta.Y - nearest.InteractionHalfExtents.Y) <= 0.25f &&
-                delta.X <= nearest.InteractionHalfExtents.X + 0.25f;
+            var unitRadiusX = nearest.InteractionHalfExtents.X -
+                              nearest.HalfExtents.X;
+            var unitRadiusY = nearest.InteractionHalfExtents.Y -
+                              nearest.HalfExtents.Y;
+            var minimum = nearest.Center - nearest.HalfExtents;
+            var maximum = nearest.Center + nearest.HalfExtents;
+            var closest = Vector2.Clamp(value.MovementGoal, minimum, maximum);
+            var edgeDistance = Vector2.Distance(
+                value.MovementGoal, closest);
+            var largestCoordinate = MathF.Max(
+                1f,
+                MathF.Max(
+                    MathF.Max(
+                        MathF.Abs(value.MovementGoal.X),
+                        MathF.Abs(value.MovementGoal.Y)),
+                    MathF.Max(
+                        MathF.Max(MathF.Abs(minimum.X), MathF.Abs(minimum.Y)),
+                        MathF.Max(MathF.Abs(maximum.X), MathF.Abs(maximum.Y)))));
+            var tolerance =
+                (MathF.BitIncrement(largestCoordinate) - largestCoordinate) *
+                16f;
+            var onRoundedBoundary =
+                MathF.Abs(unitRadiusX - unitRadiusY) <= tolerance &&
+                MathF.Abs(edgeDistance - unitRadiusX) <= tolerance;
             var usesNearestEdge = value.State !=
                                       TestWorkerEconomyState.ReturningCargo ||
                                   nearest.Found &&
                                   nearest.HalfExtents.X > 0f &&
                                   nearest.HalfExtents.Y > 0f &&
-                                  (onVerticalEdge || onHorizontalEdge) &&
+                                  onRoundedBoundary &&
                                   Vector2.DistanceSquared(
                                       value.MovementGoal, nearest.Center) > 1f;
             return new AiEncounterWorkerSignal(

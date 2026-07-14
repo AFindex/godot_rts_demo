@@ -314,7 +314,6 @@ public partial class RtsDemo : Node2D
                 GetTree().Quit(1);
                 return;
             }
-
             var session = VisualTestCatalog.Create(
                 verificationTestId,
                 _navigationSnapshot,
@@ -324,8 +323,14 @@ public partial class RtsDemo : Node2D
                 productionCatalog: _productionCatalog,
                 technologyCatalog: _technologyCatalog,
                 aiConfigurations: _aiConfigurations);
-            while (session.Rig.Tick < session.DurationTicks)
+            while (!session.HasReachedEnd)
                 session.Step();
+            GD.Print(
+                $"RTS_VISUAL_TEST_READY {verificationTestId}: " +
+                $"tick={session.Rig.Tick}/{session.DurationTicks}, " +
+                $"reachedEnd={session.HasReachedEnd}, " +
+                $"conditions={session.ConditionsCompleted}, " +
+                $"conditionFailure={session.ConditionFailure}");
             var result = session.Evaluate();
             GD.Print(
                 $"RTS_VISUAL_TEST_VERIFY " +
@@ -453,8 +458,7 @@ public partial class RtsDemo : Node2D
             return;
         }
 
-        if (_visualTest is not null &&
-            _simulation.Metrics.Tick >= _visualTest.DurationTicks)
+        if (_visualTest is not null && _visualTest.HasReachedEnd)
         {
             _navigationReady = false;
             _visualTestFinishFrames = 2;
@@ -2953,6 +2957,7 @@ public partial class RtsDemo : Node2D
 
         _world = _visualTest.World;
         _simulation = _visualTest.Simulation;
+        InitializeOperationState();
         _combatPresentation.Reset();
         _combatProjectileLayer?.SetFrame(CombatPresentationFrame.Empty);
         _routePlanner = _visualTest.RoutePlanner;

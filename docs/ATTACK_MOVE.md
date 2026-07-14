@@ -39,6 +39,7 @@ AttackMove 路线
 - 索敌每 6 Tick 错峰执行，不让所有 AttackMove 单位在同一 Tick 扫描。
 - 当前候选搜索为稳定 unit ID 顺序的线性扫描；距离相同使用更小 unit ID。
 - 追击目标在局部未移动时不重复寻路；明显移动时最多约每 0.2 秒更新追击路径。
+- 玩家显式攻击矩形建筑时，已经在执行的边缘追击腿不会被每帧换点。只有单位仍在真实射程外，且追击返回不可达或连续 90 Tick 没有进展时，才依据当时存活友军占位重新选择完整建筑边缘；重新选择后清空本次停滞证据。普通 Move、AttackMove 和自动警戒不使用这条专用恢复。
 - 槽位用目标相对角度/半径表达，目标移动时无需全局重分配。
 - 同侧近战遇到目标中心阻挡时，使用“近侧外圈 → 分段绕行 → 最终槽位”；交叉后只接受严格降低两单位总槽位误差的交换。
 - 攻击、伤害和死亡都发生在 60Hz 固定 Tick。
@@ -67,7 +68,7 @@ AttackMove 路线
 - `attack-move-leash-resume`：耐久目标逃离 leash，攻击者放弃追击并继续前往原终点。
 - `attack-move-command-isolation`：同图 Move 单位忽略敌人，AttackMove 单位接敌并恢复。
 - `attack-move-cancel`：Stop/Hold 取消原 AttackMove 路线；Stop 可继续局部接敌，Hold 不恢复路线。
-- `combat-melee-slots`：同侧 8 个近战单位经外圈 staging 全部进入 8 个唯一接触槽。
+- `combat-melee-slots`（已退役，不再是门禁）：它把槽位就绪误当成攻击资格，历史录像仅用于审计旧行为。
 - `combat-ranged-ring`：10 个远程单位全部进入唯一攻击环。
 - `combat-stop-hold-acquire`：Stop 局部追击；Hold 原地攻击近目标并忽略射程外目标。
 - `combat-multi-retarget`：8 个攻击者连续消灭 4 个目标，随后 8/8 恢复原路线。
@@ -78,6 +79,7 @@ AttackMove 路线
 - `combat-mobile-fire`：固定/移动武器前摇位移 0.0/59.8px，开火后一秒位移 0.0/110.3px；Move 取消 0.60 秒前摇但保持 20 秒冷却，并验证 Package/Hot 恢复一致。
 - `combat-target-selection`：Tick 30 保持初始目标、Tick 60 切换强语义优势目标、拒绝 771 分轻微优势，并验证玩家锁定目标不被 Priority 10 候选覆盖。
 - `combat-contact-priority`：验证固定前摇、近战接触、固定冷却、移动射击和普通五类角色，以及相同穿透压力下 0.32/0.52/0.93px 的有序位移。
+- `combat-attack-building`：8 名同侧攻击者都必须从建筑真实矩形边缘进入射程并实际起手；两个被友军占住原落点的单位只在连续 90 Tick 没有进展后重新选边，最终 8/8 参与、越界伤害 0、建筑摧毁、完整恢复一致。
 - `technology-research-upgrades`：Infantry Weapons 完成两级后，`10 + 2×2` 武器对 1 护甲目标预览并正式共享 13 伤害公式。
 
 这些场景不读取路径点、状态数组或选敌实现；底层替换后测试接口和业务预期可以保持不变。

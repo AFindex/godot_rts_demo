@@ -21,17 +21,23 @@ public static class ClearanceIncrementalSelfTest
         var updater = new IncrementalNavigationConnectivityUpdater(
             world, clearanceBake);
         var baseline = clearanceBake.CreateConnectivitySnapshot(movementClass);
+        var analyzer = new NavigationConnectivityAnalyzer(
+            world, clearanceBake.CellSize);
+        var fullBaseline = analyzer.Analyze(radius);
+        var baselineExact = TopologyEqual(baseline, fullBaseline);
+        var freshBake = ClearanceBakeSnapshot.Build(
+            navigation, clearanceBake.CellSize, clearanceBake.ChunkSizeCells);
+        var bakeMatchesCurrent =
+            freshBake.StableHash == clearanceBake.StableHash;
 
         var footprintId = world.DynamicOccupancy.Place(ChangedArea);
         var added = updater.Update(baseline, ChangedArea);
-        var fullAdded = new NavigationConnectivityAnalyzer(
-            world, clearanceBake.CellSize).Analyze(radius);
+        var fullAdded = analyzer.Analyze(radius);
 
         var removed = world.DynamicOccupancy.Remove(
             footprintId, out var removedArea);
         var restored = updater.Update(added.Snapshot, removedArea);
-        var fullRestored = new NavigationConnectivityAnalyzer(
-            world, clearanceBake.CellSize).Analyze(radius);
+        var fullRestored = analyzer.Analyze(radius);
 
         var exactAdd = TopologyEqual(added.Snapshot, fullAdded);
         var exactRemove = TopologyEqual(restored.Snapshot, fullRestored);
@@ -66,6 +72,8 @@ public static class ClearanceIncrementalSelfTest
             $"resampled={added.ResampledCells}/{added.Snapshot.NodeCount}, " +
             $"ratio={added.ResampledRatio:P1}, changed={added.ChangedCells}, " +
             $"runtime={runtimeUsesIncremental}, multiReject={rejectsMultipleRevisions}, " +
+            $"baselineExact={baselineExact}, bakeCurrent={bakeMatchesCurrent}, " +
+            $"loaded={clearanceBake.StableHashText}, fresh={freshBake.StableHashText}, " +
             $"addExact={exactAdd}, removeExact={exactRemove}");
     }
 

@@ -1,0 +1,13 @@
+Godot Engine v4.7.stable.mono.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 595.95 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 2060 SUPER
+
+Movie Maker mode enabled, recording movie in 1280×720 @ 30 FPS...
+RTS_NAVIGATION_RESOURCE PASS path=res://data/demo_navigation_map.tres format=1 hash=B8441F9F1544B950
+RTS_GAMEPLAY_PROFILES PASS path=res://data/demo_gameplay_profiles.tres format=1 hash=5A0A6FD9EA3985BF units=3 buildings=4
+RTS_BUILDING_TYPES PASS path=res://data/demo_building_types.tres format=2 hash=8706BAAF85DDD1B7 types=5
+RTS_PRODUCTION_CATALOG PASS path=res://data/demo_production_catalog.tres format=6 hash=BB56752D5A3C32E2 units=3 recipes=3
+RTS_TECHNOLOGY_CATALOG PASS path=res://data/demo_technology_catalog.tres format=1 hash=8F9990031AA55B5E technologies=3
+RTS_AI_CONFIG PASS path=res://data/demo_ai_configurations.tres format=1 hash=509CED7A999A2BD0 profiles=2
+RTS_CLEARANCE_BAKE PASS path=res://data/demo_clearance_bake.tres format=1 hash=C14A74B57CF07284 source=B8441F9F1544B950 grid=77x40 chunks=5x3
+RTS_VISUAL_TEST_START semantic-construction-contact-matrix: ticks=781, units=120
+RTS_VISUAL_TEST_PASS semantic-construction-contact-matrix: ticks=781, cases=120, accepted=True, completed=120/120, early-footprints=0, remote-progress=0, penetrations=0, radial=0, radial-detail=[], start-contact=0, completion-events=120, incomplete=[], condition=

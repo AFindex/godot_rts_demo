@@ -48,7 +48,7 @@ for Small, Medium, Large:
 - 层：Small 6px、Medium 8px、Large 12px。
 - 规范载荷：38,215 字节。
 - 源导航哈希：`B8441F9F1544B950`。
-- Bake 哈希：`A1BCA2BD6C885350`。
+- Bake 哈希：`C14A74B57CF07284`。
 
 Resource 同时保存格式、源哈希、Bake 哈希、Cell/Chunk 尺寸、行列数和载荷字节数。Converter 会逐项与载荷核对，避免 Inspector 元数据和实际数据漂移。
 

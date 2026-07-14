@@ -229,8 +229,21 @@ public sealed class ChokeController
         var choke = _definitions[chokeId];
         var travelAxis = choke.Axis * direction;
         var entry = direction > 0 ? choke.A : choke.B;
-        var along = Vector2.Dot(units.Positions[unit] - entry, travelAxis);
-        if (along < -choke.ApproachDistance)
+        var relative = units.Positions[unit] - entry;
+        var along = Vector2.Dot(relative, travelAxis);
+        var lateral = MathF.Abs(Vector2.Dot(relative, choke.Normal));
+        var approachHalfWidth = choke.Width * 0.5f + units.Radii[unit];
+        var wasManaged = units.ChokePhases[unit] != ChokePhase.None ||
+                         units.ChokeAdmitted[unit];
+        if (!wasManaged && lateral > approachHalfWidth)
+        {
+            units.ChokePhases[unit] = ChokePhase.None;
+        }
+        else if (!wasManaged && along <= choke.Length)
+        {
+            units.ChokePhases[unit] = ChokePhase.Approaching;
+        }
+        else if (along < -choke.ApproachDistance)
         {
             units.ChokePhases[unit] = ChokePhase.None;
         }

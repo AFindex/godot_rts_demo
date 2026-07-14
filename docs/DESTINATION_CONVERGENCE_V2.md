@@ -210,7 +210,7 @@ None
 
 ### 8.3 确定性与性能
 
-`DynamicBlockageTicks`、窗口距离和推后 Reservation 迁移倒计时进入 Hot Snapshot v29 与 State Hash v30；非法负数和非有限距离在解码时拒绝。运行时使用预分配单位/目标/索引缓冲区，没有在每 Tick 推挤热点创建 `List` 或 `ToArray`。
+`DynamicBlockageTicks`、窗口距离、推后 Reservation 迁移倒计时以及语义化移动目标与结果进入 Hot Snapshot v30 与 State Hash v31；非法负数、非有限距离和非法枚举在解码时拒绝。运行时使用预分配单位/目标/索引缓冲区，没有在每 Tick 推挤热点创建 `List` 或 `ToArray`。
 
 同机 Release 时间门禁结果：256/512/1000 单位移动 P95 为 `1.85 / 5.42 / 16.18ms`，分别低于 `4 / 12.5 / 16.67ms` 预算；128/256 总单位持续战斗 P95 为 `0.82 / 2.66ms`，低于 `4 / 8ms` 预算。当前仓库的分配门禁在未修改 HEAD 对照上同样失败，属于此前功能合入后未更新的独立基线债务；本专项没有放宽分配预算，也不把该债务伪装成通过。
 
@@ -219,6 +219,6 @@ None
 - `dynamic-blockage-priority-matrix`：同级穿过、高推低、低级受高级阻挡、同级受 Hold 阻挡四条隔离车道；前两条阻挡者位移约 `537.5/538.3px`，后两条锚点漂移 `0.00px`，两次阻塞均有界结束，Tick 300 活跃态 Hot Restore 精确一致。
 - `dynamic-blockage-continuous-waves`：`32 + 4 + 3 + 2 + 1` 五波、42 单位连续进入同一目标，`42/42` 到达、`42/42` 唯一 Reservation，稳定后 240 Tick 最大漂移 `0.00px`，且没有误触三秒兜底。
 - `destination-outer-ring`：外圈 `48/48`、内圈 `32/32`，最终 `80/80` 到达、0 Moving、0 重叠。
-- 交叉门禁：`combat-melee-slots`、`combat-contact-priority`、`shared-target-reservations`、`attack-move-squad-slot-resume`、`replay-hot-snapshot` 和 `large-group-192` 均通过。
+- 历史交叉结果中上述场景均通过；其中 `combat-melee-slots` 已因错误成功合同退出活动门禁，其余项目仍保留原覆盖范围。
 
 专项录像位于 `test_videos/20260714_035619/`，两段均为 1280×720、30 FPS、AV1/WebM、CRF 32、preset 8。

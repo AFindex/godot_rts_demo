@@ -248,6 +248,8 @@ public sealed class ProductionSystem
 
     public void Update(
         float delta,
+        long tick,
+        GameplayEventStream events,
         ConstructionSystem construction,
         PlayerEconomyStore economy,
         UnitStore units,
@@ -255,6 +257,7 @@ public sealed class ProductionSystem
         StaticWorld world,
         Func<UnitTypeProfile, int, Vector2, int> spawn,
         Action<int, int, RallyTarget> applyRally,
+        Func<Vector2, Vector2, float, float> pathCost,
         Func<int, int, SimRect, float, bool> evacuateFriendlyExitBlocker)
     {
         ReleaseDeadUnitSupply(units, economy);
@@ -295,7 +298,8 @@ public sealed class ProductionSystem
                 units,
                 combat,
                 world,
-                friendlyBlockers);
+                friendlyBlockers,
+                pathCost);
             if (exit.Status == ProductionExitStatus.SoftBlockedByFriendly)
             {
                 for (var blocker = 0;
@@ -316,6 +320,12 @@ public sealed class ProductionSystem
                 order.Recipe.UnitType, order.PlayerId, exit.Position);
             _producedUnits.Add(new ProducedUnitPopulation(
                 unit, order.PlayerId, order.Recipe.Cost.Supply));
+            events.Publish(
+                tick,
+                GameplayEventKind.UnitProduced,
+                unit,
+                queue.Producer.Value,
+                worldPosition: exit.Position);
             if (queue.Rally.IsSet)
                 applyRally(unit, order.PlayerId, queue.Rally);
             queue.Orders.RemoveAt(0);

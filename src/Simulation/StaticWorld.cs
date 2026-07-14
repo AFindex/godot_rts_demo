@@ -27,7 +27,7 @@ public sealed class StaticWorld
 
         for (var i = 0; i < _obstacles.Length; i++)
         {
-            if (_obstacles[i].Expanded(radius).Contains(position))
+            if (_obstacles[i].OverlapsDisc(position, radius))
             {
                 return false;
             }
@@ -45,7 +45,7 @@ public sealed class StaticWorld
 
         for (var i = 0; i < _obstacles.Length; i++)
         {
-            if (_obstacles[i].Expanded(radius).SegmentIntersects(from, to))
+            if (_obstacles[i].IntersectsSweptDisc(from, to, radius))
             {
                 return false;
             }
@@ -61,34 +61,13 @@ public sealed class StaticWorld
 
         for (var i = 0; i < _obstacles.Length; i++)
         {
-            var expanded = _obstacles[i].Expanded(radius);
-            if (!expanded.Contains(proposed))
+            var obstacle = _obstacles[i];
+            if (!obstacle.OverlapsDisc(proposed, radius))
             {
                 continue;
             }
-
-            if (!expanded.Contains(previous))
-            {
-                var xOnly = new Vector2(proposed.X, previous.Y);
-                var yOnly = new Vector2(previous.X, proposed.Y);
-                var xFree = !expanded.Contains(xOnly);
-                var yFree = !expanded.Contains(yOnly);
-
-                if (xFree && (!yFree || Vector2.DistanceSquared(xOnly, proposed) <=
-                    Vector2.DistanceSquared(yOnly, proposed)))
-                {
-                    proposed = xOnly;
-                    continue;
-                }
-
-                if (yFree)
-                {
-                    proposed = yOnly;
-                    continue;
-                }
-            }
-
-            proposed = expanded.PushOutside(proposed);
+            proposed = obstacle.ConstrainDiscOutside(
+                previous, proposed, radius);
         }
 
         proposed = DynamicOccupancy.ConstrainDisc(previous, proposed, radius);

@@ -11,7 +11,7 @@ python -m http.server 10086
 
 然后访问 `http://localhost:10086/test_videos/showcase/`。浏览器出于安全限制不能在直接打开本地 HTML 文件时读取 JSON，因此需要一个本地 HTTP 服务。
 
-仓库保留覆盖 93 个黑盒测试的规范录像，统一使用 AV1/WebM 并由 Git LFS 存储。历史上重复录制的早期批次已通过 `.gitignore` 排除。
+当前活动目录包含 127 个黑盒业务场景；全库媒体检查通过 175 个 AV1 视频、101 个 manifest 和 174 个场景引用，统一使用 AV1/WebM 并由 Git LFS 存储。部分场景保留历史或失败复现录像，因此视频和引用数量会大于活动场景数。历史上无参考意义的重复批次已通过 `.gitignore` 排除。
 
 85 段既有 AVI 已用 `libsvtav1 CRF 32 / preset 8` 迁移：3,309,160,498 字节降至 228,515,601 字节，保留 6.91%，逐段验证 codec、分辨率和帧数一致。迁移报告见 `compression_report.json`。
 
@@ -69,6 +69,8 @@ python -m http.server 10086
 - `20260712_125206/`：S8-E1 确定性战斗事件流；3 次攻击产生 3 个 AttackStarted、3 个 Impact（12/12/1）和 1 个 TargetDestroyed，固定容量事件读取无丢失。
 - `20260712_143026/`：S8-E2a 资源驱动伤害矩阵与科技重录；展示 Light/Armored 护甲差异、属性加成、`x2` 多段结算，以及 Infantry Weapons 两级后的 13 点正式伤害预览。
 - `20260712_145433/`：S8-E2b 建筑防御矩阵；Supply/Barracks/Command Center 的 0/1/2 护甲将 30 伤害降为 30/29/28，Fortification 后进一步变为 29/28/27，正式攻击 Supply 结算 29 点。
+- `20260714_202539/`：真实几何与业务完成条件专项；覆盖 120 组建筑接触、正式精炼厂循环、普通工人/MULE 独立容量、采矿穿行、SmartCommand 提前完成、8 人攻击建筑恢复和玩家视野。第一段录像的鼠标输入暴露出选择状态未初始化异常，日志被保留为失败证据。
+- `20260714_203148/`：修复视觉测试入口初始化后，干净重录 `semantic-construction-contact-matrix`；120/120 完成，远距离施工、提前硬碰撞、穿透和固定方向接近均为 0，日志无异常。
 
 重新录制所有当前场景：
 

@@ -21,7 +21,6 @@ public readonly record struct ProductionExitResolution(
 /// </summary>
 public static class ProductionExitResolver
 {
-    public const int CandidateCount = 12;
     public const int MaximumReportedFriendlyBlockers = 32;
 
     public static ProductionExitResolution Resolve(
@@ -32,7 +31,8 @@ public static class ProductionExitResolver
         UnitStore units,
         CombatStore combat,
         StaticWorld world,
-        Span<int> friendlyBlockers)
+        Span<int> friendlyBlockers,
+        Func<Vector2, Vector2, float, float>? pathCost = null)
     {
         if (!float.IsFinite(radius) || radius <= 0f)
             throw new ArgumentOutOfRangeException(nameof(radius));
@@ -41,15 +41,14 @@ public static class ProductionExitResolver
                 "Production exit blocker buffer is too small.",
                 nameof(friendlyBlockers));
 
-        Span<Vector2> candidates = stackalloc Vector2[CandidateCount];
-        FillCandidates(bounds, radius, candidates);
+        var candidates = FillCandidates(bounds, radius);
         var bestAvailableScore = float.PositiveInfinity;
         var bestAvailableIndex = -1;
         var bestSoftScore = float.PositiveInfinity;
         var bestSoftIndex = -1;
 
         for (var candidateIndex = 0;
-             candidateIndex < candidates.Length;
+             candidateIndex < candidates.Count;
              candidateIndex++)
         {
             var candidate = candidates[candidateIndex];
@@ -61,8 +60,11 @@ public static class ProductionExitResolver
                 candidate, radius, playerId, units, combat,
                 ref hasFriendly, ref hasEnemy);
             var score = rally.HasValue
-                ? Vector2.DistanceSquared(candidate, rally.Value)
+                ? pathCost?.Invoke(candidate, rally.Value, radius) ??
+                  Vector2.Distance(candidate, rally.Value)
                 : candidateIndex;
+            if (!float.IsFinite(score))
+                continue;
             if (!hasFriendly && !hasEnemy && score < bestAvailableScore)
             {
                 bestAvailableScore = score;
@@ -97,33 +99,15 @@ public static class ProductionExitResolver
             blockerCount);
     }
 
-    private static void FillCandidates(
+    private static List<Vector2> FillCandidates(
         SimRect bounds,
-        float radius,
-        Span<Vector2> candidates)
+        float radius)
     {
-        var center = (bounds.Min + bounds.Max) * 0.5f;
-        var offset = radius + 6f;
-        candidates[0] = new Vector2(bounds.Max.X + offset, center.Y);
-        candidates[1] = new Vector2(bounds.Min.X - offset, center.Y);
-        candidates[2] = new Vector2(center.X, bounds.Max.Y + offset);
-        candidates[3] = new Vector2(center.X, bounds.Min.Y - offset);
-        candidates[4] = new Vector2(
-            bounds.Max.X + offset, bounds.Max.Y + offset);
-        candidates[5] = new Vector2(
-            bounds.Max.X + offset, bounds.Min.Y - offset);
-        candidates[6] = new Vector2(
-            bounds.Min.X - offset, bounds.Max.Y + offset);
-        candidates[7] = new Vector2(
-            bounds.Min.X - offset, bounds.Min.Y - offset);
-        candidates[8] = new Vector2(
-            bounds.Max.X + offset, bounds.Min.Y + bounds.Height * 0.25f);
-        candidates[9] = new Vector2(
-            bounds.Max.X + offset, bounds.Min.Y + bounds.Height * 0.75f);
-        candidates[10] = new Vector2(
-            bounds.Min.X - offset, bounds.Min.Y + bounds.Height * 0.25f);
-        candidates[11] = new Vector2(
-            bounds.Min.X - offset, bounds.Min.Y + bounds.Height * 0.75f);
+        var numeric = InteractionGeometry.NumericTolerance(
+            (bounds.Min + bounds.Max) * 0.5f, bounds);
+        var spacing = MathF.Max(radius * 2f, 8f);
+        return InteractionGeometry.SampleRoundedRectangleBoundary(
+            bounds, radius + numeric, spacing);
     }
 
     private static void ClassifyUnitOccupancy(
@@ -178,7 +162,9 @@ public static class ProductionExitResolver
         Vector2 right,
         float rightRadius)
     {
-        var minimum = leftRadius + rightRadius + 1f;
+        var minimum = leftRadius + rightRadius +
+                      InteractionGeometry.NumericTolerance(
+                          left, new SimRect(right, right));
         return Vector2.DistanceSquared(left, right) < minimum * minimum;
     }
 }

@@ -187,7 +187,7 @@ public sealed class DynamicOccupancyGrid
                 for (var index = 0; index < candidates.Count; index++)
                 {
                     if (_footprints[candidates[index]].Value.Bounds
-                        .Expanded(radius).Contains(position))
+                        .OverlapsDisc(position, radius))
                     {
                         return false;
                     }
@@ -221,7 +221,7 @@ public sealed class DynamicOccupancyGrid
                 for (var index = 0; index < candidates.Count; index++)
                 {
                     if (_footprints[candidates[index]].Value.Bounds
-                        .Expanded(radius).SegmentIntersects(from, to))
+                        .IntersectsSweptDisc(from, to, radius))
                     {
                         return false;
                     }
@@ -236,33 +236,13 @@ public sealed class DynamicOccupancyGrid
     {
         foreach (var entry in _footprints.Values)
         {
-            var expanded = entry.Value.Bounds.Expanded(radius);
-            if (!expanded.Contains(proposed))
+            var footprint = entry.Value.Bounds;
+            if (!footprint.OverlapsDisc(proposed, radius))
             {
                 continue;
             }
-
-            if (!expanded.Contains(previous))
-            {
-                var xOnly = new Vector2(proposed.X, previous.Y);
-                var yOnly = new Vector2(previous.X, proposed.Y);
-                var xFree = !expanded.Contains(xOnly);
-                var yFree = !expanded.Contains(yOnly);
-                if (xFree && (!yFree || Vector2.DistanceSquared(xOnly, proposed) <=
-                    Vector2.DistanceSquared(yOnly, proposed)))
-                {
-                    proposed = xOnly;
-                    continue;
-                }
-
-                if (yFree)
-                {
-                    proposed = yOnly;
-                    continue;
-                }
-            }
-
-            proposed = expanded.PushOutside(proposed);
+            proposed = footprint.ConstrainDiscOutside(
+                previous, proposed, radius);
         }
 
         return proposed;

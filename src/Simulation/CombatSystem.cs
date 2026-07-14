@@ -29,6 +29,9 @@ public interface ICombatMovementDriver
     bool IsBuildingTargetValid(int attacker, GameplayBuildingId building);
     bool IsBuildingAlive(GameplayBuildingId building);
     SimRect BuildingTargetBounds(GameplayBuildingId building);
+    GameplayBuildingId FindAutoBuildingTarget(int attacker, float acquisitionRange);
+    bool TryResolveBuildingChaseTarget(
+        int attacker, GameplayBuildingId building, out Vector2 target);
     CombatBuildingDamageResult DamageBuilding(
         GameplayBuildingId building, CombatWeaponDamageSnapshot weapon);
     int WeaponUpgradeLevel(int team);
@@ -103,6 +106,12 @@ public sealed class CombatSystem
             _combat.TargetLockRemaining[unit] = MathF.Max(
                 0f, _combat.TargetLockRemaining[unit] - delta);
 
+            if (_units.MovementGoalKinds[unit] ==
+                    UnitMovementGoalKind.ProductionExit &&
+                _units.MovementLegResults[unit] ==
+                    UnitMovementLegResult.InProgress)
+                continue;
+
             if (!_canAttack(unit))
             {
                 if (_combat.TargetKinds[unit] != CombatTargetKind.None)
@@ -143,6 +152,16 @@ public sealed class CombatSystem
                     if (target >= 0)
                     {
                         BeginEngagement(unit, target);
+                    }
+                    else
+                    {
+                        var acquisition = intent == UnitCommandIntent.Hold
+                            ? _combat.AttackRanges[unit] + _units.Radii[unit]
+                            : _combat.AcquisitionRanges[unit];
+                        var building = _movement.FindAutoBuildingTarget(
+                            unit, acquisition);
+                        if (building.Value >= 0)
+                            BeginBuildingEngagement(unit, building, tick);
                     }
                 }
                 continue;
@@ -190,10 +209,12 @@ public sealed class CombatSystem
                 _units.Positions[unit], _units.Positions[target]);
             var range = _combat.AttackRanges[unit] +
                         _units.Radii[unit] + _units.Radii[target];
-            if (distance <= range &&
-                (intent == UnitCommandIntent.Hold ||
-                 !RequiresAttackSlot(unit) || _slots.IsReady(unit) ||
-                 CanContinueMobileAttackMove(unit, intent)))
+            range += InteractionGeometry.NumericTolerance(
+                _units.Positions[unit],
+                new SimRect(
+                    _units.Positions[target],
+                    _units.Positions[target]));
+            if (distance <= range)
             {
                 UpdateAttack(unit, target, delta, tick);
             }
@@ -206,6 +227,27 @@ public sealed class CombatSystem
                 UpdateChase(unit, target);
             }
         }
+    }
+
+    private void BeginBuildingEngagement(
+        int unit,
+        GameplayBuildingId building,
+        long tick)
+    {
+        _slots.Release(unit);
+        _combat.TargetUnits[unit] = -1;
+        _combat.TargetBuildings[unit] = building.Value;
+        _combat.TargetKinds[unit] = CombatTargetKind.Building;
+        _combat.EngagementOrigins[unit] = _units.Positions[unit];
+        _combat.Phases[unit] = CombatPhase.Chasing;
+        _combat.ChaseRepathRemaining[unit] = 0f;
+        _combat.WindupRemaining[unit] = 0f;
+        _combat.TargetLockRemaining[unit] = MinimumTargetLockSeconds;
+        UpdateBuildingTarget(
+            unit,
+            _combat.CommandIntents[unit],
+            delta: 0f,
+            tick);
     }
 
     private void BeginEngagement(int unit, int target)
@@ -480,7 +522,9 @@ public sealed class CombatSystem
         var bounds = _movement.BuildingTargetBounds(building);
         var nearest = bounds.Clamp(_units.Positions[unit]);
         var distance = Vector2.Distance(_units.Positions[unit], nearest);
-        var range = _combat.AttackRanges[unit] + _units.Radii[unit];
+        var range = _combat.AttackRanges[unit] + _units.Radii[unit] +
+                    InteractionGeometry.NumericTolerance(
+                        _units.Positions[unit], bounds);
         if (distance <= range)
         {
             UpdateBuildingAttack(unit, building, intent, delta, tick);
@@ -493,8 +537,22 @@ public sealed class CombatSystem
         }
         _combat.Phases[unit] = CombatPhase.Chasing;
         _combat.WindupRemaining[unit] = 0f;
-        var chaseTarget = ClosestOutsidePoint(
-            bounds, _units.Positions[unit], _units.Radii[unit] + 2f);
+        if (_units.MovementGoalKinds[unit] ==
+                UnitMovementGoalKind.AttackRange &&
+            _units.MovementLegResults[unit] ==
+                UnitMovementLegResult.InProgress &&
+            _units.Modes[unit] is
+                UnitMoveMode.Moving or UnitMoveMode.WaitingForPath &&
+            !_units.BlockedByNavigation[unit])
+        {
+            return;
+        }
+        if (!_movement.TryResolveBuildingChaseTarget(
+                unit, building, out var chaseTarget))
+        {
+            Disengage(unit);
+            return;
+        }
         var stayedLocal = Vector2.DistanceSquared(
             chaseTarget, _combat.LastChaseTargets[unit]) <=
             ChaseRetargetDistance * ChaseRetargetDistance;
@@ -698,19 +756,4 @@ public sealed class CombatSystem
     private static Vector2 Center(SimRect bounds) =>
         (bounds.Min + bounds.Max) * 0.5f;
 
-    private static Vector2 ClosestOutsidePoint(
-        SimRect bounds,
-        Vector2 origin,
-        float offset)
-    {
-        Vector2[] candidates =
-        [
-            new(bounds.Min.X - offset, Math.Clamp(origin.Y, bounds.Min.Y, bounds.Max.Y)),
-            new(bounds.Max.X + offset, Math.Clamp(origin.Y, bounds.Min.Y, bounds.Max.Y)),
-            new(Math.Clamp(origin.X, bounds.Min.X, bounds.Max.X), bounds.Min.Y - offset),
-            new(Math.Clamp(origin.X, bounds.Min.X, bounds.Max.X), bounds.Max.Y + offset)
-        ];
-        return candidates.OrderBy(value =>
-            Vector2.DistanceSquared(origin, value)).First();
-    }
 }

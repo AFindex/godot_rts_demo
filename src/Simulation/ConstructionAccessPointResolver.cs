@@ -2,99 +2,95 @@ using System.Numerics;
 
 namespace RtsDemo.Simulation;
 
+public readonly record struct InteractionApproachResolution(
+    bool Found,
+    Vector2 Target,
+    float PathLength);
+
 public static class ConstructionAccessPointResolver
 {
     public static Vector2 ProjectFromCenter(
         SimRect bounds,
         Vector2 origin,
-        float clearance)
-    {
-        var expanded = bounds.Expanded(clearance);
-        var center = (expanded.Min + expanded.Max) * 0.5f;
-        var half = (expanded.Max - expanded.Min) * 0.5f;
-        var direction = origin - center;
-        if (direction.LengthSquared() <= 0.0001f)
-            return new Vector2(expanded.Min.X, center.Y);
+        float clearance) =>
+        InteractionGeometry.ProjectFromCenter(bounds, origin, clearance);
 
-        var xScale = MathF.Abs(direction.X) <= 0.0001f
-            ? float.PositiveInfinity
-            : half.X / MathF.Abs(direction.X);
-        var yScale = MathF.Abs(direction.Y) <= 0.0001f
-            ? float.PositiveInfinity
-            : half.Y / MathF.Abs(direction.Y);
-        return center + direction * MathF.Min(xScale, yScale);
-    }
-
-    public static Vector2 Resolve(
+    public static InteractionApproachResolution Resolve(
         StaticWorld world,
         IPathProvider pathProvider,
         SimRect bounds,
         Vector2 origin,
         float collisionRadius,
         float navigationRadius,
-        float placementPadding,
+        float interactionPadding,
         Func<Vector2, float, bool>? additionalDiscClearance = null)
     {
-        var offset = collisionRadius + placementPadding + 1f;
-        var center = (bounds.Min + bounds.Max) * 0.5f;
-        Vector2[] candidates =
-        [
-            new(bounds.Min.X - offset, center.Y),
-            new(bounds.Max.X + offset, center.Y),
-            new(center.X, bounds.Min.Y - offset),
-            new(center.X, bounds.Max.Y + offset)
-        ];
+        var numericClearance =
+            InteractionGeometry.NumericTolerance(origin, bounds) * 0.25f;
+        var clearance = collisionRadius + interactionPadding + numericClearance;
+        var projected = ProjectFromCenter(bounds, origin, clearance);
 
-        var best = candidates[0];
-        var bestCost = float.PositiveInfinity;
-        for (var index = 0; index < candidates.Length; index++)
+        if (TryMeasureCandidate(
+                world, pathProvider, origin, projected,
+                collisionRadius, navigationRadius,
+                additionalDiscClearance,
+                endpoint => InteractionGeometry.DiscTouchesRectangle(
+                    endpoint,
+                    collisionRadius,
+                    bounds,
+                    interactionPadding),
+                out var projectedLength))
+        {
+            return new InteractionApproachResolution(
+                true, projected, projectedLength);
+        }
+
+        var candidates = InteractionGeometry.SampleRoundedRectangleBoundary(
+            bounds,
+            clearance,
+            MathF.Max(collisionRadius * 2f, 8f));
+        var best = default(Vector2);
+        var bestLength = float.PositiveInfinity;
+        for (var index = 0; index < candidates.Count; index++)
         {
             var candidate = candidates[index];
-            if (!world.IsDiscFree(candidate, collisionRadius) ||
-                additionalDiscClearance is not null &&
-                !additionalDiscClearance(candidate, collisionRadius))
+            if (Vector2.DistanceSquared(candidate, projected) <=
+                numericClearance * numericClearance)
+            {
                 continue;
-            var path = pathProvider.IsReady
-                ? pathProvider.FindPath(origin, candidate, navigationRadius)
-                : [origin, candidate];
-            if (path.Length == 0)
+            }
+            if (!TryMeasureCandidate(
+                    world, pathProvider, origin, candidate,
+                    collisionRadius, navigationRadius,
+                    additionalDiscClearance,
+                    endpoint => InteractionGeometry.DiscTouchesRectangle(
+                        endpoint,
+                        collisionRadius,
+                        bounds,
+                        interactionPadding),
+                    out var length) ||
+                length >= bestLength)
+            {
                 continue;
-            var direct = world.IsSegmentFree(
-                origin, candidate, collisionRadius);
-            var cost = PathLength(path) + (direct ? 0f : 1_000_000f);
-            if (cost >= bestCost)
-                continue;
+            }
             best = candidate;
-            bestCost = cost;
+            bestLength = length;
         }
-        if (float.IsFinite(bestCost))
-            return best;
-
-        return candidates
-            .OrderBy(candidate => Vector2.DistanceSquared(origin, candidate))
-            .First();
+        return float.IsFinite(bestLength)
+            ? new InteractionApproachResolution(true, best, bestLength)
+            : new InteractionApproachResolution(
+                false, default, float.PositiveInfinity);
     }
 
-    public static Vector2 ResolveInteraction(
+    public static InteractionApproachResolution ResolveInteraction(
         StaticWorld world,
         IPathProvider pathProvider,
         SimRect bounds,
         Vector2 origin,
         float collisionRadius,
         float navigationRadius,
-        float interactionPadding)
-    {
-        var clearance = collisionRadius + interactionPadding + 1f;
-        var projected = ProjectFromCenter(bounds, origin, clearance);
-        if (world.IsDiscFree(projected, collisionRadius))
-        {
-            var path = pathProvider.IsReady
-                ? pathProvider.FindPath(origin, projected, navigationRadius)
-                : [origin, projected];
-            if (path.Length > 0)
-                return projected;
-        }
-        return Resolve(
+        float interactionPadding) =>
+        Resolve(
             world,
             pathProvider,
             bounds,
@@ -102,6 +98,113 @@ public static class ConstructionAccessPointResolver
             collisionRadius,
             navigationRadius,
             interactionPadding);
+
+    public static InteractionApproachResolution ResolveCircle(
+        StaticWorld world,
+        IPathProvider pathProvider,
+        Vector2 center,
+        float interactionRadius,
+        Vector2 origin,
+        float collisionRadius,
+        float navigationRadius)
+    {
+        var pointBounds = new SimRect(center, center);
+        var numericClearance =
+            InteractionGeometry.NumericTolerance(center, pointBounds) * 0.25f;
+        var targetRadius =
+            interactionRadius + collisionRadius + numericClearance;
+        var direction = origin - center;
+        if (direction.LengthSquared() <= 0f)
+            direction = -Vector2.UnitX;
+        else
+            direction = Vector2.Normalize(direction);
+        var projected = center + direction * targetRadius;
+        if (TryMeasureCandidate(
+                world, pathProvider, origin, projected,
+                collisionRadius, navigationRadius, null,
+                endpoint => Vector2.DistanceSquared(endpoint, center) <=
+                    (targetRadius + InteractionGeometry.NumericTolerance(
+                        endpoint, pointBounds)) *
+                    (targetRadius + InteractionGeometry.NumericTolerance(
+                        endpoint, pointBounds)),
+                out var projectedLength))
+        {
+            return new InteractionApproachResolution(
+                true, projected, projectedLength);
+        }
+
+        var maximumSpacing = MathF.Max(collisionRadius * 2f, 8f);
+        var candidateCount = Math.Max(
+            8,
+            (int)MathF.Ceiling(
+                MathF.Tau * targetRadius / maximumSpacing));
+        var originAngle = MathF.Atan2(direction.Y, direction.X);
+        var best = default(Vector2);
+        var bestLength = float.PositiveInfinity;
+        for (var index = 1; index < candidateCount; index++)
+        {
+            var angle = originAngle + MathF.Tau * index / candidateCount;
+            var candidate = center +
+                new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * targetRadius;
+            if (!TryMeasureCandidate(
+                    world, pathProvider, origin, candidate,
+                    collisionRadius, navigationRadius, null,
+                    endpoint => Vector2.DistanceSquared(endpoint, center) <=
+                        (targetRadius + InteractionGeometry.NumericTolerance(
+                            endpoint, pointBounds)) *
+                        (targetRadius + InteractionGeometry.NumericTolerance(
+                            endpoint, pointBounds)),
+                    out var length) || length >= bestLength)
+                continue;
+            best = candidate;
+            bestLength = length;
+        }
+        return float.IsFinite(bestLength)
+            ? new InteractionApproachResolution(true, best, bestLength)
+            : new InteractionApproachResolution(
+                false, default, float.PositiveInfinity);
+    }
+
+    private static bool TryMeasureCandidate(
+        StaticWorld world,
+        IPathProvider pathProvider,
+        Vector2 origin,
+        Vector2 candidate,
+        float collisionRadius,
+        float navigationRadius,
+        Func<Vector2, float, bool>? additionalDiscClearance,
+        Predicate<Vector2> endpointAccepted,
+        out float length)
+    {
+        length = float.PositiveInfinity;
+        if (!world.IsDiscFree(candidate, collisionRadius) ||
+            additionalDiscClearance is not null &&
+            !additionalDiscClearance(candidate, collisionRadius))
+        {
+            return false;
+        }
+
+        var path = pathProvider.IsReady
+            ? pathProvider.FindPath(origin, candidate, navigationRadius)
+            : world.IsSegmentFree(origin, candidate, collisionRadius)
+                ? [origin, candidate]
+                : [];
+        if (path.Length == 0)
+            return false;
+
+        if (!endpointAccepted(path[^1]) ||
+            !NavigationPathTransition.TryNormalize(
+                world,
+                path,
+                navigationRadius,
+                !world.IsDiscFree(origin, navigationRadius)
+                    ? collisionRadius
+                    : null,
+                collisionRadius,
+                out path))
+            return false;
+        length = PathLength(path);
+        return true;
     }
 
     private static float PathLength(ReadOnlySpan<Vector2> path)
@@ -111,5 +214,4 @@ public static class ConstructionAccessPointResolver
             result += Vector2.Distance(path[index - 1], path[index]);
         return result;
     }
-
 }

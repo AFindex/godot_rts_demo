@@ -1066,6 +1066,25 @@ public readonly record struct TestCombatEventBatch(
     ulong LatestSequence,
     int LostEvents);
 
+public readonly record struct TestGameplayEvent(
+    long Tick,
+    ulong Sequence,
+    GameplayEventKind Kind,
+    TestUnitId Unit,
+    TestGameplayBuildingId Building,
+    TestResourceNodeId ResourceNode,
+    TestEconomyResourceKind ResourceKind,
+    int Amount,
+    float Value,
+    UnitMovementGoalKind MovementGoalKind,
+    UnitMovementLegResult MovementResult,
+    Vector2 WorldPosition);
+
+public readonly record struct TestGameplayEventBatch(
+    TestGameplayEvent[] Events,
+    ulong LatestSequence,
+    int LostEvents);
+
 public readonly record struct TestCombatDamagePreview(
     float DamagePerAttack,
     float TotalDamage,
@@ -1294,6 +1313,15 @@ public readonly record struct TestUnitSnapshot(
     float Radius,
     TestUnitState State);
 
+public readonly record struct TestMovementSnapshot(
+    TestUnitId Unit,
+    UnitMovementGoalKind GoalKind,
+    Vector2 NavigationTarget,
+    SimRect TargetBounds,
+    float TargetRadius,
+    int TargetId,
+    UnitMovementLegResult Result);
+
 /// <summary>
 /// Stable business-level test API. Scenario definitions only use this facade;
 /// concrete simulation data structures are confined to this adapter.
@@ -1351,6 +1379,21 @@ public sealed partial class MovementTestRig
     public static MovementTestRig CreateOpenField(Vector2 size, int capacity)
     {
         var world = new StaticWorld(new SimRect(Vector2.Zero, size));
+        return new MovementTestRig(
+            world,
+            new RtsSimulation(world, new GridPathProvider(world), capacity),
+            null,
+            null,
+            null);
+    }
+
+    public static MovementTestRig CreateObstacleField(
+        Vector2 size,
+        int capacity,
+        params SimRect[] obstacles)
+    {
+        var world = new StaticWorld(
+            new SimRect(Vector2.Zero, size), obstacles);
         return new MovementTestRig(
             world,
             new RtsSimulation(world, new GridPathProvider(world), capacity),
@@ -3256,6 +3299,19 @@ public sealed partial class MovementTestRig
             ToTestState(_simulation.Units.Modes[index]));
     }
 
+    public TestMovementSnapshot ObserveMovement(TestUnitId unit)
+    {
+        var value = _simulation.ObserveUnitMovement(unit.Value);
+        return new TestMovementSnapshot(
+            unit,
+            value.GoalKind,
+            value.NavigationTarget,
+            value.TargetBounds,
+            value.TargetRadius,
+            value.TargetId,
+            value.Result);
+    }
+
     public TestCombatSnapshot ObserveCombat(TestUnitId unit)
     {
         var index = unit.Value;
@@ -3291,6 +3347,28 @@ public sealed partial class MovementTestRig
                 value.TargetId, value.Damage, value.RemainingHealth,
                 value.DamagePerAttack, value.AttacksApplied,
                 value.BonusApplied, value.ProjectileId,
+                value.WorldPosition)).ToArray(),
+            batch.LatestSequence,
+            batch.LostEvents);
+    }
+
+    public TestGameplayEventBatch ObserveGameplayEvents(
+        ulong afterSequence = 0)
+    {
+        var batch = _simulation.GameplayEvents.ReadAfter(afterSequence);
+        return new TestGameplayEventBatch(
+            batch.Events.Select(value => new TestGameplayEvent(
+                value.Tick,
+                value.Sequence,
+                value.Kind,
+                new TestUnitId(value.Unit),
+                new TestGameplayBuildingId(value.Building),
+                new TestResourceNodeId(value.ResourceNode),
+                (TestEconomyResourceKind)value.ResourceKind,
+                value.Amount,
+                value.Value,
+                value.MovementGoalKind,
+                value.MovementResult,
                 value.WorldPosition)).ToArray(),
             batch.LatestSequence,
             batch.LostEvents);
@@ -3474,7 +3552,10 @@ public sealed class VisualTestSession
     private readonly List<TestDiagnosticArea> _diagnosticAreas = [];
     private readonly List<TestGameplayBuildingId> _selectedBuildings = [];
     private readonly List<TestCameraKeyframe> _cameraKeyframes = [];
+    private readonly List<ConditionalAction> _conditionalActions = [];
     private readonly Func<MovementTestRig, ScenarioResult> _evaluate;
+    private int _nextConditionalAction;
+    private bool _finishWhenConditionsCompleted;
 
     public VisualTestSession(
         string id,
@@ -3498,6 +3579,16 @@ public sealed class VisualTestSession
     public MovementTestRig Rig { get; }
     public TestUnitId[] VisibleUnits { get; }
     public string Phase { get; private set; } = "Running";
+    public string ConditionFailure { get; private set; } = string.Empty;
+    public bool ConditionsCompleted =>
+        ConditionFailure.Length == 0 &&
+        _nextConditionalAction == _conditionalActions.Count;
+    public bool HasReachedEnd =>
+        Rig.Tick >= DurationTicks ||
+        _finishWhenConditionsCompleted &&
+        _conditionalActions.Count > 0 &&
+        ConditionsCompleted &&
+        (_actions.Count == 0 || Rig.Tick > _actions.Keys.Last());
 
     internal StaticWorld World => Rig.RenderWorld;
     internal RtsSimulation Simulation => Rig.RenderSimulation;
@@ -3617,6 +3708,25 @@ public sealed class VisualTestSession
         return this;
     }
 
+    public VisualTestSession When(
+        string phase,
+        long deadlineTick,
+        Func<MovementTestRig, bool> condition,
+        Action<MovementTestRig> action)
+    {
+        if (deadlineTick < 0 || deadlineTick > DurationTicks)
+            throw new ArgumentOutOfRangeException(nameof(deadlineTick));
+        _conditionalActions.Add(new ConditionalAction(
+            phase, deadlineTick, condition, action));
+        return this;
+    }
+
+    public VisualTestSession FinishWhenConditionsCompleted()
+    {
+        _finishWhenConditionsCompleted = true;
+        return this;
+    }
+
     public void Step()
     {
         if (_actions.TryGetValue(Rig.Tick, out var actions))
@@ -3628,6 +3738,28 @@ public sealed class VisualTestSession
             }
         }
 
+
+        while (ConditionFailure.Length == 0 &&
+               _nextConditionalAction < _conditionalActions.Count)
+        {
+            var conditional = _conditionalActions[_nextConditionalAction];
+            if (conditional.Condition(Rig))
+            {
+                Phase = conditional.Phase;
+                conditional.Action(Rig);
+                _nextConditionalAction++;
+                continue;
+            }
+            if (Rig.Tick >= conditional.DeadlineTick)
+            {
+                ConditionFailure =
+                    $"{conditional.Phase} timed out at tick {Rig.Tick} " +
+                    $"(deadline {conditional.DeadlineTick}).";
+                Phase = "Condition timeout";
+            }
+            break;
+        }
+
         Rig.Step();
     }
 
@@ -3635,5 +3767,11 @@ public sealed class VisualTestSession
 
     private readonly record struct ScheduledAction(
         string Phase,
+        Action<MovementTestRig> Action);
+
+    private readonly record struct ConditionalAction(
+        string Phase,
+        long DeadlineTick,
+        Func<MovementTestRig, bool> Condition,
         Action<MovementTestRig> Action);
 }

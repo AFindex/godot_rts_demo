@@ -79,6 +79,9 @@ public sealed class SteeringSolver
             neighborRadius,
             unit,
             _neighborBuffer);
+        var preferredProbeSeconds = MathF.Min(
+            0.32f,
+            slotDistance / preferredSpeed);
 
         var preferredRisk = CollisionRisk(
             units,
@@ -89,7 +92,10 @@ public sealed class SteeringSolver
             unitCollisionSuppressed, concealmentKinds, combatContacts,
             combatTargets);
         if (preferredRisk < 0.02f &&
-            _world.IsSegmentFree(position, position + preferred * 0.32f, radius))
+            _world.IsSegmentFree(
+                position,
+                position + preferred * preferredProbeSeconds,
+                radius))
         {
             TickAvoidanceMemory(units, unit, 0);
             return MoveTowards(
@@ -109,8 +115,14 @@ public sealed class SteeringSolver
             var candidateDirection = Rotate(preferredDirection, angle);
             var speedScale = MathF.Abs(CandidateAngles[candidateIndex]) >= 100f ? 0.45f : 1f;
             var candidate = candidateDirection * preferredSpeed * speedScale;
+            var candidateProbeSeconds = MathF.Min(
+                0.32f,
+                slotDistance / candidate.Length());
 
-            if (!_world.IsSegmentFree(position, position + candidate * 0.32f, radius))
+            if (!_world.IsSegmentFree(
+                    position,
+                    position + candidate * candidateProbeSeconds,
+                    radius))
             {
                 continue;
             }

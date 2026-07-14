@@ -6,7 +6,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public static class SimulationStateHasher
 {
-    public const int CurrentFormatVersion = 30;
+    public const int CurrentFormatVersion = 31;
 
     public static ulong Compute(RtsSimulation simulation)
     {
@@ -57,6 +57,12 @@ public static class SimulationStateHasher
             hash.Add(units.NextVelocities[unit]);
             hash.Add(units.SlotTargets[unit]);
             hash.Add(units.MoveGoals[unit]);
+            hash.Add((byte)units.MovementGoalKinds[unit]);
+            hash.Add(units.MovementGoalBounds[unit].Min);
+            hash.Add(units.MovementGoalBounds[unit].Max);
+            hash.Add(units.MovementGoalRadii[unit]);
+            hash.Add(units.MovementGoalTargetIds[unit]);
+            hash.Add((byte)units.MovementLegResults[unit]);
             hash.Add(units.Radii[unit]);
             hash.Add((byte)units.MovementClasses[unit]);
             hash.Add(units.NavigationRadii[unit]);

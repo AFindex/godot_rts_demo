@@ -6,5 +6,7 @@ public static class WorkerCollisionPolicy
 {
     public static bool SuppressesUnitCollision(WorkerEconomyState state) =>
         state is WorkerEconomyState.GoingToResource or
+            WorkerEconomyState.WaitingForResource or
+            WorkerEconomyState.Gathering or
             WorkerEconomyState.ReturningCargo;
 }

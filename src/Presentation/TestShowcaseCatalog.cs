@@ -58,6 +58,12 @@ public static class TestShowcaseCatalog
     {
         var values = new[]
         {
+            M("semantic-construction-contact-matrix", "真实施工接触矩阵", "专项修复", "使用全部正式建筑尺寸和二十四个方向，独立核对工人接触矩形后才开工。"),
+            M("semantic-construction-resume-matrix", "换工人继续施工矩阵", "专项修复", "五种正式建筑中断施工后由不同方向的新工人继续，验证暂停期、真实接触和原工人命令互不改写。"),
+            M("semantic-real-refinery-cycle", "真实精炼厂采气循环", "专项修复", "从正式建造基地、采矿攒钱、建精炼厂到反复采气交货，不直接改内部状态。"),
+            M("semantic-unreachable-queue-release", "不可达命令释放队列", "专项修复", "首条移动被整墙隔断后必须明确失败，并依次执行后面的两条 Shift 移动。"),
+            M("semantic-follow-body-range", "跟随单位身体边界", "专项修复", "生产单位集结到友军时不追身体中心，目标移动后跟随，死亡后前往最后位置。"),
+            M("semantic-production-exit-restoration", "生产整边出口与命令恢复", "专项修复", "连续封锁真实建筑边界，验证友军让位、敌军硬阻挡、解封出生和原命令恢复。"),
             M("group-move-terminal-stability", "编队移动终点稳定", "基础移动", "验证整队右键移动完成后速度归零，且长时间不再换槽、回拉或抖动。"),
             M("dynamic-blockage-priority-matrix", "通用阻塞与挤压优先级", "基础移动", "验证同级挤压、高推低、低级与 Hold 阻挡后三秒就地结束，以及热恢复一致。"),
             M("dynamic-blockage-continuous-waves", "跨波次拥挤集结", "终点协作", "验证大队、小队、双人和单人连续进入同一拥挤目标后都能稳定结束。"),
@@ -78,7 +84,6 @@ public static class TestShowcaseCatalog
             M("attack-move-leash-resume", "攻击移动脱离追击", "战斗", "验证敌人离开 leash 后放弃追击并恢复原路线。"),
             M("attack-move-command-isolation", "Move 与 AttackMove 隔离", "战斗", "同图验证普通移动忽略敌人，攻击移动主动接敌。"),
             M("attack-move-cancel", "交战命令取消", "战斗", "验证 Stop/Hold 取消 AttackMove，且保留各自不同的索敌语义。"),
-            M("combat-melee-slots", "近战接触槽", "战斗移动", "验证多个近战单位绕目标分配唯一接触位置并全部就位。"),
             M("combat-ranged-ring", "远程原地开火", "战斗移动", "验证已在射程内的远程单位直接开火，不会为了环形站位而整体重排。"),
             M("combat-stop-hold-acquire", "Stop/Hold 索敌差异", "战斗", "验证 Stop 可局部追击，Hold 只攻击当前射程内目标。"),
             M("combat-multi-retarget", "多人连续换目标", "战斗", "验证多人依次消灭多个目标并稳定恢复 AttackMove。"),
@@ -129,7 +134,7 @@ public static class TestShowcaseCatalog
             M("clearance-bake-live-commit", "Bake 在线提交", "数据工作流", "验证两阶段校验、原子替换和活动单位重规划。"),
             M("resource-file-watch-workflow", "资源文件监听", "数据工作流", "验证写入风暴去抖、有限重试和安全自动提交。"),
             M("building-connectivity-diff-preview", "放置连通差异面板", "数据工作流", "展示建筑放置前三档拓扑变化与受影响 Chunk。"),
-            M("economy-dual-resource", "双资源采集", "经济玩法", "验证矿物、瓦斯、Refinery、容量、枯竭和再次采集。"),
+            M("economy-dual-resource", "双资源状态机（局部）", "经济玩法", "仅验证纯经济状态机、容量、枯竭和 Operational 节点循环；不证明真实 Refinery 建筑可采。"),
             M("economy-auto-patch-distribution", "自动分矿与饱和槽位", "经济玩法", "同一次右键把 12/16/24/32 个普通农民确定性分散到八片矿，验证每片矿一个并发采集槽、两个理想分配位、等待队列以及回放和热恢复。"),
             M("economy-mule-independent-mining", "MULE 独立采矿通道", "经济玩法", "验证 MULE 与普通农民可在同一矿片并采、第二个 MULE 等待、八矿 MULE 自动分散且普通 16/16 饱和度不变。"),
             M("economy-assignment-lifecycle", "分矿生命周期", "经济玩法", "验证资源 Rally 填补最空矿片，以及矿片枯竭后 Active、Assigned、Waiting 收缩并在剩余矿簇确定性重分配。"),
@@ -147,15 +152,12 @@ public static class TestShowcaseCatalog
             M("ai-dual-runtime-replay", "双 AI 热恢复与回放", "AI 对局", "验证错峰双 AI 的策略未来态、热恢复和纯命令回放。"),
             M("ai-continuous-encounter", "双 AI 持续遭遇战", "AI 对局", "展示双方开局、发展、扩张、攀科技、战损补兵和持续互攻。"),
             M("construction-gameplay-buildings", "正式建筑施工", "建造生产", "验证五类建筑、施工暂停续建、取消退款和建筑摧毁。"),
-            M("construction-close-approach", "施工贴边距离", "建造生产", "验证四种尺寸建筑都按矩形 footprint 的边缘接近，工人不会隔着大段空隙开工，也不会进入硬碰撞区。"),
             M("construction-reservation-hard-commit", "施工预占与硬提交", "建造生产", "验证施工幽灵不阻挡通行、阻止重复放置，到场后才原子提交硬占用。"),
             M("construction-multi-unit-eviction", "施工多单位确定性让位", "建造生产", "验证四档建筑、1/8/32 占位单位的唯一撤离槽、Hold 保守等待、订单保留和热恢复。"),
             M("construction-blocker-policy-matrix", "施工阻挡策略矩阵", "建造生产", "验证己方 Idle 自动让位，Hold 与采集任务保守等待，盟友和敌军由各自玩家解除，以及已知占位的预览拒绝。"),
             M("construction-queued-builds", "Shift 连续建造队列", "建造生产", "验证多尺寸建筑软预占、逐项开工重验、静态失效跳过、动态友军让位、单项取消、Builder 死亡和完成后回矿。"),
             M("construction-under-build-defense", "施工护甲完成边界", "建造生产", "验证施工期有效护甲恒为零，完成 Tick 后才应用建筑基础护甲与防御科技。"),
             M("building-type-resource-runtime", "建筑类型 Resource", "数据工作流", "验证建筑目录 Resource、尺寸、功能和运行时建造。"),
-            M("production-queue-exit-rally", "生产队列与 Rally", "建造生产", "验证排队、出口、人口预留、Rally 和建筑摧毁清理。"),
-            M("production-exit-rally-boundaries", "生产出口与 Rally 边界", "建造生产", "验证四方向出口、友军软让位、敌军硬封口及 Rally 目标死亡时序。"),
             M("production-replay-persistence", "生产热恢复", "回放", "验证生产中、等待出口和已出生三个阶段的恢复一致性。"),
             M("production-catalog-resource-runtime", "生产目录 Resource", "数据工作流", "验证兵种、配方、前置和战斗 Profile 从目录加载。"),
             M("production-rally-smart-targets", "Rally 智能目标", "建造生产", "验证地面、资源和友军 Rally 的正式目标协议。"),
@@ -181,7 +183,7 @@ public static class TestShowcaseCatalog
             M("bidirectional-choke-waves", "多波次双向狭口", "狭口交通", "验证分批到达、排空切向和有界最大等待。"),
             M("hold-blocked-choke", "Hold 堵口", "狭口恢复", "验证固定阻挡存在时交通安全、排队与有限恢复。"),
             M("temporary-blocker-recovery", "临时阻挡恢复", "狭口恢复", "验证阻挡移除后单位经过恢复阶梯继续抵达。"),
-            M("unreachable-recovery-limit", "不可达恢复上限", "狭口恢复", "验证不可达目标不会无限重寻路，并进入明确终态。"),
+            M("unreachable-recovery-limit", "不可达重试上限（底层）", "狭口恢复", "仅验证导航重试有界；不证明业务订单释放或 Shift 队列推进。"),
             M("large-group-192", "192 单位压力场", "性能压力", "验证 192 单位大编队的有限分配、碰撞和最终抵达。")
         };
         return values.ToDictionary(value => value.Id, StringComparer.Ordinal);

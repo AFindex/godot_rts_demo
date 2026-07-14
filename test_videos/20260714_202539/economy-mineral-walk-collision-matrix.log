@@ -1,0 +1,13 @@
+Godot Engine v4.7.stable.mono.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 595.95 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 2060 SUPER
+
+Movie Maker mode enabled, recording movie in 1280×720 @ 30 FPS...
+RTS_NAVIGATION_RESOURCE PASS path=res://data/demo_navigation_map.tres format=1 hash=B8441F9F1544B950
+RTS_GAMEPLAY_PROFILES PASS path=res://data/demo_gameplay_profiles.tres format=1 hash=5A0A6FD9EA3985BF units=3 buildings=4
+RTS_BUILDING_TYPES PASS path=res://data/demo_building_types.tres format=2 hash=8706BAAF85DDD1B7 types=5
+RTS_PRODUCTION_CATALOG PASS path=res://data/demo_production_catalog.tres format=6 hash=BB56752D5A3C32E2 units=3 recipes=3
+RTS_TECHNOLOGY_CATALOG PASS path=res://data/demo_technology_catalog.tres format=1 hash=8F9990031AA55B5E technologies=3
+RTS_AI_CONFIG PASS path=res://data/demo_ai_configurations.tres format=1 hash=509CED7A999A2BD0 profiles=2
+RTS_CLEARANCE_BAKE PASS path=res://data/demo_clearance_bake.tres format=1 hash=C14A74B57CF07284 source=B8441F9F1544B950 grid=77x40 chunks=5x3
+RTS_VISUAL_TEST_START economy-mineral-walk-collision-matrix: ticks=900, units=28
+RTS_VISUAL_TEST_PASS economy-mineral-walk-collision-matrix: ticks=900, gather=24/24, cross=24/24, unit-overlap=1/1/1, building-penetration=0, detour=True, recovery=2/4/2 max=4, orders=True, unreachable=0, penetration=[], lanes=0:6/6[30:GoingToResource/ResourceBoundary#0/InProgress@662,150,31:GoingToResource/ResourceBoundary#0/InProgress@614,150,32:GoingToResource/ResourceBoundary#0/InProgress@567,150,33:GoingToResource/ResourceBoundary#0/InProgress@809,150,34:GoingToResource/ResourceBoundary#0/InProgress@761,150,35:GoingToResource/ResourceBoundary#0/InProgress@713,150];1:6/6[36:GoingToResource/ResourceBoundary#1/InProgress@662,320,37:GoingToResource/ResourceBoundary#1/InProgress@614,320,38:GoingToResource/ResourceBoundary#1/InProgress@567,320,39:GoingToResource/ResourceBoundary#1/InProgress@809,320,40:GoingToResource/ResourceBoundary#1/InProgress@761,320,41:GoingToResource/ResourceBoundary#1/InProgress@713,320];2:6/6[42:GoingToResource/ResourceBoundary#2/InProgress@710,480,43:GoingToResource/ResourceBoundary#4/InProgress@465,676,44:GoingToResource/ResourceBoundary#2/InProgress@662,480,45:GoingToResource/ResourceBoundary#2/InProgress@809,480,46:GoingToResource/ResourceBoundary#2/InProgress@761,480,47:GoingToResource/ResourceBoundary#4/InProgress@417,672];3:6/6[48:GoingToResource/ResourceBoundary#3/InProgress@610,621,49:GoingToResource/ResourceBoundary#3/InProgress@804,623,50:GoingToResource/ResourceBoundary#3/InProgress@756,620,51:GoingToResource/ResourceBoundary#2/InProgress@567,481,52:GoingToResource/ResourceBoundary#3/InProgress@709,617,53:GoingToResource/ResourceBoundary#3/InProgress@661,618]

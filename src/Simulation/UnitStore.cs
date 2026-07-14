@@ -30,6 +30,40 @@ public enum DestinationYieldPhase : byte
     Returning
 }
 
+public enum UnitMovementGoalKind : byte
+{
+    None,
+    GroundPoint,
+    UnitBody,
+    BuildingBoundary,
+    ResourceBoundary,
+    DropOffBoundary,
+    AttackRange,
+    FollowRange,
+    ProductionExit,
+    ConstructionEvacuation
+}
+
+public enum UnitMovementLegResult : byte
+{
+    None,
+    InProgress,
+    Reached,
+    SettledShort,
+    Unreachable,
+    TargetInvalidated,
+    Canceled
+}
+
+public readonly record struct UnitMovementSnapshot(
+    int Unit,
+    UnitMovementGoalKind GoalKind,
+    Vector2 NavigationTarget,
+    SimRect TargetBounds,
+    float TargetRadius,
+    int TargetId,
+    UnitMovementLegResult Result);
+
 public sealed class UnitStore
 {
     public UnitStore(int capacity)
@@ -43,6 +77,11 @@ public sealed class UnitStore
         NextVelocities = new Vector2[capacity];
         SlotTargets = new Vector2[capacity];
         MoveGoals = new Vector2[capacity];
+        MovementGoalKinds = new UnitMovementGoalKind[capacity];
+        MovementGoalBounds = new SimRect[capacity];
+        MovementGoalRadii = new float[capacity];
+        MovementGoalTargetIds = new int[capacity];
+        MovementLegResults = new UnitMovementLegResult[capacity];
         Radii = new float[capacity];
         MovementClasses = new MovementClass[capacity];
         NavigationRadii = new float[capacity];
@@ -91,6 +130,7 @@ public sealed class UnitStore
         ReservationMigrationTicks = new int[capacity];
         Array.Fill(ActiveChokeIds, -1);
         Array.Fill(DestinationYieldForUnits, -1);
+        Array.Fill(MovementGoalTargetIds, -1);
     }
 
     public int Count { get; private set; }
@@ -103,6 +143,11 @@ public sealed class UnitStore
     public Vector2[] NextVelocities { get; }
     public Vector2[] SlotTargets { get; }
     public Vector2[] MoveGoals { get; }
+    public UnitMovementGoalKind[] MovementGoalKinds { get; }
+    public SimRect[] MovementGoalBounds { get; }
+    public float[] MovementGoalRadii { get; }
+    public int[] MovementGoalTargetIds { get; }
+    public UnitMovementLegResult[] MovementLegResults { get; }
     public float[] Radii { get; }
     public MovementClass[] MovementClasses { get; }
     public float[] NavigationRadii { get; }
@@ -163,6 +208,9 @@ public sealed class UnitStore
         PreviousPositions[index] = position;
         SlotTargets[index] = position;
         MoveGoals[index] = position;
+        MovementGoalKinds[index] = UnitMovementGoalKind.None;
+        MovementGoalTargetIds[index] = -1;
+        MovementLegResults[index] = UnitMovementLegResult.None;
         DestinationYieldReturnTargets[index] = position;
         DestinationYieldPoints[index] = position;
         var clearance = MovementClearance.FromPhysicalRadius(radius);
@@ -195,6 +243,11 @@ public sealed class UnitStore
         Copy(source.NextVelocities, NextVelocities);
         Copy(source.SlotTargets, SlotTargets);
         Copy(source.MoveGoals, MoveGoals);
+        Copy(source.MovementGoalKinds, MovementGoalKinds);
+        Copy(source.MovementGoalBounds, MovementGoalBounds);
+        Copy(source.MovementGoalRadii, MovementGoalRadii);
+        Copy(source.MovementGoalTargetIds, MovementGoalTargetIds);
+        Copy(source.MovementLegResults, MovementLegResults);
         Copy(source.Radii, Radii);
         Copy(source.MovementClasses, MovementClasses);
         Copy(source.NavigationRadii, NavigationRadii);

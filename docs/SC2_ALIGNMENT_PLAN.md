@@ -392,7 +392,7 @@ X1 至此收口，并满足本计划最后一个可在当时证据下执行的 P
 - `AttackStarted` 生成纯表现 `MuzzleFlash`，与投射物/命中 Cue 一样不进入权威未来态。
 - 施工中的 Worker 对 Combat 与 AI Planner 都保持明确占用，不能被自动索敌或 Gather 意图抢走。
 
-`construction-close-approach`、`combat-ranged-ring`、`economy-mass-mining`、`combat-projectile-presentation` 和 `single-unit` 分别隔离验证上述边界；复杂 `ai-continuous-encounter` 验证资源节点旁施工、发展、科技和持续交战没有回归。119/119 全量场景通过，专项录像位于 `test_videos/20260714_002734/`。
+这是当时的历史回归结果。`construction-close-approach` 后续审计确认把窄距离带固化为成功条件，现已退出活动门禁；相关录像只保留为旧合同证据。其余场景仍按各自原始范围保留。
 
 R1 已收口。不得继续凭主观感觉修改 Arrival、远程站位或施工容差；后续变化必须由新的复现步骤、专项黑盒或性能数据驱动。
 

@@ -159,7 +159,7 @@ public static class SimulationSelfTest
                     productionCatalog: productionCatalog,
                     technologyCatalog: technologyCatalog,
                     aiConfigurations: aiConfigurations);
-                while (session.Rig.Tick < session.DurationTicks)
+                while (!session.HasReachedEnd)
                 {
                     session.Step();
                 }
