@@ -15,6 +15,7 @@ public static partial class VisualTestCatalog
     [
         "frontend-test-browser",
         "single-unit",
+        "arrival-hard-stop",
         "group-move-terminal-stability",
         "dynamic-blockage-priority-matrix",
         "dynamic-blockage-continuous-waves",
@@ -155,6 +156,7 @@ public static partial class VisualTestCatalog
     {
         "frontend-test-browser" => CreateFrontendTestBrowser(),
         "single-unit" => CreateSingleUnit(),
+        "arrival-hard-stop" => CreateArrivalHardStop(),
         "group-move-terminal-stability" =>
             CreateGroupMoveTerminalStability(),
         "dynamic-blockage-priority-matrix" =>
@@ -394,6 +396,93 @@ public static partial class VisualTestCatalog
         rig.Move(units, new Vector2(900f, 500f));
         return ArrivalScenario(
             "single-unit", "Single unit direct move", 480, rig, units, 1, 8f);
+    }
+
+    private static VisualTestSession CreateArrivalHardStop()
+    {
+        const float maximumSpeed = 180f;
+        const float acceleration = 900f;
+        const int durationTicks = 600;
+        var rig = MovementTestRig.CreateOpenField(
+            new Vector2(1400f, 700f), 8);
+        var unit = rig.Spawn(
+            new Vector2(100f, 350f),
+            radius: 7.5f,
+            maximumSpeed: maximumSpeed,
+            acceleration: acceleration);
+        rig.Move([unit], new Vector2(1250f, 350f));
+
+        var speedTolerance = maximumSpeed * 0.001f;
+        var cruiseObserved = false;
+        var movingTicksAfterCruise = 0;
+        var reducedTicksAfterCruise = 0;
+        var lastMovingSpeed = 0f;
+        var arrivalObserved = false;
+        var arrivalTick = -1L;
+        var incomingSpeed = 0f;
+        var stoppedSpeed = float.PositiveInfinity;
+        var arrivalPosition = Vector2.Zero;
+        var session = new VisualTestSession(
+            "arrival-hard-stop",
+            "Open-field movement holds cruise speed and stops in one tick",
+            durationTicks,
+            rig,
+            [unit],
+            runtime =>
+            {
+                var current = runtime.Observe(unit);
+                var lateDrift = arrivalObserved
+                    ? Vector2.Distance(current.Position, arrivalPosition)
+                    : float.PositiveInfinity;
+                var passed = cruiseObserved && arrivalObserved &&
+                             movingTicksAfterCruise > 0 &&
+                             reducedTicksAfterCruise == 0 &&
+                             incomingSpeed >= maximumSpeed - speedTolerance &&
+                             stoppedSpeed == 0f &&
+                             current.State == TestUnitState.Arrived &&
+                             current.Velocity == Vector2.Zero &&
+                             runtime.Tick - arrivalTick >= 120 &&
+                             lateDrift == 0f;
+                return new ScenarioResult(
+                    passed,
+                    $"cruise={cruiseObserved}, " +
+                    $"moving-after-cruise={movingTicksAfterCruise}, " +
+                    $"reduced={reducedTicksAfterCruise}, " +
+                    $"transition={incomingSpeed:0.000}->{stoppedSpeed:0.000}, " +
+                    $"arrival-tick={arrivalTick}, late-drift={lateDrift:0.000000}");
+            });
+
+        for (var tick = 1; tick < durationTicks; tick++)
+        {
+            session.At(tick, "Record the public movement state", runtime =>
+            {
+                var current = runtime.Observe(unit);
+                var speed = current.Velocity.Length();
+                if (current.State == TestUnitState.Moving)
+                {
+                    if (cruiseObserved)
+                    {
+                        movingTicksAfterCruise++;
+                        if (speed < maximumSpeed - speedTolerance)
+                            reducedTicksAfterCruise++;
+                    }
+                    if (speed >= maximumSpeed - speedTolerance)
+                        cruiseObserved = true;
+                    lastMovingSpeed = speed;
+                    return;
+                }
+
+                if (!arrivalObserved && current.State == TestUnitState.Arrived)
+                {
+                    arrivalObserved = true;
+                    arrivalTick = runtime.Tick;
+                    incomingSpeed = lastMovingSpeed;
+                    stoppedSpeed = speed;
+                    arrivalPosition = current.Position;
+                }
+            });
+        }
+        return session;
     }
 
     private static VisualTestSession CreateGroupMoveTerminalStability()
@@ -2503,10 +2592,11 @@ public static partial class VisualTestCatalog
                 var first = runtime.RecallMixedControlGroup(1);
                 var second = runtime.RecallMixedControlGroup(2);
                 var marineState = runtime.Observe(marine);
-                var workerArrived = second.Units.Count(unit =>
-                    Vector2.Distance(
-                        runtime.Observe(unit).Position,
-                        runtime.Observe(unit).AssignedTarget) < 10f);
+                var workerStates = second.Units
+                    .Select(runtime.Observe)
+                    .ToArray();
+                var workerArrived = workerStates.Count(unit =>
+                    Vector2.Distance(unit.Position, unit.AssignedTarget) < 10f);
                 var marineArrived = Vector2.Distance(
                     marineState.Position, marineState.AssignedTarget) < 10f;
                 var passed = barracks.Succeeded &&
@@ -2520,7 +2610,12 @@ public static partial class VisualTestCatalog
                     passed,
                     $"group1={first.Units.Length}u/{first.Buildings.Length}b, " +
                     $"group2={second.Units.Length}u/{second.Buildings.Length}b, " +
-                    $"arrived={workerArrived + (marineArrived ? 1 : 0)}/3");
+                    $"arrived={workerArrived + (marineArrived ? 1 : 0)}/3, " +
+                    $"workerDistances=[{string.Join(',', workerStates.Select(unit =>
+                        Vector2.Distance(unit.Position, unit.AssignedTarget)
+                            .ToString("0.0")))}], " +
+                    $"marineDistance={Vector2.Distance(
+                        marineState.Position, marineState.AssignedTarget):0.0}");
             })
             .SelectBuildings(barracks.BuildingId)
             .At(140, "Ctrl+1 stores two workers, Marine and Barracks", runtime =>
@@ -11111,14 +11206,34 @@ public static partial class VisualTestCatalog
             all,
             runtime =>
             {
-                var arrival = EvaluateArrival(runtime, all, 29, 20f, 3f, 0, 0);
+                var arrival = EvaluateArrival(runtime, all, 32, 20f, 3f, 0, 0);
                 var snapshots = runtime.Observe(all);
-                var minimumClearance = MinimumAssignedTargetClearance(snapshots);
+                var minimumClearance = MinimumAssignedTargetClearance(
+                    snapshots, out var closestLeft, out var closestRight);
                 var reservationsAreUnique = minimumClearance >= 1.5f;
+                var leftMovement = runtime.ObserveMovement(closestLeft.Id);
+                var rightMovement = runtime.ObserveMovement(closestRight.Id);
+                var diagnostics = runtime.ObserveMovementDiagnostics();
+                var assignments = reservationsAreUnique && arrival.Passed
+                    ? string.Empty
+                    : string.Join(';', snapshots.Select(value =>
+                        $"u{value.Id.Value}@{value.Position.X:0.0},{value.Position.Y:0.0}>" +
+                        $"{value.AssignedTarget.X:0.0},{value.AssignedTarget.Y:0.0}"));
                 return new ScenarioResult(
                     arrival.Passed && reservationsAreUnique,
                     $"targetClearance={minimumClearance:0.00}, " +
-                    $"unique={reservationsAreUnique}, {arrival.Summary}");
+                    $"pair=u{closestLeft.Id.Value}/u{closestRight.Id.Value}, " +
+                    $"positions={closestLeft.Position.X:0.0},{closestLeft.Position.Y:0.0}/" +
+                    $"{closestRight.Position.X:0.0},{closestRight.Position.Y:0.0}, " +
+                    $"targets={closestLeft.AssignedTarget.X:0.0},{closestLeft.AssignedTarget.Y:0.0}/" +
+                    $"{closestRight.AssignedTarget.X:0.0},{closestRight.AssignedTarget.Y:0.0}, " +
+                    $"results={leftMovement.Result}/{rightMovement.Result}, " +
+                    $"migration={diagnostics.ReservationMigrationAttempts}/" +
+                    $"{diagnostics.ReservationMigrationFailures}/" +
+                    $"{diagnostics.LastReservationMigrationUnits}/" +
+                    $"{diagnostics.LastReservationMigrationClearance:0.00}, " +
+                    $"unique={reservationsAreUnique}, {arrival.Summary}, " +
+                    $"assignments=[{assignments}]");
             });
         return session.At(
             180,
@@ -11638,9 +11753,13 @@ public static partial class VisualTestCatalog
     }
 
     private static float MinimumAssignedTargetClearance(
-        IReadOnlyList<TestUnitSnapshot> units)
+        IReadOnlyList<TestUnitSnapshot> units,
+        out TestUnitSnapshot closestLeft,
+        out TestUnitSnapshot closestRight)
     {
         var minimum = float.PositiveInfinity;
+        closestLeft = default;
+        closestRight = default;
         for (var left = 0; left < units.Count; left++)
         {
             for (var right = left + 1; right < units.Count; right++)
@@ -11649,7 +11768,11 @@ public static partial class VisualTestCatalog
                     units[left].AssignedTarget,
                     units[right].AssignedTarget) -
                     units[left].Radius - units[right].Radius;
-                minimum = MathF.Min(minimum, clearance);
+                if (clearance >= minimum)
+                    continue;
+                minimum = clearance;
+                closestLeft = units[left];
+                closestRight = units[right];
             }
         }
 

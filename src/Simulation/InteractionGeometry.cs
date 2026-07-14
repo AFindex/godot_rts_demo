@@ -27,6 +27,16 @@ public static class InteractionGeometry
             MathF.Max(
                 MathF.Max(MathF.Abs(rectangle.Min.X), MathF.Abs(rectangle.Min.Y)),
                 MathF.Max(MathF.Abs(rectangle.Max.X), MathF.Abs(rectangle.Max.Y))));
+        return NumericTolerance(largest);
+    }
+
+    public static float NumericTolerance(Vector2 left, Vector2 right) =>
+        NumericTolerance(MathF.Max(
+            MathF.Max(MathF.Abs(left.X), MathF.Abs(left.Y)),
+            MathF.Max(MathF.Abs(right.X), MathF.Abs(right.Y))));
+
+    private static float NumericTolerance(float largest)
+    {
         largest = MathF.Max(1f, largest);
         var next = MathF.BitIncrement(largest);
         return (next - largest) * 16f;

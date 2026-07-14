@@ -1257,7 +1257,11 @@ public readonly record struct TestMovementDiagnostics(
     long PriorityPushPairs,
     float PriorityPushDisplacement,
     long DynamicBlockageSettles,
-    int MaximumDynamicBlockageTicks);
+    int MaximumDynamicBlockageTicks,
+    long ReservationMigrationAttempts,
+    long ReservationMigrationFailures,
+    int LastReservationMigrationUnits,
+    float LastReservationMigrationClearance);
 
 public readonly record struct TestOperationInteractionSnapshot(
     int PointSelection,
@@ -2824,7 +2828,11 @@ public sealed partial class MovementTestRig
             metrics.PriorityPushPairs,
             metrics.PriorityPushDisplacement,
             metrics.DynamicBlockageSettles,
-            metrics.MaximumDynamicBlockageTicks);
+            metrics.MaximumDynamicBlockageTicks,
+            metrics.ReservationMigrationAttempts,
+            metrics.ReservationMigrationFailures,
+            metrics.LastReservationMigrationUnits,
+            metrics.LastReservationMigrationClearance);
     }
 
     public TestOperationInteractionSnapshot VerifyOperationInteractions()

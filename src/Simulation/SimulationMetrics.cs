@@ -31,6 +31,10 @@ public sealed class SimulationMetrics
     public float PriorityPushDisplacement { get; internal set; }
     public long DynamicBlockageSettles { get; internal set; }
     public int MaximumDynamicBlockageTicks { get; internal set; }
+    public long ReservationMigrationAttempts { get; internal set; }
+    public long ReservationMigrationFailures { get; internal set; }
+    public int LastReservationMigrationUnits { get; internal set; }
+    public float LastReservationMigrationClearance { get; internal set; }
     public int PendingUnitOrders { get; internal set; }
     public long CompletedQueuedOrders { get; internal set; }
     public int QueueOverflowEvents { get; internal set; }

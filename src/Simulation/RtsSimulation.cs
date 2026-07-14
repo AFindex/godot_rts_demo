@@ -8,9 +8,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private const float WaypointRadius = 13f;
     private const float MinimumArrivalStopRadius = 3.5f;
     private const float MaximumArrivalStopRadius = 8f;
-    private const float BaseArrivalResponseRadius = 58f;
-    private const float MinimumArrivalSpeedFactor = 0.45f;
-    private const float MaximumMinimumArrivalSpeed = 64f;
     private const int CollisionIterations = 3;
     private const int DestinationReflowIntervalTicks = 12;
     private const int DestinationReflowCooldownTicks = 90;
@@ -32,6 +29,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private const float DynamicBlockageProbeForwardSpeed = 4f;
     private const int ReservationMigrationSettleTicks = 6;
     private const int ReservationMigrationRelaxationPasses = 8;
+    private const int MaximumReservationRelaxationPasses = 64;
+    private const int MaximumReservationMigrationComponentUnits = 128;
+    private const float ReservationMigrationActivationDistance = 8f;
     private const float MaximumMigratedReservationDistance = 12f;
     private const int TerminalSettleMinimumGroupSize = 4;
     private const float TerminalSettleQuorum = 0.9f;
@@ -3696,25 +3696,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 continue;
             }
 
-            var speed = Units.MaxSpeeds[unit];
-            if (finalPoint)
-            {
-                var physicalBrakingRadius = speed * speed /
-                    (2f * Units.Accelerations[unit]) + arrivalStopRadius;
-                var responseRadius = MathF.Max(
-                    BaseArrivalResponseRadius, physicalBrakingRadius);
-                var normalized = Math.Clamp(
-                    (distance - arrivalStopRadius) /
-                    (responseRadius - arrivalStopRadius), 0f, 1f);
-                var smooth = normalized * normalized *
-                             (3f - 2f * normalized);
-                var minimumSpeed = MathF.Min(
-                    MaximumMinimumArrivalSpeed,
-                    speed * MinimumArrivalSpeedFactor);
-                speed = minimumSpeed + (speed - minimumSpeed) * smooth;
-            }
-
-            Units.PreferredVelocities[unit] = toWaypoint / distance * speed;
+            Units.PreferredVelocities[unit] =
+                toWaypoint / distance * Units.MaxSpeeds[unit];
         }
     }
 
@@ -3771,8 +3754,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private void Integrate(float delta)
     {
         for (var unit = 0; unit < Units.Count; unit++)
-        {
             Units.PreviousPositions[unit] = Units.Positions[unit];
+
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
             if (!Units.Alive[unit])
             {
                 Units.Velocities[unit] = Vector2.Zero;
@@ -3796,11 +3781,70 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     proposed = waypoint;
                 }
             }
+            if (Units.Modes[unit] == UnitMoveMode.Moving &&
+                IsSurfaceInteractionGoal(unit) &&
+                MovementGoalAcceptsPathEndpoint(
+                    unit, proposed, Units.SlotTargets[unit]))
+            {
+                proposed = SurfaceArrivalPosition(
+                    unit, Units.Positions[unit], proposed);
+                Units.Positions[unit] = World.ConstrainDisc(
+                    Units.Positions[unit], proposed, Units.Radii[unit]);
+                CompleteMovementLeg(unit);
+                continue;
+            }
             Units.Positions[unit] = World.ConstrainDisc(
                 Units.Positions[unit],
                 proposed,
                 Units.Radii[unit]);
         }
+    }
+
+    private Vector2 SurfaceArrivalPosition(
+        int unit,
+        Vector2 start,
+        Vector2 end)
+    {
+        if (Units.MovementGoalKinds[unit] is
+            UnitMovementGoalKind.UnitBody or UnitMovementGoalKind.FollowRange)
+        {
+            var target = Units.MovementGoalTargetIds[unit];
+            if ((uint)target < (uint)Units.Count && Units.Alive[target])
+            {
+                var fromTarget = start - Units.Positions[target];
+                if (fromTarget.LengthSquared() > 0f)
+                {
+                    var extraRange = Units.MovementGoalKinds[unit] ==
+                                     UnitMovementGoalKind.UnitBody
+                        ? Units.MovementGoalRadii[unit]
+                        : 0f;
+                    var distance = Units.Radii[unit] + Units.Radii[target] +
+                                   extraRange +
+                                   InteractionGeometry.NumericTolerance(
+                                       start, Units.Positions[target]) * 0.5f;
+                    return Units.Positions[target] +
+                           Vector2.Normalize(fromTarget) * distance;
+                }
+            }
+        }
+
+        var outside = start;
+        var inside = end;
+        const int searchSteps = 20;
+        for (var step = 0; step < searchSteps; step++)
+        {
+            var middle = (outside + inside) * 0.5f;
+            if (MovementGoalAcceptsPathEndpoint(
+                    unit, middle, Units.SlotTargets[unit]))
+            {
+                inside = middle;
+            }
+            else
+            {
+                outside = middle;
+            }
+        }
+        return inside;
     }
 
     private void SolveCollisions()
@@ -3931,8 +3975,16 @@ public sealed class RtsSimulation : ICombatMovementDriver
             if (Vector2.DistanceSquared(
                     Units.Positions[unit], Units.PreviousPositions[unit]) > 0.01f)
             {
-                Units.ReservationMigrationTicks[unit] =
-                    ReservationMigrationSettleTicks;
+                var displacedFromReservation = Vector2.DistanceSquared(
+                    Units.Positions[unit], Units.SlotTargets[unit]) >
+                    ReservationMigrationActivationDistance *
+                    ReservationMigrationActivationDistance;
+                if (displacedFromReservation ||
+                    Units.ReservationMigrationTicks[unit] > 0)
+                {
+                    Units.ReservationMigrationTicks[unit] =
+                        ReservationMigrationSettleTicks;
+                }
                 continue;
             }
 
@@ -3948,27 +4000,110 @@ public sealed class RtsSimulation : ICombatMovementDriver
         if (displacedCount == 0)
             return;
 
-        ResolveTerminalReservations(
+        if (displacedCount > MaximumReservationMigrationComponentUnits ||
+            !ExpandReservationMigrationComponent(ref displacedCount))
+        {
+            for (var index = 0; index < displacedCount; index++)
+                Units.ReservationMigrationTicks[
+                    _displacedStationaryUnits[index]] = 0;
+            return;
+        }
+
+        var relaxationPasses = Math.Clamp(
+            displacedCount * 2,
+            ReservationMigrationRelaxationPasses,
+            MaximumReservationRelaxationPasses);
+        Metrics.ReservationMigrationAttempts++;
+        Metrics.LastReservationMigrationUnits = displacedCount;
+        var resolved = ResolveTerminalReservations(
             _displacedStationaryUnits.AsSpan(0, displacedCount),
             _reservationTargetScratch.AsSpan(0, displacedCount),
-            ReservationMigrationRelaxationPasses);
+            relaxationPasses,
+            MaximumMigratedReservationDistance);
+        Metrics.LastReservationMigrationClearance =
+            MinimumTerminalReservationClearance(
+                _displacedStationaryUnits.AsSpan(0, displacedCount),
+                _reservationTargetScratch.AsSpan(0, displacedCount));
+        if (!resolved)
+        {
+            Metrics.ReservationMigrationFailures++;
+            for (var index = 0; index < displacedCount; index++)
+            {
+                var unit = _displacedStationaryUnits[index];
+                if (IsStationaryReservationCandidate(unit))
+                {
+                    Units.ReservationMigrationTicks[unit] = 0;
+                }
+            }
+            return;
+        }
         for (var index = 0; index < displacedCount; index++)
         {
             var unit = _displacedStationaryUnits[index];
             var reservation = _reservationTargetScratch[index];
-            var offset = reservation - Units.Positions[unit];
-            if (offset.LengthSquared() > MaximumMigratedReservationDistance *
-                MaximumMigratedReservationDistance)
-            {
-                reservation = Units.Positions[unit] + Vector2.Normalize(offset) *
-                    MaximumMigratedReservationDistance;
-            }
             Units.SlotTargets[unit] = reservation;
             Units.MoveGoals[unit] = reservation;
             Units.DestinationYieldReturnTargets[unit] = reservation;
             Units.DestinationYieldPoints[unit] = reservation;
         }
     }
+
+    private bool ExpandReservationMigrationComponent(ref int selectedCount)
+    {
+        _reservationSelectionScratch.AsSpan(0, Units.Count).Fill(-1);
+        for (var index = 0; index < selectedCount; index++)
+            _reservationSelectionScratch[_displacedStationaryUnits[index]] = index;
+
+        const float reservationPadding = 2f;
+        for (var selectedIndex = 0;
+             selectedIndex < selectedCount;
+             selectedIndex++)
+        {
+            var selected = _displacedStationaryUnits[selectedIndex];
+            for (var candidate = 0; candidate < Units.Count; candidate++)
+            {
+                if (_reservationSelectionScratch[candidate] >= 0 ||
+                    !IsStationaryReservationCandidate(candidate))
+                {
+                    continue;
+                }
+
+                var required = Units.Radii[selected] + Units.Radii[candidate] +
+                               reservationPadding;
+                var mutualReach = required +
+                                  MaximumMigratedReservationDistance * 2f;
+                var selectedReach = required +
+                                    MaximumMigratedReservationDistance;
+                var canAffect = Vector2.DistanceSquared(
+                        Units.Positions[selected], Units.Positions[candidate]) <=
+                    mutualReach * mutualReach ||
+                    Vector2.DistanceSquared(
+                        Units.Positions[selected], Units.SlotTargets[candidate]) <=
+                    selectedReach * selectedReach ||
+                    Vector2.DistanceSquared(
+                        Units.SlotTargets[selected], Units.Positions[candidate]) <=
+                    selectedReach * selectedReach;
+                if (!canAffect)
+                    continue;
+
+                if (selectedCount >=
+                    MaximumReservationMigrationComponentUnits)
+                {
+                    return false;
+                }
+
+                _reservationSelectionScratch[candidate] = selectedCount;
+                _displacedStationaryUnits[selectedCount++] = candidate;
+            }
+        }
+        return true;
+    }
+
+    private bool IsStationaryReservationCandidate(int unit) =>
+        Units.Alive[unit] &&
+        (Units.Modes[unit] is UnitMoveMode.Idle or UnitMoveMode.Arrived) &&
+        Combat.TargetKinds[unit] == CombatTargetKind.None &&
+        Units.DestinationYieldPhases[unit] == DestinationYieldPhase.None;
 
     private void UpdateDynamicBlockageProgress()
     {
@@ -4113,7 +4248,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.PathPending[unit] = false;
         Units.Modes[unit] = UnitMoveMode.Arrived;
         FinishMovementLeg(unit, UnitMovementLegResult.SettledShort);
-        Units.SlotTargets[unit] = position;
         Units.MoveGoals[unit] = position;
         Units.PreferredVelocities[unit] = Vector2.Zero;
         Units.Velocities[unit] = Vector2.Zero;
@@ -4132,7 +4266,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.DestinationYieldPoints[unit] = position;
         Units.DynamicBlockageTicks[unit] = 0;
         Units.DynamicBlockageBestDistances[unit] = 0f;
-        Units.ReservationMigrationTicks[unit] = 0;
+        Units.ReservationMigrationTicks[unit] =
+            ReservationMigrationSettleTicks;
         if (Combat.CommandIntents[unit] == UnitCommandIntent.Move)
             Combat.SetCommand(unit, UnitCommandIntent.None, position);
         else if (Combat.CommandIntents[unit] == UnitCommandIntent.AttackMove &&
@@ -4351,6 +4486,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             var groupId = Units.MovementGroupIds[leader];
             if (!Units.Alive[leader] || groupId <= 0 ||
                 Units.MovementGroupSizes[leader] < TerminalSettleMinimumGroupSize ||
+                Units.SlotReflowCooldownTicks[leader] > Metrics.Tick ||
                 HasEarlierGroupMember(leader, groupId))
                 continue;
 
@@ -4402,7 +4538,20 @@ public sealed class RtsSimulation : ICombatMovementDriver
                 groupUnits[memberIndex++] = unit;
             }
             var terminalAssignments = new Vector2[groupUnits.Length];
-            ResolveTerminalReservations(groupUnits, terminalAssignments);
+            if (!ResolveTerminalReservations(
+                    groupUnits,
+                    terminalAssignments,
+                    ReservationMigrationRelaxationPasses))
+            {
+                // Preserve the group's unique slots and allow destination
+                // reflow/yield to improve the layout before another bounded
+                // settle attempt. Reusing the leader's existing absolute
+                // reflow cooldown keeps this retry state replay-safe.
+                Units.SlotReflowCooldownTicks[leader] = Math.Max(
+                    Units.SlotReflowCooldownTicks[leader],
+                    Metrics.Tick + DestinationReflowCooldownTicks);
+                continue;
+            }
 
             for (var index = 0; index < groupUnits.Length; index++)
             {
@@ -4429,14 +4578,17 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
-    private void ResolveTerminalReservations(
+    private bool ResolveTerminalReservations(
         ReadOnlySpan<int> groupUnits,
         Span<Vector2> targets,
-        int relaxationPasses = 16)
+        int relaxationPasses,
+        float maximumDistanceFromPosition = float.PositiveInfinity)
     {
         if (targets.Length < groupUnits.Length)
             throw new ArgumentException(
                 "Reservation target buffer is too small.", nameof(targets));
+        if (groupUnits.IsEmpty)
+            return true;
         _reservationSelectionScratch.AsSpan(0, Units.Count).Fill(-1);
         for (var index = 0; index < groupUnits.Length; index++)
         {
@@ -4448,6 +4600,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         const float reservationPadding = 2f;
         for (var pass = 0; pass < relaxationPasses; pass++)
         {
+            var foundConflict = false;
             for (var leftIndex = 0; leftIndex < groupUnits.Length; leftIndex++)
             {
                 var left = groupUnits[leftIndex];
@@ -4466,41 +4619,127 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     var distance = offset.Length();
                     var required = Units.Radii[left] + Units.Radii[right] +
                                    reservationPadding;
-                    if (distance >= required)
+                    var numericSafety = InteractionGeometry.NumericTolerance(
+                        targets[leftIndex], rightTarget);
+                    var separationTarget = required + numericSafety * 2f;
+                    if (distance >= separationTarget)
                         continue;
+                    foundConflict = true;
 
                     var normal = distance > 0.0001f
                         ? offset / distance
                         : DeterministicNormal(left, right);
-                    var correction = required - distance;
+                    var correction = separationTarget - distance;
                     if (rightIndex >= 0)
                     {
                         MoveTerminalReservation(
-                            left, ref targets[leftIndex], normal * correction * 0.5f);
+                            left,
+                            ref targets[leftIndex],
+                            normal * correction * 0.5f,
+                            maximumDistanceFromPosition);
                         MoveTerminalReservation(
-                            right, ref targets[rightIndex], -normal * correction * 0.5f);
+                            right,
+                            ref targets[rightIndex],
+                            -normal * correction * 0.5f,
+                            maximumDistanceFromPosition);
                     }
                     else
                     {
                         MoveTerminalReservation(
-                            left, ref targets[leftIndex], normal * correction);
+                            left,
+                            ref targets[leftIndex],
+                            normal * correction,
+                            maximumDistanceFromPosition);
                     }
                 }
             }
+            if (!foundConflict)
+                return true;
         }
 
+        return TerminalReservationsAreSeparated(
+            groupUnits, targets, reservationPadding);
     }
 
     private void MoveTerminalReservation(
         int unit,
         ref Vector2 target,
-        Vector2 displacement)
+        Vector2 displacement,
+        float maximumDistanceFromPosition)
     {
         var candidate = World.Bounds
             .Inset(Units.Radii[unit] + 2f)
             .Clamp(target + displacement);
+        if (float.IsFinite(maximumDistanceFromPosition))
+        {
+            var offset = candidate - Units.Positions[unit];
+            if (offset.LengthSquared() > maximumDistanceFromPosition *
+                maximumDistanceFromPosition)
+            {
+                candidate = Units.Positions[unit] + Vector2.Normalize(offset) *
+                    maximumDistanceFromPosition;
+            }
+        }
         if (World.IsDiscFree(candidate, Units.Radii[unit]))
             target = candidate;
+    }
+
+    private bool TerminalReservationsAreSeparated(
+        ReadOnlySpan<int> groupUnits,
+        ReadOnlySpan<Vector2> targets,
+        float padding)
+    {
+        for (var leftIndex = 0; leftIndex < groupUnits.Length; leftIndex++)
+        {
+            var left = groupUnits[leftIndex];
+            for (var right = 0; right < Units.Count; right++)
+            {
+                if (right == left || !Units.Alive[right])
+                    continue;
+                var rightIndex = _reservationSelectionScratch[right];
+                if (rightIndex >= 0 && rightIndex <= leftIndex)
+                    continue;
+                var rightTarget = rightIndex >= 0
+                    ? targets[rightIndex]
+                    : Units.SlotTargets[right];
+                var required = Units.Radii[left] + Units.Radii[right] + padding +
+                    InteractionGeometry.NumericTolerance(
+                        targets[leftIndex], rightTarget);
+                if (Vector2.DistanceSquared(targets[leftIndex], rightTarget) <
+                    required * required)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private float MinimumTerminalReservationClearance(
+        ReadOnlySpan<int> groupUnits,
+        ReadOnlySpan<Vector2> targets)
+    {
+        var minimum = float.PositiveInfinity;
+        for (var leftIndex = 0; leftIndex < groupUnits.Length; leftIndex++)
+        {
+            var left = groupUnits[leftIndex];
+            for (var right = 0; right < Units.Count; right++)
+            {
+                if (right == left || !Units.Alive[right])
+                    continue;
+                var rightIndex = _reservationSelectionScratch[right];
+                if (rightIndex >= 0 && rightIndex <= leftIndex)
+                    continue;
+                var rightTarget = rightIndex >= 0
+                    ? targets[rightIndex]
+                    : Units.SlotTargets[right];
+                var clearance = Vector2.Distance(
+                    targets[leftIndex], rightTarget) -
+                    Units.Radii[left] - Units.Radii[right];
+                minimum = MathF.Min(minimum, clearance);
+            }
+        }
+        return minimum;
     }
 
     private bool HasEarlierGroupMember(int unit, int groupId)

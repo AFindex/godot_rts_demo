@@ -126,6 +126,14 @@ public sealed class DestinationSlotAllocator
                 return true;
             }
 
+            if ((units.Modes[unit] is
+                     UnitMoveMode.Idle or UnitMoveMode.Arrived or UnitMoveMode.Hold) &&
+                Vector2.DistanceSquared(candidate, units.Positions[unit]) <
+                    minimumDistance * minimumDistance)
+            {
+                return true;
+            }
+
             if (units.DestinationYieldPhases[unit] != DestinationYieldPhase.None &&
                 Vector2.DistanceSquared(
                     candidate, units.DestinationYieldReturnTargets[unit]) <
