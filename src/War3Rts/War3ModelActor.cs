@@ -138,18 +138,19 @@ public sealed partial class War3ModelActor : Node3D
             return false;
         var index = FindSequence(candidates);
         if (index < 0) return false;
+        var effectiveLoop = loop && !_metadata.Sequences[index].NonLooping;
         var key = string.Join('|', candidates);
         var sameRequest = _requestedSequence == key &&
-                          _requestedLoop == loop && !_progressDriven;
+                          _requestedLoop == effectiveLoop && !_progressDriven;
         _requestedSequence = key;
-        _requestedLoop = loop;
+        _requestedLoop = effectiveLoop;
         _progressDriven = false;
         if (sameRequest && _sequenceIndex == index)
         {
             if (_animation?.IsPlaying() == true) return true;
-            if (!loop) return true;
+            if (!effectiveLoop) return true;
         }
-        StartSequence(index, loop);
+        StartSequence(index, effectiveLoop);
         return true;
     }
 
@@ -247,9 +248,6 @@ public sealed partial class War3ModelActor : Node3D
                         candidate, StringComparison.OrdinalIgnoreCase))
                     return index;
             }
-        }
-        foreach (var candidate in candidates)
-        {
             for (var index = 0; index < _metadata.Sequences.Count; index++)
             {
                 if (_metadata.Sequences[index].Name.StartsWith(
@@ -257,7 +255,7 @@ public sealed partial class War3ModelActor : Node3D
                     return index;
             }
         }
-        return 0;
+        return -1;
     }
 
     private void ClearModel()
@@ -285,10 +283,6 @@ public sealed partial class War3ModelActor : Node3D
         {
             if (name.ToString().Contains(sequenceName, StringComparison.OrdinalIgnoreCase))
                 return name;
-        }
-        foreach (var name in animations)
-        {
-            if (name.ToString() != "RESET") return name;
         }
         return null;
     }

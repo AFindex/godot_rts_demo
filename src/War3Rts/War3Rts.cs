@@ -667,6 +667,20 @@ public sealed partial class War3Rts : Node3D
         {
             Model(building.ModelSource);
             Texture(building.IconPath);
+            if (!War3RuntimeAssets.Contains(building.ModelSource)) continue;
+            var metadata = War3RuntimeAssets.LoadMetadata(building.ModelSource);
+            var idle = metadata.Sequences.FirstOrDefault(sequence =>
+                sequence.Name.StartsWith("Stand", StringComparison.OrdinalIgnoreCase));
+            var birth = metadata.Sequences.FirstOrDefault(sequence =>
+                sequence.Name.StartsWith("Birth", StringComparison.OrdinalIgnoreCase));
+            var death = metadata.Sequences.FirstOrDefault(sequence =>
+                sequence.Name.StartsWith("Death", StringComparison.OrdinalIgnoreCase));
+            if (idle is null || idle.NonLooping)
+                missing.Add($"建筑待机动画:{building.ModelSource}");
+            if (birth is null || !birth.NonLooping)
+                missing.Add($"建筑建造动画:{building.ModelSource}");
+            if (death is null || !death.NonLooping)
+                missing.Add($"建筑销毁动画:{building.ModelSource}");
         }
         Model(War3HumanContent.GoldMineSource);
         for (var variant = 0; variant < 10; variant++)
@@ -984,7 +998,10 @@ public sealed partial class War3Rts : Node3D
                          node.Remaining < War3HumanScenario.TreeHealth);
         var harvestingSynchronized =
             _presenter.SawProgressiveLumberCargo && treeHealthReduced &&
-            !_presenter.GoldGatherUsedAttackAnimation;
+            !_presenter.GoldGatherUsedAttackAnimation &&
+            _presenter.SawGoldMinerHidden;
+        var buildingAnimationsValid =
+            !_presenter.CompletedBuildingUsedLifecycleAnimation;
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
@@ -998,7 +1015,7 @@ public sealed partial class War3Rts : Node3D
                       _presenter.SawCarriedGoldAnimation &&
                       _presenter.SawCarriedLumberAnimation &&
                       rallySet && resourceCentersClear && constructionSynchronized &&
-                      harvestingSynchronized;
+                      harvestingSynchronized && buildingAnimationsValid;
         GD.Print(
             $"WAR3_RTS_SMOKE success={success} units={_presenter.PresentedUnitCount} " +
             $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
@@ -1011,7 +1028,9 @@ public sealed partial class War3Rts : Node3D
             $"construction_sync={constructionSynchronized} " +
             $"lumber_progressive={_presenter.SawProgressiveLumberCargo} " +
             $"tree_health={treeHealthReduced} " +
-            $"gold_non_attack={!_presenter.GoldGatherUsedAttackAnimation}");
+            $"gold_non_attack={!_presenter.GoldGatherUsedAttackAnimation} " +
+            $"gold_hidden={_presenter.SawGoldMinerHidden} " +
+            $"building_idle={buildingAnimationsValid}");
         if (!_capture) GetTree().Quit(success ? 0 : 1);
     }
 

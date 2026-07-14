@@ -34,6 +34,8 @@ public sealed partial class War3WorldPresenter : Node3D
     private bool _constructionAnimationMismatch;
     private bool _sawProgressiveLumberCargo;
     private bool _goldGatherUsedAttackAnimation;
+    private bool _sawGoldMinerHidden;
+    private bool _completedBuildingUsedLifecycleAnimation;
 
     public int PresentedUnitCount => _units.Values.Count(value => !value.Dying);
     public int PresentedBuildingCount => _buildings.Values.Count(value => !value.Dying);
@@ -48,6 +50,9 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool ConstructionAnimationMismatch => _constructionAnimationMismatch;
     public bool SawProgressiveLumberCargo => _sawProgressiveLumberCargo;
     public bool GoldGatherUsedAttackAnimation => _goldGatherUsedAttackAnimation;
+    public bool SawGoldMinerHidden => _sawGoldMinerHidden;
+    public bool CompletedBuildingUsedLifecycleAnimation =>
+        _completedBuildingUsedLifecycleAnimation;
 
     public void Initialize(
         RtsSimulation simulation,
@@ -72,7 +77,8 @@ public sealed partial class War3WorldPresenter : Node3D
         _selectedBuildings.UnionWith(buildings);
         foreach (var pair in _units)
             pair.Value.Selection.Visible = _selectedUnits.Contains(pair.Key) &&
-                                           !pair.Value.Dying;
+                                           !pair.Value.Dying &&
+                                           pair.Value.Actor.Visible;
         foreach (var pair in _buildings)
             pair.Value.Selection.Visible = _selectedBuildings.Contains(pair.Key) &&
                                            !pair.Value.Dying;
@@ -143,8 +149,12 @@ public sealed partial class War3WorldPresenter : Node3D
             if (velocity.LengthSquared() > 1f)
                 visual.Actor.Rotation = new Vector3(
                     0f, MathF.Atan2(velocity.X, velocity.Y), 0f);
+            var hiddenInsideGoldMine = IsGatheringGold(simulation, unit);
+            visual.Actor.Visible = !hiddenInsideGoldMine;
+            _sawGoldMinerHidden |= hiddenInsideGoldMine;
             visual.Selection.Position = new Vector3(world.X, SelectionHeight, world.Z);
-            visual.Selection.Visible = _selectedUnits.Contains(unit);
+            visual.Selection.Visible = _selectedUnits.Contains(unit) &&
+                                       !hiddenInsideGoldMine;
             UpdateUnitAnimation(simulation, unit, visual);
         }
 
@@ -171,16 +181,6 @@ public sealed partial class War3WorldPresenter : Node3D
             cooldown > visual.LastCooldown + 0.001f;
         visual.LastWindup = windup;
         visual.LastCooldown = cooldown;
-        if (simulation.Combat.Phases[unit] == CombatPhase.Attacking)
-        {
-            if (attackCycleStarted)
-                visual.Actor.ReplayPreferred("Attack", "Spell Attack", "Spell");
-            else if (!visual.Actor.IsAnimationPlaying ||
-                     !visual.Actor.CurrentSequence.StartsWith(
-                         "Attack", StringComparison.OrdinalIgnoreCase))
-                visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
-            return;
-        }
         if (simulation.Economy.IsWorker(unit))
         {
             if (simulation.Construction.IsAssignedBuilder(unit))
@@ -211,7 +211,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 else
                 {
                     visual.Actor.PlayPreferred(true,
-                        "Stand Work Gold", "Stand Gold", "Stand");
+                        "Stand Gold", "Stand");
                     _sawGoldGatherAnimation |= visual.Actor.CurrentSequence.Contains(
                         "Gold", StringComparison.OrdinalIgnoreCase);
                     _goldGatherUsedAttackAnimation |=
@@ -220,6 +220,47 @@ public sealed partial class War3WorldPresenter : Node3D
                 }
                 return;
             }
+            if (worker.State is not WorkerEconomyState.None and
+                not WorkerEconomyState.Idle)
+            {
+                if (moving)
+                {
+                    visual.Actor.PlayPreferred(true,
+                        carriesLumber ? "Walk Lumber" : carriesGold ? "Walk Gold" : "Walk",
+                        "Walk");
+                    _sawCarriedLumberAnimation |= carriesLumber &&
+                        visual.Actor.CurrentSequence.Contains(
+                            "Lumber", StringComparison.OrdinalIgnoreCase);
+                    _sawCarriedGoldAnimation |= carriesGold &&
+                        visual.Actor.CurrentSequence.Contains(
+                            "Gold", StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    visual.Actor.PlayPreferred(true,
+                        carriesLumber ? "Stand Lumber" : carriesGold ? "Stand Gold" : "Stand",
+                        "Stand");
+                }
+                return;
+            }
+        }
+        if (simulation.Combat.Phases[unit] == CombatPhase.Attacking)
+        {
+            if (attackCycleStarted)
+                visual.Actor.ReplayPreferred("Attack", "Spell Attack", "Spell");
+            else if (!visual.Actor.IsAnimationPlaying ||
+                     !visual.Actor.CurrentSequence.StartsWith(
+                         "Attack", StringComparison.OrdinalIgnoreCase))
+                visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
+            return;
+        }
+        if (simulation.Economy.IsWorker(unit))
+        {
+            var worker = simulation.Economy.Worker(unit);
+            var carriesLumber = worker.CargoAmount > 0 &&
+                                worker.CargoKind == EconomyResourceKind.VespeneGas;
+            var carriesGold = worker.CargoAmount > 0 &&
+                              worker.CargoKind == EconomyResourceKind.Minerals;
             if (moving)
             {
                 visual.Actor.PlayPreferred(true,
@@ -244,6 +285,15 @@ public sealed partial class War3WorldPresenter : Node3D
             visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
         else
             visual.Actor.PlayPreferred(true, "Stand");
+    }
+
+    private static bool IsGatheringGold(RtsSimulation simulation, int unit)
+    {
+        if (!simulation.Economy.IsWorker(unit)) return false;
+        var worker = simulation.Economy.Worker(unit);
+        if (worker.State != WorkerEconomyState.Gathering) return false;
+        return simulation.Economy.ObserveResourceNode(worker.TargetNode).Kind ==
+               EconomyResourceKind.Minerals;
     }
 
     private void SyncBuildings(RtsSimulation simulation, Camera3D camera)
@@ -281,7 +331,15 @@ public sealed partial class War3WorldPresenter : Node3D
             else if (simulation.Production.Observe(building.Id).Orders.Length > 0)
                 visual.Actor.PlayPreferred(true, "Stand Work", "Stand");
             else
-                visual.Actor.PlayPreferred(true, "Stand", "Portrait");
+                visual.Actor.PlayPreferred(true, "Stand");
+            if (building.State == BuildingLifecycleState.Completed)
+            {
+                var sequence = visual.Actor.CurrentSequence;
+                _completedBuildingUsedLifecycleAnimation |=
+                    sequence.StartsWith("Birth", StringComparison.OrdinalIgnoreCase) ||
+                    sequence.StartsWith("Death", StringComparison.OrdinalIgnoreCase) ||
+                    sequence.StartsWith("Decay", StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         foreach (var pair in _buildings.Where(pair => !_seenBuildings.Contains(pair.Key) &&

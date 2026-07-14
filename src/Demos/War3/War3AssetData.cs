@@ -561,19 +561,35 @@ public sealed class War3ScalarTrack
     {
         if (Keys.Count == 0) return Constant;
         var localFrame = frame;
-        IEnumerable<Key> keyQuery = Keys;
+        Key[] keys;
         if (GlobalSequenceId is int globalId && globalId >= 0 && globalId < globalSequences.Count)
         {
             var duration = Math.Max(1d, globalSequences[globalId]);
             localFrame = ((frame % duration) + duration) % duration;
+            keys = Keys as Key[] ?? Keys.ToArray();
         }
         else
         {
-            keyQuery = keyQuery.Where(key =>
-                key.Frame >= sequence.StartFrame && key.Frame <= sequence.EndFrame);
+            keys = Keys.Where(key =>
+                    key.Frame >= sequence.StartFrame &&
+                    key.Frame <= sequence.EndFrame)
+                .ToArray();
+            if (keys.Length == 0)
+            {
+                // Some MDX tracks intentionally omit keys from a sequence and
+                // hold the last value established earlier on the model
+                // timeline. Falling back to Constant (usually 1) exposed
+                // upgrade/destruction geosets. Interpolating to a later
+                // sequence is also wrong and can activate Death emitters while
+                // idle, so inherit only the preceding key.
+                for (var index = Keys.Count - 1; index >= 0; index--)
+                {
+                    if (Keys[index].Frame <= sequence.StartFrame)
+                        return Keys[index].Value;
+                }
+                return Constant;
+            }
         }
-        var keys = keyQuery as Key[] ?? keyQuery.ToArray();
-        if (keys.Length == 0) return Constant;
         if (localFrame <= keys[0].Frame) return keys[0].Value;
         if (localFrame >= keys[^1].Frame) return keys[^1].Value;
         var rightIndex = Array.FindIndex(keys, key => key.Frame >= localFrame);
