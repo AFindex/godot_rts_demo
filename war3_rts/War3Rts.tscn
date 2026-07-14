@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://src/War3Rts/War3Rts.cs" type="Script" id="1_war3rts"]
+
+[node name="war3_rts" type="Node3D"]
+script = ExtResource("1_war3rts")

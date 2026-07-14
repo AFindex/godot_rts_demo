@@ -493,11 +493,17 @@ public sealed class BuildPlanner : IAiPlanner
                 $"resume:{waiting.BuildingId.Value}");
         }
 
-        var supply = context.Config.Buildings.Type(DemoBuildingTypes.SupplyDepot.Id);
-        var barracks = context.Config.Buildings.Type(DemoBuildingTypes.Barracks.Id);
-        var commandCenter = context.Config.Buildings.Type(DemoBuildingTypes.CommandCenter.Id);
-        var refinery = context.Config.Buildings.Type(DemoBuildingTypes.Refinery.Id);
-        var academy = context.Config.Buildings.Type(DemoBuildingTypes.Academy.Id);
+        var buildingTypes = context.Config.Buildings.Types.ToArray();
+        var supply = buildingTypes.First(value =>
+            value.Function == BuildingFunctionKind.Supply);
+        var barracks = buildingTypes.First(value =>
+            value.Function == BuildingFunctionKind.Production);
+        var commandCenter = buildingTypes.First(value =>
+            value.Function == BuildingFunctionKind.TownHall);
+        var refinery = buildingTypes.FirstOrDefault(value =>
+            value.Function == BuildingFunctionKind.Refinery);
+        var academy = buildingTypes.First(value =>
+            value.Function == BuildingFunctionKind.Research);
         var facilities = observation.Facilities;
         var basePosition = observation.Bases.FirstOrDefault(value => value.Operational).Position;
         if (basePosition == Vector2.Zero)
@@ -517,7 +523,8 @@ public sealed class BuildPlanner : IAiPlanner
             ProposeBuilding(context, worker.UnitId, barracks, basePosition,
                 AiIntentPriority.Infrastructure);
 
-        if (HasCompleted(facilities, barracks.Id) &&
+        if (refinery.Name is not null &&
+            HasCompleted(facilities, barracks.Id) &&
             !HasActive(facilities, refinery.Id))
         {
             var gasCandidates = observation.View.Resources
@@ -648,11 +655,15 @@ public sealed class ProductionPlanner : IAiPlanner
             if (facility.Function != BuildingFunctionKind.Production ||
                 facility.ProductionOrders >= 2 || combatRecipes.Length == 0)
                 continue;
+            var facilityRecipes = combatRecipes
+                .Where(value => value.ProducerBuildingTypeId == facility.Type.Id)
+                .ToArray();
+            if (facilityRecipes.Length == 0) continue;
             var recipe = observation.Economy.VespeneGas >= 25 &&
                          context.Blackboard.Decisions % 3 == 0 &&
-                         combatRecipes.Length > 1
-                ? combatRecipes[1]
-                : combatRecipes[0];
+                         facilityRecipes.Length > 1
+                ? facilityRecipes[1]
+                : facilityRecipes[0];
             context.Propose(
                 new AiIntent(
                     AiIntentKind.Train, [], Vector2.Zero,

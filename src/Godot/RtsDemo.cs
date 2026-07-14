@@ -2893,6 +2893,8 @@ public partial class RtsDemo : Node2D
             GetTree().ChangeSceneToFile(DemoSceneCatalog.Encounter3D);
         _launchScreen.War3AssetLabRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.War3AssetLab);
+        _launchScreen.War3RtsRequested += () =>
+            GetTree().ChangeSceneToFile(DemoSceneCatalog.War3Rts);
         _launchScreen.TestRequested += StartInteractiveVisualTest;
         _launchScreen.TestBrowserRequested += () =>
             ReturnToTestBrowser("已停止当前测试，可选择其他场景。 ");

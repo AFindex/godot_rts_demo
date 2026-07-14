@@ -279,6 +279,12 @@ public sealed partial class War3EffectRuntime : Node3D
     {
         runtime.Mesh.ClearSurfaces();
         if (runtime.Particles.Count == 0) return;
+        var rendersHead = (runtime.Definition.FrameFlags & 1) != 0 ||
+                          runtime.Definition.FrameFlags == 0;
+        var rendersTail = (runtime.Definition.FrameFlags & 2) != 0 &&
+                          runtime.Particles.Any(particle =>
+                              particle.Velocity.LengthSquared() > 0.00001f);
+        if (!rendersHead && !rendersTail) return;
         runtime.Mesh.SurfaceBegin(Mesh.PrimitiveType.Triangles, runtime.Material);
         foreach (var particle in runtime.Particles)
         {

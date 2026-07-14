@@ -619,6 +619,7 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(node.ActiveMules);
             writer.Write(node.AssignedMules);
             WriteVector(writer, node.InteractionHalfExtents);
+            writer.Write((byte)node.HarvestMode);
         }
         writer.Write(economy.DropOffs.Length);
         foreach (var dropOff in economy.DropOffs)
@@ -702,7 +703,8 @@ internal static class RuntimeHotSnapshotCodec
                 reader.ReadInt32(),
                 reader.ReadInt32(),
                 reader.ReadInt32(),
-                ReadVector(reader));
+                ReadVector(reader),
+                (EconomyHarvestMode)reader.ReadByte());
             if (value.Id.Value != index || !Enum.IsDefined(value.Kind) ||
                 !Finite(value.Position) || value.Remaining < 0 ||
                 value.HarvestBatch <= 0 || !Positive(value.HarvestSeconds) ||
@@ -717,7 +719,8 @@ internal static class RuntimeHotSnapshotCodec
                 value.AssignedMules < value.ActiveMules ||
                 !Finite(value.InteractionHalfExtents) ||
                 value.InteractionHalfExtents.X < 0f ||
-                value.InteractionHalfExtents.Y < 0f)
+                value.InteractionHalfExtents.Y < 0f ||
+                !Enum.IsDefined(value.HarvestMode))
             {
                 throw new InvalidDataException();
             }

@@ -20,6 +20,7 @@ public partial class RtsLaunchScreen : Control
     public event Action? DemoRequested;
     public event Action? Demo3DRequested;
     public event Action? War3AssetLabRequested;
+    public event Action? War3RtsRequested;
     public event Action<string>? TestRequested;
     public event Action? TestBrowserRequested;
 
@@ -67,6 +68,10 @@ public partial class RtsLaunchScreen : Control
             "打开 War3 资源实验室",
             "浏览导出的单位、建筑、动画、透明贴图、ParticleEmitter2 与 Ribbon 特效。",
             () => War3AssetLabRequested?.Invoke()));
+        content.AddChild(ActionButton(
+            "进入 Warcraft III 人族对战",
+            "经典人族单位、建筑、金矿、伐木、实时肖像与人族 AI 的完整 3D RTS 对局。",
+            () => War3RtsRequested?.Invoke()));
         content.AddChild(ActionButton(
             $"打开测试中心  ·  {_entries.Count} 项",
             "浏览每项黑盒测试的中文说明，并直接切换到对应场景。",

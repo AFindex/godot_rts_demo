@@ -8,6 +8,12 @@ public enum EconomyResourceKind : byte
     VespeneGas
 }
 
+public enum EconomyHarvestMode : byte
+{
+    Batch,
+    Progressive
+}
+
 public readonly record struct EconomyCost(
     int Minerals,
     int VespeneGas,
@@ -280,7 +286,8 @@ public readonly record struct EconomyResourceNodeSnapshot(
     bool RequiresRefinery,
     bool Operational,
     Vector2 InteractionHalfExtents,
-    float InteractionRadius)
+    float InteractionRadius,
+    EconomyHarvestMode HarvestMode)
 {
     public int ActiveHarvesters => ActiveNormal + ActiveMules;
     public int HarvesterCapacity => IdealNormalAssignments;
@@ -334,7 +341,8 @@ public readonly record struct EconomyResourceNodeRuntimeEntry(
     int WaitingNormal,
     int ActiveMules,
     int AssignedMules,
-    Vector2 InteractionHalfExtents);
+    Vector2 InteractionHalfExtents,
+    EconomyHarvestMode HarvestMode);
 
 public readonly record struct EconomyDropOffRuntimeEntry(
     EconomyDropOffId Id,
@@ -618,12 +626,13 @@ public sealed class EconomySystem
         int harvesterCapacity,
         bool requiresRefinery = false,
         bool operational = true,
-        int activeHarvesterSlots = 0)
+        int activeHarvesterSlots = 0,
+        EconomyHarvestMode harvestMode = EconomyHarvestMode.Batch)
     {
         if (!Enum.IsDefined(kind) || !IsFinite(position) || amount <= 0 ||
             harvestBatch <= 0 || !float.IsFinite(harvestSeconds) ||
             harvestSeconds <= 0f || harvesterCapacity <= 0 ||
-            activeHarvesterSlots < 0)
+            activeHarvesterSlots < 0 || !Enum.IsDefined(harvestMode))
         {
             throw new ArgumentOutOfRangeException(nameof(amount));
         }
@@ -636,8 +645,29 @@ public sealed class EconomySystem
         _nodes.Add(new ResourceNode(
             id, kind, position, amount, harvestBatch, harvestSeconds,
             resolvedActiveSlots, harvesterCapacity,
-            requiresRefinery, operational));
+            requiresRefinery, operational, harvestMode));
         return id;
+    }
+
+    /// <summary>
+    /// Gives a resource node a physical interaction footprint. Movement can
+    /// then stop at the resource boundary instead of walking through its
+    /// visual center.
+    /// </summary>
+    public void SetResourceInteractionBounds(
+        EconomyResourceNodeId nodeId,
+        SimRect bounds)
+    {
+        var node = Node(nodeId);
+        var center = (bounds.Min + bounds.Max) * 0.5f;
+        var halfExtents = (bounds.Max - bounds.Min) * 0.5f;
+        if (!IsFinite(center) || !IsFinite(halfExtents) ||
+            halfExtents.X <= 0f || halfExtents.Y <= 0f ||
+            Vector2.DistanceSquared(center, node.Position) > 0.0001f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bounds));
+        }
+        node.InteractionHalfExtents = halfExtents;
     }
 
     public EconomyDropOffId AddDropOff(
@@ -1126,7 +1156,8 @@ public sealed class EconomySystem
             node.NormalActiveSlots, node.IdealNormalAssignments,
             node.ActiveMules, node.AssignedMules,
             node.RequiresRefinery, node.Operational,
-            node.InteractionHalfExtents, NodeArrivalPadding);
+            node.InteractionHalfExtents, NodeArrivalPadding,
+            node.HarvestMode);
     }
 
     public EconomyDropOffApproachSnapshot[] CreateDropOffApproaches(
@@ -1271,7 +1302,7 @@ public sealed class EconomySystem
             node.RequiresRefinery, node.Operational,
             node.ActiveNormal, node.AssignedNormal, node.WaitingNormal,
             node.ActiveMules, node.AssignedMules,
-            node.InteractionHalfExtents)).ToArray();
+            node.InteractionHalfExtents, node.HarvestMode)).ToArray();
         var dropOffs = _dropOffs.Select(dropOff => new EconomyDropOffRuntimeEntry(
             dropOff.Id, dropOff.PlayerId, dropOff.Position,
             dropOff.HalfExtents,
@@ -1314,7 +1345,8 @@ public sealed class EconomySystem
                 value.HarvestBatch, value.HarvestSeconds,
                 value.NormalActiveSlots, value.IdealNormalAssignments,
                 value.RequiresRefinery,
-                value.Operational)
+                value.Operational,
+                value.HarvestMode)
             {
                 ActiveNormal = value.ActiveNormal,
                 AssignedNormal = value.AssignedNormal,
@@ -1409,6 +1441,7 @@ public sealed class EconomySystem
             hash.Add(node.RequiresRefinery);
             hash.Add(node.Operational);
             hash.Add(node.InteractionHalfExtents);
+            hash.Add((byte)node.HarvestMode);
         }
         hash.Add(_dropOffs.Count);
         for (var index = 0; index < _dropOffs.Count; index++)
@@ -1593,21 +1626,46 @@ public sealed class EconomySystem
             moveWorker(unit, node.Position);
             return;
         }
-        _workRemaining[unit] -= delta;
-        if (_workRemaining[unit] > 0f)
+        _workRemaining[unit] = MathF.Max(0f, _workRemaining[unit] - delta);
+        int amount;
+        if (node.HarvestMode == EconomyHarvestMode.Progressive)
         {
-            return;
+            var targetCargo = Math.Min(
+                node.HarvestBatch,
+                (int)MathF.Floor(
+                    (1f - _workRemaining[unit] / node.HarvestSeconds) *
+                    node.HarvestBatch + 0.0001f));
+            var gained = Math.Min(
+                Math.Max(0, targetCargo - _cargoAmounts[unit]),
+                node.Remaining);
+            if (gained > 0)
+            {
+                node.Remaining -= gained;
+                _cargoKinds[unit] = node.Kind;
+                _cargoAmounts[unit] += gained;
+            }
+            if (_workRemaining[unit] > 0f &&
+                _cargoAmounts[unit] < node.HarvestBatch && node.Remaining > 0)
+                return;
+            amount = _cargoAmounts[unit];
+        }
+        else
+        {
+            if (_workRemaining[unit] > 0f) return;
+            amount = Math.Min(node.HarvestBatch, node.Remaining);
+            node.Remaining -= amount;
+            if (amount > 0)
+            {
+                _cargoKinds[unit] = node.Kind;
+                _cargoAmounts[unit] = amount;
+            }
         }
         _workRemaining[unit] = 0f;
-        var amount = Math.Min(node.HarvestBatch, node.Remaining);
-        node.Remaining -= amount;
         if (amount <= 0)
         {
             RetargetOrIdle(unit, units.Positions[unit], moveWorker);
             return;
         }
-        _cargoKinds[unit] = node.Kind;
-        _cargoAmounts[unit] = amount;
         events.Publish(
             tick,
             GameplayEventKind.HarvestCompleted,
@@ -2087,7 +2145,8 @@ public sealed class EconomySystem
         int normalActiveSlots,
         int idealNormalAssignments,
         bool requiresRefinery,
-        bool operational)
+        bool operational,
+        EconomyHarvestMode harvestMode)
     {
         public EconomyResourceNodeId Id { get; } = id;
         public EconomyResourceKind Kind { get; } = kind;
@@ -2099,6 +2158,7 @@ public sealed class EconomySystem
         public int IdealNormalAssignments { get; } = idealNormalAssignments;
         public bool RequiresRefinery { get; } = requiresRefinery;
         public bool Operational { get; set; } = operational;
+        public EconomyHarvestMode HarvestMode { get; } = harvestMode;
         public Vector2 InteractionHalfExtents { get; set; }
         public int ActiveNormal { get; set; }
         public int AssignedNormal { get; set; }
