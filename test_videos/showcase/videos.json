@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-15T17:53:53.1170385+08:00",
+    "generated_at":  "2026-07-15T18:46:22.3388673+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  181,
+    "recording_count":  182,
     "case_count":  134,
     "recordings":  [
+                       {
+                           "id":  "terrain-traversal",
+                           "display_name":  null,
+                           "batch":  "20260715_184546",
+                           "created_at":  "2026-07-15T18:46:21.4895277+08:00",
+                           "video":  "../20260715_184546/terrain-traversal.webm",
+                           "log":  "../20260715_184546/terrain-traversal.log",
+                           "bytes":  2149746,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_TERRAIN_DEMO_PASS ticks=900, reached=18/18, detour=True, illegalCliff=False, placement=TerrainUnbuildable, bakeCompatible=True, topology=True, regions=2/2/2, ramps=1, width=160, route=2/0, minPair=16.00",
+                           "metrics":  "RTS_TERRAIN_DEMO_PASS ticks=900, reached=18/18, detour=True, illegalCliff=False, placement=TerrainUnbuildable, bakeCompatible=True, topology=True, regions=2/2/2, ramps=1, width=160, route=2/0, minPair=16.00"
+                       },
                        {
                            "id":  "terrain-authoring",
                            "display_name":  null,

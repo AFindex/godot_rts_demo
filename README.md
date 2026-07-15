@@ -80,6 +80,7 @@ dotnet build
 - 目标槽位分配、空间哈希、候选速度 Steering、TTC、避让侧记忆和三轮碰撞推挤。
 - SC2 风格地形 T1：版本化纯 C# 高度/表面/路径/建造/坡道快照、绑定地形哈希的三档 Clearance Bake、批量 3D 地表与崖壁，以及生产寻路栈驱动的坡道专项演示。
 - SC2 风格地形 T3：可编辑 Godot Resource、互不串改的规则笔刷、UndoRedo、十类覆盖层、带格子坐标的坡道/孤岛/窄缝/关键点检查，以及验证后不可变运行时导出。操作见 [地形数据编辑与导出工作流](docs/TERRAIN_AUTHORING_WORKFLOW.md)。
+- SC2 风格地形 T4a：从地形和三档 Clearance 自动生成同高度连通区域、坡道入口/宽度/尺寸门禁，高层路线不再依赖全手写 Portal，并能在连续爬层时接管后续坡道。设计见 [地形与高层寻路拓扑](docs/TERRAIN_NAVIGATION_TOPOLOGY.md)。
 - 拥挤残余碰撞使用有界顺序修正并在无冲突时提前结束，解决贴墙或多邻居修正抵消后留下的实际重叠。
 - 纯 C# AttackMove 状态机：错峰选敌、追击重寻路、前摇/冷却/伤害、leash、死亡清理和恢复原路线。
 - 近战单位使用唯一接触槽并沿目标外圈分段就位；远程单位使用射程内唯一攻击环，交叉后可做严格降误差的局部换槽。
@@ -154,6 +155,8 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 ```powershell
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
   --headless --path . -- --terrain-self-test
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --terrain-topology-self-test
 
 .\tools\record_demo.ps1 -Demo terrain-traversal
 .\tools\record_demo.ps1 -Demo terrain-vision

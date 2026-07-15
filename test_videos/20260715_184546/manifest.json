@@ -1,0 +1,31 @@
+﻿{
+    "created_at":  "2026-07-15T18:46:21.4895277+08:00",
+    "fps":  30,
+    "codec":  "AV1 (libsvtav1)",
+    "container":  "WebM",
+    "crf":  32,
+    "preset":  8,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "terrain-traversal"
+                        ],
+    "available_cases":  [
+                            "terrain-traversal"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "terrain-traversal",
+                      "file":  "terrain-traversal.webm",
+                      "log":  "terrain-traversal.log",
+                      "bytes":  2149746,
+                      "source_bytes":  23267724,
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8,
+                      "exit_code":  0,
+                      "encode_error":  null,
+                      "result":  "RTS_TERRAIN_DEMO_PASS ticks=900, reached=18/18, detour=True, illegalCliff=False, placement=TerrainUnbuildable, bakeCompatible=True, topology=True, regions=2/2/2, ramps=1, width=160, route=2/0, minPair=16.00"
+                  }
+              ]
+}

@@ -40,12 +40,16 @@ public static class TerrainTraversalScenario
         var terrain = CreateTerrain();
         var clearance = ClearanceBakeSnapshot.Build(
             navigation, terrain, cellSize: 16f);
+        var topology = TerrainNavigationTopologyBuilder.Build(
+            terrain, clearance);
         var world = navigation.CreateWorld(terrain);
         var pathProvider = new GridPathProvider(world, 16f, clearance);
         var simulation = new RtsSimulation(
             world,
             pathProvider,
             capacity: 64,
+            groupRoutePlanner: topology.CreateRoutePlanner(),
+            chokeController: topology.CreateChokeController(),
             clearanceBake: clearance);
 
         var units = new int[18];
@@ -74,6 +78,7 @@ public static class TerrainTraversalScenario
             navigation,
             terrain,
             clearance,
+            topology,
             simulation,
             units,
             placement);
@@ -86,7 +91,7 @@ public static class TerrainTraversalScenario
         return position.Y >= minimumY && position.Y <= maximumY;
     }
 
-    private static TerrainMapSnapshot CreateTerrain()
+    public static TerrainMapSnapshot CreateTerrain()
     {
         TerrainSurfaceDefinition[] surfaces =
         [
@@ -129,6 +134,7 @@ public sealed record TerrainTraversalRuntime(
     NavigationMapSnapshot Navigation,
     TerrainMapSnapshot Terrain,
     ClearanceBakeSnapshot Clearance,
+    TerrainNavigationTopologySnapshot Topology,
     RtsSimulation Simulation,
     int[] Units,
     StaticPlacementResult ShallowWaterPlacement);

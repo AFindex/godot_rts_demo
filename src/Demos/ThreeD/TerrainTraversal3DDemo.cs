@@ -176,11 +176,15 @@ public partial class TerrainTraversal3DDemo : Node3D
         if (_runtime is null || _status is null) return;
         var reached = CountReachedHighGround();
         _status.Text =
-            "TERRAIN CONTRACT / PRODUCTION PATHING\n" +
+            "TERRAIN TOPOLOGY / PRODUCTION PATHING\n" +
             $"Cliff detour: {(_observedRampDetour ? "OBSERVED" : "WAITING")}   " +
             $"Reached plateau: {reached}/{_runtime.Units.Length}\n" +
+            $"Auto regions S/M/L: " +
+            $"{string.Join('/', _runtime.Topology.Layers.ToArray().Select(value => value.RegionCount))}   " +
+            $"Ramp: {_runtime.Topology.Ramps.Length} × {_runtime.Topology.Ramps[0].Width:F0}px   " +
+            $"Route: {_runtime.Simulation.LastIssuedGroupRoute.Waypoints.Length} mouths\n" +
             $"Shallow water placement: {_runtime.ShallowWaterPlacement.Code}   " +
-            $"Nav hash: {_runtime.Navigation.StableHashText}   Terrain: {_runtime.Terrain.StableHashText}";
+            $"Topology: {_runtime.Topology.StableHashText}";
     }
 
     private int CountReachedHighGround()
@@ -203,18 +207,35 @@ public partial class TerrainTraversal3DDemo : Node3D
             navigationRadius: MovementClearance.ForClass(
                 MovementClass.Small).NavigationRadius);
         var noOverlap = _minimumPairDistance >= 15.99f;
+        var topologyValid = _runtime.Topology.Ramps.Length == 1 &&
+                            _runtime.Topology.Ramps[0].Width == 160f &&
+                            _runtime.Topology.Ramps[0].MovementMask ==
+                                TerrainTopologyMovementMask.All &&
+                            _runtime.Topology.Layers.ToArray().All(
+                                layer => layer.RegionCount == 2 &&
+                                         layer.Connection(0).IsTraversable) &&
+                            _runtime.Simulation.LastIssuedGroupRoute.Waypoints.Length == 2 &&
+                            _runtime.Simulation.LastIssuedGroupRoute.ChokeIds.SequenceEqual([0]);
         var passed = reached == _runtime.Units.Length &&
                      _observedRampDetour &&
                      !_crossedCliffOutsideRamp &&
                      placementRejected &&
                      bakeCompatible &&
+                     topologyValid &&
                      noOverlap;
         GD.Print($"RTS_TERRAIN_DEMO_{(passed ? "PASS" : "FAIL")} " +
                  $"ticks={_runtime.Simulation.Metrics.Tick}, " +
                  $"reached={reached}/{_runtime.Units.Length}, " +
                  $"detour={_observedRampDetour}, illegalCliff={_crossedCliffOutsideRamp}, " +
                  $"placement={_runtime.ShallowWaterPlacement.Code}, " +
-                 $"bakeCompatible={bakeCompatible}, minPair={_minimumPairDistance:F2}");
+                 $"bakeCompatible={bakeCompatible}, topology={topologyValid}, " +
+                 $"regions=" +
+                 $"{string.Join('/', _runtime.Topology.Layers.ToArray().Select(value => value.RegionCount))}, " +
+                 $"ramps={_runtime.Topology.Ramps.Length}, " +
+                 $"width={_runtime.Topology.Ramps[0].Width:F0}, " +
+                 $"route={_runtime.Simulation.LastIssuedGroupRoute.Waypoints.Length}/" +
+                 $"{string.Join(',', _runtime.Simulation.LastIssuedGroupRoute.ChokeIds)}, " +
+                 $"minPair={_minimumPairDistance:F2}");
         GetTree().Quit(passed ? 0 : 1);
     }
 }

@@ -58,7 +58,7 @@ Godot Movie Maker → <case>.capture.avi
 .\tools\record_demo.ps1 -Demo terrain-authoring
 ```
 
-`terrain-traversal` 在编码前必须取得 `RTS_TERRAIN_DEMO_PASS`，Manifest 会保留到达数、非法穿崖、浅水放置结果、Bake 兼容性和最小单位间距；业务失败时不产生可提交的 WebM。
+`terrain-traversal` 在编码前必须取得 `RTS_TERRAIN_DEMO_PASS`，Manifest 会保留到达数、非法穿崖、浅水放置结果、Bake 兼容性、自动拓扑三档区域数、坡道数量/宽度、高层入口点/Choke ID 和最小单位间距；业务失败时不产生可提交的 WebM。
 
 `terrain-vision` 必须取得 `RTS_TERRAIN_VISION_DEMO_PASS`，并同时证明初始高地隐藏、无视野攻击拒绝、高架观察、弹道发射后丢失视野仍命中、盟友共享高地视野以及烟雾内外遮挡；任一断言失败都不会生成可提交结果。
 

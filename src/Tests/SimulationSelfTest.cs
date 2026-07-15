@@ -21,6 +21,7 @@ public static class SimulationSelfTest
             var dataResult = NavigationMapSelfTest.Run();
             var terrainResult = TerrainMapSelfTest.Run();
             var terrainAuthoringResult = TerrainAuthoringSelfTest.Run();
+            var terrainTopologyResult = TerrainNavigationTopologySelfTest.Run();
             var terrainVisionResult = TerrainVisionSelfTest.Run();
             var fallbackPathResult = PathProviderFallbackSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
@@ -59,6 +60,7 @@ public static class SimulationSelfTest
                 buildingTypes, productionCatalog, technologyCatalog);
             var passed = dataResult.Passed && terrainResult.Passed &&
                          terrainAuthoringResult.Passed &&
+                         terrainTopologyResult.Passed &&
                          terrainVisionResult.Passed &&
                          fallbackPathResult.Passed &&
                          profileResult.Passed &&
@@ -86,6 +88,9 @@ public static class SimulationSelfTest
                 $"terrain-authoring=" +
                 $"{(terrainAuthoringResult.Passed ? "PASS" : "FAIL")}" +
                 $"({terrainAuthoringResult.Summary})",
+                $"terrain-topology=" +
+                $"{(terrainTopologyResult.Passed ? "PASS" : "FAIL")}" +
+                $"({terrainTopologyResult.Summary})",
                 $"terrain-vision=" +
                 $"{(terrainVisionResult.Passed ? "PASS" : "FAIL")}" +
                 $"({terrainVisionResult.Summary})",
