@@ -21,6 +21,7 @@ public sealed partial class War3ModelActor : Node3D
     private int _sequenceIndex;
     private string _requestedSequence = string.Empty;
     private bool _requestedLoop = true;
+    private bool _requestedRepeat;
     private bool _progressDriven;
     private double _drivenMilliseconds;
     private bool _deathLocked;
@@ -30,8 +31,12 @@ public sealed partial class War3ModelActor : Node3D
     public Node? ModelRoot => _model;
     public bool Loaded => _model is not null;
     public bool IsAnimationPlaying => _animation?.IsPlaying() == true;
+    public int LiveEffectCount => (_effects?.LiveParticleCount ?? 0) +
+                                  (_effects?.LiveRibbonPointCount ?? 0);
     public bool IsProgressDriven => _progressDriven;
     public float DrivenProgress { get; private set; }
+    public double LastTransitionBlendSeconds { get; private set; }
+    public int RepeatedSequenceRestartCount { get; private set; }
     public string CurrentSequence => _sequenceIndex >= 0 && _metadata is not null &&
                                      _sequenceIndex < _metadata.Sequences.Count
         ? _metadata.Sequences[_sequenceIndex].Name
@@ -69,15 +74,26 @@ public sealed partial class War3ModelActor : Node3D
         }
         _sequenceIndex = -1;
         _requestedSequence = string.Empty;
+        _requestedRepeat = false;
         _progressDriven = false;
         _drivenMilliseconds = 0d;
         DrivenProgress = 0f;
+        LastTransitionBlendSeconds = 0d;
+        RepeatedSequenceRestartCount = 0;
         _deathLocked = false;
         PlayPreferred(true, "Stand", "Birth");
     }
 
     public bool PlayPreferred(bool loop, params string[] candidates)
-        => RequestSequence(loop, candidates);
+        => RequestSequence(loop, repeatNonLooping: false, candidates);
+
+    /// <summary>
+    /// Repeats a gameplay action even when each source sequence is marked
+    /// NonLooping. Each cycle still reaches its authored final frame before the
+    /// next cycle starts, unlike forcing the imported clip itself to loop.
+    /// </summary>
+    public bool PlayRepeatedPreferred(params string[] candidates)
+        => RequestSequence(loop: true, repeatNonLooping: true, candidates);
 
     /// <summary>Restarts a non-looping sequence for a new gameplay cycle.</summary>
     public bool ReplayPreferred(params string[] candidates)
@@ -88,6 +104,7 @@ public sealed partial class War3ModelActor : Node3D
         if (index < 0) return false;
         _requestedSequence = string.Join('|', candidates);
         _requestedLoop = false;
+        _requestedRepeat = false;
         StartSequence(index, false);
         return true;
     }
@@ -106,11 +123,12 @@ public sealed partial class War3ModelActor : Node3D
         var progress = Math.Clamp(normalizedProgress, 0f, 1f);
         var key = string.Join('|', candidates);
         if (!_progressDriven || _sequenceIndex != index || _requestedSequence != key)
-            StartSequence(index, false);
+            StartSequence(index, false, allowBlend: false);
 
         var sequence = _metadata.Sequences[index];
         _requestedSequence = key;
         _requestedLoop = false;
+        _requestedRepeat = false;
         _progressDriven = true;
         DrivenProgress = progress;
         _drivenMilliseconds = sequence.DurationMilliseconds * progress;
@@ -126,29 +144,35 @@ public sealed partial class War3ModelActor : Node3D
         }
         ApplyGeosetVisibility(
             _geosets, _metadata, index, _drivenMilliseconds);
-        _effects?.Sync(_drivenMilliseconds);
+        _effects?.Sync(_drivenMilliseconds, SeekAnimationToMilliseconds);
         return true;
     }
 
     private bool RequestSequence(
         bool loop,
-        params string[] candidates)
+        bool repeatNonLooping,
+        IReadOnlyList<string> candidates)
     {
         if (_deathLocked || _metadata is null || _metadata.Sequences.Count == 0)
             return false;
         var index = FindSequence(candidates);
         if (index < 0) return false;
-        var effectiveLoop = loop && !_metadata.Sequences[index].NonLooping;
+        var nonLooping = _metadata.Sequences[index].NonLooping;
+        var effectiveLoop = loop && !nonLooping;
+        var repeatAfterFinish = loop && repeatNonLooping && nonLooping;
         var key = string.Join('|', candidates);
         var sameRequest = _requestedSequence == key &&
-                          _requestedLoop == effectiveLoop && !_progressDriven;
+                          _requestedLoop == effectiveLoop &&
+                          _requestedRepeat == repeatAfterFinish && !_progressDriven;
         _requestedSequence = key;
         _requestedLoop = effectiveLoop;
+        _requestedRepeat = repeatAfterFinish;
         _progressDriven = false;
         if (sameRequest && _sequenceIndex == index)
         {
             if (_animation?.IsPlaying() == true) return true;
-            if (!effectiveLoop) return true;
+            if (!effectiveLoop && !repeatAfterFinish) return true;
+            if (repeatAfterFinish) RepeatedSequenceRestartCount++;
         }
         StartSequence(index, effectiveLoop);
         return true;
@@ -162,6 +186,7 @@ public sealed partial class War3ModelActor : Node3D
         StartSequence(index, false);
         _requestedSequence = "Death";
         _requestedLoop = false;
+        _requestedRepeat = false;
         _deathLocked = true;
         return true;
     }
@@ -175,8 +200,9 @@ public sealed partial class War3ModelActor : Node3D
         ApplyGeosetVisibility(_geosets, _metadata, _sequenceIndex, milliseconds);
         _effects?.Sync(milliseconds);
         if (!_deathLocked && _animation is not null && !_animation.IsPlaying() &&
-            _requestedSequence.Length > 0 && _requestedLoop)
+            _requestedSequence.Length > 0 && (_requestedLoop || _requestedRepeat))
         {
+            if (_requestedRepeat) RepeatedSequenceRestartCount++;
             StartSequence(_sequenceIndex, _requestedLoop);
         }
     }
@@ -211,10 +237,14 @@ public sealed partial class War3ModelActor : Node3D
         camera.LookAt(target, Vector3.Up);
     }
 
-    private void StartSequence(int index, bool loop)
+    private void StartSequence(
+        int index,
+        bool loop,
+        bool allowBlend = true)
     {
         if (_metadata is null || (uint)index >= (uint)_metadata.Sequences.Count)
             return;
+        var previousIndex = _sequenceIndex;
         _sequenceIndex = index;
         _progressDriven = false;
         _drivenMilliseconds = 0d;
@@ -229,12 +259,28 @@ public sealed partial class War3ModelActor : Node3D
                 animation.LoopMode = loop
                     ? Animation.LoopModeEnum.Linear
                     : Animation.LoopModeEnum.None;
-                _animation.Play(name);
+                var transition = allowBlend && previousIndex >= 0 &&
+                                 previousIndex != index
+                    ? Math.Clamp(_metadata.BlendTimeMilliseconds / 1000d, 0d, 0.5d)
+                    : 0d;
+                LastTransitionBlendSeconds = transition;
+                _animation.Play(name, customBlend: transition);
                 _animation.Seek(0d, true);
             }
         }
         _effects?.SetSequence(index);
         ApplyGeosetVisibility(_geosets, _metadata, index, 0d);
+    }
+
+    private void SeekAnimationToMilliseconds(double localMilliseconds)
+    {
+        if (_animation is null || _metadata is null || _sequenceIndex < 0) return;
+        var sequence = _metadata.Sequences[_sequenceIndex];
+        var name = FindAnimationName(_animation, sequence.Name);
+        if (name is null) return;
+        var animation = _animation.GetAnimation(name);
+        _animation.Seek(Math.Clamp(
+            localMilliseconds / 1000d, 0d, animation.Length), true);
     }
 
     private int FindSequence(IReadOnlyList<string> candidates)

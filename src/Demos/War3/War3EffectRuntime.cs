@@ -85,7 +85,7 @@ public sealed partial class War3EffectRuntime : Node3D
         {
             emitter.Particles.Clear();
             emitter.SpawnRemainder = 0d;
-            emitter.LastVisibility = 0d;
+            emitter.LastSquirtFrame = null;
             emitter.Mesh.ClearSurfaces();
         }
         foreach (var emitter in _ribbons)
@@ -96,7 +96,9 @@ public sealed partial class War3EffectRuntime : Node3D
         }
     }
 
-    public void Sync(double localMilliseconds)
+    public void Sync(
+        double localMilliseconds,
+        Action<double>? sampleAnimation = null)
     {
         if (_sequence is null || _metadata is null || _camera is null) return;
         localMilliseconds = Math.Clamp(localMilliseconds, 0d, _sequence.DurationMilliseconds);
@@ -112,10 +114,12 @@ public sealed partial class War3EffectRuntime : Node3D
         while (_accumulatorMilliseconds >= FixedStepMilliseconds)
         {
             _simulatedMilliseconds += FixedStepMilliseconds;
+            sampleAnimation?.Invoke(_simulatedMilliseconds);
             SimulateStep(FixedStepMilliseconds / 1000d);
             _accumulatorMilliseconds -= FixedStepMilliseconds;
         }
         _simulatedMilliseconds = localMilliseconds;
+        sampleAnimation?.Invoke(localMilliseconds);
         RebuildMeshes();
     }
 
@@ -146,15 +150,24 @@ public sealed partial class War3EffectRuntime : Node3D
             var visibility = definition.Visibility.Sample(frame, _sequence, _metadata.GlobalSequences);
             var rate = Math.Max(0d,
                 definition.EmissionRate.Sample(frame, _sequence, _metadata.GlobalSequences));
-            var justBecameVisible = visibility > 0.01d && runtime.LastVisibility <= 0.01d;
-            runtime.LastVisibility = visibility;
             if (visibility > 0.01d && runtime.Binding is not null)
             {
-                var desired = rate * deltaSeconds + runtime.SpawnRemainder;
-                var spawnCount = (int)Math.Floor(desired);
-                runtime.SpawnRemainder = desired - spawnCount;
-                if (definition.Squirt && justBecameVisible)
-                    spawnCount = Math.Max(spawnCount, Math.Clamp((int)Math.Round(rate * 0.12d), 1, 48));
+                int spawnCount;
+                if (definition.Squirt && definition.EmissionRate.Keys.Count > 0)
+                {
+                    var key = LatestSequenceKey(
+                        definition.EmissionRate, frame, _sequence, _metadata.GlobalSequences);
+                    spawnCount = key is not null && runtime.LastSquirtFrame != key.Frame
+                        ? Math.Max(0, (int)Math.Floor(key.Value))
+                        : 0;
+                    if (key is not null) runtime.LastSquirtFrame = key.Frame;
+                }
+                else
+                {
+                    var desired = rate * deltaSeconds + runtime.SpawnRemainder;
+                    spawnCount = (int)Math.Floor(desired);
+                    runtime.SpawnRemainder = desired - spawnCount;
+                }
                 spawnCount = Math.Min(spawnCount, 96);
                 for (var index = 0; index < spawnCount; index++)
                     SpawnParticle(runtime, frame);
@@ -201,6 +214,28 @@ public sealed partial class War3EffectRuntime : Node3D
                     runtime.Points.RemoveAt(index);
             }
         }
+    }
+
+    private static War3ScalarTrack.Key? LatestSequenceKey(
+        War3ScalarTrack track,
+        double frame,
+        War3Sequence sequence,
+        IReadOnlyList<double> globalSequences)
+    {
+        var sampleFrame = frame;
+        IEnumerable<War3ScalarTrack.Key> keys = track.Keys;
+        if (track.GlobalSequenceId is int globalId &&
+            globalId >= 0 && globalId < globalSequences.Count)
+        {
+            var duration = Math.Max(1d, globalSequences[globalId]);
+            sampleFrame = ((frame % duration) + duration) % duration;
+        }
+        else
+        {
+            keys = keys.Where(key => key.Frame >= sequence.StartFrame &&
+                                     key.Frame <= sequence.EndFrame);
+        }
+        return keys.LastOrDefault(key => key.Frame <= sampleFrame);
     }
 
     private void SpawnParticle(ParticleEmitterRuntime runtime, double frame)
@@ -629,7 +664,7 @@ public sealed partial class War3EffectRuntime : Node3D
         public StandardMaterial3D Material { get; } = material;
         public List<Particle> Particles { get; } = [];
         public double SpawnRemainder { get; set; }
-        public double LastVisibility { get; set; }
+        public double? LastSquirtFrame { get; set; }
     }
 
     private sealed class RibbonEmitterRuntime(

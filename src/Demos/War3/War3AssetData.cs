@@ -314,6 +314,7 @@ public sealed record War3ModelBounds(Vector3 Minimum, Vector3 Maximum, float Rad
 public sealed class War3ModelMetadata
 {
     public required War3ModelBounds Bounds { get; init; }
+    public required double BlendTimeMilliseconds { get; init; }
     public required IReadOnlyList<War3Sequence> Sequences { get; init; }
     public required IReadOnlyList<War3TextureDefinition> Textures { get; init; }
     public required IReadOnlyList<War3MaterialDefinition> Materials { get; init; }
@@ -352,6 +353,7 @@ public sealed class War3ModelMetadata
                 ReadVector3(info, "MinimumExtent"),
                 ReadVector3(info, "MaximumExtent"),
                 ReadFloat(info, "BoundsRadius")),
+            BlendTimeMilliseconds = Math.Max(0d, ReadDouble(info, "BlendTime")),
             Sequences = sequences,
             Textures = textures,
             Materials = materials,
@@ -574,21 +576,12 @@ public sealed class War3ScalarTrack
                     key.Frame >= sequence.StartFrame &&
                     key.Frame <= sequence.EndFrame)
                 .ToArray();
-            if (keys.Length == 0)
-            {
-                // Some MDX tracks intentionally omit keys from a sequence and
-                // hold the last value established earlier on the model
-                // timeline. Falling back to Constant (usually 1) exposed
-                // upgrade/destruction geosets. Interpolating to a later
-                // sequence is also wrong and can activate Death emitters while
-                // idle, so inherit only the preceding key.
-                for (var index = Keys.Count - 1; index >= 0; index--)
-                {
-                    if (Keys[index].Frame <= sequence.StartFrame)
-                        return Keys[index].Value;
-                }
-                return Constant;
-            }
+            // Warcraft scopes non-global tracks to a sequence. Missing keys do
+            // not inherit a value from Birth, Upgrade, Death, or Decay; the
+            // property returns to its model default. This is especially
+            // important for TownHall: its base Stand deliberately omits alpha
+            // keys for the completed-building geosets, which means visible.
+            if (keys.Length == 0) return Constant;
         }
         if (localFrame <= keys[0].Frame) return keys[0].Value;
         if (localFrame >= keys[^1].Frame) return keys[^1].Value;

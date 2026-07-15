@@ -22,7 +22,9 @@ public sealed partial class War3WorldPresenter : Node3D
     private ProductionCatalogSnapshot? _production;
     private Camera3D? _camera;
     private MeshInstance3D? _pointerPreview;
-    private MeshInstance3D? _rallyMarker;
+    private War3ModelActor? _rallyMarker;
+    private bool _rallyMarkerActive;
+    private NVector2 _rallyMarkerPosition;
     private StandardMaterial3D? _validPreview;
     private StandardMaterial3D? _invalidPreview;
     private int _peakEffectCount;
@@ -30,12 +32,18 @@ public sealed partial class War3WorldPresenter : Node3D
     private bool _sawLumberGatherAnimation;
     private bool _sawCarriedGoldAnimation;
     private bool _sawCarriedLumberAnimation;
+    private bool _sawRepeatedLumberCycle;
     private bool _sawConstructionProgressAnimation;
     private bool _constructionAnimationMismatch;
     private bool _sawProgressiveLumberCargo;
     private bool _goldGatherUsedAttackAnimation;
     private bool _sawGoldMinerHidden;
     private bool _completedBuildingUsedLifecycleAnimation;
+    private bool _sawBlendedTransition;
+    private bool _sawConstructionEffect;
+    private bool _idleTownHallEffectLeak;
+    private bool _sawAttackTargetFacing;
+    private bool _attackTargetFacingMismatch;
 
     public int PresentedUnitCount => _units.Values.Count(value => !value.Dying);
     public int PresentedBuildingCount => _buildings.Values.Count(value => !value.Dying);
@@ -46,6 +54,7 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool SawLumberGatherAnimation => _sawLumberGatherAnimation;
     public bool SawCarriedGoldAnimation => _sawCarriedGoldAnimation;
     public bool SawCarriedLumberAnimation => _sawCarriedLumberAnimation;
+    public bool SawRepeatedLumberCycle => _sawRepeatedLumberCycle;
     public bool SawConstructionProgressAnimation => _sawConstructionProgressAnimation;
     public bool ConstructionAnimationMismatch => _constructionAnimationMismatch;
     public bool SawProgressiveLumberCargo => _sawProgressiveLumberCargo;
@@ -53,6 +62,15 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool SawGoldMinerHidden => _sawGoldMinerHidden;
     public bool CompletedBuildingUsedLifecycleAnimation =>
         _completedBuildingUsedLifecycleAnimation;
+    public bool SawBlendedTransition => _sawBlendedTransition;
+    public bool SawConstructionEffect => _sawConstructionEffect;
+    public bool IdleTownHallEffectLeak => _idleTownHallEffectLeak;
+    public bool SawAttackTargetFacing => _sawAttackTargetFacing;
+    public bool AttackTargetFacingMismatch => _attackTargetFacingMismatch;
+    public bool RallyMarkerUsesWar3Model => _rallyMarker?.Loaded == true &&
+        _rallyMarker.Source.Equals(
+            "UI\\Feedback\\RallyPoint\\RallyPoint.mdx",
+            StringComparison.OrdinalIgnoreCase);
 
     public void Initialize(
         RtsSimulation simulation,
@@ -146,7 +164,16 @@ public sealed partial class War3WorldPresenter : Node3D
             var world = SimPlane3DTransform.ToWorld(position, definition.FlyingHeight);
             visual.Actor.Position = world;
             var velocity = simulation.Units.Velocities[unit];
-            if (velocity.LengthSquared() > 1f)
+            if (TryResolveActionDirection(
+                    simulation, unit, position, interpolation, out var attackDirection))
+            {
+                var angle = MathF.Atan2(attackDirection.X, attackDirection.Y);
+                visual.Actor.Rotation = new Vector3(0f, angle, 0f);
+                _sawAttackTargetFacing = true;
+                _attackTargetFacingMismatch |= MathF.Abs(Mathf.AngleDifference(
+                    visual.Actor.Rotation.Y, angle)) > 0.001f;
+            }
+            else if (velocity.LengthSquared() > 1f)
                 visual.Actor.Rotation = new Vector3(
                     0f, MathF.Atan2(velocity.X, velocity.Y), 0f);
             var hiddenInsideGoldMine = IsGatheringGold(simulation, unit);
@@ -156,6 +183,7 @@ public sealed partial class War3WorldPresenter : Node3D
             visual.Selection.Visible = _selectedUnits.Contains(unit) &&
                                        !hiddenInsideGoldMine;
             UpdateUnitAnimation(simulation, unit, visual);
+            _sawBlendedTransition |= visual.Actor.LastTransitionBlendSeconds > 0d;
         }
 
         foreach (var id in _units.Where(pair => pair.Value.Dying &&
@@ -165,6 +193,60 @@ public sealed partial class War3WorldPresenter : Node3D
             _units[id].Root.QueueFree();
             _units.Remove(id);
         }
+    }
+
+    private static bool TryResolveActionDirection(
+        RtsSimulation simulation,
+        int unit,
+        NVector2 attackerPosition,
+        float interpolation,
+        out NVector2 direction)
+    {
+        direction = NVector2.Zero;
+        NVector2 targetPosition;
+        if (simulation.Combat.Phases[unit] == CombatPhase.Attacking)
+        {
+            switch (simulation.Combat.TargetKinds[unit])
+            {
+                case CombatTargetKind.Unit:
+                {
+                    var target = simulation.Combat.TargetUnits[unit];
+                    if ((uint)target >= (uint)simulation.Units.Count ||
+                        !simulation.Units.Alive[target])
+                        return false;
+                    targetPosition = NVector2.Lerp(
+                        simulation.Units.PreviousPositions[target],
+                        simulation.Units.Positions[target], interpolation);
+                    break;
+                }
+                case CombatTargetKind.Building:
+                {
+                    var target = new GameplayBuildingId(
+                        simulation.Combat.TargetBuildings[unit]);
+                    if (!simulation.Construction.IsAlive(target)) return false;
+                    var building = simulation.Construction.Observe(target);
+                    targetPosition = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+                    break;
+                }
+                default:
+                    return false;
+            }
+        }
+        else if (simulation.Economy.IsWorker(unit))
+        {
+            var worker = simulation.Economy.Worker(unit);
+            if (worker.State != WorkerEconomyState.Gathering) return false;
+            var resource = simulation.Economy.ObserveResourceNode(worker.TargetNode);
+            if (resource.Kind != EconomyResourceKind.VespeneGas)
+                return false;
+            targetPosition = resource.Position;
+        }
+        else
+        {
+            return false;
+        }
+        direction = targetPosition - attackerPosition;
+        return direction.LengthSquared() > 0.0001f;
     }
 
     private void UpdateUnitAnimation(
@@ -201,10 +283,12 @@ public sealed partial class War3WorldPresenter : Node3D
                 var resource = simulation.Economy.ObserveResourceNode(worker.TargetNode);
                 if (resource.Kind == EconomyResourceKind.VespeneGas)
                 {
-                    visual.Actor.PlayPreferred(true,
+                    visual.Actor.PlayRepeatedPreferred(
                         "Attack Lumber", "Stand Work Lumber", "Attack", "Stand Work");
                     _sawLumberGatherAnimation |= visual.Actor.CurrentSequence.Contains(
                         "Lumber", StringComparison.OrdinalIgnoreCase);
+                    _sawRepeatedLumberCycle |=
+                        visual.Actor.RepeatedSequenceRestartCount > 0;
                     _sawProgressiveLumberCargo |= worker.CargoAmount > 0 &&
                         worker.CargoAmount < War3HumanScenario.LumberPerTrip;
                 }
@@ -327,6 +411,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 _constructionAnimationMismatch |= !synchronized ||
                     !visual.Actor.IsProgressDriven || visual.Actor.IsAnimationPlaying ||
                     MathF.Abs(visual.Actor.DrivenProgress - building.Progress) > 0.001f;
+                _sawConstructionEffect |= visual.Actor.LiveEffectCount > 0;
             }
             else if (simulation.Production.Observe(building.Id).Orders.Length > 0)
                 visual.Actor.PlayPreferred(true, "Stand Work", "Stand");
@@ -339,6 +424,11 @@ public sealed partial class War3WorldPresenter : Node3D
                     sequence.StartsWith("Birth", StringComparison.OrdinalIgnoreCase) ||
                     sequence.StartsWith("Death", StringComparison.OrdinalIgnoreCase) ||
                     sequence.StartsWith("Decay", StringComparison.OrdinalIgnoreCase);
+                var orders = simulation.Production.Observe(building.Id).Orders;
+                if (building.Type.Id == War3HumanContent.TownHall &&
+                    orders.Length == 0 &&
+                    sequence.Equals("Stand", StringComparison.OrdinalIgnoreCase))
+                    _idleTownHallEffectLeak |= visual.Actor.LiveEffectCount > 0;
             }
         }
 
@@ -549,26 +639,44 @@ public sealed partial class War3WorldPresenter : Node3D
     private void EnsureRallyMarker()
     {
         if (_rallyMarker is not null) return;
-        _rallyMarker = SelectionRing("RallyPointMarker", 0.12f, new Color("ffd75a"));
-        _rallyMarker.Scale = Vector3.One * 0.52f;
+        if (_camera is null) return;
+        _rallyMarker = new War3ModelActor { Name = "RallyPointMarker" };
         _rallyMarker.Visible = false;
         AddChild(_rallyMarker);
+        _rallyMarker.Load(
+            "UI\\Feedback\\RallyPoint\\RallyPoint.mdx",
+            _camera,
+            War3HumanScenario.PlayerId,
+            includeEffects: false);
     }
 
     private void SyncRallyMarker(RtsSimulation simulation)
     {
         EnsureRallyMarker();
-        _rallyMarker!.Visible = false;
+        if (_rallyMarker is null) return;
+        var found = false;
         foreach (var value in _selectedBuildings.Order())
         {
             var id = new GameplayBuildingId(value);
             if (!simulation.Construction.IsAlive(id)) continue;
             var rally = simulation.Production.Observe(id).Rally;
             if (!rally.IsSet) continue;
-            _rallyMarker.Position = SimPlane3DTransform.ToWorld(rally.Position, 0.045f);
+            found = true;
+            var moved = !_rallyMarkerActive ||
+                        NVector2.DistanceSquared(_rallyMarkerPosition, rally.Position) > 0.01f;
+            _rallyMarkerPosition = rally.Position;
+            _rallyMarker.Position = SimPlane3DTransform.ToWorld(rally.Position, 0.01f);
             _rallyMarker.Visible = true;
-            return;
+            if (moved)
+                _rallyMarker.ReplayPreferred("Birth", "Stand");
+            else if (!_rallyMarker.IsAnimationPlaying)
+                _rallyMarker.PlayPreferred(true, "Stand");
+            _rallyMarkerActive = true;
+            break;
         }
+        if (found) return;
+        _rallyMarker.Visible = false;
+        _rallyMarkerActive = false;
     }
 
     private static MeshInstance3D SelectionRing(string name, float width, Color color)

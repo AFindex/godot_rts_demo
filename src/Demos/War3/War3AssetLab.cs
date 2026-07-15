@@ -109,7 +109,8 @@ public sealed partial class War3AssetLab : Node3D
         SelectDefaultAsset();
         if (OS.GetCmdlineUserArgs().Contains("--war3-assets-smoke") ||
             OS.GetCmdlineUserArgs().Contains("--war3-assets-capture") ||
-            OS.GetCmdlineUserArgs().Contains("--war3-unit-capture"))
+            OS.GetCmdlineUserArgs().Contains("--war3-unit-capture") ||
+            OS.GetCmdlineUserArgs().Contains("--war3-model-capture"))
             _ = RunAutomationAsync();
     }
 
@@ -701,9 +702,10 @@ public sealed partial class War3AssetLab : Node3D
     {
         if (_catalog.Count == 0) return;
         var unitCapture = OS.GetCmdlineUserArgs().Contains("--war3-unit-capture");
-        var preferredSource = unitCapture
-            ? "Units\\Human\\Footman\\Footman.mdx"
-            : "Abilities\\Spells\\Undead\\FrostNova\\FrostNovaTarget.mdx";
+        var preferredSource = AutomationArgument("--war3-asset-source=") ??
+            (unitCapture
+                ? "Units\\Human\\Footman\\Footman.mdx"
+                : "Abilities\\Spells\\Undead\\FrostNova\\FrostNovaTarget.mdx");
         var entry = _catalog.FirstOrDefault(candidate => candidate.Source.Equals(
                         preferredSource, StringComparison.OrdinalIgnoreCase)) ??
                     _catalog.FirstOrDefault(candidate => candidate.HasEffects) ??
@@ -1252,16 +1254,49 @@ public sealed partial class War3AssetLab : Node3D
 
     private async Task RunAutomationAsync()
     {
+        var requestedSequence = AutomationArgument("--war3-asset-sequence=");
+        if (_metadata is not null && !string.IsNullOrWhiteSpace(requestedSequence))
+        {
+            var requestedIndex = _metadata.Sequences
+                .Select((sequence, index) => (sequence, index))
+                .FirstOrDefault(pair => pair.sequence.Name.Equals(
+                    requestedSequence, StringComparison.OrdinalIgnoreCase)).index;
+            SelectSequence(requestedIndex);
+        }
         await ToSignal(GetTree().CreateTimer(0.45d), SceneTreeTimer.SignalName.Timeout);
         if (_metadata is not null && _metadata.Sequences.Count > 0)
         {
-            SeekTimeline(Math.Min(400d, _metadata.Sequences[_sequenceIndex].DurationMilliseconds * 0.45d));
+            var requestedTime = AutomationArgument("--war3-asset-time=");
+            var seek = double.TryParse(
+                requestedTime, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var time)
+                ? time
+                : Math.Min(400d,
+                    _metadata.Sequences[_sequenceIndex].DurationMilliseconds * 0.45d);
+            SeekTimeline(Math.Clamp(
+                seek, 0d, _metadata.Sequences[_sequenceIndex].DurationMilliseconds));
             SetPlaying(false);
         }
         await ToSignal(GetTree().CreateTimer(0.35d), SceneTreeTimer.SignalName.Timeout);
         var smoke = OS.GetCmdlineUserArgs().Contains("--war3-assets-smoke");
         var capture = OS.GetCmdlineUserArgs().Contains("--war3-assets-capture");
         var unitCapture = OS.GetCmdlineUserArgs().Contains("--war3-unit-capture");
+        var modelCapture = OS.GetCmdlineUserArgs().Contains("--war3-model-capture");
+        if (modelCapture)
+        {
+            var modelSuccess = _loadedModel is not null && _metadata is not null &&
+                               _animationPlayer is not null;
+            await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+            var modelPath = ProjectSettings.GlobalizePath(
+                "user://war3_asset_lab_model_capture.png");
+            GetViewport().GetTexture().GetImage().SavePng(modelPath);
+            GD.Print($"WAR3_MODEL_CAPTURE success={modelSuccess} " +
+                     $"source={_currentEntry?.Source} " +
+                     $"sequence={_metadata?.Sequences[_sequenceIndex].Name} " +
+                     $"time={_localMilliseconds:0} path={modelPath}");
+            GetTree().Quit(modelSuccess ? 0 : 1);
+            return;
+        }
         if (unitCapture)
         {
             _race = "human";
@@ -1372,6 +1407,11 @@ public sealed partial class War3AssetLab : Node3D
         }
         if (smoke || capture) GetTree().Quit(success ? 0 : 1);
     }
+
+    private static string? AutomationArgument(string prefix) =>
+        OS.GetCmdlineUserArgs()
+            .FirstOrDefault(argument => argument.StartsWith(
+                prefix, StringComparison.OrdinalIgnoreCase))?[prefix.Length..];
 
     private void AddCategoryButton(
         Container parent,

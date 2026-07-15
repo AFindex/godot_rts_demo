@@ -92,6 +92,16 @@ public sealed partial class War3Rts : Node3D
         if (_smoke)
         {
             PrepareSmokeCombat();
+            if (_capture && _smokeRallyBuilding >= 0)
+            {
+                _selectedUnits.Clear();
+                _selectedBuildings.Clear();
+                _selectedBuildings.Add(_smokeRallyBuilding);
+                RefreshSelection();
+                _cameraController!.FocusAt(
+                    War3HumanScenario.PlayerHome + new NVector2(165f, 105f),
+                    immediate: true);
+            }
             _smokeEndTick = _simulation.Metrics.Tick + 600;
             _status = "自动回归：验证采集、AI、动画、肖像与特效";
         }
@@ -683,6 +693,7 @@ public sealed partial class War3Rts : Node3D
                 missing.Add($"建筑销毁动画:{building.ModelSource}");
         }
         Model(War3HumanContent.GoldMineSource);
+        Model(@"UI\Feedback\RallyPoint\RallyPoint.mdx");
         for (var variant = 0; variant < 10; variant++)
             Model(War3HumanContent.TreeSource(variant));
 
@@ -999,13 +1010,19 @@ public sealed partial class War3Rts : Node3D
         var harvestingSynchronized =
             _presenter.SawProgressiveLumberCargo && treeHealthReduced &&
             !_presenter.GoldGatherUsedAttackAnimation &&
-            _presenter.SawGoldMinerHidden;
+            _presenter.SawGoldMinerHidden &&
+            _presenter.SawRepeatedLumberCycle;
         var buildingAnimationsValid =
             !_presenter.CompletedBuildingUsedLifecycleAnimation;
+        var buildingEffectsValid = _presenter.SawConstructionEffect &&
+                                   !_presenter.IdleTownHallEffectLeak;
+        var attackFacingValid = _presenter.SawAttackTargetFacing &&
+                                !_presenter.AttackTargetFacingMismatch;
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
                       _hud.PortraitReady &&
+                      _hud.ConsoleLayoutReady &&
                       player.Minerals > 1_250 &&
                       player.VespeneGas > 700 &&
                       enemyArmy > 0 &&
@@ -1015,22 +1032,29 @@ public sealed partial class War3Rts : Node3D
                       _presenter.SawCarriedGoldAnimation &&
                       _presenter.SawCarriedLumberAnimation &&
                       rallySet && resourceCentersClear && constructionSynchronized &&
-                      harvestingSynchronized && buildingAnimationsValid;
+                      harvestingSynchronized && buildingAnimationsValid &&
+                      buildingEffectsValid && _presenter.SawBlendedTransition &&
+                      _presenter.RallyMarkerUsesWar3Model && attackFacingValid;
         GD.Print(
             $"WAR3_RTS_SMOKE success={success} units={_presenter.PresentedUnitCount} " +
             $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
             $"effects={_presenter.ActiveEffectCount} peak_effects={_presenter.PeakEffectCount} " +
-            $"portrait={_hud.PortraitReady} " +
+            $"portrait={_hud.PortraitReady} hud_layout={_hud.ConsoleLayoutReady} " +
             $"gold={player.Minerals} lumber={player.VespeneGas} enemy_army={enemyArmy} " +
             $"gold_anim={_presenter.SawGoldGatherAnimation}/{_presenter.SawCarriedGoldAnimation} " +
             $"lumber_anim={_presenter.SawLumberGatherAnimation}/{_presenter.SawCarriedLumberAnimation} " +
+            $"lumber_repeat={_presenter.SawRepeatedLumberCycle} " +
             $"rally={rallySet} resource_collision={resourceCentersClear} " +
             $"construction_sync={constructionSynchronized} " +
             $"lumber_progressive={_presenter.SawProgressiveLumberCargo} " +
             $"tree_health={treeHealthReduced} " +
             $"gold_non_attack={!_presenter.GoldGatherUsedAttackAnimation} " +
             $"gold_hidden={_presenter.SawGoldMinerHidden} " +
-            $"building_idle={buildingAnimationsValid}");
+            $"building_idle={buildingAnimationsValid} " +
+            $"building_effects={buildingEffectsValid} " +
+            $"animation_blend={_presenter.SawBlendedTransition} " +
+            $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
+            $"attack_facing={attackFacingValid}");
         if (!_capture) GetTree().Quit(success ? 0 : 1);
     }
 

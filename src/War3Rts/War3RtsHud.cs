@@ -8,7 +8,9 @@ namespace War3Rts;
 public sealed partial class War3RtsHud : Control
 {
     public const float ConsoleHeight = 208f;
-    private const float ConsoleChromeWidth = 1280f;
+    private const float ConsoleChromeWidth = 1000f;
+    private const float ConsoleTextureSize = 320f;
+    private const float ConsoleTextureTop = -112f;
     private static readonly Color Ink = new("071019f2");
     private static readonly Color Surface = new("101923e8");
     private static readonly Color Raised = new("182431f2");
@@ -32,13 +34,17 @@ public sealed partial class War3RtsHud : Control
     private ProgressBar? _queue;
     private Label? _mode;
     private Label? _status;
-    private GridContainer? _commandGrid;
+    private Control? _commandGrid;
+    private Control? _bottomConsole;
+    private Control? _consoleChrome;
     private War3MinimapControl? _minimap;
     private SubViewport? _portraitViewport;
+    private SubViewportContainer? _portraitOpening;
     private Node3D? _portraitWorld;
     private Camera3D? _portraitCamera;
     private War3ModelActor? _portraitActor;
     private TextureRect? _portraitMask;
+    private ColorRect? _portraitHealthFill;
     private string _portraitSource = string.Empty;
     private string _commandSignature = string.Empty;
     private War3SelectionOverlay? _selectionOverlay;
@@ -48,6 +54,14 @@ public sealed partial class War3RtsHud : Control
     public event Action<System.Numerics.Vector2>? MinimapFocusRequested;
 
     public bool PortraitReady => _portraitActor?.Loaded == true;
+    public bool ConsoleLayoutReady =>
+        _consoleChrome is not null &&
+        MathF.Abs(_consoleChrome.Size.X - ConsoleChromeWidth) < 0.1f &&
+        _portraitOpening?.Position.IsEqualApprox(new Vector2(288f, 81f)) == true &&
+        _portraitOpening.Size.IsEqualApprox(new Vector2(60f, 63f)) &&
+        _portraitMask?.Position.IsEqualApprox(new Vector2(275f, 9f)) == true &&
+        _commandGrid?.Position.IsEqualApprox(new Vector2(766f, 38f)) == true &&
+        _commandButtons[11].Position.IsEqualApprox(new Vector2(174f, 116f));
 
     public void SetDragSelection(Vector2 start, Vector2 end, bool visible) =>
         _selectionOverlay?.SetSelection(start, end, visible);
@@ -74,6 +88,14 @@ public sealed partial class War3RtsHud : Control
         _healthText!.Text = snapshot.Selection.MaximumHealth > 0f
             ? $"{snapshot.Selection.Health:0} / {snapshot.Selection.MaximumHealth:0}"
             : string.Empty;
+        if (_portraitHealthFill is not null)
+        {
+            var healthRatio = snapshot.Selection.MaximumHealth > 0f
+                ? Math.Clamp(snapshot.Selection.Health /
+                             snapshot.Selection.MaximumHealth, 0f, 1f)
+                : 0f;
+            _portraitHealthFill.Size = new Vector2(62f * healthRatio, 8f);
+        }
         _queue!.Visible = snapshot.Selection.QueueLabel.Length > 0;
         _queueLabel!.Visible = _queue.Visible;
         _queue!.Value = Math.Clamp(snapshot.Selection.QueueProgress, 0f, 1f) * 100f;
@@ -162,14 +184,7 @@ public sealed partial class War3RtsHud : Control
             MouseFilter = MouseFilterEnum.Stop
         };
         AddChild(bottom);
-
-        var underlay = new ColorRect
-        {
-            Color = new Color("05090d"),
-            MouseFilter = MouseFilterEnum.Ignore
-        };
-        underlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        bottom.AddChild(underlay);
+        _bottomConsole = bottom;
 
         var chrome = new Control
         {
@@ -179,10 +194,22 @@ public sealed partial class War3RtsHud : Control
             AnchorBottom = 1f,
             OffsetLeft = -ConsoleChromeWidth / 2f,
             OffsetRight = ConsoleChromeWidth / 2f,
+            PivotOffset = new Vector2(ConsoleChromeWidth / 2f, ConsoleHeight),
             MouseFilter = MouseFilterEnum.Ignore
         };
         bottom.AddChild(chrome);
-        for (var index = 0; index < 4; index++)
+        _consoleChrome = chrome;
+        bottom.Resized += UpdateConsoleScale;
+
+        var tileWidths = new[]
+        {
+            ConsoleTextureSize,
+            ConsoleTextureSize,
+            ConsoleTextureSize,
+            40f
+        };
+        var tileLeft = 0f;
+        for (var index = 0; index < tileWidths.Length; index++)
         {
             var tile = new TextureRect
             {
@@ -191,62 +218,66 @@ public sealed partial class War3RtsHud : Control
                     $@"UI\Console\Human\HumanUITile0{index + 1}.blp"),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.Scale,
-                AnchorLeft = index * 0.25f,
-                AnchorRight = (index + 1) * 0.25f,
-                OffsetTop = -112f,
-                OffsetBottom = ConsoleHeight,
+                Position = new Vector2(tileLeft, ConsoleTextureTop),
+                Size = new Vector2(tileWidths[index], ConsoleTextureSize),
                 MouseFilter = MouseFilterEnum.Ignore,
-                TextureFilter = CanvasItem.TextureFilterEnum.Linear
+                TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+                ZIndex = 10
             };
             chrome.AddChild(tile);
+            tileLeft += tileWidths[index];
         }
 
         AddMinimap(chrome);
         AddPortrait(chrome);
         AddSelectionInfo(chrome);
         AddCommandCard(chrome);
+        UpdateConsoleScale();
+    }
+
+    private void UpdateConsoleScale()
+    {
+        if (_bottomConsole is null || _consoleChrome is null) return;
+        var scale = Math.Min(1f,
+            _bottomConsole.Size.X / Math.Max(1f, ConsoleChromeWidth));
+        _consoleChrome.Scale = Vector2.One * scale;
     }
 
     private void AddMinimap(Control parent)
     {
-        var frame = new PanelContainer
-        {
-            Position = new Vector2(13f, 22f),
-            Size = new Vector2(181f, 173f),
-            MouseFilter = MouseFilterEnum.Stop
-        };
-        frame.AddThemeStyleboxOverride("panel", Box(
-            new Color("07110ddd"), new Color("8e6a24"), 2, 2));
-        parent.AddChild(frame);
         _minimap = new War3MinimapControl
         {
-            MouseFilter = MouseFilterEnum.Stop
+            Position = new Vector2(12f, 61f),
+            Size = new Vector2(173f, 138f),
+            MouseFilter = MouseFilterEnum.Stop,
+            ZIndex = 5
         };
         _minimap.FocusRequested += point => MinimapFocusRequested?.Invoke(point);
-        frame.AddChild(_minimap);
+        parent.AddChild(_minimap);
     }
 
     private void AddPortrait(Control parent)
     {
-        var opening = new SubViewportContainer
+        _portraitOpening = new SubViewportContainer
         {
             Name = "PortraitOpening",
-            Position = new Vector2(270f, 36f),
-            Size = new Vector2(126f, 151f),
+            Position = new Vector2(288f, 81f),
+            Size = new Vector2(60f, 63f),
             Stretch = true,
-            MouseFilter = MouseFilterEnum.Ignore
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 5
         };
-        parent.AddChild(opening);
+        parent.AddChild(_portraitOpening);
         _portraitViewport = new SubViewport
         {
             Name = "PortraitViewport",
-            Size = new Vector2I(252, 302),
+            Size = new Vector2I(120, 126),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             Msaa3D = Viewport.Msaa.Msaa4X,
             TransparentBg = false,
             OwnWorld3D = true
         };
-        opening.AddChild(_portraitViewport);
+        _portraitOpening.AddChild(_portraitViewport);
         _portraitWorld = new Node3D { Name = "PortraitWorld" };
         _portraitViewport.AddChild(_portraitWorld);
         var environment = new WorldEnvironment
@@ -279,40 +310,68 @@ public sealed partial class War3RtsHud : Control
         _portraitMask = new TextureRect
         {
             Name = "PortraitMask",
-            Position = new Vector2(255f, 20f),
-            Size = new Vector2(157f, 181f),
+            Position = new Vector2(275f, 9f),
+            Size = new Vector2(160f, 160f),
             Texture = War3RuntimeAssets.LoadTexture(
                 @"UI\Console\Human\HumanUIPortraitMask.blp"),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.Scale,
-            MouseFilter = MouseFilterEnum.Ignore
+            MouseFilter = MouseFilterEnum.Ignore,
+            TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+            ZIndex = 20
         };
         parent.AddChild(_portraitMask);
+
+        var healthBack = new ColorRect
+        {
+            Position = new Vector2(287f, 147f),
+            Size = new Vector2(62f, 8f),
+            Color = new Color("071009"),
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 15
+        };
+        parent.AddChild(healthBack);
+        _portraitHealthFill = new ColorRect
+        {
+            Size = new Vector2(62f, 8f),
+            Color = new Color("3c9d50"),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        healthBack.AddChild(_portraitHealthFill);
+        parent.AddChild(new ColorRect
+        {
+            Position = new Vector2(287f, 158f),
+            Size = new Vector2(62f, 9f),
+            Color = new Color("09203b"),
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 15
+        });
     }
 
     private void AddSelectionInfo(Control parent)
     {
         var panel = new PanelContainer
         {
-            Position = new Vector2(412f, 39f),
-            Size = new Vector2(350f, 148f),
-            MouseFilter = MouseFilterEnum.Ignore
+            Position = new Vector2(376f, 62f),
+            Size = new Vector2(254f, 146f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 5
         };
         panel.AddThemeStyleboxOverride("panel", Box(
-            new Color("071019c9"), new Color("36424a"), 3, 1));
+            new Color("071019e8"), Colors.Transparent, 0, 0));
         parent.AddChild(panel);
-        var margin = Margin(13, 7, 13, 7);
+        var margin = Margin(10, 6, 10, 5);
         panel.AddChild(margin);
         var column = VBox(2);
         margin.AddChild(column);
-        _selectionTitle = LabelText("未选择单位", 20, Text);
+        _selectionTitle = LabelText("未选择单位", 18, Text);
         _selectionTitle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         column.AddChild(_selectionTitle);
         _selectionSubtitle = LabelText("", 13, Muted);
         column.AddChild(_selectionSubtitle);
         _health = new ProgressBar
         {
-            CustomMinimumSize = new Vector2(320f, 17f),
+            CustomMinimumSize = new Vector2(234f, 15f),
             ShowPercentage = false,
             MaxValue = 1
         };
@@ -331,7 +390,7 @@ public sealed partial class War3RtsHud : Control
         column.AddChild(_queueLabel);
         _queue = new ProgressBar
         {
-            CustomMinimumSize = new Vector2(320f, 10f),
+            CustomMinimumSize = new Vector2(234f, 9f),
             ShowPercentage = false,
             MaxValue = 100
         };
@@ -344,33 +403,29 @@ public sealed partial class War3RtsHud : Control
 
     private void AddCommandCard(Control parent)
     {
-        var panel = new PanelContainer
+        parent.AddChild(new ColorRect
         {
-            AnchorLeft = 1f,
-            AnchorRight = 1f,
-            OffsetLeft = -258f,
-            OffsetRight = -18f,
-            OffsetTop = 14f,
-            OffsetBottom = 195f,
-            MouseFilter = MouseFilterEnum.Stop
-        };
-        panel.AddThemeStyleboxOverride("panel", Box(
-            new Color("070b10ba"), new Color("58451f"), 3, 1));
-        parent.AddChild(panel);
-        var margin = Margin(8, 7, 8, 7);
-        panel.AddChild(margin);
-        _commandGrid = new GridContainer
+            Position = new Vector2(759f, 33f),
+            Size = new Vector2(241f, 175f),
+            Color = new Color("05080ceb"),
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 5
+        });
+        _commandGrid = new Control
         {
-            Columns = 4,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill
+            Position = new Vector2(766f, 38f),
+            Size = new Vector2(226f, 168f),
+            MouseFilter = MouseFilterEnum.Pass,
+            ZIndex = 20
         };
-        _commandGrid.AddThemeConstantOverride("h_separation", 6);
-        _commandGrid.AddThemeConstantOverride("v_separation", 5);
-        margin.AddChild(_commandGrid);
+        parent.AddChild(_commandGrid);
         for (var index = 0; index < _commandButtons.Length; index++)
         {
             var button = CommandButton();
+            button.Position = new Vector2(
+                index % 4 * 58f,
+                index / 4 * 58f);
+            button.Size = new Vector2(52f, 52f);
             _commandButtons[index] = button;
             var slot = index;
             button.Pressed += () =>
@@ -507,20 +562,20 @@ public sealed partial class War3RtsHud : Control
     {
         var button = new Button
         {
-            CustomMinimumSize = new Vector2(51f, 51f),
+            CustomMinimumSize = new Vector2(52f, 52f),
             FocusMode = FocusModeEnum.None,
             ExpandIcon = true,
             MouseDefaultCursorShape = CursorShape.PointingHand
         };
-        button.AddThemeConstantOverride("icon_max_width", 46);
+        button.AddThemeConstantOverride("icon_max_width", 50);
         button.AddThemeStyleboxOverride("normal", Box(
-            new Color("111820e6"), new Color("7b5b20"), 2, 2));
+            Colors.Transparent, Colors.Transparent, 0, 0));
         button.AddThemeStyleboxOverride("hover", Box(
-            new Color("202b35f2"), new Color("d0a53c"), 2, 2));
+            new Color("e5b84b18"), new Color("e6bd55"), 1, 1));
         button.AddThemeStyleboxOverride("pressed", Box(
-            new Color("090e13f2"), new Color("f1c95c"), 2, 2));
+            new Color("05080c88"), new Color("ffe17a"), 1, 1));
         button.AddThemeStyleboxOverride("disabled", Box(
-            new Color("0b0f13c4"), new Color("3d4244"), 2, 1));
+            Colors.Transparent, Colors.Transparent, 0, 0));
         return button;
     }
 
