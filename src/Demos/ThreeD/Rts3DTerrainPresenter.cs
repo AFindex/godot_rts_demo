@@ -152,7 +152,7 @@ public partial class Rts3DTerrainPresenter : Node3D
             $"candidates={layout.Diagnostics.CandidateTiles} " +
             $"selected={layout.Diagnostics.SelectedTiles} " +
             $"resolved={seamMap.CoveredClassicTiles} batches={groups.Count} " +
-            $"groundCutQuads={seamMap.CoveredGroundQuadrants} " +
+            $"raisedGroundCutQuads={seamMap.CoveredGroundQuadrants} " +
             $"rampFallback={layout.Diagnostics.RampFallbackTiles} " +
             $"heightFallback={layout.Diagnostics.UnsupportedHeightTiles} " +
             $"missing={layout.Diagnostics.MissingAssetTiles}");
@@ -164,13 +164,7 @@ public partial class Rts3DTerrainPresenter : Node3D
         TerrainClassicCliffTile tile)
     {
         const float exportedWar3TileWorldSize = 1.28f;
-        var bounds = terrain.CellBounds(tile.Column, tile.Row);
-        var centre = new System.Numerics.Vector2(
-            bounds.Min.X + terrain.CellSize * 0.5f,
-            bounds.Min.Y + terrain.CellSize * 0.5f);
-        var origin = SimPlane3DTransform.ToWorld(
-            centre,
-            tile.BaseLevel * terrain.CliffLevelHeight);
+        var origin = ClassicCliffOrigin(terrain, tile);
         var fit = new Vector3(
             _cellWorldSize / exportedWar3TileWorldSize,
             _cliffWorldHeight / exportedWar3TileWorldSize,
@@ -184,6 +178,20 @@ public partial class Rts3DTerrainPresenter : Node3D
             new Vector3(0f, fit.Y, 0f),
             new Vector3(-fit.Z, 0f, 0f));
         return new Transform3D(basis, origin);
+    }
+
+    internal static Vector3 ClassicCliffOrigin(
+        TerrainMapSnapshot terrain,
+        TerrainClassicCliffTile tile)
+    {
+        var bounds = terrain.CellBounds(tile.Column, tile.Row);
+        var centre = new System.Numerics.Vector2(
+            bounds.Min.X + terrain.CellSize * 0.5f,
+            bounds.Min.Y + terrain.CellSize * 0.5f);
+        return SimPlane3DTransform.ToWorld(
+            centre,
+            SimPlane3DTransform.ToWorldLength(
+                tile.BaseLevel * terrain.CliffLevelHeight));
     }
 
     private void AppendSurface(
@@ -265,9 +273,10 @@ public partial class Rts3DTerrainPresenter : Node3D
                     visualCell.PackedLayerMasks,
                     visualCell.BaseVariation);
                 var geometry = GroundCellGeometry(terrain, column, row);
-                var mask = cliffSeams?.GroundQuadrantMask(column, row) ?? 0;
                 added |= AppendDualGridGroundCell(
-                    tool, geometry, mask, encoded);
+                    tool, geometry,
+                    cliffSeams?.GroundQuadrantMask(column, row) ?? 0,
+                    encoded);
             }
         }
         if (added)
@@ -311,9 +320,9 @@ public partial class Rts3DTerrainPresenter : Node3D
                 var geometry = GroundCellGeometry(terrain, column, row);
                 var weights = GroundCellWeights(
                     weightA, weightB, weightC, weightD);
-                var mask = cliffSeams?.GroundQuadrantMask(column, row) ?? 0;
                 added |= AppendBlendGroundCell(
-                    tool, geometry, weights, mask);
+                    tool, geometry, weights,
+                    cliffSeams?.GroundQuadrantMask(column, row) ?? 0);
             }
         }
         if (added)

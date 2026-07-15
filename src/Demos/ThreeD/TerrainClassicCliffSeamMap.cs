@@ -67,12 +67,16 @@ public sealed class TerrainClassicCliffSeamMap
             }
             covered[tile.Row * tileColumns + tile.Column] = true;
 
-            // The model footprint is centre-to-centre. In gameplay-cell
-            // coordinates it owns TR, TL, BL and BR respectively.
-            AddMask(tile.Column, tile.Row, TopRight);
-            AddMask(tile.Column + 1, tile.Row, TopLeft);
-            AddMask(tile.Column, tile.Row + 1, BottomRight);
-            AddMask(tile.Column + 1, tile.Row + 1, BottomLeft);
+            // The model footprint is centre-to-centre. Its facade and cap own
+            // only the quadrants above the tile's base level. Base-level
+            // ground remains the watertight floor behind open cliff geometry.
+            AddRaisedMask(tile.Column, tile.Row, TopRight, tile.BaseLevel);
+            AddRaisedMask(
+                tile.Column + 1, tile.Row, TopLeft, tile.BaseLevel);
+            AddRaisedMask(
+                tile.Column, tile.Row + 1, BottomRight, tile.BaseLevel);
+            AddRaisedMask(
+                tile.Column + 1, tile.Row + 1, BottomLeft, tile.BaseLevel);
         }
         return new TerrainClassicCliffSeamMap(
             terrain.Columns, terrain.Rows, masks, covered, tiles);
@@ -83,6 +87,20 @@ public sealed class TerrainClassicCliffSeamMap
                 (uint)row < (uint)terrain.Rows)
             {
                 masks[row * terrain.Columns + column] |= mask;
+            }
+        }
+
+        void AddRaisedMask(
+            int column,
+            int row,
+            byte mask,
+            byte baseLevel)
+        {
+            if ((uint)column < (uint)terrain.Columns &&
+                (uint)row < (uint)terrain.Rows &&
+                terrain.Cell(column, row).CliffLevel > baseLevel)
+            {
+                AddMask(column, row, mask);
             }
         }
     }
@@ -104,9 +122,10 @@ public sealed class TerrainClassicCliffSeamMap
 
     /// <summary>
     /// Applies the classic cliff ground-tile priority to a runtime copy of an
-    /// authored dual-grid map. The authored resource remains unchanged. The
-    /// 3x3 footprint is the conservative mapping of a centre-sampled W3 tile
-    /// onto this project's edge-sampled visual controls (a half-cell offset).
+    /// authored dual-grid map. The authored resource remains unchanged. A
+    /// centre-sampled classic tile maps exactly to the visual control point at
+    /// (column + 1, row + 1); expanding that ownership to a 3x3 point block
+    /// pushes the cliff material a full cell beyond the model footprint.
     /// </summary>
     public TerrainVisualLayerMap BuildGroundTransitionMap(
         TerrainMapSnapshot terrain,
@@ -145,21 +164,13 @@ public sealed class TerrainClassicCliffSeamMap
                 groundLayer < 0 ||
                 groundLayer > TerrainVisualLayerMap.MaximumLayer)
                 continue;
-            for (var row = tile.Row; row <= tile.Row + 2; row++)
-            {
-                if ((uint)row >= (uint)source.PointRows) continue;
-                for (var column = tile.Column;
-                     column <= tile.Column + 2;
-                     column++)
-                {
-                    if ((uint)column >= (uint)source.PointColumns) continue;
-                    var index = row * source.PointColumns + column;
-                    var replacement = (byte)groundLayer;
-                    if (layers[index] == replacement) continue;
-                    layers[index] = replacement;
-                    changed.Add(index);
-                }
-            }
+            var pointColumn = tile.Column + 1;
+            var pointRow = tile.Row + 1;
+            var index = pointRow * source.PointColumns + pointColumn;
+            var replacement = (byte)groundLayer;
+            if (layers[index] == replacement) continue;
+            layers[index] = replacement;
+            changed.Add(index);
         }
         changedPoints = changed.Count;
         return changedPoints == 0

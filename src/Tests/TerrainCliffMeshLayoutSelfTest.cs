@@ -32,23 +32,22 @@ public static class TerrainCliffMeshLayoutSelfTest
         var seam = TerrainClassicCliffSeamMap.Build(source, first.Tiles.ToArray());
         var quarterOwnership =
             seam.CoveredClassicTiles == 1 &&
-            seam.CoveredGroundQuadrants == 4 &&
-            seam.GroundQuadrantMask(0, 0) ==
-                TerrainClassicCliffSeamMap.TopRight &&
-            seam.GroundQuadrantMask(1, 0) ==
-                TerrainClassicCliffSeamMap.TopLeft &&
+            seam.CoveredGroundQuadrants == 1 &&
+            seam.GroundQuadrantMask(0, 0) == 0 &&
+            seam.GroundQuadrantMask(1, 0) == 0 &&
             seam.GroundQuadrantMask(0, 1) ==
                 TerrainClassicCliffSeamMap.BottomRight &&
-            seam.GroundQuadrantMask(1, 1) ==
-                TerrainClassicCliffSeamMap.BottomLeft;
+            seam.GroundQuadrantMask(1, 1) == 0;
         var sourceLayers = Enumerable.Repeat((byte)1, 9).ToArray();
         var sourceVariations = new byte[9];
         var sourceVisual = TerrainVisualLayerMap.FromPoints(
             source, sourceLayers, sourceVariations);
         var seamVisual = seam.BuildGroundTransitionMap(
             source, sourceVisual, _ => 0, out var changedPoints);
-        var groundPriority = changedPoints == 9 &&
+        var groundPriority = changedPoints == 1 &&
                              seamVisual.PointLayer(1, 1) == 0 &&
+                             seamVisual.PointLayer(0, 0) == 1 &&
+                             seamVisual.PointLayer(2, 2) == 1 &&
                              sourceVisual.PointLayer(1, 1) == 1 &&
                              seamVisual.StableHash != sourceVisual.StableHash;
 
@@ -73,6 +72,17 @@ public static class TerrainCliffMeshLayoutSelfTest
         var reportsMissing = missing.Tiles.Length == 0 &&
                              missing.Diagnostics.MissingAssetTiles == 1;
 
+        var cliffOriginsScaled = true;
+        for (byte level = 0; level <= 15; level++)
+        {
+            var tile = new TerrainClassicCliffTile(
+                0, 0, "BAAA", 0, level, (byte)(level + 1), 1);
+            var origin = Rts3DTerrainPresenter.ClassicCliffOrigin(source, tile);
+            var expectedY = SimPlane3DTransform.ToWorldLength(
+                level * source.CliffLevelHeight);
+            cliffOriginsScaled &= MathF.Abs(origin.Y - expectedY) < 0.00001f;
+        }
+
         var catalog = War3ClassicCliffMeshCatalog.LoadDefault();
         var exportedCatalog = catalog.SignatureCount == 64 &&
                               catalog.AssetCount == 94 &&
@@ -80,7 +90,8 @@ public static class TerrainCliffMeshLayoutSelfTest
                               catalog.VariationCount("AABB") == 3;
         var passed = signature && deterministic && quarterOwnership &&
                      groundPriority && rejectsTall &&
-                     rejectsRamp && reportsMissing && exportedCatalog;
+                     rejectsRamp && reportsMissing && exportedCatalog &&
+                     cliffOriginsScaled;
         return new SelfTestResult(
             passed,
             $"signature={signature}, deterministic={deterministic}, " +
@@ -88,6 +99,7 @@ public static class TerrainCliffMeshLayoutSelfTest
             $"tallFallback={rejectsTall}, rampFallback={rejectsRamp}, " +
             $"missing={reportsMissing}, catalog={exportedCatalog}" +
             $"({catalog.SignatureCount}/{catalog.AssetCount}), " +
+            $"cliffOriginsScaled={cliffOriginsScaled}, " +
             $"hash={first.StableHashText}");
     }
 
