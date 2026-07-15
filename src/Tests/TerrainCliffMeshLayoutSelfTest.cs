@@ -33,11 +33,20 @@ public static class TerrainCliffMeshLayoutSelfTest
         var quarterOwnership =
             seam.CoveredClassicTiles == 1 &&
             seam.CoveredGroundQuadrants == 1 &&
+            seam.CoveredFootprintQuadrants == 4 &&
             seam.GroundQuadrantMask(0, 0) == 0 &&
             seam.GroundQuadrantMask(1, 0) == 0 &&
             seam.GroundQuadrantMask(0, 1) ==
                 TerrainClassicCliffSeamMap.BottomRight &&
-            seam.GroundQuadrantMask(1, 1) == 0;
+            seam.GroundQuadrantMask(1, 1) == 0 &&
+            seam.ClassicFootprintMask(0, 0) ==
+                TerrainClassicCliffSeamMap.TopRight &&
+            seam.ClassicFootprintMask(1, 0) ==
+                TerrainClassicCliffSeamMap.TopLeft &&
+            seam.ClassicFootprintMask(0, 1) ==
+                TerrainClassicCliffSeamMap.BottomRight &&
+            seam.ClassicFootprintMask(1, 1) ==
+                TerrainClassicCliffSeamMap.BottomLeft;
         var sourceLayers = Enumerable.Repeat((byte)1, 9).ToArray();
         var sourceVariations = new byte[9];
         var sourceVisual = TerrainVisualLayerMap.FromPoints(
@@ -82,6 +91,18 @@ public static class TerrainCliffMeshLayoutSelfTest
                 level * source.CliffLevelHeight);
             cliffOriginsScaled &= MathF.Abs(origin.Y - expectedY) < 0.00001f;
         }
+        var blendCorners = Rts3DTerrainPresenter.ClassicCliffBlendCorners(
+            source,
+            first.Tiles[0],
+            surface => surface.Id == 1 ? 1f : 0f);
+        var blendCornerOrder =
+            MathF.Abs(blendCorners.R - 1f) < 0.00001f &&
+            MathF.Abs(blendCorners.G) < 0.00001f &&
+            MathF.Abs(blendCorners.B) < 0.00001f &&
+            MathF.Abs(blendCorners.A) < 0.00001f;
+        var groundDepthBias = MathF.Abs(
+            Rts3DTerrainPresenter.ClassicCliffGroundDepthBias(1.2f) -
+            0.003f) < 0.00001f;
 
         var catalog = War3ClassicCliffMeshCatalog.LoadDefault();
         var exportedCatalog = catalog.SignatureCount == 64 &&
@@ -91,7 +112,8 @@ public static class TerrainCliffMeshLayoutSelfTest
         var passed = signature && deterministic && quarterOwnership &&
                      groundPriority && rejectsTall &&
                      rejectsRamp && reportsMissing && exportedCatalog &&
-                     cliffOriginsScaled;
+                     cliffOriginsScaled && blendCornerOrder &&
+                     groundDepthBias;
         return new SelfTestResult(
             passed,
             $"signature={signature}, deterministic={deterministic}, " +
@@ -100,6 +122,8 @@ public static class TerrainCliffMeshLayoutSelfTest
             $"missing={reportsMissing}, catalog={exportedCatalog}" +
             $"({catalog.SignatureCount}/{catalog.AssetCount}), " +
             $"cliffOriginsScaled={cliffOriginsScaled}, " +
+            $"blendCornerOrder={blendCornerOrder}, " +
+            $"groundDepthBias={groundDepthBias}, " +
             $"hash={first.StableHashText}");
     }
 

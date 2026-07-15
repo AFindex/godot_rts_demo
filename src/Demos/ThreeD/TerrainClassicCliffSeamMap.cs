@@ -17,6 +17,7 @@ public sealed class TerrainClassicCliffSeamMap
     public const byte TopLeft = 8;
 
     private readonly byte[] _groundQuadrantMasks;
+    private readonly byte[] _classicFootprintMasks;
     private readonly bool[] _coveredClassicTiles;
     private readonly TerrainClassicCliffTile[] _tiles;
 
@@ -24,15 +25,19 @@ public sealed class TerrainClassicCliffSeamMap
         int columns,
         int rows,
         byte[] groundQuadrantMasks,
+        byte[] classicFootprintMasks,
         bool[] coveredClassicTiles,
         TerrainClassicCliffTile[] tiles)
     {
         Columns = columns;
         Rows = rows;
         _groundQuadrantMasks = groundQuadrantMasks;
+        _classicFootprintMasks = classicFootprintMasks;
         _coveredClassicTiles = coveredClassicTiles;
         _tiles = tiles;
         CoveredGroundQuadrants = groundQuadrantMasks.Sum(
+            static mask => System.Numerics.BitOperations.PopCount(mask));
+        CoveredFootprintQuadrants = classicFootprintMasks.Sum(
             static mask => System.Numerics.BitOperations.PopCount(mask));
     }
 
@@ -40,6 +45,7 @@ public sealed class TerrainClassicCliffSeamMap
     public int Rows { get; }
     public int CoveredClassicTiles => _tiles.Length;
     public int CoveredGroundQuadrants { get; }
+    public int CoveredFootprintQuadrants { get; }
     public ReadOnlySpan<TerrainClassicCliffTile> Tiles => _tiles;
 
     public static TerrainClassicCliffSeamMap Build(
@@ -53,6 +59,7 @@ public sealed class TerrainClassicCliffSeamMap
             .ThenBy(static tile => tile.Column)
             .ToArray();
         var masks = new byte[checked(terrain.Columns * terrain.Rows)];
+        var footprintMasks = new byte[checked(terrain.Columns * terrain.Rows)];
         var tileColumns = Math.Max(0, terrain.Columns - 1);
         var tileRows = Math.Max(0, terrain.Rows - 1);
         var covered = new bool[checked(tileColumns * tileRows)];
@@ -67,6 +74,11 @@ public sealed class TerrainClassicCliffSeamMap
             }
             covered[tile.Row * tileColumns + tile.Column] = true;
 
+            AddFootprintMask(tile.Column, tile.Row, TopRight);
+            AddFootprintMask(tile.Column + 1, tile.Row, TopLeft);
+            AddFootprintMask(tile.Column, tile.Row + 1, BottomRight);
+            AddFootprintMask(tile.Column + 1, tile.Row + 1, BottomLeft);
+
             // The model footprint is centre-to-centre. Its facade and cap own
             // only the quadrants above the tile's base level. Base-level
             // ground remains the watertight floor behind open cliff geometry.
@@ -79,7 +91,8 @@ public sealed class TerrainClassicCliffSeamMap
                 tile.Column + 1, tile.Row + 1, BottomLeft, tile.BaseLevel);
         }
         return new TerrainClassicCliffSeamMap(
-            terrain.Columns, terrain.Rows, masks, covered, tiles);
+            terrain.Columns, terrain.Rows,
+            masks, footprintMasks, covered, tiles);
 
         void AddMask(int column, int row, byte mask)
         {
@@ -87,6 +100,15 @@ public sealed class TerrainClassicCliffSeamMap
                 (uint)row < (uint)terrain.Rows)
             {
                 masks[row * terrain.Columns + column] |= mask;
+            }
+        }
+
+        void AddFootprintMask(int column, int row, byte mask)
+        {
+            if ((uint)column < (uint)terrain.Columns &&
+                (uint)row < (uint)terrain.Rows)
+            {
+                footprintMasks[row * terrain.Columns + column] |= mask;
             }
         }
 
@@ -109,6 +131,12 @@ public sealed class TerrainClassicCliffSeamMap
     {
         ValidateCell(column, row);
         return _groundQuadrantMasks[row * Columns + column];
+    }
+
+    public byte ClassicFootprintMask(int column, int row)
+    {
+        ValidateCell(column, row);
+        return _classicFootprintMasks[row * Columns + column];
     }
 
     public bool CoversClassicTile(int column, int row)

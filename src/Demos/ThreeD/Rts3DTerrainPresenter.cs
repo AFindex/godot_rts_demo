@@ -102,6 +102,8 @@ public partial class Rts3DTerrainPresenter : Node3D
             }
             group.Transforms.Add(ClassicCliffTransform(terrain, tile) *
                                  definition.ModelTransform);
+            group.CliffBlendCorners.Add(ClassicCliffBlendCorners(
+                terrain, tile, provider.ClassicCliffBlend));
             resolvedTiles.Add(tile);
         }
 
@@ -124,10 +126,15 @@ public partial class Rts3DTerrainPresenter : Node3D
             {
                 TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
                 Mesh = renderMesh,
+                UseCustomData = true,
                 InstanceCount = group.Transforms.Count
             };
             for (var index = 0; index < group.Transforms.Count; index++)
+            {
                 multiMesh.SetInstanceTransform(index, group.Transforms[index]);
+                multiMesh.SetInstanceCustomData(
+                    index, group.CliffBlendCorners[index]);
+            }
             root.AddChild(new MultiMeshInstance3D
             {
                 Name = $"Cliff_{Path.GetFileNameWithoutExtension(key.AssetKey)}_S{key.SurfaceId}",
@@ -153,6 +160,7 @@ public partial class Rts3DTerrainPresenter : Node3D
             $"selected={layout.Diagnostics.SelectedTiles} " +
             $"resolved={seamMap.CoveredClassicTiles} batches={groups.Count} " +
             $"raisedGroundCutQuads={seamMap.CoveredGroundQuadrants} " +
+            $"biasedFootprintQuads={seamMap.CoveredFootprintQuadrants} " +
             $"rampFallback={layout.Diagnostics.RampFallbackTiles} " +
             $"heightFallback={layout.Diagnostics.UnsupportedHeightTiles} " +
             $"missing={layout.Diagnostics.MissingAssetTiles}");
@@ -194,6 +202,26 @@ public partial class Rts3DTerrainPresenter : Node3D
                 tile.BaseLevel * terrain.CliffLevelHeight));
     }
 
+    internal static Color ClassicCliffBlendCorners(
+        TerrainMapSnapshot terrain,
+        TerrainClassicCliffTile tile,
+        Func<TerrainSurfaceDefinition, float> resolveBlend)
+    {
+        ArgumentNullException.ThrowIfNull(terrain);
+        ArgumentNullException.ThrowIfNull(resolveBlend);
+        // Custom-data channel order matches the model filename and shader:
+        // red=TL, green=TR, blue=BR, alpha=BL.
+        return new Color(
+            Blend(tile.Column, tile.Row + 1),
+            Blend(tile.Column + 1, tile.Row + 1),
+            Blend(tile.Column + 1, tile.Row),
+            Blend(tile.Column, tile.Row));
+
+        float Blend(int column, int row) => Math.Clamp(
+            resolveBlend(terrain.Surface(
+                terrain.Cell(column, row).SurfaceId)), 0f, 1f);
+    }
+
     private void AppendSurface(
         ArrayMesh mesh,
         TerrainMapSnapshot terrain,
@@ -213,7 +241,10 @@ public partial class Rts3DTerrainPresenter : Node3D
                     continue;
                 var geometry = GroundCellGeometry(terrain, column, row);
                 var mask = cliffSeams?.GroundQuadrantMask(column, row) ?? 0;
-                added |= AppendGroundCell(tool, geometry, mask);
+                var footprint =
+                    cliffSeams?.ClassicFootprintMask(column, row) ?? 0;
+                added |= AppendGroundCell(
+                    tool, geometry, mask, footprint);
             }
         }
         if (added)
@@ -276,6 +307,7 @@ public partial class Rts3DTerrainPresenter : Node3D
                 added |= AppendDualGridGroundCell(
                     tool, geometry,
                     cliffSeams?.GroundQuadrantMask(column, row) ?? 0,
+                    cliffSeams?.ClassicFootprintMask(column, row) ?? 0,
                     encoded);
             }
         }
@@ -322,7 +354,8 @@ public partial class Rts3DTerrainPresenter : Node3D
                     weightA, weightB, weightC, weightD);
                 added |= AppendBlendGroundCell(
                     tool, geometry, weights,
-                    cliffSeams?.GroundQuadrantMask(column, row) ?? 0);
+                    cliffSeams?.GroundQuadrantMask(column, row) ?? 0,
+                    cliffSeams?.ClassicFootprintMask(column, row) ?? 0);
             }
         }
         if (added)
@@ -593,9 +626,10 @@ public partial class Rts3DTerrainPresenter : Node3D
     private bool AppendGroundCell(
         SurfaceTool tool,
         GroundCellGeometryData geometry,
-        byte covered)
+        byte covered,
+        byte footprint)
     {
-        if (covered == 0)
+        if (covered == 0 && footprint == 0)
         {
             AddGroundQuad(tool,
                 geometry.BottomLeft, geometry.BottomRight,
@@ -605,26 +639,38 @@ public partial class Rts3DTerrainPresenter : Node3D
         var added = false;
         if ((covered & TerrainClassicCliffSeamMap.BottomLeft) == 0)
         {
-            AddGroundQuad(tool, geometry.BottomLeft, geometry.BottomMiddle,
-                geometry.Centre, geometry.LeftMiddle);
+            var quad = BiasedGroundQuad(
+                geometry.BottomLeft, geometry.BottomMiddle,
+                geometry.Centre, geometry.LeftMiddle,
+                footprint, TerrainClassicCliffSeamMap.BottomLeft);
+            AddGroundQuad(tool, quad.A, quad.B, quad.C, quad.D);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.BottomRight) == 0)
         {
-            AddGroundQuad(tool, geometry.BottomMiddle, geometry.BottomRight,
-                geometry.RightMiddle, geometry.Centre);
+            var quad = BiasedGroundQuad(
+                geometry.BottomMiddle, geometry.BottomRight,
+                geometry.RightMiddle, geometry.Centre,
+                footprint, TerrainClassicCliffSeamMap.BottomRight);
+            AddGroundQuad(tool, quad.A, quad.B, quad.C, quad.D);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.TopRight) == 0)
         {
-            AddGroundQuad(tool, geometry.Centre, geometry.RightMiddle,
-                geometry.TopRight, geometry.TopMiddle);
+            var quad = BiasedGroundQuad(
+                geometry.Centre, geometry.RightMiddle,
+                geometry.TopRight, geometry.TopMiddle,
+                footprint, TerrainClassicCliffSeamMap.TopRight);
+            AddGroundQuad(tool, quad.A, quad.B, quad.C, quad.D);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.TopLeft) == 0)
         {
-            AddGroundQuad(tool, geometry.LeftMiddle, geometry.Centre,
-                geometry.TopMiddle, geometry.TopLeft);
+            var quad = BiasedGroundQuad(
+                geometry.LeftMiddle, geometry.Centre,
+                geometry.TopMiddle, geometry.TopLeft,
+                footprint, TerrainClassicCliffSeamMap.TopLeft);
+            AddGroundQuad(tool, quad.A, quad.B, quad.C, quad.D);
             added = true;
         }
         return added;
@@ -634,9 +680,10 @@ public partial class Rts3DTerrainPresenter : Node3D
         SurfaceTool tool,
         GroundCellGeometryData geometry,
         byte covered,
+        byte footprint,
         Vector2 encodedCell)
     {
-        if (covered == 0)
+        if (covered == 0 && footprint == 0)
         {
             AddDualGridQuad(tool,
                 geometry.BottomLeft, geometry.BottomRight,
@@ -646,26 +693,42 @@ public partial class Rts3DTerrainPresenter : Node3D
         var added = false;
         if ((covered & TerrainClassicCliffSeamMap.BottomLeft) == 0)
         {
-            AddDualGridQuad(tool, geometry.BottomLeft, geometry.BottomMiddle,
-                geometry.Centre, geometry.LeftMiddle, encodedCell);
+            var quad = BiasedGroundQuad(
+                geometry.BottomLeft, geometry.BottomMiddle,
+                geometry.Centre, geometry.LeftMiddle,
+                footprint, TerrainClassicCliffSeamMap.BottomLeft);
+            AddDualGridQuad(
+                tool, quad.A, quad.B, quad.C, quad.D, encodedCell);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.BottomRight) == 0)
         {
-            AddDualGridQuad(tool, geometry.BottomMiddle, geometry.BottomRight,
-                geometry.RightMiddle, geometry.Centre, encodedCell);
+            var quad = BiasedGroundQuad(
+                geometry.BottomMiddle, geometry.BottomRight,
+                geometry.RightMiddle, geometry.Centre,
+                footprint, TerrainClassicCliffSeamMap.BottomRight);
+            AddDualGridQuad(
+                tool, quad.A, quad.B, quad.C, quad.D, encodedCell);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.TopRight) == 0)
         {
-            AddDualGridQuad(tool, geometry.Centre, geometry.RightMiddle,
-                geometry.TopRight, geometry.TopMiddle, encodedCell);
+            var quad = BiasedGroundQuad(
+                geometry.Centre, geometry.RightMiddle,
+                geometry.TopRight, geometry.TopMiddle,
+                footprint, TerrainClassicCliffSeamMap.TopRight);
+            AddDualGridQuad(
+                tool, quad.A, quad.B, quad.C, quad.D, encodedCell);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.TopLeft) == 0)
         {
-            AddDualGridQuad(tool, geometry.LeftMiddle, geometry.Centre,
-                geometry.TopMiddle, geometry.TopLeft, encodedCell);
+            var quad = BiasedGroundQuad(
+                geometry.LeftMiddle, geometry.Centre,
+                geometry.TopMiddle, geometry.TopLeft,
+                footprint, TerrainClassicCliffSeamMap.TopLeft);
+            AddDualGridQuad(
+                tool, quad.A, quad.B, quad.C, quad.D, encodedCell);
             added = true;
         }
         return added;
@@ -675,9 +738,10 @@ public partial class Rts3DTerrainPresenter : Node3D
         SurfaceTool tool,
         GroundCellGeometryData geometry,
         GroundCellWeightData weights,
-        byte covered)
+        byte covered,
+        byte footprint)
     {
-        if (covered == 0)
+        if (covered == 0 && footprint == 0)
         {
             AddBlendQuad(tool,
                 geometry.BottomLeft, geometry.BottomRight,
@@ -689,42 +753,74 @@ public partial class Rts3DTerrainPresenter : Node3D
         var added = false;
         if ((covered & TerrainClassicCliffSeamMap.BottomLeft) == 0)
         {
-            AddBlendQuad(tool,
+            var quad = BiasedGroundQuad(
                 geometry.BottomLeft, geometry.BottomMiddle,
                 geometry.Centre, geometry.LeftMiddle,
+                footprint, TerrainClassicCliffSeamMap.BottomLeft);
+            AddBlendQuad(tool,
+                quad.A, quad.B, quad.C, quad.D,
                 weights.BottomLeft, weights.BottomMiddle,
                 weights.Centre, weights.LeftMiddle);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.BottomRight) == 0)
         {
-            AddBlendQuad(tool,
+            var quad = BiasedGroundQuad(
                 geometry.BottomMiddle, geometry.BottomRight,
                 geometry.RightMiddle, geometry.Centre,
+                footprint, TerrainClassicCliffSeamMap.BottomRight);
+            AddBlendQuad(tool,
+                quad.A, quad.B, quad.C, quad.D,
                 weights.BottomMiddle, weights.BottomRight,
                 weights.RightMiddle, weights.Centre);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.TopRight) == 0)
         {
-            AddBlendQuad(tool,
+            var quad = BiasedGroundQuad(
                 geometry.Centre, geometry.RightMiddle,
                 geometry.TopRight, geometry.TopMiddle,
+                footprint, TerrainClassicCliffSeamMap.TopRight);
+            AddBlendQuad(tool,
+                quad.A, quad.B, quad.C, quad.D,
                 weights.Centre, weights.RightMiddle,
                 weights.TopRight, weights.TopMiddle);
             added = true;
         }
         if ((covered & TerrainClassicCliffSeamMap.TopLeft) == 0)
         {
-            AddBlendQuad(tool,
+            var quad = BiasedGroundQuad(
                 geometry.LeftMiddle, geometry.Centre,
                 geometry.TopMiddle, geometry.TopLeft,
+                footprint, TerrainClassicCliffSeamMap.TopLeft);
+            AddBlendQuad(tool,
+                quad.A, quad.B, quad.C, quad.D,
                 weights.LeftMiddle, weights.Centre,
                 weights.TopMiddle, weights.TopLeft);
             added = true;
         }
         return added;
     }
+
+    private GroundQuadData BiasedGroundQuad(
+        Vector3 a,
+        Vector3 b,
+        Vector3 c,
+        Vector3 d,
+        byte footprint,
+        byte quadrant)
+    {
+        if ((footprint & quadrant) == 0)
+            return new GroundQuadData(a, b, c, d);
+        var offset = Vector3.Down * ClassicCliffGroundDepthBias(
+            _cliffWorldHeight);
+        return new GroundQuadData(
+            a + offset, b + offset, c + offset, d + offset);
+    }
+
+    internal static float ClassicCliffGroundDepthBias(
+        float cliffWorldHeight) =>
+        MathF.Max(0.0025f, cliffWorldHeight * 0.0025f);
 
     private static GroundCellWeightData GroundCellWeights(
         Color bottomLeft,
@@ -938,6 +1034,7 @@ public partial class Rts3DTerrainPresenter : Node3D
     {
         public Rts3DClassicCliffMesh Definition { get; } = definition;
         public List<Transform3D> Transforms { get; } = [];
+        public List<Color> CliffBlendCorners { get; } = [];
     }
 
     private readonly record struct GroundCellGeometryData(
@@ -961,4 +1058,10 @@ public partial class Rts3DTerrainPresenter : Node3D
         Color TopMiddle,
         Color LeftMiddle,
         Color Centre);
+
+    private readonly record struct GroundQuadData(
+        Vector3 A,
+        Vector3 B,
+        Vector3 C,
+        Vector3 D);
 }

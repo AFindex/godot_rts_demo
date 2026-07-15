@@ -59,6 +59,7 @@ public interface IRts3DTerrainClassicCliffProvider :
         int variation,
         out Rts3DClassicCliffMesh definition);
     Material ClassicCliffMaterial(TerrainSurfaceDefinition upperSurface);
+    float ClassicCliffBlend(TerrainSurfaceDefinition surface);
     bool TryGetClassicCliffGroundLayer(
         TerrainSurfaceDefinition upperSurface,
         out int layer);

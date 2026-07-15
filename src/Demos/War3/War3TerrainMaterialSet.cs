@@ -65,8 +65,7 @@ public sealed class War3TerrainMaterialSet :
     private readonly Texture2D _waterTexture;
     private readonly Dictionary<string, Material> _cliffMaterials =
         new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, Material> _classicCliffMaterials =
-        new(StringComparer.OrdinalIgnoreCase);
+    private Material? _classicCliffMaterial;
     private readonly War3ClassicCliffMeshCatalog _classicCliffs;
     private Material? _blendedSurfaceMaterial;
     private Material? _dualGridSurfaceMaterial;
@@ -161,7 +160,10 @@ public sealed class War3TerrainMaterialSet :
 
     public Material ClassicCliffMaterial(
         TerrainSurfaceDefinition upperSurface)
-        => CliffMaterial(upperSurface, classicModelUv: true);
+        => _classicCliffMaterial ??= CreateClassicCliffMaterial();
+
+    public float ClassicCliffBlend(TerrainSurfaceDefinition surface) =>
+        ResolveCliffName(surface) == "cliff1" ? 1f : 0f;
 
     public bool TryGetClassicCliffGroundLayer(
         TerrainSurfaceDefinition upperSurface,
@@ -181,10 +183,7 @@ public sealed class War3TerrainMaterialSet :
         bool classicModelUv)
     {
         var cliffName = ResolveCliffName(upperSurface);
-        var cache = classicModelUv
-            ? _classicCliffMaterials
-            : _cliffMaterials;
-        if (cache.TryGetValue(cliffName, out var material))
+        if (_cliffMaterials.TryGetValue(cliffName, out var material))
             return material;
         material = new ShaderMaterial
         {
@@ -194,9 +193,24 @@ public sealed class War3TerrainMaterialSet :
             LoadTexture(
                 TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
          .WithParameter("use_model_atlas_uv", classicModelUv);
-        cache.Add(cliffName, material);
+        _cliffMaterials.Add(cliffName, material);
         return material;
     }
+
+    private Material CreateClassicCliffMaterial() =>
+        new ShaderMaterial
+        {
+            Shader = _cliffShader
+        }.WithParameter(
+            "cliff_atlas",
+            LoadTexture(
+                TextureRoot + "replaceabletextures/cliff/cliff0.png"))
+         .WithParameter(
+             "cliff_atlas_secondary",
+             LoadTexture(
+                 TextureRoot + "replaceabletextures/cliff/cliff1.png"))
+         .WithParameter("use_model_atlas_uv", true)
+         .WithParameter("use_instance_cliff_blend", true);
 
     private static string ResolveCliffName(
         TerrainSurfaceDefinition upperSurface) =>
