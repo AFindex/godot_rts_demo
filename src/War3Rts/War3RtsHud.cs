@@ -38,8 +38,10 @@ public sealed partial class War3RtsHud : Control
     private Label? _clock;
     private Label? _selectionTitle;
     private Label? _selectionSubtitle;
-    private Label? _healthText;
-    private ProgressBar? _health;
+    private Label? _attackValue;
+    private Label? _armorValue;
+    private Label? _levelValue;
+    private Label? _combatTypeValue;
     private Label? _queueLabel;
     private ProgressBar? _queue;
     private Label? _mode;
@@ -57,6 +59,7 @@ public sealed partial class War3RtsHud : Control
     private TextureRect? _portraitMask;
     private ColorRect? _portraitHealthFill;
     private string _portraitSource = string.Empty;
+    private bool _portraitBuildingView;
     private string _commandSignature = string.Empty;
     private War3SelectionOverlay? _selectionOverlay;
 
@@ -97,11 +100,23 @@ public sealed partial class War3RtsHud : Control
         _clock!.Text = FormatTime(snapshot.ElapsedSeconds);
         _selectionTitle!.Text = snapshot.Selection.Title;
         _selectionSubtitle!.Text = snapshot.Selection.Subtitle;
-        _health!.MaxValue = Math.Max(1f, snapshot.Selection.MaximumHealth);
-        _health.Value = Math.Clamp(snapshot.Selection.Health, 0f, (float)_health.MaxValue);
-        _healthText!.Text = snapshot.Selection.MaximumHealth > 0f
-            ? $"{snapshot.Selection.Health:0} / {snapshot.Selection.MaximumHealth:0}"
-            : string.Empty;
+        _attackValue!.Text = snapshot.Selection.Count > 0
+            ? snapshot.Selection.AttackDamage > 0f
+                ? $"{snapshot.Selection.AttackDamage:0.#}" +
+                  (snapshot.Selection.WeaponUpgradeLevel > 0
+                      ? $"  +{snapshot.Selection.WeaponUpgradeLevel}"
+                      : string.Empty)
+                : "—"
+            : "—";
+        _armorValue!.Text = snapshot.Selection.Count > 0
+            ? snapshot.Selection.Armor.ToString("0.#")
+            : "—";
+        _levelValue!.Text = snapshot.Selection.Count > 0
+            ? snapshot.Selection.Level.ToString()
+            : "—";
+        _combatTypeValue!.Text = snapshot.Selection.Count > 0
+            ? $"{snapshot.Selection.AttackClass} / {snapshot.Selection.ArmorClass}"
+            : "—";
         if (_portraitHealthFill is not null)
         {
             var healthRatio = snapshot.Selection.MaximumHealth > 0f
@@ -405,23 +420,23 @@ public sealed partial class War3RtsHud : Control
         column.AddChild(_selectionTitle);
         _selectionSubtitle = LabelText("", 13, Muted);
         column.AddChild(_selectionSubtitle);
-        _health = new ProgressBar
+        var divider = new HSeparator { CustomMinimumSize = new Vector2(0f, 2f) };
+        divider.AddThemeStyleboxOverride("separator", Box(
+            Colors.Transparent, new Color("705629a0"), 0, 1));
+        column.AddChild(divider);
+        var stats = new GridContainer
         {
-            CustomMinimumSize = new Vector2(234f, 15f),
-            ShowPercentage = false,
-            MaxValue = 1
+            Columns = 4,
+            CustomMinimumSize = new Vector2(234f, 40f),
+            MouseFilter = MouseFilterEnum.Ignore
         };
-        _health.AddThemeStyleboxOverride("background", Box(
-            new Color("06100a"), new Color("27342c"), 2, 1));
-        _health.AddThemeStyleboxOverride("fill", Box(
-            new Color("3c9d50"), new Color("62c36f"), 2, 1));
-        column.AddChild(_health);
-        _healthText = LabelText("", 11, new Color("cde7cb"));
-        _healthText.HorizontalAlignment = HorizontalAlignment.Center;
-        _healthText.VerticalAlignment = VerticalAlignment.Center;
-        _healthText.MouseFilter = MouseFilterEnum.Ignore;
-        _healthText.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _health.AddChild(_healthText);
+        stats.AddThemeConstantOverride("h_separation", 6);
+        stats.AddThemeConstantOverride("v_separation", 1);
+        column.AddChild(stats);
+        AddStat(stats, "攻击", out _attackValue);
+        AddStat(stats, "护甲", out _armorValue);
+        AddStat(stats, "等级", out _levelValue);
+        AddStat(stats, "攻防", out _combatTypeValue, true);
         _queueLabel = LabelText("", 12, Gold);
         column.AddChild(_queueLabel);
         _queue = new ProgressBar
@@ -503,8 +518,10 @@ public sealed partial class War3RtsHud : Control
     private void UpdatePortrait(War3SelectionSnapshot selection)
     {
         if (_portraitWorld is null || _portraitCamera is null) return;
-        if (selection.PortraitSource == _portraitSource) return;
+        if (selection.PortraitSource == _portraitSource &&
+            selection.PortraitIsBuilding == _portraitBuildingView) return;
         _portraitSource = selection.PortraitSource;
+        _portraitBuildingView = selection.PortraitIsBuilding;
         _portraitActor?.QueueFree();
         _portraitActor = null;
         if (_portraitSource.Length == 0 || !War3RuntimeAssets.Contains(_portraitSource))
@@ -516,10 +533,14 @@ public sealed partial class War3RtsHud : Control
             _portraitActor.Load(_portraitSource, _portraitCamera,
                 War3HumanScenario.PlayerId, includeEffects: false);
             _portraitActor.PlayPreferred(true,
-                selection.PortraitUsesOriginalCamera ? "Portrait" : "Stand",
+                selection.PortraitUsesOriginalCamera && !selection.PortraitIsBuilding
+                    ? "Portrait"
+                    : "Stand",
                 "Stand");
             _portraitActor.FrameCamera(
-                _portraitCamera, selection.PortraitUsesOriginalCamera);
+                _portraitCamera,
+                selection.PortraitUsesOriginalCamera,
+                selection.PortraitIsBuilding);
         }
         catch (Exception exception)
         {
@@ -527,6 +548,23 @@ public sealed partial class War3RtsHud : Control
             _portraitActor?.QueueFree();
             _portraitActor = null;
         }
+    }
+
+    private static void AddStat(
+        GridContainer parent,
+        string caption,
+        out Label value,
+        bool wideValue = false)
+    {
+        var label = LabelText(caption, 11, Muted);
+        label.CustomMinimumSize = new Vector2(28f, 18f);
+        label.VerticalAlignment = VerticalAlignment.Center;
+        parent.AddChild(label);
+        value = LabelText("—", 12, Text);
+        value.CustomMinimumSize = new Vector2(wideValue ? 76f : 38f, 18f);
+        value.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        value.VerticalAlignment = VerticalAlignment.Center;
+        parent.AddChild(value);
     }
 
     private void RebuildCommands(IReadOnlyList<War3CommandSnapshot> commands)

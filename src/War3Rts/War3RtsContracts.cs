@@ -36,11 +36,19 @@ public sealed record War3SelectionSnapshot(
     string IconPath,
     int Count,
     float QueueProgress,
-    string QueueLabel)
+    string QueueLabel,
+    float AttackDamage,
+    float Armor,
+    int Level,
+    int WeaponUpgradeLevel,
+    string AttackClass,
+    string ArmorClass,
+    bool PortraitIsBuilding)
 {
     public static War3SelectionSnapshot Empty { get; } = new(
         "未选择单位", "左键选择，拖动框选", 0f, 0f,
-        string.Empty, false, string.Empty, 0, 0f, string.Empty);
+        string.Empty, false, string.Empty, 0, 0f, string.Empty,
+        0f, 0f, 0, 0, "—", "—", false);
 }
 
 public readonly record struct War3MinimapEntity(

@@ -25,6 +25,7 @@ public sealed partial class War3ModelActor : Node3D
     private bool _progressDriven;
     private double _drivenMilliseconds;
     private bool _deathLocked;
+    private StandardMaterial3D? _ghostMaterial;
 
     public string Source { get; private set; } = string.Empty;
     public War3ModelMetadata? Metadata => _metadata;
@@ -207,13 +208,25 @@ public sealed partial class War3ModelActor : Node3D
         }
     }
 
-    public void FrameCamera(Camera3D camera, bool portrait)
+    public void FrameCamera(Camera3D camera, bool portrait, bool building = false)
     {
         if (_metadata is null || _model is null) return;
         var bounds = _metadata.Bounds;
         var root = FindByName<Node3D>(_model, "WarcraftRoot") ?? _model as Node3D;
         var target = root is null ? bounds.Center * 0.01f : root.ToGlobal(bounds.Center);
-        var definition = portrait ? War3AssetPack.LoadPortraitCamera(Source) : null;
+        var visibleSize = 0f;
+        if (building && TryGetVisibleMeshBounds(_model, out var visibleMin, out var visibleMax))
+        {
+            target = (visibleMin + visibleMax) * 0.5f;
+            var dimensions = visibleMax - visibleMin;
+            // The portrait opening is slightly narrower than tall. Account for
+            // that here so wide structures do not clip against the stone frame.
+            visibleSize = Math.Max(dimensions.Y,
+                Math.Max(dimensions.X / 0.93f, dimensions.Z / 0.93f));
+        }
+        var definition = portrait && !building
+            ? War3AssetPack.LoadPortraitCamera(Source)
+            : null;
         if (definition is not null && root is not null)
         {
             camera.Fov = Mathf.RadToDeg(definition.FieldOfViewRadians);
@@ -224,17 +237,92 @@ public sealed partial class War3ModelActor : Node3D
             camera.LookAt(target, Vector3.Up);
             return;
         }
-        var size = Math.Max(0.25f, bounds.Size * 0.01f);
-        var distance = portrait
+        var size = building && visibleSize > 0.01f
+            ? Math.Max(0.25f, visibleSize)
+            : Math.Max(0.25f, bounds.Size * 0.01f);
+        var distance = building
+            ? Math.Clamp(size * 1.45f, 0.7f, 36f)
+            : portrait
             ? Math.Clamp(size * 0.82f, 0.8f, 18f)
             : Math.Clamp(size * 1.55f, 1.2f, 36f);
-        camera.Fov = portrait ? 36f : 44f;
+        camera.Fov = building ? 45f : portrait ? 36f : 44f;
         camera.Near = 0.005f;
         camera.Far = 100f;
-        camera.Position = target + (portrait
+        camera.Position = target + (building
+            ? new Vector3(distance * 0.72f, distance * 0.48f, distance * 0.92f)
+            : portrait
             ? new Vector3(distance * 0.78f, distance * 0.12f, distance)
             : new Vector3(distance * 0.72f, distance * 0.48f, distance * 0.92f));
         camera.LookAt(target, Vector3.Up);
+    }
+
+    private static bool TryGetVisibleMeshBounds(
+        Node node,
+        out Vector3 minimum,
+        out Vector3 maximum)
+    {
+        minimum = new Vector3(float.PositiveInfinity, float.PositiveInfinity,
+            float.PositiveInfinity);
+        maximum = new Vector3(float.NegativeInfinity, float.NegativeInfinity,
+            float.NegativeInfinity);
+        AccumulateVisibleMeshBounds(node, ref minimum, ref maximum);
+        return float.IsFinite(minimum.X) && float.IsFinite(maximum.X);
+    }
+
+    private static void AccumulateVisibleMeshBounds(
+        Node node,
+        ref Vector3 minimum,
+        ref Vector3 maximum)
+    {
+        if (node is MeshInstance3D mesh && mesh.Visible && mesh.Mesh is not null)
+        {
+            var aabb = mesh.GetAabb();
+            for (var x = 0; x <= 1; x++)
+            for (var y = 0; y <= 1; y++)
+            for (var z = 0; z <= 1; z++)
+            {
+                var local = aabb.Position + new Vector3(
+                    aabb.Size.X * x, aabb.Size.Y * y, aabb.Size.Z * z);
+                var point = mesh.ToGlobal(local);
+                minimum = minimum.Min(point);
+                maximum = maximum.Max(point);
+            }
+        }
+        foreach (var child in node.GetChildren())
+            AccumulateVisibleMeshBounds(child, ref minimum, ref maximum);
+    }
+
+    /// <summary>
+    /// Switches the imported meshes to a translucent placement silhouette.
+    /// Surface materials are left untouched and become visible again when the
+    /// preview turns into a real construction foundation.
+    /// </summary>
+    public void SetGhostAppearance(bool enabled, bool valid = true)
+    {
+        if (_model is null) return;
+        if (enabled)
+        {
+            var color = valid ? new Color("55e6b06e") : new Color("ef666676");
+            _ghostMaterial ??= new StandardMaterial3D
+            {
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+                EmissionEnabled = true
+            };
+            _ghostMaterial.AlbedoColor = color;
+            _ghostMaterial.Emission = new Color(color.R, color.G, color.B, 1f);
+            _ghostMaterial.EmissionEnergyMultiplier = 0.85f;
+        }
+        ApplyGhostMaterial(_model, enabled ? _ghostMaterial : null);
+        if (_effects is not null) _effects.Visible = !enabled;
+    }
+
+    private static void ApplyGhostMaterial(Node node, Material? material)
+    {
+        if (node is MeshInstance3D mesh) mesh.MaterialOverride = material;
+        foreach (var child in node.GetChildren())
+            ApplyGhostMaterial(child, material);
     }
 
     private void StartSequence(

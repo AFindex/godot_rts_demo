@@ -566,9 +566,10 @@ public sealed partial class War3Rts : Node3D
         var builder = _selectedUnits.FirstOrDefault(unit =>
             _simulation.Economy.IsWorkerOwnedBy(unit, War3HumanScenario.PlayerId), -1);
         var profile = _buildings.Type(_pendingBuilding);
+        var definition = War3HumanContent.Buildings[_pendingBuilding];
         var valid = builder >= 0 && _simulation.PreviewConstruction(
             War3HumanScenario.PlayerId, builder, profile, point, default, false).Succeeded;
-        _presenter.SetPointerPreview(point, profile.Size, valid);
+        _presenter.SetPointerPreview(point, profile.Size, definition.ModelSource, valid);
     }
 
     private void UpdateHud()
@@ -608,6 +609,17 @@ public sealed partial class War3Rts : Node3D
             var maximum = living.Sum(unit => _simulation.Combat.MaximumHealth[unit]);
             var homogeneous = living.All(unit => War3HumanContent.ResolveUnit(
                 _simulation, _production, unit).TypeId == definition.TypeId);
+            var weaponLevel = _simulation.CombatWeaponUpgradeTechnologyId < 0
+                ? 0
+                : _simulation.Technology.Level(
+                    _simulation.Combat.Teams[first],
+                    _simulation.CombatWeaponUpgradeTechnologyId);
+            var attack = _simulation.Combat.AttackDamage[first];
+            var attackClass = attack <= 0f
+                ? "无攻击"
+                : _simulation.Combat.AttackRanges[first] > 45f
+                    ? "远程"
+                    : "近战";
             return new War3SelectionSnapshot(
                 homogeneous && living.Length > 1
                     ? $"{definition.Name} × {living.Length}"
@@ -620,13 +632,20 @@ public sealed partial class War3Rts : Node3D
                 definition.IconPath,
                 living.Length,
                 0f,
-                string.Empty);
+                string.Empty,
+                attack,
+                _simulation.Combat.Armor[first],
+                1,
+                weaponLevel,
+                attackClass,
+                ArmorClass(_simulation.Combat.Attributes[first]),
+                false);
         }
         if (_selectedBuildings.Count > 0)
         {
             var id = new GameplayBuildingId(_selectedBuildings.Order().First());
             if (!_simulation.Construction.IsAlive(id)) return War3SelectionSnapshot.Empty;
-            var building = _simulation.Construction.Observe(id);
+            var building = _simulation.ObserveGameplayBuilding(id);
             var definition = War3HumanContent.Buildings[building.Type.Id];
             var queue = _simulation.Production.Observe(id).Orders.FirstOrDefault();
             var research = _simulation.Technology.Observe(id).Orders.FirstOrDefault();
@@ -648,9 +667,25 @@ public sealed partial class War3Rts : Node3D
                 definition.IconPath,
                 1,
                 progress,
-                queueLabel);
+                queueLabel,
+                0f,
+                building.EffectiveArmor,
+                1,
+                0,
+                "无攻击",
+                ArmorClass(building.Type.Attributes),
+                true);
         }
         return War3SelectionSnapshot.Empty;
+    }
+
+    private static string ArmorClass(CombatAttribute attributes)
+    {
+        if ((attributes & CombatAttribute.Structure) != 0) return "建筑";
+        if ((attributes & CombatAttribute.Armored) != 0) return "重甲";
+        if ((attributes & CombatAttribute.Light) != 0) return "轻甲";
+        if ((attributes & CombatAttribute.Mechanical) != 0) return "机械";
+        return "普通";
     }
 
     private static void ValidateHumanAssets()
@@ -914,7 +949,8 @@ public sealed partial class War3Rts : Node3D
             InitialDistance = 25f,
             MinimumDistance = 12f,
             MaximumDistance = 48f,
-            InitialPitchDegrees = 56f
+            InitialPitchDegrees = 56f,
+            InitialYawDegrees = 0f
         };
         AddChild(_cameraController);
         _cameraController.EdgeScrollBlocked = point =>
@@ -1017,7 +1053,11 @@ public sealed partial class War3Rts : Node3D
         var buildingEffectsValid = _presenter.SawConstructionEffect &&
                                    !_presenter.IdleTownHallEffectLeak;
         var attackFacingValid = _presenter.SawAttackTargetFacing &&
-                                !_presenter.AttackTargetFacingMismatch;
+                                 !_presenter.AttackTargetFacingMismatch;
+        var constructionPresentationValid =
+            _presenter.SawConstructionGhost &&
+            _presenter.FoundationAppearedAfterApproach &&
+            _presenter.PointerPreviewUsesWar3Model;
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
@@ -1033,12 +1073,14 @@ public sealed partial class War3Rts : Node3D
                       _presenter.SawCarriedLumberAnimation &&
                       rallySet && resourceCentersClear && constructionSynchronized &&
                       harvestingSynchronized && buildingAnimationsValid &&
-                      buildingEffectsValid && _presenter.SawBlendedTransition &&
-                      _presenter.RallyMarkerUsesWar3Model && attackFacingValid;
+                       buildingEffectsValid && _presenter.SawBlendedTransition &&
+                       _presenter.RallyMarkerUsesWar3Model && attackFacingValid &&
+                       constructionPresentationValid;
         GD.Print(
             $"WAR3_RTS_SMOKE success={success} units={_presenter.PresentedUnitCount} " +
-            $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
-            $"effects={_presenter.ActiveEffectCount} peak_effects={_presenter.PeakEffectCount} " +
+             $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
+             $"effects={_presenter.ActiveEffectCount} peak_effects={_presenter.PeakEffectCount} " +
+             $"projectile_next={_simulation.CombatProjectiles.NextId} " +
             $"portrait={_hud.PortraitReady} hud_layout={_hud.ConsoleLayoutReady} " +
             $"gold={player.Minerals} lumber={player.VespeneGas} enemy_army={enemyArmy} " +
             $"gold_anim={_presenter.SawGoldGatherAnimation}/{_presenter.SawCarriedGoldAnimation} " +
@@ -1051,8 +1093,11 @@ public sealed partial class War3Rts : Node3D
             $"gold_non_attack={!_presenter.GoldGatherUsedAttackAnimation} " +
             $"gold_hidden={_presenter.SawGoldMinerHidden} " +
             $"building_idle={buildingAnimationsValid} " +
-            $"building_effects={buildingEffectsValid} " +
-            $"animation_blend={_presenter.SawBlendedTransition} " +
+             $"building_effects={buildingEffectsValid} " +
+             $"construction_ghost={_presenter.SawConstructionGhost} " +
+             $"foundation_after_arrival={_presenter.FoundationAppearedAfterApproach} " +
+             $"placement_model={_presenter.PointerPreviewUsesWar3Model} " +
+             $"animation_blend={_presenter.SawBlendedTransition} " +
             $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
             $"attack_facing={attackFacingValid}");
         if (!_capture) GetTree().Quit(success ? 0 : 1);
@@ -1088,13 +1133,25 @@ public sealed partial class War3Rts : Node3D
                 $"Smoke construction setup failed: {construction.Code}/" +
                 $"{construction.PlacementCode}.");
         _smokeConstructionBuilding = construction.BuildingId.Value;
+        _presenter?.SetPointerPreview(
+            new NVector2(170f, 1_000f), farm.Size,
+            War3HumanContent.Buildings[War3HumanContent.Farm].ModelSource,
+            valid: true);
+        _presenter?.HidePointerPreview();
         var rifleman = _production.UnitType(War3HumanContent.Rifleman);
         var player = _simulation.AddUnit(
-            new NVector2(1_100f, 250f), rifleman.Movement,
-            War3HumanScenario.PlayerId, rifleman.Combat);
+            War3HumanScenario.PlayerHome + new NVector2(300f, 120f), rifleman.Movement,
+            War3HumanScenario.PlayerId, rifleman.Combat,
+            UnitPerceptionProfileSnapshot.Standard);
         var enemy = _simulation.AddUnit(
-            new NVector2(1_220f, 250f), rifleman.Movement,
-            War3HumanScenario.EnemyId, rifleman.Combat);
+            War3HumanScenario.PlayerHome + new NVector2(420f, 120f), rifleman.Movement,
+            War3HumanScenario.EnemyId, rifleman.Combat,
+            UnitPerceptionProfileSnapshot.Standard);
+        // The scenario has already seeded fog-of-war before these smoke-only
+        // units are appended. Refresh visibility once so their first attack
+        // order is not discarded before the normal end-of-tick refresh.
+        _simulation.Visibility.Update(
+            _simulation.Units, _simulation.Combat, _simulation.Construction);
         _simulation.IssueAttackTarget([player], enemy);
         _simulation.IssueAttackTarget([enemy], player);
     }

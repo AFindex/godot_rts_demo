@@ -46,6 +46,9 @@ public partial class Rts3DCameraController : Node
     [Export(PropertyHint.Range, "25,80,1")]
     public float InitialPitchDegrees { get; set; } = 53f;
 
+    [Export(PropertyHint.Range, "-180,180,1")]
+    public float InitialYawDegrees { get; set; } = -31.5f;
+
     public bool IsInitialized => _camera is not null;
     public bool IsAutomationActive => _automationActive;
     public NVector2 Target => _desiredTarget;
@@ -60,8 +63,8 @@ public partial class Rts3DCameraController : Node
     private NVector2 _automationTarget;
     private float _currentDistance;
     private float _desiredDistance;
-    private float _currentYaw = -0.55f;
-    private float _desiredYaw = -0.55f;
+    private float _currentYaw;
+    private float _desiredYaw;
     private float _currentPitch;
     private float _desiredPitch;
     private float _automationDistance;
@@ -88,6 +91,8 @@ public partial class Rts3DCameraController : Node
         _desiredTarget = center;
         _currentDistance = Math.Clamp(InitialDistance, MinimumDistance, MaximumDistance);
         _desiredDistance = _currentDistance;
+        _currentYaw = Mathf.DegToRad(InitialYawDegrees);
+        _desiredYaw = _currentYaw;
         _currentPitch = Mathf.DegToRad(InitialPitchDegrees);
         _desiredPitch = _currentPitch;
         ApplyCameraTransform();

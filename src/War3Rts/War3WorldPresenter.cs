@@ -22,6 +22,8 @@ public sealed partial class War3WorldPresenter : Node3D
     private ProductionCatalogSnapshot? _production;
     private Camera3D? _camera;
     private MeshInstance3D? _pointerPreview;
+    private War3ModelActor? _pointerGhost;
+    private string _pointerGhostSource = string.Empty;
     private War3ModelActor? _rallyMarker;
     private bool _rallyMarkerActive;
     private NVector2 _rallyMarkerPosition;
@@ -44,6 +46,8 @@ public sealed partial class War3WorldPresenter : Node3D
     private bool _idleTownHallEffectLeak;
     private bool _sawAttackTargetFacing;
     private bool _attackTargetFacingMismatch;
+    private bool _sawConstructionGhost;
+    private bool _foundationAppearedAfterApproach;
 
     public int PresentedUnitCount => _units.Values.Count(value => !value.Dying);
     public int PresentedBuildingCount => _buildings.Values.Count(value => !value.Dying);
@@ -67,6 +71,9 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool IdleTownHallEffectLeak => _idleTownHallEffectLeak;
     public bool SawAttackTargetFacing => _sawAttackTargetFacing;
     public bool AttackTargetFacingMismatch => _attackTargetFacingMismatch;
+    public bool SawConstructionGhost => _sawConstructionGhost;
+    public bool FoundationAppearedAfterApproach => _foundationAppearedAfterApproach;
+    public bool PointerPreviewUsesWar3Model => _pointerGhost?.Loaded == true;
     public bool RallyMarkerUsesWar3Model => _rallyMarker?.Loaded == true &&
         _rallyMarker.Source.Equals(
             "UI\\Feedback\\RallyPoint\\RallyPoint.mdx",
@@ -105,6 +112,7 @@ public sealed partial class War3WorldPresenter : Node3D
     public void SetPointerPreview(
         NVector2 position,
         NVector2 footprint,
+        string modelSource,
         bool valid)
     {
         EnsurePointerPreview();
@@ -113,11 +121,30 @@ public sealed partial class War3WorldPresenter : Node3D
         _pointerPreview.Scale = new Vector3(size.X, 0.06f, size.Y);
         _pointerPreview.MaterialOverride = valid ? _validPreview : _invalidPreview;
         _pointerPreview.Visible = true;
+        if (_camera is not null && !modelSource.Equals(
+                _pointerGhostSource, StringComparison.OrdinalIgnoreCase))
+        {
+            _pointerGhost?.QueueFree();
+            _pointerGhost = new War3ModelActor { Name = "BuildModelGhost" };
+            AddChild(_pointerGhost);
+            _pointerGhost.Load(
+                modelSource, _camera, War3HumanScenario.PlayerId,
+                includeEffects: false);
+            _pointerGhost.PlayPreferred(true, "Stand");
+            _pointerGhostSource = modelSource;
+        }
+        if (_pointerGhost is not null)
+        {
+            _pointerGhost.Position = SimPlane3DTransform.ToWorld(position, 0.01f);
+            _pointerGhost.SetGhostAppearance(true, valid);
+            _pointerGhost.Visible = true;
+        }
     }
 
     public void HidePointerPreview()
     {
         if (_pointerPreview is not null) _pointerPreview.Visible = false;
+        if (_pointerGhost is not null) _pointerGhost.Visible = false;
     }
 
     public void Sync(float interpolation)
@@ -402,9 +429,21 @@ public sealed partial class War3WorldPresenter : Node3D
                 SimPlane3DTransform.ToWorldLength(building.Type.Size.Y)) * 0.62f;
             visual.Selection.Position = new Vector3(world.X, SelectionHeight, world.Z);
             visual.Selection.Scale = Vector3.One * MathF.Max(0.85f, diameter);
-            visual.Selection.Visible = _selectedBuildings.Contains(id);
-            if (building.State != BuildingLifecycleState.Completed)
+            var foundationStarted = building.FootprintId.Value > 0 ||
+                                    building.State is BuildingLifecycleState.Constructing or
+                                        BuildingLifecycleState.Completed;
+            var ghost = !foundationStarted;
+            visual.Actor.SetGhostAppearance(ghost);
+            visual.Selection.Visible = foundationStarted && _selectedBuildings.Contains(id);
+            if (ghost)
             {
+                visual.Actor.SetSequenceProgress(0f, "Stand");
+                visual.WasGhost = true;
+                _sawConstructionGhost = true;
+            }
+            else if (building.State != BuildingLifecycleState.Completed)
+            {
+                _foundationAppearedAfterApproach |= visual.WasGhost;
                 var synchronized = visual.Actor.SetSequenceProgress(
                     building.Progress, "Birth", "Stand");
                 _sawConstructionProgressAnimation |= building.Progress is > 0.001f and < 0.999f;
@@ -742,6 +781,7 @@ public sealed partial class War3WorldPresenter : Node3D
         public War3ModelActor Actor { get; } = actor;
         public MeshInstance3D Selection { get; } = selection;
         public War3BuildingDefinition Definition { get; } = definition;
+        public bool WasGhost { get; set; }
         public bool Dying { get; set; }
         public ulong RemoveAt { get; set; }
     }
