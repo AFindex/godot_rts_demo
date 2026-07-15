@@ -11,7 +11,8 @@ namespace RtsDemo.Demos.War3;
 /// </summary>
 public sealed class War3TerrainMaterialSet :
     IRts3DTerrainBlendMaterialProvider,
-    IRts3DTerrainDualGridMaterialProvider
+    IRts3DTerrainDualGridMaterialProvider,
+    IRts3DTerrainClassicCliffProvider
 {
     private const string TextureRoot = "textures/";
     private const string LordaeronRoot =
@@ -50,7 +51,8 @@ public sealed class War3TerrainMaterialSet :
         .. SurfaceTextures.Values.Distinct(StringComparer.OrdinalIgnoreCase),
         TextureRoot + "replaceabletextures/cliff/cliff0.png",
         TextureRoot + "replaceabletextures/cliff/cliff1.png",
-        TextureRoot + "replaceabletextures/water/water00.png"
+        TextureRoot + "replaceabletextures/water/water00.png",
+        "models/doodads/terrain/cliffs/cliffsaaab0.glb"
     ];
 
     private readonly Dictionary<string, Material> _surfaceMaterials =
@@ -63,13 +65,19 @@ public sealed class War3TerrainMaterialSet :
     private readonly Texture2D _waterTexture;
     private readonly Dictionary<string, Material> _cliffMaterials =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Material> _classicCliffMaterials =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly War3ClassicCliffMeshCatalog _classicCliffs;
     private Material? _blendedSurfaceMaterial;
     private Material? _dualGridSurfaceMaterial;
+    private readonly bool _classicCliffMeshesEnabled;
 
     public War3TerrainMaterialSet(
-        War3TerrainBlendStyle blendStyle = War3TerrainBlendStyle.DualGrid)
+        War3TerrainBlendStyle blendStyle = War3TerrainBlendStyle.DualGrid,
+        bool classicCliffMeshesEnabled = true)
     {
         BlendStyle = blendStyle;
+        _classicCliffMeshesEnabled = classicCliffMeshesEnabled;
         var missing = MissingAssetPaths();
         if (missing.Length > 0)
         {
@@ -89,11 +97,16 @@ public sealed class War3TerrainMaterialSet :
             ShaderRoot + "War3Water.gdshader");
         _waterTexture = LoadTexture(
             TextureRoot + "replaceabletextures/water/water00.png");
+        _classicCliffs = War3ClassicCliffMeshCatalog.LoadDefault();
     }
 
     public War3TerrainBlendStyle BlendStyle { get; }
     public bool DualGridEnabled =>
         BlendStyle == War3TerrainBlendStyle.DualGrid;
+    public bool ClassicCliffMeshesEnabled =>
+        _classicCliffMeshesEnabled && _classicCliffs.SignatureCount > 0;
+    public int ClassicCliffSignatureCount => _classicCliffs.SignatureCount;
+    public int ClassicCliffAssetCount => _classicCliffs.AssetCount;
 
     public static IReadOnlyList<string> AssetPaths => RequiredPaths;
 
@@ -134,13 +147,34 @@ public sealed class War3TerrainMaterialSet :
         out int layer) =>
         BlendChannels.TryGetValue(surface.MaterialKey, out layer);
 
+    public int ClassicCliffVariationCount(string signature) =>
+        _classicCliffs.VariationCount(signature);
+
+    public bool TryGetClassicCliffMesh(
+        string signature,
+        int variation,
+        out Rts3DClassicCliffMesh definition) =>
+        _classicCliffs.TryGet(signature, variation, out definition);
+
     public Material CliffMaterial(TerrainSurfaceDefinition upperSurface)
+        => CliffMaterial(upperSurface, classicModelUv: false);
+
+    public Material ClassicCliffMaterial(
+        TerrainSurfaceDefinition upperSurface)
+        => CliffMaterial(upperSurface, classicModelUv: true);
+
+    private Material CliffMaterial(
+        TerrainSurfaceDefinition upperSurface,
+        bool classicModelUv)
     {
         var cliffName = upperSurface.MaterialKey is
             "badlands" or "mud" or "vision-smoke"
             ? "cliff1"
             : "cliff0";
-        if (_cliffMaterials.TryGetValue(cliffName, out var material))
+        var cache = classicModelUv
+            ? _classicCliffMaterials
+            : _cliffMaterials;
+        if (cache.TryGetValue(cliffName, out var material))
             return material;
         material = new ShaderMaterial
         {
@@ -148,8 +182,9 @@ public sealed class War3TerrainMaterialSet :
         }.WithParameter(
             "cliff_atlas",
             LoadTexture(
-                TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"));
-        _cliffMaterials.Add(cliffName, material);
+                TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
+         .WithParameter("use_model_atlas_uv", classicModelUv);
+        cache.Add(cliffName, material);
         return material;
     }
 

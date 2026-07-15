@@ -12,9 +12,16 @@ public partial class Rts3DTerrainPresenter : Node3D
     private const int BlendSampleRadius = 2;
     private readonly Dictionary<string, StandardMaterial3D> _materials = [];
     private MeshInstance3D? _visual;
+    private Node3D? _classicCliffRoot;
     private IRts3DTerrainMaterialProvider? _materialProvider;
     private float _cellWorldSize = 1f;
     private float _cliffWorldHeight = 1f;
+
+    public TerrainCliffMeshDiagnostics? LastClassicCliffDiagnostics
+    {
+        get;
+        private set;
+    }
 
     public void Initialize(
         TerrainMapSnapshot terrain,
@@ -23,6 +30,9 @@ public partial class Rts3DTerrainPresenter : Node3D
     {
         ArgumentNullException.ThrowIfNull(terrain);
         _visual?.QueueFree();
+        _classicCliffRoot?.QueueFree();
+        _classicCliffRoot = null;
+        LastClassicCliffDiagnostics = null;
         _materialProvider = materialProvider;
         _cellWorldSize = MathF.Max(0.001f,
             SimPlane3DTransform.ToWorldLength(terrain.CellSize));
@@ -49,7 +59,12 @@ public partial class Rts3DTerrainPresenter : Node3D
                 continue;
             AppendSurface(mesh, terrain, surface);
         }
-        AppendCliffs(mesh, terrain);
+        var classicCliffProvider =
+            materialProvider as IRts3DTerrainClassicCliffProvider;
+        var classicCliffTiles = classicCliffProvider?.ClassicCliffMeshesEnabled == true
+            ? AppendClassicCliffs(terrain, classicCliffProvider)
+            : [];
+        AppendCliffs(mesh, terrain, classicCliffTiles);
         _visual = new MeshInstance3D
         {
             Name = "TerrainMesh",
@@ -57,6 +72,113 @@ public partial class Rts3DTerrainPresenter : Node3D
             CastShadow = GeometryInstance3D.ShadowCastingSetting.On
         };
         AddChild(_visual);
+    }
+
+    private HashSet<int> AppendClassicCliffs(
+        TerrainMapSnapshot terrain,
+        IRts3DTerrainClassicCliffProvider provider)
+    {
+        var layout = TerrainCliffMeshLayout.Build(
+            terrain, provider.ClassicCliffVariationCount);
+        LastClassicCliffDiagnostics = layout.Diagnostics;
+        var coveredTiles = new HashSet<int>();
+        var groups = new Dictionary<ClassicCliffGroupKey, ClassicCliffGroup>();
+        foreach (var tile in layout.Tiles)
+        {
+            if (!provider.TryGetClassicCliffMesh(
+                    tile.Signature, tile.Variation, out var definition))
+            {
+                continue;
+            }
+            var key = new ClassicCliffGroupKey(
+                definition.AssetKey, tile.UpperSurfaceId);
+            if (!groups.TryGetValue(key, out var group))
+            {
+                group = new ClassicCliffGroup(definition);
+                groups.Add(key, group);
+            }
+            group.Transforms.Add(ClassicCliffTransform(terrain, tile) *
+                                 definition.ModelTransform);
+            coveredTiles.Add(
+                tile.Row * Math.Max(1, terrain.Columns - 1) + tile.Column);
+        }
+
+        var root = new Node3D { Name = "ClassicCliffMeshes" };
+        foreach (var (key, group) in groups)
+        {
+            var material = provider.ClassicCliffMaterial(
+                terrain.Surface(key.SurfaceId));
+            var renderMesh = (Mesh)group.Definition.Mesh.Duplicate();
+            if (renderMesh is ArrayMesh arrayMesh)
+            {
+                for (var surface = 0;
+                     surface < arrayMesh.GetSurfaceCount();
+                     surface++)
+                {
+                    arrayMesh.SurfaceSetMaterial(surface, material);
+                }
+            }
+            var multiMesh = new MultiMesh
+            {
+                TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+                Mesh = renderMesh,
+                InstanceCount = group.Transforms.Count
+            };
+            for (var index = 0; index < group.Transforms.Count; index++)
+                multiMesh.SetInstanceTransform(index, group.Transforms[index]);
+            root.AddChild(new MultiMeshInstance3D
+            {
+                Name = $"Cliff_{Path.GetFileNameWithoutExtension(key.AssetKey)}_S{key.SurfaceId}",
+                Multimesh = multiMesh,
+                MaterialOverride = material,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.On
+            });
+        }
+        if (root.GetChildCount() > 0)
+        {
+            _classicCliffRoot = root;
+            AddChild(root);
+        }
+        else
+        {
+            root.Free();
+        }
+        GD.Print(
+            $"TERRAIN_CLASSIC_CLIFF_LAYOUT hash={layout.StableHashText} " +
+            $"candidates={layout.Diagnostics.CandidateTiles} " +
+            $"selected={layout.Diagnostics.SelectedTiles} " +
+            $"resolved={coveredTiles.Count} batches={groups.Count} " +
+            $"rampFallback={layout.Diagnostics.RampFallbackTiles} " +
+            $"heightFallback={layout.Diagnostics.UnsupportedHeightTiles} " +
+            $"missing={layout.Diagnostics.MissingAssetTiles}");
+        return coveredTiles;
+    }
+
+    private Transform3D ClassicCliffTransform(
+        TerrainMapSnapshot terrain,
+        TerrainClassicCliffTile tile)
+    {
+        const float exportedWar3TileWorldSize = 1.28f;
+        var bounds = terrain.CellBounds(tile.Column, tile.Row);
+        var centre = new System.Numerics.Vector2(
+            bounds.Min.X + terrain.CellSize * 0.5f,
+            bounds.Min.Y + terrain.CellSize * 0.5f);
+        var origin = SimPlane3DTransform.ToWorld(
+            centre,
+            tile.BaseLevel * terrain.CliffLevelHeight);
+        var fit = new Vector3(
+            _cellWorldSize / exportedWar3TileWorldSize,
+            _cliffWorldHeight / exportedWar3TileWorldSize,
+            _cellWorldSize / exportedWar3TileWorldSize);
+        // The exporter converts Warcraft XY ground coordinates to a Godot
+        // root whose local X/Z are original X/-Y. HiveWE's cliff convention
+        // is X=original Y and Y=-original X, so this axis remap preserves the
+        // model filename's TL/TR/BR/BL ordering instead of transposing it.
+        var basis = new Basis(
+            new Vector3(0f, 0f, -fit.X),
+            new Vector3(0f, fit.Y, 0f),
+            new Vector3(-fit.Z, 0f, 0f));
+        return new Transform3D(basis, origin);
     }
 
     private void AppendSurface(
@@ -274,7 +396,10 @@ public partial class Rts3DTerrainPresenter : Node3D
             weights[3] * inverse);
     }
 
-    private void AppendCliffs(ArrayMesh mesh, TerrainMapSnapshot terrain)
+    private void AppendCliffs(
+        ArrayMesh mesh,
+        TerrainMapSnapshot terrain,
+        HashSet<int> classicCliffTiles)
     {
         var tools = new Dictionary<ushort, SurfaceTool>();
         for (var row = 0; row < terrain.Rows; row++)
@@ -283,7 +408,7 @@ public partial class Rts3DTerrainPresenter : Node3D
             {
                 if (column + 1 < terrain.Columns)
                 {
-                    AppendCliffEdge(
+                    AppendCliffEdgeWithCoverage(
                         tools,
                         terrain.Surface(terrain.Cell(column, row).SurfaceId),
                         terrain.Surface(terrain.Cell(column + 1, row).SurfaceId),
@@ -302,11 +427,15 @@ public partial class Rts3DTerrainPresenter : Node3D
                         Point(terrain,
                             terrain.CellBounds(column + 1, row).Min.X,
                             terrain.CellBounds(column + 1, row).Max.Y,
-                            terrain.CellCornerHeight(column + 1, row, false, true)));
+                            terrain.CellCornerHeight(column + 1, row, false, true)),
+                        IsClassicTileCovered(
+                            classicCliffTiles, terrain, column, row - 1),
+                        IsClassicTileCovered(
+                            classicCliffTiles, terrain, column, row));
                 }
                 if (row + 1 < terrain.Rows)
                 {
-                    AppendCliffEdge(
+                    AppendCliffEdgeWithCoverage(
                         tools,
                         terrain.Surface(terrain.Cell(column, row).SurfaceId),
                         terrain.Surface(terrain.Cell(column, row + 1).SurfaceId),
@@ -325,12 +454,62 @@ public partial class Rts3DTerrainPresenter : Node3D
                         Point(terrain,
                             terrain.CellBounds(column, row + 1).Max.X,
                             terrain.CellBounds(column, row + 1).Min.Y,
-                            terrain.CellCornerHeight(column, row + 1, true, false)));
+                            terrain.CellCornerHeight(column, row + 1, true, false)),
+                        IsClassicTileCovered(
+                            classicCliffTiles, terrain, column - 1, row),
+                        IsClassicTileCovered(
+                            classicCliffTiles, terrain, column, row));
                 }
             }
         }
         foreach (var tool in tools.Values)
             tool.Commit(mesh);
+    }
+
+    private static bool IsClassicTileCovered(
+        HashSet<int> classicCliffTiles,
+        TerrainMapSnapshot terrain,
+        int column,
+        int row) =>
+        (uint)column < (uint)Math.Max(0, terrain.Columns - 1) &&
+        (uint)row < (uint)Math.Max(0, terrain.Rows - 1) &&
+        classicCliffTiles.Contains(
+            row * Math.Max(1, terrain.Columns - 1) + column);
+
+    private void AppendCliffEdgeWithCoverage(
+        Dictionary<ushort, SurfaceTool> tools,
+        TerrainSurfaceDefinition firstSurface,
+        TerrainSurfaceDefinition secondSurface,
+        Vector3 firstA,
+        Vector3 firstB,
+        Vector3 secondA,
+        Vector3 secondB,
+        bool firstHalfCovered,
+        bool secondHalfCovered)
+    {
+        if (firstHalfCovered && secondHalfCovered)
+            return;
+        if (!firstHalfCovered && !secondHalfCovered)
+        {
+            AppendCliffEdge(
+                tools, firstSurface, secondSurface,
+                firstA, firstB, secondA, secondB);
+            return;
+        }
+        var firstMiddle = firstA.Lerp(firstB, 0.5f);
+        var secondMiddle = secondA.Lerp(secondB, 0.5f);
+        if (!firstHalfCovered)
+        {
+            AppendCliffEdge(
+                tools, firstSurface, secondSurface,
+                firstA, firstMiddle, secondA, secondMiddle);
+        }
+        if (!secondHalfCovered)
+        {
+            AppendCliffEdge(
+                tools, firstSurface, secondSurface,
+                firstMiddle, firstB, secondMiddle, secondB);
+        }
     }
 
     private void AppendCliffEdge(
@@ -511,5 +690,15 @@ public partial class Rts3DTerrainPresenter : Node3D
         tool.SetNormal(normal);
         tool.SetUV(uvC);
         tool.AddVertex(c);
+    }
+
+    private readonly record struct ClassicCliffGroupKey(
+        string AssetKey,
+        ushort SurfaceId);
+
+    private sealed class ClassicCliffGroup(Rts3DClassicCliffMesh definition)
+    {
+        public Rts3DClassicCliffMesh Definition { get; } = definition;
+        public List<Transform3D> Transforms { get; } = [];
     }
 }

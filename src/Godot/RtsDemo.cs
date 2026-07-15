@@ -406,6 +406,15 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--terrain-cliff-layout-self-test"))
+        {
+            var result = TerrainCliffMeshLayoutSelfTest.Run();
+            GD.Print($"RTS_TERRAIN_CLIFF_LAYOUT_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--self-test"))
         {
             if (!TryLoadRuntimeData())

@@ -21,13 +21,21 @@ public partial class War3TerrainShowcase3D : Node3D
     private Label? _modeLabel;
     private War3TerrainBlendStyle _blendStyle = War3TerrainBlendStyle.DualGrid;
     private bool _capture;
+    private bool _cliffCapture;
+    private bool _classicCliffs = true;
 
     public override void _Ready()
     {
         GD.Print("WAR3_TERRAIN_STAGE begin");
         var arguments = OS.GetCmdlineUserArgs();
         _capture = arguments.Contains("--war3-terrain-capture") ||
-                   arguments.Contains("--war3-terrain-continuous-capture");
+                   arguments.Contains("--war3-terrain-continuous-capture") ||
+                   arguments.Contains("--war3-terrain-cliff-capture") ||
+                   arguments.Contains("--war3-terrain-cliff-fallback-capture");
+        _cliffCapture = arguments.Contains("--war3-terrain-cliff-capture") ||
+                        arguments.Contains("--war3-terrain-cliff-fallback-capture");
+        if (arguments.Contains("--war3-terrain-cliff-fallback-capture"))
+            _classicCliffs = false;
         if (arguments.Contains("--war3-terrain-continuous-capture"))
             _blendStyle = War3TerrainBlendStyle.ContinuousWeights;
         if (!TerrainMapResourceConverter.TryLoadSnapshot(
@@ -104,7 +112,8 @@ public partial class War3TerrainShowcase3D : Node3D
             $"WAR3_TERRAIN_READY terrain={_terrain.StableHashText} " +
             $"surfaces={_terrain.Surfaces.Length} assets={War3TerrainMaterialSet.AssetPaths.Count} " +
             $"theme=LordaeronSummer blend={_blendStyle} " +
-            "cliff=UpperSurfaceAdaptive water=Water00");
+            $"cliff={(_classicCliffs ? "ClassicMesh" : "ProceduralFallback")} " +
+            "water=Water00");
 
         if (_capture)
             _ = CaptureAsync();
@@ -174,8 +183,8 @@ public partial class War3TerrainShowcase3D : Node3D
             Name = "TerrainCameraController",
             MinimumDistance = MathF.Max(8f, span * 0.16f),
             MaximumDistance = MathF.Max(80f, span * 1.55f),
-            InitialDistance = span * 0.92f,
-            InitialPitchDegrees = 51f,
+            InitialDistance = span * (_cliffCapture ? 0.43f : 0.92f),
+            InitialPitchDegrees = _cliffCapture ? 43f : 51f,
             InitialYawDegrees = -27f,
             EdgeScrollMargin = 16f
         };
@@ -223,8 +232,8 @@ public partial class War3TerrainShowcase3D : Node3D
         var label = new Label
         {
             Text =
-                "WARCRAFT III 地形适配专项 · 双网格阶段\n" +
-                "Lordaeron Summer 角点控制地表 · 带权随机变化 · Water00 水面\n" +
+                "WARCRAFT III 地形适配专项 · 双网格 / 经典悬崖阶段\n" +
+                "Lordaeron Summer 角点地表 · CliffsABCDn 模型 · Water00 水面\n" +
                 $"权威地形 {terrain.Columns}×{terrain.Rows} · {terrain.Surfaces.Length} 种语义表面\n" +
                 "WASD/方向键/边缘移动 · 中键拖动 · Alt+中键旋转 · 滚轮缩放\n" +
                 "玩法层仍使用现有高度 / 坡道 / 通行 / 建造 / 视野合同"
@@ -254,6 +263,13 @@ public partial class War3TerrainShowcase3D : Node3D
         };
         toggle.Pressed += ToggleBlendStyle;
         actions.AddChild(toggle);
+        var cliffToggle = new Button
+        {
+            Text = "切换悬崖算法",
+            CustomMinimumSize = new Vector2(142f, 30f)
+        };
+        cliffToggle.Pressed += ToggleCliffStyle;
+        actions.AddChild(cliffToggle);
         var back = new Button
         {
             Text = "返回  Esc",
@@ -272,24 +288,43 @@ public partial class War3TerrainShowcase3D : Node3D
         UpdateModeLabel();
     }
 
+    private void ToggleCliffStyle()
+    {
+        _classicCliffs = !_classicCliffs;
+        ApplyBlendStyle();
+        UpdateModeLabel();
+    }
+
     private void ApplyBlendStyle()
     {
         if (_terrain is null || _presenter is null) return;
         _presenter.Initialize(
             _terrain,
-            new War3TerrainMaterialSet(_blendStyle),
+            new War3TerrainMaterialSet(_blendStyle, _classicCliffs),
             _blendStyle == War3TerrainBlendStyle.DualGrid
                 ? _visualLayerMap
                 : null);
-        GD.Print($"WAR3_TERRAIN_BLEND_STYLE style={_blendStyle}");
+        GD.Print(
+            $"WAR3_TERRAIN_BLEND_STYLE style={_blendStyle} " +
+            $"cliff={(_classicCliffs ? "ClassicMesh" : "ProceduralFallback")}");
     }
 
     private void UpdateModeLabel()
     {
         if (_modeLabel is null) return;
         _modeLabel.Text = _blendStyle == War3TerrainBlendStyle.DualGrid
-            ? "当前：War3 双网格 · 作者过渡块 + 0–16 带权变化（推荐）"
-            : "当前：SC2 风格连续权重 · 邻域混合 + 低频随机扰动（对照）";
+            ? "当前：War3 双网格 · 作者过渡块 + 0–16 带权变化"
+            : "当前：SC2 风格连续权重 · 邻域混合 + 低频随机扰动";
+        _modeLabel.Text += _classicCliffs
+            ? " · 经典 CliffsABCDn 模型（推荐）"
+            : " · 程序化崖壁回退（对照）";
+        if (_classicCliffs &&
+            _presenter?.LastClassicCliffDiagnostics is { } diagnostics)
+        {
+            _modeLabel.Text +=
+                $" · {diagnostics.SelectedTiles} 块，" +
+                $"{diagnostics.RampFallbackTiles + diagnostics.UnsupportedHeightTiles + diagnostics.MissingAssetTiles} 回退";
+        }
     }
 
     private async Task CaptureAsync()
@@ -302,7 +337,11 @@ public partial class War3TerrainShowcase3D : Node3D
         }
         for (var frame = 0; frame < 120; frame++)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var fileName = _blendStyle == War3TerrainBlendStyle.DualGrid
+        var fileName = _cliffCapture
+            ? _classicCliffs
+                ? "war3_terrain_cliff_capture.png"
+                : "war3_terrain_cliff_fallback_capture.png"
+            : _blendStyle == War3TerrainBlendStyle.DualGrid
             ? "war3_terrain_dual_grid_capture.png"
             : "war3_terrain_continuous_capture.png";
         var path = ProjectSettings.GlobalizePath("user://" + fileName);
