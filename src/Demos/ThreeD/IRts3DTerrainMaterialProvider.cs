@@ -58,10 +58,11 @@ public interface IRts3DTerrainClassicCliffProvider :
         string signature,
         int variation,
         out Rts3DClassicCliffMesh definition);
-    Material ClassicCliffMaterial(TerrainSurfaceDefinition upperSurface);
-    float ClassicCliffBlend(TerrainSurfaceDefinition surface);
+    byte DefaultClassicCliffStyle { get; }
+    Material ClassicCliffMaterial(byte cliffStyle);
+    Material ClassicCliffRevealMaterial(byte cliffStyle);
     bool TryGetClassicCliffGroundLayer(
-        TerrainSurfaceDefinition upperSurface,
+        byte cliffStyle,
         out int layer);
 }
 

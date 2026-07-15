@@ -158,7 +158,7 @@ public sealed class TerrainClassicCliffSeamMap
     public TerrainVisualLayerMap BuildGroundTransitionMap(
         TerrainMapSnapshot terrain,
         TerrainVisualLayerMap source,
-        Func<TerrainSurfaceDefinition, int?> resolveGroundLayer,
+        Func<byte, int?> resolveGroundLayer,
         out int changedPoints)
     {
         ArgumentNullException.ThrowIfNull(terrain);
@@ -186,8 +186,7 @@ public sealed class TerrainClassicCliffSeamMap
         var changed = new HashSet<int>();
         foreach (var tile in _tiles)
         {
-            var layer = resolveGroundLayer(
-                terrain.Surface(tile.UpperSurfaceId));
+            var layer = resolveGroundLayer(tile.CliffStyleId);
             if (layer is not int groundLayer ||
                 groundLayer < 0 ||
                 groundLayer > TerrainVisualLayerMap.MaximumLayer)

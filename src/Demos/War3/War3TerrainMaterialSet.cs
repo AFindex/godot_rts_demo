@@ -47,6 +47,7 @@ public sealed class War3TerrainMaterialSet :
         ShaderRoot + "War3GroundBlend.gdshader",
         ShaderRoot + "War3GroundDualGrid.gdshader",
         ShaderRoot + "War3Cliff.gdshader",
+        ShaderRoot + "War3CliffReveal.gdshader",
         ShaderRoot + "War3Water.gdshader",
         .. SurfaceTextures.Values.Distinct(StringComparer.OrdinalIgnoreCase),
         TextureRoot + "replaceabletextures/cliff/cliff0.png",
@@ -61,11 +62,15 @@ public sealed class War3TerrainMaterialSet :
     private readonly Shader _groundBlendShader;
     private readonly Shader _groundDualGridShader;
     private readonly Shader _cliffShader;
+    private readonly Shader _cliffRevealShader;
     private readonly Shader _waterShader;
     private readonly Texture2D _waterTexture;
     private readonly Dictionary<string, Material> _cliffMaterials =
         new(StringComparer.OrdinalIgnoreCase);
-    private Material? _classicCliffMaterial;
+    private readonly Dictionary<string, Material> _classicCliffMaterials =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Material> _classicCliffRevealMaterials =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly War3ClassicCliffMeshCatalog _classicCliffs;
     private Material? _blendedSurfaceMaterial;
     private Material? _dualGridSurfaceMaterial;
@@ -92,6 +97,8 @@ public sealed class War3TerrainMaterialSet :
             ShaderRoot + "War3GroundDualGrid.gdshader");
         _cliffShader = LoadRequired<Shader>(
             ShaderRoot + "War3Cliff.gdshader");
+        _cliffRevealShader = LoadRequired<Shader>(
+            ShaderRoot + "War3CliffReveal.gdshader");
         _waterShader = LoadRequired<Shader>(
             ShaderRoot + "War3Water.gdshader");
         _waterTexture = LoadTexture(
@@ -106,6 +113,7 @@ public sealed class War3TerrainMaterialSet :
         _classicCliffMeshesEnabled && _classicCliffs.SignatureCount > 0;
     public int ClassicCliffSignatureCount => _classicCliffs.SignatureCount;
     public int ClassicCliffAssetCount => _classicCliffs.AssetCount;
+    public byte DefaultClassicCliffStyle => 0;
 
     public static IReadOnlyList<string> AssetPaths => RequiredPaths;
 
@@ -158,21 +166,37 @@ public sealed class War3TerrainMaterialSet :
     public Material CliffMaterial(TerrainSurfaceDefinition upperSurface)
         => CliffMaterial(upperSurface, classicModelUv: false);
 
-    public Material ClassicCliffMaterial(
-        TerrainSurfaceDefinition upperSurface)
-        => _classicCliffMaterial ??= CreateClassicCliffMaterial();
+    public Material ClassicCliffMaterial(byte cliffStyle) =>
+        CliffMaterial(CliffName(cliffStyle), classicModelUv: true);
 
-    public float ClassicCliffBlend(TerrainSurfaceDefinition surface) =>
-        ResolveCliffName(surface) == "cliff1" ? 1f : 0f;
+    public Material ClassicCliffRevealMaterial(byte cliffStyle)
+    {
+        var cliffName = CliffName(cliffStyle);
+        if (_classicCliffRevealMaterials.TryGetValue(
+                cliffName, out var material))
+        {
+            return material;
+        }
+        material = new ShaderMaterial
+        {
+            Shader = _cliffRevealShader
+        }.WithParameter(
+            "cliff_atlas",
+            LoadTexture(
+                TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
+         .WithParameter("terrain_reveal_inner_height", 17f);
+        _classicCliffRevealMaterials.Add(cliffName, material);
+        return material;
+    }
 
     public bool TryGetClassicCliffGroundLayer(
-        TerrainSurfaceDefinition upperSurface,
+        byte cliffStyle,
         out int layer)
     {
         // Lordaeron Summer Cliff0 declares Ldrt (dirt) as its ground tile;
         // Cliff1 declares Lgrs (grass). This is the same priority texture W3
         // applies to tilepoints neighbouring a cliff model.
-        var groundKey = ResolveCliffName(upperSurface) == "cliff1"
+        var groundKey = CliffName(cliffStyle) == "cliff1"
             ? "badlands"
             : "sand";
         return BlendChannels.TryGetValue(groundKey, out layer);
@@ -180,10 +204,17 @@ public sealed class War3TerrainMaterialSet :
 
     private Material CliffMaterial(
         TerrainSurfaceDefinition upperSurface,
+        bool classicModelUv) =>
+        CliffMaterial(ResolveCliffName(upperSurface), classicModelUv);
+
+    private Material CliffMaterial(
+        string cliffName,
         bool classicModelUv)
     {
-        var cliffName = ResolveCliffName(upperSurface);
-        if (_cliffMaterials.TryGetValue(cliffName, out var material))
+        var cache = classicModelUv
+            ? _classicCliffMaterials
+            : _cliffMaterials;
+        if (cache.TryGetValue(cliffName, out var material))
             return material;
         material = new ShaderMaterial
         {
@@ -193,24 +224,18 @@ public sealed class War3TerrainMaterialSet :
             LoadTexture(
                 TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
          .WithParameter("use_model_atlas_uv", classicModelUv);
-        _cliffMaterials.Add(cliffName, material);
+        cache.Add(cliffName, material);
         return material;
     }
 
-    private Material CreateClassicCliffMaterial() =>
-        new ShaderMaterial
-        {
-            Shader = _cliffShader
-        }.WithParameter(
-            "cliff_atlas",
-            LoadTexture(
-                TextureRoot + "replaceabletextures/cliff/cliff0.png"))
-         .WithParameter(
-             "cliff_atlas_secondary",
-             LoadTexture(
-                 TextureRoot + "replaceabletextures/cliff/cliff1.png"))
-         .WithParameter("use_model_atlas_uv", true)
-         .WithParameter("use_instance_cliff_blend", true);
+    private static string CliffName(byte cliffStyle) => cliffStyle switch
+    {
+        0 => "cliff0",
+        1 => "cliff1",
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(cliffStyle), cliffStyle,
+            "Lordaeron Summer exports exactly two cliff styles (0 and 1).")
+    };
 
     private static string ResolveCliffName(
         TerrainSurfaceDefinition upperSurface) =>

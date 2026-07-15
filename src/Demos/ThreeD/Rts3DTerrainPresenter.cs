@@ -10,6 +10,7 @@ namespace RtsDemo.Demos.ThreeD;
 public partial class Rts3DTerrainPresenter : Node3D
 {
     private const int BlendSampleRadius = 2;
+    private const float ClassicCliffApronMaximumLocalHeight = 65f;
     private readonly Dictionary<string, StandardMaterial3D> _materials = [];
     private MeshInstance3D? _visual;
     private Node3D? _classicCliffRoot;
@@ -26,7 +27,8 @@ public partial class Rts3DTerrainPresenter : Node3D
     public void Initialize(
         TerrainMapSnapshot terrain,
         IRts3DTerrainMaterialProvider? materialProvider = null,
-        TerrainVisualLayerMap? visualLayerMap = null)
+        TerrainVisualLayerMap? visualLayerMap = null,
+        TerrainClassicCliffStyleMap? cliffStyleMap = null)
     {
         ArgumentNullException.ThrowIfNull(terrain);
         _visual?.QueueFree();
@@ -47,7 +49,8 @@ public partial class Rts3DTerrainPresenter : Node3D
             materialProvider as IRts3DTerrainClassicCliffProvider;
         var classicCliffSeams =
             classicCliffProvider?.ClassicCliffMeshesEnabled == true
-                ? AppendClassicCliffs(terrain, classicCliffProvider)
+                ? AppendClassicCliffs(
+                    terrain, classicCliffProvider, cliffStyleMap)
                 : null;
         if (dualGridProvider?.DualGridEnabled == true)
             AppendDualGridSurface(
@@ -79,22 +82,39 @@ public partial class Rts3DTerrainPresenter : Node3D
 
     private TerrainClassicCliffSeamMap AppendClassicCliffs(
         TerrainMapSnapshot terrain,
-        IRts3DTerrainClassicCliffProvider provider)
+        IRts3DTerrainClassicCliffProvider provider,
+        TerrainClassicCliffStyleMap? styleMap)
     {
+        if (styleMap is not null && !styleMap.Matches(terrain))
+        {
+            throw new ArgumentException(
+                "Classic cliff style map does not match the terrain.",
+                nameof(styleMap));
+        }
         var layout = TerrainCliffMeshLayout.Build(
             terrain, provider.ClassicCliffVariationCount);
         LastClassicCliffDiagnostics = layout.Diagnostics;
         var resolvedTiles = new List<TerrainClassicCliffTile>();
         var groups = new Dictionary<ClassicCliffGroupKey, ClassicCliffGroup>();
-        foreach (var tile in layout.Tiles)
+        var occupiedTiles = layout.Tiles
+            .ToArray()
+            .Select(static tile => (tile.Column, tile.Row))
+            .ToHashSet();
+        foreach (var sourceTile in layout.Tiles)
         {
+            var tile = sourceTile with
+            {
+                CliffStyleId = styleMap?.StyleAt(
+                    sourceTile.Column, sourceTile.Row) ??
+                    provider.DefaultClassicCliffStyle
+            };
             if (!provider.TryGetClassicCliffMesh(
                     tile.Signature, tile.Variation, out var definition))
             {
                 continue;
             }
             var key = new ClassicCliffGroupKey(
-                definition.AssetKey, tile.UpperSurfaceId);
+                definition.AssetKey, tile.CliffStyleId);
             if (!groups.TryGetValue(key, out var group))
             {
                 group = new ClassicCliffGroup(definition);
@@ -102,46 +122,35 @@ public partial class Rts3DTerrainPresenter : Node3D
             }
             group.Transforms.Add(ClassicCliffTransform(terrain, tile) *
                                  definition.ModelTransform);
-            group.CliffBlendCorners.Add(ClassicCliffBlendCorners(
-                terrain, tile, provider.ClassicCliffBlend));
+            group.TerrainRevealEdges.Add(
+                ClassicCliffTerrainRevealEdges(
+                    terrain, tile, occupiedTiles));
             resolvedTiles.Add(tile);
         }
 
         var root = new Node3D { Name = "ClassicCliffMeshes" };
         foreach (var (key, group) in groups)
         {
-            var material = provider.ClassicCliffMaterial(
-                terrain.Surface(key.SurfaceId));
-            var renderMesh = (Mesh)group.Definition.Mesh.Duplicate();
-            if (renderMesh is ArrayMesh arrayMesh)
-            {
-                for (var surface = 0;
-                     surface < arrayMesh.GetSurfaceCount();
-                     surface++)
-                {
-                    arrayMesh.SurfaceSetMaterial(surface, material);
-                }
-            }
-            var multiMesh = new MultiMesh
-            {
-                TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-                Mesh = renderMesh,
-                UseCustomData = true,
-                InstanceCount = group.Transforms.Count
-            };
-            for (var index = 0; index < group.Transforms.Count; index++)
-            {
-                multiMesh.SetInstanceTransform(index, group.Transforms[index]);
-                multiMesh.SetInstanceCustomData(
-                    index, group.CliffBlendCorners[index]);
-            }
-            root.AddChild(new MultiMeshInstance3D
-            {
-                Name = $"Cliff_{Path.GetFileNameWithoutExtension(key.AssetKey)}_S{key.SurfaceId}",
-                Multimesh = multiMesh,
-                MaterialOverride = material,
-                CastShadow = GeometryInstance3D.ShadowCastingSetting.On
-            });
+            var parts = SplitClassicCliffMesh(group.Definition.Mesh);
+            var baseName =
+                $"Cliff_{Path.GetFileNameWithoutExtension(key.AssetKey)}" +
+                $"_C{key.CliffStyleId}";
+            AddClassicCliffBatch(
+                root,
+                baseName + "_Opaque",
+                parts.Opaque,
+                provider.ClassicCliffMaterial(key.CliffStyleId),
+                group,
+                useCustomData: false,
+                GeometryInstance3D.ShadowCastingSetting.On);
+            AddClassicCliffBatch(
+                root,
+                baseName + "_Reveal",
+                parts.Reveal,
+                provider.ClassicCliffRevealMaterial(key.CliffStyleId),
+                group,
+                useCustomData: true,
+                GeometryInstance3D.ShadowCastingSetting.Off);
         }
         if (root.GetChildCount() > 0)
         {
@@ -165,6 +174,125 @@ public partial class Rts3DTerrainPresenter : Node3D
             $"heightFallback={layout.Diagnostics.UnsupportedHeightTiles} " +
             $"missing={layout.Diagnostics.MissingAssetTiles}");
         return seamMap;
+    }
+
+    private static ClassicCliffMeshParts SplitClassicCliffMesh(Mesh source)
+    {
+        if (source is not ArrayMesh sourceMesh)
+        {
+            return new ClassicCliffMeshParts(
+                (Mesh)source.Duplicate(), new ArrayMesh());
+        }
+        var opaque = new ArrayMesh();
+        var reveal = new ArrayMesh();
+        for (var surface = 0;
+             surface < sourceMesh.GetSurfaceCount();
+             surface++)
+        {
+            var primitive = sourceMesh.SurfaceGetPrimitiveType(surface);
+            var sourceArrays = sourceMesh.SurfaceGetArrays(surface);
+            if (primitive != Mesh.PrimitiveType.Triangles)
+            {
+                opaque.AddSurfaceFromArrays(primitive, sourceArrays);
+                continue;
+            }
+            var vertices = sourceArrays[(int)Mesh.ArrayType.Vertex]
+                .AsVector3Array();
+            var indices = sourceArrays[(int)Mesh.ArrayType.Index]
+                .AsInt32Array();
+            if (indices.Length == 0)
+                indices = Enumerable.Range(0, vertices.Length).ToArray();
+            var opaqueIndices = new List<int>(indices.Length);
+            var revealIndices = new List<int>(indices.Length / 3);
+            for (var index = 0; index + 2 < indices.Length; index += 3)
+            {
+                var a = indices[index];
+                var b = indices[index + 1];
+                var c = indices[index + 2];
+                var maximumHeight = MathF.Max(
+                    vertices[a].Z,
+                    MathF.Max(vertices[b].Z, vertices[c].Z));
+                var target = maximumHeight <=
+                             ClassicCliffApronMaximumLocalHeight
+                    ? revealIndices
+                    : opaqueIndices;
+                target.Add(a);
+                target.Add(b);
+                target.Add(c);
+            }
+            AddFilteredSurface(opaque, sourceMesh, surface, opaqueIndices);
+            AddFilteredSurface(reveal, sourceMesh, surface, revealIndices);
+        }
+        return new ClassicCliffMeshParts(opaque, reveal);
+    }
+
+    private static void AddFilteredSurface(
+        ArrayMesh target,
+        ArrayMesh source,
+        int surface,
+        List<int> indices)
+    {
+        if (indices.Count == 0) return;
+        var arrays = source.SurfaceGetArrays(surface);
+        var vertices = arrays[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+        var normals = arrays[(int)Mesh.ArrayType.Normal].AsVector3Array();
+        var uvs = arrays[(int)Mesh.ArrayType.TexUV].AsVector2Array();
+        var tool = new SurfaceTool();
+        tool.Begin(Mesh.PrimitiveType.Triangles);
+        foreach (var index in indices)
+        {
+            if (normals.Length == vertices.Length)
+                tool.SetNormal(normals[index]);
+            if (uvs.Length == vertices.Length)
+                tool.SetUV(uvs[index]);
+            tool.AddVertex(vertices[index]);
+        }
+        tool.Index();
+        tool.Commit(target);
+    }
+
+    private static void AddClassicCliffBatch(
+        Node3D root,
+        string name,
+        Mesh mesh,
+        Material material,
+        ClassicCliffGroup group,
+        bool useCustomData,
+        GeometryInstance3D.ShadowCastingSetting shadowCasting)
+    {
+        if (mesh.GetSurfaceCount() == 0) return;
+        if (mesh is ArrayMesh arrayMesh)
+        {
+            for (var surface = 0;
+                 surface < arrayMesh.GetSurfaceCount();
+                 surface++)
+            {
+                arrayMesh.SurfaceSetMaterial(surface, material);
+            }
+        }
+        var multiMesh = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            Mesh = mesh,
+            UseCustomData = useCustomData,
+            InstanceCount = group.Transforms.Count
+        };
+        for (var index = 0; index < group.Transforms.Count; index++)
+        {
+            multiMesh.SetInstanceTransform(index, group.Transforms[index]);
+            if (useCustomData)
+            {
+                multiMesh.SetInstanceCustomData(
+                    index, group.TerrainRevealEdges[index]);
+            }
+        }
+        root.AddChild(new MultiMeshInstance3D
+        {
+            Name = name,
+            Multimesh = multiMesh,
+            MaterialOverride = material,
+            CastShadow = shadowCasting
+        });
     }
 
     private Transform3D ClassicCliffTransform(
@@ -202,24 +330,47 @@ public partial class Rts3DTerrainPresenter : Node3D
                 tile.BaseLevel * terrain.CliffLevelHeight));
     }
 
-    internal static Color ClassicCliffBlendCorners(
+    internal static Color ClassicCliffTerrainRevealEdges(
         TerrainMapSnapshot terrain,
         TerrainClassicCliffTile tile,
-        Func<TerrainSurfaceDefinition, float> resolveBlend)
+        IReadOnlySet<(int Column, int Row)> occupiedTiles)
     {
         ArgumentNullException.ThrowIfNull(terrain);
-        ArgumentNullException.ThrowIfNull(resolveBlend);
-        // Custom-data channel order matches the model filename and shader:
-        // red=TL, green=TR, blue=BR, alpha=BL.
+        ArgumentNullException.ThrowIfNull(occupiedTiles);
+        // Each channel owns one model border. Reveal is safe only where both
+        // edge endpoints are at the base level and no neighbouring cliff tile
+        // is welded to that border: red=top, green=right, blue=bottom,
+        // alpha=left. Shared cliff-to-cliff borders remain fully opaque.
         return new Color(
-            Blend(tile.Column, tile.Row + 1),
-            Blend(tile.Column + 1, tile.Row + 1),
-            Blend(tile.Column + 1, tile.Row),
-            Blend(tile.Column, tile.Row));
+            CanReveal(
+                tile.Column, tile.Row + 1,
+                tile.Column + 1, tile.Row + 1,
+                tile.Column, tile.Row + 1),
+            CanReveal(
+                tile.Column + 1, tile.Row + 1,
+                tile.Column + 1, tile.Row,
+                tile.Column + 1, tile.Row),
+            CanReveal(
+                tile.Column + 1, tile.Row,
+                tile.Column, tile.Row,
+                tile.Column, tile.Row - 1),
+            CanReveal(
+                tile.Column, tile.Row,
+                tile.Column, tile.Row + 1,
+                tile.Column - 1, tile.Row));
 
-        float Blend(int column, int row) => Math.Clamp(
-            resolveBlend(terrain.Surface(
-                terrain.Cell(column, row).SurfaceId)), 0f, 1f);
+        float CanReveal(
+            int firstColumn,
+            int firstRow,
+            int secondColumn,
+            int secondRow,
+            int neighbourColumn,
+            int neighbourRow) =>
+            !occupiedTiles.Contains((neighbourColumn, neighbourRow)) &&
+            terrain.Cell(firstColumn, firstRow).CliffLevel == tile.BaseLevel &&
+            terrain.Cell(secondColumn, secondRow).CliffLevel == tile.BaseLevel
+                ? 1f
+                : 0f;
     }
 
     private void AppendSurface(
@@ -279,8 +430,9 @@ public partial class Rts3DTerrainPresenter : Node3D
             visualMap = cliffSeams.BuildGroundTransitionMap(
                 terrain,
                 visualMap,
-                surface => classicCliffProvider.TryGetClassicCliffGroundLayer(
-                    surface, out var layer)
+                cliffStyle =>
+                    classicCliffProvider.TryGetClassicCliffGroundLayer(
+                    cliffStyle, out var layer)
                     ? layer
                     : null,
                 out seamPointOverrides);
@@ -311,6 +463,15 @@ public partial class Rts3DTerrainPresenter : Node3D
                     encoded);
             }
         }
+        if (cliffSeams is not null)
+        {
+            foreach (var tile in cliffSeams.Tiles)
+            {
+                AppendClassicCliffUnderlay(
+                    tool, terrain, visualMap, tile);
+                added = true;
+            }
+        }
         if (added)
             tool.Commit(mesh);
         GD.Print(
@@ -318,6 +479,63 @@ public partial class Rts3DTerrainPresenter : Node3D
             $"visual={visualMap.StableHashText} " +
             $"points={visualMap.PointColumns}x{visualMap.PointRows} " +
             $"cliffGroundOverrides={seamPointOverrides}");
+    }
+
+    private void AppendClassicCliffUnderlay(
+        SurfaceTool tool,
+        TerrainMapSnapshot terrain,
+        TerrainVisualLayerMap visualMap,
+        TerrainClassicCliffTile tile)
+    {
+        // SC2 reveal assumes terrain exists directly below every masked cliff
+        // border. Our gameplay-cell mesh is clipped on raised quadrants, so a
+        // presentation-only floor closes sub-triangle gaps under the classic
+        // centre-to-centre footprint. It reuses each surrounding visual cell's
+        // exact dual-grid encoding and world UVs, making exterior borders join
+        // the existing terrain without another material transition.
+        var origin = ClassicCliffOrigin(terrain, tile) +
+                     Vector3.Down * ClassicCliffUnderlayDepthBias(
+                         _cliffWorldHeight);
+        var half = _cellWorldSize * 0.5f;
+        var centre = origin + new Vector3(half, 0f, half);
+        var right = origin + new Vector3(_cellWorldSize, 0f, 0f);
+        var top = origin + new Vector3(0f, 0f, _cellWorldSize);
+        var topRight = origin +
+                       new Vector3(_cellWorldSize, 0f, _cellWorldSize);
+        AddDualGridQuad(
+            tool,
+            origin,
+            origin + new Vector3(half, 0f, 0f),
+            centre,
+            origin + new Vector3(0f, 0f, half),
+            Encoded(tile.Column, tile.Row));
+        AddDualGridQuad(
+            tool,
+            origin + new Vector3(half, 0f, 0f),
+            right,
+            right + new Vector3(0f, 0f, half),
+            centre,
+            Encoded(tile.Column + 1, tile.Row));
+        AddDualGridQuad(
+            tool,
+            origin + new Vector3(0f, 0f, half),
+            centre,
+            centre + new Vector3(0f, 0f, half),
+            top,
+            Encoded(tile.Column, tile.Row + 1));
+        AddDualGridQuad(
+            tool,
+            centre,
+            right + new Vector3(0f, 0f, half),
+            topRight,
+            centre + new Vector3(0f, 0f, half),
+            Encoded(tile.Column + 1, tile.Row + 1));
+
+        Vector2 Encoded(int column, int row)
+        {
+            var cell = visualMap.Cell(column, row);
+            return new Vector2(cell.PackedLayerMasks, cell.BaseVariation);
+        }
     }
 
     private void AppendBlendedSurface(
@@ -822,6 +1040,10 @@ public partial class Rts3DTerrainPresenter : Node3D
         float cliffWorldHeight) =>
         MathF.Max(0.0025f, cliffWorldHeight * 0.0025f);
 
+    internal static float ClassicCliffUnderlayDepthBias(
+        float cliffWorldHeight) =>
+        ClassicCliffGroundDepthBias(cliffWorldHeight) * 2f;
+
     private static GroundCellWeightData GroundCellWeights(
         Color bottomLeft,
         Color bottomRight,
@@ -1028,13 +1250,17 @@ public partial class Rts3DTerrainPresenter : Node3D
 
     private readonly record struct ClassicCliffGroupKey(
         string AssetKey,
-        ushort SurfaceId);
+        byte CliffStyleId);
+
+    private readonly record struct ClassicCliffMeshParts(
+        Mesh Opaque,
+        Mesh Reveal);
 
     private sealed class ClassicCliffGroup(Rts3DClassicCliffMesh definition)
     {
         public Rts3DClassicCliffMesh Definition { get; } = definition;
         public List<Transform3D> Transforms { get; } = [];
-        public List<Color> CliffBlendCorners { get; } = [];
+        public List<Color> TerrainRevealEdges { get; } = [];
     }
 
     private readonly record struct GroundCellGeometryData(

@@ -225,7 +225,8 @@ public readonly record struct TerrainClassicCliffTile(
     int Variation,
     byte BaseLevel,
     byte MaximumLevel,
-    ushort UpperSurfaceId);
+    ushort UpperSurfaceId,
+    byte CliffStyleId = 0);
 
 public readonly record struct TerrainCliffMeshDiagnostics(
     int CandidateTiles,

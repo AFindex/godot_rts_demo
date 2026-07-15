@@ -59,6 +59,25 @@ public static class TerrainCliffMeshLayoutSelfTest
                              seamVisual.PointLayer(2, 2) == 1 &&
                              sourceVisual.PointLayer(1, 1) == 1 &&
                              seamVisual.StableHash != sourceVisual.StableHash;
+        var explicitStyles = TerrainClassicCliffStyleMap.FromTilepoints(
+            source, new byte[] { 1, 0, 0, 0 });
+        var uniformStyles = TerrainClassicCliffStyleMap.Uniform(source, 1);
+        var explicitCliffStyle =
+            explicitStyles.Matches(source) &&
+            explicitStyles.StyleAt(0, 0) == 1 &&
+            explicitStyles.StyleAt(1, 0) == 0 &&
+            uniformStyles.StyleAt(0, 0) == 1 &&
+            uniformStyles.StyleAt(1, 1) == 1;
+        var styledTile = first.Tiles[0] with { CliffStyleId = 1 };
+        var styledSeam = TerrainClassicCliffSeamMap.Build(
+            source, new[] { styledTile });
+        var styledVisual = styledSeam.BuildGroundTransitionMap(
+            source,
+            sourceVisual,
+            cliffStyle => cliffStyle == 1 ? 3 : 0,
+            out var styledChangedPoints);
+        var cliffStyleGroundPriority = styledChangedPoints == 1 &&
+                                       styledVisual.PointLayer(1, 1) == 3;
 
         var highBuilder = Builder(surfaces);
         highBuilder.SetCell(0, 1, Cell(3, 1));
@@ -91,18 +110,21 @@ public static class TerrainCliffMeshLayoutSelfTest
                 level * source.CliffLevelHeight);
             cliffOriginsScaled &= MathF.Abs(origin.Y - expectedY) < 0.00001f;
         }
-        var blendCorners = Rts3DTerrainPresenter.ClassicCliffBlendCorners(
-            source,
-            first.Tiles[0],
-            surface => surface.Id == 1 ? 1f : 0f);
-        var blendCornerOrder =
-            MathF.Abs(blendCorners.R - 1f) < 0.00001f &&
-            MathF.Abs(blendCorners.G) < 0.00001f &&
-            MathF.Abs(blendCorners.B) < 0.00001f &&
-            MathF.Abs(blendCorners.A) < 0.00001f;
         var groundDepthBias = MathF.Abs(
             Rts3DTerrainPresenter.ClassicCliffGroundDepthBias(1.2f) -
             0.003f) < 0.00001f;
+        var underlayDepthBias = MathF.Abs(
+            Rts3DTerrainPresenter.ClassicCliffUnderlayDepthBias(1.2f) -
+            0.006f) < 0.00001f;
+        var revealEdges = Rts3DTerrainPresenter.ClassicCliffTerrainRevealEdges(
+            source,
+            first.Tiles[0],
+            new HashSet<(int Column, int Row)> { (0, 0) });
+        var terrainRevealEdges =
+            MathF.Abs(revealEdges.R) < 0.00001f &&
+            MathF.Abs(revealEdges.G - 1f) < 0.00001f &&
+            MathF.Abs(revealEdges.B - 1f) < 0.00001f &&
+            MathF.Abs(revealEdges.A) < 0.00001f;
 
         var catalog = War3ClassicCliffMeshCatalog.LoadDefault();
         var exportedCatalog = catalog.SignatureCount == 64 &&
@@ -110,19 +132,24 @@ public static class TerrainCliffMeshLayoutSelfTest
                               catalog.VariationCount("AAAB") == 2 &&
                               catalog.VariationCount("AABB") == 3;
         var passed = signature && deterministic && quarterOwnership &&
-                     groundPriority && rejectsTall &&
+                     groundPriority && explicitCliffStyle &&
+                     cliffStyleGroundPriority && rejectsTall &&
                      rejectsRamp && reportsMissing && exportedCatalog &&
-                     cliffOriginsScaled && blendCornerOrder &&
+                     cliffOriginsScaled && terrainRevealEdges &&
+                     underlayDepthBias &&
                      groundDepthBias;
         return new SelfTestResult(
             passed,
             $"signature={signature}, deterministic={deterministic}, " +
             $"quarterOwnership={quarterOwnership}, groundPriority={groundPriority}, " +
+            $"explicitCliffStyle={explicitCliffStyle}, " +
+            $"cliffStyleGroundPriority={cliffStyleGroundPriority}, " +
             $"tallFallback={rejectsTall}, rampFallback={rejectsRamp}, " +
             $"missing={reportsMissing}, catalog={exportedCatalog}" +
             $"({catalog.SignatureCount}/{catalog.AssetCount}), " +
             $"cliffOriginsScaled={cliffOriginsScaled}, " +
-            $"blendCornerOrder={blendCornerOrder}, " +
+            $"terrainRevealEdges={terrainRevealEdges}, " +
+            $"underlayDepthBias={underlayDepthBias}, " +
             $"groundDepthBias={groundDepthBias}, " +
             $"hash={first.StableHashText}");
     }
