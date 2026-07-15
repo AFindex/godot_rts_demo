@@ -11,8 +11,16 @@ public sealed partial class War3RtsHud : Control
     private const float ConsoleChromeWidth = 1000f;
     private const float ConsoleTextureSize = 320f;
     private const float ConsoleTextureTop = -112f;
-    private static readonly Vector2 PortraitSlotPosition = new(269f, 69f);
+    private const float PortraitMaskScale = 0.98f;
+    private const float PortraitBarWidth = 98f * PortraitMaskScale;
+    private const float PortraitBarHeight = 14f * PortraitMaskScale;
+    private static readonly Vector2 PortraitSlotPosition = new(270f, 69f);
     private static readonly Vector2 PortraitSlotSize = new(93f, 100f);
+    private static readonly Vector2 PortraitMaskPosition = new(
+        -21f * PortraitMaskScale,
+        -115f * PortraitMaskScale);
+    private static readonly Vector2 PortraitMaskSize = Vector2.One *
+        (256f * PortraitMaskScale);
     private static readonly Color Ink = new("071019f2");
     private static readonly Color Surface = new("101923e8");
     private static readonly Color Raised = new("182431f2");
@@ -64,7 +72,8 @@ public sealed partial class War3RtsHud : Control
         _portraitSlot.Size.IsEqualApprox(PortraitSlotSize) &&
         _portraitOpening?.Position.IsEqualApprox(Vector2.Zero) == true &&
         _portraitOpening.Size.IsEqualApprox(PortraitSlotSize) &&
-        _portraitMask?.Position.IsEqualApprox(new Vector2(6f, -60f)) == true &&
+        _portraitMask?.Position.IsEqualApprox(PortraitMaskPosition) == true &&
+        _portraitMask.Size.IsEqualApprox(PortraitMaskSize) &&
         _commandGrid?.Position.IsEqualApprox(new Vector2(766f, 38f)) == true &&
         _commandButtons[11].Position.IsEqualApprox(new Vector2(174f, 116f));
 
@@ -99,7 +108,8 @@ public sealed partial class War3RtsHud : Control
                 ? Math.Clamp(snapshot.Selection.Health /
                              snapshot.Selection.MaximumHealth, 0f, 1f)
                 : 0f;
-            _portraitHealthFill.Size = new Vector2(62f * healthRatio, 8f);
+            _portraitHealthFill.Size = new Vector2(
+                PortraitBarWidth * healthRatio, PortraitBarHeight);
         }
         _queue!.Visible = snapshot.Selection.QueueLabel.Length > 0;
         _queueLabel!.Visible = _queue.Visible;
@@ -328,10 +338,12 @@ public sealed partial class War3RtsHud : Control
         _portraitMask = new TextureRect
         {
             Name = "PortraitMask",
-            // The source texture's first 96 rows are transparent.  With the
-            // 160 px draw size this places its visible pixels at slot y=0.
-            Position = new Vector2(6f, -60f),
-            Size = new Vector2(160f, 160f),
+            // Register the mask's 95x101 transparent portrait aperture with
+            // the 93x100 aperture cut into HumanUITile01/02.  The frame then
+            // covers both the live portrait and the base chrome, as it does
+            // in Warcraft III, instead of becoming a smaller inset frame.
+            Position = PortraitMaskPosition,
+            Size = PortraitMaskSize,
             Texture = War3RuntimeAssets.LoadTexture(
                 @"UI\Console\Human\HumanUIPortraitMask.blp"),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
@@ -344,8 +356,10 @@ public sealed partial class War3RtsHud : Control
 
         var healthBack = new ColorRect
         {
-            Position = new Vector2(18f, 78f),
-            Size = new Vector2(62f, 8f),
+            Position = new Vector2(
+                -PortraitMaskScale,
+                (220f - 115f) * PortraitMaskScale),
+            Size = new Vector2(PortraitBarWidth, PortraitBarHeight),
             Color = new Color("071009"),
             MouseFilter = MouseFilterEnum.Ignore,
             ZIndex = 15
@@ -353,15 +367,17 @@ public sealed partial class War3RtsHud : Control
         _portraitSlot.AddChild(healthBack);
         _portraitHealthFill = new ColorRect
         {
-            Size = new Vector2(62f, 8f),
+            Size = new Vector2(PortraitBarWidth, PortraitBarHeight),
             Color = new Color("3c9d50"),
             MouseFilter = MouseFilterEnum.Ignore
         };
         healthBack.AddChild(_portraitHealthFill);
         _portraitSlot.AddChild(new ColorRect
         {
-            Position = new Vector2(18f, 89f),
-            Size = new Vector2(62f, 9f),
+            Position = new Vector2(
+                -PortraitMaskScale,
+                (238f - 115f) * PortraitMaskScale),
+            Size = new Vector2(PortraitBarWidth, PortraitBarHeight),
             Color = new Color("09203b"),
             MouseFilter = MouseFilterEnum.Ignore,
             ZIndex = 15
