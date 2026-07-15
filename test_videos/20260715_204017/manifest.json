@@ -1,0 +1,31 @@
+﻿{
+    "created_at":  "2026-07-15T20:40:49.4072895+08:00",
+    "fps":  30,
+    "codec":  "AV1 (libsvtav1)",
+    "container":  "WebM",
+    "crf":  32,
+    "preset":  8,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "terrain-presets"
+                        ],
+    "available_cases":  [
+                            "terrain-presets"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "terrain-presets",
+                      "file":  "terrain-presets.webm",
+                      "log":  "terrain-presets.log",
+                      "bytes":  549036,
+                      "source_bytes":  34372762,
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8,
+                      "exit_code":  0,
+                      "encode_error":  null,
+                      "result":  "RTS_TERRAIN_PRESETS_DEMO_PASS presets=12, ramps=21, assets=12, hashes=12"
+                  }
+              ]
+}

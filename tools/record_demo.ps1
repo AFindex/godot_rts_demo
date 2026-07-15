@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("3d-encounter", "terrain-traversal", "terrain-dynamic", "terrain-vision", "terrain-authoring")]
+    [ValidateSet("3d-encounter", "terrain-traversal", "terrain-dynamic", "terrain-presets", "terrain-vision", "terrain-authoring")]
     [string]$Demo = "3d-encounter",
     [ValidateRange(1, 60)] [int]$Fps = 30,
     [ValidateRange(1, 70)] [int]$Crf = 32,
@@ -35,6 +35,14 @@ $configuration = switch ($Demo) {
             Argument = "--terrain-dynamic-demo-recording"
             ResultPrefix = "RTS_TERRAIN_DYNAMIC_DEMO_"
             PassPrefix = "RTS_TERRAIN_DYNAMIC_DEMO_PASS "
+        }
+    }
+    "terrain-presets" {
+        @{
+            Scene = "res://demo/3d/TerrainPresetGallery3D.tscn"
+            Argument = "--terrain-presets-recording"
+            ResultPrefix = "RTS_TERRAIN_PRESETS_DEMO_"
+            PassPrefix = "RTS_TERRAIN_PRESETS_DEMO_PASS "
         }
     }
     "terrain-vision" {

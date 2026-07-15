@@ -22,6 +22,7 @@ public static class SimulationSelfTest
             var terrainResult = TerrainMapSelfTest.Run();
             var terrainAuthoringResult = TerrainAuthoringSelfTest.Run();
             var terrainTopologyResult = TerrainNavigationTopologySelfTest.Run();
+            var terrainPresetResult = TerrainTestPresetCatalogSelfTest.Run();
             var terrainVisionResult = TerrainVisionSelfTest.Run();
             var fallbackPathResult = PathProviderFallbackSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
@@ -61,6 +62,7 @@ public static class SimulationSelfTest
             var passed = dataResult.Passed && terrainResult.Passed &&
                          terrainAuthoringResult.Passed &&
                          terrainTopologyResult.Passed &&
+                         terrainPresetResult.Passed &&
                          terrainVisionResult.Passed &&
                          fallbackPathResult.Passed &&
                          profileResult.Passed &&
@@ -91,6 +93,9 @@ public static class SimulationSelfTest
                 $"terrain-topology=" +
                 $"{(terrainTopologyResult.Passed ? "PASS" : "FAIL")}" +
                 $"({terrainTopologyResult.Summary})",
+                $"terrain-presets=" +
+                $"{(terrainPresetResult.Passed ? "PASS" : "FAIL")}" +
+                $"({terrainPresetResult.Summary})",
                 $"terrain-vision=" +
                 $"{(terrainVisionResult.Passed ? "PASS" : "FAIL")}" +
                 $"({terrainVisionResult.Summary})",

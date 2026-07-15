@@ -675,16 +675,24 @@ public static class TerrainNavigationTopologyBuilder
         var travel = DirectionOffset(ramp.Direction);
         minimumColumn = Math.Min(
             minimumColumn,
-            ramp.Cells.Min(value => value.Column - travel.Column));
+            ramp.Cells.Min(value => Math.Min(
+                value.Column - travel.Column,
+                value.Column + travel.Column)));
         maximumColumn = Math.Max(
             maximumColumn,
-            ramp.Cells.Max(value => value.Column + travel.Column));
+            ramp.Cells.Max(value => Math.Max(
+                value.Column - travel.Column,
+                value.Column + travel.Column)));
         minimumRow = Math.Min(
             minimumRow,
-            ramp.Cells.Min(value => value.Row - travel.Row));
+            ramp.Cells.Min(value => Math.Min(
+                value.Row - travel.Row,
+                value.Row + travel.Row)));
         maximumRow = Math.Max(
             maximumRow,
-            ramp.Cells.Max(value => value.Row + travel.Row));
+            ramp.Cells.Max(value => Math.Max(
+                value.Row - travel.Row,
+                value.Row + travel.Row)));
         var minimum = terrain.CellBounds(
             minimumColumn, minimumRow).Min;
         var maximum = terrain.CellBounds(

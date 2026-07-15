@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-15T19:51:21.8475740+08:00",
+    "generated_at":  "2026-07-15T20:41:02.9608722+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  183,
-    "case_count":  135,
+    "recording_count":  184,
+    "case_count":  136,
     "recordings":  [
+                       {
+                           "id":  "terrain-presets",
+                           "display_name":  null,
+                           "batch":  "20260715_204017",
+                           "created_at":  "2026-07-15T20:40:49.4072895+08:00",
+                           "video":  "../20260715_204017/terrain-presets.webm",
+                           "log":  "../20260715_204017/terrain-presets.log",
+                           "bytes":  549036,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_TERRAIN_PRESETS_DEMO_PASS presets=12, ramps=21, assets=12, hashes=12",
+                           "metrics":  "RTS_TERRAIN_PRESETS_DEMO_PASS presets=12, ramps=21, assets=12, hashes=12"
+                       },
                        {
                            "id":  "terrain-dynamic",
                            "display_name":  null,

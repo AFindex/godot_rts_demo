@@ -150,6 +150,9 @@ public partial class Rts3DTerrainPresenter : Node3D
             "rock" => new Color("535d68"),
             "sand" => new Color("816c48"),
             "shallow-water" => new Color("27758a"),
+            "deep-water" => new Color("173c63"),
+            "mud" => new Color("625540"),
+            "vision-smoke" => new Color("4f405f"),
             "metal" => new Color("374c57"),
             "cliff-face" => new Color("30383f"),
             _ => new Color("59665d")
