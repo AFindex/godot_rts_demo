@@ -85,19 +85,29 @@ public partial class Rts3DCameraController : Node
         ArgumentNullException.ThrowIfNull(camera);
         _camera = camera;
         _simulationBounds = Normalize(simulationBounds);
-
-        var center = (_simulationBounds.Min + _simulationBounds.Max) * 0.5f;
-        _currentTarget = center;
-        _desiredTarget = center;
-        _currentDistance = Math.Clamp(InitialDistance, MinimumDistance, MaximumDistance);
-        _desiredDistance = _currentDistance;
-        _currentYaw = Mathf.DegToRad(InitialYawDegrees);
-        _desiredYaw = _currentYaw;
-        _currentPitch = Mathf.DegToRad(InitialPitchDegrees);
-        _desiredPitch = _currentPitch;
-        ApplyCameraTransform();
+        ResetView(immediate: true);
         SetProcess(true);
         SetProcessUnhandledInput(true);
+    }
+
+    /// <summary>Restores the authored overview target, zoom and orientation.</summary>
+    public void ResetView(bool immediate = false)
+    {
+        if (_camera is null) return;
+        _desiredTarget = (_simulationBounds.Min + _simulationBounds.Max) * 0.5f;
+        _desiredDistance = Math.Clamp(
+            InitialDistance, MinimumDistance, MaximumDistance);
+        _desiredYaw = Mathf.DegToRad(InitialYawDegrees);
+        _desiredPitch = Mathf.DegToRad(InitialPitchDegrees);
+        _automationActive = false;
+        _pendingPanPixels = Vector2.Zero;
+        _pendingRotationPixels = Vector2.Zero;
+        if (!immediate) return;
+        _currentTarget = _desiredTarget;
+        _currentDistance = _desiredDistance;
+        _currentYaw = _desiredYaw;
+        _currentPitch = _desiredPitch;
+        ApplyCameraTransform();
     }
 
     /// <summary>Moves the camera focus to a simulation position.</summary>
@@ -237,10 +247,14 @@ public partial class Rts3DCameraController : Node
         var right = new NVector2(-forward.Y, forward.X);
         var movement = NVector2.Zero;
 
-        if (Input.IsKeyPressed(Key.Up)) movement += forward;
-        if (Input.IsKeyPressed(Key.Down)) movement -= forward;
-        if (Input.IsKeyPressed(Key.Left)) movement -= right;
-        if (Input.IsKeyPressed(Key.Right)) movement += right;
+        if (Input.IsKeyPressed(Key.Up) || Input.IsKeyPressed(Key.W))
+            movement += forward;
+        if (Input.IsKeyPressed(Key.Down) || Input.IsKeyPressed(Key.S))
+            movement -= forward;
+        if (Input.IsKeyPressed(Key.Left) || Input.IsKeyPressed(Key.A))
+            movement -= right;
+        if (Input.IsKeyPressed(Key.Right) || Input.IsKeyPressed(Key.D))
+            movement += right;
 
         if (!_middleMouseDown && DisplayServer.WindowIsFocused())
         {

@@ -20,6 +20,8 @@ public static class DemoSceneCatalog
         "res://demo/3d/TerrainVisionCombat3D.tscn";
     public const string TerrainAuthoringWorkspace =
         "res://demo/terrain/TerrainAuthoringWorkspace.tscn";
+    public const string War3TerrainShowcase3D =
+        "res://demo/3d/War3TerrainShowcase3D.tscn";
     public const string War3AssetLab = "res://demo/war3/War3AssetLab.tscn";
     public const string War3Rts = "res://war3_rts/War3Rts.tscn";
     public const string CompatibilityEntry = "res://Main.tscn";
@@ -33,6 +35,7 @@ public static class DemoSceneCatalog
             TerrainShowcaseTarget.VisionCombat => TerrainVisionCombat3D,
             TerrainShowcaseTarget.AuthoringWorkspace =>
                 TerrainAuthoringWorkspace,
+            TerrainShowcaseTarget.War3Terrain => War3TerrainShowcase3D,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(target), target, "Unknown terrain showcase target.")
         };

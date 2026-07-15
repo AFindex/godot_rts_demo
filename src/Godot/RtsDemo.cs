@@ -397,6 +397,15 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--terrain-visual-layer-self-test"))
+        {
+            var result = TerrainVisualLayerMapSelfTest.Run();
+            GD.Print($"RTS_TERRAIN_VISUAL_LAYER_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--self-test"))
         {
             if (!TryLoadRuntimeData())

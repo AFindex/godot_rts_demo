@@ -12,7 +12,7 @@ public static class TerrainShowcaseCatalogSelfTest
         var paths = entries.Select(entry =>
                 DemoSceneCatalog.TerrainShowcaseScene(entry.Target))
             .ToArray();
-        var passed = entries.Length == 5 &&
+        var passed = entries.Length == 6 &&
                      entries.Length == targets.Length &&
                      entries.Select(entry => entry.Target).SequenceEqual(targets) &&
                      entries.Select(entry => entry.Target).Distinct().Count() ==

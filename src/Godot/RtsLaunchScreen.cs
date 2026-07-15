@@ -111,7 +111,7 @@ public partial class RtsLaunchScreen : Control
         heading.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         header.AddChild(heading);
         header.AddChild(Text(
-            "12 张预制 · 21 条坡道 · 4 个方向 · 5 个专项入口",
+            "12 张预制 · 21 条坡道 · 4 个方向 · 6 个专项入口",
             15, new Color("8fd5ab")));
 
         var intro = Panel(new Vector2(1f, 82f));

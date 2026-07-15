@@ -6,7 +6,8 @@ public enum TerrainShowcaseTarget
     Traversal,
     DynamicTopology,
     VisionCombat,
-    AuthoringWorkspace
+    AuthoringWorkspace,
+    War3Terrain
 }
 
 public sealed record TerrainShowcaseEntry(
@@ -53,7 +54,13 @@ public static class TerrainShowcaseCatalog
             "地形编辑与运行时导出",
             "编辑工作流",
             "使用独立工作区修改高度、通行、建造、水域和坡道，再验证并导出可供运行时加载的地形资产。",
-            "编辑数据 · 明确校验 · .tres 运行时资产")
+            "编辑数据 · 明确校验 · .tres 运行时资产"),
+        new(
+            TerrainShowcaseTarget.War3Terrain,
+            "Warcraft III 地形资源适配",
+            "美术主题",
+            "让现有权威地形和 SC2 风格跨层玩法直接使用导出的 Lordaeron 地表、经典崖壁与水面资源。",
+            "War3 纹理图集 · 正确崖壁 UV · 玩法数据不变")
     ];
 
     public static IReadOnlyList<TerrainShowcaseEntry> Entries => Values;
