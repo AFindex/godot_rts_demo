@@ -1,0 +1,5 @@
+Godot Engine v4.7.stable.mono.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 595.95 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 2060 SUPER
+
+Movie Maker mode enabled, recording movie in 1280×720 @ 30 FPS...
+RTS_TERRAIN_DYNAMIC_DEMO_PASS ticks=1200, routes=1>0, arrived=3/3+3/3, seen=True/True, illegalCliff=False, updates=2, full=0, chunks=4, resampled=3072, minPair=16.00, blockedState=u0@441,214/Arrived/c-1/None;u1@458,213/Arrived/c-1/None;u2@474,214/Arrived/c-1/None, openState=u3@437,232/Arrived/c-1/None;u4@472,230/Arrived/c-1/None;u5@490,242/Arrived/c-1/None

@@ -99,6 +99,8 @@ public static class TerrainNavigationTopologySelfTest
                              largeRoute.Waypoints.Length == 0 &&
                              largeRoute.ChokeIds.Length == 0;
 
+            var dynamicBuildings = RunDynamicBuildingTopologyTest();
+
             var mismatchRejected = false;
             try
             {
@@ -112,7 +114,7 @@ public static class TerrainNavigationTopologySelfTest
 
             var passed = automatic && multiLevel && multiRuntime.Passed &&
                          stable && staticBlocker && classWidth &&
-                         mismatchRejected;
+                         mismatchRejected && dynamicBuildings.Passed;
             var summary =
                 $"automatic={automatic}[regions=" +
                 $"{string.Join('/', traversal.Topology.Layers.ToArray().Select(value => value.RegionCount))}," +
@@ -127,6 +129,14 @@ public static class TerrainNavigationTopologySelfTest
                 $"arrived={multiRuntime.Arrived},state={multiRuntime.Detail}], " +
                 $"blocked={staticBlocker}[mask={blocked.Ramps[0].MovementMask}], " +
                 $"width={classWidth}[mask={narrowRamp.MovementMask}], " +
+                $"buildings={dynamicBuildings.Passed}[" +
+                $"routes={dynamicBuildings.RouteSequence}," +
+                $"updates={dynamicBuildings.IncrementalUpdates}," +
+                $"restore={dynamicBuildings.RestoreExact}/" +
+                $"full{dynamicBuildings.FullRebuilds}," +
+                $"chunks={dynamicBuildings.DirtyChunks}," +
+                $"samples={dynamicBuildings.ResampledCells}," +
+                $"preview={dynamicBuildings.PreviewStayedStatic}], " +
                 $"stable={stable}/{multi.StableHashText}, mismatch={mismatchRejected}";
             return new TerrainNavigationTopologyTestResult(passed, summary);
         }
@@ -223,6 +233,125 @@ public static class TerrainNavigationTopologySelfTest
             detail);
     }
 
+    private static DynamicBuildingTopologyResult RunDynamicBuildingTopologyTest()
+    {
+        var runtime = TerrainDynamicTopologyScenario.Prepare(capacity: 8);
+        var authored = runtime.AuthoredTopology;
+        var world = runtime.Simulation.World;
+        var planner = runtime.RoutePlanner;
+        var simulation = runtime.Simulation;
+        var clearance = runtime.Clearance;
+        var start = TerrainDynamicTopologyScenario.Start;
+        var goal = TerrainDynamicTopologyScenario.Goal;
+        var routes = new List<string>();
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+
+        var previewBounds = TerrainDynamicTopologyScenario.Footprint(
+            BuildingFootprintClass.Small, new Vector2(208f, 104f));
+        var previewRevision = world.NavigationRevision;
+        var previewTopology = planner.CurrentTopology.StableHash;
+        _ = simulation.AssessBuildingPlacement(
+            previewBounds,
+            new BuildingPlacementRules(
+                MovementClass.Medium,
+                PreserveConnectivity: true));
+        var previewStayedStatic = world.NavigationRevision == previewRevision &&
+                                  planner.CurrentTopology.StableHash == previewTopology;
+
+        var small = simulation.TryPlaceBuilding(
+            previewBounds,
+            new BuildingPlacementRules(
+                MovementClass.Medium,
+                PreserveConnectivity: true));
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+        var smallRemoved = small.Succeeded &&
+                           simulation.RemoveBuilding(small.FootprintId);
+
+        var medium = simulation.TryPlaceBuilding(
+            TerrainDynamicTopologyScenario.Footprint(
+                BuildingFootprintClass.Medium),
+            new BuildingPlacementRules(
+                MovementClass.Medium,
+                PreserveConnectivity: true));
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+        var mediumRemoved = medium.Succeeded &&
+                            simulation.RemoveBuilding(medium.FootprintId);
+
+        var largeBounds = TerrainDynamicTopologyScenario.Footprint(
+            BuildingFootprintClass.Large);
+        var large = simulation.TryPlaceBuilding(
+            largeBounds,
+            new BuildingPlacementRules(
+                MovementClass.Medium,
+                PreserveConnectivity: true));
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+        var blockedMask = planner.CurrentTopology.Ramps[0].MovementMask;
+        var dirtyChunks = planner.LastDirtyChunkIds.Length;
+        var resampled = planner.LastResampledCells;
+        var fullNodeCount = clearance.NodeCount * 3;
+        var largeRemoved = large.Succeeded &&
+                           simulation.RemoveBuilding(large.FootprintId);
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+
+        var hugeBounds = TerrainDynamicTopologyScenario.Footprint(
+            BuildingFootprintClass.Huge, new Vector2(144f, 104f));
+        var huge = simulation.TryPlaceBuilding(
+            hugeBounds,
+            new BuildingPlacementRules(
+                MovementClass.Medium,
+                PreserveConnectivity: true));
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+        var hugeRemoved = huge.Succeeded &&
+                          simulation.RemoveBuilding(huge.FootprintId);
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+
+        var openState = simulation.CaptureRuntimeState();
+        var restoreBlocker = simulation.TryPlaceBuilding(
+            largeBounds,
+            new BuildingPlacementRules(
+                MovementClass.Medium,
+                PreserveConnectivity: true));
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+        var blockedState = simulation.CaptureRuntimeState();
+        var restoreBlockerRemoved = restoreBlocker.Succeeded &&
+                                    simulation.RemoveBuilding(
+                                        restoreBlocker.FootprintId);
+        var noFullBeforeRestore = planner.FullRebuilds == 0;
+        simulation.RestoreRuntimeState(blockedState);
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+        simulation.RestoreRuntimeState(openState);
+        routes.Add(RouteText(planner.Plan(start, goal, 8f)));
+        var restoreExact = restoreBlockerRemoved && noFullBeforeRestore &&
+                           planner.FullRebuilds == 2 &&
+                           world.DynamicOccupancy.Count == 0;
+
+        var expected = new[]
+            { "0", "0", "0", "1", "0", "1", "0", "1", "1", "0" };
+        var passed = authored.Ramps.Length == 2 &&
+                     routes.SequenceEqual(expected) &&
+                     smallRemoved && mediumRemoved && largeRemoved && hugeRemoved &&
+                     restoreExact &&
+                     blockedMask == TerrainTopologyMovementMask.None &&
+                     planner.IncrementalUpdates == 10 &&
+                     planner.FullRebuilds == 2 &&
+                     dirtyChunks > 0 && resampled > 0 &&
+                     resampled < fullNodeCount && previewStayedStatic;
+        return new DynamicBuildingTopologyResult(
+            passed,
+            string.Join('>', routes),
+            planner.IncrementalUpdates,
+            restoreExact,
+            planner.FullRebuilds,
+            dirtyChunks,
+            resampled,
+            previewStayedStatic);
+    }
+
+    private static string RouteText(GroupRoutePlan route) =>
+        route.ChokeIds.Length == 0
+            ? "none"
+            : string.Join(',', route.ChokeIds);
+
     private static TerrainMapSnapshot CreateNarrowRampTerrain()
     {
         const int columns = 9;
@@ -297,4 +426,14 @@ public static class TerrainNavigationTopologySelfTest
         bool SeenSecond,
         int Arrived,
         string Detail);
+
+    private readonly record struct DynamicBuildingTopologyResult(
+        bool Passed,
+        string RouteSequence,
+        int IncrementalUpdates,
+        bool RestoreExact,
+        int FullRebuilds,
+        int DirtyChunks,
+        int ResampledCells,
+        bool PreviewStayedStatic);
 }

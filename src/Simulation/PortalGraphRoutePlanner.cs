@@ -23,6 +23,18 @@ public interface IGroupRoutePlanner
     GroupRoutePlan Plan(Vector2 start, Vector2 goal, float agentRadius);
 }
 
+/// <summary>
+/// Optional notification for route planners that cache data derived from
+/// dynamic world occupancy. The simulation sends the exact changed bounds
+/// after a hard footprint is committed or removed.
+/// </summary>
+public interface IGroupRouteNavigationChangeSink
+{
+    void OnNavigationChanged(SimRect changedBounds);
+
+    void OnNavigationStateRestored();
+}
+
 public sealed class PortalGraphRoutePlanner : IGroupRoutePlanner
 {
     private const float AttachmentSlack = 80f;

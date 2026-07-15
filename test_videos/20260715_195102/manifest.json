@@ -1,0 +1,31 @@
+﻿{
+    "created_at":  "2026-07-15T19:51:21.2567152+08:00",
+    "fps":  30,
+    "codec":  "AV1 (libsvtav1)",
+    "container":  "WebM",
+    "crf":  32,
+    "preset":  8,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "terrain-dynamic"
+                        ],
+    "available_cases":  [
+                            "terrain-dynamic"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "terrain-dynamic",
+                      "file":  "terrain-dynamic.webm",
+                      "log":  "terrain-dynamic.log",
+                      "bytes":  831867,
+                      "source_bytes":  26329516,
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8,
+                      "exit_code":  0,
+                      "encode_error":  null,
+                      "result":  "RTS_TERRAIN_DYNAMIC_DEMO_PASS ticks=1200, routes=1\u003e0, arrived=3/3+3/3, seen=True/True, illegalCliff=False, updates=2, full=0, chunks=4, resampled=3072, minPair=16.00, blockedState=u0@441,214/Arrived/c-1/None;u1@458,213/Arrived/c-1/None;u2@474,214/Arrived/c-1/None, openState=u3@437,232/Arrived/c-1/None;u4@472,230/Arrived/c-1/None;u5@490,242/Arrived/c-1/None"
+                  }
+              ]
+}

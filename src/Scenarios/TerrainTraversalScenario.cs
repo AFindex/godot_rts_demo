@@ -44,11 +44,13 @@ public static class TerrainTraversalScenario
             terrain, clearance);
         var world = navigation.CreateWorld(terrain);
         var pathProvider = new GridPathProvider(world, 16f, clearance);
+        var routePlanner = topology.CreateDynamicRoutePlanner(
+            world, terrain, clearance);
         var simulation = new RtsSimulation(
             world,
             pathProvider,
             capacity: 64,
-            groupRoutePlanner: topology.CreateRoutePlanner(),
+            groupRoutePlanner: routePlanner,
             chokeController: topology.CreateChokeController(),
             clearanceBake: clearance);
 

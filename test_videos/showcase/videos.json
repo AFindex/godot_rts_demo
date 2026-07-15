@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-15T18:46:22.3388673+08:00",
+    "generated_at":  "2026-07-15T19:51:21.8475740+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  182,
-    "case_count":  134,
+    "recording_count":  183,
+    "case_count":  135,
     "recordings":  [
+                       {
+                           "id":  "terrain-dynamic",
+                           "display_name":  null,
+                           "batch":  "20260715_195102",
+                           "created_at":  "2026-07-15T19:51:21.2567152+08:00",
+                           "video":  "../20260715_195102/terrain-dynamic.webm",
+                           "log":  "../20260715_195102/terrain-dynamic.log",
+                           "bytes":  831867,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_TERRAIN_DYNAMIC_DEMO_PASS ticks=1200, routes=1\u003e0, arrived=3/3+3/3, seen=True/True, illegalCliff=False, updates=2, full=0, chunks=4, resampled=3072, minPair=16.00, blockedState=u0@441,214/Arrived/c-1/None;u1@458,213/Arrived/c-1/None;u2@474,214/Arrived/c-1/None, openState=u3@437,232/Arrived/c-1/None;u4@472,230/Arrived/c-1/None;u5@490,242/Arrived/c-1/None",
+                           "metrics":  "RTS_TERRAIN_DYNAMIC_DEMO_PASS ticks=1200, routes=1\u003e0, arrived=3/3+3/3, seen=True/True, illegalCliff=False, updates=2, full=0, chunks=4, resampled=3072, minPair=16.00, blockedState=u0@441,214/Arrived/c-1/None;u1@458,213/Arrived/c-1/None;u2@474,214/Arrived/c-1/None, openState=u3@437,232/Arrived/c-1/None;u4@472,230/Arrived/c-1/None;u5@490,242/Arrived/c-1/None"
+                       },
                        {
                            "id":  "terrain-traversal",
                            "display_name":  null,

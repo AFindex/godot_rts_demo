@@ -5,6 +5,7 @@
 - `2d/RtsDemo2D.tscn`：原有完整 2D 可玩对局、启动页和测试中心。
 - `3d/RtsEncounter3D.tscn`：复用相同纯 C# 模拟与敌方 AI 的 3D 可玩遭遇战。
 - `3d/TerrainTraversal3D.tscn`：生产寻路栈驱动的悬崖绕行、坡道通行和浅水禁造专项演示。
+- `3d/TerrainDynamicTopology3D.tscn`：Large 建筑封住近坡后走远坡、拆除后下一波恢复近坡的动态拓扑专项演示。
 - `3d/TerrainVisionCombat3D.tscn`：高低地视野、空中观察、共享视野、烟雾遮挡和飞行中弹道专项演示。
 - `terrain/TerrainAuthoringWorkspace.tscn`：可编辑 Godot Resource、正交笔刷、覆盖层、结构验证和不可变运行时导出的 T3 工作区/自动演示。
 - 根目录 `Main.tscn`：仅为已有命令、文档和录像工具保留的兼容继承入口。

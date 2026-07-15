@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("3d-encounter", "terrain-traversal", "terrain-vision", "terrain-authoring")]
+    [ValidateSet("3d-encounter", "terrain-traversal", "terrain-dynamic", "terrain-vision", "terrain-authoring")]
     [string]$Demo = "3d-encounter",
     [ValidateRange(1, 60)] [int]$Fps = 30,
     [ValidateRange(1, 70)] [int]$Crf = 32,
@@ -27,6 +27,14 @@ $configuration = switch ($Demo) {
             Argument = "--terrain-demo-recording"
             ResultPrefix = "RTS_TERRAIN_DEMO_"
             PassPrefix = "RTS_TERRAIN_DEMO_PASS "
+        }
+    }
+    "terrain-dynamic" {
+        @{
+            Scene = "res://demo/3d/TerrainDynamicTopology3D.tscn"
+            Argument = "--terrain-dynamic-demo-recording"
+            ResultPrefix = "RTS_TERRAIN_DYNAMIC_DEMO_"
+            PassPrefix = "RTS_TERRAIN_DYNAMIC_DEMO_PASS "
         }
     }
     "terrain-vision" {

@@ -129,11 +129,13 @@ public sealed class TerrainNavigationTopologySnapshot
     internal TerrainNavigationTopologySnapshot(
         ulong sourceTerrainHash,
         ulong sourceClearanceHash,
+        int sourceWorldRevision,
         TerrainNavigationLayerSnapshot[] layers,
         TerrainRampPortal[] ramps)
     {
         SourceTerrainHash = sourceTerrainHash;
         SourceClearanceHash = sourceClearanceHash;
+        SourceWorldRevision = sourceWorldRevision;
         _layers = layers;
         _ramps = ramps;
         StableHash = ComputeStableHash();
@@ -143,6 +145,7 @@ public sealed class TerrainNavigationTopologySnapshot
     public string SourceTerrainHashText => SourceTerrainHash.ToString("X16");
     public ulong SourceClearanceHash { get; }
     public string SourceClearanceHashText => SourceClearanceHash.ToString("X16");
+    public int SourceWorldRevision { get; }
     public ulong StableHash { get; }
     public string StableHashText => StableHash.ToString("X16");
     public ReadOnlySpan<TerrainRampPortal> Ramps => _ramps;
@@ -152,6 +155,12 @@ public sealed class TerrainNavigationTopologySnapshot
         _layers[(int)movementClass];
 
     public TerrainTopologyRoutePlanner CreateRoutePlanner() => new(this);
+
+    public DynamicTerrainTopologyRoutePlanner CreateDynamicRoutePlanner(
+        StaticWorld world,
+        TerrainMapSnapshot terrain,
+        ClearanceBakeSnapshot clearance) =>
+        new(world, terrain, clearance, this);
 
     public ChokeController CreateChokeController() => new(
         _ramps.Select(ramp => new ChokeDefinition(
@@ -200,6 +209,8 @@ public sealed class TerrainNavigationTopologySnapshot
             writer.Write((byte)layer.MovementClass);
             writer.Write(layer.NavigationRadius);
             writer.Write(layer.RegionCount);
+            foreach (var regionId in layer.SampleRegionIds)
+                writer.Write(regionId);
             foreach (var region in layer.Regions)
             {
                 writer.Write(region.Id);
@@ -239,6 +250,13 @@ public static class TerrainNavigationTopologyBuilder
     public static TerrainNavigationTopologySnapshot Build(
         TerrainMapSnapshot terrain,
         ClearanceBakeSnapshot clearance)
+        => Build(terrain, clearance, runtimeConnectivity: null, 0);
+
+    internal static TerrainNavigationTopologySnapshot Build(
+        TerrainMapSnapshot terrain,
+        ClearanceBakeSnapshot clearance,
+        NavigationConnectivitySnapshot[]? runtimeConnectivity,
+        int sourceWorldRevision)
     {
         ArgumentNullException.ThrowIfNull(terrain);
         ArgumentNullException.ThrowIfNull(clearance);
@@ -250,6 +268,23 @@ public static class TerrainNavigationTopologyBuilder
             throw new ArgumentException(
                 "Clearance bake must be built from the supplied terrain.",
                 nameof(clearance));
+        if (runtimeConnectivity is not null)
+        {
+            if (runtimeConnectivity.Length != 3)
+                throw new ArgumentException(
+                    "Runtime connectivity must contain all movement classes.",
+                    nameof(runtimeConnectivity));
+            for (var classIndex = 0;
+                 classIndex < runtimeConnectivity.Length;
+                 classIndex++)
+            {
+                ValidateRuntimeConnectivity(
+                    clearance,
+                    (MovementClass)classIndex,
+                    runtimeConnectivity[classIndex],
+                    sourceWorldRevision);
+            }
+        }
 
         var rampGroups = DiscoverRampGroups(terrain);
         var layers = new TerrainNavigationLayerSnapshot[3];
@@ -259,7 +294,8 @@ public static class TerrainNavigationTopologyBuilder
                 terrain,
                 clearance,
                 (MovementClass)classIndex,
-                rampGroups);
+                rampGroups,
+                runtimeConnectivity?[classIndex]);
         }
 
         var ramps = new TerrainRampPortal[rampGroups.Length];
@@ -293,6 +329,7 @@ public static class TerrainNavigationTopologyBuilder
         return new TerrainNavigationTopologySnapshot(
             terrain.StableHash,
             clearance.StableHash,
+            sourceWorldRevision,
             layers,
             ramps);
     }
@@ -301,7 +338,8 @@ public static class TerrainNavigationTopologyBuilder
         TerrainMapSnapshot terrain,
         ClearanceBakeSnapshot clearance,
         MovementClass movementClass,
-        RampGroup[] ramps)
+        RampGroup[] ramps,
+        NavigationConnectivitySnapshot? runtimeConnectivity)
     {
         var bakeLayer = clearance.Layer(movementClass);
         var nodeCount = clearance.NodeCount;
@@ -309,7 +347,7 @@ public static class TerrainNavigationTopologyBuilder
         var cliffLevels = new byte[nodeCount];
         for (var node = 0; node < nodeCount; node++)
         {
-            if (!bakeLayer.IsWalkable(node)) continue;
+            if (!IsWalkable(bakeLayer, runtimeConnectivity, node)) continue;
             var center = SampleCenter(clearance, node);
             if (!terrain.TryCellAt(center, out var column, out var row))
                 continue;
@@ -413,6 +451,7 @@ public static class TerrainNavigationTopologyBuilder
                     terrain,
                     clearance,
                     bakeLayer,
+                    runtimeConnectivity,
                     ramp,
                     lower,
                     upper,
@@ -439,6 +478,34 @@ public static class TerrainNavigationTopologyBuilder
             regions.ToArray(),
             connections);
     }
+
+    private static void ValidateRuntimeConnectivity(
+        ClearanceBakeSnapshot clearance,
+        MovementClass movementClass,
+        NavigationConnectivitySnapshot runtime,
+        int sourceWorldRevision)
+    {
+        var bakeLayer = clearance.Layer(movementClass);
+        if (runtime.WorldBounds != clearance.WorldBounds ||
+            runtime.Columns != clearance.Columns ||
+            runtime.Rows != clearance.Rows ||
+            MathF.Abs(runtime.CellSize - clearance.CellSize) > 0.0001f ||
+            MathF.Abs(runtime.NavigationRadius -
+                      bakeLayer.NavigationRadius) > 0.0001f ||
+            runtime.WorldRevision != sourceWorldRevision)
+        {
+            throw new ArgumentException(
+                $"Runtime connectivity for {movementClass} does not match " +
+                "the clearance layout or world revision.",
+                nameof(runtime));
+        }
+    }
+
+    private static bool IsWalkable(
+        ClearanceBakeLayerSnapshot bakeLayer,
+        NavigationConnectivitySnapshot? runtimeConnectivity,
+        int node) => runtimeConnectivity?.IsWalkable(node) ??
+                     bakeLayer.IsWalkable(node);
 
     private static RampGroup[] DiscoverRampGroups(TerrainMapSnapshot terrain)
     {
@@ -592,6 +659,7 @@ public static class TerrainNavigationTopologyBuilder
         TerrainMapSnapshot terrain,
         ClearanceBakeSnapshot clearance,
         ClearanceBakeLayerSnapshot layer,
+        NavigationConnectivitySnapshot? runtimeConnectivity,
         RampGroup ramp,
         int lowerRegion,
         int upperRegion,
@@ -638,7 +706,7 @@ public static class TerrainNavigationTopologyBuilder
                  sampleColumn++)
             {
                 var node = sampleRow * clearance.Columns + sampleColumn;
-                if (!layer.IsWalkable(node) ||
+                if (!IsWalkable(layer, runtimeConnectivity, node) ||
                     regionIds[node] != lowerRegion)
                 {
                     continue;
@@ -669,6 +737,7 @@ public static class TerrainNavigationTopologyBuilder
                         terrain,
                         clearance,
                         layer,
+                        runtimeConnectivity,
                         ramp,
                         lowerRegion,
                         upperRegion,
@@ -685,6 +754,7 @@ public static class TerrainNavigationTopologyBuilder
                             terrain,
                             clearance,
                             layer,
+                            runtimeConnectivity,
                             ramp,
                             lowerRegion,
                             upperRegion,
@@ -694,6 +764,7 @@ public static class TerrainNavigationTopologyBuilder
                             terrain,
                             clearance,
                             layer,
+                            runtimeConnectivity,
                             ramp,
                             lowerRegion,
                             upperRegion,
@@ -714,13 +785,14 @@ public static class TerrainNavigationTopologyBuilder
         TerrainMapSnapshot terrain,
         ClearanceBakeSnapshot clearance,
         ClearanceBakeLayerSnapshot layer,
+        NavigationConnectivitySnapshot? runtimeConnectivity,
         RampGroup ramp,
         int lowerRegion,
         int upperRegion,
         int[] regionIds,
         int node)
     {
-        if (!layer.IsWalkable(node)) return false;
+        if (!IsWalkable(layer, runtimeConnectivity, node)) return false;
         if (regionIds[node] == lowerRegion || regionIds[node] == upperRegion)
             return true;
         var center = SampleCenter(clearance, node);
@@ -812,6 +884,180 @@ public static class TerrainNavigationTopologyBuilder
         float Width,
         float ApproachDistance,
         (int Column, int Row)[] Cells);
+}
+
+/// <summary>
+/// Keeps the immutable authored terrain topology separate from temporary
+/// world occupancy. Hard footprints resample only intersecting clearance
+/// chunks; region ids and ramp connections are then deterministically
+/// relabelled from the updated walkability.
+/// </summary>
+public sealed class DynamicTerrainTopologyRoutePlanner :
+    IGroupRoutePlanner,
+    IGroupRouteNavigationChangeSink
+{
+    private readonly StaticWorld _world;
+    private readonly TerrainMapSnapshot _terrain;
+    private readonly ClearanceBakeSnapshot _clearance;
+    private readonly IncrementalNavigationConnectivityUpdater _updater;
+    private readonly NavigationConnectivityAnalyzer _analyzer;
+    private readonly NavigationConnectivitySnapshot[] _connectivity =
+        new NavigationConnectivitySnapshot[3];
+    private TerrainNavigationTopologySnapshot _topology;
+    private TerrainTopologyRoutePlanner _planner;
+
+    internal DynamicTerrainTopologyRoutePlanner(
+        StaticWorld world,
+        TerrainMapSnapshot terrain,
+        ClearanceBakeSnapshot clearance,
+        TerrainNavigationTopologySnapshot initialTopology)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(terrain);
+        ArgumentNullException.ThrowIfNull(clearance);
+        ArgumentNullException.ThrowIfNull(initialTopology);
+        if (world.Bounds != terrain.Bounds || world.Bounds != clearance.WorldBounds)
+            throw new ArgumentException(
+                "World, terrain and clearance bounds must match.");
+        if (initialTopology.SourceTerrainHash != terrain.StableHash ||
+            initialTopology.SourceClearanceHash != clearance.StableHash)
+        {
+            throw new ArgumentException(
+                "Initial topology must match the supplied terrain and clearance.",
+                nameof(initialTopology));
+        }
+
+        _world = world;
+        _terrain = terrain;
+        _clearance = clearance;
+        _updater = new IncrementalNavigationConnectivityUpdater(world, clearance);
+        _analyzer = new NavigationConnectivityAnalyzer(world, clearance.CellSize);
+        if (world.NavigationRevision == 0)
+        {
+            for (var classIndex = 0; classIndex < _connectivity.Length; classIndex++)
+            {
+                _connectivity[classIndex] = clearance.CreateConnectivitySnapshot(
+                    (MovementClass)classIndex);
+            }
+            _topology = initialTopology;
+        }
+        else
+        {
+            AnalyzeFullWorld();
+            _topology = TerrainNavigationTopologyBuilder.Build(
+                terrain, clearance, _connectivity, world.NavigationRevision);
+            FullRebuilds++;
+        }
+        _planner = _topology.CreateRoutePlanner();
+    }
+
+    public TerrainNavigationTopologySnapshot CurrentTopology => _topology;
+    public int IncrementalUpdates { get; private set; }
+    public int FullRebuilds { get; private set; }
+    public int TotalResampledCells { get; private set; }
+    public int LastResampledCells { get; private set; }
+    public int LastChangedCells { get; private set; }
+    public int[] LastDirtyChunkIds { get; private set; } = [];
+    public double LastRefreshMilliseconds { get; private set; }
+
+    public GroupRoutePlan Plan(Vector2 start, Vector2 goal, float agentRadius)
+    {
+        EnsureCurrent(changedBounds: null);
+        return _planner.Plan(start, goal, agentRadius);
+    }
+
+    public void OnNavigationChanged(SimRect changedBounds) =>
+        EnsureCurrent(changedBounds);
+
+    public void OnNavigationStateRestored()
+    {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        AnalyzeFullWorld();
+        FullRebuilds++;
+        LastResampledCells = _connectivity.Sum(value => value.NodeCount);
+        LastChangedCells = -1;
+        LastDirtyChunkIds = Enumerable.Range(
+            0, _clearance.ChunkCount).ToArray();
+        _topology = TerrainNavigationTopologyBuilder.Build(
+            _terrain,
+            _clearance,
+            _connectivity,
+            _world.NavigationRevision);
+        _planner = _topology.CreateRoutePlanner();
+        timer.Stop();
+        LastRefreshMilliseconds = timer.Elapsed.TotalMilliseconds;
+    }
+
+    private void EnsureCurrent(SimRect? changedBounds)
+    {
+        if (_topology.SourceWorldRevision == _world.NavigationRevision)
+            return;
+
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var expectedPreviousRevision = _world.NavigationRevision - 1;
+        var canUpdateIncrementally = _connectivity.All(value =>
+            value.WorldRevision == expectedPreviousRevision);
+        var area = changedBounds;
+        if (area is null && canUpdateIncrementally &&
+            _world.DynamicOccupancy.TryGetSingleChangeSince(
+                expectedPreviousRevision, out var observedBounds))
+        {
+            area = observedBounds;
+        }
+
+        if (canUpdateIncrementally && area is not null)
+        {
+            var dirtyChunks = new SortedSet<int>();
+            var resampled = 0;
+            var changed = 0;
+            for (var classIndex = 0;
+                 classIndex < _connectivity.Length;
+                 classIndex++)
+            {
+                var update = _updater.Update(
+                    _connectivity[classIndex], area.Value);
+                _connectivity[classIndex] = update.Snapshot;
+                resampled += update.ResampledCells;
+                changed += update.ChangedCells;
+                dirtyChunks.UnionWith(update.DirtyChunkIds);
+            }
+            IncrementalUpdates++;
+            LastResampledCells = resampled;
+            LastChangedCells = changed;
+            TotalResampledCells += resampled;
+            LastDirtyChunkIds = dirtyChunks.ToArray();
+        }
+        else
+        {
+            AnalyzeFullWorld();
+            FullRebuilds++;
+            LastResampledCells = _connectivity.Sum(value => value.NodeCount);
+            LastChangedCells = -1;
+            LastDirtyChunkIds = Enumerable.Range(
+                0, _clearance.ChunkCount).ToArray();
+        }
+
+        _topology = TerrainNavigationTopologyBuilder.Build(
+            _terrain,
+            _clearance,
+            _connectivity,
+            _world.NavigationRevision);
+        _planner = _topology.CreateRoutePlanner();
+        timer.Stop();
+        LastRefreshMilliseconds = timer.Elapsed.TotalMilliseconds;
+    }
+
+    private void AnalyzeFullWorld()
+    {
+        for (var classIndex = 0;
+             classIndex < _connectivity.Length;
+             classIndex++)
+        {
+            var movementClass = (MovementClass)classIndex;
+            _connectivity[classIndex] = _analyzer.Analyze(
+                _clearance.Layer(movementClass).NavigationRadius);
+        }
+    }
 }
 
 /// <summary>

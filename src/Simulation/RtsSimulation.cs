@@ -346,6 +346,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
             throw new InvalidOperationException("Simulation runtime capacity mismatch.");
         }
         World.DynamicOccupancy.RestoreRuntimeState(snapshot.DynamicOccupancy);
+        if (_groupRoutePlanner is IGroupRouteNavigationChangeSink routeSink)
+        {
+            routeSink.OnNavigationStateRestored();
+        }
         Units.CopyRuntimeStateFrom(snapshot.Units);
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
         CombatProjectiles.RestoreRuntimeState(snapshot.CombatProjectiles);
@@ -699,6 +703,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public DynamicFootprintId PlaceBuilding(SimRect footprint)
     {
         var id = World.DynamicOccupancy.Place(footprint);
+        NotifyGroupRouteNavigationChanged(footprint);
         InvalidatePathsIntersecting(footprint);
         if (!_issuingConstructionWorldMutation)
         {
@@ -880,6 +885,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
             return false;
         }
 
+        NotifyGroupRouteNavigationChanged(removedBounds);
+
         if (!_issuingConstructionWorldMutation)
         {
             _replayPackageRecorder?.RecordRemove(Metrics.Tick, id, removedBounds);
@@ -894,6 +901,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
 
         return true;
+    }
+
+    private void NotifyGroupRouteNavigationChanged(SimRect changedBounds)
+    {
+        if (_groupRoutePlanner is IGroupRouteNavigationChangeSink sink)
+        {
+            sink.OnNavigationChanged(changedBounds);
+        }
     }
 
     public int AddUnit(
