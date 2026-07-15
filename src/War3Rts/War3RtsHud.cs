@@ -11,6 +11,8 @@ public sealed partial class War3RtsHud : Control
     private const float ConsoleChromeWidth = 1000f;
     private const float ConsoleTextureSize = 320f;
     private const float ConsoleTextureTop = -112f;
+    private static readonly Vector2 PortraitSlotPosition = new(269f, 69f);
+    private static readonly Vector2 PortraitSlotSize = new(93f, 100f);
     private static readonly Color Ink = new("071019f2");
     private static readonly Color Surface = new("101923e8");
     private static readonly Color Raised = new("182431f2");
@@ -38,6 +40,7 @@ public sealed partial class War3RtsHud : Control
     private Control? _bottomConsole;
     private Control? _consoleChrome;
     private War3MinimapControl? _minimap;
+    private Control? _portraitSlot;
     private SubViewport? _portraitViewport;
     private SubViewportContainer? _portraitOpening;
     private Node3D? _portraitWorld;
@@ -57,9 +60,11 @@ public sealed partial class War3RtsHud : Control
     public bool ConsoleLayoutReady =>
         _consoleChrome is not null &&
         MathF.Abs(_consoleChrome.Size.X - ConsoleChromeWidth) < 0.1f &&
-        _portraitOpening?.Position.IsEqualApprox(new Vector2(288f, 81f)) == true &&
-        _portraitOpening.Size.IsEqualApprox(new Vector2(60f, 63f)) &&
-        _portraitMask?.Position.IsEqualApprox(new Vector2(275f, 9f)) == true &&
+        _portraitSlot?.Position.IsEqualApprox(PortraitSlotPosition) == true &&
+        _portraitSlot.Size.IsEqualApprox(PortraitSlotSize) &&
+        _portraitOpening?.Position.IsEqualApprox(Vector2.Zero) == true &&
+        _portraitOpening.Size.IsEqualApprox(PortraitSlotSize) &&
+        _portraitMask?.Position.IsEqualApprox(new Vector2(6f, -60f)) == true &&
         _commandGrid?.Position.IsEqualApprox(new Vector2(766f, 38f)) == true &&
         _commandButtons[11].Position.IsEqualApprox(new Vector2(174f, 116f));
 
@@ -258,20 +263,33 @@ public sealed partial class War3RtsHud : Control
 
     private void AddPortrait(Control parent)
     {
-        _portraitOpening = new SubViewportContainer
+        // HumanUITile01/02 form one continuous portrait recess.  Everything
+        // belonging to the portrait is composed in that recess so the 3D
+        // render continues underneath both the base chrome and the mask.
+        _portraitSlot = new Control
         {
-            Name = "PortraitOpening",
-            Position = new Vector2(288f, 81f),
-            Size = new Vector2(60f, 63f),
-            Stretch = true,
+            Name = "PortraitSlot",
+            Position = PortraitSlotPosition,
+            Size = PortraitSlotSize,
             MouseFilter = MouseFilterEnum.Ignore,
             ZIndex = 5
         };
-        parent.AddChild(_portraitOpening);
+        parent.AddChild(_portraitSlot);
+
+        _portraitOpening = new SubViewportContainer
+        {
+            Name = "PortraitOpening",
+            Position = Vector2.Zero,
+            Size = PortraitSlotSize,
+            Stretch = true,
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 0
+        };
+        _portraitSlot.AddChild(_portraitOpening);
         _portraitViewport = new SubViewport
         {
             Name = "PortraitViewport",
-            Size = new Vector2I(120, 126),
+            Size = new Vector2I(186, 200),
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
             Msaa3D = Viewport.Msaa.Msaa4X,
             TransparentBg = false,
@@ -310,7 +328,9 @@ public sealed partial class War3RtsHud : Control
         _portraitMask = new TextureRect
         {
             Name = "PortraitMask",
-            Position = new Vector2(275f, 9f),
+            // The source texture's first 96 rows are transparent.  With the
+            // 160 px draw size this places its visible pixels at slot y=0.
+            Position = new Vector2(6f, -60f),
             Size = new Vector2(160f, 160f),
             Texture = War3RuntimeAssets.LoadTexture(
                 @"UI\Console\Human\HumanUIPortraitMask.blp"),
@@ -320,17 +340,17 @@ public sealed partial class War3RtsHud : Control
             TextureFilter = CanvasItem.TextureFilterEnum.Linear,
             ZIndex = 20
         };
-        parent.AddChild(_portraitMask);
+        _portraitSlot.AddChild(_portraitMask);
 
         var healthBack = new ColorRect
         {
-            Position = new Vector2(287f, 147f),
+            Position = new Vector2(18f, 78f),
             Size = new Vector2(62f, 8f),
             Color = new Color("071009"),
             MouseFilter = MouseFilterEnum.Ignore,
             ZIndex = 15
         };
-        parent.AddChild(healthBack);
+        _portraitSlot.AddChild(healthBack);
         _portraitHealthFill = new ColorRect
         {
             Size = new Vector2(62f, 8f),
@@ -338,9 +358,9 @@ public sealed partial class War3RtsHud : Control
             MouseFilter = MouseFilterEnum.Ignore
         };
         healthBack.AddChild(_portraitHealthFill);
-        parent.AddChild(new ColorRect
+        _portraitSlot.AddChild(new ColorRect
         {
-            Position = new Vector2(287f, 158f),
+            Position = new Vector2(18f, 89f),
             Size = new Vector2(62f, 9f),
             Color = new Color("09203b"),
             MouseFilter = MouseFilterEnum.Ignore,
