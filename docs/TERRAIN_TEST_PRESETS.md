@@ -58,6 +58,30 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 `TerrainPresetGallery3D.tscn` 只负责显示已保存资产。左右方向键或 Space 浏览；自动录像依次展示全部 12 张地图、起点、终点、建筑探针和动态阻挡区。
 
+## 启动页地形专项
+
+启动项目后选择“打开地形测试专项”，会进入独立页面。这个页面不复制地形运行逻辑，只提供五个真实场景的统一入口：
+
+- 12 张地形预制总览。
+- 跨层移动与坡道穿越。
+- 建筑封路与动态改道。
+- 高低地视野与战斗。
+- 地形编辑与运行时导出。
+
+页面说明由 `TerrainShowcaseCatalog` 管理，场景路径由 `DemoSceneCatalog` 管理；UI 不持有硬编码路径。专项检查会确认五个入口完整、映射不重复且对应的 `.tscn` 都能被 Godot 加载：
+
+```powershell
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --terrain-showcase-self-test
+```
+
+需要单独检查 1280×720 页面布局时，可以直接生成启动页截图；文件保存在 Godot 的 `user://terrain_showcase_page.png`，不会污染项目资产：
+
+```powershell
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --path . -- --capture-terrain-showcase-page
+```
+
 当前录像位于 `test_videos/20260715_204017/terrain-presets.webm`：721 帧、24.03 秒、AV1/WebM、CRF 32、preset 8；Manifest 记录 `presets=12, ramps=21, assets=12, hashes=12`。
 
 加入预制与负方向坡道修复后，原有 128/128 黑盒业务回归继续全部通过；没有修改既有狭口、移动或建造阈值。

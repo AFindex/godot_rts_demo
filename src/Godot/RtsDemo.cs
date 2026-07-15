@@ -182,6 +182,12 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--capture-terrain-showcase-page"))
+        {
+            await CaptureTerrainShowcasePage();
+            return;
+        }
+
         if (userArguments.Contains("--generate-demo-navigation-resource"))
         {
             GenerateDemoNavigationResource();
@@ -371,6 +377,23 @@ public partial class RtsDemo : Node2D
             GD.Print($"RTS_TERRAIN_PRESETS_SELF_TEST " +
                      $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--terrain-showcase-self-test"))
+        {
+            var result = TerrainShowcaseCatalogSelfTest.Run();
+            var failedScenes = TerrainShowcaseCatalog.Entries
+                .Select(entry => DemoSceneCatalog.TerrainShowcaseScene(
+                    entry.Target))
+                .Where(path => ResourceLoader.Load<PackedScene>(path) is null)
+                .ToArray();
+            var passed = result.Passed && failedScenes.Length == 0;
+            GD.Print($"RTS_TERRAIN_SHOWCASE_SELF_TEST " +
+                     $"{(passed ? "PASS" : "FAIL")}: {result.Summary}, " +
+                     $"loaded={TerrainShowcaseCatalog.Entries.Count - failedScenes.Length}, " +
+                     $"failed={string.Join(',', failedScenes)}");
+            GetTree().Quit(passed ? 0 : 1);
             return;
         }
 
@@ -2891,6 +2914,9 @@ public partial class RtsDemo : Node2D
         _launchScreen.DemoRequested += EnterDefaultDemo;
         _launchScreen.Demo3DRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.Encounter3D);
+        _launchScreen.TerrainShowcaseRequested += target =>
+            GetTree().ChangeSceneToFile(
+                DemoSceneCatalog.TerrainShowcaseScene(target));
         _launchScreen.War3AssetLabRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.War3AssetLab);
         _launchScreen.War3RtsRequested += () =>
@@ -3857,6 +3883,29 @@ public partial class RtsDemo : Node2D
         var outputPath = ProjectSettings.GlobalizePath("res://rts_demo_capture.png");
         var error = image.SavePng(outputPath);
         GD.Print($"RTS_CAPTURE {(error == Error.Ok ? "SAVED" : error.ToString())}: {outputPath}");
+        GetTree().Quit(error == Error.Ok ? 0 : 1);
+    }
+
+    private async Task CaptureTerrainShowcasePage()
+    {
+        var layer = new CanvasLayer { Layer = 100 };
+        AddChild(layer);
+        var preview = new RtsLaunchScreen();
+        layer.AddChild(preview);
+        preview.Initialize(TestShowcaseCatalog.Build(
+            VisualTestCatalog.CaseIds));
+        preview.ShowTerrainShowcase();
+        for (var frame = 0; frame < 4; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var image = GetViewport().GetTexture().GetImage();
+        var outputPath = ProjectSettings.GlobalizePath(
+            "user://terrain_showcase_page.png");
+        var error = image.SavePng(outputPath);
+        GD.Print(
+            $"RTS_TERRAIN_SHOWCASE_CAPTURE " +
+            $"{(error == Error.Ok ? "SAVED" : error.ToString())}: " +
+            $"{outputPath}");
         GetTree().Quit(error == Error.Ok ? 0 : 1);
     }
 

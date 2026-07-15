@@ -2,7 +2,7 @@
 
 ## 可运行 Demo
 
-启动页现在统一提供原有 2D 对局/测试中心与新的 3D 遭遇战。场景包位于 `demo/`：`demo/2d/RtsDemo2D.tscn` 保存原有场景，`demo/3d/RtsEncounter3D.tscn` 是复用同一模拟与 AI 的 3D 表现层，根 `Main.tscn` 保留为兼容入口。详见 [3D 遭遇战 Demo](docs/ENCOUNTER_3D_DEMO.md) 与 [Demo 目录](demo/README.md)。
+启动页现在统一提供 2D 对局、3D 遭遇战、地形测试专项、War3 演示与通用测试中心。地形专项是独立页面，集中进入 12 张预制图集、跨层移动、建筑封路改道、高低地视野战斗和地形编辑导出。场景包位于 `demo/`：`demo/2d/RtsDemo2D.tscn` 保存原有场景，`demo/3d/RtsEncounter3D.tscn` 是复用同一模拟与 AI 的 3D 表现层，根 `Main.tscn` 保留为兼容入口。详见 [3D 遭遇战 Demo](docs/ENCOUNTER_3D_DEMO.md)、[测试地形预制库](docs/TERRAIN_TEST_PRESETS.md) 与 [Demo 目录](demo/README.md)。
 
 3D 版本可选择/框选单位、右键智能命令、攻击移动、设置地面/资源/友军 Rally、建造五种不同尺寸建筑、生产三类单位并研究科技；单位、建筑和资源仅使用可替换的球体、方块和低多边形，不引入第二套物理或寻路。
 
@@ -10,7 +10,7 @@
 
 完整实施状态见 [进度回顾与 TODO](docs/PROGRESS_AND_TODO.md)。本轮真实几何、业务完成条件、失败处理和独立测试标准见 [单位移动到目标并完成事情：统一修复计划](docs/SEMANTIC_GOAL_RESCUE_PLAN.md)。SC2 机制证据与当前差距见 [StarCraft II 操作与玩法细节对齐研究](docs/SC2_ALIGNMENT_RESEARCH.md)，具体依赖顺序、协议边界、黑盒门禁与收口条件见 [StarCraft II 对齐实施计划](docs/SC2_ALIGNMENT_PLAN.md)，主动 Burrow/Cloak 边界见 [主动隐蔽能力合同](docs/ACTIVE_CONCEALMENT.md)。实际玩法见 [S11 经济、建造与生产](docs/ECONOMY_AND_PRODUCTION.md)，比赛状态见 [比赛生命周期](docs/MATCH_LIFECYCLE.md)，AI 边界见 [RTS AI 架构](docs/AI_ARCHITECTURE.md)，AI 数据见 [AI Configuration Resource](docs/AI_CONFIGURATION_RESOURCE.md)，完整演示见 [双 AI 遭遇战测试关卡](docs/AI_ENCOUNTER_LEVEL.md)，科技数据见 [Technology Catalog Resource](docs/TECHNOLOGY_RESOURCE.md)，战斗移动见 [AttackMove 与战斗占位](docs/ATTACK_MOVE.md)、[武器移动约束](docs/WEAPON_MOVEMENT.md)、[自动目标评分](docs/TARGET_SELECTION.md) 和 [战斗接触优先级](docs/COMBAT_CONTACT.md)，弹道显示见 [战斗弹道表现边界](docs/COMBAT_PRESENTATION.md)，操作层见 [命令队列、编组与 SmartCommand](docs/OPERATION_LAYER.md) 和 [混合选择与命令卡](docs/COMMAND_CARD_AND_SELECTION.md)，确定性基础见 [命令日志与回放](docs/COMMAND_REPLAY.md)。导航资产见 [导航 Resource 格式](docs/NAVIGATION_RESOURCE_FORMAT.md)，单位/建筑数据见 [Gameplay Profile Resource](docs/GAMEPLAY_PROFILE_RESOURCE.md)，离线数据见 [Clearance Bake 格式](docs/CLEARANCE_BAKE_FORMAT.md)，多尺寸导航见 [Clearance 与 Movement Class](docs/CLEARANCE_AND_MOVEMENT_CLASS.md)，编辑器显示见 [多尺寸净空预览](docs/CLEARANCE_EDITOR_PREVIEW.md)，资源更新见 [Resource 热重载与差异诊断](docs/RESOURCE_HOT_RELOAD.md)，全局放置保护见 [Connectivity Guard](docs/GLOBAL_CONNECTIVITY_GUARD.md)。
 
-正常启动首先进入中文启动页。可选择“进入大型 RTS 对局”，或打开测试中心浏览全部黑盒业务场景。默认对局是 3120×1720 的正式 Player vs AI 玩法：双方各有 Command Center、12 个自动采矿农民和足量主矿/气矿，从零建设生产与科技；敌方 AI 会采集、扩张、攀科技并持续进攻。完整配置和操作见 [默认可玩对局](docs/PLAYABLE_SKIRMISH_DEMO.md)。测试中心支持分类和中英文检索，选中场景后会显示它验证的业务目标，并通过与命令行回归、自动录像相同的 `VisualTestCatalog` case id 启动。测试结束或手动停止后会返回目录，不会把测试世界写回默认演示运行时。
+正常启动首先进入中文启动页。可选择“进入大型 RTS 对局”、打开地形测试专项，或进入测试中心浏览全部黑盒业务场景。默认对局是 3120×1720 的正式 Player vs AI 玩法：双方各有 Command Center、12 个自动采矿农民和足量主矿/气矿，从零建设生产与科技；敌方 AI 会采集、扩张、攀科技并持续进攻。完整配置和操作见 [默认可玩对局](docs/PLAYABLE_SKIRMISH_DEMO.md)。测试中心支持分类和中英文检索，选中场景后会显示它验证的业务目标，并通过与命令行回归、自动录像相同的 `VisualTestCatalog` case id 启动。测试结束或手动停止后会返回目录，不会把测试世界写回默认演示运行时。
 
 经济回归包含独立的 `economy-mass-mining` 大规模场景：96 个农民、32 片矿、4 个不同方位基地持续采集。农民携货时前往当前最近的基地矩形边缘点，而非建筑中心；场景通过稳定业务门面验收完整循环、边缘合法性和不可达状态，并自动保存 AV1/WebM 录像。
 
@@ -159,6 +159,8 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
   --headless --path . -- --terrain-self-test
 F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
   --headless --path . -- --terrain-topology-self-test
+F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe `
+  --headless --path . -- --terrain-showcase-self-test
 
 .\tools\record_demo.ps1 -Demo terrain-traversal
 .\tools\record_demo.ps1 -Demo terrain-vision

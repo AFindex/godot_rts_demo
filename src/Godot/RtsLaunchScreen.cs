@@ -21,6 +21,7 @@ public partial class RtsLaunchScreen : Control
     public event Action? Demo3DRequested;
     public event Action? War3AssetLabRequested;
     public event Action? War3RtsRequested;
+    public event Action<TerrainShowcaseTarget>? TerrainShowcaseRequested;
     public event Action<string>? TestRequested;
     public event Action? TestBrowserRequested;
 
@@ -45,41 +46,102 @@ public partial class RtsLaunchScreen : Control
         AddBackdrop();
         var center = FullRect<CenterContainer>();
         AddChild(center);
-        var panel = Panel(new Vector2(780f, 650f));
+        var panel = Panel(new Vector2(960f, 650f));
         center.AddChild(panel);
-        var margin = Margin(36);
+        var margin = Margin(32);
         panel.AddChild(margin);
-        var content = SpacedVBox(14);
+        var content = SpacedVBox(12);
         margin.AddChild(content);
         content.AddChild(Title("GODOT 4.7 · .NET RTS LAB", 34));
         content.AddChild(Text(
             "纯 C# 确定性 RTS 原型\n群体寻路 · 经济建造 · 战斗 · AI · 回放", 19,
             new Color("a9c9df")));
-        content.AddChild(Spacer(8));
-        content.AddChild(ActionButton(
+        var actions = new GridContainer
+        {
+            Columns = 2,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        actions.AddThemeConstantOverride("h_separation", 12);
+        actions.AddThemeConstantOverride("v_separation", 12);
+        content.AddChild(actions);
+        actions.AddChild(HomeActionCard(
             "进入大型 RTS 对局",
             "12 农民开局，对抗会采矿、扩张、攀科技和持续进攻的敌方 AI。",
             () => DemoRequested?.Invoke()));
-        content.AddChild(ActionButton(
+        actions.AddChild(HomeActionCard(
             "进入 3D RTS 遭遇战",
             "同一套纯 C# 模拟与 AI；用球体、方块和低多边形展示单位、建筑与资源。",
             () => Demo3DRequested?.Invoke()));
-        content.AddChild(ActionButton(
+        actions.AddChild(HomeActionCard(
+            "打开地形测试专项",
+            "集中检查地形预制、跨层寻路、建筑封路、高地视野与编辑导出。",
+            ShowTerrainShowcase));
+        actions.AddChild(HomeActionCard(
             "打开 War3 资源实验室",
             "浏览导出的单位、建筑、动画、透明贴图、ParticleEmitter2 与 Ribbon 特效。",
             () => War3AssetLabRequested?.Invoke()));
-        content.AddChild(ActionButton(
+        actions.AddChild(HomeActionCard(
             "进入 Warcraft III 人族对战",
             "经典人族单位、建筑、金矿、伐木、实时肖像与人族 AI 的完整 3D RTS 对局。",
             () => War3RtsRequested?.Invoke()));
-        content.AddChild(ActionButton(
+        actions.AddChild(HomeActionCard(
             $"打开测试中心  ·  {_entries.Count} 项",
             "浏览每项黑盒测试的中文说明，并直接切换到对应场景。",
             () => ShowBrowser()));
-        content.AddChild(Spacer(6));
         content.AddChild(Text(
-            "测试中心运行的是与自动回归、录像完全相同的 VisualTestCatalog 场景。",
+            "地形专项使用真实运行时场景；测试中心使用与自动回归、录像相同的业务用例。",
             14, new Color("7897ad")));
+    }
+
+    public void ShowTerrainShowcase()
+    {
+        Visible = true;
+        ClearPage();
+        AddBackdrop();
+        var margin = Margin(24);
+        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(margin);
+        var page = SpacedVBox(12);
+        margin.AddChild(page);
+
+        var header = SpacedHBox(12);
+        page.AddChild(header);
+        header.AddChild(SmallButton("← 返回启动页", ShowHome));
+        var heading = Title("地形测试专项", 28);
+        heading.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        header.AddChild(heading);
+        header.AddChild(Text(
+            "12 张预制 · 21 条坡道 · 4 个方向 · 5 个专项入口",
+            15, new Color("8fd5ab")));
+
+        var intro = Panel(new Vector2(1f, 82f));
+        page.AddChild(intro);
+        var introMargin = Margin(16);
+        intro.AddChild(introMargin);
+        var introText = Text(
+            "同一套地形数据贯穿：资产加载 → 通行与跨层寻路 → 建筑放置和动态封路 → 高低地视野与战斗。\n" +
+            "下面每个入口都是可独立运行的真实场景，不是静态截图或 UI 假数据。",
+            15, new Color("b9d3e2"));
+        introText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        introMargin.AddChild(introText);
+
+        var scroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        page.AddChild(scroll);
+        var grid = new GridContainer
+        {
+            Columns = 2,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        grid.AddThemeConstantOverride("h_separation", 12);
+        grid.AddThemeConstantOverride("v_separation", 12);
+        scroll.AddChild(grid);
+        foreach (var entry in TerrainShowcaseCatalog.Entries)
+            grid.AddChild(TerrainShowcaseCard(entry));
     }
 
     public void ShowBrowser(string status = "")
@@ -328,15 +390,59 @@ public partial class RtsLaunchScreen : Control
         CustomMinimumSize = new Vector2(1f, height)
     };
 
-    private static VBoxContainer ActionButton(
+    private Control TerrainShowcaseCard(TerrainShowcaseEntry entry)
+    {
+        var panel = Panel(new Vector2(570f, 184f));
+        panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var margin = Margin(18);
+        panel.AddChild(margin);
+        var content = SpacedVBox(7);
+        margin.AddChild(content);
+        content.AddChild(Text(entry.Scope, 13, new Color("62c4ff")));
+        content.AddChild(Title(entry.Title, 21));
+        var summary = Text(entry.Summary, 14, new Color("b7cdda"));
+        summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        summary.SizeFlagsVertical = SizeFlags.ExpandFill;
+        content.AddChild(summary);
+        content.AddChild(Text(entry.Evidence, 13, new Color("7ee0a3")));
+        content.AddChild(CompactButton("打开这个场景  →", () =>
+            TerrainShowcaseRequested?.Invoke(entry.Target)));
+        return panel;
+    }
+
+    private static PanelContainer HomeActionCard(
         string title,
         string summary,
         Action action)
     {
-        var group = SpacedVBox(4);
-        group.AddChild(PrimaryButton(title, action));
-        group.AddChild(Text(summary, 13, new Color("799bb0")));
-        return group;
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(430f, 106f),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        panel.AddThemeStyleboxOverride("panel", Box(
+            new Color("0c1721d9"), new Color("29485d"), 10));
+        var margin = Margin(12);
+        panel.AddChild(margin);
+        var group = SpacedVBox(5);
+        margin.AddChild(group);
+        group.AddChild(CompactButton(title, action));
+        var description = Text(summary, 13, new Color("799bb0"));
+        description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        group.AddChild(description);
+        return panel;
+    }
+
+    private static Button CompactButton(string text, Action action)
+    {
+        var button = new Button
+        {
+            Text = text,
+            CustomMinimumSize = new Vector2(280f, 40f)
+        };
+        button.AddThemeFontSizeOverride("font_size", 16);
+        button.Pressed += action;
+        return button;
     }
 
     private static Button PrimaryButton(string text, Action action)
