@@ -16,13 +16,21 @@ public partial class War3TerrainShowcase3D : Node3D
         "res://data/demo_war3_terrain_visual_layers.tres";
     private TerrainMapSnapshot? _terrain;
     private TerrainVisualLayerMap? _visualLayerMap;
+    private War3TerrainShowcasePreset[] _presets = [];
+    private int _presetIndex;
     private Rts3DTerrainPresenter? _presenter;
     private Rts3DCameraController? _cameraController;
+    private Camera3D? _camera;
+    private PanelContainer? _overlayPanel;
+    private Label? _summaryLabel;
     private Label? _modeLabel;
     private War3TerrainBlendStyle _blendStyle = War3TerrainBlendStyle.DualGrid;
     private bool _capture;
     private bool _cliffCapture;
     private bool _classicCliffs = true;
+
+    private War3TerrainShowcasePreset CurrentPreset =>
+        _presets[_presetIndex];
 
     public override void _Ready()
     {
@@ -31,9 +39,11 @@ public partial class War3TerrainShowcase3D : Node3D
         _capture = arguments.Contains("--war3-terrain-capture") ||
                    arguments.Contains("--war3-terrain-continuous-capture") ||
                    arguments.Contains("--war3-terrain-cliff-capture") ||
-                   arguments.Contains("--war3-terrain-cliff-fallback-capture");
+                   arguments.Contains("--war3-terrain-cliff-fallback-capture") ||
+                   arguments.Contains("--war3-terrain-stress-capture");
         _cliffCapture = arguments.Contains("--war3-terrain-cliff-capture") ||
-                        arguments.Contains("--war3-terrain-cliff-fallback-capture");
+                        arguments.Contains("--war3-terrain-cliff-fallback-capture") ||
+                        arguments.Contains("--war3-terrain-stress-capture");
         if (arguments.Contains("--war3-terrain-cliff-fallback-capture"))
             _classicCliffs = false;
         if (arguments.Contains("--war3-terrain-continuous-capture"))
@@ -98,6 +108,40 @@ public partial class War3TerrainShowcase3D : Node3D
             return;
         }
 
+        var baselineTerrain = _terrain;
+        var baselineVisual = _visualLayerMap;
+        _presets =
+        [
+            new War3TerrainShowcasePreset(
+                "baseline",
+                "基准对战地形",
+                "原有地形资源，用于确认压力图没有改变基准表现。",
+                baselineTerrain,
+                baselineVisual),
+            .. War3TerrainStressPresetCatalog.Presets.ToArray()
+        ];
+        var requestedPreset = ReadPresetArgument(arguments);
+        if (requestedPreset is null &&
+            arguments.Contains("--war3-terrain-stress-capture"))
+        {
+            requestedPreset = "interlocked-ridges";
+        }
+        if (requestedPreset is not null)
+        {
+            var selected = Array.FindIndex(
+                _presets,
+                preset => string.Equals(
+                    preset.Id, requestedPreset,
+                    StringComparison.OrdinalIgnoreCase));
+            if (selected < 0)
+            {
+                throw new ArgumentException(
+                    $"Unknown War3 terrain preset '{requestedPreset}'.");
+            }
+            _presetIndex = selected;
+        }
+        SelectPresetData(_presetIndex);
+
         GD.Print("WAR3_TERRAIN_STAGE assets-ready");
         CreateEnvironment();
         _presenter = new Rts3DTerrainPresenter { Name = "War3Terrain" };
@@ -106,10 +150,11 @@ public partial class War3TerrainShowcase3D : Node3D
         ApplyBlendStyle();
         GD.Print("WAR3_TERRAIN_STAGE mesh-ready");
         CreateCamera(_terrain);
-        CreateOverlay(_terrain);
+        CreateOverlay();
 
         GD.Print(
-            $"WAR3_TERRAIN_READY terrain={_terrain.StableHashText} " +
+            $"WAR3_TERRAIN_READY preset={CurrentPreset.Id} " +
+            $"terrain={_terrain.StableHashText} " +
             $"surfaces={_terrain.Surfaces.Length} assets={War3TerrainMaterialSet.AssetPaths.Count} " +
             $"theme=LordaeronSummer blend={_blendStyle} " +
             $"cliff={(_classicCliffs ? "ClassicMesh" : "ProceduralFallback")} " +
@@ -131,6 +176,24 @@ public partial class War3TerrainShowcase3D : Node3D
         if (key.Keycode is Key.Home or Key.R)
         {
             _cameraController?.ResetView();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (key.Keycode == Key.Pageup)
+        {
+            ChangePreset(-1);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (key.Keycode == Key.Pagedown)
+        {
+            ChangePreset(1);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (key.Keycode == Key.F1)
+        {
+            ToggleOverlay();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -166,10 +229,7 @@ public partial class War3TerrainShowcase3D : Node3D
 
     private void CreateCamera(TerrainMapSnapshot terrain)
     {
-        var span = MathF.Max(
-            SimPlane3DTransform.ToWorldLength(terrain.Bounds.Width),
-            SimPlane3DTransform.ToWorldLength(terrain.Bounds.Height));
-        var camera = new Camera3D
+        _camera = new Camera3D
         {
             Name = "War3TerrainCamera",
             Current = true,
@@ -177,31 +237,28 @@ public partial class War3TerrainShowcase3D : Node3D
             Near = 0.1f,
             Far = 500f
         };
-        AddChild(camera);
+        AddChild(_camera);
         _cameraController = new Rts3DCameraController
         {
             Name = "TerrainCameraController",
-            MinimumDistance = MathF.Max(8f, span * 0.16f),
-            MaximumDistance = MathF.Max(80f, span * 1.55f),
-            InitialDistance = span * (_cliffCapture ? 0.43f : 0.92f),
             InitialPitchDegrees = _cliffCapture ? 43f : 51f,
             InitialYawDegrees = -27f,
             EdgeScrollMargin = 16f
         };
         AddChild(_cameraController);
-        _cameraController.Initialize(camera, terrain.Bounds);
+        ConfigureCameraForTerrain(terrain);
     }
 
-    private void CreateOverlay(TerrainMapSnapshot terrain)
+    private void CreateOverlay()
     {
         var layer = new CanvasLayer { Layer = 20 };
         AddChild(layer);
-        var panel = new PanelContainer
+        _overlayPanel = new PanelContainer
         {
             Position = new Vector2(18f, 18f),
-            CustomMinimumSize = new Vector2(760f, 218f)
+            CustomMinimumSize = new Vector2(850f, 270f)
         };
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        _overlayPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
             BgColor = new Color("071019dd"),
             BorderColor = new Color("b28a43"),
@@ -214,33 +271,29 @@ public partial class War3TerrainShowcase3D : Node3D
             CornerRadiusBottomLeft = 8,
             CornerRadiusBottomRight = 8
         });
-        layer.AddChild(panel);
+        layer.AddChild(_overlayPanel);
         if (_cameraController is not null)
         {
             _cameraController.EdgeScrollBlocked =
-                point => panel.GetGlobalRect().HasPoint(point);
+                point => _overlayPanel.Visible &&
+                         _overlayPanel.GetGlobalRect().HasPoint(point);
         }
         var margin = new MarginContainer();
         margin.AddThemeConstantOverride("margin_left", 16);
         margin.AddThemeConstantOverride("margin_top", 12);
         margin.AddThemeConstantOverride("margin_right", 16);
         margin.AddThemeConstantOverride("margin_bottom", 12);
-        panel.AddChild(margin);
+        _overlayPanel.AddChild(margin);
         var content = new VBoxContainer();
         content.AddThemeConstantOverride("separation", 7);
         margin.AddChild(content);
-        var label = new Label
+        _summaryLabel = new Label
         {
-            Text =
-                "WARCRAFT III 地形适配专项 · 双网格 / 经典悬崖阶段\n" +
-                "Lordaeron Summer 角点地表 · CliffsABCDn 模型 · Water00 水面\n" +
-                $"权威地形 {terrain.Columns}×{terrain.Rows} · {terrain.Surfaces.Length} 种语义表面\n" +
-                "WASD/方向键/边缘移动 · 中键拖动 · Alt+中键旋转 · 滚轮缩放\n" +
-                "玩法层仍使用现有高度 / 坡道 / 通行 / 建造 / 视野合同"
+            Text = string.Empty
         };
-        label.AddThemeFontSizeOverride("font_size", 16);
-        label.AddThemeColorOverride("font_color", new Color("f1e6cf"));
-        content.AddChild(label);
+        _summaryLabel.AddThemeFontSizeOverride("font_size", 16);
+        _summaryLabel.AddThemeColorOverride("font_color", new Color("f1e6cf"));
+        content.AddChild(_summaryLabel);
         _modeLabel = new Label();
         _modeLabel.AddThemeFontSizeOverride("font_size", 14);
         _modeLabel.AddThemeColorOverride("font_color", new Color("c9d9bf"));
@@ -277,6 +330,95 @@ public partial class War3TerrainShowcase3D : Node3D
         };
         back.Pressed += () => GetTree().ChangeSceneToFile("res://Main.tscn");
         actions.AddChild(back);
+
+        var presetActions = new HBoxContainer();
+        presetActions.AddThemeConstantOverride("separation", 8);
+        content.AddChild(presetActions);
+        var previous = new Button
+        {
+            Text = "上一个测试地形  PageUp",
+            CustomMinimumSize = new Vector2(205f, 30f)
+        };
+        previous.Pressed += () => ChangePreset(-1);
+        presetActions.AddChild(previous);
+        var next = new Button
+        {
+            Text = "下一个测试地形  PageDown",
+            CustomMinimumSize = new Vector2(220f, 30f)
+        };
+        next.Pressed += () => ChangePreset(1);
+        presetActions.AddChild(next);
+        var hide = new Button
+        {
+            Text = "隐藏界面  F1",
+            CustomMinimumSize = new Vector2(135f, 30f)
+        };
+        hide.Pressed += ToggleOverlay;
+        presetActions.AddChild(hide);
+        UpdateSummaryLabel();
+    }
+
+    private static string? ReadPresetArgument(string[] arguments)
+    {
+        const string prefix = "--war3-terrain-preset=";
+        var argument = arguments.FirstOrDefault(value =>
+            value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return argument is null ? null : argument[prefix.Length..];
+    }
+
+    private void SelectPresetData(int index)
+    {
+        var preset = _presets[index];
+        _terrain = preset.Terrain;
+        _visualLayerMap = preset.VisualLayers;
+    }
+
+    private void ChangePreset(int offset)
+    {
+        if (_presets.Length == 0 || _terrain is null) return;
+        _presetIndex = (_presetIndex + offset) % _presets.Length;
+        if (_presetIndex < 0) _presetIndex += _presets.Length;
+        SelectPresetData(_presetIndex);
+        ApplyBlendStyle();
+        ConfigureCameraForTerrain(_terrain);
+        UpdateSummaryLabel();
+        UpdateModeLabel();
+        GD.Print(
+            $"WAR3_TERRAIN_PRESET index={_presetIndex + 1}/{_presets.Length} " +
+            $"id={CurrentPreset.Id} terrain={_terrain.StableHashText} " +
+            $"visual={_visualLayerMap?.StableHashText}");
+    }
+
+    private void ConfigureCameraForTerrain(TerrainMapSnapshot terrain)
+    {
+        if (_camera is null || _cameraController is null) return;
+        var span = MathF.Max(
+            SimPlane3DTransform.ToWorldLength(terrain.Bounds.Width),
+            SimPlane3DTransform.ToWorldLength(terrain.Bounds.Height));
+        _cameraController.MinimumDistance = MathF.Max(8f, span * 0.16f);
+        _cameraController.MaximumDistance = MathF.Max(80f, span * 1.55f);
+        _cameraController.InitialDistance =
+            span * (_cliffCapture ? 0.54f : 0.98f);
+        _cameraController.Initialize(_camera, terrain.Bounds);
+    }
+
+    private void UpdateSummaryLabel()
+    {
+        if (_summaryLabel is null || _terrain is null || _presets.Length == 0)
+            return;
+        _summaryLabel.Text =
+            "WARCRAFT III 地形适配专项 · 复杂拓扑压力图\n" +
+            $"预设 {_presetIndex + 1}/{_presets.Length}：{CurrentPreset.DisplayName} · " +
+            $"{_terrain.Columns}×{_terrain.Rows}\n" +
+            CurrentPreset.Purpose + "\n" +
+            "WASD/方向键/边缘移动 · 中键拖动 · Alt+中键旋转 · 滚轮缩放\n" +
+            "PageUp/PageDown 切换地形 · Home/R 镜头归位 · F1 隐藏/显示界面";
+    }
+
+    private void ToggleOverlay()
+    {
+        if (_overlayPanel is not null)
+            _overlayPanel.Visible = !_overlayPanel.Visible;
     }
 
     private void ToggleBlendStyle()
@@ -305,7 +447,8 @@ public partial class War3TerrainShowcase3D : Node3D
                 ? _visualLayerMap
                 : null);
         GD.Print(
-            $"WAR3_TERRAIN_BLEND_STYLE style={_blendStyle} " +
+            $"WAR3_TERRAIN_BLEND_STYLE preset={CurrentPreset.Id} " +
+            $"style={_blendStyle} " +
             $"cliff={(_classicCliffs ? "ClassicMesh" : "ProceduralFallback")}");
     }
 
@@ -344,6 +487,14 @@ public partial class War3TerrainShowcase3D : Node3D
             : _blendStyle == War3TerrainBlendStyle.DualGrid
             ? "war3_terrain_dual_grid_capture.png"
             : "war3_terrain_continuous_capture.png";
+        if (!string.Equals(
+                CurrentPreset.Id, "baseline",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            fileName = $"war3_terrain_{CurrentPreset.Id}_" +
+                       $"{(_classicCliffs ? "classic" : "fallback")}_" +
+                       $"{(_blendStyle == War3TerrainBlendStyle.DualGrid ? "dual" : "continuous")}.png";
+        }
         var path = ProjectSettings.GlobalizePath("user://" + fileName);
         var error = GetViewport().GetTexture().GetImage().SavePng(path);
         GD.Print($"WAR3_TERRAIN_CAPTURE error={error} path={path}");

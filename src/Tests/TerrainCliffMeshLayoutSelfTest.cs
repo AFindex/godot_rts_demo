@@ -29,6 +29,28 @@ public static class TerrainCliffMeshLayoutSelfTest
                         first.Tiles[0].Variation is >= 0 and < 2;
         var deterministic = first.StableHash == second.StableHash &&
                             first.Tiles.SequenceEqual(second.Tiles);
+        var seam = TerrainClassicCliffSeamMap.Build(source, first.Tiles.ToArray());
+        var quarterOwnership =
+            seam.CoveredClassicTiles == 1 &&
+            seam.CoveredGroundQuadrants == 4 &&
+            seam.GroundQuadrantMask(0, 0) ==
+                TerrainClassicCliffSeamMap.TopRight &&
+            seam.GroundQuadrantMask(1, 0) ==
+                TerrainClassicCliffSeamMap.TopLeft &&
+            seam.GroundQuadrantMask(0, 1) ==
+                TerrainClassicCliffSeamMap.BottomRight &&
+            seam.GroundQuadrantMask(1, 1) ==
+                TerrainClassicCliffSeamMap.BottomLeft;
+        var sourceLayers = Enumerable.Repeat((byte)1, 9).ToArray();
+        var sourceVariations = new byte[9];
+        var sourceVisual = TerrainVisualLayerMap.FromPoints(
+            source, sourceLayers, sourceVariations);
+        var seamVisual = seam.BuildGroundTransitionMap(
+            source, sourceVisual, _ => 0, out var changedPoints);
+        var groundPriority = changedPoints == 9 &&
+                             seamVisual.PointLayer(1, 1) == 0 &&
+                             sourceVisual.PointLayer(1, 1) == 1 &&
+                             seamVisual.StableHash != sourceVisual.StableHash;
 
         var highBuilder = Builder(surfaces);
         highBuilder.SetCell(0, 1, Cell(3, 1));
@@ -56,11 +78,13 @@ public static class TerrainCliffMeshLayoutSelfTest
                               catalog.AssetCount == 94 &&
                               catalog.VariationCount("AAAB") == 2 &&
                               catalog.VariationCount("AABB") == 3;
-        var passed = signature && deterministic && rejectsTall &&
+        var passed = signature && deterministic && quarterOwnership &&
+                     groundPriority && rejectsTall &&
                      rejectsRamp && reportsMissing && exportedCatalog;
         return new SelfTestResult(
             passed,
             $"signature={signature}, deterministic={deterministic}, " +
+            $"quarterOwnership={quarterOwnership}, groundPriority={groundPriority}, " +
             $"tallFallback={rejectsTall}, rampFallback={rejectsRamp}, " +
             $"missing={reportsMissing}, catalog={exportedCatalog}" +
             $"({catalog.SignatureCount}/{catalog.AssetCount}), " +

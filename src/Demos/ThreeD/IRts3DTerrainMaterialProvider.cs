@@ -59,6 +59,9 @@ public interface IRts3DTerrainClassicCliffProvider :
         int variation,
         out Rts3DClassicCliffMesh definition);
     Material ClassicCliffMaterial(TerrainSurfaceDefinition upperSurface);
+    bool TryGetClassicCliffGroundLayer(
+        TerrainSurfaceDefinition upperSurface,
+        out int layer);
 }
 
 public readonly record struct Rts3DClassicCliffMesh(

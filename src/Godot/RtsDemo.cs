@@ -415,6 +415,15 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--war3-terrain-stress-self-test"))
+        {
+            var result = War3TerrainStressPresetCatalogSelfTest.Run();
+            GD.Print($"WAR3_TERRAIN_STRESS_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--self-test"))
         {
             if (!TryLoadRuntimeData())

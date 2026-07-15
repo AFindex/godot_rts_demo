@@ -43,11 +43,19 @@ public partial class Rts3DTerrainPresenter : Node3D
             materialProvider as IRts3DTerrainDualGridMaterialProvider;
         var blendProvider =
             materialProvider as IRts3DTerrainBlendMaterialProvider;
+        var classicCliffProvider =
+            materialProvider as IRts3DTerrainClassicCliffProvider;
+        var classicCliffSeams =
+            classicCliffProvider?.ClassicCliffMeshesEnabled == true
+                ? AppendClassicCliffs(terrain, classicCliffProvider)
+                : null;
         if (dualGridProvider?.DualGridEnabled == true)
             AppendDualGridSurface(
-                mesh, terrain, dualGridProvider, visualLayerMap);
+                mesh, terrain, dualGridProvider, visualLayerMap,
+                classicCliffSeams, classicCliffProvider);
         else if (blendProvider is not null)
-            AppendBlendedSurface(mesh, terrain, blendProvider);
+            AppendBlendedSurface(
+                mesh, terrain, blendProvider, classicCliffSeams);
         foreach (var surface in terrain.Surfaces)
         {
             if (dualGridProvider?.DualGridEnabled == true &&
@@ -57,14 +65,9 @@ public partial class Rts3DTerrainPresenter : Node3D
             }
             if (blendProvider?.TryGetBlendChannel(surface, out _) == true)
                 continue;
-            AppendSurface(mesh, terrain, surface);
+            AppendSurface(mesh, terrain, surface, classicCliffSeams);
         }
-        var classicCliffProvider =
-            materialProvider as IRts3DTerrainClassicCliffProvider;
-        var classicCliffTiles = classicCliffProvider?.ClassicCliffMeshesEnabled == true
-            ? AppendClassicCliffs(terrain, classicCliffProvider)
-            : [];
-        AppendCliffs(mesh, terrain, classicCliffTiles);
+        AppendCliffs(mesh, terrain, classicCliffSeams);
         _visual = new MeshInstance3D
         {
             Name = "TerrainMesh",
@@ -74,14 +77,14 @@ public partial class Rts3DTerrainPresenter : Node3D
         AddChild(_visual);
     }
 
-    private HashSet<int> AppendClassicCliffs(
+    private TerrainClassicCliffSeamMap AppendClassicCliffs(
         TerrainMapSnapshot terrain,
         IRts3DTerrainClassicCliffProvider provider)
     {
         var layout = TerrainCliffMeshLayout.Build(
             terrain, provider.ClassicCliffVariationCount);
         LastClassicCliffDiagnostics = layout.Diagnostics;
-        var coveredTiles = new HashSet<int>();
+        var resolvedTiles = new List<TerrainClassicCliffTile>();
         var groups = new Dictionary<ClassicCliffGroupKey, ClassicCliffGroup>();
         foreach (var tile in layout.Tiles)
         {
@@ -99,8 +102,7 @@ public partial class Rts3DTerrainPresenter : Node3D
             }
             group.Transforms.Add(ClassicCliffTransform(terrain, tile) *
                                  definition.ModelTransform);
-            coveredTiles.Add(
-                tile.Row * Math.Max(1, terrain.Columns - 1) + tile.Column);
+            resolvedTiles.Add(tile);
         }
 
         var root = new Node3D { Name = "ClassicCliffMeshes" };
@@ -143,15 +145,18 @@ public partial class Rts3DTerrainPresenter : Node3D
         {
             root.Free();
         }
+        var seamMap = TerrainClassicCliffSeamMap.Build(
+            terrain, resolvedTiles);
         GD.Print(
             $"TERRAIN_CLASSIC_CLIFF_LAYOUT hash={layout.StableHashText} " +
             $"candidates={layout.Diagnostics.CandidateTiles} " +
             $"selected={layout.Diagnostics.SelectedTiles} " +
-            $"resolved={coveredTiles.Count} batches={groups.Count} " +
+            $"resolved={seamMap.CoveredClassicTiles} batches={groups.Count} " +
+            $"groundCutQuads={seamMap.CoveredGroundQuadrants} " +
             $"rampFallback={layout.Diagnostics.RampFallbackTiles} " +
             $"heightFallback={layout.Diagnostics.UnsupportedHeightTiles} " +
             $"missing={layout.Diagnostics.MissingAssetTiles}");
-        return coveredTiles;
+        return seamMap;
     }
 
     private Transform3D ClassicCliffTransform(
@@ -184,7 +189,8 @@ public partial class Rts3DTerrainPresenter : Node3D
     private void AppendSurface(
         ArrayMesh mesh,
         TerrainMapSnapshot terrain,
-        TerrainSurfaceDefinition surface)
+        TerrainSurfaceDefinition surface,
+        TerrainClassicCliffSeamMap? cliffSeams)
     {
         var tool = new SurfaceTool();
         tool.Begin(Mesh.PrimitiveType.Triangles);
@@ -197,18 +203,9 @@ public partial class Rts3DTerrainPresenter : Node3D
             {
                 if (terrain.Cell(column, row).SurfaceId != surface.Id)
                     continue;
-                var bounds = terrain.CellBounds(column, row);
-                var a = Point(terrain, bounds.Min.X, bounds.Min.Y,
-                    terrain.CellCornerHeight(column, row, false, false));
-                var b = Point(terrain, bounds.Max.X, bounds.Min.Y,
-                    terrain.CellCornerHeight(column, row, true, false));
-                var c = Point(terrain, bounds.Max.X, bounds.Max.Y,
-                    terrain.CellCornerHeight(column, row, true, true));
-                var d = Point(terrain, bounds.Min.X, bounds.Max.Y,
-                    terrain.CellCornerHeight(column, row, false, true));
-                AddTriangle(tool, a, c, b);
-                AddTriangle(tool, a, d, c);
-                added = true;
+                var geometry = GroundCellGeometry(terrain, column, row);
+                var mask = cliffSeams?.GroundQuadrantMask(column, row) ?? 0;
+                added |= AppendGroundCell(tool, geometry, mask);
             }
         }
         if (added)
@@ -219,7 +216,9 @@ public partial class Rts3DTerrainPresenter : Node3D
         ArrayMesh mesh,
         TerrainMapSnapshot terrain,
         IRts3DTerrainDualGridMaterialProvider dualGridProvider,
-        TerrainVisualLayerMap? authoredVisualMap)
+        TerrainVisualLayerMap? authoredVisualMap,
+        TerrainClassicCliffSeamMap? cliffSeams,
+        IRts3DTerrainClassicCliffProvider? classicCliffProvider)
     {
         if (authoredVisualMap is not null &&
             (!string.Equals(
@@ -235,6 +234,18 @@ public partial class Rts3DTerrainPresenter : Node3D
         }
         var visualMap = authoredVisualMap ?? TerrainVisualLayerMap.FromTerrain(
             terrain, dualGridProvider);
+        var seamPointOverrides = 0;
+        if (cliffSeams is not null && classicCliffProvider is not null)
+        {
+            visualMap = cliffSeams.BuildGroundTransitionMap(
+                terrain,
+                visualMap,
+                surface => classicCliffProvider.TryGetClassicCliffGroundLayer(
+                    surface, out var layer)
+                    ? layer
+                    : null,
+                out seamPointOverrides);
+        }
         var tool = new SurfaceTool();
         tool.Begin(Mesh.PrimitiveType.Triangles);
         tool.SetMaterial(dualGridProvider.DualGridSurfaceMaterial());
@@ -249,22 +260,14 @@ public partial class Rts3DTerrainPresenter : Node3D
                 {
                     continue;
                 }
-                var bounds = terrain.CellBounds(column, row);
-                var a = Point(terrain, bounds.Min.X, bounds.Min.Y,
-                    terrain.CellCornerHeight(column, row, false, false));
-                var b = Point(terrain, bounds.Max.X, bounds.Min.Y,
-                    terrain.CellCornerHeight(column, row, true, false));
-                var c = Point(terrain, bounds.Max.X, bounds.Max.Y,
-                    terrain.CellCornerHeight(column, row, true, true));
-                var d = Point(terrain, bounds.Min.X, bounds.Max.Y,
-                    terrain.CellCornerHeight(column, row, false, true));
                 var visualCell = visualMap.Cell(column, row);
                 var encoded = new Vector2(
                     visualCell.PackedLayerMasks,
                     visualCell.BaseVariation);
-                AddDualGridTriangle(tool, a, c, b, encoded);
-                AddDualGridTriangle(tool, a, d, c, encoded);
-                added = true;
+                var geometry = GroundCellGeometry(terrain, column, row);
+                var mask = cliffSeams?.GroundQuadrantMask(column, row) ?? 0;
+                added |= AppendDualGridGroundCell(
+                    tool, geometry, mask, encoded);
             }
         }
         if (added)
@@ -272,13 +275,15 @@ public partial class Rts3DTerrainPresenter : Node3D
         GD.Print(
             $"TERRAIN_VISUAL_LAYER_MAP source={visualMap.SourceTerrainHash} " +
             $"visual={visualMap.StableHashText} " +
-            $"points={visualMap.PointColumns}x{visualMap.PointRows}");
+            $"points={visualMap.PointColumns}x{visualMap.PointRows} " +
+            $"cliffGroundOverrides={seamPointOverrides}");
     }
 
     private void AppendBlendedSurface(
         ArrayMesh mesh,
         TerrainMapSnapshot terrain,
-        IRts3DTerrainBlendMaterialProvider blendProvider)
+        IRts3DTerrainBlendMaterialProvider blendProvider,
+        TerrainClassicCliffSeamMap? cliffSeams)
     {
         var tool = new SurfaceTool();
         tool.Begin(Mesh.PrimitiveType.Triangles);
@@ -295,15 +300,6 @@ public partial class Rts3DTerrainPresenter : Node3D
                     continue;
                 }
 
-                var bounds = terrain.CellBounds(column, row);
-                var a = Point(terrain, bounds.Min.X, bounds.Min.Y,
-                    terrain.CellCornerHeight(column, row, false, false));
-                var b = Point(terrain, bounds.Max.X, bounds.Min.Y,
-                    terrain.CellCornerHeight(column, row, true, false));
-                var c = Point(terrain, bounds.Max.X, bounds.Max.Y,
-                    terrain.CellCornerHeight(column, row, true, true));
-                var d = Point(terrain, bounds.Min.X, bounds.Max.Y,
-                    terrain.CellCornerHeight(column, row, false, true));
                 var weightA = BlendWeights(
                     terrain, blendProvider, column, row, false, false);
                 var weightB = BlendWeights(
@@ -312,9 +308,12 @@ public partial class Rts3DTerrainPresenter : Node3D
                     terrain, blendProvider, column, row, true, true);
                 var weightD = BlendWeights(
                     terrain, blendProvider, column, row, false, true);
-                AddBlendTriangle(tool, a, c, b, weightA, weightC, weightB);
-                AddBlendTriangle(tool, a, d, c, weightA, weightD, weightC);
-                added = true;
+                var geometry = GroundCellGeometry(terrain, column, row);
+                var weights = GroundCellWeights(
+                    weightA, weightB, weightC, weightD);
+                var mask = cliffSeams?.GroundQuadrantMask(column, row) ?? 0;
+                added |= AppendBlendGroundCell(
+                    tool, geometry, weights, mask);
             }
         }
         if (added)
@@ -399,7 +398,7 @@ public partial class Rts3DTerrainPresenter : Node3D
     private void AppendCliffs(
         ArrayMesh mesh,
         TerrainMapSnapshot terrain,
-        HashSet<int> classicCliffTiles)
+        TerrainClassicCliffSeamMap? classicCliffSeams)
     {
         var tools = new Dictionary<ushort, SurfaceTool>();
         for (var row = 0; row < terrain.Rows; row++)
@@ -429,9 +428,9 @@ public partial class Rts3DTerrainPresenter : Node3D
                             terrain.CellBounds(column + 1, row).Max.Y,
                             terrain.CellCornerHeight(column + 1, row, false, true)),
                         IsClassicTileCovered(
-                            classicCliffTiles, terrain, column, row - 1),
+                            classicCliffSeams, column, row - 1),
                         IsClassicTileCovered(
-                            classicCliffTiles, terrain, column, row));
+                            classicCliffSeams, column, row));
                 }
                 if (row + 1 < terrain.Rows)
                 {
@@ -456,9 +455,9 @@ public partial class Rts3DTerrainPresenter : Node3D
                             terrain.CellBounds(column, row + 1).Min.Y,
                             terrain.CellCornerHeight(column, row + 1, true, false)),
                         IsClassicTileCovered(
-                            classicCliffTiles, terrain, column - 1, row),
+                            classicCliffSeams, column - 1, row),
                         IsClassicTileCovered(
-                            classicCliffTiles, terrain, column, row));
+                            classicCliffSeams, column, row));
                 }
             }
         }
@@ -467,14 +466,10 @@ public partial class Rts3DTerrainPresenter : Node3D
     }
 
     private static bool IsClassicTileCovered(
-        HashSet<int> classicCliffTiles,
-        TerrainMapSnapshot terrain,
+        TerrainClassicCliffSeamMap? classicCliffSeams,
         int column,
         int row) =>
-        (uint)column < (uint)Math.Max(0, terrain.Columns - 1) &&
-        (uint)row < (uint)Math.Max(0, terrain.Rows - 1) &&
-        classicCliffTiles.Contains(
-            row * Math.Max(1, terrain.Columns - 1) + column);
+        classicCliffSeams?.CoversClassicTile(column, row) == true;
 
     private void AppendCliffEdgeWithCoverage(
         Dictionary<ushort, SurfaceTool> tools,
@@ -553,6 +548,240 @@ public partial class Rts3DTerrainPresenter : Node3D
         var uvLowB = new Vector2(horizontalTiles, verticalTiles);
         AddTriangle(tool, highA, lowB, lowA, uvHighA, uvLowB, uvLowA);
         AddTriangle(tool, highA, highB, lowB, uvHighA, uvHighB, uvLowB);
+    }
+
+    private GroundCellGeometryData GroundCellGeometry(
+        TerrainMapSnapshot terrain,
+        int column,
+        int row)
+    {
+        var bounds = terrain.CellBounds(column, row);
+        var bottomLeft = Point(terrain, bounds.Min.X, bounds.Min.Y,
+            terrain.CellCornerHeight(column, row, false, false));
+        var bottomRight = Point(terrain, bounds.Max.X, bounds.Min.Y,
+            terrain.CellCornerHeight(column, row, true, false));
+        var topRight = Point(terrain, bounds.Max.X, bounds.Max.Y,
+            terrain.CellCornerHeight(column, row, true, true));
+        var topLeft = Point(terrain, bounds.Min.X, bounds.Max.Y,
+            terrain.CellCornerHeight(column, row, false, true));
+        var bottomMiddle = bottomLeft.Lerp(bottomRight, 0.5f);
+        var rightMiddle = bottomRight.Lerp(topRight, 0.5f);
+        var topMiddle = topLeft.Lerp(topRight, 0.5f);
+        var leftMiddle = bottomLeft.Lerp(topLeft, 0.5f);
+        var centre = bottomMiddle.Lerp(topMiddle, 0.5f);
+        return new GroundCellGeometryData(
+            bottomLeft,
+            bottomRight,
+            topRight,
+            topLeft,
+            bottomMiddle,
+            rightMiddle,
+            topMiddle,
+            leftMiddle,
+            centre);
+    }
+
+    private bool AppendGroundCell(
+        SurfaceTool tool,
+        GroundCellGeometryData geometry,
+        byte covered)
+    {
+        if (covered == 0)
+        {
+            AddGroundQuad(tool,
+                geometry.BottomLeft, geometry.BottomRight,
+                geometry.TopRight, geometry.TopLeft);
+            return true;
+        }
+        var added = false;
+        if ((covered & TerrainClassicCliffSeamMap.BottomLeft) == 0)
+        {
+            AddGroundQuad(tool, geometry.BottomLeft, geometry.BottomMiddle,
+                geometry.Centre, geometry.LeftMiddle);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.BottomRight) == 0)
+        {
+            AddGroundQuad(tool, geometry.BottomMiddle, geometry.BottomRight,
+                geometry.RightMiddle, geometry.Centre);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.TopRight) == 0)
+        {
+            AddGroundQuad(tool, geometry.Centre, geometry.RightMiddle,
+                geometry.TopRight, geometry.TopMiddle);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.TopLeft) == 0)
+        {
+            AddGroundQuad(tool, geometry.LeftMiddle, geometry.Centre,
+                geometry.TopMiddle, geometry.TopLeft);
+            added = true;
+        }
+        return added;
+    }
+
+    private bool AppendDualGridGroundCell(
+        SurfaceTool tool,
+        GroundCellGeometryData geometry,
+        byte covered,
+        Vector2 encodedCell)
+    {
+        if (covered == 0)
+        {
+            AddDualGridQuad(tool,
+                geometry.BottomLeft, geometry.BottomRight,
+                geometry.TopRight, geometry.TopLeft, encodedCell);
+            return true;
+        }
+        var added = false;
+        if ((covered & TerrainClassicCliffSeamMap.BottomLeft) == 0)
+        {
+            AddDualGridQuad(tool, geometry.BottomLeft, geometry.BottomMiddle,
+                geometry.Centre, geometry.LeftMiddle, encodedCell);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.BottomRight) == 0)
+        {
+            AddDualGridQuad(tool, geometry.BottomMiddle, geometry.BottomRight,
+                geometry.RightMiddle, geometry.Centre, encodedCell);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.TopRight) == 0)
+        {
+            AddDualGridQuad(tool, geometry.Centre, geometry.RightMiddle,
+                geometry.TopRight, geometry.TopMiddle, encodedCell);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.TopLeft) == 0)
+        {
+            AddDualGridQuad(tool, geometry.LeftMiddle, geometry.Centre,
+                geometry.TopMiddle, geometry.TopLeft, encodedCell);
+            added = true;
+        }
+        return added;
+    }
+
+    private bool AppendBlendGroundCell(
+        SurfaceTool tool,
+        GroundCellGeometryData geometry,
+        GroundCellWeightData weights,
+        byte covered)
+    {
+        if (covered == 0)
+        {
+            AddBlendQuad(tool,
+                geometry.BottomLeft, geometry.BottomRight,
+                geometry.TopRight, geometry.TopLeft,
+                weights.BottomLeft, weights.BottomRight,
+                weights.TopRight, weights.TopLeft);
+            return true;
+        }
+        var added = false;
+        if ((covered & TerrainClassicCliffSeamMap.BottomLeft) == 0)
+        {
+            AddBlendQuad(tool,
+                geometry.BottomLeft, geometry.BottomMiddle,
+                geometry.Centre, geometry.LeftMiddle,
+                weights.BottomLeft, weights.BottomMiddle,
+                weights.Centre, weights.LeftMiddle);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.BottomRight) == 0)
+        {
+            AddBlendQuad(tool,
+                geometry.BottomMiddle, geometry.BottomRight,
+                geometry.RightMiddle, geometry.Centre,
+                weights.BottomMiddle, weights.BottomRight,
+                weights.RightMiddle, weights.Centre);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.TopRight) == 0)
+        {
+            AddBlendQuad(tool,
+                geometry.Centre, geometry.RightMiddle,
+                geometry.TopRight, geometry.TopMiddle,
+                weights.Centre, weights.RightMiddle,
+                weights.TopRight, weights.TopMiddle);
+            added = true;
+        }
+        if ((covered & TerrainClassicCliffSeamMap.TopLeft) == 0)
+        {
+            AddBlendQuad(tool,
+                geometry.LeftMiddle, geometry.Centre,
+                geometry.TopMiddle, geometry.TopLeft,
+                weights.LeftMiddle, weights.Centre,
+                weights.TopMiddle, weights.TopLeft);
+            added = true;
+        }
+        return added;
+    }
+
+    private static GroundCellWeightData GroundCellWeights(
+        Color bottomLeft,
+        Color bottomRight,
+        Color topRight,
+        Color topLeft)
+    {
+        var bottomMiddle = bottomLeft.Lerp(bottomRight, 0.5f);
+        var rightMiddle = bottomRight.Lerp(topRight, 0.5f);
+        var topMiddle = topLeft.Lerp(topRight, 0.5f);
+        var leftMiddle = bottomLeft.Lerp(topLeft, 0.5f);
+        var centre = bottomMiddle.Lerp(topMiddle, 0.5f);
+        return new GroundCellWeightData(
+            bottomLeft,
+            bottomRight,
+            topRight,
+            topLeft,
+            bottomMiddle,
+            rightMiddle,
+            topMiddle,
+            leftMiddle,
+            centre);
+    }
+
+    private void AddGroundQuad(
+        SurfaceTool tool,
+        Vector3 bottomLeft,
+        Vector3 bottomRight,
+        Vector3 topRight,
+        Vector3 topLeft)
+    {
+        AddTriangle(tool, bottomLeft, topRight, bottomRight);
+        AddTriangle(tool, bottomLeft, topLeft, topRight);
+    }
+
+    private void AddDualGridQuad(
+        SurfaceTool tool,
+        Vector3 bottomLeft,
+        Vector3 bottomRight,
+        Vector3 topRight,
+        Vector3 topLeft,
+        Vector2 encodedCell)
+    {
+        AddDualGridTriangle(
+            tool, bottomLeft, topRight, bottomRight, encodedCell);
+        AddDualGridTriangle(
+            tool, bottomLeft, topLeft, topRight, encodedCell);
+    }
+
+    private void AddBlendQuad(
+        SurfaceTool tool,
+        Vector3 bottomLeft,
+        Vector3 bottomRight,
+        Vector3 topRight,
+        Vector3 topLeft,
+        Color weightBottomLeft,
+        Color weightBottomRight,
+        Color weightTopRight,
+        Color weightTopLeft)
+    {
+        AddBlendTriangle(
+            tool, bottomLeft, topRight, bottomRight,
+            weightBottomLeft, weightTopRight, weightBottomRight);
+        AddBlendTriangle(
+            tool, bottomLeft, topLeft, topRight,
+            weightBottomLeft, weightTopLeft, weightTopRight);
     }
 
     private StandardMaterial3D Material(string key)
@@ -701,4 +930,26 @@ public partial class Rts3DTerrainPresenter : Node3D
         public Rts3DClassicCliffMesh Definition { get; } = definition;
         public List<Transform3D> Transforms { get; } = [];
     }
+
+    private readonly record struct GroundCellGeometryData(
+        Vector3 BottomLeft,
+        Vector3 BottomRight,
+        Vector3 TopRight,
+        Vector3 TopLeft,
+        Vector3 BottomMiddle,
+        Vector3 RightMiddle,
+        Vector3 TopMiddle,
+        Vector3 LeftMiddle,
+        Vector3 Centre);
+
+    private readonly record struct GroundCellWeightData(
+        Color BottomLeft,
+        Color BottomRight,
+        Color TopRight,
+        Color TopLeft,
+        Color BottomMiddle,
+        Color RightMiddle,
+        Color TopMiddle,
+        Color LeftMiddle,
+        Color Centre);
 }

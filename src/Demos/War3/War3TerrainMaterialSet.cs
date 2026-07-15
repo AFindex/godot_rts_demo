@@ -163,14 +163,24 @@ public sealed class War3TerrainMaterialSet :
         TerrainSurfaceDefinition upperSurface)
         => CliffMaterial(upperSurface, classicModelUv: true);
 
+    public bool TryGetClassicCliffGroundLayer(
+        TerrainSurfaceDefinition upperSurface,
+        out int layer)
+    {
+        // Lordaeron Summer Cliff0 declares Ldrt (dirt) as its ground tile;
+        // Cliff1 declares Lgrs (grass). This is the same priority texture W3
+        // applies to tilepoints neighbouring a cliff model.
+        var groundKey = ResolveCliffName(upperSurface) == "cliff1"
+            ? "badlands"
+            : "sand";
+        return BlendChannels.TryGetValue(groundKey, out layer);
+    }
+
     private Material CliffMaterial(
         TerrainSurfaceDefinition upperSurface,
         bool classicModelUv)
     {
-        var cliffName = upperSurface.MaterialKey is
-            "badlands" or "mud" or "vision-smoke"
-            ? "cliff1"
-            : "cliff0";
+        var cliffName = ResolveCliffName(upperSurface);
         var cache = classicModelUv
             ? _classicCliffMaterials
             : _cliffMaterials;
@@ -187,6 +197,12 @@ public sealed class War3TerrainMaterialSet :
         cache.Add(cliffName, material);
         return material;
     }
+
+    private static string ResolveCliffName(
+        TerrainSurfaceDefinition upperSurface) =>
+        upperSurface.MaterialKey is "badlands" or "mud" or "vision-smoke"
+            ? "cliff1"
+            : "cliff0";
 
     private Material CreateBlendedSurfaceMaterial()
         => CreateLayeredSurfaceMaterial(_groundBlendShader);
