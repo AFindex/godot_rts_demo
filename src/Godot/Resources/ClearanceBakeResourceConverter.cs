@@ -10,6 +10,16 @@ public static class ClearanceBakeResourceConverter
         ulong expectedNavigationHash,
         out ClearanceBakeSnapshot? snapshot,
         out ClearanceBakeValidationResult validation)
+        => TryLoadSnapshot(
+            resourcePath, expectedNavigationHash, 0UL,
+            out snapshot, out validation);
+
+    public static bool TryLoadSnapshot(
+        string resourcePath,
+        ulong expectedNavigationHash,
+        ulong expectedTerrainHash,
+        out ClearanceBakeSnapshot? snapshot,
+        out ClearanceBakeValidationResult validation)
     {
         if (!ResourceLoader.Exists(resourcePath))
         {
@@ -31,12 +41,23 @@ public static class ClearanceBakeResourceConverter
         }
 
         return TryConvert(
-            resource, expectedNavigationHash, out snapshot, out validation);
+            resource, expectedNavigationHash, expectedTerrainHash,
+            out snapshot, out validation);
     }
 
     public static bool TryConvert(
         RtsClearanceBakeResource resource,
         ulong expectedNavigationHash,
+        out ClearanceBakeSnapshot? snapshot,
+        out ClearanceBakeValidationResult validation)
+        => TryConvert(
+            resource, expectedNavigationHash, 0UL,
+            out snapshot, out validation);
+
+    public static bool TryConvert(
+        RtsClearanceBakeResource resource,
+        ulong expectedNavigationHash,
+        ulong expectedTerrainHash,
         out ClearanceBakeSnapshot? snapshot,
         out ClearanceBakeValidationResult validation)
     {
@@ -83,9 +104,22 @@ public static class ClearanceBakeResourceConverter
                 out validation);
         }
 
+        if (snapshot.SourceTerrainHash != expectedTerrainHash)
+        {
+            return Failure(
+                ClearanceBakeErrorCode.SourceTerrainMismatch,
+                $"Bake terrain source {snapshot.SourceTerrainHashText} does not match terrain {expectedTerrainHash:X16}.",
+                out snapshot,
+                out validation);
+        }
+
         if (!string.Equals(
                 resource.SourceNavigationHash,
                 snapshot.SourceNavigationHashText,
+                StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(
+                resource.SourceTerrainHash,
+                snapshot.SourceTerrainHashText,
                 StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(
                 resource.BakeHash,
@@ -108,6 +142,7 @@ public static class ClearanceBakeResourceConverter
         {
             FormatVersion = snapshot.FormatVersion,
             SourceNavigationHash = snapshot.SourceNavigationHashText,
+            SourceTerrainHash = snapshot.SourceTerrainHashText,
             BakeHash = snapshot.StableHashText,
             CellSize = snapshot.CellSize,
             ChunkSizeCells = snapshot.ChunkSizeCells,

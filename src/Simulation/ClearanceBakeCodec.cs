@@ -18,7 +18,8 @@ public enum ClearanceBakeErrorCode
     MissingResourceAsset = 3401,
     InvalidResourcePayload = 3402,
     SourceNavigationMismatch = 3403,
-    DeclaredHashMismatch = 3404
+    DeclaredHashMismatch = 3404,
+    SourceTerrainMismatch = 3405
 }
 
 public readonly record struct ClearanceBakeValidationIssue(
@@ -46,6 +47,7 @@ internal static class ClearanceBakeCodec
     public static byte[] Serialize(
         int formatVersion,
         ulong sourceNavigationHash,
+        ulong sourceTerrainHash,
         SimRect bounds,
         float cellSize,
         int columns,
@@ -58,6 +60,7 @@ internal static class ClearanceBakeCodec
         writer.Write(Magic);
         writer.Write(formatVersion);
         writer.Write(sourceNavigationHash);
+        writer.Write(sourceTerrainHash);
         WriteRect(writer, bounds);
         WriteFloat(writer, cellSize);
         writer.Write(columns);
@@ -120,6 +123,7 @@ internal static class ClearanceBakeCodec
                     out snapshot,
                     out validation);
             }
+            var sourceTerrainHash = reader.ReadUInt64();
 
             var bounds = ReadRect(reader);
             var cellSize = ReadFloat(reader);
@@ -178,6 +182,7 @@ internal static class ClearanceBakeCodec
             snapshot = new ClearanceBakeSnapshot(
                 formatVersion,
                 sourceHash,
+                sourceTerrainHash,
                 bounds,
                 cellSize,
                 columns,

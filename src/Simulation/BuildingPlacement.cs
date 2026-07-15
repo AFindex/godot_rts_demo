@@ -39,7 +39,8 @@ public enum BuildingPlacementCode : byte
     DynamicFootprintOverlap,
     UnitOverlap,
     InsufficientClearance,
-    DisconnectsNavigation
+    DisconnectsNavigation,
+    TerrainUnbuildable
 }
 
 public readonly record struct BuildingPlacementResult(
@@ -58,7 +59,8 @@ public enum StaticPlacementCode : byte
     StaticObstacleOverlap,
     DynamicFootprintOverlap,
     InsufficientClearance,
-    DisconnectsNavigation
+    DisconnectsNavigation,
+    TerrainUnbuildable
 }
 
 public readonly record struct StaticPlacementResult(
@@ -94,7 +96,8 @@ public readonly record struct BuildingPlacementAssessment(
             if (Static.Code is StaticPlacementCode.InvalidFootprint or
                 StaticPlacementCode.OutsideWorld or
                 StaticPlacementCode.StaticObstacleOverlap or
-                StaticPlacementCode.DynamicFootprintOverlap)
+                StaticPlacementCode.DynamicFootprintOverlap or
+                StaticPlacementCode.TerrainUnbuildable)
                 return ToPlacementCode(Static.Code);
             if (Dynamic.Code == DynamicStartValidationCode.UnitOverlap)
                 return BuildingPlacementCode.UnitOverlap;
@@ -130,6 +133,8 @@ public readonly record struct BuildingPlacementAssessment(
                 BuildingPlacementCode.InsufficientClearance,
             StaticPlacementCode.DisconnectsNavigation =>
                 BuildingPlacementCode.DisconnectsNavigation,
+            StaticPlacementCode.TerrainUnbuildable =>
+                BuildingPlacementCode.TerrainUnbuildable,
             _ => throw new ArgumentOutOfRangeException(nameof(code))
         };
 }
@@ -204,6 +209,12 @@ public static class BuildingPlacementValidator
             !world.Bounds.Contains(footprint.Max))
         {
             return StaticFailure(StaticPlacementCode.OutsideWorld);
+        }
+
+        if (world.Terrain is not null &&
+            !world.Terrain.IsAreaBuildable(footprint))
+        {
+            return StaticFailure(StaticPlacementCode.TerrainUnbuildable);
         }
 
         var obstacles = world.Obstacles;
@@ -373,7 +384,8 @@ public static class BuildingPlacementValidator
         code is StaticPlacementCode.InvalidFootprint or
             StaticPlacementCode.OutsideWorld or
             StaticPlacementCode.StaticObstacleOverlap or
-            StaticPlacementCode.DynamicFootprintOverlap;
+            StaticPlacementCode.DynamicFootprintOverlap or
+            StaticPlacementCode.TerrainUnbuildable;
 
     private static bool HasCompleteConnectivityKnowledge(
         StaticWorld world,

@@ -39,6 +39,7 @@ public partial class Rts3DWorldPresenter : Node3D
     private readonly Dictionary<int, StandardMaterial3D> _projectileMaterials = [];
 
     private RtsSimulation? _simulation;
+    private ITerrainMapQuery? _terrain;
     private Mesh? _obstacleMesh;
     private Mesh? _selectionMesh;
     private Mesh? _projectileMesh;
@@ -85,11 +86,14 @@ public partial class Rts3DWorldPresenter : Node3D
         _units.Count + _buildings.Count + _resources.Count + _projectiles.Count;
     public int RallyMarkerCount => _rallyMarkerCount;
 
-    public void Initialize(RtsSimulation simulation)
+    public void Initialize(
+        RtsSimulation simulation,
+        ITerrainMapQuery? terrain = null)
     {
         ArgumentNullException.ThrowIfNull(simulation);
         ClearVisuals();
         _simulation = simulation;
+        _terrain = terrain;
         EnsureDebugVisuals();
         CreateStaticObstacles(simulation.World);
         Sync();
@@ -112,7 +116,7 @@ public partial class Rts3DWorldPresenter : Node3D
             MathF.Abs(footprint.X), MathF.Abs(footprint.Y)));
         var height = MathF.Max(0.10f, MathF.Min(size.X, size.Y) * 0.16f);
 
-        _pointerPreviewVisual!.Position = SimPlane3DTransform.ToWorld(
+        _pointerPreviewVisual!.Position = ToWorldAtGround(
             simulationPosition, height * 0.5f);
         _pointerPreviewVisual.Scale = new Vector3(size.X, height, size.Y);
         _pointerPreviewVisual.MaterialOverride = valid
@@ -166,8 +170,8 @@ public partial class Rts3DWorldPresenter : Node3D
                 RallyTargetKind.FriendlyUnit => new Color("62d9ff"),
                 _ => new Color("ffd35f")
             };
-            var source = SimPlane3DTransform.ToWorld(marker.Source, 0.12f);
-            var target = SimPlane3DTransform.ToWorld(marker.Target, 0.12f);
+            var source = ToWorldAtGround(marker.Source, 0.12f);
+            var target = ToWorldAtGround(marker.Target, 0.12f);
             AppendRallyLine(source, target, color);
             AppendRallyRing(target, color);
             AppendRallyArrow(source, target, color);
@@ -251,9 +255,9 @@ public partial class Rts3DWorldPresenter : Node3D
             var target = useSlotTarget
                 ? simulation.Units.SlotTargets[unit]
                 : simulation.Units.MoveGoals[unit];
-            var from = SimPlane3DTransform.ToWorld(
+            var from = ToWorldAtGround(
                 simulationPosition, MovementDebugHeight);
-            var to = SimPlane3DTransform.ToWorld(target, MovementDebugHeight);
+            var to = ToWorldAtGround(target, MovementDebugHeight);
 
             AppendDebugLine(from, to, color);
             AppendTargetMarker(to, color);
@@ -315,7 +319,7 @@ public partial class Rts3DWorldPresenter : Node3D
                 SimPlane3DTransform.ToWorldLength(
                     simulation.Units.Radii[unit]));
             var height = UnitHeight(kind, radius);
-            var worldPosition = SimPlane3DTransform.ToWorld(
+            var worldPosition = ToWorldAtGround(
                 simulationPosition, height * 0.5f);
             visual.Body.Position = worldPosition;
             visual.Body.Scale = new Vector3(radius * 2f, height, radius * 2f);
@@ -328,7 +332,9 @@ public partial class Rts3DWorldPresenter : Node3D
             }
 
             visual.Selection.Position = new Vector3(
-                worldPosition.X, SelectionHeight, worldPosition.Z);
+                worldPosition.X,
+                GroundHeight(simulationPosition) + SelectionHeight,
+                worldPosition.Z);
             visual.Selection.Scale = Vector3.One * (radius * 2.65f);
             visual.Selection.Visible = _selectedUnits.Contains(unit);
         }
@@ -370,13 +376,15 @@ public partial class Rts3DWorldPresenter : Node3D
                 ? 1f
                 : MathF.Max(0.18f, building.Progress);
             var height = fullHeight * constructionScale;
-            var position = SimPlane3DTransform.ToWorld(center, height * 0.5f);
+            var position = ToWorldAtGround(center, height * 0.5f);
             visual.Body.Position = position;
             visual.Body.Scale = new Vector3(size.X, height, size.Y);
 
             var markerDiameter = MathF.Max(size.X, size.Y) * 1.18f;
             visual.Selection.Position = new Vector3(
-                position.X, SelectionHeight, position.Z);
+                position.X,
+                GroundHeight(center) + SelectionHeight,
+                position.Z);
             visual.Selection.Scale = Vector3.One * markerDiameter;
             visual.Selection.Visible = _selectedBuildings.Contains(id);
         }
@@ -416,7 +424,7 @@ public partial class Rts3DWorldPresenter : Node3D
             var size = node.Kind == EconomyResourceKind.Minerals
                 ? new Vector3(0.48f, 0.72f, 0.34f)
                 : new Vector3(0.72f, 0.62f, 0.72f);
-            visual.Body.Position = SimPlane3DTransform.ToWorld(
+            visual.Body.Position = ToWorldAtGround(
                 node.Position, size.Y * 0.5f);
             visual.Body.Scale = size;
             visual.Body.Visible = true;
@@ -447,7 +455,7 @@ public partial class Rts3DWorldPresenter : Node3D
                 visual.Body.MaterialOverride = ProjectileMaterial(team);
             }
 
-            visual.Body.Position = SimPlane3DTransform.ToWorld(
+            visual.Body.Position = ToWorldAtGround(
                 projectile.Position, ProjectileHeight);
         }
 
@@ -537,12 +545,17 @@ public partial class Rts3DWorldPresenter : Node3D
                 obstacle.Max - obstacle.Min);
             const float height = 1.55f;
             var center = (obstacle.Min + obstacle.Max) * 0.5f;
+            if (_terrain is not null &&
+                !_terrain.IsDiscTraversable(center, 0f))
+            {
+                continue;
+            }
             var visual = new MeshInstance3D
             {
                 Name = $"Obstacle{_obstacles.Count}",
                 Mesh = ObstacleMesh(),
                 MaterialOverride = ObstacleMaterial(),
-                Position = SimPlane3DTransform.ToWorld(center, height * 0.5f),
+                Position = ToWorldAtGround(center, height * 0.5f),
                 Scale = new Vector3(size.X, height, size.Y)
             };
             AddChild(visual);
@@ -561,6 +574,18 @@ public partial class Rts3DWorldPresenter : Node3D
             visual.Selection.Visible = _selectedBuildings.Contains(id);
         }
     }
+
+    private float GroundHeight(NVector2 position) =>
+        _terrain is null
+            ? 0f
+            : SimPlane3DTransform.ToWorldLength(_terrain.HeightAt(position));
+
+    private Vector3 ToWorldAtGround(
+        NVector2 position,
+        float localHeight = 0f) =>
+        SimPlane3DTransform.ToWorld(
+            position,
+            GroundHeight(position) + localHeight);
 
     private void RemoveUnit(int unit)
     {

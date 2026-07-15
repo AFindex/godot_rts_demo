@@ -18,6 +18,7 @@ public partial class RtsEncounter3DDemo : Node3D
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
     private RtsSimulation? _simulation;
+    private TerrainMapSnapshot? _terrain;
     private PlayableSkirmishRuntime? _runtime;
     private Rts3DWorldPresenter? _presenter;
     private Camera3D? _camera;
@@ -54,15 +55,14 @@ public partial class RtsEncounter3DDemo : Node3D
     public override void _Ready()
     {
         var navigation = PlayableSkirmishScenario.CreateNavigationSnapshot();
-        var world = navigation.CreateWorld();
-        var bake = ClearanceBakeSnapshot.Build(navigation);
+        _terrain = PlayableSkirmishTerrainDefinition.Create(navigation);
+        var world = navigation.CreateWorld(_terrain);
         _simulation = new RtsSimulation(
             world,
-            new GridPathProvider(world, staticBake: bake),
+            new GridPathProvider(world),
             PlayableSkirmishScenario.SimulationCapacity,
             navigation.CreateRoutePlanner(world),
-            navigation.CreateChokeController(),
-            bake);
+            navigation.CreateChokeController());
         _buildingCatalog = DemoBuildingTypes.CreateCatalog();
         _productionCatalog = DemoProductionCatalog.CreateSnapshot();
         _technologyCatalog = DemoTechnologies.CreateCatalog();
@@ -76,11 +76,13 @@ public partial class RtsEncounter3DDemo : Node3D
         _controlGroups = new ControlGroupManager(_simulation.Units.Capacity);
 
         CreateLighting();
-        CreateGround(world);
+        var terrainPresenter = new Rts3DTerrainPresenter { Name = "Terrain" };
+        AddChild(terrainPresenter);
+        terrainPresenter.Initialize(_terrain);
         CreateCamera(world);
         _presenter = new Rts3DWorldPresenter { Name = "WorldPresenter" };
         AddChild(_presenter);
-        _presenter.Initialize(_simulation);
+        _presenter.Initialize(_simulation, _terrain);
         CreateHud();
         FocusAt(PlayableSkirmishScenario.PlayerHome, immediate: true);
 
@@ -962,11 +964,59 @@ public partial class RtsEncounter3DDemo : Node3D
         if (_camera is null) return false;
         var origin = _camera.ProjectRayOrigin(screen);
         var direction = _camera.ProjectRayNormal(screen);
-        if (MathF.Abs(direction.Y) < 0.0001f) return false;
-        var distance = -origin.Y / direction.Y;
-        if (distance < 0f) return false;
-        point = SimPlane3DTransform.ToSimulation(origin + direction * distance);
-        return true;
+        if (direction.Y >= -0.0001f) return false;
+        if (_terrain is null)
+        {
+            var distance = -origin.Y / direction.Y;
+            if (distance < 0f) return false;
+            point = SimPlane3DTransform.ToSimulation(origin + direction * distance);
+            return true;
+        }
+
+        var maximumHeight = SimPlane3DTransform.ToWorldLength(
+            (_terrain.MaximumCellLevel + 1f) * _terrain.CliffLevelHeight);
+        var begin = MathF.Max(0f, (maximumHeight - origin.Y) / direction.Y);
+        var end = -origin.Y / direction.Y;
+        if (end < begin) (begin, end) = (end, begin);
+        var previousDistance = begin;
+        var previousDelta = HeightDelta(
+            origin + direction * previousDistance);
+        const int steps = 192;
+        for (var step = 1; step <= steps; step++)
+        {
+            var progress = step / (float)steps;
+            var distance = begin + (end - begin) * progress;
+            var worldPoint = origin + direction * distance;
+            var delta = HeightDelta(worldPoint);
+            if (previousDelta >= 0f && delta <= 0f)
+            {
+                var low = previousDistance;
+                var high = distance;
+                for (var iteration = 0; iteration < 12; iteration++)
+                {
+                    var middle = (low + high) * 0.5f;
+                    if (HeightDelta(origin + direction * middle) > 0f)
+                        low = middle;
+                    else
+                        high = middle;
+                }
+                point = SimPlane3DTransform.ToSimulation(
+                    origin + direction * high);
+                return _terrain.Bounds.Contains(point);
+            }
+            previousDistance = distance;
+            previousDelta = delta;
+        }
+        return false;
+
+        float HeightDelta(Vector3 worldPoint)
+        {
+            var simulationPoint = SimPlane3DTransform.ToSimulation(worldPoint);
+            if (!_terrain.Bounds.Contains(simulationPoint))
+                return float.PositiveInfinity;
+            return worldPoint.Y - SimPlane3DTransform.ToWorldLength(
+                _terrain.HeightAt(simulationPoint));
+        }
     }
 
     private void CreateCamera(StaticWorld world)
@@ -1007,27 +1057,6 @@ public partial class RtsEncounter3DDemo : Node3D
             ShadowEnabled = true
         };
         AddChild(sun);
-    }
-
-    private void CreateGround(StaticWorld world)
-    {
-        var size = SimPlane3DTransform.ToWorldSize(
-            world.Bounds.Max - world.Bounds.Min);
-        var center = (world.Bounds.Min + world.Bounds.Max) * 0.5f;
-        var material = new StandardMaterial3D
-        {
-            AlbedoColor = new Color("263d37"),
-            Roughness = 0.94f,
-            Metallic = 0.02f
-        };
-        var ground = new MeshInstance3D
-        {
-            Name = "Ground",
-            Mesh = new PlaneMesh { Size = size },
-            MaterialOverride = material,
-            Position = SimPlane3DTransform.ToWorld(center, -0.02f)
-        };
-        AddChild(ground);
     }
 
     private void UpdateSmokeCamera()

@@ -92,6 +92,7 @@ public sealed class ClearancePreviewSnapshot
             var topology = clearanceBake is not null &&
                            clearanceBake.SourceNavigationHash ==
                            navigation.StableHash &&
+                           clearanceBake.SourceTerrainHash == 0UL &&
                            MathF.Abs(
                                clearanceBake.Layer(movementClass).NavigationRadius -
                                clearance.NavigationRadius) <= 0.0001f
@@ -155,7 +156,8 @@ public sealed class ClearancePreviewSnapshot
         var bakeChunks = Array.Empty<ClearanceBakeChunk>();
         var dirtyBakeChunks = Array.Empty<ClearanceBakeChunk>();
         if (clearanceBake is not null &&
-            clearanceBake.SourceNavigationHash == navigation.StableHash)
+            clearanceBake.SourceNavigationHash == navigation.StableHash &&
+            clearanceBake.SourceTerrainHash == 0UL)
         {
             bakeChunks = new ClearanceBakeChunk[clearanceBake.ChunkCount];
             for (var chunk = 0; chunk < bakeChunks.Length; chunk++)

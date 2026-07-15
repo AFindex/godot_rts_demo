@@ -49,6 +49,15 @@ Godot Movie Maker → <case>.capture.avi
 → 写入 manifest.json
 ```
 
+独立演示使用同一编码和校验链：
+
+```powershell
+.\tools\record_demo.ps1 -Demo 3d-encounter
+.\tools\record_demo.ps1 -Demo terrain-traversal
+```
+
+`terrain-traversal` 在编码前必须取得 `RTS_TERRAIN_DEMO_PASS`，Manifest 会保留到达数、非法穿崖、浅水放置结果、Bake 兼容性和最小单位间距；业务失败时不产生可提交的 WebM。
+
 Godot 或编码失败时保留临时 AVI 供诊断，最终命令返回失败；不会把 partial 文件当成
 成功录像。Manifest 保存源/目标字节数、codec、container、CRF、preset 和业务测试结果。
 

@@ -19,6 +19,7 @@ public static class SimulationSelfTest
         try
         {
             var dataResult = NavigationMapSelfTest.Run();
+            var terrainResult = TerrainMapSelfTest.Run();
             var fallbackPathResult = PathProviderFallbackSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
@@ -54,7 +55,8 @@ public static class SimulationSelfTest
             var testShowcaseResult = TestShowcaseCatalogSelfTest.Run();
             var playableSkirmishResult = PlayableSkirmishScenarioSelfTest.Run(
                 buildingTypes, productionCatalog, technologyCatalog);
-            var passed = dataResult.Passed && fallbackPathResult.Passed &&
+            var passed = dataResult.Passed && terrainResult.Passed &&
+                         fallbackPathResult.Passed &&
                          profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
@@ -71,10 +73,12 @@ public static class SimulationSelfTest
                       combatDamageResult.Passed && combatProjectileResult.Passed &&
                       combatPresentationResult.Passed && testShowcaseResult.Passed &&
                       playableSkirmishResult.Passed;
-            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 25)
+            var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 26)
             {
                 $"navigation-data={(dataResult.Passed ? "PASS" : "FAIL")}" +
                 $"({dataResult.Summary})",
+                $"terrain-map={(terrainResult.Passed ? "PASS" : "FAIL")}" +
+                $"({terrainResult.Summary})",
                 $"path-provider-fallback=" +
                 $"{(fallbackPathResult.Passed ? "PASS" : "FAIL")}" +
                 $"({fallbackPathResult.Summary})",

@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-15T02:52:38.8284327+08:00",
+    "generated_at":  "2026-07-15T16:08:11.7619518+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  178,
-    "case_count":  131,
+    "recording_count":  179,
+    "case_count":  132,
     "recordings":  [
+                       {
+                           "id":  "terrain-traversal",
+                           "display_name":  null,
+                           "batch":  "20260715_160746",
+                           "created_at":  "2026-07-15T16:08:09.4060663+08:00",
+                           "video":  "../20260715_160746/terrain-traversal.webm",
+                           "log":  "../20260715_160746/terrain-traversal.log",
+                           "bytes":  1817295,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_TERRAIN_DEMO_PASS ticks=900, reached=18/18, detour=True, illegalCliff=False, placement=TerrainUnbuildable, bakeCompatible=True, minPair=16.00",
+                           "metrics":  "RTS_TERRAIN_DEMO_PASS ticks=900, reached=18/18, detour=True, illegalCliff=False, placement=TerrainUnbuildable, bakeCompatible=True, minPair=16.00"
+                       },
                        {
                            "id":  "arrival-hard-stop",
                            "display_name":  "Open-field movement holds cruise speed and stops in one tick",

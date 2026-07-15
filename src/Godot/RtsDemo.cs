@@ -28,6 +28,8 @@ public partial class RtsDemo : Node2D
         "res://data/demo_ai_configurations.tres";
     private const string DemoClearanceBakeResourcePath =
         "res://data/demo_clearance_bake.tres";
+    private const string DemoPlayableTerrainResourcePath =
+        "res://data/demo_playable_terrain.tres";
 
     [Export]
     public RtsNavigationMapResource? NavigationMapAsset { get; set; }
@@ -270,6 +272,29 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-playable-terrain"))
+        {
+            GenerateDemoPlayableTerrain();
+            return;
+        }
+
+        if (userArguments.Contains("--validate-demo-playable-terrain"))
+        {
+            var valid = TerrainMapResourceConverter.TryLoadSnapshot(
+                DemoPlayableTerrainResourcePath, out _, out var validation);
+            if (!valid)
+            {
+                foreach (var issue in validation.Issues)
+                {
+                    GD.PushError(
+                        $"RTS_TERRAIN_RESOURCE FAIL code={issue.Code} " +
+                        $"cell={issue.ElementIndex} message={issue.Message}");
+                }
+            }
+            GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--validate-clearance-bake"))
         {
             var valid = TryLoadNavigationSnapshot() && TryLoadClearanceBake();
@@ -285,6 +310,15 @@ public partial class RtsDemo : Node2D
                 return;
             }
             GenerateHotReloadTestResources();
+            return;
+        }
+
+        if (userArguments.Contains("--terrain-self-test"))
+        {
+            var result = TerrainMapSelfTest.Run();
+            GD.Print($"RTS_TERRAIN_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
             return;
         }
 
@@ -3509,6 +3543,26 @@ public partial class RtsDemo : Node2D
         GD.Print(
             $"RTS_CLEARANCE_BAKE_GENERATE error={saveError} " +
             $"path={DemoClearanceBakeResourcePath} " +
+            $"hash={snapshot.StableHashText} " +
+            $"bytes={snapshot.CanonicalBytes.Length}");
+        GetTree().Quit(saveError == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateDemoPlayableTerrain()
+    {
+        var navigation = PlayableSkirmishScenario.CreateNavigationSnapshot();
+        var snapshot = PlayableSkirmishTerrainDefinition.Create(navigation);
+        var resource = TerrainMapResourceConverter.FromSnapshot(snapshot);
+        if (!EnsureDataDirectory())
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        var saveError = ResourceSaver.Save(
+            resource, DemoPlayableTerrainResourcePath);
+        GD.Print(
+            $"RTS_TERRAIN_RESOURCE_GENERATE error={saveError} " +
+            $"path={DemoPlayableTerrainResourcePath} " +
             $"hash={snapshot.StableHashText} " +
             $"bytes={snapshot.CanonicalBytes.Length}");
         GetTree().Quit(saveError == Error.Ok ? 0 : 1);

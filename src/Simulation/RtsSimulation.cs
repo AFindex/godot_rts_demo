@@ -9,6 +9,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     private const float MinimumArrivalStopRadius = 3.5f;
     private const float MaximumArrivalStopRadius = 8f;
     private const int CollisionIterations = 3;
+    private const int ResidualCollisionPassLimit = 18;
+    private const float ResidualCollisionTolerance = 0.005f;
     private const int DestinationReflowIntervalTicks = 12;
     private const int DestinationReflowCooldownTicks = 90;
     private const int MaximumDestinationSwapsPerPass = 12;
@@ -3945,7 +3947,139 @@ public sealed class RtsSimulation : ICombatMovementDriver
                     Units.Radii[unit]);
             }
         }
+        ResolveResidualCollisionPenetrations();
     }
+
+    /// <summary>
+    /// The parallel steering correction above is stable for crowds, but
+    /// corrections from several neighbors can cancel near a cliff or wall.
+    /// This bounded sequential projection removes the remaining penetration
+    /// without changing push priority. Open-field movement exits after one
+    /// empty pass; extra work is paid only by an actually crowded region.
+    /// </summary>
+    private void ResolveResidualCollisionPenetrations()
+    {
+        for (var pass = 0; pass < ResidualCollisionPassLimit; pass++)
+        {
+            var corrected = false;
+            _spatialHash.Rebuild(Units);
+            for (var unit = 0; unit < Units.Count; unit++)
+            {
+                if (!Units.Alive[unit]) continue;
+                var neighborCount = _spatialHash.Query(
+                    Units.Positions[unit],
+                    Units.Radii[unit] * 4f + 8f,
+                    unit,
+                    _collisionNeighbors);
+                for (var neighborIndex = 0;
+                     neighborIndex < neighborCount;
+                     neighborIndex++)
+                {
+                    var neighbor = _collisionNeighbors[neighborIndex];
+                    if (neighbor <= unit ||
+                        UnitCollisionPolicy.SuppressesPair(
+                            _unitCollisionSuppressed[unit],
+                            Combat.ConcealmentKinds[unit],
+                            _unitCollisionSuppressed[neighbor],
+                            Combat.ConcealmentKinds[neighbor]))
+                    {
+                        continue;
+                    }
+
+                    var offset = Units.Positions[neighbor] -
+                                 Units.Positions[unit];
+                    var minimumDistance = Units.Radii[unit] +
+                                          Units.Radii[neighbor];
+                    var distanceSquared = offset.LengthSquared();
+                    var allowedDistance = minimumDistance -
+                                          ResidualCollisionTolerance;
+                    if (distanceSquared >= allowedDistance * allowedDistance)
+                        continue;
+
+                    var distance = MathF.Sqrt(MathF.Max(
+                        distanceSquared, 0.000001f));
+                    var normal = distanceSquared > 0.000001f
+                        ? offset / distance
+                        : DeterministicNormal(unit, neighbor);
+                    var resolution = UnitPushPriorityPolicy.Resolve(
+                        Units,
+                        unit,
+                        neighbor,
+                        _combatContacts[unit],
+                        _combatContacts[neighbor],
+                        normal,
+                        Combat.TargetKinds[unit] != CombatTargetKind.None,
+                        Combat.TargetKinds[neighbor] != CombatTargetKind.None);
+                    if (resolution.LeftCorrectionShare <= 0f &&
+                        resolution.RightCorrectionShare <= 0f)
+                    {
+                        continue;
+                    }
+
+                    corrected = true;
+                    var required = minimumDistance - distance +
+                                   ResidualCollisionTolerance;
+                    ApplyResidualCollisionCorrection(
+                        unit,
+                        -normal * required * resolution.LeftCorrectionShare);
+                    ApplyResidualCollisionCorrection(
+                        neighbor,
+                        normal * required * resolution.RightCorrectionShare);
+
+                    // A wall may clip one unit's assigned share. Transfer only
+                    // the still-missing separation to a side that policy says
+                    // may move, instead of leaving hidden overlap at the wall.
+                    offset = Units.Positions[neighbor] - Units.Positions[unit];
+                    distance = offset.Length();
+                    var remaining = minimumDistance - distance +
+                                    ResidualCollisionTolerance;
+                    if (remaining <= 0f) continue;
+                    normal = distance > 0.0001f
+                        ? offset / distance
+                        : DeterministicNormal(unit, neighbor);
+                    if (resolution.RightCorrectionShare >=
+                        resolution.LeftCorrectionShare)
+                    {
+                        if (resolution.RightCorrectionShare > 0f)
+                            ApplyResidualCollisionCorrection(
+                                neighbor, normal * remaining);
+                        remaining = RemainingCollisionSeparation(unit, neighbor);
+                        if (remaining > 0f &&
+                            resolution.LeftCorrectionShare > 0f)
+                            ApplyResidualCollisionCorrection(
+                                unit, -normal * remaining);
+                    }
+                    else
+                    {
+                        if (resolution.LeftCorrectionShare > 0f)
+                            ApplyResidualCollisionCorrection(
+                                unit, -normal * remaining);
+                        remaining = RemainingCollisionSeparation(unit, neighbor);
+                        if (remaining > 0f &&
+                            resolution.RightCorrectionShare > 0f)
+                            ApplyResidualCollisionCorrection(
+                                neighbor, normal * remaining);
+                    }
+                }
+            }
+            if (!corrected) return;
+        }
+    }
+
+    private void ApplyResidualCollisionCorrection(int unit, Vector2 correction)
+    {
+        if (correction.LengthSquared() <= 0.0000001f) return;
+        var position = Units.Positions[unit];
+        Units.Positions[unit] = World.ConstrainDisc(
+            position,
+            position + correction,
+            Units.Radii[unit]);
+    }
+
+    private float RemainingCollisionSeparation(int left, int right) =>
+        Units.Radii[left] + Units.Radii[right] -
+        Vector2.Distance(Units.Positions[left], Units.Positions[right]) +
+        ResidualCollisionTolerance;
 
     private void UpdateCombatContacts()
     {

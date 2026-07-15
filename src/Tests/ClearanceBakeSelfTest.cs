@@ -12,6 +12,8 @@ public static class ClearanceBakeSelfTest
         navigation ??= DemoMapDefinition.CreateSnapshot();
         var first = ClearanceBakeSnapshot.Build(navigation);
         var second = ClearanceBakeSnapshot.Build(navigation);
+        var terrain = CreateFlatTerrain(navigation.WorldBounds);
+        var terrainBake = ClearanceBakeSnapshot.Build(navigation, terrain);
         var deserialized = ClearanceBakeSnapshot.TryDeserialize(
             first.CanonicalBytes.Span,
             out var roundTrip,
@@ -58,7 +60,19 @@ public static class ClearanceBakeSelfTest
                      roundTrip is not null &&
                      roundTrip.StableHash == first.StableHash &&
                      loadedBake.SourceNavigationHash == navigation.StableHash &&
+                     loadedBake.SourceTerrainHash == 0UL &&
                      loadedBake.StableHash == first.StableHash &&
+                     terrainBake.SourceNavigationHash == navigation.StableHash &&
+                     terrainBake.SourceTerrainHash == terrain.StableHash &&
+                     terrainBake.StableHash != first.StableHash &&
+                     terrainBake.IsCompatible(
+                         navigation.CreateWorld(terrain),
+                         terrainBake.CellSize,
+                         MovementClearance.SmallNavigationRadius) &&
+                     !terrainBake.IsCompatible(
+                         navigation.CreateWorld(),
+                         terrainBake.CellSize,
+                         MovementClearance.SmallNavigationRadius) &&
                      layersValid && rejectedTruncated &&
                      staticPath.Length >= 2 && dynamicPath.Length >= 2 &&
                      affectedChunks.Length > 0 &&
@@ -68,6 +82,7 @@ public static class ClearanceBakeSelfTest
             passed,
             $"format={first.FormatVersion}, hash={first.StableHashText}, " +
             $"source={first.SourceNavigationHashText}, " +
+            $"terrain={terrainBake.SourceTerrainHashText}, " +
             $"bytes={first.CanonicalBytes.Length}, " +
             $"grid={first.Columns}x{first.Rows}, " +
             $"chunks={first.ChunkColumns}x{first.ChunkRows}, " +
@@ -75,5 +90,13 @@ public static class ClearanceBakeSelfTest
             $"paths={staticPath.Length}/{dynamicPath.Length}, " +
             $"affectedChunks={affectedChunks.Length}, " +
             $"invalid={truncatedValidation.FirstError}");
+    }
+
+    private static TerrainMapSnapshot CreateFlatTerrain(SimRect bounds)
+    {
+        TerrainSurfaceDefinition[] surfaces = [new(0, "test", "Test")];
+        var cell = new TerrainCell(
+            0, 0, TerrainPathing.Ground, TerrainCellFlags.Buildable);
+        return new TerrainMapBuilder(bounds, 32f, 48f, surfaces, cell).Build();
     }
 }

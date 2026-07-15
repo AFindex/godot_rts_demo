@@ -3,7 +3,8 @@ namespace RtsDemo.Simulation;
 public enum RuntimeResourceSetErrorCode : byte
 {
     None,
-    BakeNavigationMismatch
+    BakeNavigationMismatch,
+    BakeTerrainMismatch
 }
 
 public readonly record struct RuntimeResourceSetValidation(
@@ -45,6 +46,14 @@ public sealed class RuntimeResourceSetSnapshot
                 $"match navigation {navigation.StableHashText}.");
             return false;
         }
+        if (clearanceBake.SourceTerrainHash != 0UL)
+        {
+            snapshot = null;
+            validation = new RuntimeResourceSetValidation(
+                RuntimeResourceSetErrorCode.BakeTerrainMismatch,
+                "This runtime resource set has no Terrain resource but its Bake requires one.");
+            return false;
+        }
 
         snapshot = new RuntimeResourceSetSnapshot(
             navigation, gameplayProfiles, clearanceBake);
@@ -76,7 +85,8 @@ public readonly record struct GameplayProfileResourceDiff(
 
 public readonly record struct ClearanceBakeResourceDiff(
     bool Changed,
-    bool SourceNavigationChanged);
+    bool SourceNavigationChanged,
+    bool SourceTerrainChanged);
 
 public sealed class RuntimeResourceReloadPlan
 {
@@ -115,7 +125,9 @@ public sealed class RuntimeResourceReloadPlan
         var bake = new ClearanceBakeResourceDiff(
             current.ClearanceBake.StableHash != candidate.ClearanceBake.StableHash,
             current.ClearanceBake.SourceNavigationHash !=
-                candidate.ClearanceBake.SourceNavigationHash);
+                candidate.ClearanceBake.SourceNavigationHash,
+            current.ClearanceBake.SourceTerrainHash !=
+                candidate.ClearanceBake.SourceTerrainHash);
         var impact = navigation.Changed || gameplay.Changed
             ? ResourceReloadImpact.RebuildSimulation
             : bake.Changed

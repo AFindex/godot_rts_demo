@@ -53,7 +53,7 @@ public readonly record struct ClearanceBakeChunk(
 /// </summary>
 public sealed class ClearanceBakeSnapshot
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
     public const int DefaultChunkSizeCells = 16;
 
     private readonly ClearanceBakeLayerSnapshot[] _layers;
@@ -62,6 +62,7 @@ public sealed class ClearanceBakeSnapshot
     internal ClearanceBakeSnapshot(
         int formatVersion,
         ulong sourceNavigationHash,
+        ulong sourceTerrainHash,
         SimRect worldBounds,
         float cellSize,
         int columns,
@@ -72,6 +73,7 @@ public sealed class ClearanceBakeSnapshot
     {
         FormatVersion = formatVersion;
         SourceNavigationHash = sourceNavigationHash;
+        SourceTerrainHash = sourceTerrainHash;
         WorldBounds = worldBounds;
         CellSize = cellSize;
         Columns = columns;
@@ -85,6 +87,8 @@ public sealed class ClearanceBakeSnapshot
     public int FormatVersion { get; }
     public ulong SourceNavigationHash { get; }
     public string SourceNavigationHashText => SourceNavigationHash.ToString("X16");
+    public ulong SourceTerrainHash { get; }
+    public string SourceTerrainHashText => SourceTerrainHash.ToString("X16");
     public SimRect WorldBounds { get; }
     public float CellSize { get; }
     public int Columns { get; }
@@ -178,7 +182,8 @@ public sealed class ClearanceBakeSnapshot
         float navigationRadius)
     {
         if (world.NavigationRevision != 0 || WorldBounds != world.Bounds ||
-            MathF.Abs(CellSize - cellSize) > 0.0001f)
+            MathF.Abs(CellSize - cellSize) > 0.0001f ||
+            SourceTerrainHash != (world.Terrain?.StableHash ?? 0UL))
         {
             return false;
         }
@@ -218,6 +223,28 @@ public sealed class ClearanceBakeSnapshot
         NavigationMapSnapshot navigation,
         float cellSize = 16f,
         int chunkSizeCells = DefaultChunkSizeCells)
+        => BuildCore(navigation, null, cellSize, chunkSizeCells);
+
+    public static ClearanceBakeSnapshot Build(
+        NavigationMapSnapshot navigation,
+        TerrainMapSnapshot terrain,
+        float cellSize = 16f,
+        int chunkSizeCells = DefaultChunkSizeCells)
+    {
+        ArgumentNullException.ThrowIfNull(terrain);
+        if (terrain.Bounds != navigation.WorldBounds)
+        {
+            throw new ArgumentException(
+                "Terrain and navigation bounds must match.", nameof(terrain));
+        }
+        return BuildCore(navigation, terrain, cellSize, chunkSizeCells);
+    }
+
+    private static ClearanceBakeSnapshot BuildCore(
+        NavigationMapSnapshot navigation,
+        TerrainMapSnapshot? terrain,
+        float cellSize,
+        int chunkSizeCells)
     {
         if (!float.IsFinite(cellSize) || cellSize <= 0f)
         {
@@ -230,7 +257,10 @@ public sealed class ClearanceBakeSnapshot
         }
 
         var analyzer = new NavigationConnectivityAnalyzer(
-            navigation.CreateWorld(), cellSize);
+            terrain is null
+                ? navigation.CreateWorld()
+                : navigation.CreateWorld(terrain),
+            cellSize);
         var layers = new ClearanceBakeLayerSnapshot[3];
         for (var classIndex = 0; classIndex < layers.Length; classIndex++)
         {
@@ -248,6 +278,7 @@ public sealed class ClearanceBakeSnapshot
         var canonical = ClearanceBakeCodec.Serialize(
             CurrentFormatVersion,
             navigation.StableHash,
+            terrain?.StableHash ?? 0UL,
             navigation.WorldBounds,
             cellSize,
             columns,
@@ -257,6 +288,7 @@ public sealed class ClearanceBakeSnapshot
         return new ClearanceBakeSnapshot(
             CurrentFormatVersion,
             navigation.StableHash,
+            terrain?.StableHash ?? 0UL,
             navigation.WorldBounds,
             cellSize,
             columns,

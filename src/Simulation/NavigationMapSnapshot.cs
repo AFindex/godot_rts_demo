@@ -125,6 +125,9 @@ public sealed class NavigationMapSnapshot
     public StaticWorld CreateWorld() =>
         new(WorldBounds, _obstacles.ToArray());
 
+    public StaticWorld CreateWorld(ITerrainMapQuery terrain) =>
+        new(WorldBounds, terrain, _obstacles.ToArray());
+
     public PortalGraphRoutePlanner CreateRoutePlanner(StaticWorld world) =>
         new(world, _portalNodes.ToArray(), _portalEdges.ToArray());
 

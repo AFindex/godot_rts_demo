@@ -6,10 +6,13 @@ namespace RtsDemo.GodotRuntime.Resources;
 public partial class RtsClearanceBakeResource : Resource
 {
     [Export]
-    public int FormatVersion { get; set; } = 1;
+    public int FormatVersion { get; set; } = 2;
 
     [Export]
     public string SourceNavigationHash { get; set; } = string.Empty;
+
+    [Export]
+    public string SourceTerrainHash { get; set; } = string.Empty;
 
     [Export]
     public string BakeHash { get; set; } = string.Empty;

@@ -63,6 +63,7 @@ public sealed class BuildingConnectivityDiffSnapshot
             var radius = MovementClearance.ForClass(movementClass).NavigationRadius;
             var baseline = clearanceBake is not null &&
                            clearanceBake.SourceNavigationHash == navigation.StableHash &&
+                           clearanceBake.SourceTerrainHash == 0UL &&
                            clearanceBake.IsCompatible(world, cellSize, radius)
                 ? clearanceBake.CreateConnectivitySnapshot(movementClass)
                 : analyzer.Analyze(radius);
@@ -91,7 +92,8 @@ public sealed class BuildingConnectivityDiffSnapshot
 
         var dirtyChunks = Array.Empty<ClearanceBakeChunk>();
         if (clearanceBake is not null &&
-            clearanceBake.SourceNavigationHash == navigation.StableHash)
+            clearanceBake.SourceNavigationHash == navigation.StableHash &&
+            clearanceBake.SourceTerrainHash == 0UL)
         {
             var dirtyIds = clearanceBake.FindIntersectingChunks(
                 proposedFootprint.Expanded(

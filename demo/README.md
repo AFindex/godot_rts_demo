@@ -4,6 +4,7 @@
 
 - `2d/RtsDemo2D.tscn`：原有完整 2D 可玩对局、启动页和测试中心。
 - `3d/RtsEncounter3D.tscn`：复用相同纯 C# 模拟与敌方 AI 的 3D 可玩遭遇战。
+- `3d/TerrainTraversal3D.tscn`：生产寻路栈驱动的悬崖绕行、坡道通行和浅水禁造专项演示。
 - 根目录 `Main.tscn`：仅为已有命令、文档和录像工具保留的兼容继承入口。
 
 ```powershell

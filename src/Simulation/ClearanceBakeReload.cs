@@ -5,6 +5,7 @@ public enum ClearanceBakeCommitCode : byte
     Success,
     MissingBaseline,
     NavigationMismatch,
+    TerrainMismatch,
     GridLayoutMismatch,
     UnsupportedPathProvider,
     RecordingActive
@@ -53,6 +54,13 @@ internal static class ClearanceBakeReloadValidator
             return Failure(
                 ClearanceBakeCommitCode.NavigationMismatch,
                 "Candidate Bake must target the current Navigation hash.");
+        }
+        if (candidate.SourceTerrainHash != current.SourceTerrainHash ||
+            candidate.SourceTerrainHash != (world.Terrain?.StableHash ?? 0UL))
+        {
+            return Failure(
+                ClearanceBakeCommitCode.TerrainMismatch,
+                "Candidate Bake must target the current Terrain hash.");
         }
         if (candidate.WorldBounds != world.Bounds ||
             MathF.Abs(candidate.CellSize - cellSize) > 0.0001f ||
