@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="RtsTerrainAuthoringResource" format=4]
+
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsTerrainAnchorAuthoringResource.cs" id="1_o00cf"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsTerrainSurfaceAuthoringResource.cs" id="2_10e0h"]
+[ext_resource type="Script" path="res://src/Godot/Resources/RtsTerrainAuthoringResource.cs" id="3_qby2w"]
+
+[sub_resource type="Resource" id="Resource_06ycr"]
+script = ExtResource("1_o00cf")
+Position = Vector2(112, 176)
+
+[sub_resource type="Resource" id="Resource_qac17"]
+script = ExtResource("1_o00cf")
+Id = 1
+Kind = 1
+Position = Vector2(528, 176)
+
+[sub_resource type="Resource" id="Resource_qpvii"]
+script = ExtResource("1_o00cf")
+Id = 2
+Kind = 2
+Position = Vector2(432, 304)
+
+[sub_resource type="Resource" id="Resource_lnhe0"]
+script = ExtResource("2_10e0h")
+MaterialKey = "badlands"
+DisplayName = "Badlands Soil"
+
+[sub_resource type="Resource" id="Resource_xq2q0"]
+script = ExtResource("2_10e0h")
+Id = 1
+MaterialKey = "rock"
+DisplayName = "Cliff Rock"
+
+[sub_resource type="Resource" id="Resource_otonj"]
+script = ExtResource("2_10e0h")
+Id = 2
+MaterialKey = "metal"
+DisplayName = "Ramp Trim"
+
+[sub_resource type="Resource" id="Resource_bji13"]
+script = ExtResource("2_10e0h")
+Id = 3
+MaterialKey = "shallow-water"
+DisplayName = "Shallow Water"
+
+[sub_resource type="Resource" id="Resource_cnksy"]
+script = ExtResource("2_10e0h")
+Id = 4
+MaterialKey = "vision-smoke"
+DisplayName = "Obstructing Smoke"
+
+[resource]
+script = ExtResource("3_qby2w")
+DataColumns = 20
+DataRows = 12
+Surfaces = Array[ExtResource("2_10e0h")]([SubResource("Resource_lnhe0"), SubResource("Resource_xq2q0"), SubResource("Resource_otonj"), SubResource("Resource_bji13"), SubResource("Resource_cnksy")])
+CliffLevels = PackedByteArray("AAAAAAAAAAAAAAABAQEBAQEBAQEAAAAAAAAAAAAAAAEBAQEBAQEBAQAAAAAAAAAAAAAAAQEBAQEBAQEBAAAAAAAAAAAAAAABAQEBAQEBAQEAAAAAAAAAAAAAAAEBAQEBAQEBAQAAAAAAAAAAAAAAAQEBAQEBAQEBAAAAAAAAAAAAAAABAQEBAQEBAQEAAAAAAAAAAAAAAAEBAQEBAQEBAQAAAAAAAAAAAAAAAQEBAQEBAQEBAAAAAAAAAAAAAAABAQEBAQEBAQEAAAAAAAAAAAAAAAEBAQEBAQEBAQAAAAAAAAAAAAAAAQEBAQEBAQEB")
+SurfaceIds = PackedInt32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 4, 4, 4, 4, 1, 0, 0, 3, 3, 3, 3, 3, 3, 0, 0, 0, 1, 1, 1, 1, 4, 4, 4, 4, 1, 0, 0, 3, 3, 3, 3, 3, 3, 0, 0, 0, 1, 1, 1, 1, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+PathingMasks = PackedByteArray("AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQECAgICAgIBAQEBAQEBAQEBAQEBAQICAgICAgEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB")
+CellFlags = PackedByteArray("AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAgEBAQEBAQEBAQEBAQEBAQEBAQECAQEBAQEBAQEBAQEBAQEBAQEBAQIBAQEBAQEBAQEBAQEBAQEBAQEBAgEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQUFBQUBAQEAAAAAAAABAQEBAQEBBQUFBQEBAQAAAAAAAAEBAQEBAQEFBQUFAQEBAQEBAQEBAQEBAQEBAQEBAQEB")
+RampDirections = PackedByteArray("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+Anchors = Array[ExtResource("1_o00cf")]([SubResource("Resource_06ycr"), SubResource("Resource_qac17"), SubResource("Resource_qpvii")])
+RuntimeOutputPath = "res://data/demo_authored_terrain.tres"

@@ -1,0 +1,31 @@
+﻿{
+    "created_at":  "2026-07-15T17:53:52.0001444+08:00",
+    "fps":  30,
+    "codec":  "AV1 (libsvtav1)",
+    "container":  "WebM",
+    "crf":  32,
+    "preset":  8,
+    "godot_executable":  "F:\\my_work\\Godot_v4.7-stable_mono_win64\\Godot_v4.7-stable_mono_win64_console.exe",
+    "requested_cases":  [
+                            "terrain-authoring"
+                        ],
+    "available_cases":  [
+                            "terrain-authoring"
+                        ],
+    "cases":  [
+                  {
+                      "id":  "terrain-authoring",
+                      "file":  "terrain-authoring.webm",
+                      "log":  "terrain-authoring.log",
+                      "bytes":  242462,
+                      "source_bytes":  17262714,
+                      "codec":  "av1",
+                      "container":  "webm",
+                      "crf":  32,
+                      "preset":  8,
+                      "exit_code":  0,
+                      "encode_error":  null,
+                      "result":  "RTS_TERRAIN_AUTHORING_DEMO_PASS ticks=360, initial=True, orthogonal=True, ramp=True/True/True, rules=True, export=True/True, hash=1F1C4799FF2380E0"
+                  }
+              ]
+}

@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-15T17:01:24.6510495+08:00",
+    "generated_at":  "2026-07-15T17:53:53.1170385+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  180,
-    "case_count":  133,
+    "recording_count":  181,
+    "case_count":  134,
     "recordings":  [
+                       {
+                           "id":  "terrain-authoring",
+                           "display_name":  null,
+                           "batch":  "20260715_175336",
+                           "created_at":  "2026-07-15T17:53:52.0001444+08:00",
+                           "video":  "../20260715_175336/terrain-authoring.webm",
+                           "log":  "../20260715_175336/terrain-authoring.log",
+                           "bytes":  242462,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_TERRAIN_AUTHORING_DEMO_PASS ticks=360, initial=True, orthogonal=True, ramp=True/True/True, rules=True, export=True/True, hash=1F1C4799FF2380E0",
+                           "metrics":  "RTS_TERRAIN_AUTHORING_DEMO_PASS ticks=360, initial=True, orthogonal=True, ramp=True/True/True, rules=True, export=True/True, hash=1F1C4799FF2380E0"
+                       },
                        {
                            "id":  "terrain-vision",
                            "display_name":  null,

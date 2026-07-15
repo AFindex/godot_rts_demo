@@ -12,5 +12,7 @@ public static class DemoSceneCatalog
         "res://demo/3d/TerrainTraversal3D.tscn";
     public const string TerrainVisionCombat3D =
         "res://demo/3d/TerrainVisionCombat3D.tscn";
+    public const string TerrainAuthoringWorkspace =
+        "res://demo/terrain/TerrainAuthoringWorkspace.tscn";
     public const string CompatibilityEntry = "res://Main.tscn";
 }

@@ -1,0 +1,15 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/Demos/TwoD/TerrainAuthoringWorkflowDemo.cs" id="1_demo"]
+[ext_resource type="Script" path="res://src/Godot/RtsTerrainAuthoring2D.cs" id="2_authoring"]
+[ext_resource type="Resource" path="res://data/demo_terrain_authoring.tres" id="3_data"]
+
+[node name="TerrainAuthoringWorkflowDemo" type="Node2D"]
+script = ExtResource("1_demo")
+
+[node name="Authoring" type="Node2D" parent="."]
+position = Vector2(70, 190)
+script = ExtResource("2_authoring")
+AuthoringAsset = ExtResource("3_data")
+SaveAuthoringAssetOnExport = false
+Overlays = 643

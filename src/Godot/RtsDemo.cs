@@ -30,6 +30,10 @@ public partial class RtsDemo : Node2D
         "res://data/demo_clearance_bake.tres";
     private const string DemoPlayableTerrainResourcePath =
         "res://data/demo_playable_terrain.tres";
+    private const string DemoTerrainAuthoringResourcePath =
+        "res://data/demo_terrain_authoring.tres";
+    private const string DemoAuthoredRuntimeTerrainResourcePath =
+        "res://data/demo_authored_terrain.tres";
 
     [Export]
     public RtsNavigationMapResource? NavigationMapAsset { get; set; }
@@ -278,6 +282,12 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--generate-demo-terrain-authoring"))
+        {
+            GenerateDemoTerrainAuthoring();
+            return;
+        }
+
         if (userArguments.Contains("--validate-demo-playable-terrain"))
         {
             var valid = TerrainMapResourceConverter.TryLoadSnapshot(
@@ -292,6 +302,12 @@ public partial class RtsDemo : Node2D
                 }
             }
             GetTree().Quit(valid ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--validate-demo-terrain-authoring"))
+        {
+            ValidateDemoTerrainAuthoring();
             return;
         }
 
@@ -326,6 +342,15 @@ public partial class RtsDemo : Node2D
         {
             var result = TerrainVisionSelfTest.Run();
             GD.Print($"RTS_TERRAIN_VISION_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--terrain-authoring-self-test"))
+        {
+            var result = TerrainAuthoringSelfTest.Run();
+            GD.Print($"RTS_TERRAIN_AUTHORING_SELF_TEST " +
                      $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
@@ -3575,6 +3600,75 @@ public partial class RtsDemo : Node2D
             $"hash={snapshot.StableHashText} " +
             $"bytes={snapshot.CanonicalBytes.Length}");
         GetTree().Quit(saveError == Error.Ok ? 0 : 1);
+    }
+
+    private void GenerateDemoTerrainAuthoring()
+    {
+        var document = TerrainAuthoringDemoDefinition.CreateDocument();
+        var authoring = TerrainAuthoringResourceConverter.FromDocument(
+            document, DemoAuthoredRuntimeTerrainResourcePath);
+        if (!document.TryExport(
+                new TerrainAuthoringValidationSettings(
+                    authoring.MinimumGroundIslandCells,
+                    authoring.MinimumGroundRadius),
+                out var snapshot,
+                out var validation) || snapshot is null)
+        {
+            foreach (var issue in validation.Issues)
+                GD.PushError($"RTS_TERRAIN_AUTHORING_GENERATE {issue.Message}");
+            GetTree().Quit(1);
+            return;
+        }
+        var runtime = TerrainMapResourceConverter.FromSnapshot(snapshot);
+        if (!EnsureDataDirectory())
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        var authoringError = ResourceSaver.Save(
+            authoring, DemoTerrainAuthoringResourcePath);
+        var runtimeError = ResourceSaver.Save(
+            runtime, DemoAuthoredRuntimeTerrainResourcePath);
+        GD.Print(
+            $"RTS_TERRAIN_AUTHORING_GENERATE " +
+            $"authoring={authoringError} runtime={runtimeError} " +
+            $"cells={document.Columns}x{document.Rows} " +
+            $"hash={snapshot.StableHashText}");
+        GetTree().Quit(
+            authoringError == Error.Ok && runtimeError == Error.Ok ? 0 : 1);
+    }
+
+    private void ValidateDemoTerrainAuthoring()
+    {
+        var authoring = GD.Load<RtsTerrainAuthoringResource>(
+            DemoTerrainAuthoringResourcePath);
+        TerrainMapSnapshot? authoredSnapshot = null;
+        var validation = new TerrainAuthoringValidationResult([]);
+        var authoringValid = authoring is not null &&
+            TerrainAuthoringResourceConverter.TryExport(
+                authoring, out authoredSnapshot, out validation) &&
+            authoredSnapshot is not null;
+        var runtimeValid = TerrainMapResourceConverter.TryLoadSnapshot(
+            DemoAuthoredRuntimeTerrainResourcePath,
+            out var runtimeSnapshot,
+            out var runtimeValidation) && runtimeSnapshot is not null;
+        var exact = authoringValid && runtimeValid &&
+                    authoredSnapshot!.StableHash == runtimeSnapshot!.StableHash;
+        if (!authoringValid)
+        {
+            foreach (var issue in validation?.Issues ?? [])
+                GD.PushError($"RTS_TERRAIN_AUTHORING_LOAD {issue.Message}");
+        }
+        if (!runtimeValid)
+        {
+            foreach (var issue in runtimeValidation.Issues)
+                GD.PushError($"RTS_TERRAIN_RUNTIME_LOAD {issue.Message}");
+        }
+        GD.Print(
+            $"RTS_TERRAIN_AUTHORING_LOAD {(exact ? "PASS" : "FAIL")} " +
+            $"authoring={authoringValid} runtime={runtimeValid} exact={exact} " +
+            $"hash={authoredSnapshot?.StableHashText}");
+        GetTree().Quit(exact ? 0 : 1);
     }
 
     private void GenerateHotReloadTestResources()

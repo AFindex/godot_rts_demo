@@ -79,6 +79,7 @@ dotnet build
 - 车道偏移会写入每单位路径点，避免出口处被共享中心 waypoint 回拉。
 - 目标槽位分配、空间哈希、候选速度 Steering、TTC、避让侧记忆和三轮碰撞推挤。
 - SC2 风格地形 T1：版本化纯 C# 高度/表面/路径/建造/坡道快照、绑定地形哈希的三档 Clearance Bake、批量 3D 地表与崖壁，以及生产寻路栈驱动的坡道专项演示。
+- SC2 风格地形 T3：可编辑 Godot Resource、互不串改的规则笔刷、UndoRedo、十类覆盖层、带格子坐标的坡道/孤岛/窄缝/关键点检查，以及验证后不可变运行时导出。操作见 [地形数据编辑与导出工作流](docs/TERRAIN_AUTHORING_WORKFLOW.md)。
 - 拥挤残余碰撞使用有界顺序修正并在无冲突时提前结束，解决贴墙或多邻居修正抵消后留下的实际重叠。
 - 纯 C# AttackMove 状态机：错峰选敌、追击重寻路、前摇/冷却/伤害、leash、死亡清理和恢复原路线。
 - 近战单位使用唯一接触槽并沿目标外圈分段就位；远程单位使用射程内唯一攻击环，交叉后可做严格降误差的局部换槽。
@@ -156,9 +157,12 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 
 .\tools\record_demo.ps1 -Demo terrain-traversal
 .\tools\record_demo.ps1 -Demo terrain-vision
+.\tools\record_demo.ps1 -Demo terrain-authoring
 ```
 
 录像必须同时满足：全部单位经坡道到达、零非法穿崖、浅水返回 `TerrainUnbuildable`、Bake 来源哈希匹配、单位最小间距不小于半径之和。通过后保存为 AV1/WebM。
+
+编辑工作流可用 `--terrain-authoring-self-test` 和 `--validate-demo-terrain-authoring` 单独验证。`terrain-authoring` 录像还会故意制造断裂坡道并确认导出被拒绝，随后修复、刷独立规则并验证运行时资源重新加载后的哈希一致。
 
 开发时可快速推进并验收单个视觉业务场景，不等待实时播放：
 
