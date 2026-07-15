@@ -107,7 +107,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Production = new ProductionSystem();
         Technology = new TechnologySystem();
         Diplomacy = new PlayerDiplomacySystem();
-        Visibility = new PlayerVisibilitySystem(world.Bounds, Diplomacy);
+        Visibility = new PlayerVisibilitySystem(
+            world.Bounds, Diplomacy, terrain: world.Terrain);
         Match = new MatchSystem();
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
@@ -798,7 +799,6 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Visibility.IsUnitVisible(playerId, unit, Units, Combat);
 
     private bool CanCombatPerceiveUnit(int playerId, int unit) =>
-        Combat.ConcealmentKinds[unit] == UnitConcealmentKind.None ||
         CanPlayerPerceiveUnit(playerId, unit);
 
     private bool IsReservationKnownToPlayer(
@@ -2828,7 +2828,14 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
-        Visibility.UpdateDetection(Units, Combat);
+        // A freshly prepared scenario can receive orders before its first tick.
+        // Seed the complete visibility state before combat authority is checked;
+        // later ticks reuse the full state produced at the previous tick end and
+        // only refresh detection here.
+        if (!Visibility.HasExploredState)
+            Visibility.Update(Units, Combat, Construction);
+        else
+            Visibility.UpdateDetection(Units, Combat);
         _combatSystem.Update(delta, Metrics.Tick);
         Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
 
@@ -5522,9 +5529,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     bool ICombatMovementDriver.IsBuildingTargetValid(
         int attacker,
-        GameplayBuildingId building) =>
-        (uint)attacker < (uint)Units.Count && Units.Alive[attacker] &&
-        IsHostileBuilding(building, Combat.Teams[attacker]);
+        GameplayBuildingId building)
+    {
+        if ((uint)attacker >= (uint)Units.Count || !Units.Alive[attacker] ||
+            !IsHostileBuilding(building, Combat.Teams[attacker]))
+        {
+            return false;
+        }
+        var bounds = Construction.Observe(building).Bounds;
+        var nearestFootprintPoint = bounds.Clamp(Units.Positions[attacker]);
+        return Visibility.IsVisible(
+            Combat.Teams[attacker], nearestFootprintPoint);
+    }
 
     bool ICombatMovementDriver.IsBuildingAlive(GameplayBuildingId building) =>
         Construction.IsAlive(building);

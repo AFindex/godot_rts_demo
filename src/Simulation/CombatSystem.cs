@@ -375,7 +375,7 @@ public sealed class CombatSystem
         int projectileId,
         Vector2? impactPosition = null)
     {
-        if (!IsValidTarget(attacker, target)) return;
+        if (!IsDamageableTarget(attacker, target)) return;
         var result = CombatDamageResolver.Resolve(
             weapon,
             new CombatDefenseSnapshot(
@@ -495,11 +495,14 @@ public sealed class CombatSystem
         candidate.ArmedThreat && !current.ArmedThreat;
 
     private bool IsValidTarget(int unit, int target) =>
+        IsDamageableTarget(unit, target) &&
+        _canPerceiveTarget(_combat.Teams[unit], target);
+
+    private bool IsDamageableTarget(int unit, int target) =>
         (uint)target < (uint)_units.Count &&
         target != unit &&
         _units.Alive[target] &&
-        _isHostileTarget(_combat.Teams[unit], _combat.Teams[target]) &&
-        _canPerceiveTarget(_combat.Teams[unit], target);
+        _isHostileTarget(_combat.Teams[unit], _combat.Teams[target]);
 
     private void UpdateBuildingTarget(
         int unit,

@@ -97,17 +97,32 @@ public readonly record struct UnitConcealmentCapabilitySnapshot(
 public readonly record struct UnitPerceptionProfileSnapshot(
     UnitConcealmentKind Concealment,
     float DetectionRange,
-    float VisionRange = PlayerVisibilitySystem.UnitVisionRadius)
+    float VisionRange = PlayerVisibilitySystem.UnitVisionRadius,
+    float ObservationHeight = PlayerVisibilitySystem.DefaultGroundObservationHeight,
+    TerrainVisionMode TerrainVisionMode = TerrainVisionMode.Ground)
 {
     public static UnitPerceptionProfileSnapshot Standard => new(
         UnitConcealmentKind.None, 0f,
-        PlayerVisibilitySystem.UnitVisionRadius);
+        PlayerVisibilitySystem.UnitVisionRadius,
+        PlayerVisibilitySystem.DefaultGroundObservationHeight,
+        TerrainVisionMode.Ground);
+
+    public static UnitPerceptionProfileSnapshot ElevatedObserver(
+        float visionRange = PlayerVisibilitySystem.UnitVisionRadius,
+        float detectionRange = 0f) => new(
+        UnitConcealmentKind.None,
+        detectionRange,
+        visionRange,
+        PlayerVisibilitySystem.DefaultGroundObservationHeight,
+        TerrainVisionMode.Elevated);
 
     public void Validate()
     {
         if (!Enum.IsDefined(Concealment) ||
             !float.IsFinite(DetectionRange) || DetectionRange < 0f ||
-            !float.IsFinite(VisionRange) || VisionRange <= 0f)
+            !float.IsFinite(VisionRange) || VisionRange <= 0f ||
+            !float.IsFinite(ObservationHeight) || ObservationHeight < 0f ||
+            !Enum.IsDefined(TerrainVisionMode))
         {
             throw new ArgumentOutOfRangeException(
                 nameof(UnitPerceptionProfileSnapshot),
@@ -209,6 +224,8 @@ public sealed class CombatStore
         DetectionRanges = new float[capacity];
         BaseVisionRanges = new float[capacity];
         VisionRanges = new float[capacity];
+        ObservationHeights = new float[capacity];
+        TerrainVisionModes = new TerrainVisionMode[capacity];
         AttackRanges = new float[capacity];
         AcquisitionRanges = new float[capacity];
         AttackCooldownDurations = new float[capacity];
@@ -257,6 +274,8 @@ public sealed class CombatStore
     public float[] DetectionRanges { get; }
     public float[] BaseVisionRanges { get; }
     public float[] VisionRanges { get; }
+    public float[] ObservationHeights { get; }
+    public TerrainVisionMode[] TerrainVisionModes { get; }
     public float[] AttackRanges { get; }
     public float[] AcquisitionRanges { get; }
     public float[] AttackCooldownDurations { get; }
@@ -325,6 +344,8 @@ public sealed class CombatStore
         ConcealmentTransitionRemaining[unit] = 0f;
         DetectionRanges[unit] = perception.DetectionRange;
         BaseVisionRanges[unit] = perception.VisionRange;
+        ObservationHeights[unit] = perception.ObservationHeight;
+        TerrainVisionModes[unit] = perception.TerrainVisionMode;
         VisionRanges[unit] = perception.Concealment !=
                                  UnitConcealmentKind.None &&
                              concealmentCapability.Kind !=
@@ -377,6 +398,8 @@ public sealed class CombatStore
         Copy(source.DetectionRanges, DetectionRanges);
         Copy(source.BaseVisionRanges, BaseVisionRanges);
         Copy(source.VisionRanges, VisionRanges);
+        Copy(source.ObservationHeights, ObservationHeights);
+        Copy(source.TerrainVisionModes, TerrainVisionModes);
         Copy(source.AttackRanges, AttackRanges);
         Copy(source.AcquisitionRanges, AcquisitionRanges);
         Copy(source.AttackCooldownDurations, AttackCooldownDurations);

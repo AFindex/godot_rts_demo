@@ -1,9 +1,24 @@
 ﻿{
-    "generated_at":  "2026-07-15T16:08:11.7619518+08:00",
+    "generated_at":  "2026-07-15T17:01:24.6510495+08:00",
     "project":  "Godot RTS Demo",
-    "recording_count":  179,
-    "case_count":  132,
+    "recording_count":  180,
+    "case_count":  133,
     "recordings":  [
+                       {
+                           "id":  "terrain-vision",
+                           "display_name":  null,
+                           "batch":  "20260715_170102",
+                           "created_at":  "2026-07-15T17:01:23.9789434+08:00",
+                           "video":  "../20260715_170102/terrain-vision.webm",
+                           "log":  "../20260715_170102/terrain-vision.log",
+                           "bytes":  383955,
+                           "fps":  30,
+                           "codec":  "AV1 (libsvtav1)",
+                           "crf":  32,
+                           "status":  "passed",
+                           "result":  "RTS_TERRAIN_VISION_DEMO_PASS ticks=900, hidden=True, reject=True, elevated=True, launched=True, lostFlying=True, impact=True, shared=True, smoke=True/True",
+                           "metrics":  "RTS_TERRAIN_VISION_DEMO_PASS ticks=900, hidden=True, reject=True, elevated=True, launched=True, lostFlying=True, impact=True, shared=True, smoke=True/True"
+                       },
                        {
                            "id":  "terrain-traversal",
                            "display_name":  null,

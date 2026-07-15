@@ -90,7 +90,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 29;
+    public const int CurrentFormatVersion = 30;
 
     public SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -610,7 +610,8 @@ public sealed class SimulationReplayPackageSnapshot
             reader.ReadInt32()),
         new UnitPerceptionProfileSnapshot(
             (UnitConcealmentKind)reader.ReadByte(), reader.ReadSingle(),
-            reader.ReadSingle()),
+            reader.ReadSingle(), reader.ReadSingle(),
+            (TerrainVisionMode)reader.ReadByte()),
         new UnitConcealmentCapabilitySnapshot(
             (UnitConcealmentKind)reader.ReadByte(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
@@ -645,6 +646,8 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write((byte)unit.PerceptionProfile.Concealment);
         writer.Write(unit.PerceptionProfile.DetectionRange);
         writer.Write(unit.PerceptionProfile.VisionRange);
+        writer.Write(unit.PerceptionProfile.ObservationHeight);
+        writer.Write((byte)unit.PerceptionProfile.TerrainVisionMode);
         writer.Write((byte)unit.ConcealmentCapability.Kind);
         writer.Write(unit.ConcealmentCapability.ActivationSeconds);
         writer.Write(unit.ConcealmentCapability.DeactivationSeconds);
@@ -819,7 +822,9 @@ public sealed class SimulationReplayPackageRecorder
                 new UnitPerceptionProfileSnapshot(
                     simulation.Combat.ConcealmentKinds[unit],
                     simulation.Combat.DetectionRanges[unit],
-                    simulation.Combat.BaseVisionRanges[unit]),
+                    simulation.Combat.BaseVisionRanges[unit],
+                    simulation.Combat.ObservationHeights[unit],
+                    simulation.Combat.TerrainVisionModes[unit]),
                 simulation.Combat.ConcealmentCapabilities[unit]);
         }
         return result;

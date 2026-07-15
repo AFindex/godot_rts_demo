@@ -20,6 +20,7 @@ public static class SimulationSelfTest
         {
             var dataResult = NavigationMapSelfTest.Run();
             var terrainResult = TerrainMapSelfTest.Run();
+            var terrainVisionResult = TerrainVisionSelfTest.Run();
             var fallbackPathResult = PathProviderFallbackSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
@@ -56,6 +57,7 @@ public static class SimulationSelfTest
             var playableSkirmishResult = PlayableSkirmishScenarioSelfTest.Run(
                 buildingTypes, productionCatalog, technologyCatalog);
             var passed = dataResult.Passed && terrainResult.Passed &&
+                         terrainVisionResult.Passed &&
                          fallbackPathResult.Passed &&
                          profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
@@ -79,6 +81,9 @@ public static class SimulationSelfTest
                 $"({dataResult.Summary})",
                 $"terrain-map={(terrainResult.Passed ? "PASS" : "FAIL")}" +
                 $"({terrainResult.Summary})",
+                $"terrain-vision=" +
+                $"{(terrainVisionResult.Passed ? "PASS" : "FAIL")}" +
+                $"({terrainVisionResult.Summary})",
                 $"path-provider-fallback=" +
                 $"{(fallbackPathResult.Passed ? "PASS" : "FAIL")}" +
                 $"({fallbackPathResult.Summary})",

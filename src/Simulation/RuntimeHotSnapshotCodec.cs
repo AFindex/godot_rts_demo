@@ -382,6 +382,8 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.ConcealmentTransitionRemaining[unit]);
             writer.Write(combat.BaseVisionRanges[unit]);
             writer.Write(combat.VisionRanges[unit]);
+            writer.Write(combat.ObservationHeights[unit]);
+            writer.Write((byte)combat.TerrainVisionModes[unit]);
             writer.Write(combat.AttackRanges[unit]);
             writer.Write(combat.AcquisitionRanges[unit]);
             writer.Write(combat.AttackCooldownDurations[unit]);
@@ -441,6 +443,9 @@ internal static class RuntimeHotSnapshotCodec
             combat.ConcealmentTransitionRemaining[unit] = reader.ReadSingle();
             combat.BaseVisionRanges[unit] = reader.ReadSingle();
             combat.VisionRanges[unit] = reader.ReadSingle();
+            combat.ObservationHeights[unit] = reader.ReadSingle();
+            combat.TerrainVisionModes[unit] =
+                (TerrainVisionMode)reader.ReadByte();
             combat.AttackRanges[unit] = reader.ReadSingle();
             combat.AcquisitionRanges[unit] = reader.ReadSingle();
             combat.AttackCooldownDurations[unit] = reader.ReadSingle();
@@ -474,6 +479,9 @@ internal static class RuntimeHotSnapshotCodec
                 combat.BaseVisionRanges[unit] <= 0f ||
                 !float.IsFinite(combat.VisionRanges[unit]) ||
                 combat.VisionRanges[unit] <= 0f ||
+                !float.IsFinite(combat.ObservationHeights[unit]) ||
+                combat.ObservationHeights[unit] < 0f ||
+                !Enum.IsDefined(combat.TerrainVisionModes[unit]) ||
                 !ValidConcealmentState(combat, unit) ||
                 !float.IsFinite(combat.TargetLockRemaining[unit]) ||
                 combat.TargetLockRemaining[unit] < 0f)

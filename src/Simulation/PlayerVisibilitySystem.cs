@@ -111,15 +111,18 @@ public sealed class PlayerVisibilitySystem
     public const float UnitVisionRadius = 224f;
     public const float BuildingVisionRadius = 256f;
     public const float TownHallVisionRadius = 320f;
+    public const float DefaultGroundObservationHeight = 12f;
     private readonly SimRect _bounds;
     private readonly PlayerDiplomacySystem _diplomacy;
+    private readonly ITerrainMapQuery? _terrain;
     private readonly Dictionary<int, VisibilityGrid> _players = [];
     private readonly Action<int, Vector2, BuildingFunctionKind> _revealBuilding;
 
     public PlayerVisibilitySystem(
         SimRect bounds,
         PlayerDiplomacySystem diplomacy,
-        float cellSize = DefaultCellSize)
+        float cellSize = DefaultCellSize,
+        ITerrainMapQuery? terrain = null)
     {
         if (bounds.Width <= 0f || bounds.Height <= 0f ||
             !float.IsFinite(cellSize) || cellSize <= 0f)
@@ -128,6 +131,11 @@ public sealed class PlayerVisibilitySystem
         }
         _bounds = bounds;
         _diplomacy = diplomacy;
+        if (terrain is not null && terrain.Bounds != bounds)
+            throw new ArgumentException(
+                "Visibility terrain bounds must match world bounds.",
+                nameof(terrain));
+        _terrain = terrain;
         CellSize = cellSize;
         Columns = (int)MathF.Ceiling(bounds.Width / cellSize);
         Rows = (int)MathF.Ceiling(bounds.Height / cellSize);
@@ -158,7 +166,11 @@ public sealed class PlayerVisibilitySystem
                 playerId >= MaximumPlayers)
                 continue;
             RevealVisionSource(
-                playerId, units.Positions[unit], combat.VisionRanges[unit]);
+                playerId,
+                units.Positions[unit],
+                combat.VisionRanges[unit],
+                combat.ObservationHeights[unit],
+                combat.TerrainVisionModes[unit]);
             if (combat.DetectionRanges[unit] > 0f)
             {
                 RevealDetectionSource(
@@ -315,22 +327,49 @@ public sealed class PlayerVisibilitySystem
         }
     }
 
-    private void RevealCircle(int playerId, Vector2 center, float radius)
+    private void RevealCircle(
+        int playerId,
+        Vector2 center,
+        float radius,
+        float observationHeight,
+        TerrainVisionMode terrainVisionMode)
     {
-        RevealCircle(playerId, center, radius, detection: false);
+        RevealCircle(
+            playerId,
+            center,
+            radius,
+            detection: false,
+            observationHeight,
+            terrainVisionMode);
     }
 
     private void RevealDetectionCircle(int playerId, Vector2 center, float radius)
     {
-        RevealCircle(playerId, center, radius, detection: true);
+        RevealCircle(
+            playerId,
+            center,
+            radius,
+            detection: true,
+            DefaultGroundObservationHeight,
+            TerrainVisionMode.Elevated);
     }
 
-    private void RevealVisionSource(int sourcePlayerId, Vector2 center, float radius)
+    private void RevealVisionSource(
+        int sourcePlayerId,
+        Vector2 center,
+        float radius,
+        float observationHeight = DefaultGroundObservationHeight,
+        TerrainVisionMode terrainVisionMode = TerrainVisionMode.Ground)
     {
         for (var viewer = 1; viewer < MaximumPlayers; viewer++)
         {
             if (_diplomacy.SharesVision(viewer, sourcePlayerId))
-                RevealCircle(viewer, center, radius);
+                RevealCircle(
+                    viewer,
+                    center,
+                    radius,
+                    observationHeight,
+                    terrainVisionMode);
         }
     }
 
@@ -350,7 +389,9 @@ public sealed class PlayerVisibilitySystem
         int playerId,
         Vector2 center,
         float radius,
-        bool detection)
+        bool detection,
+        float observationHeight,
+        TerrainVisionMode terrainVisionMode)
     {
         if (!_players.TryGetValue(playerId, out var grid))
         {
@@ -380,6 +421,15 @@ public sealed class PlayerVisibilitySystem
                     _bounds.Min.Y + (row + 0.5f) * CellSize);
                 if (Vector2.DistanceSquared(position, center) > radiusSquared)
                     continue;
+                if (!detection && _terrain is not null &&
+                    !_terrain.IsVisibleFrom(
+                        center,
+                        position,
+                        observationHeight,
+                        terrainVisionMode))
+                {
+                    continue;
+                }
                 var cell = row * Columns + column;
                 if (detection)
                 {
@@ -405,7 +455,9 @@ public sealed class PlayerVisibilitySystem
             playerId, center,
             function == BuildingFunctionKind.TownHall
                 ? TownHallVisionRadius
-                : BuildingVisionRadius);
+                : BuildingVisionRadius,
+            DefaultGroundObservationHeight,
+            TerrainVisionMode.Ground);
     }
 
     private bool TryCell(Vector2 position, out int cell)

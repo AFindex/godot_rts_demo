@@ -40,6 +40,12 @@ public enum TerrainRampDirection : byte
     NegativeY
 }
 
+public enum TerrainVisionMode : byte
+{
+    Ground,
+    Elevated
+}
+
 public readonly record struct TerrainSurfaceDefinition(
     ushort Id,
     string MaterialKey,
@@ -108,7 +114,13 @@ public interface ITerrainMapQuery
     ulong StableHash { get; }
     float CellSize { get; }
     float CliffLevelHeight { get; }
+    bool HasVisionBlockers { get; }
     float HeightAt(Vector2 position);
+    bool IsVisibleFrom(
+        Vector2 observer,
+        Vector2 target,
+        float observationHeight,
+        TerrainVisionMode mode = TerrainVisionMode.Ground);
     bool IsDiscTraversable(
         Vector2 position,
         float radius,
@@ -135,6 +147,7 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
     private readonly TerrainSurfaceDefinition[] _surfaces;
     private readonly TerrainCell[] _cells;
     private readonly byte[] _canonicalBytes;
+    private readonly SimRect _visionBlockerBounds;
 
     private TerrainMapSnapshot(
         SimRect bounds,
@@ -153,6 +166,11 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         _surfaces = surfaces;
         _cells = cells;
         MaximumCellLevel = cells.Max(value => value.CliffLevel);
+        HasVisionBlockers = cells.Any(value =>
+            (value.Flags & TerrainCellFlags.BlocksVision) != 0);
+        _visionBlockerBounds = HasVisionBlockers
+            ? ComputeVisionBlockerBounds()
+            : default;
         _canonicalBytes = BuildCanonicalBytes();
         StableHash = ComputeStableHash(_canonicalBytes);
     }
@@ -165,6 +183,7 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
     public int Rows { get; }
     public int CellCount => _cells.Length;
     public byte MaximumCellLevel { get; }
+    public bool HasVisionBlockers { get; }
     public ReadOnlySpan<TerrainSurfaceDefinition> Surfaces => _surfaces;
     public ReadOnlySpan<TerrainCell> Cells => _cells;
     public ReadOnlyMemory<byte> CanonicalBytes => _canonicalBytes;
@@ -350,6 +369,57 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         return CellHeight(Cell(column, row), localX, localY);
     }
 
+    public bool IsVisibleFrom(
+        Vector2 observer,
+        Vector2 target,
+        float observationHeight,
+        TerrainVisionMode mode = TerrainVisionMode.Ground)
+    {
+        if (!float.IsFinite(observationHeight) || observationHeight < 0f ||
+            !Bounds.Contains(observer) || !Bounds.Contains(target) ||
+            !Enum.IsDefined(mode))
+        {
+            return false;
+        }
+        if (mode == TerrainVisionMode.Elevated)
+            return true;
+
+        var observerEyeHeight = HeightAt(observer) + observationHeight;
+        var numericTolerance = MathF.Max(0.01f, CliffLevelHeight * 0.001f);
+        if (HeightAt(target) > observerEyeHeight + numericTolerance)
+            return false;
+        if (!HasVisionBlockers)
+            return true;
+
+        var segmentMinimum = Vector2.Min(observer, target) -
+                             new Vector2(0.01f);
+        var segmentMaximum = Vector2.Max(observer, target) +
+                             new Vector2(0.01f);
+        if (!_visionBlockerBounds.Intersects(
+                new SimRect(segmentMinimum, segmentMaximum)))
+        {
+            return true;
+        }
+
+        var observerBlocked = IsVisionBlocker(observer);
+        var targetBlocked = IsVisionBlocker(target);
+        if (observerBlocked != targetBlocked)
+            return false;
+
+        var distance = Vector2.Distance(observer, target);
+        if (distance <= 0.0001f)
+            return true;
+        var steps = Math.Max(
+            1, (int)MathF.Ceiling(distance / MathF.Max(2f, CellSize * 0.25f)));
+        for (var step = 1; step < steps; step++)
+        {
+            var position = Vector2.Lerp(observer, target, step / (float)steps);
+            if (IsVisionBlocker(position) != observerBlocked)
+                return false;
+        }
+        return true;
+    }
+
     public float CellCornerHeight(
         int column,
         int row,
@@ -465,6 +535,28 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             previous = current;
         }
         return true;
+    }
+
+    private bool IsVisionBlocker(Vector2 position) =>
+        TryCellAt(position, out var column, out var row) &&
+        (Cell(column, row).Flags & TerrainCellFlags.BlocksVision) != 0;
+
+    private SimRect ComputeVisionBlockerBounds()
+    {
+        var minimum = new Vector2(float.PositiveInfinity);
+        var maximum = new Vector2(float.NegativeInfinity);
+        for (var row = 0; row < Rows; row++)
+        {
+            for (var column = 0; column < Columns; column++)
+            {
+                if ((Cell(column, row).Flags & TerrainCellFlags.BlocksVision) == 0)
+                    continue;
+                var bounds = CellBounds(column, row);
+                minimum = Vector2.Min(minimum, bounds.Min);
+                maximum = Vector2.Max(maximum, bounds.Max);
+            }
+        }
+        return new SimRect(minimum, maximum);
     }
 
     private bool CanStep(

@@ -85,6 +85,7 @@ public partial class Rts3DWorldPresenter : Node3D
     public int PresentedEntityCount =>
         _units.Count + _buildings.Count + _resources.Count + _projectiles.Count;
     public int RallyMarkerCount => _rallyMarkerCount;
+    public int ViewerPlayerId { get; set; }
 
     public void Initialize(
         RtsSimulation simulation,
@@ -323,6 +324,13 @@ public partial class Rts3DWorldPresenter : Node3D
                 simulationPosition, height * 0.5f);
             visual.Body.Position = worldPosition;
             visual.Body.Scale = new Vector3(radius * 2f, height, radius * 2f);
+            var presented = ViewerPlayerId <= 0 ||
+                            simulation.Visibility.IsUnitVisible(
+                                ViewerPlayerId,
+                                unit,
+                                simulation.Units,
+                                simulation.Combat);
+            visual.Body.Visible = presented;
 
             var velocity = simulation.Units.Velocities[unit];
             if (velocity.LengthSquared() > 1f)
@@ -336,7 +344,7 @@ public partial class Rts3DWorldPresenter : Node3D
                 GroundHeight(simulationPosition) + SelectionHeight,
                 worldPosition.Z);
             visual.Selection.Scale = Vector3.One * (radius * 2.65f);
-            visual.Selection.Visible = _selectedUnits.Contains(unit);
+            visual.Selection.Visible = presented && _selectedUnits.Contains(unit);
         }
     }
 
@@ -567,7 +575,8 @@ public partial class Rts3DWorldPresenter : Node3D
     {
         foreach (var (id, visual) in _units)
         {
-            visual.Selection.Visible = _selectedUnits.Contains(id);
+            visual.Selection.Visible = visual.Body.Visible &&
+                                       _selectedUnits.Contains(id);
         }
         foreach (var (id, visual) in _buildings)
         {

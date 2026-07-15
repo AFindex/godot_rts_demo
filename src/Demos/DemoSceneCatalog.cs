@@ -10,5 +10,7 @@ public static class DemoSceneCatalog
     public const string Encounter3D = "res://demo/3d/RtsEncounter3D.tscn";
     public const string TerrainTraversal3D =
         "res://demo/3d/TerrainTraversal3D.tscn";
+    public const string TerrainVisionCombat3D =
+        "res://demo/3d/TerrainVisionCombat3D.tscn";
     public const string CompatibilityEntry = "res://Main.tscn";
 }

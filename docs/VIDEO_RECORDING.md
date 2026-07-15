@@ -54,9 +54,12 @@ Godot Movie Maker → <case>.capture.avi
 ```powershell
 .\tools\record_demo.ps1 -Demo 3d-encounter
 .\tools\record_demo.ps1 -Demo terrain-traversal
+.\tools\record_demo.ps1 -Demo terrain-vision
 ```
 
 `terrain-traversal` 在编码前必须取得 `RTS_TERRAIN_DEMO_PASS`，Manifest 会保留到达数、非法穿崖、浅水放置结果、Bake 兼容性和最小单位间距；业务失败时不产生可提交的 WebM。
+
+`terrain-vision` 必须取得 `RTS_TERRAIN_VISION_DEMO_PASS`，并同时证明初始高地隐藏、无视野攻击拒绝、高架观察、弹道发射后丢失视野仍命中、盟友共享高地视野以及烟雾内外遮挡；任一断言失败都不会生成可提交结果。
 
 Godot 或编码失败时保留临时 AVI 供诊断，最终命令返回失败；不会把 partial 文件当成
 成功录像。Manifest 保存源/目标字节数、codec、container、CRF、preset 和业务测试结果。

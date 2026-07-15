@@ -11,6 +11,14 @@ namespace RtsDemo.Tests;
 /// </summary>
 public static partial class VisualTestCatalog
 {
+    // Combat-focused scenarios keep the whole flat test stage observed so they
+    // measure weapon, movement and construction behavior rather than fog of war.
+    // Terrain/fog authority has its own true-case scenarios with normal sight.
+    private static readonly TestPerceptionProfile FullStageGroundVision = new(
+        TestUnitConcealmentKind.None,
+        DetectionRange: 0f,
+        VisionRange: 4096f);
+
     public static readonly string[] CaseIds =
     [
         "frontend-test-browser",
@@ -1156,7 +1164,8 @@ public static partial class VisualTestCatalog
             AttackWindupSeconds: 0f,
             LeashDistance: 80f);
         var attacker = rig.SpawnCombat(
-            new Vector2(250f, 260f), 1, attackerProfile);
+            new Vector2(250f, 260f), 1, attackerProfile,
+            perception: FullStageGroundVision);
         var target = rig.SpawnCombat(
             new Vector2(520f, 260f), 2, targetProfile);
         rig.AttackTarget([attacker], target);
@@ -1226,7 +1235,8 @@ public static partial class VisualTestCatalog
         var multiTarget = armoredTarget with { Armor = 3f };
         var attackers = new[]
         {
-            rig.SpawnCombat(new Vector2(220f, 150f), 1, single),
+            rig.SpawnCombat(new Vector2(220f, 150f), 1, single,
+                perception: FullStageGroundVision),
             rig.SpawnCombat(new Vector2(220f, 320f), 1, single),
             rig.SpawnCombat(new Vector2(220f, 490f), 1, multi)
         };
@@ -1287,7 +1297,8 @@ public static partial class VisualTestCatalog
                 AttackCooldownSeconds: 10f,
                 AttackWindupSeconds: 0.1f,
                 LeashDistance: 900f,
-                ProjectileSpeed: 120f));
+                ProjectileSpeed: 120f),
+            perception: FullStageGroundVision);
         var target = rig.SpawnCombat(
             new Vector2(700f, 250f), 2,
             new TestCombatProfile(
@@ -1378,7 +1389,8 @@ public static partial class VisualTestCatalog
         };
         var attackers = new[]
         {
-            rig.SpawnCombat(new Vector2(150f, 160f), 1, boltProfile),
+            rig.SpawnCombat(new Vector2(150f, 160f), 1, boltProfile,
+                perception: FullStageGroundVision),
             rig.SpawnCombat(new Vector2(150f, 350f), 1, orbProfile),
             rig.SpawnCombat(new Vector2(150f, 540f), 1, volleyProfile)
         };
@@ -1487,7 +1499,8 @@ public static partial class VisualTestCatalog
         var attackers = new[]
         {
             rig.SpawnCombat(new Vector2(120f, 100f), 1, rootedProfile,
-                maximumSpeed: 110f),
+                maximumSpeed: 110f,
+                perception: FullStageGroundVision),
             rig.SpawnCombat(new Vector2(120f, 265f), 1, mobileProfile,
                 maximumSpeed: 110f),
             rig.SpawnCombat(new Vector2(120f, 430f), 1, rootedProfile,
@@ -1835,7 +1848,8 @@ public static partial class VisualTestCatalog
         var standardProfile = targetProfile;
 
         var fixedWindup = rig.SpawnCombat(
-            new Vector2(240f, 100f), 1, fixedWindupProfile);
+            new Vector2(240f, 100f), 1, fixedWindupProfile,
+            perception: FullStageGroundVision);
         var fixedCooldown = rig.SpawnCombat(
             new Vector2(240f, 260f), 1, fixedCooldownProfile);
         var mobile = rig.SpawnCombat(
@@ -2002,7 +2016,8 @@ public static partial class VisualTestCatalog
                 BonusVs: CombatAttribute.Structure,
                 BonusDamage: 10f),
             maximumSpeed: 400f,
-            acceleration: 1600f);
+            acceleration: 1600f,
+            perception: FullStageGroundVision);
         var targets = new[]
         {
             supply.BuildingId, barracks.BuildingId, commandCenter.BuildingId
@@ -2242,7 +2257,10 @@ public static partial class VisualTestCatalog
             starts[index] = new Vector2(512f, 269f + index * 18f);
             attackers[index] = rig.SpawnCombat(
                 starts[index],
-                team: 1, ranged);
+                team: 1, ranged,
+                perception: index == 0
+                    ? FullStageGroundVision
+                    : TestPerceptionProfile.Standard);
         }
         var target = rig.SpawnCombat(new Vector2(620f, 350f), team: 2, durable);
         var visible = attackers.Append(target).ToArray();
@@ -2654,7 +2672,8 @@ public static partial class VisualTestCatalog
             AttackWindupSeconds: 0f,
             LeashDistance: 100f);
         var attacker = rig.SpawnCombat(
-            new Vector2(100f, 350f), team: 1, attackerProfile);
+            new Vector2(100f, 350f), team: 1, attackerProfile,
+            perception: FullStageGroundVision);
         var friendly = rig.SpawnCombat(
             new Vector2(330f, 220f), team: 1, attackerProfile);
         var enemy = rig.SpawnCombat(
@@ -9502,7 +9521,8 @@ public static partial class VisualTestCatalog
         var attackers = new[]
         {
             rig.SpawnCombat(new Vector2(40f, 308f), 1, attackProfile,
-                maximumSpeed: 1200f, acceleration: 12000f),
+                maximumSpeed: 1200f, acceleration: 12000f,
+                perception: FullStageGroundVision),
             rig.SpawnCombat(new Vector2(40f, 338f), 1, attackProfile,
                 maximumSpeed: 1200f, acceleration: 12000f),
             rig.SpawnCombat(new Vector2(40f, 368f), 1, attackProfile,

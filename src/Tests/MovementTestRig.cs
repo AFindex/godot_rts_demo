@@ -372,6 +372,12 @@ public enum TestUnitConcealmentPhase : byte
     Deactivating
 }
 
+public enum TestTerrainVisionMode : byte
+{
+    Ground,
+    Elevated
+}
+
 public enum TestPlayerConcealmentState : byte
 {
     NotConcealed,
@@ -391,10 +397,20 @@ public enum TestPlayerEntityRelation : byte
 public readonly record struct TestPerceptionProfile(
     TestUnitConcealmentKind Concealment,
     float DetectionRange,
-    float VisionRange = PlayerVisibilitySystem.UnitVisionRadius)
+    float VisionRange = PlayerVisibilitySystem.UnitVisionRadius,
+    float ObservationHeight = PlayerVisibilitySystem.DefaultGroundObservationHeight,
+    TestTerrainVisionMode TerrainVisionMode = TestTerrainVisionMode.Ground)
 {
     public static TestPerceptionProfile Standard => new(
         TestUnitConcealmentKind.None, 0f);
+
+    public static TestPerceptionProfile ElevatedObserver(
+        float visionRange = PlayerVisibilitySystem.UnitVisionRadius) => new(
+        TestUnitConcealmentKind.None,
+        0f,
+        visionRange,
+        PlayerVisibilitySystem.DefaultGroundObservationHeight,
+        TestTerrainVisionMode.Elevated);
 }
 
 public readonly record struct TestConcealmentCapability(
@@ -2277,7 +2293,11 @@ public sealed partial class MovementTestRig
                 perception.DetectionRange,
                 perception.VisionRange == 0f
                     ? PlayerVisibilitySystem.UnitVisionRadius
-                    : perception.VisionRange),
+                    : perception.VisionRange,
+                perception.ObservationHeight == 0f
+                    ? PlayerVisibilitySystem.DefaultGroundObservationHeight
+                    : perception.ObservationHeight,
+                (TerrainVisionMode)perception.TerrainVisionMode),
             new UnitConcealmentCapabilitySnapshot(
                 (UnitConcealmentKind)concealmentCapability.Kind,
                 concealmentCapability.ActivationSeconds,
