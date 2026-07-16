@@ -10,9 +10,10 @@ namespace RtsDemo.Demos.ThreeD;
 public partial class Rts3DTerrainPresenter : Node3D
 {
     private const int BlendSampleRadius = 2;
+    private const int GroundChunkCells = 16;
     private const float ClassicCliffApronMaximumLocalHeight = 65f;
     private readonly Dictionary<string, StandardMaterial3D> _materials = [];
-    private MeshInstance3D? _visual;
+    private Node3D? _visualRoot;
     private Node3D? _classicCliffRoot;
     private IRts3DTerrainMaterialProvider? _materialProvider;
     private float _cellWorldSize = 1f;
@@ -31,6 +32,18 @@ public partial class Rts3DTerrainPresenter : Node3D
         private set;
     }
 
+    public void SetShadowCastingEnabled(bool enabled)
+    {
+        var setting = enabled
+            ? GeometryInstance3D.ShadowCastingSetting.On
+            : GeometryInstance3D.ShadowCastingSetting.Off;
+        foreach (var child in FindChildren("*", "GeometryInstance3D", true, false))
+        {
+            if (child is GeometryInstance3D geometry)
+                geometry.CastShadow = setting;
+        }
+    }
+
     public void Initialize(
         TerrainMapSnapshot terrain,
         IRts3DTerrainMaterialProvider? materialProvider = null,
@@ -38,7 +51,7 @@ public partial class Rts3DTerrainPresenter : Node3D
         TerrainClassicCliffStyleMap? cliffStyleMap = null)
     {
         ArgumentNullException.ThrowIfNull(terrain);
-        _visual?.QueueFree();
+        _visualRoot?.QueueFree();
         _classicCliffRoot?.QueueFree();
         _classicCliffRoot = null;
         LastClassicCliffDiagnostics = null;
@@ -89,13 +102,130 @@ public partial class Rts3DTerrainPresenter : Node3D
                 classicCliffProvider.ClassicRampMaterial(
                     classicCliffProvider.DefaultClassicCliffStyle));
         }
-        _visual = new MeshInstance3D
+        var groundTriangles = 0L;
+        for (var surface = 0; surface < mesh.GetSurfaceCount(); surface++)
         {
-            Name = "TerrainMesh",
-            Mesh = mesh,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.On
-        };
-        AddChild(_visual);
+            var indices = mesh.SurfaceGetArrayIndexLen(surface);
+            var vertices = mesh.SurfaceGetArrayLen(surface);
+            groundTriangles += (indices > 0 ? indices : vertices) / 3;
+        }
+        _visualRoot = BuildGroundChunks(mesh, terrain, out var chunkSurfaces);
+        AddChild(_visualRoot);
+        GD.Print(
+            $"TERRAIN_RENDER_LAYOUT ground_instances={_visualRoot.GetChildCount()} " +
+            $"ground_surfaces={chunkSurfaces} " +
+            $"ground_triangles={groundTriangles} " +
+            $"cliff_batches={_classicCliffRoot?.GetChildCount() ?? 0} " +
+            $"chunk_cells={GroundChunkCells} culling=chunk_aabb " +
+            $"ground_shadow=off");
+    }
+
+    private Node3D BuildGroundChunks(
+        ArrayMesh source,
+        TerrainMapSnapshot terrain,
+        out int surfaceCount)
+    {
+        var root = new Node3D { Name = "TerrainChunks" };
+        var meshes = new Dictionary<int, ArrayMesh>();
+        var sourceBounds = source.GetAabb();
+        var chunkWorldSize = _cellWorldSize * GroundChunkCells;
+        var chunkColumns = (int)Math.Ceiling(
+            terrain.Columns / (double)GroundChunkCells);
+        var chunkRows = (int)Math.Ceiling(
+            terrain.Rows / (double)GroundChunkCells);
+        for (var surface = 0; surface < source.GetSurfaceCount(); surface++)
+        {
+            if (source.SurfaceGetPrimitiveType(surface) !=
+                Mesh.PrimitiveType.Triangles)
+            {
+                throw new InvalidOperationException(
+                    "Terrain chunking requires triangle surfaces.");
+            }
+            var arrays = source.SurfaceGetArrays(surface);
+            var vertices = arrays[(int)Mesh.ArrayType.Vertex]
+                .AsVector3Array();
+            var normals = arrays[(int)Mesh.ArrayType.Normal]
+                .AsVector3Array();
+            var colors = arrays[(int)Mesh.ArrayType.Color]
+                .AsColorArray();
+            var uvs = arrays[(int)Mesh.ArrayType.TexUV]
+                .AsVector2Array();
+            var uv2s = arrays[(int)Mesh.ArrayType.TexUV2]
+                .AsVector2Array();
+            var indices = arrays[(int)Mesh.ArrayType.Index]
+                .AsInt32Array();
+            if (indices.Length == 0)
+                indices = Enumerable.Range(0, vertices.Length).ToArray();
+            var tools = new Dictionary<int, SurfaceTool>();
+            for (var index = 0; index + 2 < indices.Length; index += 3)
+            {
+                var a = indices[index];
+                var b = indices[index + 1];
+                var c = indices[index + 2];
+                var centre = (vertices[a] + vertices[b] + vertices[c]) / 3f;
+                var column = Math.Clamp(
+                    (int)MathF.Floor(
+                        (centre.X - sourceBounds.Position.X) / chunkWorldSize),
+                    0,
+                    chunkColumns - 1);
+                var row = Math.Clamp(
+                    (int)MathF.Floor(
+                        (centre.Z - sourceBounds.Position.Z) / chunkWorldSize),
+                    0,
+                    chunkRows - 1);
+                var chunk = row * chunkColumns + column;
+                if (!tools.TryGetValue(chunk, out var tool))
+                {
+                    tool = new SurfaceTool();
+                    tool.Begin(Mesh.PrimitiveType.Triangles);
+                    tool.SetMaterial(source.SurfaceGetMaterial(surface));
+                    tools.Add(chunk, tool);
+                }
+                AddVertex(tool, a);
+                AddVertex(tool, b);
+                AddVertex(tool, c);
+            }
+            foreach (var (chunk, tool) in tools)
+            {
+                tool.Index();
+                if (!meshes.TryGetValue(chunk, out var chunkMesh))
+                {
+                    chunkMesh = new ArrayMesh();
+                    meshes.Add(chunk, chunkMesh);
+                }
+                tool.Commit(chunkMesh);
+            }
+
+            void AddVertex(SurfaceTool tool, int vertex)
+            {
+                if (normals.Length == vertices.Length)
+                    tool.SetNormal(normals[vertex]);
+                if (colors.Length == vertices.Length)
+                    tool.SetColor(colors[vertex]);
+                if (uvs.Length == vertices.Length)
+                    tool.SetUV(uvs[vertex]);
+                if (uv2s.Length == vertices.Length)
+                    tool.SetUV2(uv2s[vertex]);
+                tool.AddVertex(vertices[vertex]);
+            }
+        }
+        surfaceCount = 0;
+        foreach (var (chunk, mesh) in meshes.OrderBy(pair => pair.Key))
+        {
+            surfaceCount += mesh.GetSurfaceCount();
+            var column = chunk % chunkColumns;
+            var row = chunk / chunkColumns;
+            root.AddChild(new MeshInstance3D
+            {
+                Name = $"TerrainChunk_{column}_{row}",
+                Mesh = mesh,
+                // The height field receives shadows. Casting it into all four
+                // directional cascades resubmits the entire ground and adds no
+                // useful object shadow; classic cliff meshes remain casters.
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            });
+        }
+        return root;
     }
 
     private TerrainClassicCliffSeamMap AppendClassicCliffs(

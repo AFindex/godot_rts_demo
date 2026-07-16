@@ -3,6 +3,11 @@ using RtsDemo.Demos.War3;
 
 namespace War3Rts;
 
+public readonly record struct War3ModelSoundTimelineEvent(
+    string EventCode,
+    string SequenceName,
+    ulong Sequence);
+
 /// <summary>
 /// One independently animated Warcraft model instance. It owns animation,
 /// geoset visibility and legacy particle/ribbon reconstruction, but no gameplay.
@@ -25,7 +30,11 @@ public sealed partial class War3ModelActor : Node3D
     private bool _progressDriven;
     private double _drivenMilliseconds;
     private bool _deathLocked;
+    private double _lastSoundTimelineMilliseconds = -0.001d;
+    private ulong _soundTimelineSequence;
     private StandardMaterial3D? _ghostMaterial;
+
+    public event Action<War3ModelSoundTimelineEvent>? SoundTimelineEvent;
 
     public string Source { get; private set; } = string.Empty;
     public War3ModelMetadata? Metadata => _metadata;
@@ -38,6 +47,9 @@ public sealed partial class War3ModelActor : Node3D
     public float DrivenProgress { get; private set; }
     public double LastTransitionBlendSeconds { get; private set; }
     public int RepeatedSequenceRestartCount { get; private set; }
+    public int RenderMeshCount { get; private set; }
+    public int RenderSurfaceCount { get; private set; }
+    public int ShadowSurfaceCount { get; private set; }
     public string CurrentSequence => _sequenceIndex >= 0 && _metadata is not null &&
                                      _sequenceIndex < _metadata.Sequences.Count
         ? _metadata.Sequences[_sequenceIndex].Name
@@ -63,6 +75,7 @@ public sealed partial class War3ModelActor : Node3D
         if (_model is Node3D spatialModel)
             spatialModel.Rotation = new Vector3(0f, ImportedFacingCorrection, 0f);
         AddChild(_model);
+        RefreshRenderStats();
         IndexGeosets(_model, _geosets);
         _animation = FindFirst<AnimationPlayer>(_model);
         if (includeEffects && camera is not null &&
@@ -81,12 +94,44 @@ public sealed partial class War3ModelActor : Node3D
         DrivenProgress = 0f;
         LastTransitionBlendSeconds = 0d;
         RepeatedSequenceRestartCount = 0;
+        _soundTimelineSequence = 0;
         _deathLocked = false;
         PlayPreferred(true, "Stand", "Birth");
     }
 
+    public void SetShadowCastingEnabled(bool enabled)
+    {
+        if (_model is null) return;
+        var setting = enabled
+            ? GeometryInstance3D.ShadowCastingSetting.On
+            : GeometryInstance3D.ShadowCastingSetting.Off;
+        SetShadowCasting(_model, setting);
+        RefreshRenderStats();
+    }
+
     public bool PlayPreferred(bool loop, params string[] candidates)
         => RequestSequence(loop, repeatNonLooping: false, candidates);
+
+    public bool PlayPreferred(bool loop, string first) =>
+        ContinueOrRequest(loop, false, first);
+
+    public bool PlayPreferred(bool loop, string first, string second) =>
+        ContinueOrRequest(loop, false, first, second);
+
+    public bool PlayPreferred(
+        bool loop,
+        string first,
+        string second,
+        string third) =>
+        ContinueOrRequest(loop, false, first, second, third);
+
+    public bool PlayPreferred(
+        bool loop,
+        string first,
+        string second,
+        string third,
+        string fourth) =>
+        ContinueOrRequest(loop, false, first, second, third, fourth);
 
     /// <summary>
     /// Repeats a gameplay action even when each source sequence is marked
@@ -95,6 +140,25 @@ public sealed partial class War3ModelActor : Node3D
     /// </summary>
     public bool PlayRepeatedPreferred(params string[] candidates)
         => RequestSequence(loop: true, repeatNonLooping: true, candidates);
+
+    public bool PlayRepeatedPreferred(string first) =>
+        ContinueOrRequest(true, true, first);
+
+    public bool PlayRepeatedPreferred(string first, string second) =>
+        ContinueOrRequest(true, true, first, second);
+
+    public bool PlayRepeatedPreferred(
+        string first,
+        string second,
+        string third) =>
+        ContinueOrRequest(true, true, first, second, third);
+
+    public bool PlayRepeatedPreferred(
+        string first,
+        string second,
+        string third,
+        string fourth) =>
+        ContinueOrRequest(true, true, first, second, third, fourth);
 
     /// <summary>Restarts a non-looping sequence for a new gameplay cycle.</summary>
     public bool ReplayPreferred(params string[] candidates)
@@ -133,6 +197,7 @@ public sealed partial class War3ModelActor : Node3D
         _progressDriven = true;
         DrivenProgress = progress;
         _drivenMilliseconds = sequence.DurationMilliseconds * progress;
+        _lastSoundTimelineMilliseconds = _drivenMilliseconds;
         if (_animation is not null)
         {
             var name = FindAnimationName(_animation, sequence.Name);
@@ -179,6 +244,121 @@ public sealed partial class War3ModelActor : Node3D
         return true;
     }
 
+    private bool ContinueOrRequest(
+        bool loop,
+        bool repeatNonLooping,
+        string first,
+        string? second = null,
+        string? third = null,
+        string? fourth = null)
+    {
+        var count = fourth is not null
+            ? 4
+            : third is not null
+                ? 3
+                : second is not null
+                    ? 2
+                    : 1;
+        if (TryContinueRequest(
+                loop,
+                repeatNonLooping,
+                first,
+                second,
+                third,
+                fourth,
+                count,
+                out var continued))
+        {
+            return continued;
+        }
+        return count switch
+        {
+            1 => RequestSequence(loop, repeatNonLooping, [first]),
+            2 => RequestSequence(loop, repeatNonLooping, [first, second!]),
+            3 => RequestSequence(
+                loop, repeatNonLooping, [first, second!, third!]),
+            _ => RequestSequence(
+                loop, repeatNonLooping, [first, second!, third!, fourth!])
+        };
+    }
+
+    private bool TryContinueRequest(
+        bool loop,
+        bool repeatNonLooping,
+        string first,
+        string? second,
+        string? third,
+        string? fourth,
+        int count,
+        out bool result)
+    {
+        result = false;
+        if (_deathLocked || _metadata is null || _sequenceIndex < 0 ||
+            _sequenceIndex >= _metadata.Sequences.Count || _progressDriven ||
+            !RequestedCandidatesEqual(
+                first, second, third, fourth, count))
+        {
+            return false;
+        }
+        var nonLooping = _metadata.Sequences[_sequenceIndex].NonLooping;
+        var effectiveLoop = loop && !nonLooping;
+        var repeatAfterFinish = loop && repeatNonLooping && nonLooping;
+        if (_requestedLoop != effectiveLoop ||
+            _requestedRepeat != repeatAfterFinish)
+        {
+            return false;
+        }
+        if (_animation?.IsPlaying() == true)
+        {
+            result = true;
+            return true;
+        }
+        if (!effectiveLoop && !repeatAfterFinish)
+        {
+            result = true;
+            return true;
+        }
+        if (repeatAfterFinish) RepeatedSequenceRestartCount++;
+        StartSequence(_sequenceIndex, effectiveLoop);
+        result = true;
+        return true;
+    }
+
+    private bool RequestedCandidatesEqual(
+        string first,
+        string? second,
+        string? third,
+        string? fourth,
+        int count)
+    {
+        var key = _requestedSequence.AsSpan();
+        var offset = 0;
+        for (var index = 0; index < count; index++)
+        {
+            var candidate = index switch
+            {
+                0 => first,
+                1 => second!,
+                2 => third!,
+                _ => fourth!
+            };
+            if (index > 0)
+            {
+                if ((uint)offset >= (uint)key.Length || key[offset] != '|')
+                    return false;
+                offset++;
+            }
+            if (offset + candidate.Length > key.Length ||
+                !key.Slice(offset, candidate.Length).SequenceEqual(
+                    candidate.AsSpan()))
+            {
+                return false;
+            }
+            offset += candidate.Length;
+        }
+        return offset == key.Length;
+    }
+
     public bool PlayDeath()
     {
         _deathLocked = false;
@@ -199,6 +379,7 @@ public sealed partial class War3ModelActor : Node3D
             ? _drivenMilliseconds
             : (_animation?.CurrentAnimationPosition ?? 0d) * 1000d;
         ApplyGeosetVisibility(_geosets, _metadata, _sequenceIndex, milliseconds);
+        if (!_progressDriven) DispatchSoundTimeline(milliseconds);
         _effects?.Sync(milliseconds);
         if (!_deathLocked && _animation is not null && !_animation.IsPlaying() &&
             _requestedSequence.Length > 0 && (_requestedLoop || _requestedRepeat))
@@ -325,6 +506,36 @@ public sealed partial class War3ModelActor : Node3D
             ApplyGhostMaterial(child, material);
     }
 
+    private void RefreshRenderStats()
+    {
+        RenderMeshCount = 0;
+        RenderSurfaceCount = 0;
+        ShadowSurfaceCount = 0;
+        if (_model is not null) AccumulateRenderStats(_model);
+    }
+
+    private void AccumulateRenderStats(Node node)
+    {
+        if (node is MeshInstance3D { Mesh: not null } mesh)
+        {
+            var surfaces = mesh.Mesh.GetSurfaceCount();
+            RenderMeshCount++;
+            RenderSurfaceCount += surfaces;
+            if (mesh.CastShadow != GeometryInstance3D.ShadowCastingSetting.Off)
+                ShadowSurfaceCount += surfaces;
+        }
+        foreach (var child in node.GetChildren()) AccumulateRenderStats(child);
+    }
+
+    private static void SetShadowCasting(
+        Node node,
+        GeometryInstance3D.ShadowCastingSetting setting)
+    {
+        if (node is GeometryInstance3D geometry) geometry.CastShadow = setting;
+        foreach (var child in node.GetChildren())
+            SetShadowCasting(child, setting);
+    }
+
     private void StartSequence(
         int index,
         bool loop,
@@ -336,6 +547,7 @@ public sealed partial class War3ModelActor : Node3D
         _sequenceIndex = index;
         _progressDriven = false;
         _drivenMilliseconds = 0d;
+        _lastSoundTimelineMilliseconds = -0.001d;
         DrivenProgress = 0f;
         var sequence = _metadata.Sequences[index];
         if (_animation is not null)
@@ -401,6 +613,11 @@ public sealed partial class War3ModelActor : Node3D
         _metadata = null;
         _animation = null;
         _geosets.Clear();
+        _lastSoundTimelineMilliseconds = -0.001d;
+        _soundTimelineSequence = 0;
+        RenderMeshCount = 0;
+        RenderSurfaceCount = 0;
+        ShadowSurfaceCount = 0;
     }
 
     private static StringName? FindAnimationName(
@@ -465,6 +682,51 @@ public sealed partial class War3ModelActor : Node3D
                 ? Vector3.One
                 : Vector3.Zero;
             foreach (var node in nodes) node.Scale = scale;
+        }
+    }
+
+    private void DispatchSoundTimeline(double currentMilliseconds)
+    {
+        if (_metadata is null || _sequenceIndex < 0 ||
+            _sequenceIndex >= _metadata.Sequences.Count ||
+            _metadata.EventObjects.Count == 0)
+            return;
+        var sequence = _metadata.Sequences[_sequenceIndex];
+        var duration = Math.Max(0d, sequence.DurationMilliseconds);
+        var current = Math.Clamp(currentMilliseconds, 0d, duration);
+        var previous = _lastSoundTimelineMilliseconds;
+        if (current + 0.5d < previous && _requestedLoop)
+        {
+            DispatchSoundTimelineRange(sequence, previous, duration);
+            DispatchSoundTimelineRange(sequence, -0.001d, current);
+        }
+        else if (current > previous)
+        {
+            DispatchSoundTimelineRange(sequence, previous, current);
+        }
+        _lastSoundTimelineMilliseconds = current;
+    }
+
+    private void DispatchSoundTimelineRange(
+        War3Sequence sequence,
+        double previousMilliseconds,
+        double currentMilliseconds)
+    {
+        if (!IsVisibleInTree()) return;
+        foreach (var value in _metadata!.EventObjects)
+        {
+            if (!value.TryGetSoundEventCode(out var eventCode)) continue;
+            foreach (var frame in value.EventTrack)
+            {
+                var localMilliseconds = frame - sequence.StartFrame;
+                if (localMilliseconds < 0d ||
+                    localMilliseconds > sequence.DurationMilliseconds ||
+                    localMilliseconds <= previousMilliseconds ||
+                    localMilliseconds > currentMilliseconds + 0.001d)
+                    continue;
+                SoundTimelineEvent?.Invoke(new War3ModelSoundTimelineEvent(
+                    eventCode, sequence.Name, ++_soundTimelineSequence));
+            }
         }
     }
 

@@ -23,6 +23,7 @@ public sealed partial class War3Rts : Node3D
     private ProductionCatalogSnapshot? _production;
     private TechnologyCatalogSnapshot? _technologies;
     private War3WorldPresenter? _presenter;
+    private Rts3DTerrainPresenter? _terrainPresenter;
     private Camera3D? _camera;
     private Rts3DCameraController? _cameraController;
     private War3RtsHud? _hud;
@@ -55,6 +56,7 @@ public sealed partial class War3Rts : Node3D
     private bool _terrainCapture;
     private bool _pcgCapture;
     private bool _offlineBakeRequested;
+    private War3RuntimeProfiler? _runtimeProfiler;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
@@ -72,6 +74,12 @@ public sealed partial class War3Rts : Node3D
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
         _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
         _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
+        _runtimeProfiler = War3RuntimeProfiler.TryCreate(arguments);
+        if (arguments.Contains("--war3-audio-smoke"))
+        {
+            RunAudioSmoke();
+            return;
+        }
         _capture = arguments.Contains("--war3-rts-capture") ||
                    _terrainCapture || _pcgCapture;
         var catalog = War3MapCatalog.Enumerate();
@@ -247,6 +255,8 @@ public sealed partial class War3Rts : Node3D
             return true;
         }
 
+        _simulation.WarmPathingCaches();
+
         await AdvanceMapLoadingAsync(
             6, 0.77d,
             "生成灯光、经典地表、悬崖/坡道批次和 RTS 相机。");
@@ -257,10 +267,16 @@ public sealed partial class War3Rts : Node3D
         await AdvanceMapLoadingAsync(
             7, 0.88d,
             "创建单位/建筑表现器、War3 HUD、肖像视口与生产研究队列。");
-        _presenter = new War3WorldPresenter { Name = "War3World" };
+        _presenter = new War3WorldPresenter
+        {
+            Name = "War3World",
+            ProfilingEnabled = _runtimeProfiler is not null
+        };
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
         CreateHud();
+        InitializeAudio();
+        ApplyRuntimeProfileVariant();
 
         await AdvanceMapLoadingAsync(
             8, 0.96d,
@@ -309,6 +325,7 @@ public sealed partial class War3Rts : Node3D
         UpdateHud();
         GD.Print($"WAR3_MAP_LOADED id={map.Metadata.Id} hash={map.StableHashText} " +
                  $"terrain={map.Terrain.StableHashText} objects={map.Objects.Length}");
+        _runtimeProfiler?.MapReady();
         return false;
     }
 
@@ -550,9 +567,14 @@ public sealed partial class War3Rts : Node3D
     public override void _PhysicsProcess(double delta)
     {
         if (_mapLoadInProgress || _simulation is null || _runtime is null) return;
+        var profileStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        var allocationStart = GC.GetAllocatedBytesForCurrentThread();
         var frame = (float)Math.Min(delta, 0.05d);
         _runtime.AiDirector.Update(_simulation.Metrics.Tick);
+        var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         _simulation.Tick(frame);
+        ConsumeAudioEvents();
+        var simulationEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         if (_smoke) UpdateSmokeConstructionCycle();
         _elapsed += frame;
         PruneSelection();
@@ -564,14 +586,36 @@ public sealed partial class War3Rts : Node3D
         }
         if (_smoke && _simulation.Metrics.Tick >= _smokeEndTick)
             FinishSmoke();
+        var profileEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        _runtimeProfiler?.RecordPhysics(
+            ElapsedMilliseconds(profileStart, profileEnd),
+            ElapsedMilliseconds(profileStart, aiEnd),
+            ElapsedMilliseconds(aiEnd, simulationEnd),
+            ElapsedMilliseconds(simulationEnd, profileEnd),
+            GC.GetAllocatedBytesForCurrentThread() - allocationStart,
+            _simulation.Metrics,
+            _runtime.AiDirector.LastUpdateProfile);
     }
 
     public override void _Process(double delta)
     {
         if (_mapLoadInProgress || _simulation is null) return;
+        var allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var previewStart = System.Diagnostics.Stopwatch.GetTimestamp();
         UpdateBuildPreview();
+        var presenterStart = System.Diagnostics.Stopwatch.GetTimestamp();
         _presenter?.Sync((float)Engine.GetPhysicsInterpolationFraction());
+        var presenterEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (_runtimeProfiler?.RecordFrameAndShouldQuit(
+                ElapsedMilliseconds(presenterStart, presenterEnd),
+                ElapsedMilliseconds(previewStart, presenterStart),
+                GC.GetAllocatedBytesForCurrentThread() - allocationStart,
+                _presenter?.LastSyncProfile ?? default) == true)
+            GetTree().Quit(0);
     }
+
+    private static double ElapsedMilliseconds(long start, long end) =>
+        (end - start) * 1_000d / System.Diagnostics.Stopwatch.Frequency;
 
     public override void _UnhandledInput(InputEvent inputEvent)
     {
@@ -658,6 +702,7 @@ public sealed partial class War3Rts : Node3D
     private void ExecuteCommand(War3CommandSnapshot command)
     {
         if (!command.Enabled || _simulation is null) return;
+        PlayInterfaceAudio();
         switch (command.Kind)
         {
             case War3CommandKind.Move:
@@ -667,14 +712,16 @@ public sealed partial class War3Rts : Node3D
                 BeginTarget(TargetMode.AttackMove);
                 break;
             case War3CommandKind.Stop:
-                Report(_simulation.IssuePlayerStop(
-                    War3HumanScenario.PlayerId, SelectedUnits()).Succeeded
-                    ? "已停止当前命令" : "停止命令失败");
+                var stop = _simulation.IssuePlayerStop(
+                    War3HumanScenario.PlayerId, SelectedUnits());
+                Report(stop.Succeeded ? "已停止当前命令" : "停止命令失败");
+                if (stop.Succeeded) PlayCommandAudio(attack: false);
                 break;
             case War3CommandKind.Hold:
-                Report(_simulation.IssuePlayerHold(
-                    War3HumanScenario.PlayerId, SelectedUnits()).Succeeded
-                    ? "保持当前位置" : "保持命令失败");
+                var hold = _simulation.IssuePlayerHold(
+                    War3HumanScenario.PlayerId, SelectedUnits());
+                Report(hold.Succeeded ? "保持当前位置" : "保持命令失败");
+                if (hold.Succeeded) PlayCommandAudio(attack: false);
                 break;
             case War3CommandKind.OpenBuildMenu:
                 _buildMenu = true;
@@ -731,12 +778,14 @@ public sealed partial class War3Rts : Node3D
             var result = _simulation.IssuePlayerMove(
                 War3HumanScenario.PlayerId, SelectedUnits(), point, queued);
             Report(result.Succeeded ? "已下达移动命令" : $"移动失败：{result.Code}");
+            if (result.Succeeded) PlayCommandAudio(attack: false);
         }
         else if (_attackMovePending)
         {
             var result = _simulation.IssuePlayerAttackMove(
                 War3HumanScenario.PlayerId, SelectedUnits(), point, queued);
             Report(result.Succeeded ? "已下达攻击移动" : $"攻击移动失败：{result.Code}");
+            if (result.Succeeded) PlayCommandAudio(attack: true);
         }
         else if (_rallyPending)
         {
@@ -787,6 +836,12 @@ public sealed partial class War3Rts : Node3D
                 _ => "部队开始移动"
             }
             : $"命令失败：{result.Code}");
+        if (result.Succeeded)
+        {
+            var attack = target.Kind is SmartCommandTargetKind.EnemyUnit or
+                SmartCommandTargetKind.EnemyBuilding;
+            PlayCommandAudio(attack);
+        }
     }
 
     private SmartCommandTarget ResolveSmartTarget(NVector2 point)
@@ -943,9 +998,18 @@ public sealed partial class War3Rts : Node3D
         }
         if (best >= 0)
         {
-            if (additive && _selectedUnits.Contains(best)) _selectedUnits.Remove(best);
-            else _selectedUnits.Add(best);
+            var selected = true;
+            if (additive && _selectedUnits.Contains(best))
+            {
+                _selectedUnits.Remove(best);
+                selected = false;
+            }
+            else
+            {
+                _selectedUnits.Add(best);
+            }
             RefreshSelection();
+            if (selected) PlaySelectionAudio();
             return;
         }
         var building = _simulation.CreateGameplayBuildingOverview()
@@ -965,6 +1029,7 @@ public sealed partial class War3Rts : Node3D
     private void SelectRectangle(Vector2 from, Vector2 to, bool additive)
     {
         if (_simulation is null || _camera is null) return;
+        var selectedNewUnit = false;
         if (!additive)
         {
             _selectedUnits.Clear();
@@ -982,9 +1047,13 @@ public sealed partial class War3Rts : Node3D
                 GroundWorldHeight(position) + 0.8f);
             if (!_camera.IsPositionBehind(world) &&
                 rect.HasPoint(_camera.UnprojectPosition(world)))
+            {
+                if (!_selectedUnits.Contains(unit)) selectedNewUnit = true;
                 _selectedUnits.Add(unit);
+            }
         }
         RefreshSelection();
+        if (selectedNewUnit) PlaySelectionAudio();
     }
 
     private void RefreshSelection()
@@ -1220,9 +1289,17 @@ public sealed partial class War3Rts : Node3D
     private static void ValidateHumanAssets()
     {
         var missing = new List<string>();
+        var warmedModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var warmupStart = System.Diagnostics.Stopwatch.GetTimestamp();
         void Model(string path)
         {
-            if (!War3RuntimeAssets.Contains(path)) missing.Add($"模型:{path}");
+            if (!War3RuntimeAssets.Contains(path))
+            {
+                missing.Add($"模型:{path}");
+                return;
+            }
+            if (warmedModels.Add(path))
+                War3RuntimeAssets.PreloadModelTemplate(path);
         }
         void Texture(string path)
         {
@@ -1286,6 +1363,12 @@ public sealed partial class War3Rts : Node3D
         if (missing.Count > 0)
             throw new FileNotFoundException(
                 "war3_rts 人族资源不完整：" + string.Join("; ", missing));
+        var warmupMilliseconds =
+            (System.Diagnostics.Stopwatch.GetTimestamp() - warmupStart) *
+            1_000d / System.Diagnostics.Stopwatch.Frequency;
+        GD.Print(
+            $"WAR3_MODEL_PREWARM templates={warmedModels.Count} " +
+            $"elapsed_ms={warmupMilliseconds:0.###}");
     }
 
     private War3CommandSnapshot[] CreateCommands()
@@ -1575,17 +1658,56 @@ public sealed partial class War3Rts : Node3D
 
     private void CreateGround(TerrainMapSnapshot terrain)
     {
-        var presenter = new Rts3DTerrainPresenter
+        _terrainPresenter = new Rts3DTerrainPresenter
         {
             Name = "War3BattlefieldTerrain"
         };
-        AddChild(presenter);
-        presenter.Initialize(
+        AddChild(_terrainPresenter);
+        _terrainPresenter.Initialize(
             terrain,
             new War3TerrainMaterialSet(
                 War3TerrainBlendStyle.DualGrid,
                 classicCliffMeshesEnabled: true),
             cliffStyleMap: TerrainClassicCliffStyleMap.Uniform(terrain, 1));
+    }
+
+    private void ApplyRuntimeProfileVariant()
+    {
+        if (_runtimeProfiler is null) return;
+        switch (_runtimeProfiler.Variant.ToLowerInvariant())
+        {
+            case "baseline":
+                break;
+            case "terrain-hidden":
+                if (_terrainPresenter is not null) _terrainPresenter.Visible = false;
+                break;
+            case "terrain-no-shadow":
+                _terrainPresenter?.SetShadowCastingEnabled(false);
+                break;
+            case "world-hidden":
+                if (_presenter is not null) _presenter.Visible = false;
+                break;
+            case "resources-hidden":
+            case "units-hidden":
+            case "buildings-hidden":
+            case "models-no-shadow":
+            case "resources-no-shadow":
+            case "units-no-shadow":
+            case "buildings-no-shadow":
+                _presenter?.ApplyRuntimeProfileVariant(_runtimeProfiler.Variant);
+                break;
+            case "path-budget-1":
+                if (_simulation is not null) _simulation.PathBudgetPerTick = 1;
+                break;
+            case "path-budget-2":
+                if (_simulation is not null) _simulation.PathBudgetPerTick = 2;
+                break;
+            default:
+                GD.PushWarning(
+                    $"WAR3_RUNTIME_PROFILE unknown_variant={_runtimeProfiler.Variant}");
+                break;
+        }
+        GD.Print($"WAR3_RUNTIME_PROFILE variant_applied={_runtimeProfiler.Variant}");
     }
 
     private float GroundWorldHeight(NVector2 position) =>
@@ -1755,6 +1877,7 @@ public sealed partial class War3Rts : Node3D
                       _presenter.PresentedResourceCount >= 30 &&
                       _hud.PortraitReady &&
                       _hud.ConsoleLayoutReady &&
+                      _hud.MinimapAspectFitReady &&
                       player.Minerals > 1_250 &&
                       player.VespeneGas > 700 &&
                       enemyArmy > 0 &&
@@ -1777,6 +1900,7 @@ public sealed partial class War3Rts : Node3D
              $"effects={_presenter.ActiveEffectCount} peak_effects={_presenter.PeakEffectCount} " +
              $"projectile_next={_simulation.CombatProjectiles.NextId} " +
             $"portrait={_hud.PortraitReady} hud_layout={_hud.ConsoleLayoutReady} " +
+            $"minimap_fit={_hud.MinimapAspectFitReady} " +
             $"gold={player.Minerals} lumber={player.VespeneGas} enemy_army={enemyArmy} " +
             $"gold_anim={_presenter.SawGoldGatherAnimation}/{_presenter.SawCarriedGoldAnimation} " +
             $"lumber_anim={_presenter.SawLumberGatherAnimation}/{_presenter.SawCarriedLumberAnimation} " +

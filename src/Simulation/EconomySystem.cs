@@ -1674,7 +1674,10 @@ public sealed class EconomySystem
             resourceKind: node.Kind,
             amount: amount,
             worldPosition: units.Positions[unit]);
-        var approach = ResolveDropOffApproach(
+        // The movement callback performs the authoritative terrain-aware
+        // resolution. Use the cheap catalog preview only to determine whether
+        // a compatible operational drop-off exists before changing state.
+        var approach = PreviewDropOffApproach(
             _workerPlayers[unit], node.Kind,
             units.Positions[unit], units.Radii[unit]);
         if (!approach.Found)
@@ -1700,9 +1703,22 @@ public sealed class EconomySystem
         Action<int> stopWorker,
         Action<int, UnitMovementLegResult> finishDropOffMovement)
     {
-        var approach = ResolveDropOffApproach(
-            _workerPlayers[unit], _cargoKinds[unit],
-            units.Positions[unit], units.Radii[unit]);
+        // A valid drop-off remains authoritative for the current cargo trip.
+        // Re-running terrain-aware access-point pathfinding on a timer made
+        // several workers occasionally perform megabytes of synchronous work
+        // in the same tick. Destruction and movement failures still invalidate
+        // the current goal immediately; the next trip always selects afresh.
+        var reuseCurrent = TryCurrentDropOffApproach(
+            unit, units, out var currentApproach) &&
+            units.MovementLegResults[unit] is not
+                (UnitMovementLegResult.Unreachable or
+                 UnitMovementLegResult.SettledShort or
+                 UnitMovementLegResult.TargetInvalidated);
+        var approach = reuseCurrent
+            ? currentApproach
+            : ResolveDropOffApproach(
+                _workerPlayers[unit], _cargoKinds[unit],
+                units.Positions[unit], units.Radii[unit]);
         if (!approach.Found)
         {
             TransitionWorker(
@@ -1718,6 +1734,8 @@ public sealed class EconomySystem
             if (units.MovementGoalKinds[unit] !=
                     UnitMovementGoalKind.DropOffBoundary ||
                 units.MovementGoalTargetIds[unit] != approach.Id.Value ||
+                Vector2.DistanceSquared(
+                    units.MoveGoals[unit], approach.Target) > 16f * 16f ||
                 units.MovementLegResults[unit] is
                     UnitMovementLegResult.Unreachable or
                     UnitMovementLegResult.SettledShort)
@@ -1756,6 +1774,39 @@ public sealed class EconomySystem
         TransitionWorker(
             unit, WorkerEconomyState.GoingToResource, nodeIndex);
         moveWorker(unit, _nodes[nodeIndex].Position);
+    }
+
+    private bool TryCurrentDropOffApproach(
+        int unit,
+        UnitStore units,
+        out EconomyDropOffApproachSnapshot approach)
+    {
+        var id = units.MovementGoalTargetIds[unit];
+        if (units.MovementGoalKinds[unit] !=
+                UnitMovementGoalKind.DropOffBoundary ||
+            (uint)id >= (uint)_dropOffs.Count)
+        {
+            approach = default;
+            return false;
+        }
+        var dropOff = _dropOffs[id];
+        if (!dropOff.Operational ||
+            dropOff.PlayerId != _workerPlayers[unit] ||
+            !dropOff.Accepts(_cargoKinds[unit]))
+        {
+            approach = default;
+            return false;
+        }
+        approach = new EconomyDropOffApproachSnapshot(
+            dropOff.Id,
+            dropOff.Position,
+            dropOff.HalfExtents,
+            dropOff.HalfExtents + new Vector2(units.Radii[unit]),
+            dropOff.ArrivalRadius,
+            units.MoveGoals[unit],
+            Vector2.DistanceSquared(
+                units.Positions[unit], units.MoveGoals[unit]));
+        return true;
     }
 
     private void UpdateWaitingForDropOff(

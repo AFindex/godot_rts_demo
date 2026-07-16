@@ -21,6 +21,8 @@ public sealed partial class War3RtsHud : Control
         -115f * PortraitMaskScale);
     private static readonly Vector2 PortraitMaskSize = Vector2.One *
         (256f * PortraitMaskScale);
+    private static readonly Vector2 MinimapSlotPosition = new(12f, 61f);
+    private static readonly Vector2 MinimapSlotSize = new(173f, 138f);
     private static readonly Vector2 QueueBackdropPosition = new(0f, 8f);
     private static readonly Vector2 QueueBackdropSize = new(256f, 128f);
     private static readonly Vector2 ActiveQueueIconPosition = new(13f, 31f);
@@ -95,6 +97,10 @@ public sealed partial class War3RtsHud : Control
         QueuePanelVisible != SelectionDetailsVisible;
     public bool QueueIconsAboveBackdrop =>
         _queueButtons.All(button => button is not null && button.ZIndex > 10);
+    public bool MinimapAspectFitReady =>
+        _minimap?.Position.IsEqualApprox(MinimapSlotPosition) == true &&
+        _minimap.Size.IsEqualApprox(MinimapSlotSize) &&
+        _minimap.AspectFitReady;
     public bool QueueLayoutReady =>
         _queuePanel is not null && _queueBackdrop is not null &&
         _queueProgress is not null &&
@@ -335,8 +341,9 @@ public sealed partial class War3RtsHud : Control
     {
         _minimap = new War3MinimapControl
         {
-            Position = new Vector2(12f, 61f),
-            Size = new Vector2(173f, 138f),
+            Position = MinimapSlotPosition,
+            Size = MinimapSlotSize,
+            ClipContents = true,
             MouseFilter = MouseFilterEnum.Stop,
             ZIndex = 5
         };
@@ -960,15 +967,41 @@ public sealed partial class War3RtsHud : Control
 
     private sealed partial class War3MinimapControl : Control
     {
+        private const float ContentInset = 4f;
         private SimRect _bounds;
         private War3MinimapEntity[] _entities = [];
         private War3MinimapResource[] _resources = [];
 
         public event Action<System.Numerics.Vector2>? FocusRequested;
 
+        public bool AspectFitReady
+        {
+            get
+            {
+                var rect = MapRect();
+                var width = Math.Max(1f, _bounds.Width);
+                var height = Math.Max(1f, _bounds.Height);
+                var scaleX = rect.Size.X / width;
+                var scaleY = rect.Size.Y / height;
+                var leftMargin = rect.Position.X;
+                var rightMargin = Size.X - rect.End.X;
+                var topMargin = rect.Position.Y;
+                var bottomMargin = Size.Y - rect.End.Y;
+                return MathF.Abs(scaleX - scaleY) < 0.0001f &&
+                       MathF.Abs(leftMargin - rightMargin) < 0.001f &&
+                       MathF.Abs(topMargin - bottomMargin) < 0.001f &&
+                       rect.Position.X >= ContentInset - 0.001f &&
+                       rect.Position.Y >= ContentInset - 0.001f &&
+                       rect.End.X <= Size.X - ContentInset + 0.001f &&
+                       rect.End.Y <= Size.Y - ContentInset + 0.001f;
+            }
+        }
+
         public override void _Ready()
         {
-            SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            // AddMinimap owns the exact opening in the Human console artwork.
+            // Expanding to FullRect here would silently turn the minimap into
+            // a 1000x208 overlay across the entire bottom console.
             MouseDefaultCursorShape = CursorShape.Cross;
         }
 
@@ -988,9 +1021,20 @@ public sealed partial class War3RtsHud : Control
             if (inputEvent is not InputEventMouseButton
                 { ButtonIndex: MouseButton.Left, Pressed: true } mouse)
                 return;
+            var mapRect = MapRect();
+            if (!mapRect.HasPoint(mouse.Position))
+            {
+                // Letterbox space is part of the console, not part of the
+                // world. Consume the click without snapping the camera to a
+                // seemingly unrelated map edge.
+                AcceptEvent();
+                return;
+            }
             var normalized = new Vector2(
-                Math.Clamp(mouse.Position.X / Math.Max(1f, Size.X), 0f, 1f),
-                Math.Clamp(mouse.Position.Y / Math.Max(1f, Size.Y), 0f, 1f));
+                Math.Clamp((mouse.Position.X - mapRect.Position.X) /
+                           Math.Max(1f, mapRect.Size.X), 0f, 1f),
+                Math.Clamp((mouse.Position.Y - mapRect.Position.Y) /
+                           Math.Max(1f, mapRect.Size.Y), 0f, 1f));
             FocusRequested?.Invoke(new System.Numerics.Vector2(
                 Mathf.Lerp(_bounds.Min.X, _bounds.Max.X, normalized.X),
                 Mathf.Lerp(_bounds.Min.Y, _bounds.Max.Y, normalized.Y)));
@@ -999,13 +1043,28 @@ public sealed partial class War3RtsHud : Control
 
         public override void _Draw()
         {
-            DrawRect(new Rect2(Vector2.Zero, Size), new Color("0b1914"), true);
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color("050a09"), true);
+            var mapRect = MapRect();
+            DrawRect(mapRect, new Color("0b1914"), true);
             for (var x = 0; x <= 4; x++)
-                DrawLine(new Vector2(Size.X * x / 4f, 0f),
-                    new Vector2(Size.X * x / 4f, Size.Y), new Color("23362e88"), 1f);
+                DrawLine(
+                    new Vector2(
+                        mapRect.Position.X + mapRect.Size.X * x / 4f,
+                        mapRect.Position.Y),
+                    new Vector2(
+                        mapRect.Position.X + mapRect.Size.X * x / 4f,
+                        mapRect.End.Y),
+                    new Color("23362e88"), 1f);
             for (var y = 0; y <= 4; y++)
-                DrawLine(new Vector2(0f, Size.Y * y / 4f),
-                    new Vector2(Size.X, Size.Y * y / 4f), new Color("23362e88"), 1f);
+                DrawLine(
+                    new Vector2(
+                        mapRect.Position.X,
+                        mapRect.Position.Y + mapRect.Size.Y * y / 4f),
+                    new Vector2(
+                        mapRect.End.X,
+                        mapRect.Position.Y + mapRect.Size.Y * y / 4f),
+                    new Color("23362e88"), 1f);
+            DrawRect(mapRect, new Color("52635a"), false, 1f);
             foreach (var resource in _resources.Where(value => !value.Depleted))
             {
                 var point = ToMap(resource.Position);
@@ -1033,9 +1092,28 @@ public sealed partial class War3RtsHud : Control
         {
             var width = Math.Max(1f, _bounds.Width);
             var height = Math.Max(1f, _bounds.Height);
+            var mapRect = MapRect();
             return new Vector2(
-                (point.X - _bounds.Min.X) / width * Size.X,
-                (point.Y - _bounds.Min.Y) / height * Size.Y);
+                mapRect.Position.X +
+                (point.X - _bounds.Min.X) / width * mapRect.Size.X,
+                mapRect.Position.Y +
+                (point.Y - _bounds.Min.Y) / height * mapRect.Size.Y);
+        }
+
+        private Rect2 MapRect()
+        {
+            var available = new Vector2(
+                Math.Max(1f, Size.X - ContentInset * 2f),
+                Math.Max(1f, Size.Y - ContentInset * 2f));
+            var worldWidth = Math.Max(1f, _bounds.Width);
+            var worldHeight = Math.Max(1f, _bounds.Height);
+            var scale = Math.Min(
+                available.X / worldWidth,
+                available.Y / worldHeight);
+            var extent = new Vector2(
+                worldWidth * scale,
+                worldHeight * scale);
+            return new Rect2((Size - extent) * 0.5f, extent);
         }
     }
 

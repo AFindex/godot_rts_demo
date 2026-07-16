@@ -37,17 +37,32 @@ public static class War3RuntimeAssets
         var entry = Find(source) ?? throw new FileNotFoundException(
             $"Warcraft asset is not present in the export catalog: {source}");
         var key = NormalizeSource(entry.Source);
-        if (!SceneTemplates.TryGetValue(key, out var template))
-        {
-            var descriptors = ReadGlbMaterialDescriptors(
-                War3AssetPack.AbsolutePath(entry.ModelRelativePath));
-            MaterialDescriptors.Add(key, descriptors);
-            template = BuildTemplate(entry, descriptors);
-            SceneTemplates.Add(key, template);
-        }
+        var template = GetOrBuildTemplate(entry, key);
         var instance = template.Instantiate();
         ApplyWar3MeshMaterials(instance, MaterialDescriptors[key], teamColor);
         return instance;
+    }
+
+    public static void PreloadModelTemplate(string source)
+    {
+        var entry = Find(source) ?? throw new FileNotFoundException(
+            $"Warcraft asset is not present in the export catalog: {source}");
+        var key = NormalizeSource(entry.Source);
+        _ = GetOrBuildTemplate(entry, key);
+        _ = LoadMetadata(source);
+    }
+
+    private static PackedScene GetOrBuildTemplate(
+        War3AssetEntry entry,
+        string key)
+    {
+        if (SceneTemplates.TryGetValue(key, out var template)) return template;
+        var descriptors = ReadGlbMaterialDescriptors(
+            War3AssetPack.AbsolutePath(entry.ModelRelativePath));
+        MaterialDescriptors.Add(key, descriptors);
+        template = BuildTemplate(entry, descriptors);
+        SceneTemplates.Add(key, template);
+        return template;
     }
 
     public static War3ModelMetadata LoadMetadata(string source)

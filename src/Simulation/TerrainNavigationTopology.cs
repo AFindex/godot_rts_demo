@@ -1002,18 +1002,19 @@ public sealed class DynamicTerrainTopologyRoutePlanner :
             return;
 
         var timer = System.Diagnostics.Stopwatch.StartNew();
-        var expectedPreviousRevision = _world.NavigationRevision - 1;
-        var canUpdateIncrementally = _connectivity.All(value =>
-            value.WorldRevision == expectedPreviousRevision);
-        var area = changedBounds;
-        if (area is null && canUpdateIncrementally &&
-            _world.DynamicOccupancy.TryGetSingleChangeSince(
-                expectedPreviousRevision, out var observedBounds))
-        {
-            area = observedBounds;
-        }
+        var sourceRevision = _topology.SourceWorldRevision;
+        var canUpdateIncrementally = sourceRevision < _world.NavigationRevision &&
+            _connectivity.All(value => value.WorldRevision == sourceRevision);
+        SimRect[] areas;
+        if (changedBounds is not null &&
+            _world.NavigationRevision - sourceRevision == 1)
+            areas = [changedBounds.Value];
+        else if (!canUpdateIncrementally ||
+                 !_world.DynamicOccupancy.TryGetChangesSince(
+                     sourceRevision, out areas))
+            areas = [];
 
-        if (canUpdateIncrementally && area is not null)
+        if (canUpdateIncrementally && areas.Length > 0)
         {
             var dirtyChunks = new SortedSet<int>();
             var resampled = 0;
@@ -1023,7 +1024,7 @@ public sealed class DynamicTerrainTopologyRoutePlanner :
                  classIndex++)
             {
                 var update = _updater.Update(
-                    _connectivity[classIndex], area.Value);
+                    _connectivity[classIndex], areas);
                 _connectivity[classIndex] = update.Snapshot;
                 resampled += update.ResampledCells;
                 changed += update.ChangedCells;

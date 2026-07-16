@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 using RtsDemo.Simulation;
 
 namespace RtsDemo.AI;
@@ -159,6 +160,17 @@ public readonly record struct AiAgentRuntimeEntry(
 
 public sealed record RtsAiDirectorSnapshot(AiAgentRuntimeEntry[] Agents);
 
+public readonly record struct RtsAiUpdateProfile(
+    long Tick,
+    int Decisions,
+    int ExecutedIntents,
+    double CaptureMilliseconds,
+    double DecisionMilliseconds,
+    double ExecutionMilliseconds,
+    long AllocatedBytes,
+    AiIntentKind? SlowestIntent,
+    double SlowestIntentMilliseconds);
+
 internal sealed record RtsAiRuntimeSnapshot(
     long Tick,
     SimulationRuntimeStateCapture Simulation,
@@ -201,6 +213,8 @@ public sealed class RtsAiDirector
         _executor = executor;
     }
 
+    public RtsAiUpdateProfile LastUpdateProfile { get; private set; }
+
     public void Register(
         int playerId,
         IRtsAiPolicy policy,
@@ -224,6 +238,13 @@ public sealed class RtsAiDirector
 
     public int Update(long tick)
     {
+        var allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var captureMilliseconds = 0d;
+        var decisionMilliseconds = 0d;
+        var executionMilliseconds = 0d;
+        var decisions = 0;
+        AiIntentKind? slowestIntent = null;
+        var slowestIntentMilliseconds = 0d;
         var executed = 0;
         foreach (var agent in _agents)
         {
@@ -233,7 +254,10 @@ public sealed class RtsAiDirector
             {
                 continue;
             }
+            var phaseStart = Stopwatch.GetTimestamp();
             var observation = _observations.Capture(agent.PlayerId);
+            captureMilliseconds +=
+                Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds;
             var participant = observation.Match.Players.FirstOrDefault(
                 value => value.PlayerId == agent.PlayerId);
             if (observation.Match.IsCompleted ||
@@ -244,19 +268,42 @@ public sealed class RtsAiDirector
                 agent.LastDecisionTick = tick;
                 continue;
             }
+            decisions++;
             agent.Buffer.Clear();
+            phaseStart = Stopwatch.GetTimestamp();
             agent.Policy.Decide(observation, agent.Buffer);
             var executionBatch = agent.Buffer.Intents.ToArray()
                 .OrderBy(intent => ExecutionDomain(intent.Kind));
+            decisionMilliseconds +=
+                Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds;
             foreach (var intent in executionBatch)
             {
+                phaseStart = Stopwatch.GetTimestamp();
                 var result = _executor.Execute(agent.PlayerId, intent);
+                var intentMilliseconds =
+                    Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds;
+                executionMilliseconds += intentMilliseconds;
+                if (intentMilliseconds > slowestIntentMilliseconds)
+                {
+                    slowestIntentMilliseconds = intentMilliseconds;
+                    slowestIntent = intent.Kind;
+                }
                 if (agent.Policy is IRtsAiExecutionObserver observer)
                     observer.ObserveExecution(tick, intent, result);
                 executed++;
             }
             agent.LastDecisionTick = tick;
         }
+        LastUpdateProfile = new RtsAiUpdateProfile(
+            tick,
+            decisions,
+            executed,
+            captureMilliseconds,
+            decisionMilliseconds,
+            executionMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - allocationStart,
+            slowestIntent,
+            slowestIntentMilliseconds);
         return executed;
     }
 

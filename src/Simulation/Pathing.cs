@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 
 namespace RtsDemo.Simulation;
 
@@ -132,7 +133,35 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
     public int IncrementalConnectivityUpdates { get; private set; }
     public int IncrementalConnectivityResampledCells { get; private set; }
     public int ClearanceBakeReloads { get; private set; }
+    public int FullConnectivityRebuilds { get; private set; }
+    public double LastConnectivityRefreshMilliseconds { get; private set; }
+    public double LastDirectCheckMilliseconds { get; private set; }
+    public double LastSearchMilliseconds { get; private set; }
+    public double LastSimplificationMilliseconds { get; private set; }
+    public int LastExpandedNodes { get; private set; }
+    public int LastRawPathPoints { get; private set; }
+    public int LastSimplifiedPathPoints { get; private set; }
     public ulong ClearanceBakeHash => _staticBake?.StableHash ?? 0UL;
+
+    public void WarmConnectivitySnapshots()
+    {
+        _ = GetConnectivitySnapshot(
+            MovementClearance.ForClass(MovementClass.Small));
+        _ = GetConnectivitySnapshot(
+            MovementClearance.ForClass(MovementClass.Medium));
+        _ = GetConnectivitySnapshot(
+            MovementClearance.ForClass(MovementClass.Large));
+    }
+
+    public void ResetPathDiagnostics()
+    {
+        LastDirectCheckMilliseconds = 0d;
+        LastSearchMilliseconds = 0d;
+        LastSimplificationMilliseconds = 0d;
+        LastExpandedNodes = 0;
+        LastRawPathPoints = 0;
+        LastSimplifiedPathPoints = 0;
+    }
 
     public Vector2[] FindPath(
         Vector2 start,
@@ -141,17 +170,26 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
     {
         var clearance = MovementClearance.FromPhysicalRadius(navigationRadius);
         navigationRadius = clearance.NavigationRadius;
-        if (_world.IsSegmentFree(start, goal, navigationRadius))
+        var directCheckStart = Stopwatch.GetTimestamp();
+        var direct = _world.IsSegmentFree(start, goal, navigationRadius);
+        LastDirectCheckMilliseconds +=
+            Stopwatch.GetElapsedTime(directCheckStart).TotalMilliseconds;
+        if (direct)
         {
+            LastRawPathPoints += 2;
+            LastSimplifiedPathPoints += 2;
             return [start, goal];
         }
 
         var snapshot = GetConnectivitySnapshot(clearance);
+        var searchStart = Stopwatch.GetTimestamp();
         var startNode = FindNearestFreeNode(start, snapshot);
         var goalNode = FindNearestFreeNode(goal, snapshot);
         if (startNode < 0 || goalNode < 0 ||
             snapshot.ComponentAt(startNode) != snapshot.ComponentAt(goalNode))
         {
+            LastSearchMilliseconds +=
+                Stopwatch.GetElapsedTime(searchStart).TotalMilliseconds;
             return [];
         }
 
@@ -176,11 +214,18 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
 
             if (current == goalNode)
             {
-                return BuildPath(
+                LastSearchMilliseconds +=
+                    Stopwatch.GetElapsedTime(searchStart).TotalMilliseconds;
+                var simplifyStart = Stopwatch.GetTimestamp();
+                var path = BuildPath(
                     start, goal, goalNode, parents, snapshot, navigationRadius);
+                LastSimplificationMilliseconds +=
+                    Stopwatch.GetElapsedTime(simplifyStart).TotalMilliseconds;
+                return path;
             }
 
             closed[current] = true;
+            LastExpandedNodes++;
             var currentColumn = current % snapshot.Columns;
             var currentRow = current / snapshot.Columns;
             var offsets = NavigationConnectivityAnalyzer.NeighborOffsets;
@@ -226,6 +271,8 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
             }
         }
 
+        LastSearchMilliseconds +=
+            Stopwatch.GetElapsedTime(searchStart).TotalMilliseconds;
         return [];
     }
 
@@ -245,22 +292,62 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
 
         reversed.Add(start);
         reversed.Reverse();
+        LastRawPathPoints += reversed.Count;
         var simplified = new List<Vector2>(reversed.Count) { reversed[0] };
         var anchor = 0;
         while (anchor < reversed.Count - 1)
         {
-            var next = reversed.Count - 1;
-            while (next > anchor + 1 &&
-                   !_world.IsSegmentFree(
-                       reversed[anchor], reversed[next], navigationRadius))
+            var furthest = anchor + 1;
+            var blocked = -1;
+            for (var step = 2; anchor + step < reversed.Count; step *= 2)
             {
-                next--;
+                var candidate = anchor + step;
+                if (!_world.IsSegmentFree(
+                        reversed[anchor], reversed[candidate], navigationRadius))
+                {
+                    blocked = candidate;
+                    break;
+                }
+                furthest = candidate;
+                if (step > int.MaxValue / 2)
+                    break;
             }
 
-            simplified.Add(reversed[next]);
-            anchor = next;
+            var last = reversed.Count - 1;
+            if (blocked < 0 && furthest < last)
+            {
+                if (_world.IsSegmentFree(
+                        reversed[anchor], reversed[last], navigationRadius))
+                    furthest = last;
+                else
+                    blocked = last;
+            }
+
+            if (blocked > furthest + 1)
+            {
+                var minimum = furthest + 1;
+                var maximum = blocked - 1;
+                while (minimum <= maximum)
+                {
+                    var candidate = minimum + (maximum - minimum) / 2;
+                    if (_world.IsSegmentFree(
+                            reversed[anchor], reversed[candidate],
+                            navigationRadius))
+                    {
+                        furthest = candidate;
+                        minimum = candidate + 1;
+                    }
+                    else
+                    {
+                        maximum = candidate - 1;
+                    }
+                }
+            }
+            simplified.Add(reversed[furthest]);
+            anchor = furthest;
         }
 
+        LastSimplifiedPathPoints += simplified.Count;
         return simplified.ToArray();
     }
 
@@ -325,16 +412,20 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
             _incrementalUpdater is not null &&
             MathF.Abs(
                 snapshot.NavigationRadius - clearance.NavigationRadius) <= 0.0001f &&
-            _world.DynamicOccupancy.TryGetSingleChangeSince(
+            _world.DynamicOccupancy.TryGetChangesSince(
                 snapshot.WorldRevision, out var changedBounds))
         {
+            var refreshStart = Stopwatch.GetTimestamp();
             var update = _incrementalUpdater.Update(snapshot, changedBounds);
             snapshot = update.Snapshot;
             IncrementalConnectivityUpdates++;
             IncrementalConnectivityResampledCells += update.ResampledCells;
+            LastConnectivityRefreshMilliseconds =
+                Stopwatch.GetElapsedTime(refreshStart).TotalMilliseconds;
         }
         else
         {
+            var refreshStart = Stopwatch.GetTimestamp();
             snapshot = _staticBake is not null &&
                        _staticBake.IsCompatible(
                            _world,
@@ -342,6 +433,9 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
                            clearance.NavigationRadius)
                 ? _staticBake.CreateConnectivitySnapshot(clearance.Class)
                 : _connectivityAnalyzer.Analyze(clearance.NavigationRadius);
+            FullConnectivityRebuilds++;
+            LastConnectivityRefreshMilliseconds =
+                Stopwatch.GetElapsedTime(refreshStart).TotalMilliseconds;
         }
         _snapshots[classIndex] = snapshot;
         return snapshot;

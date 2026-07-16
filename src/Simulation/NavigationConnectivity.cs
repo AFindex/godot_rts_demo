@@ -326,13 +326,33 @@ public sealed class IncrementalNavigationConnectivityUpdater
         SimRect changedWorldArea)
     {
         Validate(previous, changedWorldArea);
-        var dirtyChunks = _layout.FindIntersectingChunks(
-            changedWorldArea.Expanded(previous.NavigationRadius));
+        return UpdateCore(previous, [changedWorldArea]);
+    }
+
+    public IncrementalConnectivityUpdate Update(
+        NavigationConnectivitySnapshot previous,
+        IReadOnlyList<SimRect> changedWorldAreas)
+    {
+        Validate(previous, changedWorldAreas);
+        return UpdateCore(previous, changedWorldAreas);
+    }
+
+    private IncrementalConnectivityUpdate UpdateCore(
+        NavigationConnectivitySnapshot previous,
+        IReadOnlyList<SimRect> changedWorldAreas)
+    {
+        var dirtyChunkSet = new SortedSet<int>();
+        for (var areaIndex = 0; areaIndex < changedWorldAreas.Count; areaIndex++)
+        {
+            dirtyChunkSet.UnionWith(_layout.FindIntersectingChunks(
+                changedWorldAreas[areaIndex].Expanded(previous.NavigationRadius)));
+        }
+        var dirtyChunks = dirtyChunkSet.ToArray();
         if (dirtyChunks.Length == 0)
         {
             throw new ArgumentException(
                 "Changed area must intersect the navigation world.",
-                nameof(changedWorldArea));
+                nameof(changedWorldAreas));
         }
 
         var walkable = new bool[previous.NodeCount];
@@ -405,6 +425,48 @@ public sealed class IncrementalNavigationConnectivityUpdater
             throw new ArgumentException(
                 "Changed area must be finite and non-empty.",
                 nameof(changedWorldArea));
+        }
+    }
+
+    private void Validate(
+        NavigationConnectivitySnapshot previous,
+        IReadOnlyList<SimRect> changedWorldAreas)
+    {
+        ValidateLayout(previous);
+        var revisionCount = _world.NavigationRevision - previous.WorldRevision;
+        if (revisionCount <= 0 || changedWorldAreas.Count != revisionCount)
+        {
+            throw new ArgumentException(
+                "Incremental connectivity changes must cover every world revision.",
+                nameof(changedWorldAreas));
+        }
+        for (var index = 0; index < changedWorldAreas.Count; index++)
+            ValidateArea(changedWorldAreas[index], nameof(changedWorldAreas));
+    }
+
+    private void ValidateLayout(NavigationConnectivitySnapshot previous)
+    {
+        if (previous.WorldBounds != _layout.WorldBounds ||
+            previous.Columns != _layout.Columns ||
+            previous.Rows != _layout.Rows ||
+            MathF.Abs(previous.CellSize - _layout.CellSize) > 0.0001f)
+        {
+            throw new ArgumentException(
+                "Previous connectivity must match the bake chunk layout.",
+                nameof(previous));
+        }
+    }
+
+    private static void ValidateArea(SimRect area, string parameterName)
+    {
+        if (!float.IsFinite(area.Min.X) ||
+            !float.IsFinite(area.Min.Y) ||
+            !float.IsFinite(area.Max.X) ||
+            !float.IsFinite(area.Max.Y) ||
+            area.Width <= 0f || area.Height <= 0f)
+        {
+            throw new ArgumentException(
+                "Changed area must be finite and non-empty.", parameterName);
         }
     }
 }

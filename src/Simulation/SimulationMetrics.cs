@@ -40,8 +40,22 @@ public sealed class SimulationMetrics
     public int QueueOverflowEvents { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
     public double EconomyMilliseconds { get; internal set; }
+    public double ConstructionMilliseconds { get; internal set; }
+    public double ProductionMilliseconds { get; internal set; }
+    public double TechnologyMilliseconds { get; internal set; }
+    public double EconomySystemMilliseconds { get; internal set; }
+    public double LifecycleFinalizeMilliseconds { get; internal set; }
     public double CombatMilliseconds { get; internal set; }
     public double PathMilliseconds { get; internal set; }
+    public int PathFullConnectivityRebuilds { get; internal set; }
+    public int PathIncrementalConnectivityUpdates { get; internal set; }
+    public double PathConnectivityRefreshMilliseconds { get; internal set; }
+    public double PathDirectCheckMilliseconds { get; internal set; }
+    public double PathSearchMilliseconds { get; internal set; }
+    public double PathSimplificationMilliseconds { get; internal set; }
+    public int PathExpandedNodes { get; internal set; }
+    public int PathRawPoints { get; internal set; }
+    public int PathSimplifiedPoints { get; internal set; }
     public double PreferredVelocityMilliseconds { get; internal set; }
     public double ChokeMilliseconds { get; internal set; }
     public double SpatialHashMilliseconds { get; internal set; }
@@ -49,6 +63,17 @@ public sealed class SimulationMetrics
     public double IntegrateMilliseconds { get; internal set; }
     public double CollisionMilliseconds { get; internal set; }
     public double RecoveryMilliseconds { get; internal set; }
+    public double QueueMilliseconds { get; internal set; }
+    public double VisibilityMilliseconds { get; internal set; }
+    public double MatchMilliseconds { get; internal set; }
     public double CommandMilliseconds { get; internal set; }
+    public long QueueAllocatedBytes { get; internal set; }
+    public long VisibilityAllocatedBytes { get; internal set; }
+    public long MatchAllocatedBytes { get; internal set; }
+    public long ConstructionAllocatedBytes { get; internal set; }
+    public long ProductionAllocatedBytes { get; internal set; }
+    public long TechnologyAllocatedBytes { get; internal set; }
+    public long EconomySystemAllocatedBytes { get; internal set; }
+    public long LifecycleFinalizeAllocatedBytes { get; internal set; }
     public long AllocatedBytes { get; internal set; }
 }

@@ -16,6 +16,7 @@ internal sealed record DynamicOccupancyRuntimeSnapshot(
 
 public sealed class DynamicOccupancyGrid
 {
+    private const int ChangeHistoryCapacity = 256;
     private readonly SimRect _bounds;
     private readonly int _columns;
     private readonly int _rows;
@@ -25,6 +26,7 @@ public sealed class DynamicOccupancyGrid
     private int _nextId = 1;
     private int _lastChangedRevision = -1;
     private SimRect _lastChangedBounds;
+    private readonly Queue<RevisionChange> _changeHistory = new();
 
     public DynamicOccupancyGrid(SimRect bounds, float cellSize = 16f)
     {
@@ -88,6 +90,7 @@ public sealed class DynamicOccupancyGrid
         _nextId = snapshot.NextId;
         _lastChangedRevision = -1;
         _lastChangedBounds = default;
+        _changeHistory.Clear();
     }
 
     public DynamicFootprintId Place(SimRect footprint)
@@ -97,6 +100,7 @@ public sealed class DynamicOccupancyGrid
         Revision++;
         _lastChangedRevision = Revision;
         _lastChangedBounds = footprint;
+        RecordChange(footprint);
         var cells = CollectCells(footprint);
         var value = new DynamicFootprint(id, footprint, Revision);
         _footprints.Add(id.Value, new FootprintEntry(value, cells));
@@ -139,6 +143,7 @@ public sealed class DynamicOccupancyGrid
         removedBounds = entry.Value.Bounds;
         _lastChangedRevision = Revision;
         _lastChangedBounds = removedBounds;
+        RecordChange(removedBounds);
         return true;
     }
 
@@ -154,6 +159,47 @@ public sealed class DynamicOccupancyGrid
         }
         changedBounds = default;
         return false;
+    }
+
+    internal bool TryGetChangesSince(
+        int previousRevision,
+        out SimRect[] changedBounds)
+    {
+        if (previousRevision == Revision)
+        {
+            changedBounds = [];
+            return true;
+        }
+        var required = Revision - previousRevision;
+        if (previousRevision < 0 || required <= 0 ||
+            required > _changeHistory.Count)
+        {
+            changedBounds = [];
+            return false;
+        }
+        changedBounds = new SimRect[required];
+        var write = 0;
+        foreach (var change in _changeHistory)
+        {
+            if (change.Revision <= previousRevision) continue;
+            if (write >= changedBounds.Length ||
+                change.Revision != previousRevision + write + 1)
+            {
+                changedBounds = [];
+                return false;
+            }
+            changedBounds[write++] = change.Bounds;
+        }
+        if (write == changedBounds.Length) return true;
+        changedBounds = [];
+        return false;
+    }
+
+    private void RecordChange(SimRect bounds)
+    {
+        _changeHistory.Enqueue(new RevisionChange(Revision, bounds));
+        while (_changeHistory.Count > ChangeHistoryCapacity)
+            _changeHistory.Dequeue();
     }
 
     public DynamicFootprint[] Snapshot() =>
@@ -264,6 +310,8 @@ public sealed class DynamicOccupancyGrid
 
         return result;
     }
+
+    private readonly record struct RevisionChange(int Revision, SimRect Bounds);
 
     private CellRange GetCellRange(SimRect area)
     {

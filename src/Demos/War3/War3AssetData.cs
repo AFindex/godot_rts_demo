@@ -311,6 +311,22 @@ public sealed record War3ModelBounds(Vector3 Minimum, Vector3 Maximum, float Rad
             Math.Max(Maximum.Y - Minimum.Y, Maximum.Z - Minimum.Z)));
 }
 
+public sealed record War3ModelEventObject(
+    string Name,
+    int ObjectId,
+    IReadOnlyList<double> EventTrack)
+{
+    public bool TryGetSoundEventCode(out string eventCode)
+    {
+        eventCode = string.Empty;
+        if (Name.Length < 8 || !Name.StartsWith(
+                "SNDX", StringComparison.OrdinalIgnoreCase))
+            return false;
+        eventCode = Name.Substring(4, 4).ToUpperInvariant();
+        return true;
+    }
+}
+
 public sealed class War3ModelMetadata
 {
     public required War3ModelBounds Bounds { get; init; }
@@ -321,6 +337,7 @@ public sealed class War3ModelMetadata
     public required IReadOnlyList<War3GeosetAnimation> GeosetAnimations { get; init; }
     public required IReadOnlyList<War3ParticleEmitterDefinition> Particles { get; init; }
     public required IReadOnlyList<War3RibbonEmitterDefinition> Ribbons { get; init; }
+    public required IReadOnlyList<War3ModelEventObject> EventObjects { get; init; }
     public required IReadOnlyList<double> GlobalSequences { get; init; }
     public required int LegacyParticleEmitterCount { get; init; }
     public required int EventObjectCount { get; init; }
@@ -346,6 +363,9 @@ public sealed class War3ModelMetadata
             .Select(ParseParticle).ToArray();
         var ribbons = root.GetProperty("ribbonEmitters").EnumerateArray()
             .Select(ParseRibbon).ToArray();
+        var events = root.TryGetProperty("eventObjects", out var eventElement)
+            ? eventElement.EnumerateArray().Select(ParseEventObject).ToArray()
+            : [];
         var info = root.GetProperty("info");
         return new War3ModelMetadata
         {
@@ -360,13 +380,12 @@ public sealed class War3ModelMetadata
             GeosetAnimations = geosetAnimations,
             Particles = particles,
             Ribbons = ribbons,
+            EventObjects = events,
             GlobalSequences = globals,
             LegacyParticleEmitterCount = root.TryGetProperty("particleEmitters", out var legacyParticles)
                 ? legacyParticles.GetArrayLength()
                 : 0,
-            EventObjectCount = root.TryGetProperty("eventObjects", out var events)
-                ? events.GetArrayLength()
-                : 0
+            EventObjectCount = events.Length
         };
     }
 
@@ -449,6 +468,11 @@ public sealed class War3ModelMetadata
         ReadDouble(element, "Gravity"),
         War3ScalarTrack.Parse(element, "Visibility"));
 
+    private static War3ModelEventObject ParseEventObject(JsonElement element) => new(
+        ReadString(element, "Name", string.Empty),
+        ReadInt(element, "ObjectId", -1),
+        ReadDoubles(element, "EventTrack"));
+
     private static Color[] ReadColors(JsonElement element, string property, Color[] fallback) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Array
             ? value.EnumerateArray().Select(ReadColor).ToArray()
@@ -473,6 +497,12 @@ public sealed class War3ModelMetadata
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Array
             ? value.EnumerateArray().Select(item => item.GetSingle()).ToArray()
             : fallback;
+
+    private static double[] ReadDoubles(JsonElement element, string property) =>
+        element.TryGetProperty(property, out var value) &&
+        value.ValueKind == JsonValueKind.Array
+            ? value.EnumerateArray().Select(item => item.GetDouble()).ToArray()
+            : [];
 
     private static int[] ReadInts(JsonElement element, string property, int[] fallback) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Array

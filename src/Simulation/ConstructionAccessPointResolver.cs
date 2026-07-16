@@ -15,6 +15,105 @@ public static class ConstructionAccessPointResolver
         float clearance) =>
         InteractionGeometry.ProjectFromCenter(bounds, origin, clearance);
 
+    public static InteractionApproachResolution ResolveAvailableEndpoint(
+        StaticWorld world,
+        SimRect bounds,
+        Vector2 origin,
+        float collisionRadius,
+        float interactionPadding = 0f,
+        Func<Vector2, float, bool>? additionalDiscClearance = null,
+        Vector2? excludedTarget = null)
+    {
+        var numericClearance =
+            InteractionGeometry.NumericTolerance(origin, bounds) * 0.25f;
+        var clearance = collisionRadius + interactionPadding + numericClearance;
+        var projected = ProjectFromCenter(bounds, origin, clearance);
+        if (!IsExcluded(projected, excludedTarget) &&
+            EndpointIsAvailable(
+                world, projected, collisionRadius, additionalDiscClearance))
+        {
+            return new InteractionApproachResolution(
+                true, projected, Vector2.Distance(origin, projected));
+        }
+
+        var candidates = InteractionGeometry.SampleRoundedRectangleBoundary(
+            bounds,
+            clearance,
+            MathF.Max(collisionRadius * 2f, 8f));
+        var best = default(Vector2);
+        var bestDistanceSquared = float.PositiveInfinity;
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            var candidate = candidates[index];
+            var distanceSquared = Vector2.DistanceSquared(origin, candidate);
+            if (IsExcluded(candidate, excludedTarget) ||
+                distanceSquared >= bestDistanceSquared ||
+                !EndpointIsAvailable(
+                    world, candidate, collisionRadius,
+                    additionalDiscClearance))
+                continue;
+            best = candidate;
+            bestDistanceSquared = distanceSquared;
+        }
+        return float.IsFinite(bestDistanceSquared)
+            ? new InteractionApproachResolution(
+                true, best, MathF.Sqrt(bestDistanceSquared))
+            : new InteractionApproachResolution(
+                false, default, float.PositiveInfinity);
+    }
+
+    public static InteractionApproachResolution ResolveAvailableCircleEndpoint(
+        StaticWorld world,
+        Vector2 center,
+        float interactionRadius,
+        Vector2 origin,
+        float collisionRadius,
+        Vector2? excludedTarget = null)
+    {
+        var pointBounds = new SimRect(center, center);
+        var numericClearance =
+            InteractionGeometry.NumericTolerance(center, pointBounds) * 0.25f;
+        var targetRadius = interactionRadius + collisionRadius + numericClearance;
+        var direction = origin - center;
+        if (direction.LengthSquared() <= 0f)
+            direction = -Vector2.UnitX;
+        else
+            direction = Vector2.Normalize(direction);
+        var projected = center + direction * targetRadius;
+        if (!IsExcluded(projected, excludedTarget) &&
+            EndpointIsAvailable(world, projected, collisionRadius, null))
+        {
+            return new InteractionApproachResolution(
+                true, projected, Vector2.Distance(origin, projected));
+        }
+
+        var maximumSpacing = MathF.Max(collisionRadius * 2f, 8f);
+        var candidateCount = Math.Max(
+            8,
+            (int)MathF.Ceiling(MathF.Tau * targetRadius / maximumSpacing));
+        var originAngle = MathF.Atan2(direction.Y, direction.X);
+        var best = default(Vector2);
+        var bestDistanceSquared = float.PositiveInfinity;
+        for (var index = 1; index < candidateCount; index++)
+        {
+            var angle = originAngle + MathF.Tau * index / candidateCount;
+            var candidate = center +
+                new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * targetRadius;
+            var distanceSquared = Vector2.DistanceSquared(origin, candidate);
+            if (IsExcluded(candidate, excludedTarget) ||
+                distanceSquared >= bestDistanceSquared ||
+                !EndpointIsAvailable(world, candidate, collisionRadius, null))
+                continue;
+            best = candidate;
+            bestDistanceSquared = distanceSquared;
+        }
+        return float.IsFinite(bestDistanceSquared)
+            ? new InteractionApproachResolution(
+                true, best, MathF.Sqrt(bestDistanceSquared))
+            : new InteractionApproachResolution(
+                false, default, float.PositiveInfinity);
+    }
+
     public static InteractionApproachResolution Resolve(
         StaticWorld world,
         IPathProvider pathProvider,
@@ -206,6 +305,19 @@ public static class ConstructionAccessPointResolver
         length = PathLength(path);
         return true;
     }
+
+    private static bool EndpointIsAvailable(
+        StaticWorld world,
+        Vector2 candidate,
+        float collisionRadius,
+        Func<Vector2, float, bool>? additionalDiscClearance) =>
+        world.IsDiscFree(candidate, collisionRadius) &&
+        (additionalDiscClearance is null ||
+         additionalDiscClearance(candidate, collisionRadius));
+
+    private static bool IsExcluded(Vector2 candidate, Vector2? excludedTarget) =>
+        excludedTarget.HasValue &&
+        Vector2.DistanceSquared(candidate, excludedTarget.Value) <= 1f;
 
     private static float PathLength(ReadOnlySpan<Vector2> path)
     {

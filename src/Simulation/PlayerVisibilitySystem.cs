@@ -116,7 +116,11 @@ public sealed class PlayerVisibilitySystem
     private readonly PlayerDiplomacySystem _diplomacy;
     private readonly ITerrainMapQuery? _terrain;
     private readonly Dictionary<int, VisibilityGrid> _players = [];
+    private readonly Dictionary<StaticVisionSourceKey, int[]>
+        _staticVisionCells = [];
+    private readonly List<int> _visionCellScratch = new(512);
     private readonly Action<int, Vector2, BuildingFunctionKind> _revealBuilding;
+    private VisionFootprintCache[] _unitVisionCaches = [];
 
     public PlayerVisibilitySystem(
         SimRect bounds,
@@ -153,6 +157,8 @@ public sealed class PlayerVisibilitySystem
         CombatStore combat,
         ConstructionSystem construction)
     {
+        if (_unitVisionCaches.Length < units.Count)
+            Array.Resize(ref _unitVisionCaches, units.Count);
         foreach (var grid in _players.Values)
         {
             Array.Clear(grid.Visible);
@@ -165,7 +171,8 @@ public sealed class PlayerVisibilitySystem
             if (!units.Alive[unit] || playerId <= 0 ||
                 playerId >= MaximumPlayers)
                 continue;
-            RevealVisionSource(
+            RevealUnitVisionSource(
+                unit,
                 playerId,
                 units.Positions[unit],
                 combat.VisionRanges[unit],
@@ -327,22 +334,6 @@ public sealed class PlayerVisibilitySystem
         }
     }
 
-    private void RevealCircle(
-        int playerId,
-        Vector2 center,
-        float radius,
-        float observationHeight,
-        TerrainVisionMode terrainVisionMode)
-    {
-        RevealCircle(
-            playerId,
-            center,
-            radius,
-            detection: false,
-            observationHeight,
-            terrainVisionMode);
-    }
-
     private void RevealDetectionCircle(int playerId, Vector2 center, float radius)
     {
         RevealCircle(
@@ -354,22 +345,97 @@ public sealed class PlayerVisibilitySystem
             TerrainVisionMode.Elevated);
     }
 
-    private void RevealVisionSource(
+    private void RevealUnitVisionSource(
+        int unit,
         int sourcePlayerId,
         Vector2 center,
         float radius,
         float observationHeight = DefaultGroundObservationHeight,
         TerrainVisionMode terrainVisionMode = TerrainVisionMode.Ground)
     {
+        ref var cache = ref _unitVisionCaches[unit];
+        var matches = cache.Matches(
+            center, radius, observationHeight, terrainVisionMode);
+        if (matches && cache.Cells is not null)
+        {
+            ApplyVisionCells(sourcePlayerId, cache.Cells);
+            return;
+        }
+        _visionCellScratch.Clear();
+        CollectVisionCells(
+            center,
+            radius,
+            observationHeight,
+            terrainVisionMode,
+            _visionCellScratch);
+        ApplyVisionCells(sourcePlayerId, _visionCellScratch);
+        cache = new VisionFootprintCache(
+            true,
+            center,
+            radius,
+            observationHeight,
+            terrainVisionMode,
+            matches ? _visionCellScratch.ToArray() : null);
+    }
+
+    private void ApplyVisionCells(
+        int sourcePlayerId,
+        IReadOnlyList<int> cells)
+    {
         for (var viewer = 1; viewer < MaximumPlayers; viewer++)
         {
-            if (_diplomacy.SharesVision(viewer, sourcePlayerId))
-                RevealCircle(
-                    viewer,
+            if (!_diplomacy.SharesVision(viewer, sourcePlayerId)) continue;
+            if (!_players.TryGetValue(viewer, out var grid))
+            {
+                grid = new VisibilityGrid(Columns * Rows);
+                _players.Add(viewer, grid);
+            }
+            for (var index = 0; index < cells.Count; index++)
+            {
+                var cell = cells[index];
+                grid.Visible[cell] = true;
+                grid.Explored[cell] = true;
+            }
+        }
+    }
+
+    private void CollectVisionCells(
+        Vector2 center,
+        float radius,
+        float observationHeight,
+        TerrainVisionMode terrainVisionMode,
+        List<int> output)
+    {
+        var minimumColumn = Math.Clamp(
+            (int)MathF.Floor((center.X - radius - _bounds.Min.X) / CellSize),
+            0, Columns - 1);
+        var maximumColumn = Math.Clamp(
+            (int)MathF.Floor((center.X + radius - _bounds.Min.X) / CellSize),
+            0, Columns - 1);
+        var minimumRow = Math.Clamp(
+            (int)MathF.Floor((center.Y - radius - _bounds.Min.Y) / CellSize),
+            0, Rows - 1);
+        var maximumRow = Math.Clamp(
+            (int)MathF.Floor((center.Y + radius - _bounds.Min.Y) / CellSize),
+            0, Rows - 1);
+        var paddedRadius = radius + CellSize * 0.70710678f;
+        var radiusSquared = paddedRadius * paddedRadius;
+        for (var row = minimumRow; row <= maximumRow; row++)
+        for (var column = minimumColumn; column <= maximumColumn; column++)
+        {
+            var position = new Vector2(
+                _bounds.Min.X + (column + 0.5f) * CellSize,
+                _bounds.Min.Y + (row + 0.5f) * CellSize);
+            if (Vector2.DistanceSquared(position, center) > radiusSquared ||
+                _terrain is not null && !_terrain.IsVisibleFrom(
                     center,
-                    radius,
+                    position,
                     observationHeight,
-                    terrainVisionMode);
+                    terrainVisionMode))
+            {
+                continue;
+            }
+            output.Add(row * Columns + column);
         }
     }
 
@@ -451,13 +517,27 @@ public sealed class PlayerVisibilitySystem
     {
         if (playerId <= 0 || playerId >= MaximumPlayers)
             return;
-        RevealVisionSource(
-            playerId, center,
-            function == BuildingFunctionKind.TownHall
-                ? TownHallVisionRadius
-                : BuildingVisionRadius,
+        var radius = function == BuildingFunctionKind.TownHall
+            ? TownHallVisionRadius
+            : BuildingVisionRadius;
+        var key = new StaticVisionSourceKey(
+            center,
+            radius,
             DefaultGroundObservationHeight,
             TerrainVisionMode.Ground);
+        if (!_staticVisionCells.TryGetValue(key, out var cells))
+        {
+            _visionCellScratch.Clear();
+            CollectVisionCells(
+                center,
+                radius,
+                DefaultGroundObservationHeight,
+                TerrainVisionMode.Ground,
+                _visionCellScratch);
+            cells = _visionCellScratch.ToArray();
+            _staticVisionCells.Add(key, cells);
+        }
+        ApplyVisionCells(playerId, cells);
     }
 
     private bool TryCell(Vector2 position, out int cell)
@@ -503,5 +583,29 @@ public sealed class PlayerVisibilitySystem
         public bool[] Explored { get; } = new bool[cells];
         public bool[] Visible { get; } = new bool[cells];
         public bool[] Detected { get; } = new bool[cells];
+    }
+
+    private readonly record struct StaticVisionSourceKey(
+        Vector2 Center,
+        float Radius,
+        float ObservationHeight,
+        TerrainVisionMode TerrainVisionMode);
+
+    private readonly record struct VisionFootprintCache(
+        bool Valid,
+        Vector2 Center,
+        float Radius,
+        float ObservationHeight,
+        TerrainVisionMode TerrainVisionMode,
+        int[]? Cells)
+    {
+        public bool Matches(
+            Vector2 center,
+            float radius,
+            float observationHeight,
+            TerrainVisionMode terrainVisionMode) =>
+            Valid && Center == center && Radius == radius &&
+            ObservationHeight == observationHeight &&
+            TerrainVisionMode == terrainVisionMode;
     }
 }

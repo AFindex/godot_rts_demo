@@ -670,18 +670,31 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         var distance = Vector2.Distance(from, to);
         if (distance <= 0.0001f)
             return true;
-        var stepLength = MathF.Max(2f, CellSize * 0.2f);
-        var steps = Math.Max(1, (int)MathF.Ceiling(distance / stepLength));
-        var previous = from;
-        for (var step = 1; step <= steps; step++)
+
+        if (radius <= 0.0001f)
+            return IsCenterLineTraversable(from, to, mode);
+
+        // Sweep the disc as parallel center lines across its diameter. The
+        // previous implementation sampled a complete radial disc at every
+        // point along the segment, repeating almost all of the same cell
+        // transitions and making long path smoothing effectively quadratic.
+        // Endpoint discs above cover the capsule caps; these evenly spaced
+        // lines cover its body at the same terrain sampling resolution.
+        var direction = (to - from) / distance;
+        var normal = new Vector2(-direction.Y, direction.X);
+        var sampleSpacing = MathF.Max(2f, CellSize * 0.2f);
+        var lateralSteps = Math.Max(
+            2, (int)MathF.Ceiling(radius * 2f / sampleSpacing));
+        if ((lateralSteps & 1) != 0)
+            lateralSteps++;
+        for (var sample = 0; sample <= lateralSteps; sample++)
         {
-            var current = Vector2.Lerp(from, to, step / (float)steps);
-            if (!IsDiscTraversable(current, radius, mode) ||
-                !CanStep(previous, current, mode))
-            {
+            var offset = -radius + radius * 2f * sample / lateralSteps;
+            if (!IsCenterLineTraversable(
+                    from + normal * offset,
+                    to + normal * offset,
+                    mode))
                 return false;
-            }
-            previous = current;
         }
         return true;
     }

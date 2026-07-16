@@ -173,6 +173,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public ulong ActiveClearanceBakeHash =>
         _buildingConnectivityGuard.ClearanceBakeHash;
 
+    public void WarmPathingCaches()
+    {
+        if (_pathProvider is GridPathProvider gridPathProvider)
+            gridPathProvider.WarmConnectivitySnapshots();
+    }
+
     public ulong ComputeStateHash() => SimulationStateHasher.Compute(this);
 
     public UnitMovementSnapshot ObserveUnitMovement(int unit)
@@ -2799,8 +2805,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _pendingNavigationInvalidations = 0;
 
         var phaseStart = Stopwatch.GetTimestamp();
+        var lifecycleStart = phaseStart;
+        var phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         UpdateConstructionEvacuations();
-        UpdateProductionEvacuations();
         Construction.Update(
             delta,
             Metrics.Tick,
@@ -2811,6 +2818,13 @@ public sealed class RtsSimulation : ICombatMovementDriver
             _constructionStopWorker,
             _constructionCommitFootprint,
             EvacuateConstructionStartOccupant);
+        Metrics.ConstructionMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.ConstructionAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+
+        phaseStart = Stopwatch.GetTimestamp();
+        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        UpdateProductionEvacuations();
         Production.Update(
             delta,
             Metrics.Tick,
@@ -2824,7 +2838,19 @@ public sealed class RtsSimulation : ICombatMovementDriver
             _productionApplyRally,
             ProductionExitPathCost,
             _productionEvacuateExitBlocker);
+        Metrics.ProductionMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.ProductionAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+
+        phaseStart = Stopwatch.GetTimestamp();
+        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         Technology.Update(delta, Construction, Economy.Players);
+        Metrics.TechnologyMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.TechnologyAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+
+        phaseStart = Stopwatch.GetTimestamp();
+        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         Economy.Update(
             delta,
             Metrics.Tick,
@@ -2833,6 +2859,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
             _economyMoveWorker,
             _economyStopWorker,
             _economyFinishDropOffMovement);
+        Metrics.EconomySystemMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.EconomySystemAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+
+        phaseStart = Stopwatch.GetTimestamp();
+        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         UpdateProducedUnitRallyFollowers();
         Concealment.Update(delta);
         FreezeConcealmentRestrictedUnits();
@@ -2840,7 +2872,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
             _unitCollisionSuppressed[unit] =
                 Economy.SuppressesUnitCollision(unit) ||
                 Construction.SuppressesBuilderUnitCollision(unit);
-        Metrics.EconomyMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.LifecycleFinalizeMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.LifecycleFinalizeAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.EconomyMilliseconds = ElapsedMilliseconds(lifecycleStart);
 
         phaseStart = Stopwatch.GetTimestamp();
         // A freshly prepared scenario can receive orders before its first tick.
@@ -2855,8 +2890,29 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
+        if (_pathProvider is GridPathProvider pathDiagnostics)
+            pathDiagnostics.ResetPathDiagnostics();
         ProcessPathRequests();
         Metrics.PathMilliseconds = ElapsedMilliseconds(phaseStart);
+        if (_pathProvider is GridPathProvider gridPathProvider)
+        {
+            Metrics.PathFullConnectivityRebuilds =
+                gridPathProvider.FullConnectivityRebuilds;
+            Metrics.PathIncrementalConnectivityUpdates =
+                gridPathProvider.IncrementalConnectivityUpdates;
+            Metrics.PathConnectivityRefreshMilliseconds =
+                gridPathProvider.LastConnectivityRefreshMilliseconds;
+            Metrics.PathDirectCheckMilliseconds =
+                gridPathProvider.LastDirectCheckMilliseconds;
+            Metrics.PathSearchMilliseconds =
+                gridPathProvider.LastSearchMilliseconds;
+            Metrics.PathSimplificationMilliseconds =
+                gridPathProvider.LastSimplificationMilliseconds;
+            Metrics.PathExpandedNodes = gridPathProvider.LastExpandedNodes;
+            Metrics.PathRawPoints = gridPathProvider.LastRawPathPoints;
+            Metrics.PathSimplifiedPoints =
+                gridPathProvider.LastSimplifiedPathPoints;
+        }
 
         phaseStart = Stopwatch.GetTimestamp();
         UpdatePreferredVelocities();
@@ -2903,10 +2959,26 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Metrics.RecoveryMilliseconds = ElapsedMilliseconds(phaseStart);
 
         phaseStart = Stopwatch.GetTimestamp();
+        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         AdvanceQueuedOrders();
+        Metrics.QueueMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.QueueAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        phaseStart = Stopwatch.GetTimestamp();
+        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         Visibility.Update(Units, Combat, Construction);
+        Metrics.VisibilityMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.VisibilityAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        phaseStart = Stopwatch.GetTimestamp();
+        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         Match.Update(Metrics.Tick, Construction, Diplomacy);
-        Metrics.CommandMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.MatchMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.MatchAllocatedBytes =
+            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.CommandMilliseconds =
+            Metrics.QueueMilliseconds + Metrics.VisibilityMilliseconds +
+            Metrics.MatchMilliseconds;
         Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
         Metrics.AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
     }
@@ -3625,6 +3697,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     private void MarkUnreachable(int unit)
     {
+        if (TryRetryEconomyDropOffBoundary(unit))
+            return;
         Units.Paths[unit] = null;
         Units.PathPending[unit] = false;
         Units.Modes[unit] = UnitMoveMode.Idle;
@@ -3632,6 +3706,23 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units.BlockedByNavigation[unit] = true;
         FinishMovementLeg(unit, UnitMovementLegResult.Unreachable);
         SetRecoveryStage(unit, RecoveryStage.Unreachable);
+    }
+
+    private bool TryRetryEconomyDropOffBoundary(int unit)
+    {
+        if (Units.MovementGoalKinds[unit] !=
+                UnitMovementGoalKind.DropOffBoundary ||
+            !Economy.IsGatherer(unit) ||
+            Economy.Worker(unit).State != WorkerEconomyState.ReturningCargo)
+            return false;
+
+        // A building perimeter has several valid interaction points.
+        // Exhausting recovery for one point queues the next boundary point;
+        // it does not synchronously test the whole perimeter or mark the
+        // worker globally unreachable.
+        Units.MovementLegResults[unit] = UnitMovementLegResult.Unreachable;
+        MoveEconomyWorker(unit, Units.MoveGoals[unit]);
+        return Units.PathPending[unit];
     }
 
     private void SetRecoveryStage(int unit, RecoveryStage stage)
@@ -5783,24 +5874,20 @@ public sealed class RtsSimulation : ICombatMovementDriver
             {
                 var node = Economy.ObserveResourceNode(state.TargetNode);
                 var approach = node.InteractionHalfExtents != Vector2.Zero
-                    ? ConstructionAccessPointResolver.Resolve(
+                    ? ConstructionAccessPointResolver.ResolveAvailableEndpoint(
                         World,
-                        _pathProvider,
                         new SimRect(
                             node.Position - node.InteractionHalfExtents,
                             node.Position + node.InteractionHalfExtents),
                         Units.Positions[unit],
                         Units.Radii[unit],
-                        Units.NavigationRadii[unit],
                         interactionPadding: 0f)
-                    : ConstructionAccessPointResolver.ResolveCircle(
+                    : ConstructionAccessPointResolver.ResolveAvailableCircleEndpoint(
                         World,
-                        _pathProvider,
                         node.Position,
                         node.InteractionRadius,
                         Units.Positions[unit],
-                        Units.Radii[unit],
-                        Units.NavigationRadii[unit]);
+                        Units.Radii[unit]);
                 goalKind = UnitMovementGoalKind.ResourceBoundary;
                 goalBounds = node.InteractionHalfExtents != Vector2.Zero
                     ? new SimRect(
@@ -5820,11 +5907,24 @@ public sealed class RtsSimulation : ICombatMovementDriver
             }
             else if (state.State == WorkerEconomyState.ReturningCargo)
             {
+                var retryDropOff =
+                    Units.MovementGoalKinds[unit] ==
+                        UnitMovementGoalKind.DropOffBoundary &&
+                    Units.MovementLegResults[unit] is
+                        UnitMovementLegResult.Unreachable or
+                        UnitMovementLegResult.SettledShort
+                        ? Units.MovementGoalTargetIds[unit]
+                        : -1;
+                var excludedTarget = retryDropOff >= 0
+                    ? Units.MoveGoals[unit]
+                    : (Vector2?)null;
                 var approach = ResolveReachableDropOff(
                     state.PlayerId,
                     state.CargoKind,
                     Units.Positions[unit],
-                    Units.Radii[unit]);
+                    Units.Radii[unit],
+                    retryDropOff,
+                    excludedTarget);
                 goalKind = UnitMovementGoalKind.DropOffBoundary;
                 goalBounds = approach.Found
                     ? approach.HalfExtents != Vector2.Zero
@@ -5862,7 +5962,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int playerId,
         EconomyResourceKind kind,
         Vector2 origin,
-        float unitRadius)
+        float unitRadius) =>
+        ResolveReachableDropOff(
+            playerId, kind, origin, unitRadius,
+            preferredDropOff: -1, excludedTarget: null);
+
+    private EconomyDropOffApproachSnapshot ResolveReachableDropOff(
+        int playerId,
+        EconomyResourceKind kind,
+        Vector2 origin,
+        float unitRadius,
+        int preferredDropOff,
+        Vector2? excludedTarget)
     {
         var candidates = Economy.CreateDropOffApproaches(
             playerId, kind, origin, unitRadius);
@@ -5874,38 +5985,52 @@ public sealed class RtsSimulation : ICombatMovementDriver
             0f,
             default,
             float.PositiveInfinity);
-        var bestLength = float.PositiveInfinity;
         for (var index = 0; index < candidates.Length; index++)
         {
             var candidate = candidates[index];
-            var approach = candidate.HalfExtents != Vector2.Zero
-                ? ConstructionAccessPointResolver.Resolve(
-                    World,
-                    _pathProvider,
-                    new SimRect(
-                        candidate.Center - candidate.HalfExtents,
-                        candidate.Center + candidate.HalfExtents),
-                    origin,
-                    unitRadius,
-                    MovementClearance.FromPhysicalRadius(unitRadius)
-                        .NavigationRadius,
-                    interactionPadding: 0f)
-                : ConstructionAccessPointResolver.ResolveCircle(
-                    World,
-                    _pathProvider,
-                    candidate.Center,
-                    candidate.InteractionRadius,
-                    origin,
-                    unitRadius,
-                    MovementClearance.FromPhysicalRadius(unitRadius)
-                        .NavigationRadius);
-            if (!approach.Found || approach.PathLength >= bestLength)
-                continue;
-            bestLength = approach.PathLength;
-            best = candidate with
+            if (candidate.Id.Value == preferredDropOff)
             {
-                Target = approach.Target,
-                DistanceSquared = approach.PathLength * approach.PathLength
+                best = candidate;
+                break;
+            }
+            if (candidate.DistanceSquared > best.DistanceSquared ||
+                candidate.DistanceSquared == best.DistanceSquared &&
+                candidate.Id.Value >= best.Id.Value)
+                continue;
+            best = candidate;
+        }
+        if (!best.Found)
+            return best;
+        var endpoint = best.HalfExtents != Vector2.Zero
+            ? ConstructionAccessPointResolver.ResolveAvailableEndpoint(
+                World,
+                new SimRect(
+                    best.Center - best.HalfExtents,
+                    best.Center + best.HalfExtents),
+                origin,
+                unitRadius,
+                excludedTarget: excludedTarget)
+            : ConstructionAccessPointResolver.ResolveAvailableCircleEndpoint(
+                World,
+                best.Center,
+                best.InteractionRadius,
+                origin,
+                unitRadius,
+                excludedTarget);
+        if (endpoint.Found)
+            return best with { Target = endpoint.Target };
+
+        if (best.HalfExtents != Vector2.Zero)
+        {
+            var bounds = new SimRect(
+                best.Center - best.HalfExtents,
+                best.Center + best.HalfExtents);
+            var clearance = unitRadius +
+                InteractionGeometry.NumericTolerance(origin, bounds) * 0.25f;
+            return best with
+            {
+                Target = ConstructionAccessPointResolver.ProjectFromCenter(
+                    bounds, origin, clearance)
             };
         }
         return best;
