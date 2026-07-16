@@ -42,6 +42,7 @@ public sealed partial class War3Rts : Node3D
     private long _smokeEndTick;
     private bool _capture;
     private bool _terrainCapture;
+    private bool _pcgCapture;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
@@ -68,10 +69,13 @@ public sealed partial class War3Rts : Node3D
         _terrain = War3HumanScenario.CreateTerrain();
         var navigation = War3HumanScenario.CreateNavigation();
         var world = navigation.CreateWorld(_terrain);
-        var bake = ClearanceBakeSnapshot.Build(navigation, _terrain);
+        const float battlefieldPathCellSize = 24f;
+        var bake = ClearanceBakeSnapshot.Build(
+            navigation, _terrain, battlefieldPathCellSize);
         _simulation = new RtsSimulation(
             world,
-            new GridPathProvider(world, staticBake: bake),
+            new GridPathProvider(
+                world, battlefieldPathCellSize, staticBake: bake),
             War3HumanScenario.Capacity,
             navigation.CreateRoutePlanner(world),
             navigation.CreateChokeController(),
@@ -93,14 +97,25 @@ public sealed partial class War3Rts : Node3D
         var arguments = OS.GetCmdlineUserArgs();
         _smoke = arguments.Contains("--war3-rts-smoke");
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
+        _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
         _capture = arguments.Contains("--war3-rts-capture") ||
-                   _terrainCapture;
-        if (_terrainCapture)
+                   _terrainCapture || _pcgCapture;
+        if (_pcgCapture)
         {
             _hud!.Visible = false;
             _cameraController!.SetAutomationTarget(
-                War3HumanScenario.PlayerHome + new NVector2(480f, 0f),
-                distance: 32f,
+                (War3HumanScenario.WorldBounds.Min +
+                 War3HumanScenario.WorldBounds.Max) * 0.5f,
+                distance: 82f,
+                yaw: 0f,
+                pitch: Mathf.DegToRad(70f));
+        }
+        else if (_terrainCapture)
+        {
+            _hud!.Visible = false;
+            _cameraController!.SetAutomationTarget(
+                War3HumanScenario.PlayerHome + new NVector2(640f, 0f),
+                distance: 38f,
                 yaw: Mathf.DegToRad(90f),
                 pitch: Mathf.DegToRad(54f));
         }
@@ -1001,15 +1016,15 @@ public sealed partial class War3Rts : Node3D
             Current = true,
             Fov = 46f,
             Near = 0.08f,
-            Far = 180f
+            Far = 300f
         };
         AddChild(_camera);
         _cameraController = new Rts3DCameraController
         {
             Name = "CameraController",
-            InitialDistance = 25f,
+            InitialDistance = 27f,
             MinimumDistance = 12f,
-            MaximumDistance = 48f,
+            MaximumDistance = 88f,
             InitialPitchDegrees = 56f,
             InitialYawDegrees = 0f
         };
@@ -1133,15 +1148,18 @@ public sealed partial class War3Rts : Node3D
                                (War3HumanScenario.PlayerHome +
                                 War3HumanScenario.EnemyHome) * 0.5f) + 32f &&
                            _terrain.Cells.ToArray().Count(
-                               static cell => cell.IsRamp) == 16 &&
+                               static cell => cell.IsRamp) == 20 &&
                            _simulation.World.IsSegmentFree(
-                               new NVector2(1_104f, 960f),
-                               new NVector2(1_232f, 960f),
+                               new NVector2(1_856f, 1_920f),
+                               new NVector2(2_016f, 1_920f),
                                6f) &&
                            _simulation.World.IsSegmentFree(
-                               new NVector2(1_968f, 960f),
-                               new NVector2(2_096f, 960f),
-                               6f);
+                               new NVector2(4_384f, 1_920f),
+                               new NVector2(4_544f, 1_920f),
+                               6f) &&
+                           War3HumanScenario.PcgTreeCount == 252 &&
+                           _simulation.Economy.ResourceNodeCount ==
+                           War3HumanScenario.ExpectedResourceNodeCount;
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
@@ -1184,7 +1202,11 @@ public sealed partial class War3Rts : Node3D
              $"animation_blend={_presenter.SawBlendedTransition} " +
             $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
              $"attack_facing={attackFacingValid} terrain={terrainReady} " +
-             $"terrain_hash={_terrain?.StableHashText ?? "none"}");
+             $"terrain_hash={_terrain?.StableHashText ?? "none"} " +
+             $"pcg_trees={War3HumanScenario.PcgTreeCount} " +
+             $"pcg_dense={War3HumanScenario.DensePcgTreeCount} " +
+             $"pcg_sparse={War3HumanScenario.SparsePcgTreeCount} " +
+             $"pcg_hash={War3HumanScenario.PcgHashText}");
         if (!_capture) GetTree().Quit(success ? 0 : 1);
     }
 
@@ -1292,9 +1314,11 @@ public sealed partial class War3Rts : Node3D
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var image = GetViewport().GetTexture().GetImage();
         var path = ProjectSettings.GlobalizePath(
-            _terrainCapture
-                ? "user://war3_rts_terrain_capture.png"
-                : "user://war3_rts_capture.png");
+            _pcgCapture
+                ? "user://war3_rts_pcg_capture.png"
+                : _terrainCapture
+                    ? "user://war3_rts_terrain_capture.png"
+                    : "user://war3_rts_capture.png");
         var result = image.SavePng(path);
         GD.Print($"WAR3_RTS_CAPTURE {result}: {path}");
         if (!_smoke) GetTree().Quit(result == Error.Ok ? 0 : 1);

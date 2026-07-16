@@ -1,5 +1,6 @@
 using System.Numerics;
 using RtsDemo.Simulation;
+using War3Rts.Pcg;
 
 namespace War3Rts;
 
@@ -10,8 +11,8 @@ namespace War3Rts;
 /// </summary>
 public static class War3HumanBattlefield
 {
-    private const int Columns = 100;
-    private const int Rows = 60;
+    private const int Columns = 200;
+    private const int Rows = 120;
 
     public static TerrainMapSnapshot Create(
         SimRect bounds,
@@ -40,11 +41,11 @@ public static class War3HumanBattlefield
         // War3 ramps are authored on the lower level. A ramp cell plus its
         // low/high neighbours becomes the three-point W3E ramp strip used by
         // TerrainClassicRampLayout and the authoritative HeightAt query.
-        for (var row = 26; row <= 33; row++)
+        for (var row = 55; row <= 64; row++)
         {
-            cells[row * Columns + 36] = Ramp(
+            cells[row * Columns + 60] = Ramp(
                 TerrainRampDirection.NegativeX);
-            cells[row * Columns + 63] = Ramp(
+            cells[row * Columns + 139] = Ramp(
                 TerrainRampDirection.PositiveX);
         }
 
@@ -80,8 +81,8 @@ public static class War3HumanBattlefield
         direction);
 
     private static bool IsBasePlatform(int column, int row) =>
-        InRoundedRectangle(column, row, 4, 14, 35, 45, 5) ||
-        InRoundedRectangle(column, row, 64, 14, 95, 45, 5);
+        InRoundedRectangle(column, row, 20, 40, 59, 79, 7) ||
+        InRoundedRectangle(column, row, 140, 40, 179, 79, 7);
 
     private static bool InRoundedRectangle(
         int column,
@@ -112,25 +113,44 @@ public static class War3HumanBattlefield
 
     private static ushort SurfaceAt(int column, int row, bool elevated)
     {
-        if (row is >= 26 and <= 33 && column is >= 17 and <= 82)
-            return (ushort)((column + row) % 7 == 0 ? 1 : 0);
+        var disturbance = PcgHashNoise.Fractal01(
+            column * 0.13f, row * 0.13f, 0x5741_5233u);
+        if (row is >= 55 and <= 64 && column is >= 35 and <= 164)
+            return (ushort)(disturbance > 0.77f ? 1 : 0);
         if (elevated)
         {
-            var homeColumn = column < 50 ? 20 : 80;
+            var homeColumn = column < 100 ? 40 : 160;
             var dx = Math.Abs(column - homeColumn);
-            var dy = Math.Abs(row - 30);
-            if (dx <= 7 && dy <= 7)
+            var dy = Math.Abs(row - 60);
+            if (dx <= 10 && dy <= 10)
                 return 0;
-            return 3;
+            return (ushort)(disturbance > 0.82f ? 1 : 3);
         }
-        if (column is >= 42 and <= 57 &&
-            (row is >= 7 and <= 16 || row is >= 43 and <= 52))
+        var nearNeutralMine =
+            Ellipse(column, row, 75, 22, 12, 9) ||
+            Ellipse(column, row, 125, 22, 12, 9) ||
+            Ellipse(column, row, 75, 97, 12, 9) ||
+            Ellipse(column, row, 125, 97, 12, 9);
+        if (nearNeutralMine && disturbance > 0.24f)
         {
             return 2;
         }
-        if ((column + row * 3) % 29 <= 2)
+        if (disturbance > 0.70f)
             return 1;
         return 3;
+    }
+
+    private static bool Ellipse(
+        int column,
+        int row,
+        int centerColumn,
+        int centerRow,
+        int radiusX,
+        int radiusY)
+    {
+        var x = (column - centerColumn) / (float)radiusX;
+        var y = (row - centerRow) / (float)radiusY;
+        return x * x + y * y <= 1f;
     }
 
     private static float FineHeight(int column, int row, float cellSize)
@@ -140,24 +160,27 @@ public static class War3HumanBattlefield
         var rolling = MathF.Sin(column * 0.17f) * 5f +
                       MathF.Cos(row * 0.23f) * 4f +
                       MathF.Sin((column + row) * 0.11f) * 3f +
-                      Gaussian(x, y, 1_600f, 430f, 360f, 10f) -
-                      Gaussian(x, y, 1_600f, 1_500f, 420f, 8f);
+                      MathF.Sin((column - row) * 0.071f) * 2.5f +
+                      Gaussian(x, y, 3_200f, 720f, 520f, 11f) -
+                      Gaussian(x, y, 3_200f, 3_120f, 620f, 9f) +
+                      Gaussian(x, y, 2_560f, 2_850f, 460f, 6f) -
+                      Gaussian(x, y, 3_920f, 1_080f, 430f, 5f);
 
         // Keep both construction plateaus and their ramp shoulders level,
         // then blend into rolling low ground toward the centre battlefield.
-        var insideVerticalBand = MathF.Min(y - 320f, 1_600f - y);
+        var insideVerticalBand = MathF.Min(y - 1_152f, 2_688f - y);
         var verticalStrength = SmoothStep(0f, 128f, insideVerticalBand);
         float horizontalStrength;
-        if (x <= 1_216f || x >= 1_984f)
+        if (x <= 2_016f || x >= 4_384f)
         {
             horizontalStrength = 1f;
         }
         else
         {
             var distanceFromShoulder = MathF.Min(
-                x - 1_216f, 1_984f - x);
+                x - 2_016f, 4_384f - x);
             horizontalStrength = 1f - SmoothStep(
-                0f, 224f, distanceFromShoulder);
+                0f, 320f, distanceFromShoulder);
         }
         return rolling * (1f - horizontalStrength * verticalStrength);
     }

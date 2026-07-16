@@ -25,6 +25,7 @@ public static class SimulationSelfTest
             var terrainPresetResult = TerrainTestPresetCatalogSelfTest.Run();
             var terrainShowcaseResult = TerrainShowcaseCatalogSelfTest.Run();
             var terrainVisionResult = TerrainVisionSelfTest.Run();
+            var war3PcgResult = War3BattlefieldPcgSelfTest.Run();
             var fallbackPathResult = PathProviderFallbackSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
@@ -66,6 +67,7 @@ public static class SimulationSelfTest
                          terrainPresetResult.Passed &&
                          terrainShowcaseResult.Passed &&
                          terrainVisionResult.Passed &&
+                         war3PcgResult.Passed &&
                          fallbackPathResult.Passed &&
                          profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
@@ -104,6 +106,9 @@ public static class SimulationSelfTest
                 $"terrain-vision=" +
                 $"{(terrainVisionResult.Passed ? "PASS" : "FAIL")}" +
                 $"({terrainVisionResult.Summary})",
+                $"war3-battlefield-pcg=" +
+                $"{(war3PcgResult.Passed ? "PASS" : "FAIL")}" +
+                $"({war3PcgResult.Summary})",
                 $"path-provider-fallback=" +
                 $"{(fallbackPathResult.Passed ? "PASS" : "FAIL")}" +
                 $"({fallbackPathResult.Summary})",

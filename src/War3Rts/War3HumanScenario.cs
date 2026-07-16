@@ -1,6 +1,7 @@
 using System.Numerics;
 using RtsDemo.AI;
 using RtsDemo.Simulation;
+using War3Rts.Pcg;
 
 namespace War3Rts;
 
@@ -28,14 +29,19 @@ public static class War3HumanScenario
     public const float TerrainCliffHeight = 48f;
 
     public static readonly SimRect WorldBounds = new(
-        Vector2.Zero, new Vector2(3_200f, 1_920f));
-    public static readonly Vector2 PlayerHome = new(640f, 960f);
-    public static readonly Vector2 EnemyHome = new(2_560f, 960f);
-    private static readonly Vector2[] CenterResourcePositions =
-    [
-        new(1_600f, 560f),
-        new(1_600f, 1_360f)
-    ];
+        Vector2.Zero, new Vector2(6_400f, 3_840f));
+    public static readonly Vector2 PlayerHome = new(1_280f, 1_920f);
+    public static readonly Vector2 EnemyHome = new(5_120f, 1_920f);
+    private static readonly War3BattlefieldPcgLayout BattlefieldPcg =
+        War3BattlefieldPcg.Generate(WorldBounds, PlayerHome, EnemyHome);
+
+    public static int PcgTreeCount =>
+        BattlefieldPcg.ForestTreePositions.Length;
+    public static int ExpectedResourceNodeCount =>
+        2 * 15 + BattlefieldPcg.NeutralGoldPositions.Length + PcgTreeCount;
+    public static string PcgHashText => BattlefieldPcg.StableHashText;
+    public static int DensePcgTreeCount => BattlefieldPcg.DenseTreeCount;
+    public static int SparsePcgTreeCount => BattlefieldPcg.SparseTreeCount;
 
     public static TerrainMapSnapshot CreateTerrain() =>
         War3HumanBattlefield.Create(
@@ -46,7 +52,8 @@ public static class War3HumanScenario
         var obstacles = new List<SimRect>();
         AddBaseResourceObstacles(obstacles, PlayerHome, 1f);
         AddBaseResourceObstacles(obstacles, EnemyHome, -1f);
-        AddCenterResourceObstacles(obstacles);
+        AddNeutralGoldObstacles(obstacles);
+        AddPcgForestObstacles(obstacles);
         var created = NavigationMapSnapshot.TryCreate(
             NavigationMapSnapshot.CurrentFormatVersion,
             WorldBounds,
@@ -73,7 +80,8 @@ public static class War3HumanScenario
         var resourceNodes = new List<EconomyResourceNodeId>();
         var playerResources = AddResources(simulation, PlayerHome, 1f, resourceNodes);
         var enemyResources = AddResources(simulation, EnemyHome, -1f, resourceNodes);
-        AddCenterResources(simulation, resourceNodes);
+        AddNeutralGolds(simulation, resourceNodes);
+        AddPcgForest(simulation, resourceNodes);
 
         var worker = production.UnitType(War3HumanContent.Peasant);
         var playerWorkers = SpawnWorkers(simulation, worker, PlayerId, PlayerHome, 1f);
@@ -141,11 +149,11 @@ public static class War3HumanScenario
         return new ResourceCluster(gold, trees);
     }
 
-    private static void AddCenterResources(
+    private static void AddNeutralGolds(
         RtsSimulation simulation,
         List<EconomyResourceNodeId> all)
     {
-        foreach (var goldPosition in CenterResourcePositions)
+        foreach (var goldPosition in BattlefieldPcg.NeutralGoldPositions)
         {
             var gold = simulation.Economy.AddResourceNode(
                 EconomyResourceKind.Minerals, goldPosition,
@@ -153,18 +161,23 @@ public static class War3HumanScenario
             simulation.Economy.SetResourceInteractionBounds(
                 gold, ResourceBounds(goldPosition, GoldHalfExtents));
             all.Add(gold);
-            for (var index = 0; index < 8; index++)
-            {
-                var position = CenterTreePosition(goldPosition, index);
-                var tree = simulation.Economy.AddResourceNode(
-                    EconomyResourceKind.VespeneGas,
-                    position, TreeHealth, LumberPerTrip, TreeHarvestSeconds, 1,
-                    activeHarvesterSlots: 1,
-                    harvestMode: EconomyHarvestMode.Progressive);
-                simulation.Economy.SetResourceInteractionBounds(
-                    tree, ResourceBounds(position, TreeHalfExtents));
-                all.Add(tree);
-            }
+        }
+    }
+
+    private static void AddPcgForest(
+        RtsSimulation simulation,
+        List<EconomyResourceNodeId> all)
+    {
+        foreach (var position in BattlefieldPcg.ForestTreePositions)
+        {
+            var tree = simulation.Economy.AddResourceNode(
+                EconomyResourceKind.VespeneGas,
+                position, TreeHealth, LumberPerTrip, TreeHarvestSeconds, 1,
+                activeHarvesterSlots: 1,
+                harvestMode: EconomyHarvestMode.Progressive);
+            simulation.Economy.SetResourceInteractionBounds(
+                tree, ResourceBounds(position, TreeHalfExtents));
+            all.Add(tree);
         }
     }
 
@@ -180,15 +193,16 @@ public static class War3HumanScenario
                 BaseTreePosition(home, direction, index), TreeHalfExtents));
     }
 
-    private static void AddCenterResourceObstacles(List<SimRect> obstacles)
+    private static void AddNeutralGoldObstacles(List<SimRect> obstacles)
     {
-        foreach (var goldPosition in CenterResourcePositions)
-        {
+        foreach (var goldPosition in BattlefieldPcg.NeutralGoldPositions)
             obstacles.Add(ResourceBounds(goldPosition, GoldHalfExtents));
-            for (var index = 0; index < 8; index++)
-                obstacles.Add(ResourceBounds(
-                    CenterTreePosition(goldPosition, index), TreeHalfExtents));
-        }
+    }
+
+    private static void AddPcgForestObstacles(List<SimRect> obstacles)
+    {
+        foreach (var position in BattlefieldPcg.ForestTreePositions)
+            obstacles.Add(ResourceBounds(position, TreeHalfExtents));
     }
 
     private static Vector2 BaseGoldPosition(Vector2 home, float direction) =>
@@ -201,16 +215,15 @@ public static class War3HumanScenario
     {
         var row = index / 7;
         var column = index % 7;
+        var axialJitter =
+            (PcgHashNoise.Value01(index * 1.37f, row * 3.11f, 0xBA53_7EEDu) -
+             0.5f) * 12f;
+        var woodlineDistance = 274f +
+            PcgHashNoise.Value01(index * 0.91f + 7f, row * 2.43f,
+                0x71EE_2026u) * 70f;
         return home + new Vector2(
-            direction * (column - 3f) * 44f,
-            row == 0 ? -300f : 300f);
-    }
-
-    private static Vector2 CenterTreePosition(Vector2 center, int index)
-    {
-        var angle = MathF.Tau * index / 8f;
-        return center + new Vector2(
-            MathF.Cos(angle), MathF.Sin(angle)) * 150f;
+            direction * ((column - 3f) * 46f + axialJitter),
+            (row == 0 ? -1f : 1f) * woodlineDistance);
     }
 
     private static SimRect ResourceBounds(Vector2 center, Vector2 halfExtents) =>
