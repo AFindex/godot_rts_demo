@@ -17,8 +17,15 @@ public partial class Rts3DTerrainPresenter : Node3D
     private IRts3DTerrainMaterialProvider? _materialProvider;
     private float _cellWorldSize = 1f;
     private float _cliffWorldHeight = 1f;
+    private TerrainClassicRampSurfaceTile[] _classicRampTransitionUnderlays = [];
 
     public TerrainCliffMeshDiagnostics? LastClassicCliffDiagnostics
+    {
+        get;
+        private set;
+    }
+
+    public TerrainClassicRampDiagnostics? LastClassicRampDiagnostics
     {
         get;
         private set;
@@ -35,6 +42,8 @@ public partial class Rts3DTerrainPresenter : Node3D
         _classicCliffRoot?.QueueFree();
         _classicCliffRoot = null;
         LastClassicCliffDiagnostics = null;
+        LastClassicRampDiagnostics = null;
+        _classicRampTransitionUnderlays = [];
         _materialProvider = materialProvider;
         _cellWorldSize = MathF.Max(0.001f,
             SimPlane3DTransform.ToWorldLength(terrain.CellSize));
@@ -71,6 +80,15 @@ public partial class Rts3DTerrainPresenter : Node3D
             AppendSurface(mesh, terrain, surface, classicCliffSeams);
         }
         AppendCliffs(mesh, terrain, classicCliffSeams);
+        if (classicCliffSeams is not null && classicCliffProvider is not null)
+        {
+            AppendClassicRampWallSkirts(
+                mesh,
+                terrain,
+                classicCliffSeams,
+                classicCliffProvider.ClassicRampMaterial(
+                    classicCliffProvider.DefaultClassicCliffStyle));
+        }
         _visual = new MeshInstance3D
         {
             Name = "TerrainMesh",
@@ -91,15 +109,77 @@ public partial class Rts3DTerrainPresenter : Node3D
                 "Classic cliff style map does not match the terrain.",
                 nameof(styleMap));
         }
+        provider.ConfigureClassicHeightField(terrain);
+        var rampLayout = TerrainClassicRampLayout.Build(
+            terrain, provider.HasClassicRampMesh);
+        LastClassicRampDiagnostics = rampLayout.Diagnostics;
+        _classicRampTransitionUnderlays =
+            rampLayout.TransitionUnderlayTiles.ToArray();
+        GD.Print(
+            $"TERRAIN_CLASSIC_RAMP_LAYOUT mapped=" +
+            $"{rampLayout.Diagnostics.MappedRampCells}/" +
+            $"{rampLayout.Diagnostics.AuthoredRampCells} " +
+            $"transitions={rampLayout.Diagnostics.SelectedTransitions} " +
+            $"rejected={rampLayout.Diagnostics.RejectedPatterns}");
         var layout = TerrainCliffMeshLayout.Build(
-            terrain, provider.ClassicCliffVariationCount);
+            terrain, provider.ClassicCliffVariationCount, rampLayout);
         LastClassicCliffDiagnostics = layout.Diagnostics;
         var resolvedTiles = new List<TerrainClassicCliffTile>();
         var groups = new Dictionary<ClassicCliffGroupKey, ClassicCliffGroup>();
-        var occupiedTiles = layout.Tiles
-            .ToArray()
-            .Select(static tile => (tile.Column, tile.Row))
-            .ToHashSet();
+        var rampGroups = new Dictionary<ClassicCliffGroupKey, ClassicCliffGroup>();
+        var rampFootprints = new HashSet<(int Column, int Row)>();
+        var occupiedTiles = new HashSet<(int Column, int Row)>();
+        foreach (var sourceRamp in rampLayout.Tiles)
+        {
+            var style = styleMap?.StyleAt(
+                            sourceRamp.Column, sourceRamp.Row) ??
+                        provider.DefaultClassicCliffStyle;
+            var ramp = sourceRamp with { CliffStyleId = style };
+            if (!provider.TryGetClassicRampMesh(
+                    ramp.Signature, out var definition))
+            {
+                continue;
+            }
+            var key = new ClassicCliffGroupKey(
+                definition.AssetKey, ramp.CliffStyleId);
+            if (!rampGroups.TryGetValue(key, out var group))
+            {
+                group = new ClassicCliffGroup(definition);
+                rampGroups.Add(key, group);
+            }
+            var placement = new TerrainClassicCliffTile(
+                ramp.Column,
+                ramp.Row,
+                ramp.Signature,
+                0,
+                ramp.BaseLevel,
+                (byte)(ramp.BaseLevel + 1),
+                ramp.UpperSurfaceId,
+                ramp.CliffStyleId);
+            group.Transforms.Add(
+                ClassicCliffTransform(terrain, placement) *
+                definition.ModelTransform);
+
+            var footprintColumns =
+                ramp.Axis == TerrainClassicRampAxis.Horizontal ? 2 : 1;
+            var footprintRows =
+                ramp.Axis == TerrainClassicRampAxis.Vertical ? 2 : 1;
+            for (var localRow = 0; localRow < footprintRows; localRow++)
+            for (var localColumn = 0;
+                 localColumn < footprintColumns;
+                 localColumn++)
+            {
+                var footprint = placement with
+                {
+                    Column = ramp.Column + localColumn,
+                    Row = ramp.Row + localRow
+                };
+                rampFootprints.Add((footprint.Column, footprint.Row));
+                occupiedTiles.Add((footprint.Column, footprint.Row));
+            }
+        }
+        foreach (var tile in layout.Tiles)
+            occupiedTiles.Add((tile.Column, tile.Row));
         foreach (var sourceTile in layout.Tiles)
         {
             var tile = sourceTile with
@@ -129,6 +209,20 @@ public partial class Rts3DTerrainPresenter : Node3D
         }
 
         var root = new Node3D { Name = "ClassicCliffMeshes" };
+        foreach (var (key, group) in rampGroups)
+        {
+            var baseName =
+                $"Ramp_{Path.GetFileNameWithoutExtension(key.AssetKey)}" +
+                $"_C{key.CliffStyleId}";
+            AddClassicCliffBatch(
+                root,
+                baseName,
+                MakeStaticClassicCliffMesh(group.Definition.Mesh),
+                provider.ClassicRampMaterial(key.CliffStyleId),
+                group,
+                useCustomData: false,
+                GeometryInstance3D.ShadowCastingSetting.On);
+        }
         foreach (var (key, group) in groups)
         {
             var parts = SplitClassicCliffMesh(group.Definition.Mesh);
@@ -162,17 +256,29 @@ public partial class Rts3DTerrainPresenter : Node3D
             root.Free();
         }
         var seamMap = TerrainClassicCliffSeamMap.Build(
-            terrain, resolvedTiles);
+            terrain,
+            resolvedTiles,
+            rampLayout.SurfaceTiles.ToArray(),
+            rampFootprints.Select(static tile =>
+                new TerrainClassicRampFootprintTile(
+                    tile.Column, tile.Row)));
         GD.Print(
             $"TERRAIN_CLASSIC_CLIFF_LAYOUT hash={layout.StableHashText} " +
             $"candidates={layout.Diagnostics.CandidateTiles} " +
             $"selected={layout.Diagnostics.SelectedTiles} " +
-            $"resolved={seamMap.CoveredClassicTiles} batches={groups.Count} " +
+            $"resolved={seamMap.CoveredClassicTiles} " +
+            $"batches={groups.Count + rampGroups.Count} " +
+            $"rampCells={rampLayout.Diagnostics.MappedRampCells}/" +
+            $"{rampLayout.Diagnostics.AuthoredRampCells} " +
+            $"rampTransitions={rampLayout.Diagnostics.SelectedTransitions}/" +
+            $"{rampLayout.Diagnostics.CandidateTransitions} " +
+            $"rampSurfaces={rampLayout.SurfaceTiles.Length} " +
             $"raisedGroundCutQuads={seamMap.CoveredGroundQuadrants} " +
             $"biasedFootprintQuads={seamMap.CoveredFootprintQuadrants} " +
             $"rampFallback={layout.Diagnostics.RampFallbackTiles} " +
             $"heightFallback={layout.Diagnostics.UnsupportedHeightTiles} " +
-            $"missing={layout.Diagnostics.MissingAssetTiles}");
+            $"missing={layout.Diagnostics.MissingAssetTiles} " +
+            $"rampRejected={rampLayout.Diagnostics.RejectedPatterns}");
         return seamMap;
     }
 
@@ -224,6 +330,31 @@ public partial class Rts3DTerrainPresenter : Node3D
             AddFilteredSurface(reveal, sourceMesh, surface, revealIndices);
         }
         return new ClassicCliffMeshParts(opaque, reveal);
+    }
+
+    private static Mesh MakeStaticClassicCliffMesh(Mesh source)
+    {
+        if (source is not ArrayMesh sourceMesh)
+            return (Mesh)source.Duplicate();
+        var result = new ArrayMesh();
+        for (var surface = 0;
+             surface < sourceMesh.GetSurfaceCount();
+             surface++)
+        {
+            var primitive = sourceMesh.SurfaceGetPrimitiveType(surface);
+            if (primitive != Mesh.PrimitiveType.Triangles)
+                continue;
+            var arrays = sourceMesh.SurfaceGetArrays(surface);
+            var vertices = arrays[(int)Mesh.ArrayType.Vertex]
+                .AsVector3Array();
+            var indices = arrays[(int)Mesh.ArrayType.Index]
+                .AsInt32Array();
+            if (indices.Length == 0)
+                indices = Enumerable.Range(0, vertices.Length).ToArray();
+            AddFilteredSurface(
+                result, sourceMesh, surface, indices.ToList());
+        }
+        return result;
     }
 
     private static void AddFilteredSurface(
@@ -465,6 +596,23 @@ public partial class Rts3DTerrainPresenter : Node3D
         }
         if (cliffSeams is not null)
         {
+            foreach (var tile in cliffSeams.RampSurfaceTiles)
+            {
+                AppendClassicRampSurface(
+                    tool, terrain, visualMap, tile);
+                added = true;
+            }
+            foreach (var tile in _classicRampTransitionUnderlays)
+            {
+                AppendClassicRampSurface(
+                    tool,
+                    terrain,
+                    visualMap,
+                    tile,
+                    ClassicRampTransitionUnderlayDepthBias(),
+                    terrain.CellSize * 0.25f);
+                added = true;
+            }
             foreach (var tile in cliffSeams.Tiles)
             {
                 AppendClassicCliffUnderlay(
@@ -480,6 +628,165 @@ public partial class Rts3DTerrainPresenter : Node3D
             $"points={visualMap.PointColumns}x{visualMap.PointRows} " +
             $"cliffGroundOverrides={seamPointOverrides}");
     }
+
+    private void AppendClassicRampSurface(
+        SurfaceTool tool,
+        TerrainMapSnapshot terrain,
+        TerrainVisualLayerMap visualMap,
+        TerrainClassicRampSurfaceTile tile,
+        float downwardBias = 0f,
+        float horizontalExpansion = 0f)
+    {
+        var geometry = ClassicRampSurfaceGeometry(
+            terrain, tile, downwardBias, horizontalExpansion);
+        AddDualGridQuad(
+            tool,
+            geometry.BottomLeft,
+            geometry.BottomMiddle,
+            geometry.Centre,
+            geometry.LeftMiddle,
+            Encoded(tile.Column, tile.Row));
+        AddDualGridQuad(
+            tool,
+            geometry.BottomMiddle,
+            geometry.BottomRight,
+            geometry.RightMiddle,
+            geometry.Centre,
+            Encoded(tile.Column + 1, tile.Row));
+        AddDualGridQuad(
+            tool,
+            geometry.LeftMiddle,
+            geometry.Centre,
+            geometry.TopMiddle,
+            geometry.TopLeft,
+            Encoded(tile.Column, tile.Row + 1));
+        AddDualGridQuad(
+            tool,
+            geometry.Centre,
+            geometry.RightMiddle,
+            geometry.TopRight,
+            geometry.TopMiddle,
+            Encoded(tile.Column + 1, tile.Row + 1));
+
+        Vector2 Encoded(int column, int row)
+        {
+            var cell = visualMap.Cell(column, row);
+            return new Vector2(cell.PackedLayerMasks, cell.BaseVariation);
+        }
+    }
+
+    private IEnumerable<ClassicRampSkirtEdge> ClassicRampSkirtEdges(
+        TerrainMapSnapshot terrain,
+        TerrainClassicCliffSeamMap seams)
+    {
+        var tiles = seams.RampSurfaceTiles.ToArray();
+        var occupied = tiles
+            .Select(static tile => (tile.Column, tile.Row))
+            .ToHashSet();
+        var drop = Vector3.Down * MathF.Max(
+            0.01f, _cliffWorldHeight * 0.12f);
+        foreach (var tile in tiles)
+        {
+            var geometry = ClassicRampSurfaceGeometry(terrain, tile);
+            if (!occupied.Contains((tile.Column, tile.Row - 1)))
+            {
+                yield return new ClassicRampSkirtEdge(
+                    geometry.BottomLeft,
+                    geometry.BottomRight,
+                    drop,
+                    tile.Column,
+                    tile.Row);
+            }
+            if (!occupied.Contains((tile.Column, tile.Row + 1)))
+            {
+                yield return new ClassicRampSkirtEdge(
+                    geometry.TopRight,
+                    geometry.TopLeft,
+                    drop,
+                    tile.Column,
+                    tile.Row + 1);
+            }
+            if (!occupied.Contains((tile.Column - 1, tile.Row)))
+            {
+                yield return new ClassicRampSkirtEdge(
+                    geometry.TopLeft,
+                    geometry.BottomLeft,
+                    drop,
+                    tile.Column,
+                    tile.Row);
+            }
+            if (!occupied.Contains((tile.Column + 1, tile.Row)))
+            {
+                yield return new ClassicRampSkirtEdge(
+                    geometry.BottomRight,
+                    geometry.TopRight,
+                    drop,
+                    tile.Column + 1,
+                    tile.Row);
+            }
+        }
+    }
+
+    private static GroundCellGeometryData ClassicRampSurfaceGeometry(
+        TerrainMapSnapshot terrain,
+        TerrainClassicRampSurfaceTile tile,
+        float downwardBias = 0f,
+        float horizontalExpansion = 0f)
+    {
+        var expansion = new System.Numerics.Vector2(horizontalExpansion);
+        var bottomLeftPosition =
+            CellCentre(tile.Column, tile.Row) - expansion;
+        var bottomRightPosition = CellCentre(tile.Column + 1, tile.Row) +
+                                  new System.Numerics.Vector2(
+                                      horizontalExpansion,
+                                      -horizontalExpansion);
+        var topRightPosition =
+            CellCentre(tile.Column + 1, tile.Row + 1) + expansion;
+        var topLeftPosition = CellCentre(tile.Column, tile.Row + 1) +
+                              new System.Numerics.Vector2(
+                                  -horizontalExpansion,
+                                  horizontalExpansion);
+        var bottomLeft = RampPoint(
+            bottomLeftPosition, tile.BottomLeftLevel);
+        var bottomRight = RampPoint(
+            bottomRightPosition, tile.BottomRightLevel);
+        var topRight = RampPoint(topRightPosition, tile.TopRightLevel);
+        var topLeft = RampPoint(topLeftPosition, tile.TopLeftLevel);
+        var bottomMiddle = bottomLeft.Lerp(bottomRight, 0.5f);
+        var rightMiddle = bottomRight.Lerp(topRight, 0.5f);
+        var topMiddle = topLeft.Lerp(topRight, 0.5f);
+        var leftMiddle = bottomLeft.Lerp(topLeft, 0.5f);
+        var centre = bottomMiddle.Lerp(topMiddle, 0.5f);
+        return new GroundCellGeometryData(
+            bottomLeft,
+            bottomRight,
+            topRight,
+            topLeft,
+            bottomMiddle,
+            rightMiddle,
+            topMiddle,
+            leftMiddle,
+            centre);
+
+        System.Numerics.Vector2 CellCentre(int column, int row)
+        {
+            var bounds = terrain.CellBounds(column, row);
+            return (bounds.Min + bounds.Max) * 0.5f;
+        }
+
+        Vector3 RampPoint(
+            System.Numerics.Vector2 position,
+            float level) =>
+            SimPlane3DTransform.ToWorld(
+                position,
+                SimPlane3DTransform.ToWorldLength(
+                    level * terrain.CliffLevelHeight +
+                    terrain.FineHeightAt(position))) +
+            Vector3.Down * downwardBias;
+    }
+
+    private float ClassicRampTransitionUnderlayDepthBias() =>
+        MathF.Max(0.006f, _cliffWorldHeight * 0.035f);
 
     private void AppendClassicCliffUnderlay(
         SurfaceTool tool,
@@ -576,11 +883,100 @@ public partial class Rts3DTerrainPresenter : Node3D
                     cliffSeams?.ClassicFootprintMask(column, row) ?? 0);
             }
         }
+        if (cliffSeams is not null)
+        {
+            foreach (var tile in cliffSeams.RampSurfaceTiles)
+            {
+                var geometry = ClassicRampSurfaceGeometry(terrain, tile);
+                var weights = GroundCellWeights(
+                    SurfaceWeight(tile.Column, tile.Row),
+                    SurfaceWeight(tile.Column + 1, tile.Row),
+                    SurfaceWeight(tile.Column + 1, tile.Row + 1),
+                    SurfaceWeight(tile.Column, tile.Row + 1));
+                added |= AppendBlendGroundCell(
+                    tool, geometry, weights, 0, 0);
+            }
+            foreach (var tile in _classicRampTransitionUnderlays)
+            {
+                var geometry = ClassicRampSurfaceGeometry(
+                    terrain,
+                    tile,
+                    ClassicRampTransitionUnderlayDepthBias(),
+                    terrain.CellSize * 0.25f);
+                var weights = GroundCellWeights(
+                    SurfaceWeight(tile.Column, tile.Row),
+                    SurfaceWeight(tile.Column + 1, tile.Row),
+                    SurfaceWeight(tile.Column + 1, tile.Row + 1),
+                    SurfaceWeight(tile.Column, tile.Row + 1));
+                added |= AppendBlendGroundCell(
+                    tool, geometry, weights, 0, 0);
+            }
+        }
+        if (added)
+            tool.Commit(mesh);
+
+        Color SurfaceWeight(int column, int row)
+        {
+            var result = Colors.Transparent;
+            var surface = terrain.Surface(
+                terrain.Cell(column, row).SurfaceId);
+            if (!blendProvider.TryGetBlendChannel(surface, out var channel))
+                return result;
+            return channel switch
+            {
+                0 => new Color(1f, 0f, 0f, 0f),
+                1 => new Color(0f, 1f, 0f, 0f),
+                2 => new Color(0f, 0f, 1f, 0f),
+                _ => new Color(0f, 0f, 0f, 1f)
+            };
+        }
+    }
+
+    private void AppendClassicRampWallSkirts(
+        ArrayMesh mesh,
+        TerrainMapSnapshot terrain,
+        TerrainClassicCliffSeamMap seams,
+        Material sourceMaterial)
+    {
+        var material = (Material)sourceMaterial.Duplicate();
+        if (material is ShaderMaterial shaderMaterial)
+            shaderMaterial.SetShaderParameter("use_fine_height", false);
+        var tool = new SurfaceTool();
+        tool.Begin(Mesh.PrimitiveType.Triangles);
+        tool.SetMaterial(material);
+        var added = false;
+        foreach (var edge in ClassicRampSkirtEdges(terrain, seams))
+        {
+            var lowA = edge.A + edge.Drop;
+            var lowB = edge.B + edge.Drop;
+            var horizontalTiles = MathF.Max(
+                0.001f, edge.A.DistanceTo(edge.B) / _cellWorldSize);
+            var verticalTiles = MathF.Max(
+                0.001f, edge.Drop.Length() / _cliffWorldHeight);
+            // The upper-left half of cliff0 is the repeatable rock face.
+            // Keep generated ramp skirts inside that quadrant; original
+            // CliffTrans and CliffsABCD geometry remains layered above it.
+            var uvTopA = new Vector2(0.01f, 0.01f);
+            var uvTopB = new Vector2(
+                MathF.Min(0.49f, 0.01f + horizontalTiles * 0.46f),
+                0.01f);
+            var uvLowA = new Vector2(
+                0.01f,
+                MathF.Min(0.49f, 0.01f + verticalTiles * 0.46f));
+            var uvLowB = new Vector2(uvTopB.X, uvLowA.Y);
+            AddTriangle(
+                tool, edge.A, lowB, lowA,
+                uvTopA, uvLowB, uvLowA);
+            AddTriangle(
+                tool, edge.A, edge.B, lowB,
+                uvTopA, uvTopB, uvLowB);
+            added = true;
+        }
         if (added)
             tool.Commit(mesh);
     }
 
-    private static Color BlendWeights(
+    private Color BlendWeights(
         TerrainMapSnapshot terrain,
         IRts3DTerrainBlendMaterialProvider blendProvider,
         int column,
@@ -591,7 +987,7 @@ public partial class Rts3DTerrainPresenter : Node3D
         Span<float> weights = stackalloc float[4];
         var vertexColumn = column + (maximumX ? 1 : 0);
         var vertexRow = row + (maximumY ? 1 : 0);
-        var targetHeight = terrain.CellCornerHeight(
+        var targetHeight = CellCornerHeight(terrain,
             column, row, maximumX, maximumY);
         var heightTolerance = MathF.Max(
             0.001f, terrain.CliffLevelHeight * 0.16f);
@@ -622,7 +1018,7 @@ public partial class Rts3DTerrainPresenter : Node3D
 
                 var nearestMaximumX = vertexColumn > sampleColumn;
                 var nearestMaximumY = vertexRow > sampleRow;
-                var sampleHeight = terrain.CellCornerHeight(
+                var sampleHeight = CellCornerHeight(terrain,
                     sampleColumn, sampleRow,
                     nearestMaximumX, nearestMaximumY);
                 if (MathF.Abs(sampleHeight - targetHeight) > heightTolerance)
@@ -674,19 +1070,19 @@ public partial class Rts3DTerrainPresenter : Node3D
                         Point(terrain,
                             terrain.CellBounds(column, row).Max.X,
                             terrain.CellBounds(column, row).Min.Y,
-                            terrain.CellCornerHeight(column, row, true, false)),
+                            CellCornerHeight(terrain, column, row, true, false)),
                         Point(terrain,
                             terrain.CellBounds(column, row).Max.X,
                             terrain.CellBounds(column, row).Max.Y,
-                            terrain.CellCornerHeight(column, row, true, true)),
+                            CellCornerHeight(terrain, column, row, true, true)),
                         Point(terrain,
                             terrain.CellBounds(column + 1, row).Min.X,
                             terrain.CellBounds(column + 1, row).Min.Y,
-                            terrain.CellCornerHeight(column + 1, row, false, false)),
+                            CellCornerHeight(terrain, column + 1, row, false, false)),
                         Point(terrain,
                             terrain.CellBounds(column + 1, row).Min.X,
                             terrain.CellBounds(column + 1, row).Max.Y,
-                            terrain.CellCornerHeight(column + 1, row, false, true)),
+                            CellCornerHeight(terrain, column + 1, row, false, true)),
                         IsClassicTileCovered(
                             classicCliffSeams, column, row - 1),
                         IsClassicTileCovered(
@@ -701,19 +1097,19 @@ public partial class Rts3DTerrainPresenter : Node3D
                         Point(terrain,
                             terrain.CellBounds(column, row).Min.X,
                             terrain.CellBounds(column, row).Max.Y,
-                            terrain.CellCornerHeight(column, row, false, true)),
+                            CellCornerHeight(terrain, column, row, false, true)),
                         Point(terrain,
                             terrain.CellBounds(column, row).Max.X,
                             terrain.CellBounds(column, row).Max.Y,
-                            terrain.CellCornerHeight(column, row, true, true)),
+                            CellCornerHeight(terrain, column, row, true, true)),
                         Point(terrain,
                             terrain.CellBounds(column, row + 1).Min.X,
                             terrain.CellBounds(column, row + 1).Min.Y,
-                            terrain.CellCornerHeight(column, row + 1, false, false)),
+                            CellCornerHeight(terrain, column, row + 1, false, false)),
                         Point(terrain,
                             terrain.CellBounds(column, row + 1).Max.X,
                             terrain.CellBounds(column, row + 1).Min.Y,
-                            terrain.CellCornerHeight(column, row + 1, true, false)),
+                            CellCornerHeight(terrain, column, row + 1, true, false)),
                         IsClassicTileCovered(
                             classicCliffSeams, column - 1, row),
                         IsClassicTileCovered(
@@ -816,19 +1212,44 @@ public partial class Rts3DTerrainPresenter : Node3D
         int row)
     {
         var bounds = terrain.CellBounds(column, row);
-        var bottomLeft = Point(terrain, bounds.Min.X, bounds.Min.Y,
-            terrain.CellCornerHeight(column, row, false, false));
-        var bottomRight = Point(terrain, bounds.Max.X, bounds.Min.Y,
-            terrain.CellCornerHeight(column, row, true, false));
-        var topRight = Point(terrain, bounds.Max.X, bounds.Max.Y,
-            terrain.CellCornerHeight(column, row, true, true));
-        var topLeft = Point(terrain, bounds.Min.X, bounds.Max.Y,
-            terrain.CellCornerHeight(column, row, false, true));
-        var bottomMiddle = bottomLeft.Lerp(bottomRight, 0.5f);
-        var rightMiddle = bottomRight.Lerp(topRight, 0.5f);
-        var topMiddle = topLeft.Lerp(topRight, 0.5f);
-        var leftMiddle = bottomLeft.Lerp(topLeft, 0.5f);
-        var centre = bottomMiddle.Lerp(topMiddle, 0.5f);
+        var bottomLeft = RampHeightPoint(
+            Point(terrain, bounds.Min.X, bounds.Min.Y,
+                CellCornerHeight(terrain, column, row, false, false)),
+            bounds.Min.X, bounds.Min.Y);
+        var bottomRight = RampHeightPoint(
+            Point(terrain, bounds.Max.X, bounds.Min.Y,
+                CellCornerHeight(terrain, column, row, true, false)),
+            bounds.Max.X, bounds.Min.Y);
+        var topRight = RampHeightPoint(
+            Point(terrain, bounds.Max.X, bounds.Max.Y,
+                CellCornerHeight(terrain, column, row, true, true)),
+            bounds.Max.X, bounds.Max.Y);
+        var topLeft = RampHeightPoint(
+            Point(terrain, bounds.Min.X, bounds.Max.Y,
+                CellCornerHeight(terrain, column, row, false, true)),
+            bounds.Min.X, bounds.Max.Y);
+        var middleX = (bounds.Min.X + bounds.Max.X) * 0.5f;
+        var middleY = (bounds.Min.Y + bounds.Max.Y) * 0.5f;
+        // Classic ramp surfaces own centre-to-centre footprints. Sampling the
+        // shared centre and edge-midpoint vertices from the authoritative
+        // height query keeps the ordinary gameplay-cell quadrants welded to
+        // War3's two-tile 0 -> 0.5 -> 1 ramp profile. Interpolating these five
+        // points from the legacy cell-local ramp corners leaves visible gaps.
+        var bottomMiddle = RampHeightPoint(
+            bottomLeft.Lerp(bottomRight, 0.5f),
+            middleX, bounds.Min.Y);
+        var rightMiddle = RampHeightPoint(
+            bottomRight.Lerp(topRight, 0.5f),
+            bounds.Max.X, middleY);
+        var topMiddle = RampHeightPoint(
+            topLeft.Lerp(topRight, 0.5f),
+            middleX, bounds.Max.Y);
+        var leftMiddle = RampHeightPoint(
+            bottomLeft.Lerp(topLeft, 0.5f),
+            bounds.Min.X, middleY);
+        var centre = RampHeightPoint(
+            bottomMiddle.Lerp(topMiddle, 0.5f),
+            middleX, middleY);
         return new GroundCellGeometryData(
             bottomLeft,
             bottomRight,
@@ -839,6 +1260,27 @@ public partial class Rts3DTerrainPresenter : Node3D
             topMiddle,
             leftMiddle,
             centre);
+
+        Vector3 RampHeightPoint(Vector3 fallback, float x, float y)
+        {
+            var position = new System.Numerics.Vector2(x, y);
+            return terrain.TryClassicRampHeightAt(position, out var height)
+                ? Point(
+                    terrain, x, y,
+                    height + terrain.FineHeightAt(position))
+                : fallback;
+        }
+    }
+
+    private float CellCornerHeight(
+        TerrainMapSnapshot terrain,
+        int column,
+        int row,
+        bool maximumX,
+        bool maximumY)
+    {
+        return terrain.CellCornerHeight(
+            column, row, maximumX, maximumY);
     }
 
     private bool AppendGroundCell(
@@ -1290,4 +1732,11 @@ public partial class Rts3DTerrainPresenter : Node3D
         Vector3 B,
         Vector3 C,
         Vector3 D);
+
+    private readonly record struct ClassicRampSkirtEdge(
+        Vector3 A,
+        Vector3 B,
+        Vector3 Drop,
+        int Column,
+        int Row);
 }

@@ -40,7 +40,13 @@ public static class War3TerrainStressPresetCatalog
         NestedArchipelago(),
         SerpentineCanyons(),
         SignatureMatrix(),
-        MaterialWeave()
+        MaterialWeave(),
+        RampGallery(),
+        RollingFoothills(),
+        RollingRampPass(),
+        RollingCliffRamp(),
+        RollingRampFortress(),
+        ReliefRidgeBasin()
     ];
 
     private static War3TerrainShowcasePreset InterlockedRidges()
@@ -262,6 +268,241 @@ public static class War3TerrainStressPresetCatalog
             });
     }
 
+    private static War3TerrainShowcasePreset RampGallery()
+    {
+        const int columns = 54;
+        const int rows = 38;
+        var canvas = new StressCanvas(columns, rows);
+
+        // Four raised pads expose every ramp direction. The openings use
+        // widths 7/7/11/11 while the remaining perimeter stays a cliff, so
+        // this fixture also exposes ramp-to-cliff entrance and corner cases.
+        canvas.FillRect(11, 3, 25, 14, 1, 0);
+        for (var row = 5; row <= 11; row++)
+            canvas.SetRamp(10, row, 0, 1, TerrainRampDirection.PositiveX);
+
+        canvas.FillRect(30, 3, 44, 14, 1, 2);
+        for (var row = 5; row <= 11; row++)
+            canvas.SetRamp(45, row, 0, 3, TerrainRampDirection.NegativeX);
+
+        canvas.FillRect(4, 22, 18, 34, 1, 1);
+        for (var column = 6; column <= 16; column++)
+            canvas.SetRamp(column, 21, 0, 2, TerrainRampDirection.PositiveY);
+
+        canvas.FillRect(32, 19, 48, 30, 1, 3);
+        for (var column = 35; column <= 45; column++)
+            canvas.SetRamp(column, 31, 0, 0, TerrainRampDirection.NegativeY);
+
+        return canvas.Preset(
+            "ramp-gallery",
+            "四方向斜坡与悬崖入口",
+            "四座高台覆盖 ±X/±Y、7/11 格宽斜坡，以及斜坡入口同经典悬崖的连接回退。",
+            static (column, row) =>
+                (byte)((column / 7 + row / 5 +
+                        ((column + row) % 11 <= 2 ? 1 : 0)) % 4));
+    }
+
+    private static War3TerrainShowcasePreset RollingFoothills()
+    {
+        const int columns = 52;
+        const int rows = 38;
+        var canvas = new StressCanvas(columns, rows);
+        for (var row = 0; row < rows; row++)
+        for (var column = 0; column < columns; column++)
+        {
+            var surface = (ushort)((column / 6 + row / 7 * 2) % 4);
+            canvas.Set(column, row, 0, surface);
+        }
+
+        return canvas.Preset(
+            "rolling-foothills",
+            "连续丘陵、盆地与波纹",
+            "独立细高度场叠加长坡、圆丘、浅盆地和低频波纹；全图无 cliff level，专门确认起伏不是台阶。",
+            static (column, row) =>
+                (byte)((column / 6 + row / 5 +
+                        ((column * 3 + row * 5) % 17 <= 2 ? 2 : 0)) % 4),
+            static (column, row) =>
+            {
+                var broad = MathF.Sin(column * 0.15f) * 8.5f +
+                            MathF.Cos(row * 0.18f) * 6.5f;
+                var hillA = Gaussian(column, row, 15f, 12f, 9f, 22f);
+                var hillB = Gaussian(column, row, 39f, 28f, 7f, 17f);
+                var basin = Gaussian(column, row, 31f, 12f, 8f, -18f);
+                var ripple = MathF.Sin(
+                    column * 0.31f + row * 0.22f) * 2.8f;
+                return broad + hillA + hillB + basin + ripple;
+            });
+    }
+
+    private static War3TerrainShowcasePreset RollingRampPass()
+    {
+        const int columns = 50;
+        const int rows = 36;
+        const int rampColumn = 24;
+        var canvas = new StressCanvas(columns, rows);
+        for (var row = 0; row < rows; row++)
+        for (var column = 0; column < columns; column++)
+        {
+            var surface = (ushort)((column / 5 + row / 6) % 4);
+            if (column < rampColumn)
+                canvas.Set(column, row, 0, surface);
+            else if (column == rampColumn)
+                canvas.SetRamp(
+                    column, row, 0, surface,
+                    TerrainRampDirection.PositiveX);
+            else
+                canvas.Set(column, row, 1, surface);
+        }
+
+        return canvas.Preset(
+            "rolling-ramp-pass",
+            "起伏地表上的连续长斜坡",
+            "一条贯穿全图的 +X 斜坡连接两层地面，细高度沿坡宽和坡长连续变化，用于检查 ramp 与起伏叠加后的接缝和法线。",
+            static (column, row) =>
+                (byte)((column / 4 + row / 6 +
+                        ((column + row * 2) % 13 <= 1 ? 3 : 0)) % 4),
+            static (column, row) =>
+                MathF.Sin(row * 0.24f) * 5.5f +
+                MathF.Sin(column * 0.13f + row * 0.09f) * 3.5f +
+                Gaussian(column, row, 12f, 24f, 10f, 9f) -
+                Gaussian(column, row, 40f, 10f, 9f, 7f));
+    }
+
+    private static War3TerrainShowcasePreset RollingCliffRamp()
+    {
+        const int columns = 54;
+        const int rows = 40;
+        var canvas = new StressCanvas(columns, rows);
+        for (var row = 0; row < rows; row++)
+        for (var column = 0; column < columns; column++)
+        {
+            canvas.Set(
+                column,
+                row,
+                0,
+                (ushort)((column / 7 + row / 6) % 4));
+        }
+        canvas.FillRect(16, 8, 40, 30, 1, 2);
+        for (var row = 14; row <= 23; row++)
+            canvas.SetRamp(15, row, 0, 1, TerrainRampDirection.PositiveX);
+        for (var column = 26; column <= 35; column++)
+            canvas.SetRamp(column, 31, 0, 3, TerrainRampDirection.NegativeY);
+
+        return canvas.Preset(
+            "rolling-cliff-ramp",
+            "起伏丘陵、经典悬崖与双坡口",
+            "连续细高度穿过一座高台、+X 与 -Y 两个原版 CliffTrans 坡口，专门检查地面、崖壁和坡道模型是否共用同一高度场。",
+            static (column, row) =>
+                (byte)((column / 6 + row / 5 +
+                        ((column * 2 + row * 3) % 19 <= 3 ? 1 : 0)) % 4),
+            static (column, row) =>
+                MathF.Sin(column * 0.13f) * 5.5f +
+                MathF.Cos(row * 0.17f) * 4.5f +
+                Gaussian(column, row, 13f, 29f, 9f, 10f) -
+                Gaussian(column, row, 43f, 12f, 8f, 8f));
+    }
+
+    private static War3TerrainShowcasePreset RollingRampFortress()
+    {
+        const int columns = 60;
+        const int rows = 46;
+        var canvas = new StressCanvas(columns, rows);
+        for (var row = 0; row < rows; row++)
+        for (var column = 0; column < columns; column++)
+        {
+            canvas.Set(
+                column,
+                row,
+                0,
+                (ushort)((column / 8 + row / 6) % 4));
+        }
+
+        canvas.FillRect(12, 8, 47, 37, 1, 2);
+        for (var row = 14; row <= 20; row++)
+            canvas.SetRamp(11, row, 0, 0, TerrainRampDirection.PositiveX);
+        for (var row = 25; row <= 31; row++)
+            canvas.SetRamp(48, row, 0, 3, TerrainRampDirection.NegativeX);
+        for (var column = 22; column <= 28; column++)
+            canvas.SetRamp(column, 7, 0, 1, TerrainRampDirection.PositiveY);
+        for (var column = 34; column <= 40; column++)
+            canvas.SetRamp(column, 38, 0, 2, TerrainRampDirection.NegativeY);
+
+        canvas.FillRect(24, 16, 36, 29, 2, 1);
+        for (var row = 20; row <= 25; row++)
+            canvas.SetRamp(23, row, 1, 3, TerrainRampDirection.PositiveX);
+        for (var column = 28; column <= 33; column++)
+            canvas.SetRamp(column, 30, 1, 0, TerrainRampDirection.NegativeY);
+
+        return canvas.Preset(
+            "rolling-ramp-fortress",
+            "起伏双层城塞与六坡口",
+            "外层高台覆盖四方向坡口，内层二级高台再叠加 +X/-Y 坡口；连续细高度贯穿 0/1/2 层，用于检查宽坡、转角、入口模型和起伏的组合。",
+            static (column, row) =>
+                (byte)((column / 5 + row / 7 +
+                        ((column * 5 + row * 3) % 23 <= 4 ? 2 : 0)) % 4),
+            static (column, row) =>
+                MathF.Sin(column * 0.11f) * 6.5f +
+                MathF.Cos(row * 0.15f) * 5f +
+                Gaussian(column, row, 18f, 34f, 9f, 12f) -
+                Gaussian(column, row, 45f, 12f, 8f, 11f) +
+                Gaussian(column, row, 31f, 22f, 13f, 5f));
+    }
+
+    private static War3TerrainShowcasePreset ReliefRidgeBasin()
+    {
+        const int columns = 56;
+        const int rows = 42;
+        var canvas = new StressCanvas(columns, rows);
+        for (var row = 0; row < rows; row++)
+        for (var column = 0; column < columns; column++)
+        {
+            canvas.Set(
+                column,
+                row,
+                0,
+                (ushort)((column / 6 + row / 5 * 2) % 4));
+        }
+
+        return canvas.Preset(
+            "relief-ridge-basin",
+            "连续山脊、环形盆地与鞍部",
+            "全图没有 cliff level：两条斜向山脊、一个环形浅盆地和中央鞍部只由权威细高度构成，专门检查起伏连续性、法线和贴图随机扰动。",
+            static (column, row) =>
+                (byte)((column / 7 + row / 6 +
+                        ((column + row * 4) % 17 <= 3 ? 1 : 0)) % 4),
+            static (column, row) =>
+            {
+                var diagonalA = 13f * MathF.Exp(
+                    -MathF.Pow(row - (8f + column * 0.42f), 2f) / 24f);
+                var diagonalB = 10f * MathF.Exp(
+                    -MathF.Pow(row - (36f - column * 0.33f), 2f) / 20f);
+                var outerBowl = Gaussian(
+                    column, row, 39f, 23f, 10f, -17f);
+                var innerKnoll = Gaussian(
+                    column, row, 39f, 23f, 4f, 11f);
+                var saddle = Gaussian(
+                    column, row, 25f, 21f, 7f, -8f);
+                var undulation = MathF.Sin(
+                    column * 0.2f + row * 0.17f) * 3.5f;
+                return diagonalA + diagonalB + outerBowl + innerKnoll +
+                       saddle + undulation;
+            });
+    }
+
+    private static float Gaussian(
+        float column,
+        float row,
+        float centreColumn,
+        float centreRow,
+        float radius,
+        float amplitude)
+    {
+        var dx = column - centreColumn;
+        var dy = row - centreRow;
+        return amplitude * MathF.Exp(
+            -(dx * dx + dy * dy) / (2f * radius * radius));
+    }
+
     private static byte SatelliteLevel(
         int column,
         int row,
@@ -324,12 +565,59 @@ public static class War3TerrainStressPresetCatalog
             _cells[row * _columns + column] = Cell(level, surface);
         }
 
+        public void SetRamp(
+            int column,
+            int row,
+            byte lowerLevel,
+            ushort surface,
+            TerrainRampDirection direction)
+        {
+            if (direction == TerrainRampDirection.None)
+                throw new ArgumentOutOfRangeException(nameof(direction));
+            _cells[row * _columns + column] = new TerrainCell(
+                lowerLevel,
+                surface,
+                TerrainPathing.Ground,
+                TerrainCellFlags.Ramp,
+                direction);
+        }
+
+        public void FillRect(
+            int minimumColumn,
+            int minimumRow,
+            int maximumColumn,
+            int maximumRow,
+            byte level,
+            ushort surface)
+        {
+            for (var row = minimumRow; row <= maximumRow; row++)
+            for (var column = minimumColumn;
+                 column <= maximumColumn;
+                 column++)
+            {
+                Set(column, row, level, surface);
+            }
+        }
+
         public War3TerrainShowcasePreset Preset(
             string id,
             string displayName,
             string purpose,
-            Func<int, int, byte> visualLayer)
+            Func<int, int, byte> visualLayer,
+            Func<int, int, float>? fineHeight = null)
         {
+            var pointColumns = _columns + 1;
+            var pointRows = _rows + 1;
+            var heightOffsets = new float[checked(pointColumns * pointRows)];
+            if (fineHeight is not null)
+            {
+                for (var row = 0; row < pointRows; row++)
+                for (var column = 0; column < pointColumns; column++)
+                {
+                    heightOffsets[row * pointColumns + column] =
+                        fineHeight(column, row);
+                }
+            }
             var terrain = TerrainMapSnapshot.TryCreate(
                 new SimRect(Vector2.Zero,
                     new Vector2(_columns * CellSize, _rows * CellSize)),
@@ -337,6 +625,7 @@ public static class War3TerrainStressPresetCatalog
                 CliffHeight,
                 Surfaces,
                 _cells,
+                heightOffsets,
                 out var snapshot,
                 out var validation)
                 ? snapshot
@@ -345,8 +634,6 @@ public static class War3TerrainStressPresetCatalog
             if (terrain is null)
                 throw new InvalidOperationException($"Stress preset {id} is null.");
 
-            var pointColumns = _columns + 1;
-            var pointRows = _rows + 1;
             var layers = new byte[checked(pointColumns * pointRows)];
             var variations = new byte[layers.Length];
             for (var row = 0; row < pointRows; row++)

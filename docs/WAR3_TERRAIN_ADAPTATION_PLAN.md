@@ -67,7 +67,8 @@ War3 导入与表现适配层
 - 导出 GLB 保留原始 128×128 Warcraft 单元并在 `WarcraftRoot` 使用 0.01 缩放。运行时需要额外把水平 1.28 对齐项目格宽 `40×0.025=1.0`，把垂直 1.28 对齐 cliff level `48×0.025=1.2`，并执行 Warcraft XY→Godot XZ 的轴重映射；仅做 Y 轴旋转会把 TL 与 BR 错置。
 - 原版 `ground_exists` 在左下 tilepoint 被标为 cliff/ramp 时会隐藏整块 ground quad，由 `CliffsABCDn` 模型同时接管不规则顶部、立面和脚边；模型不能叠在完整矩形地表之上，否则高侧地表必然越过 cliff 顶缘。本项目的玩法格与经典 tilepoint 相差半格，因此使用四分之一格覆盖图做等价裁切。
 - 原版 `real_tile_texture` 的优先级为“邻近 cliff/ramp > blight > 普通 ground”，并把 cliff 类型声明的 `groundTile` 用在周边 tilepoint。Lordaeron Summer 的 Cliff0 对应 Dirt、Cliff1 对应 Grass；这也是 cliff 脚底裙边能与双网格地表衔接、而不是直接硬切的原因。
-- 自然 `CliffTrans` 已导出 32 个、城市 `CityCliffTrans` 已导出 16 个。它们使用 A/B/C 与 H/L/X 混合签名并跨两个 tile；当前玩法坡道是面格方向字段，不等同于 W3E tilepoint ramp flag，因此必须先建立显式坡道视觉点网格，当前阶段继续使用无裂缝程序化侧壁回退。
+- 自然 `CliffTrans` 已导出 32 个、城市 `CityCliffTrans` 已导出 16 个。它们使用 A/B/C 与 H/L/X 混合签名并跨两个 tile。现适配层会把方向型玩法坡道扩展为“低点/坡道点/高点”三列 W3E ramp flag：完整坡道入口把低层角点写成 `base + 0.5`，形成两格线性坡面；侧边按 HiveWE 的 1×2 优先、再 2×1 规则选择 `CliffTrans<SIGNATURE>0`，不再把坡道交给普通 cliff 回退。
+- W3E 的 `corner_height` 与 `corner_layer_height` 是两套数据，最终高度为二者相加再减基准层。项目地形格式 v2 因此把 `(Columns+1)×(Rows+1)` 连续细高度升级为权威数据；v1 资源仍按原字节和原哈希加载，并以全零细高度参与运行时查询。
 - 水面是独立序列资源，不应混入 Ground Surface 图集。浅水/深水仍由玩法字段决定，水面材质只消费它们。
 - `war3map.w3e` 是视觉地形导入来源；`war3map.wpm` 是路径数据来源。导入时两者进入不同字段，禁止用贴图或 cliff 外观反推通行。
 
@@ -148,8 +149,9 @@ War3 格式与算法参考：[HiveWE war3map.w3e Terrain](https://github-wiki-se
 - **经典 cliff 接缝已完成：**双网格在运行时复制作者视觉层，并按 Cliff0→Dirt、Cliff1→Grass 应用 cliff-ground 优先过渡；作者资源、来源玩法哈希和 fallback 模式都不被修改。当前展示图裁切 568 个 quadrant、覆盖 414 个运行时过渡点。
 - **经典 cliff 核心已完成：**展示场景可实时切换“经典模型 / 程序化回退”，权威地形与视觉层资源均不重建。
 - **复杂拓扑压力图已完成：**展示场景保留原基准图，并增加交错山脊、嵌套盆地群岛、蛇形峡谷、64 签名矩阵和四层贴图编织场；每张图都是独立的地形快照与视觉层，只扩大验收覆盖，不修改 cliff/ground 渲染算法。
-- **复杂拓扑压力图已完成：**支持 PageUp/PageDown 或按钮循环六张图、Home/R 重置适配后的镜头、F1 隐藏界面。五张压力图分别包含 429/522/703/440/761 个 cliff 候选，全部无缺失资产回退；签名矩阵覆盖 64 种非平坦 `CliffsABCD` 组合。
-- **坡道视觉点网格待办：**从方向型 `TerrainCell` 生成 W3E 风格 corner ramp flags，再按 HiveWE 两格 A/B/C/H/L/X 规则选择 `CliffTrans`；在该映射完成前，坡道和大于两层的异常邻接保持程序化回退并输出计数。
+- **复杂拓扑压力图已完成：**支持 PageUp/PageDown 或按钮循环十二张图（基准图 + 十一张专项图）、Home/R 重置适配后的镜头、F1 隐藏界面。除五张高密度 cliff 图外，现包含四方向坡道入口、纯连续丘陵盆地、起伏长坡、起伏 cliff/坡道混合、双层六坡口城塞，以及纯细高度山脊/环形盆地/鞍部。签名矩阵覆盖 64 种非平坦 `CliffsABCD` 组合。
+- **连续细高度权威数据已完成：**`TerrainMapSnapshot` 格式 v2 保存 `(columns + 1) × (rows + 1)` 共享点阵，独立于 `CliffLevel` 和 `RampDirection`；规范二进制、稳定哈希、Godot 资源转换、`HeightAt`、单位贴地查询、地表网格、连续材质、经典 cliff/ramp shader 和程序化接缝统一读取这份数据。格式 v1 保持兼容和原稳定哈希。
+- **经典坡道已完成：**`TerrainClassicRampLayout` 从方向型 `TerrainCell` 重建 W3E corner ramp flags，使用独立最终高度缓冲避免共享角点的 `+0.5` 级联，并按 1×2/2×1 A/B/C/H/L/X 签名选择 32 个自然 `CliffTrans` GLB。坡面、坡口 footprint、地表裁切、过渡底片和短接缝裙边使用同一高度场，经典与连续贴图模式均无悬空或 Z-fighting。
 
 验收：直崖、内外角、孤立高地、盆地和四方向坡道无裂缝；关闭经典 mesh 后玩法结果不变。
 
@@ -190,11 +192,11 @@ War3 格式与算法参考：[HiveWE war3map.w3e Terrain](https://github-wiki-se
 - `war3-terrain-continuous-capture`：使用同一地图和镜头输出连续权重对照图。
 - `war3-terrain-cliff-capture`：使用近景固定镜头验收经典 cliff 接缝、角块、纹理、朝向和尺度。
 - `war3-terrain-cliff-fallback-capture`：同一镜头关闭经典模型，输出程序化崖壁对照图。
-- `war3-terrain-stress-capture --war3-terrain-preset=<id>`：按固定近景输出指定复杂拓扑图；可用 ID 为 `interlocked-ridges`、`nested-archipelago`、`serpentine-canyons`、`signature-matrix`、`material-weave`。
+- `war3-terrain-stress-capture --war3-terrain-preset=<id>`：按固定镜头输出指定复杂拓扑图；可用 ID 为 `interlocked-ridges`、`nested-archipelago`、`serpentine-canyons`、`signature-matrix`、`material-weave`、`ramp-gallery`、`rolling-foothills`、`rolling-ramp-pass`、`rolling-cliff-ramp`、`rolling-ramp-fortress`、`relief-ridge-basin`。可附加 `--war3-terrain-focus-cell=x,y`、`--war3-terrain-focus-distance=n`、`--war3-terrain-focus-pitch=n` 做可重复近景验收。
 - `--generate-war3-terrain-visual-resource`：从旧语义 Surface 重新生成确定性的版本化视觉层 `.tres`；该命令始终重建，不复用已有输出。
 - `terrain-visual-layer-self-test`：验证四角 bit 顺序、单材质完整 mask、0～16 带权变化、规范二进制/Godot 资源往返、来源地图绑定、声明哈希和非法 layer 拒绝逻辑。
 - `terrain-cliff-layout-self-test`：验证 TL/TR/BR/BL 签名、变化确定性、上层 Surface、中心 tile 到四个玩法 quadrant 的覆盖映射、cliff-ground 运行时副本不修改作者视觉层、大于两层/坡道/缺失资产回退，以及导出目录 64 签名/94 模型完整性。
-- `war3-terrain-stress-self-test`：验证五张压力图 ID/玩法哈希/视觉哈希互异、视觉层绑定正确、四种材质齐全、每张至少 100 个 cliff 候选且无回退，并验证签名矩阵命中全部 64 种模型签名。
+- `war3-terrain-stress-self-test`：验证十一张压力图 ID/玩法哈希/视觉哈希互异、视觉层绑定正确、四种材质齐全；五张 cliff 图满足候选密度和无缺失资产回退，坡道图覆盖四个方向且所有合法坡道都映射为 `CliffTrans`，起伏图验证 v2 细高度绑定和幅度，签名矩阵命中全部 64 种模型签名。
 - 连续混合视觉门禁：同高度地表不得出现整格矩形硬切；跨悬崖不得出现高侧地表向崖壁或低侧串色。
 - 双网格视觉门禁：完整块必须从右半 4×4 区域采样且完全不透明；过渡块必须按四角 mask 选择左半 4×4 区域，V 方向与 W3E tilepoint 行方向一致。
 - 镜头输入门禁：键盘平移、中键拖动、滚轮缩放与归位至少通过场景 smoke 和一次人工交互验收。
@@ -205,6 +207,6 @@ War3 格式与算法参考：[HiveWE war3map.w3e Terrain](https://github-wiki-se
 
 ## 5. 当前交付边界
 
-目前完成 W0、W1、W2a、W2b、W2c 资源核心、W3 程序化回退和经典 cliff 核心：真实 War3 地表/经典模型悬崖/水面已跑在现有权威地形上；既可使用带低频随机扰动的 SC2 风格连续权重，也可使用 War3 tilepoint 双网格、4bit 过渡块、0～16 带权变化和多层合成；经典悬崖按 64 种四角签名自动选型并以 MultiMesh 批量渲染，测试场景可独立切换纹理与悬崖算法。
+目前完成 W0、W1、W2a、W2b、W2c 资源核心，以及 W3 的程序化回退、经典 cliff、经典两格坡道和连续起伏核心：真实 War3 地表/经典模型悬崖/`CliffTrans` 坡口/水面已跑在同一份权威地形上；既可使用带低频随机扰动的 SC2 风格连续权重，也可使用 War3 tilepoint 双网格、4bit 过渡块、0～16 带权变化和多层合成。经典 cliff/ramp shader、地表网格和 `HeightAt` 共用 v2 连续细高度；测试场景可独立切换纹理与悬崖算法。
 
-尚未宣称完成的内容包括：视觉层编辑器覆盖层、blight/cliff tilepoint override、`CliffTrans` 两格坡道视觉点映射以及 W3E/WPM 导入；它们继续属于 W2c 编辑器、W3 坡道子阶段和 W4。
+尚未宣称完成的内容包括：视觉层编辑器覆盖层、blight/cliff tilepoint override、城市 `CityCliffTrans` 主题切换、W3E/WPM 文件导入，以及对导航成本/可建造坡度等更细玩法语义的作者工具；它们继续属于 W2c 编辑器、W3 主题扩展和 W4。

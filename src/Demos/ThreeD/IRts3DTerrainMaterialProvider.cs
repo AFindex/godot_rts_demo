@@ -52,15 +52,21 @@ public interface IRts3DTerrainDualGridMaterialProvider :
 public interface IRts3DTerrainClassicCliffProvider :
     IRts3DTerrainMaterialProvider
 {
+    void ConfigureClassicHeightField(TerrainMapSnapshot terrain);
     bool ClassicCliffMeshesEnabled { get; }
     int ClassicCliffVariationCount(string signature);
     bool TryGetClassicCliffMesh(
         string signature,
         int variation,
         out Rts3DClassicCliffMesh definition);
+    bool HasClassicRampMesh(string signature);
+    bool TryGetClassicRampMesh(
+        string signature,
+        out Rts3DClassicCliffMesh definition);
     byte DefaultClassicCliffStyle { get; }
     Material ClassicCliffMaterial(byte cliffStyle);
     Material ClassicCliffRevealMaterial(byte cliffStyle);
+    Material ClassicRampMaterial(byte cliffStyle);
     bool TryGetClassicCliffGroundLayer(
         byte cliffStyle,
         out int layer);

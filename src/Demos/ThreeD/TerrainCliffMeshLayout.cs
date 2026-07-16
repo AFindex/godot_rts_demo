@@ -27,7 +27,8 @@ public sealed class TerrainCliffMeshLayout
 
     public static TerrainCliffMeshLayout Build(
         TerrainMapSnapshot terrain,
-        Func<string, int> variationCount)
+        Func<string, int> variationCount,
+        TerrainClassicRampLayout? rampLayout = null)
     {
         ArgumentNullException.ThrowIfNull(terrain);
         ArgumentNullException.ThrowIfNull(variationCount);
@@ -37,11 +38,26 @@ public sealed class TerrainCliffMeshLayout
         var rampFallback = 0;
         var unsupportedHeight = 0;
         var missingAsset = 0;
+        var rampSurfaceTiles = rampLayout is null
+            ? []
+            : rampLayout.SurfaceTiles.ToArray()
+                .Select(static tile => (tile.Column, tile.Row))
+                .ToHashSet();
 
         for (var row = 0; row + 1 < terrain.Rows; row++)
         {
             for (var column = 0; column + 1 < terrain.Columns; column++)
             {
+                if (rampLayout?.CoversClassicTile(column, row) == true)
+                {
+                    flat++;
+                    continue;
+                }
+                if (rampSurfaceTiles.Contains((column, row)))
+                {
+                    flat++;
+                    continue;
+                }
                 var bottomLeft = terrain.Cell(column, row);
                 var bottomRight = terrain.Cell(column + 1, row);
                 var topRight = terrain.Cell(column + 1, row + 1);
@@ -63,8 +79,28 @@ public sealed class TerrainCliffMeshLayout
                 candidates++;
                 if (((ReadOnlySpan<TerrainCell>)cells).ContainsAnyRamp())
                 {
-                    rampFallback++;
-                    continue;
+                    var mapped =
+                        !bottomLeft.IsRamp ||
+                        rampLayout?.IsRampCellMapped(column, row) == true;
+                    mapped &= !bottomRight.IsRamp ||
+                              rampLayout?.IsRampCellMapped(
+                                  column + 1, row) == true;
+                    mapped &= !topRight.IsRamp ||
+                              rampLayout?.IsRampCellMapped(
+                                  column + 1, row + 1) == true;
+                    mapped &= !topLeft.IsRamp ||
+                              rampLayout?.IsRampCellMapped(
+                                  column, row + 1) == true;
+                    if (!mapped)
+                    {
+                        rampFallback++;
+                        continue;
+                    }
+                    // War3 skips the four-flag ramp entrance ground, but a
+                    // partially flagged 2x2 neighbourhood is the lateral
+                    // cliff beside the slope and still receives a regular
+                    // CliffsABCD piece. Surface and CliffTrans ownership were
+                    // filtered above, so mapped ramp neighbours continue.
                 }
                 if (maximum - minimum > 2)
                 {

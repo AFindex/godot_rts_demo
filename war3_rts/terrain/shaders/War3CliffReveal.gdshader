@@ -4,12 +4,26 @@ render_mode cull_disabled, diffuse_lambert, specular_disabled;
 uniform sampler2D cliff_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform vec3 color_tint : source_color = vec3(0.93, 0.93, 0.93);
 uniform float terrain_reveal_inner_height = 17.0;
+uniform bool use_fine_height = false;
+uniform sampler2D fine_height_map : filter_linear, repeat_disable;
+uniform vec2 fine_height_origin = vec2(0.0);
+uniform vec2 fine_height_map_size = vec2(1.0);
+uniform float fine_height_cell_size = 1.0;
 
 varying float terrain_reveal_alpha;
 varying vec2 cliff_footprint;
 varying vec4 terrain_reveal_edges;
 
 void vertex() {
+	if (use_fine_height) {
+		vec3 world_vertex = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+		vec2 point = (world_vertex.xz - fine_height_origin) /
+			max(fine_height_cell_size, 0.0001);
+		vec2 map_uv = (point + vec2(0.5)) / fine_height_map_size;
+		float world_offset = textureLod(fine_height_map, map_uv, 0.0).r;
+		VERTEX += (inverse(MODEL_MATRIX) *
+			vec4(0.0, world_offset, 0.0, 0.0)).xyz;
+	}
 	terrain_reveal_alpha = smoothstep(
 		0.0, terrain_reveal_inner_height, VERTEX.z);
 	cliff_footprint = clamp(

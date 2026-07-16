@@ -20,6 +20,7 @@ public sealed class TerrainClassicCliffSeamMap
     private readonly byte[] _classicFootprintMasks;
     private readonly bool[] _coveredClassicTiles;
     private readonly TerrainClassicCliffTile[] _tiles;
+    private readonly TerrainClassicRampSurfaceTile[] _rampSurfaceTiles;
 
     private TerrainClassicCliffSeamMap(
         int columns,
@@ -27,7 +28,8 @@ public sealed class TerrainClassicCliffSeamMap
         byte[] groundQuadrantMasks,
         byte[] classicFootprintMasks,
         bool[] coveredClassicTiles,
-        TerrainClassicCliffTile[] tiles)
+        TerrainClassicCliffTile[] tiles,
+        TerrainClassicRampSurfaceTile[] rampSurfaceTiles)
     {
         Columns = columns;
         Rows = rows;
@@ -35,6 +37,7 @@ public sealed class TerrainClassicCliffSeamMap
         _classicFootprintMasks = classicFootprintMasks;
         _coveredClassicTiles = coveredClassicTiles;
         _tiles = tiles;
+        _rampSurfaceTiles = rampSurfaceTiles;
         CoveredGroundQuadrants = groundQuadrantMasks.Sum(
             static mask => System.Numerics.BitOperations.PopCount(mask));
         CoveredFootprintQuadrants = classicFootprintMasks.Sum(
@@ -43,18 +46,32 @@ public sealed class TerrainClassicCliffSeamMap
 
     public int Columns { get; }
     public int Rows { get; }
-    public int CoveredClassicTiles => _tiles.Length;
+    public int CoveredClassicTiles => _coveredClassicTiles.Count(
+        static value => value);
     public int CoveredGroundQuadrants { get; }
     public int CoveredFootprintQuadrants { get; }
     public ReadOnlySpan<TerrainClassicCliffTile> Tiles => _tiles;
+    public ReadOnlySpan<TerrainClassicRampSurfaceTile> RampSurfaceTiles =>
+        _rampSurfaceTiles;
 
     public static TerrainClassicCliffSeamMap Build(
         TerrainMapSnapshot terrain,
-        IEnumerable<TerrainClassicCliffTile> resolvedTiles)
+        IEnumerable<TerrainClassicCliffTile> resolvedTiles,
+        IEnumerable<TerrainClassicRampSurfaceTile>? rampSurfaceTiles = null,
+        IEnumerable<TerrainClassicRampFootprintTile>? rampFootprints = null)
     {
         ArgumentNullException.ThrowIfNull(terrain);
         ArgumentNullException.ThrowIfNull(resolvedTiles);
         var tiles = resolvedTiles
+            .OrderBy(static tile => tile.Row)
+            .ThenBy(static tile => tile.Column)
+            .ToArray();
+        var rampSurfaces = (rampSurfaceTiles ?? [])
+            .OrderBy(static tile => tile.Row)
+            .ThenBy(static tile => tile.Column)
+            .ToArray();
+        var transitionFootprints = (rampFootprints ?? [])
+            .Distinct()
             .OrderBy(static tile => tile.Row)
             .ThenBy(static tile => tile.Column)
             .ToArray();
@@ -90,9 +107,47 @@ public sealed class TerrainClassicCliffSeamMap
             AddRaisedMask(
                 tile.Column + 1, tile.Row + 1, BottomLeft, tile.BaseLevel);
         }
+        foreach (var tile in rampSurfaces)
+        {
+            if ((uint)tile.Column >= (uint)tileColumns ||
+                (uint)tile.Row >= (uint)tileRows)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(rampSurfaceTiles),
+                    $"Classic ramp surface {tile.Column},{tile.Row} is outside the terrain.");
+            }
+            covered[tile.Row * tileColumns + tile.Column] = true;
+            AddFootprintMask(tile.Column, tile.Row, TopRight);
+            AddFootprintMask(tile.Column + 1, tile.Row, TopLeft);
+            AddFootprintMask(tile.Column, tile.Row + 1, BottomRight);
+            AddFootprintMask(tile.Column + 1, tile.Row + 1, BottomLeft);
+            AddMask(tile.Column, tile.Row, TopRight);
+            AddMask(tile.Column + 1, tile.Row, TopLeft);
+            AddMask(tile.Column, tile.Row + 1, BottomRight);
+            AddMask(tile.Column + 1, tile.Row + 1, BottomLeft);
+        }
+        foreach (var tile in transitionFootprints)
+        {
+            if ((uint)tile.Column >= (uint)tileColumns ||
+                (uint)tile.Row >= (uint)tileRows)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(rampFootprints),
+                    $"Classic ramp footprint {tile.Column},{tile.Row} is outside the terrain.");
+            }
+            covered[tile.Row * tileColumns + tile.Column] = true;
+            AddFootprintMask(tile.Column, tile.Row, TopRight);
+            AddFootprintMask(tile.Column + 1, tile.Row, TopLeft);
+            AddFootprintMask(tile.Column, tile.Row + 1, BottomRight);
+            AddFootprintMask(tile.Column + 1, tile.Row + 1, BottomLeft);
+            AddMask(tile.Column, tile.Row, TopRight);
+            AddMask(tile.Column + 1, tile.Row, TopLeft);
+            AddMask(tile.Column, tile.Row + 1, BottomRight);
+            AddMask(tile.Column + 1, tile.Row + 1, BottomLeft);
+        }
         return new TerrainClassicCliffSeamMap(
             terrain.Columns, terrain.Rows,
-            masks, footprintMasks, covered, tiles);
+            masks, footprintMasks, covered, tiles, rampSurfaces);
 
         void AddMask(int column, int row, byte mask)
         {
@@ -211,3 +266,7 @@ public sealed class TerrainClassicCliffSeamMap
             throw new ArgumentOutOfRangeException(nameof(column));
     }
 }
+
+public readonly record struct TerrainClassicRampFootprintTile(
+    int Column,
+    int Row);

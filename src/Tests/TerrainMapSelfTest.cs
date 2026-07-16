@@ -26,8 +26,43 @@ public static class TerrainMapSelfTest
             TerrainMovementMode.Float);
         var heights =
             MathF.Abs(first.HeightAt(new Vector2(64f, 112f))) < 0.001f &&
+            MathF.Abs(first.HeightAt(new Vector2(128f, 112f)) - 12f) < 0.001f &&
             MathF.Abs(first.HeightAt(new Vector2(144f, 112f)) - 24f) < 0.001f &&
+            MathF.Abs(first.HeightAt(new Vector2(160f, 112f)) - 36f) < 0.001f &&
             MathF.Abs(first.HeightAt(new Vector2(224f, 112f)) - 48f) < 0.001f;
+        var fineHeights = Enumerable.Range(
+                0, (first.Columns + 1) * (first.Rows + 1))
+            .Select(index =>
+                (float)(index / (first.Columns + 1) * 2 +
+                        index % (first.Columns + 1)))
+            .ToArray();
+        var fineCreated = TerrainMapSnapshot.TryCreate(
+                              first.Bounds,
+                              first.CellSize,
+                              first.CliffLevelHeight,
+                              first.Surfaces,
+                              first.Cells,
+                              fineHeights,
+                              out var fineTerrain,
+                              out var fineValidation) &&
+                          fineTerrain is not null &&
+                          fineValidation.IsValid;
+        var fineHeight = fineCreated &&
+                         fineTerrain!.FormatVersion ==
+                         TerrainMapSnapshot.CurrentFormatVersion &&
+                         fineTerrain.HasFineHeight &&
+                         MathF.Abs(
+                             fineTerrain.FineHeightAt(new Vector2(16f, 16f)) -
+                             1.5f) < 0.001f &&
+                         TerrainMapSnapshot.TryDeserialize(
+                             fineTerrain.CanonicalBytes.Span,
+                             out var fineDecoded,
+                             out var fineDecodeValidation) &&
+                         fineDecoded is not null &&
+                         fineDecodeValidation.IsValid &&
+                         fineDecoded.StableHash == fineTerrain.StableHash &&
+                         fineDecoded.FineHeightPoints.SequenceEqual(
+                             fineTerrain.FineHeightPoints);
         var stable = first.StableHash != 0UL &&
                      first.StableHash == second.StableHash &&
                      first.CanonicalBytes.Span.SequenceEqual(
@@ -58,14 +93,15 @@ public static class TerrainMapSelfTest
         var passed = cliffBlocked && rampOpen && plateauBuildable &&
                      rampUnbuildable && waterUnbuildable &&
                      groundCrossesShallow && floatRejectsGround && heights &&
-                     stable && roundTrip && worldBlocksCliff && worldUsesRamp &&
+                     fineHeight && stable && roundTrip && worldBlocksCliff && worldUsesRamp &&
                      placementReportsTerrain;
         return new SelfTestResult(
             passed,
             $"terrain cliff={cliffBlocked}, ramp={rampOpen}, " +
             $"build={plateauBuildable}/{rampUnbuildable}/{waterUnbuildable}, " +
             $"water={groundCrossesShallow}/{floatRejectsGround}, " +
-            $"heights={heights}, world={worldBlocksCliff}/{worldUsesRamp}, " +
+            $"heights={heights}/{fineHeight}, " +
+            $"world={worldBlocksCliff}/{worldUsesRamp}, " +
             $"placement={placement.Code}, roundTrip={roundTrip}, " +
             $"hash={first.StableHashText}");
     }

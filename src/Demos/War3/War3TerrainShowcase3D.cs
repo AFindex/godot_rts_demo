@@ -151,6 +151,7 @@ public partial class War3TerrainShowcase3D : Node3D
         GD.Print("WAR3_TERRAIN_STAGE mesh-ready");
         CreateCamera(_terrain);
         CreateOverlay();
+        ConfigureAutomationView(arguments);
 
         GD.Print(
             $"WAR3_TERRAIN_READY preset={CurrentPreset.Id} " +
@@ -366,6 +367,68 @@ public partial class War3TerrainShowcase3D : Node3D
         return argument is null ? null : argument[prefix.Length..];
     }
 
+    private void ConfigureAutomationView(string[] arguments)
+    {
+        if (_terrain is null || _cameraController is null)
+            return;
+        const string focusPrefix = "--war3-terrain-focus-cell=";
+        var focusArgument = arguments.FirstOrDefault(value =>
+            value.StartsWith(
+                focusPrefix, StringComparison.OrdinalIgnoreCase));
+        if (focusArgument is not null)
+        {
+            var coordinates = focusArgument[focusPrefix.Length..].Split(',');
+            if (coordinates.Length == 2 &&
+                int.TryParse(coordinates[0], out var column) &&
+                int.TryParse(coordinates[1], out var row) &&
+                (uint)column < (uint)_terrain.Columns &&
+                (uint)row < (uint)_terrain.Rows)
+            {
+                const string distancePrefix =
+                    "--war3-terrain-focus-distance=";
+                var distanceArgument = arguments.FirstOrDefault(value =>
+                    value.StartsWith(
+                        distancePrefix, StringComparison.OrdinalIgnoreCase));
+                var distance = _cameraController.MinimumDistance;
+                if (distanceArgument is not null &&
+                    float.TryParse(
+                        distanceArgument[distancePrefix.Length..],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var parsedDistance))
+                {
+                    distance = parsedDistance;
+                }
+                const string pitchPrefix =
+                    "--war3-terrain-focus-pitch=";
+                var pitchArgument = arguments.FirstOrDefault(value =>
+                    value.StartsWith(
+                        pitchPrefix, StringComparison.OrdinalIgnoreCase));
+                var pitch = Mathf.DegToRad(43f);
+                if (pitchArgument is not null &&
+                    float.TryParse(
+                        pitchArgument[pitchPrefix.Length..],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var parsedPitch))
+                {
+                    pitch = Mathf.DegToRad(parsedPitch);
+                }
+                var bounds = _terrain.CellBounds(column, row);
+                _cameraController.SetAutomationTarget(
+                    (bounds.Min + bounds.Max) * 0.5f,
+                    distance,
+                    Mathf.DegToRad(-38f),
+                    pitch);
+            }
+        }
+        if (arguments.Contains("--war3-terrain-hide-overlay") &&
+            _overlayPanel is not null)
+        {
+            _overlayPanel.Visible = false;
+        }
+    }
+
     private void SelectPresetData(int index)
     {
         var preset = _presets[index];
@@ -461,12 +524,26 @@ public partial class War3TerrainShowcase3D : Node3D
         _modeLabel.Text += _classicCliffs
             ? " · 经典 CliffsABCDn 模型（推荐）"
             : " · 程序化崖壁回退（对照）";
+        if (_terrain is { HasFineHeight: true } fineTerrain)
+        {
+            _modeLabel.Text +=
+                $" · 权威细高度 {fineTerrain.MinimumFineHeight:0.0}…" +
+                $"{fineTerrain.MaximumFineHeight:0.0}";
+        }
         if (_classicCliffs &&
             _presenter?.LastClassicCliffDiagnostics is { } diagnostics)
         {
             _modeLabel.Text +=
                 $" · {diagnostics.SelectedTiles} 块，" +
                 $"{diagnostics.RampFallbackTiles + diagnostics.UnsupportedHeightTiles + diagnostics.MissingAssetTiles} 回退";
+        }
+        if (_classicCliffs &&
+            _presenter?.LastClassicRampDiagnostics is { } rampDiagnostics &&
+            rampDiagnostics.AuthoredRampCells > 0)
+        {
+            _modeLabel.Text +=
+                $" · CliffTrans {rampDiagnostics.SelectedTransitions}/" +
+                $"{rampDiagnostics.CandidateTransitions}";
         }
     }
 

@@ -69,8 +69,10 @@ public partial class Rts3DCameraController : Node
     private float _desiredPitch;
     private float _automationDistance;
     private float _automationYaw;
+    private float _automationPitch;
     private bool _automationControlsDistance;
     private bool _automationControlsYaw;
+    private bool _automationControlsPitch;
     private bool _automationActive;
     private bool _middleMouseDown;
     private Vector2 _pendingPanPixels;
@@ -129,17 +131,23 @@ public partial class Rts3DCameraController : Node
     public void SetAutomationTarget(
         NVector2 simulationPosition,
         float? distance = null,
-        float? yaw = null)
+        float? yaw = null,
+        float? pitch = null)
     {
         _automationActive = true;
         _automationTarget = ClampTarget(simulationPosition);
         _automationControlsDistance = distance.HasValue;
         _automationControlsYaw = yaw.HasValue;
+        _automationControlsPitch = pitch.HasValue;
         _automationDistance = Math.Clamp(
             distance ?? _desiredDistance,
             MinimumDistance,
             MaximumDistance);
         _automationYaw = yaw ?? _desiredYaw;
+        _automationPitch = Math.Clamp(
+            pitch ?? _desiredPitch,
+            Mathf.DegToRad(32f),
+            Mathf.DegToRad(76f));
     }
 
     /// <summary>Returns camera control to the player without snapping the view.</summary>
@@ -148,6 +156,7 @@ public partial class Rts3DCameraController : Node
         _automationActive = false;
         _automationControlsDistance = false;
         _automationControlsYaw = false;
+        _automationControlsPitch = false;
     }
 
     public override void _Process(double delta)
@@ -160,6 +169,7 @@ public partial class Rts3DCameraController : Node
             _desiredTarget = _automationTarget;
             if (_automationControlsDistance) _desiredDistance = _automationDistance;
             if (_automationControlsYaw) _desiredYaw = _automationYaw;
+            if (_automationControlsPitch) _desiredPitch = _automationPitch;
         }
         else
         {

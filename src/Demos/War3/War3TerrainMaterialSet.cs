@@ -48,12 +48,14 @@ public sealed class War3TerrainMaterialSet :
         ShaderRoot + "War3GroundDualGrid.gdshader",
         ShaderRoot + "War3Cliff.gdshader",
         ShaderRoot + "War3CliffReveal.gdshader",
+        ShaderRoot + "War3CliffTransition.gdshader",
         ShaderRoot + "War3Water.gdshader",
         .. SurfaceTextures.Values.Distinct(StringComparer.OrdinalIgnoreCase),
         TextureRoot + "replaceabletextures/cliff/cliff0.png",
         TextureRoot + "replaceabletextures/cliff/cliff1.png",
         TextureRoot + "replaceabletextures/water/water00.png",
-        "models/doodads/terrain/cliffs/cliffsaaab0.glb"
+        "models/doodads/terrain/cliffs/cliffsaaab0.glb",
+        "models/doodads/terrain/clifftrans/clifftransaahl0.glb"
     ];
 
     private readonly Dictionary<string, Material> _surfaceMaterials =
@@ -63,6 +65,7 @@ public sealed class War3TerrainMaterialSet :
     private readonly Shader _groundDualGridShader;
     private readonly Shader _cliffShader;
     private readonly Shader _cliffRevealShader;
+    private readonly Shader _cliffTransitionShader;
     private readonly Shader _waterShader;
     private readonly Texture2D _waterTexture;
     private readonly Dictionary<string, Material> _cliffMaterials =
@@ -71,10 +74,18 @@ public sealed class War3TerrainMaterialSet :
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Material> _classicCliffRevealMaterials =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Material> _classicRampMaterials =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly War3ClassicCliffMeshCatalog _classicCliffs;
+    private readonly War3ClassicRampMeshCatalog _classicRamps;
     private Material? _blendedSurfaceMaterial;
     private Material? _dualGridSurfaceMaterial;
     private readonly bool _classicCliffMeshesEnabled;
+    private Texture2D? _fineHeightTexture;
+    private Vector2 _fineHeightOrigin;
+    private Vector2 _fineHeightMapSize = Vector2.One;
+    private float _fineHeightCellWorldSize = 1f;
+    private bool _useFineHeight;
 
     public War3TerrainMaterialSet(
         War3TerrainBlendStyle blendStyle = War3TerrainBlendStyle.DualGrid,
@@ -99,11 +110,14 @@ public sealed class War3TerrainMaterialSet :
             ShaderRoot + "War3Cliff.gdshader");
         _cliffRevealShader = LoadRequired<Shader>(
             ShaderRoot + "War3CliffReveal.gdshader");
+        _cliffTransitionShader = LoadRequired<Shader>(
+            ShaderRoot + "War3CliffTransition.gdshader");
         _waterShader = LoadRequired<Shader>(
             ShaderRoot + "War3Water.gdshader");
         _waterTexture = LoadTexture(
             TextureRoot + "replaceabletextures/water/water00.png");
         _classicCliffs = War3ClassicCliffMeshCatalog.LoadDefault();
+        _classicRamps = War3ClassicRampMeshCatalog.LoadDefault();
     }
 
     public War3TerrainBlendStyle BlendStyle { get; }
@@ -113,7 +127,44 @@ public sealed class War3TerrainMaterialSet :
         _classicCliffMeshesEnabled && _classicCliffs.SignatureCount > 0;
     public int ClassicCliffSignatureCount => _classicCliffs.SignatureCount;
     public int ClassicCliffAssetCount => _classicCliffs.AssetCount;
+    public int ClassicRampAssetCount => _classicRamps.AssetCount;
     public byte DefaultClassicCliffStyle => 0;
+
+    public void ConfigureClassicHeightField(TerrainMapSnapshot terrain)
+    {
+        ArgumentNullException.ThrowIfNull(terrain);
+        _useFineHeight = terrain.HasFineHeight;
+        var origin = SimPlane3DTransform.ToWorld(terrain.Bounds.Min);
+        _fineHeightOrigin = new Vector2(origin.X, origin.Z);
+        _fineHeightMapSize = new Vector2(
+            terrain.HeightPointColumns, terrain.HeightPointRows);
+        _fineHeightCellWorldSize =
+            SimPlane3DTransform.ToWorldLength(terrain.CellSize);
+        if (!_useFineHeight)
+        {
+            _fineHeightTexture = null;
+            return;
+        }
+
+        var image = Image.CreateEmpty(
+            terrain.HeightPointColumns,
+            terrain.HeightPointRows,
+            false,
+            Image.Format.Rf);
+        for (var row = 0; row < terrain.HeightPointRows; row++)
+        for (var column = 0; column < terrain.HeightPointColumns; column++)
+        {
+            image.SetPixel(
+                column,
+                row,
+                new Color(
+                    SimPlane3DTransform.ToWorldLength(
+                        terrain.FineHeightPoint(column, row)),
+                    0f,
+                    0f));
+        }
+        _fineHeightTexture = ImageTexture.CreateFromImage(image);
+    }
 
     public static IReadOnlyList<string> AssetPaths => RequiredPaths;
 
@@ -163,6 +214,14 @@ public sealed class War3TerrainMaterialSet :
         out Rts3DClassicCliffMesh definition) =>
         _classicCliffs.TryGet(signature, variation, out definition);
 
+    public bool HasClassicRampMesh(string signature) =>
+        _classicRamps.Contains(signature);
+
+    public bool TryGetClassicRampMesh(
+        string signature,
+        out Rts3DClassicCliffMesh definition) =>
+        _classicRamps.TryGet(signature, out definition);
+
     public Material CliffMaterial(TerrainSurfaceDefinition upperSurface)
         => CliffMaterial(upperSurface, classicModelUv: false);
 
@@ -185,7 +244,25 @@ public sealed class War3TerrainMaterialSet :
             LoadTexture(
                 TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
          .WithParameter("terrain_reveal_inner_height", 17f);
+        ConfigureFineHeightMaterial((ShaderMaterial)material);
         _classicCliffRevealMaterials.Add(cliffName, material);
+        return material;
+    }
+
+    public Material ClassicRampMaterial(byte cliffStyle)
+    {
+        var cliffName = CliffName(cliffStyle);
+        if (_classicRampMaterials.TryGetValue(cliffName, out var material))
+            return material;
+        material = new ShaderMaterial
+        {
+            Shader = _cliffTransitionShader
+        }.WithParameter(
+            "cliff_atlas",
+            LoadTexture(
+                TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"));
+        ConfigureFineHeightMaterial((ShaderMaterial)material);
+        _classicRampMaterials.Add(cliffName, material);
         return material;
     }
 
@@ -224,8 +301,23 @@ public sealed class War3TerrainMaterialSet :
             LoadTexture(
                 TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
          .WithParameter("use_model_atlas_uv", classicModelUv);
+        ConfigureFineHeightMaterial((ShaderMaterial)material);
         cache.Add(cliffName, material);
         return material;
+    }
+
+    private void ConfigureFineHeightMaterial(ShaderMaterial material)
+    {
+        material.SetShaderParameter("use_fine_height", _useFineHeight);
+        material.SetShaderParameter("fine_height_origin", _fineHeightOrigin);
+        material.SetShaderParameter("fine_height_map_size", _fineHeightMapSize);
+        material.SetShaderParameter(
+            "fine_height_cell_size", _fineHeightCellWorldSize);
+        if (_fineHeightTexture is not null)
+        {
+            material.SetShaderParameter(
+                "fine_height_map", _fineHeightTexture);
+        }
     }
 
     private static string CliffName(byte cliffStyle) => cliffStyle switch

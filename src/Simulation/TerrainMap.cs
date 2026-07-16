@@ -86,7 +86,9 @@ public enum TerrainMapErrorCode
     InvalidCellSurface,
     InvalidPathing,
     InvalidRamp,
-    InvalidCliffLevel
+    InvalidCliffLevel,
+    InvalidFineHeightCount,
+    InvalidFineHeight
 }
 
 public readonly record struct TerrainMapValidationIssue(
@@ -139,13 +141,15 @@ public interface ITerrainMapQuery
 /// </summary>
 public sealed class TerrainMapSnapshot : ITerrainMapQuery
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
+    private const int LegacyFormatVersion = 1;
     public const byte MaximumCliffLevel = 15;
     private const int DiscProbeCount = 16;
     private const int Magic = 0x4E525452;
 
     private readonly TerrainSurfaceDefinition[] _surfaces;
     private readonly TerrainCell[] _cells;
+    private readonly float[] _fineHeightPoints;
     private readonly byte[] _canonicalBytes;
     private readonly SimRect _visionBlockerBounds;
 
@@ -156,8 +160,11 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         int columns,
         int rows,
         TerrainSurfaceDefinition[] surfaces,
-        TerrainCell[] cells)
+        TerrainCell[] cells,
+        float[] fineHeightPoints,
+        int formatVersion = CurrentFormatVersion)
     {
+        FormatVersion = formatVersion;
         Bounds = bounds;
         CellSize = cellSize;
         CliffLevelHeight = cliffLevelHeight;
@@ -165,6 +172,9 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         Rows = rows;
         _surfaces = surfaces;
         _cells = cells;
+        _fineHeightPoints = fineHeightPoints;
+        MinimumFineHeight = fineHeightPoints.Min();
+        MaximumFineHeight = fineHeightPoints.Max();
         MaximumCellLevel = cells.Max(value => value.CliffLevel);
         HasVisionBlockers = cells.Any(value =>
             (value.Flags & TerrainCellFlags.BlocksVision) != 0);
@@ -176,16 +186,24 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
     }
 
     public SimRect Bounds { get; }
-    public int FormatVersion => CurrentFormatVersion;
+    public int FormatVersion { get; }
     public float CellSize { get; }
     public float CliffLevelHeight { get; }
     public int Columns { get; }
     public int Rows { get; }
     public int CellCount => _cells.Length;
+    public int HeightPointColumns => Columns + 1;
+    public int HeightPointRows => Rows + 1;
+    public int HeightPointCount => _fineHeightPoints.Length;
+    public bool HasFineHeight =>
+        MinimumFineHeight < -0.0001f || MaximumFineHeight > 0.0001f;
+    public float MinimumFineHeight { get; }
+    public float MaximumFineHeight { get; }
     public byte MaximumCellLevel { get; }
     public bool HasVisionBlockers { get; }
     public ReadOnlySpan<TerrainSurfaceDefinition> Surfaces => _surfaces;
     public ReadOnlySpan<TerrainCell> Cells => _cells;
+    public ReadOnlySpan<float> FineHeightPoints => _fineHeightPoints;
     public ReadOnlyMemory<byte> CanonicalBytes => _canonicalBytes;
     public ulong StableHash { get; }
     public string StableHashText => StableHash.ToString("X16");
@@ -197,6 +215,25 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         ReadOnlySpan<TerrainSurfaceDefinition> surfaces,
         ReadOnlySpan<TerrainCell> cells,
         out TerrainMapSnapshot? snapshot,
+        out TerrainMapValidationResult validation) =>
+        TryCreate(
+            bounds,
+            cellSize,
+            cliffLevelHeight,
+            surfaces,
+            cells,
+            ReadOnlySpan<float>.Empty,
+            out snapshot,
+            out validation);
+
+    public static bool TryCreate(
+        SimRect bounds,
+        float cellSize,
+        float cliffLevelHeight,
+        ReadOnlySpan<TerrainSurfaceDefinition> surfaces,
+        ReadOnlySpan<TerrainCell> cells,
+        ReadOnlySpan<float> fineHeightPoints,
+        out TerrainMapSnapshot? snapshot,
         out TerrainMapValidationResult validation)
     {
         var columns = ValidSize(bounds.Width, cellSize)
@@ -207,9 +244,15 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             : 0;
         var surfaceCopy = surfaces.ToArray();
         var cellCopy = cells.ToArray();
+        var heightPointCount = columns > 0 && rows > 0
+            ? checked((columns + 1) * (rows + 1))
+            : 0;
+        var fineHeightCopy = fineHeightPoints.IsEmpty
+            ? new float[heightPointCount]
+            : fineHeightPoints.ToArray();
         validation = Validate(
             bounds, cellSize, cliffLevelHeight, columns, rows,
-            surfaceCopy, cellCopy);
+            surfaceCopy, cellCopy, fineHeightCopy);
         if (!validation.IsValid)
         {
             snapshot = null;
@@ -218,7 +261,7 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
 
         snapshot = new TerrainMapSnapshot(
             bounds, cellSize, cliffLevelHeight, columns, rows,
-            surfaceCopy, cellCopy);
+            surfaceCopy, cellCopy, fineHeightCopy);
         return true;
     }
 
@@ -240,11 +283,12 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
                     out validation);
             }
             var version = reader.ReadInt32();
-            if (version != CurrentFormatVersion)
+            if (version is not (LegacyFormatVersion or CurrentFormatVersion))
             {
                 return DeserializeFailure(
                     TerrainMapErrorCode.UnsupportedFormatVersion,
-                    $"Expected terrain format {CurrentFormatVersion}, got {version}.",
+                    $"Expected terrain format {LegacyFormatVersion} or " +
+                    $"{CurrentFormatVersion}, got {version}.",
                     out snapshot,
                     out validation);
             }
@@ -255,6 +299,15 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             var cliffLevelHeight = reader.ReadSingle();
             var declaredColumns = reader.ReadInt32();
             var declaredRows = reader.ReadInt32();
+            if (declaredColumns <= 0 || declaredRows <= 0 ||
+                declaredColumns > 4_095 || declaredRows > 4_095)
+            {
+                return DeserializeFailure(
+                    TerrainMapErrorCode.InvalidDimensions,
+                    "Terrain payload dimensions are outside the supported range.",
+                    out snapshot,
+                    out validation);
+            }
             var surfaceCount = ReadCount(reader, 65_535);
             var surfaces = new TerrainSurfaceDefinition[surfaceCount];
             for (var index = 0; index < surfaces.Length; index++)
@@ -275,6 +328,24 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
                     (TerrainCellFlags)reader.ReadByte(),
                     (TerrainRampDirection)reader.ReadByte());
             }
+            var expectedHeightPoints = checked(
+                (declaredColumns + 1) * (declaredRows + 1));
+            var fineHeightPoints = new float[expectedHeightPoints];
+            if (version >= 2)
+            {
+                var heightPointCount = ReadCount(reader, 16_777_216);
+                if (heightPointCount != expectedHeightPoints)
+                {
+                    return DeserializeFailure(
+                        TerrainMapErrorCode.InvalidFineHeightCount,
+                        $"Expected {expectedHeightPoints} fine height points, " +
+                        $"got {heightPointCount}.",
+                        out snapshot,
+                        out validation);
+                }
+                for (var index = 0; index < fineHeightPoints.Length; index++)
+                    fineHeightPoints[index] = reader.ReadSingle();
+            }
             if (stream.Position != stream.Length)
             {
                 return DeserializeFailure(
@@ -285,7 +356,8 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             }
             if (!TryCreate(
                     bounds, cellSize, cliffLevelHeight,
-                    surfaces, cells, out snapshot, out validation) ||
+                    surfaces, cells, fineHeightPoints,
+                    out snapshot, out validation) ||
                 snapshot is null)
             {
                 return false;
@@ -298,6 +370,19 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
                     "Terrain payload dimensions do not match its bounds and cell size.",
                     out snapshot,
                     out validation);
+            }
+            if (version == LegacyFormatVersion)
+            {
+                snapshot = new TerrainMapSnapshot(
+                    bounds,
+                    cellSize,
+                    cliffLevelHeight,
+                    declaredColumns,
+                    declaredRows,
+                    surfaces,
+                    cells,
+                    fineHeightPoints,
+                    LegacyFormatVersion);
             }
             return true;
         }
@@ -359,6 +444,8 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
     {
         if (!TryCellAt(position, out var column, out var row))
             return 0f;
+        if (TryClassicRampHeightAt(position, column, row, out var rampHeight))
+            return rampHeight + FineHeightAt(position);
         var bounds = CellBounds(column, row);
         var localX = bounds.Width <= 0f
             ? 0f
@@ -366,7 +453,110 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         var localY = bounds.Height <= 0f
             ? 0f
             : Math.Clamp((position.Y - bounds.Min.Y) / bounds.Height, 0f, 1f);
-        return CellHeight(Cell(column, row), localX, localY);
+        return CellHeight(Cell(column, row), localX, localY) +
+               FineHeightAt(position);
+    }
+
+    public bool TryClassicRampHeightAt(
+        Vector2 position,
+        out float height)
+    {
+        if (!TryCellAt(position, out var column, out var row))
+        {
+            height = 0f;
+            return false;
+        }
+        return TryClassicRampHeightAt(position, column, row, out height);
+    }
+
+    private bool TryClassicRampHeightAt(
+        Vector2 position,
+        int centreColumn,
+        int centreRow,
+        out float height)
+    {
+        var bestPerpendicularDistance = float.PositiveInfinity;
+        height = 0f;
+        for (var row = Math.Max(0, centreRow - 2);
+             row <= Math.Min(Rows - 1, centreRow + 2);
+             row++)
+        for (var column = Math.Max(0, centreColumn - 2);
+             column <= Math.Min(Columns - 1, centreColumn + 2);
+             column++)
+        {
+            var ramp = Cell(column, row);
+            if (!ramp.IsRamp)
+                continue;
+            var direction = ramp.RampDirection switch
+            {
+                TerrainRampDirection.PositiveX => Vector2.UnitX,
+                TerrainRampDirection.NegativeX => -Vector2.UnitX,
+                TerrainRampDirection.PositiveY => Vector2.UnitY,
+                TerrainRampDirection.NegativeY => -Vector2.UnitY,
+                _ => Vector2.Zero
+            };
+            if (direction == Vector2.Zero)
+                continue;
+            var highColumn = column + (int)direction.X;
+            var highRow = row + (int)direction.Y;
+            var lowColumn = column - (int)direction.X;
+            var lowRow = row - (int)direction.Y;
+            if ((uint)highColumn >= (uint)Columns ||
+                (uint)highRow >= (uint)Rows ||
+                (uint)lowColumn >= (uint)Columns ||
+                (uint)lowRow >= (uint)Rows ||
+                Cell(highColumn, highRow).CliffLevel !=
+                ramp.CliffLevel + 1 ||
+                Cell(lowColumn, lowRow).CliffLevel != ramp.CliffLevel)
+            {
+                continue;
+            }
+            var lowCentre = CellCentre(lowColumn, lowRow);
+            var relative = position - lowCentre;
+            var along = Vector2.Dot(relative, direction);
+            if (along < -0.001f || along > CellSize * 2f + 0.001f)
+                continue;
+            var perpendicular = new Vector2(-direction.Y, direction.X);
+            var perpendicularDistance = MathF.Abs(
+                Vector2.Dot(position - CellCentre(column, row), perpendicular));
+            if (perpendicularDistance > CellSize * 0.5f + 0.001f ||
+                perpendicularDistance >= bestPerpendicularDistance)
+            {
+                continue;
+            }
+            var progress = Math.Clamp(along / (CellSize * 2f), 0f, 1f);
+            height = (ramp.CliffLevel + progress) * CliffLevelHeight;
+            bestPerpendicularDistance = perpendicularDistance;
+        }
+        return float.IsFinite(bestPerpendicularDistance);
+
+        Vector2 CellCentre(int column, int row)
+        {
+            var bounds = CellBounds(column, row);
+            return (bounds.Min + bounds.Max) * 0.5f;
+        }
+    }
+
+    public float FineHeightAt(Vector2 position)
+    {
+        if (!TryCellAt(position, out var column, out var row))
+            return 0f;
+        var bounds = CellBounds(column, row);
+        var localX = bounds.Width <= 0f
+            ? 0f
+            : Math.Clamp((position.X - bounds.Min.X) / bounds.Width, 0f, 1f);
+        var localY = bounds.Height <= 0f
+            ? 0f
+            : Math.Clamp((position.Y - bounds.Min.Y) / bounds.Height, 0f, 1f);
+        var bottom = Lerp(
+            FineHeightPoint(column, row),
+            FineHeightPoint(column + 1, row),
+            localX);
+        var top = Lerp(
+            FineHeightPoint(column, row + 1),
+            FineHeightPoint(column + 1, row + 1),
+            localX);
+        return Lerp(bottom, top, localY);
     }
 
     public bool IsVisibleFrom(
@@ -425,7 +615,20 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         int row,
         bool maximumX,
         bool maximumY) =>
-        CellHeight(Cell(column, row), maximumX ? 1f : 0f, maximumY ? 1f : 0f);
+        CellHeight(Cell(column, row), maximumX ? 1f : 0f, maximumY ? 1f : 0f) +
+        FineHeightPoint(
+            column + (maximumX ? 1 : 0),
+            row + (maximumY ? 1 : 0));
+
+    public float FineHeightPoint(int column, int row)
+    {
+        if ((uint)column >= (uint)HeightPointColumns ||
+            (uint)row >= (uint)HeightPointRows)
+        {
+            throw new ArgumentOutOfRangeException(nameof(column));
+        }
+        return _fineHeightPoints[row * HeightPointColumns + column];
+    }
 
     public bool IsDiscTraversable(
         Vector2 position,
@@ -622,12 +825,15 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         return (cell.CliffLevel + rise) * CliffLevelHeight;
     }
 
+    private static float Lerp(float from, float to, float weight) =>
+        from + (to - from) * weight;
+
     private byte[] BuildCanonicalBytes()
     {
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
         writer.Write(Magic);
-        writer.Write(CurrentFormatVersion);
+        writer.Write(FormatVersion);
         writer.Write(Bounds.Min.X);
         writer.Write(Bounds.Min.Y);
         writer.Write(Bounds.Max.X);
@@ -652,6 +858,12 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             writer.Write((byte)cell.Flags);
             writer.Write((byte)cell.RampDirection);
         }
+        if (FormatVersion >= 2)
+        {
+            writer.Write(_fineHeightPoints.Length);
+            foreach (var height in _fineHeightPoints)
+                writer.Write(height);
+        }
         writer.Flush();
         return stream.ToArray();
     }
@@ -663,7 +875,8 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         int columns,
         int rows,
         TerrainSurfaceDefinition[] surfaces,
-        TerrainCell[] cells)
+        TerrainCell[] cells,
+        float[] fineHeightPoints)
     {
         var issues = new List<TerrainMapValidationIssue>();
         if (!Finite(bounds.Min) || !Finite(bounds.Max) ||
@@ -696,6 +909,29 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             issues.Add(new TerrainMapValidationIssue(
                 TerrainMapErrorCode.InvalidCellCount, -1,
                 $"Expected {columns * rows} cells, got {cells.Length}."));
+        }
+        var expectedHeightPoints = columns > 0 && rows > 0
+            ? checked((columns + 1) * (rows + 1))
+            : 0;
+        if (fineHeightPoints.Length != expectedHeightPoints)
+        {
+            issues.Add(new TerrainMapValidationIssue(
+                TerrainMapErrorCode.InvalidFineHeightCount,
+                -1,
+                $"Expected {expectedHeightPoints} fine height points, got " +
+                $"{fineHeightPoints.Length}."));
+        }
+        else
+        {
+            for (var index = 0; index < fineHeightPoints.Length; index++)
+            {
+                if (float.IsFinite(fineHeightPoints[index]))
+                    continue;
+                issues.Add(new TerrainMapValidationIssue(
+                    TerrainMapErrorCode.InvalidFineHeight,
+                    index,
+                    "Fine height points must be finite."));
+            }
         }
         if (surfaces.Length == 0)
         {
