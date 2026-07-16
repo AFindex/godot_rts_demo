@@ -120,6 +120,89 @@ public static class War3HumanScenario
         AssignWorkers(simulation, PlayerId, playerWorkers, playerResources);
         AssignWorkers(simulation, EnemyId, enemyWorkers, enemyResources);
 
+        return new War3HumanRuntime(
+            CreateAiDirector(
+                simulation, buildings, production, technologies),
+            playerHome, enemyHome, playerWorkers, enemyWorkers,
+            resourceNodes.ToArray());
+    }
+
+    internal static War3HumanRuntime RestoreRuntime(
+        RtsSimulation simulation,
+        BuildingTypeCatalogSnapshot buildings,
+        ProductionCatalogSnapshot production,
+        TechnologyCatalogSnapshot technologies,
+        War3MapRuntime map,
+        int[] playerWorkers,
+        int[] enemyWorkers,
+        int[] resourceNodeIds)
+    {
+        var restoredPlayerWorkers = playerWorkers.ToArray();
+        var restoredEnemyWorkers = enemyWorkers.ToArray();
+        if (restoredPlayerWorkers.Length != InitialWorkers ||
+            restoredEnemyWorkers.Length != InitialWorkers)
+        {
+            throw new InvalidDataException(
+                "War3 bootstrap worker counts do not match the scenario contract.");
+        }
+
+        var seenWorkers = new HashSet<int>();
+        ValidateWorkers(
+            simulation, restoredPlayerWorkers, PlayerId, seenWorkers);
+        ValidateWorkers(
+            simulation, restoredEnemyWorkers, EnemyId, seenWorkers);
+        if (resourceNodeIds.Length != simulation.Economy.ResourceNodeCount)
+        {
+            throw new InvalidDataException(
+                "War3 bootstrap resource-node count does not match the simulation.");
+        }
+        var resourceNodes = new EconomyResourceNodeId[resourceNodeIds.Length];
+        for (var index = 0; index < resourceNodes.Length; index++)
+        {
+            if (resourceNodeIds[index] != index)
+            {
+                throw new InvalidDataException(
+                    "War3 bootstrap resource-node IDs must be dense and ordered.");
+            }
+            resourceNodes[index] = new EconomyResourceNodeId(index);
+        }
+
+        return new War3HumanRuntime(
+            CreateAiDirector(
+                simulation, buildings, production, technologies),
+            map.PlayerSpawn,
+            map.EnemySpawn,
+            restoredPlayerWorkers,
+            restoredEnemyWorkers,
+            resourceNodes);
+    }
+
+    private static void ValidateWorkers(
+        RtsSimulation simulation,
+        ReadOnlySpan<int> workers,
+        int playerId,
+        HashSet<int> seen)
+    {
+        for (var index = 0; index < workers.Length; index++)
+        {
+            var worker = workers[index];
+            if (!seen.Add(worker) ||
+                (uint)worker >= (uint)simulation.Units.Count ||
+                !simulation.Units.Alive[worker] ||
+                !simulation.Economy.IsWorkerOwnedBy(worker, playerId))
+            {
+                throw new InvalidDataException(
+                    $"War3 bootstrap worker {worker} is invalid for player {playerId}.");
+            }
+        }
+    }
+
+    private static RtsAiDirector CreateAiDirector(
+        RtsSimulation simulation,
+        BuildingTypeCatalogSnapshot buildings,
+        ProductionCatalogSnapshot production,
+        TechnologyCatalogSnapshot technologies)
+    {
         var adapter = new RtsSimulationAiAdapter(simulation, technologies);
         var director = new RtsAiDirector(adapter, adapter);
         var profile = new AiDifficultyProfile(
@@ -134,10 +217,7 @@ public static class War3HumanScenario
             profile.DecisionIntervalTicks,
             decisionOffsetTicks: 4,
             profile.MaximumIntentsPerDecision);
-
-        return new War3HumanRuntime(
-            director, playerHome, enemyHome, playerWorkers, enemyWorkers,
-            resourceNodes.ToArray());
+        return director;
     }
 
     private static Dictionary<int, ResourceCluster> AddMapResources(

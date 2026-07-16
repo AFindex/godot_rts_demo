@@ -54,6 +54,7 @@ public sealed partial class War3Rts : Node3D
     private bool _capture;
     private bool _terrainCapture;
     private bool _pcgCapture;
+    private bool _offlineBakeRequested;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
@@ -70,6 +71,7 @@ public sealed partial class War3Rts : Node3D
         _smoke = arguments.Contains("--war3-rts-smoke");
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
         _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
+        _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
         _capture = arguments.Contains("--war3-rts-capture") ||
                    _terrainCapture || _pcgCapture;
         var catalog = War3MapCatalog.Enumerate();
@@ -77,7 +79,8 @@ public sealed partial class War3Rts : Node3D
             .FirstOrDefault(value => value.StartsWith(
                 "--war3-map=", StringComparison.OrdinalIgnoreCase))?
             .Split('=', 2)[1];
-        if (_smoke || _capture || !string.IsNullOrWhiteSpace(requestedId))
+        if (_smoke || _capture || _offlineBakeRequested ||
+            !string.IsNullOrWhiteSpace(requestedId))
         {
             var id = string.IsNullOrWhiteSpace(requestedId)
                 ? War3MapCodec.DefaultMapId
@@ -99,8 +102,10 @@ public sealed partial class War3Rts : Node3D
             _ = CaptureMapSelectionAsync();
     }
 
-    private async Task StartMapAsync(
+    private async Task<bool> StartMapAsync(
         War3MapRuntime map,
+        War3MapCatalogEntry entry,
+        War3OfflineMapCache? offlineCache,
         string[] arguments)
     {
         _activeMap = map;
@@ -143,28 +148,104 @@ public sealed partial class War3Rts : Node3D
             $"装载 {map.Objects.Length} 个地图对象并构建导航拓扑。");
         _terrain = map.Terrain;
         var navigation = map.CreateNavigation();
-        var world = navigation.CreateWorld(_terrain);
-        const float battlefieldPathCellSize = 24f;
 
         await AdvanceMapLoadingAsync(
             4, 0.50d,
-            $"按 {battlefieldPathCellSize:0} 世界单位网格烘焙 Small / Medium / Large 净空层。");
-        var bake = ClearanceBakeSnapshot.Build(
-            navigation, _terrain, battlefieldPathCellSize);
+            $"按 {War3OfflineMapCache.BattlefieldPathCellSize:0} 世界单位网格烘焙 Small / Medium / Large 净空层。");
+        ClearanceBakeSnapshot bake;
+        var clearanceReason = "cache_unavailable";
+        if (offlineCache is not null &&
+            offlineCache.TryLoadClearance(
+                navigation, _terrain, out var cachedBake, out clearanceReason) &&
+            cachedBake is not null)
+        {
+            bake = cachedBake;
+            GD.Print(
+                $"WAR3_OFFLINE_CACHE clearance=hit hash={bake.StableHashText}");
+        }
+        else
+        {
+            if (offlineCache is not null)
+            {
+                GD.PushWarning(
+                    $"WAR3_OFFLINE_CACHE clearance=fallback reason={clearanceReason}");
+            }
+            bake = ClearanceBakeSnapshot.Build(
+                navigation,
+                _terrain,
+                War3OfflineMapCache.BattlefieldPathCellSize);
+        }
 
         await AdvanceMapLoadingAsync(
             5, 0.64d,
             "创建确定性模拟、寻路器、路线规划、阻塞控制和双方初始经济状态。");
-        _simulation = new RtsSimulation(
-            world,
-            new GridPathProvider(
-                world, battlefieldPathCellSize, staticBake: bake),
-            War3HumanScenario.Capacity,
-            navigation.CreateRoutePlanner(world),
-            navigation.CreateChokeController(),
-            bake);
-        _runtime = War3HumanScenario.Prepare(
-            _simulation, _buildings, _production, _technologies, map);
+        StaticWorld world;
+        if (offlineCache is not null)
+        {
+            var candidate = CreateSimulation(
+                navigation, _terrain, bake, out var candidateWorld);
+            if (offlineCache.TryRestoreBootstrap(
+                    candidate,
+                    map,
+                    navigation,
+                    bake,
+                    _buildings,
+                    _production,
+                    _technologies,
+                    out var restoredRuntime,
+                    out var bootstrapReason) &&
+                restoredRuntime is not null)
+            {
+                _simulation = candidate;
+                _runtime = restoredRuntime;
+                world = candidateWorld;
+                GD.Print(
+                    $"WAR3_OFFLINE_CACHE bootstrap=hit tick={_simulation.Metrics.Tick} " +
+                    $"state={_simulation.ComputeStateHash():X16}");
+            }
+            else
+            {
+                GD.PushWarning(
+                    $"WAR3_OFFLINE_CACHE bootstrap=fallback reason={bootstrapReason}");
+                _simulation = CreateSimulation(
+                    navigation, _terrain, bake, out world);
+                _runtime = War3HumanScenario.Prepare(
+                    _simulation, _buildings, _production, _technologies, map);
+            }
+        }
+        else
+        {
+            _simulation = CreateSimulation(
+                navigation, _terrain, bake, out world);
+            _runtime = War3HumanScenario.Prepare(
+                _simulation, _buildings, _production, _technologies, map);
+        }
+
+        if (_offlineBakeRequested)
+        {
+            if (!War3OfflineMapCache.TryWrite(
+                    entry,
+                    map,
+                    navigation,
+                    bake,
+                    _simulation,
+                    _runtime,
+                    _buildings,
+                    _production,
+                    _technologies,
+                    out var path,
+                    out var byteCount,
+                    out var cacheError))
+            {
+                throw new InvalidOperationException(
+                    $"Offline map cache generation failed: {cacheError}");
+            }
+            GD.Print(
+                $"WAR3_OFFLINE_CACHE bake=success path={path} bytes={byteCount} " +
+                $"map={map.StableHashText} clearance={bake.StableHashText} " +
+                $"state={_simulation.ComputeStateHash():X16}");
+            return true;
+        }
 
         await AdvanceMapLoadingAsync(
             6, 0.77d,
@@ -228,6 +309,26 @@ public sealed partial class War3Rts : Node3D
         UpdateHud();
         GD.Print($"WAR3_MAP_LOADED id={map.Metadata.Id} hash={map.StableHashText} " +
                  $"terrain={map.Terrain.StableHashText} objects={map.Objects.Length}");
+        return false;
+    }
+
+    private static RtsSimulation CreateSimulation(
+        NavigationMapSnapshot navigation,
+        TerrainMapSnapshot terrain,
+        ClearanceBakeSnapshot bake,
+        out StaticWorld world)
+    {
+        world = navigation.CreateWorld(terrain);
+        return new RtsSimulation(
+            world,
+            new GridPathProvider(
+                world,
+                War3OfflineMapCache.BattlefieldPathCellSize,
+                staticBake: bake),
+            War3HumanScenario.Capacity,
+            navigation.CreateRoutePlanner(world),
+            navigation.CreateChokeController(),
+            bake);
     }
 
     private async Task LoadMapAsync(
@@ -249,9 +350,34 @@ public sealed partial class War3Rts : Node3D
             await AdvanceMapLoadingAsync(
                 0, 0.03d,
                 $"正在读取 {entry.Manifest.DisplayName} 的 manifest、地形块、对象和出生点…");
-            if (!War3MapCatalog.TryLoadRuntime(
-                    entry, out var runtime, out var error) || runtime is null)
-                throw new InvalidOperationException(error);
+            War3OfflineMapCache? offlineCache = null;
+            War3MapRuntime? runtime;
+            var cacheReason = _offlineBakeRequested
+                ? "generation_requested"
+                : "cache_unavailable";
+            if (!_offlineBakeRequested &&
+                War3OfflineMapCache.TryLoadMap(
+                    entry,
+                    out offlineCache,
+                    out runtime,
+                    out cacheReason) &&
+                runtime is not null)
+            {
+                GD.Print(
+                    $"WAR3_OFFLINE_CACHE map=hit path={offlineCache!.Path} " +
+                    $"hash={runtime.StableHashText}");
+            }
+            else
+            {
+                if (!_offlineBakeRequested)
+                {
+                    GD.Print(
+                        $"WAR3_OFFLINE_CACHE map=miss reason={cacheReason}");
+                }
+                if (!War3MapCatalog.TryLoadRuntime(
+                        entry, out runtime, out var error) || runtime is null)
+                    throw new InvalidOperationException(error);
+            }
 
             await AdvanceMapLoadingAsync(
                 0, 0.10d,
@@ -260,7 +386,14 @@ public sealed partial class War3Rts : Node3D
             _mapSelectionLayer?.QueueFree();
             _mapSelectionLayer = null;
 
-            await StartMapAsync(runtime, arguments);
+            var cacheGenerated = await StartMapAsync(
+                runtime, entry, offlineCache, arguments);
+            if (cacheGenerated)
+            {
+                HideMapLoading();
+                GetTree().Quit(0);
+                return;
+            }
             await AdvanceMapLoadingAsync(
                 9, 1d,
                 $"{entry.Manifest.DisplayName} 已完成：地形、导航、模拟、HUD 与模型状态均已同步。");

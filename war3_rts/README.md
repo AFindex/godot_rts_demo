@@ -45,3 +45,14 @@ cliff/CliffTrans 表现读取同一份地形。
 - `--war3-rts-capture`：输出带 HUD 的玩家基地截图。
 - `--war3-rts-terrain-capture`：隐藏 HUD，从低地正面输出玩家高台与坡口截图。
 - `--war3-rts-pcg-capture`：隐藏 HUD，输出整张地图的 PCG 树林俯视验收图。
+
+离线地图缓存：
+
+- `tools/generate_war3_map_cache.ps1 -MapId lordaeron_crossroads -GodotExe <Godot console 路径>`
+  会执行一次完整权威初始化，并在地图目录生成 `map.w3cache.json`。
+- 缓存包含展开后的 Terrain/Object 地图、Small/Medium/Large Clearance Bake、
+  初始模拟 Hot Snapshot，以及玩家/敌方 worker 和资源节点 ID。
+- 运行时会优先读取缓存；源 manifest/地图文件、地图/地形/导航、玩法目录、
+  Clearance、快照格式或恢复后 StateHash 任一不匹配时，会自动回退到完整初始化。
+- 修改 `War3HumanScenario` 的初始布局或 AI 启动契约时，需要递增
+  `War3OfflineMapCache.ScenarioBootstrapVersion` 并重新生成缓存。
