@@ -162,8 +162,21 @@ public partial class RtsTerrainEditorPlugin : EditorPlugin
             Title = "War3 Map Editor",
             DefaultSlot = EditorDock.DockSlot.RightUl
         };
-        _dockContent = new VBoxContainer { Name = "War3 Map Editor Content" };
-        _dock.AddChild(_dockContent);
+        var scroll = new ScrollContainer
+        {
+            Name = "War3 Map Editor Scroll",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto
+        };
+        _dock.AddChild(scroll);
+        _dockContent = new VBoxContainer
+        {
+            Name = "War3 Map Editor Content",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+        };
+        scroll.AddChild(_dockContent);
         var title = new Label { Text = "WAR3 MAP AUTHORING" };
         title.AddThemeFontSizeOverride("font_size", 16);
         _dockContent.AddChild(title);
@@ -229,8 +242,7 @@ public partial class RtsTerrainEditorPlugin : EditorPlugin
         _status = new Label
         {
             Text = "Create or open a map package.",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            CustomMinimumSize = new Vector2(0f, 110f)
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         _dockContent.AddChild(_status);
         _dockContent.AddChild(new HSeparator());
@@ -578,6 +590,8 @@ public partial class RtsTerrainEditorPlugin : EditorPlugin
 
     private async Task RunEditorCaptureAsync()
     {
+        DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
+        DisplayServer.WindowSetSize(new Vector2I(1280, 720));
         EditorInterface.Singleton.OpenSceneFromPath(
             "res://war3_rts/War3MapEditor.tscn");
         for (var index = 0; index < 20; index++)
