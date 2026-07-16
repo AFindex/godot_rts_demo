@@ -3,6 +3,7 @@ using RtsDemo.Demos;
 using RtsDemo.Demos.ThreeD;
 using RtsDemo.Demos.War3;
 using RtsDemo.Simulation;
+using War3Rts.Maps;
 using NVector2 = System.Numerics.Vector2;
 
 namespace War3Rts;
@@ -24,6 +25,8 @@ public sealed partial class War3Rts : Node3D
     private Camera3D? _camera;
     private Rts3DCameraController? _cameraController;
     private War3RtsHud? _hud;
+    private War3MapRuntime? _activeMap;
+    private CanvasLayer? _mapSelectionLayer;
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
     private Vector2 _dragStart;
@@ -55,6 +58,44 @@ public sealed partial class War3Rts : Node3D
 
     public override void _Ready()
     {
+        var arguments = OS.GetCmdlineUserArgs();
+        _smoke = arguments.Contains("--war3-rts-smoke");
+        _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
+        _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
+        _capture = arguments.Contains("--war3-rts-capture") ||
+                   _terrainCapture || _pcgCapture;
+        var catalog = War3MapCatalog.Enumerate();
+        var requestedId = arguments
+            .FirstOrDefault(value => value.StartsWith(
+                "--war3-map=", StringComparison.OrdinalIgnoreCase))?
+            .Split('=', 2)[1];
+        if (_smoke || _capture || !string.IsNullOrWhiteSpace(requestedId))
+        {
+            var id = string.IsNullOrWhiteSpace(requestedId)
+                ? War3MapCodec.DefaultMapId
+                : requestedId;
+            var entry = catalog.FirstOrDefault(value => value.Manifest.Id.Equals(
+                id, StringComparison.OrdinalIgnoreCase));
+            var error = entry is null ? "Map id is not present in the catalog." : string.Empty;
+            if (entry is null ||
+                !War3MapCatalog.TryLoadRuntime(entry, out var runtime, out error) ||
+                runtime is null)
+            {
+                GD.PushError($"WAR3_MAP_LOAD_FAIL id={id} error={error}");
+                GetTree().Quit(1);
+                return;
+            }
+            StartMap(runtime, arguments);
+            return;
+        }
+        ShowMapSelection(catalog, arguments);
+        if (arguments.Contains("--war3-map-selection-capture"))
+            _ = CaptureMapSelectionAsync();
+    }
+
+    private void StartMap(War3MapRuntime map, string[] arguments)
+    {
+        _activeMap = map;
         ValidateHumanAssets();
         _buildings = War3HumanContent.CreateBuildingCatalog();
         _production = War3HumanContent.CreateProductionCatalog();
@@ -66,8 +107,8 @@ public sealed partial class War3Rts : Node3D
                 _technologies, _buildings, out var technologyError))
             throw new InvalidOperationException(technologyError);
 
-        _terrain = War3HumanScenario.CreateTerrain();
-        var navigation = War3HumanScenario.CreateNavigation();
+        _terrain = map.Terrain;
+        var navigation = map.CreateNavigation();
         var world = navigation.CreateWorld(_terrain);
         const float battlefieldPathCellSize = 24f;
         var bake = ClearanceBakeSnapshot.Build(
@@ -81,7 +122,7 @@ public sealed partial class War3Rts : Node3D
             navigation.CreateChokeController(),
             bake);
         _runtime = War3HumanScenario.Prepare(
-            _simulation, _buildings, _production, _technologies);
+            _simulation, _buildings, _production, _technologies, map);
 
         CreateLighting();
         CreateGround(_terrain);
@@ -92,20 +133,12 @@ public sealed partial class War3Rts : Node3D
         CreateHud();
         _selectedUnits.Add(_runtime.PlayerWorkers[0]);
         RefreshSelection();
-        _cameraController!.FocusAt(War3HumanScenario.PlayerHome, immediate: true);
-
-        var arguments = OS.GetCmdlineUserArgs();
-        _smoke = arguments.Contains("--war3-rts-smoke");
-        _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
-        _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
-        _capture = arguments.Contains("--war3-rts-capture") ||
-                   _terrainCapture || _pcgCapture;
+        _cameraController!.FocusAt(map.PlayerSpawn, immediate: true);
         if (_pcgCapture)
         {
             _hud!.Visible = false;
             _cameraController!.SetAutomationTarget(
-                (War3HumanScenario.WorldBounds.Min +
-                 War3HumanScenario.WorldBounds.Max) * 0.5f,
+                (map.Terrain.Bounds.Min + map.Terrain.Bounds.Max) * 0.5f,
                 distance: 82f,
                 yaw: 0f,
                 pitch: Mathf.DegToRad(70f));
@@ -114,7 +147,7 @@ public sealed partial class War3Rts : Node3D
         {
             _hud!.Visible = false;
             _cameraController!.SetAutomationTarget(
-                War3HumanScenario.PlayerHome + new NVector2(640f, 0f),
+                map.PlayerSpawn + new NVector2(640f, 0f),
                 distance: 38f,
                 yaw: Mathf.DegToRad(90f),
                 pitch: Mathf.DegToRad(54f));
@@ -129,7 +162,7 @@ public sealed partial class War3Rts : Node3D
                 _selectedBuildings.Add(_smokeRallyBuilding);
                 RefreshSelection();
                 _cameraController!.FocusAt(
-                    War3HumanScenario.PlayerHome + new NVector2(165f, 105f),
+                    map.PlayerSpawn + new NVector2(165f, 105f),
                     immediate: true);
             }
             _smokeEndTick = _simulation.Metrics.Tick + 600;
@@ -137,6 +170,94 @@ public sealed partial class War3Rts : Node3D
         }
         if (_capture) _ = CaptureAsync();
         UpdateHud();
+        GD.Print($"WAR3_MAP_LOADED id={map.Metadata.Id} hash={map.StableHashText} " +
+                 $"terrain={map.Terrain.StableHashText} objects={map.Objects.Length}");
+    }
+
+    private void ShowMapSelection(
+        IReadOnlyList<War3MapCatalogEntry> catalog,
+        string[] arguments)
+    {
+        _mapSelectionLayer = new CanvasLayer { Name = "MapSelection", Layer = 100 };
+        AddChild(_mapSelectionLayer);
+        var backdrop = new ColorRect
+        {
+            Color = new Color("111a22"),
+            LayoutMode = 1,
+            AnchorsPreset = (int)Control.LayoutPreset.FullRect
+        };
+        backdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _mapSelectionLayer.AddChild(backdrop);
+        var panel = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(620f, 0f),
+            Position = new Vector2(330f, 100f)
+        };
+        backdrop.AddChild(panel);
+        var title = new Label
+        {
+            Text = "选择 Warcraft III 战场",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        title.AddThemeFontSizeOverride("font_size", 28);
+        panel.AddChild(title);
+        panel.AddChild(new Label
+        {
+            Text = "地图来自 res://war3_rts/maps 的版本化 catalog；选择后才加载地形、导航、资源、PCG 与出生点。",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            HorizontalAlignment = HorizontalAlignment.Center
+        });
+        var status = new Label
+        {
+            Text = catalog.Count == 0 ? "未找到有效地图。" : $"发现 {catalog.Count} 张地图",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        panel.AddChild(status);
+        foreach (var entry in catalog)
+        {
+            var button = new Button
+            {
+                Text = $"{entry.Manifest.DisplayName}  ·  {entry.Manifest.RecommendedPlayers} 人\n" +
+                       $"{entry.Manifest.Description}",
+                CustomMinimumSize = new Vector2(0f, 72f)
+            };
+            button.Pressed += () =>
+            {
+                if (!War3MapCatalog.TryLoadRuntime(
+                        entry, out var runtime, out var error) || runtime is null)
+                {
+                    status.Text = $"加载失败：{error}";
+                    return;
+                }
+                _mapSelectionLayer?.QueueFree();
+                _mapSelectionLayer = null;
+                StartMap(runtime, arguments);
+            };
+            panel.AddChild(button);
+        }
+        var back = new Button { Text = "返回启动页" };
+        back.Pressed += () =>
+            GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
+        panel.AddChild(back);
+    }
+
+    private async Task CaptureMapSelectionAsync()
+    {
+        if (DisplayServer.GetName().Equals(
+                "headless", StringComparison.OrdinalIgnoreCase))
+        {
+            GD.Print("WAR3_MAP_SELECTION_CAPTURE skipped=headless");
+            GetTree().Quit(0);
+            return;
+        }
+        for (var frame = 0; frame < 45; frame++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        var image = GetViewport().GetTexture().GetImage();
+        const string path = "user://war3_map_selection_capture.png";
+        var result = image.SavePng(path);
+        GD.Print($"WAR3_MAP_SELECTION_CAPTURE success={result == Error.Ok} " +
+                 $"path={ProjectSettings.GlobalizePath(path)}");
+        GetTree().Quit(result == Error.Ok ? 0 : 1);
     }
 
     public override void _PhysicsProcess(double delta)
@@ -240,7 +361,8 @@ public sealed partial class War3Rts : Node3D
                 FocusSelection();
                 return;
             case Key.Home:
-                _cameraController?.FocusAt(War3HumanScenario.PlayerHome);
+                _cameraController?.FocusAt(
+                    _runtime?.PlayerHome ?? War3HumanScenario.PlayerHome);
                 return;
         }
         _hud?.TryInvokeHotkey(input.Keycode);
@@ -1139,14 +1261,14 @@ public sealed partial class War3Rts : Node3D
         var terrainReady = _terrain is not null &&
                            _terrain.FormatVersion ==
                            TerrainMapSnapshot.CurrentFormatVersion &&
-                           _terrain.HeightAt(War3HumanScenario.PlayerHome) >
+                           _terrain.HeightAt(_runtime.PlayerHome) >
                            _terrain.HeightAt(
-                               (War3HumanScenario.PlayerHome +
-                                War3HumanScenario.EnemyHome) * 0.5f) + 32f &&
-                           _terrain.HeightAt(War3HumanScenario.EnemyHome) >
+                               (_runtime.PlayerHome +
+                                _runtime.EnemyHome) * 0.5f) + 32f &&
+                           _terrain.HeightAt(_runtime.EnemyHome) >
                            _terrain.HeightAt(
-                               (War3HumanScenario.PlayerHome +
-                                War3HumanScenario.EnemyHome) * 0.5f) + 32f &&
+                               (_runtime.PlayerHome +
+                                _runtime.EnemyHome) * 0.5f) + 32f &&
                            _terrain.Cells.ToArray().Count(
                                static cell => cell.IsRamp) == 20 &&
                            _simulation.World.IsSegmentFree(
@@ -1217,7 +1339,8 @@ public sealed partial class War3Rts : Node3D
             .First(value => value.PlayerId == War3HumanScenario.PlayerId &&
                             value.Type.Id == War3HumanContent.Barracks);
         _smokeRallyBuilding = rallyBuilding.Id.Value;
-        _smokeRallyPosition = War3HumanScenario.PlayerHome + new NVector2(330f, 210f);
+        var home = _runtime?.PlayerHome ?? War3HumanScenario.PlayerHome;
+        _smokeRallyPosition = home + new NVector2(330f, 210f);
         if (!_simulation.SetProductionRallyTarget(
                 War3HumanScenario.PlayerId, rallyBuilding.Id,
                 RallyTarget.Ground(_smokeRallyPosition)))
@@ -1234,24 +1357,24 @@ public sealed partial class War3Rts : Node3D
             War3HumanScenario.PlayerId,
             _smokeConstructionBuilder,
             farm,
-            War3HumanScenario.PlayerHome + new NVector2(-340f, 330f));
+            home + new NVector2(-340f, 330f));
         if (!construction.Succeeded)
             throw new InvalidOperationException(
                 $"Smoke construction setup failed: {construction.Code}/" +
                 $"{construction.PlacementCode}.");
         _smokeConstructionBuilding = construction.BuildingId.Value;
         _presenter?.SetPointerPreview(
-            War3HumanScenario.PlayerHome + new NVector2(-340f, 330f), farm.Size,
+            home + new NVector2(-340f, 330f), farm.Size,
             War3HumanContent.Buildings[War3HumanContent.Farm].ModelSource,
             valid: true);
         _presenter?.HidePointerPreview();
         var rifleman = _production.UnitType(War3HumanContent.Rifleman);
         var player = _simulation.AddUnit(
-            War3HumanScenario.PlayerHome + new NVector2(300f, 120f), rifleman.Movement,
+            home + new NVector2(300f, 120f), rifleman.Movement,
             War3HumanScenario.PlayerId, rifleman.Combat,
             UnitPerceptionProfileSnapshot.Standard);
         var enemy = _simulation.AddUnit(
-            War3HumanScenario.PlayerHome + new NVector2(420f, 120f), rifleman.Movement,
+            home + new NVector2(420f, 120f), rifleman.Movement,
             War3HumanScenario.EnemyId, rifleman.Combat,
             UnitPerceptionProfileSnapshot.Standard);
         // The scenario has already seeded fog-of-war before these smoke-only

@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource path="res://src/War3Rts/Maps/War3MapAuthoring3D.cs" type="Script" id="1_map"]
+
+[node name="War3MapEditor" type="Node3D"]
+
+[node name="War3MapAuthoring3D" type="Node3D" parent="."]
+script = ExtResource("1_map")
+MapAssetPath = "res://war3_rts/maps/lordaeron_crossroads/map.w3map.json"

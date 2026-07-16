@@ -1,6 +1,7 @@
 using System.Numerics;
 using RtsDemo.AI;
 using RtsDemo.Simulation;
+using War3Rts.Maps;
 using War3Rts.Pcg;
 
 namespace War3Rts;
@@ -44,31 +45,43 @@ public static class War3HumanScenario
     public static int SparsePcgTreeCount => BattlefieldPcg.SparseTreeCount;
 
     public static TerrainMapSnapshot CreateTerrain() =>
-        War3HumanBattlefield.Create(
-            WorldBounds, TerrainCellSize, TerrainCliffHeight);
+        LoadDefaultMap().Terrain;
 
     public static NavigationMapSnapshot CreateNavigation()
+        => LoadDefaultMap().CreateNavigation();
+
+    public static NavigationMapSnapshot CreateNavigation(War3MapRuntime map)
+        => map.CreateNavigation();
+
+    public static War3MapRuntime LoadDefaultMap()
     {
-        var obstacles = new List<SimRect>();
-        AddBaseResourceObstacles(obstacles, PlayerHome, 1f);
-        AddBaseResourceObstacles(obstacles, EnemyHome, -1f);
-        AddNeutralGoldObstacles(obstacles);
-        AddPcgForestObstacles(obstacles);
-        var created = NavigationMapSnapshot.TryCreate(
-            NavigationMapSnapshot.CurrentFormatVersion,
-            WorldBounds,
-            obstacles.ToArray(), [], [], [], out var snapshot, out var validation);
-        if (!created || snapshot is null)
+        var entry = War3MapCatalog.Enumerate()
+            .FirstOrDefault(value => value.Manifest.Id == War3MapCodec.DefaultMapId);
+        if (entry is not null &&
+            War3MapCatalog.TryLoadRuntime(entry, out var runtime, out _) &&
+            runtime is not null)
+            return runtime;
+        var asset = War3MapCodec.CreateBuiltInDefaultAsset();
+        if (!War3MapCodec.TryExpand(asset, out runtime, out var validation) ||
+            runtime is null)
             throw new InvalidOperationException(
-                $"war3_rts navigation is invalid: {validation.FirstError}.");
-        return snapshot;
+                $"Built-in War3 map is invalid: {validation.Summary}");
+        return runtime;
     }
 
     public static War3HumanRuntime Prepare(
         RtsSimulation simulation,
         BuildingTypeCatalogSnapshot buildings,
         ProductionCatalogSnapshot production,
-        TechnologyCatalogSnapshot technologies)
+        TechnologyCatalogSnapshot technologies) => Prepare(
+        simulation, buildings, production, technologies, LoadDefaultMap());
+
+    public static War3HumanRuntime Prepare(
+        RtsSimulation simulation,
+        BuildingTypeCatalogSnapshot buildings,
+        ProductionCatalogSnapshot production,
+        TechnologyCatalogSnapshot technologies,
+        War3MapRuntime map)
     {
         simulation.Economy.Players.RegisterPlayer(
             PlayerId, minerals: 1_250, vespeneGas: 700,
@@ -78,19 +91,28 @@ public static class War3HumanScenario
             supplyCapacity: 24, supplyUsed: InitialWorkers);
 
         var resourceNodes = new List<EconomyResourceNodeId>();
-        var playerResources = AddResources(simulation, PlayerHome, 1f, resourceNodes);
-        var enemyResources = AddResources(simulation, EnemyHome, -1f, resourceNodes);
-        AddNeutralGolds(simulation, resourceNodes);
-        AddPcgForest(simulation, resourceNodes);
+        var clusters = AddMapResources(simulation, map, resourceNodes);
+        var playerResources = clusters[PlayerId];
+        var enemyResources = clusters[EnemyId];
+
+        var playerHome = map.PlayerSpawn;
+        var enemyHome = map.EnemySpawn;
+        var playerDirection = MathF.Sign(enemyHome.X - playerHome.X);
+        if (playerDirection == 0) playerDirection = 1;
+        var enemyDirection = -playerDirection;
 
         var worker = production.UnitType(War3HumanContent.Peasant);
-        var playerWorkers = SpawnWorkers(simulation, worker, PlayerId, PlayerHome, 1f);
-        var enemyWorkers = SpawnWorkers(simulation, worker, EnemyId, EnemyHome, -1f);
+        var playerWorkers = SpawnWorkers(
+            simulation, worker, PlayerId, playerHome, playerDirection);
+        var enemyWorkers = SpawnWorkers(
+            simulation, worker, EnemyId, enemyHome, enemyDirection);
 
         simulation.StartMatch([PlayerId, EnemyId]);
-        CompleteStartingBase(simulation, buildings, PlayerId, PlayerHome, 1f,
+        CompleteStartingBase(simulation, buildings, PlayerId,
+            playerHome, playerDirection,
             playerWorkers[0]);
-        CompleteStartingBase(simulation, buildings, EnemyId, EnemyHome, -1f,
+        CompleteStartingBase(simulation, buildings, EnemyId,
+            enemyHome, enemyDirection,
             enemyWorkers[0]);
 
         AssignWorkers(simulation, PlayerId, playerWorkers, playerResources);
@@ -112,8 +134,65 @@ public static class War3HumanScenario
             profile.MaximumIntentsPerDecision);
 
         return new War3HumanRuntime(
-            director, PlayerHome, EnemyHome, playerWorkers, enemyWorkers,
+            director, playerHome, enemyHome, playerWorkers, enemyWorkers,
             resourceNodes.ToArray());
+    }
+
+    private static Dictionary<int, ResourceCluster> AddMapResources(
+        RtsSimulation simulation,
+        War3MapRuntime map,
+        List<EconomyResourceNodeId> all)
+    {
+        var golds = new Dictionary<int, EconomyResourceNodeId>();
+        var trees = new Dictionary<int, List<EconomyResourceNodeId>>
+        {
+            [PlayerId] = [],
+            [EnemyId] = []
+        };
+        foreach (var resource in map.Resources)
+        {
+            EconomyResourceNodeId id;
+            if (resource.Kind == War3MapObjectKind.GoldMine)
+            {
+                id = simulation.Economy.AddResourceNode(
+                    EconomyResourceKind.Minerals,
+                    resource.Position,
+                    resource.Amount > 0 ? resource.Amount : 25_000,
+                    10, 1.05f, 5, activeHarvesterSlots: 5);
+                if (resource.OwnerSlot is PlayerId or EnemyId)
+                    golds[resource.OwnerSlot] = id;
+            }
+            else
+            {
+                id = simulation.Economy.AddResourceNode(
+                    EconomyResourceKind.VespeneGas,
+                    resource.Position,
+                    resource.Amount > 0 ? resource.Amount : TreeHealth,
+                    LumberPerTrip,
+                    TreeHarvestSeconds,
+                    1,
+                    requiresRefinery: false,
+                    operational: true,
+                    activeHarvesterSlots: 1,
+                    harvestMode: EconomyHarvestMode.Progressive);
+                if (resource.OwnerSlot is PlayerId or EnemyId)
+                    trees[resource.OwnerSlot].Add(id);
+            }
+            simulation.Economy.SetResourceInteractionBounds(id, resource.Bounds);
+            all.Add(id);
+        }
+        foreach (var player in new[] { PlayerId, EnemyId })
+        {
+            if (!golds.ContainsKey(player) || trees[player].Count < 2)
+                throw new InvalidDataException(
+                    $"Map '{map.Metadata.Id}' requires one owned gold mine and " +
+                    $"at least two owned trees for slot {player}.");
+        }
+        return new Dictionary<int, ResourceCluster>
+        {
+            [PlayerId] = new(golds[PlayerId], [.. trees[PlayerId]]),
+            [EnemyId] = new(golds[EnemyId], [.. trees[EnemyId]])
+        };
     }
 
     private static ResourceCluster AddResources(

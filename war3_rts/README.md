@@ -1,5 +1,9 @@
 # war3_rts
 
+地图制作、版本化资产格式、运行时 catalog/选图流程与扩展方式见
+[`docs/WAR3_MAP_EDITOR.md`](../docs/WAR3_MAP_EDITOR.md)。进入本场景时会先枚举
+`res://war3_rts/maps`；选图后，地形、导航、资源/PCG 与出生点均来自所选包。
+
 正式的人族 Warcraft III RTS 模块。玩法复用项目的确定性模拟、寻路、经济、
 建造、生产、战斗与 AI；人族数据、经典模型、动画、特效、HUD 和肖像由
 `src/War3Rts` 独立组合。

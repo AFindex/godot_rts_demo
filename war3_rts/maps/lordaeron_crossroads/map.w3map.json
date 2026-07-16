@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "metadata": {
+    "id": "lordaeron_crossroads",
+    "displayName": "Lordaeron Crossroads",
+    "description": "6400×3840 classic two-player battlefield with mirrored forests.",
+    "author": "RTS Demo",
+    "recommendedPlayers": 2,
+    "previewPath": ""
+  },
+  "terrainRecipe": "war3_human_battlefield_v1",
+  "terrainPayloadBase64": "",
+  "objects": [],
+  "pcgLayers": [
+    {
+      "id": "default-layout",
+      "generator": "war3_human_layout_v1",
+      "seed": 974594086,
+      "enabled": true
+    }
+  ],
+  "runtimeHash": "FCB4A48BBCC8DE9A"
+}
