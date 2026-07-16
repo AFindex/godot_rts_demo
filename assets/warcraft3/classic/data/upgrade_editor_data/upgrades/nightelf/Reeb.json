@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Reeb",
+  "displayName": "利爪之痕",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEnchantedBears.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEnchantedBears.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnenchantedbears.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "利爪之痕",
+        "tooltip": "研究利爪之痕(|cffffcc00M|r)",
+        "extendedTooltip": "让利爪德鲁伊在野熊的状态下能施放咆哮技能。",
+        "hotkey": "M",
+        "gold": 25,
+        "lumber": 100,
+        "researchSeconds": 20,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEnchantedBears.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEnchantedBears.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnenchantedbears.png"
+        },
+        "requirements": [
+          "Redc"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Reeb",
+    "comments": "nightelf enchanted bears",
+    "class": "_",
+    "race": "nightelf",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "25",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "20",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNEnchantedBears.blp",
+    "Buttonpos": "1,1",
+    "Requires": "Redc",
+    "Requiresamount": "2",
+    "Name": "利爪之痕",
+    "Tip": "研究利爪之痕(|cffffcc00M|r)",
+    "Ubertip": "\"让利爪德鲁伊在野熊的状态下能施放咆哮技能。\"",
+    "Hotkey": "M"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

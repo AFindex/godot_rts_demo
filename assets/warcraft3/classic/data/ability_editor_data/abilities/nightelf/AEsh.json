@@ -1,0 +1,237 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AEsh",
+  "displayName": "暗影突袭",
+  "identity": {
+    "baseCode": "AEsh",
+    "race": "nightelf",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnshadowstrike.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "暗影突袭",
+        "tooltip": "暗影突袭(|cffffcc00D|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "投掷出一把毒性的匕首，能对敌方的地面单位造成巨大的伤害。最初造成<AEsh,DataE1>点的伤害，随后每<AEsh,Cast1>秒造成<AEsh,DataA1>点的伤害，持续<AEsh,Dur1>秒。匕首上的毒素能在短时间内减慢目标单位的攻击速度和移动速度。",
+        "targets": [
+          "ground",
+          "air",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 3,
+        "duration": 15.1,
+        "heroDuration": 15.1,
+        "cooldown": 8,
+        "manaCost": 75,
+        "range": 300,
+        "data": {
+          "A": "10",
+          "B": "0.5",
+          "C": "0",
+          "D": "3",
+          "E": "75"
+        },
+        "buffIds": [
+          "BEsh"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "暗影突袭",
+        "tooltip": "暗影突袭(|cffffcc00D|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "投掷出一把毒性的匕首，能对敌方的地面单位造成巨大的伤害。最初造成<AEsh,DataE2>点的伤害，随后每<AEsh,Cast2>秒造成<AEsh,DataA2>点的伤害，持续<AEsh,Dur2>秒。匕首上的毒素能在短时间内减慢目标单位的攻击速度和移动速度。",
+        "targets": [
+          "ground",
+          "air",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 3,
+        "duration": 15.1,
+        "heroDuration": 15.1,
+        "cooldown": 8,
+        "manaCost": 75,
+        "range": 300,
+        "data": {
+          "A": "30",
+          "B": "0.5",
+          "C": "0",
+          "D": "3",
+          "E": "150"
+        },
+        "buffIds": [
+          "BEsh"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "暗影突袭",
+        "tooltip": "暗影突袭(|cffffcc00D|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "投掷出一把毒性的匕首，能对敌方的地面单位造成巨大的伤害。最初造成<AEsh,DataE3>点的伤害，随后每<AEsh,Cast3>秒造成<AEsh,DataA3>点的伤害，持续<AEsh,Dur3>秒。匕首上的毒素能在短时间内减慢目标单位的攻击速度和移动速度。",
+        "targets": [
+          "ground",
+          "air",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 3,
+        "duration": 15.1,
+        "heroDuration": 15.1,
+        "cooldown": 8,
+        "manaCost": 75,
+        "range": 300,
+        "data": {
+          "A": "45",
+          "B": "0.5",
+          "C": "0",
+          "D": "3",
+          "E": "225"
+        },
+        "buffIds": [
+          "BEsh"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AEsh",
+    "code": "AEsh",
+    "comments": "Warden - Shadow Strike",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "nightelf",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "ground,air,enemy,neutral,organic",
+    "Cast1": "3",
+    "Dur1": "15.1",
+    "HeroDur1": "15.1",
+    "Cool1": "8",
+    "Cost1": "75",
+    "Area1": "-",
+    "Rng1": "300",
+    "DataA1": "10",
+    "DataB1": "0.5",
+    "DataC1": "0",
+    "DataD1": "3",
+    "DataE1": "75",
+    "Cast2": "3",
+    "Dur2": "15.1",
+    "HeroDur2": "15.1",
+    "Cool2": "8",
+    "Cost2": "75",
+    "Area2": "-",
+    "Rng2": "300",
+    "DataA2": "30",
+    "DataB2": "0.5",
+    "DataC2": "0",
+    "DataD2": "3",
+    "DataE2": "150",
+    "Cast3": "3",
+    "Dur3": "15.1",
+    "HeroDur3": "15.1",
+    "Cool3": "8",
+    "Cost3": "75",
+    "Area3": "-",
+    "Rng3": "300",
+    "DataA3": "45",
+    "DataB3": "0.5",
+    "DataC3": "0",
+    "DataD3": "3",
+    "DataE3": "225",
+    "Cast4": "3",
+    "Dur4": "15.1",
+    "HeroDur4": "15.1",
+    "Cool4": "8",
+    "Cost4": "65",
+    "Area4": "-",
+    "Rng4": "300",
+    "DataA4": "45",
+    "DataB4": "0.5",
+    "DataC4": "0",
+    "DataD4": "3",
+    "DataE4": "225",
+    "InBeta": "1",
+    "targs1": "ground,air,enemy,neutral,organic",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BEsh",
+    "targs2": "ground,air,enemy,neutral,organic",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BEsh",
+    "targs3": "ground,air,enemy,neutral,organic",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BEsh",
+    "targs4": "ground,air,enemy,neutral,organic",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BEsh"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Missileart": "Abilities\\Spells\\NightElf\\shadowstrike\\ShadowStrikeMissile.mdl",
+    "Missilespeed": "1200",
+    "MissileArc": "0.0",
+    "MissileHoming": "1",
+    "Order": "shadowstrike",
+    "Name": "暗影突袭",
+    "Tip": "暗影突袭(|cffffcc00D|r) - [|cffffcc00等级 1|r],暗影突袭(|cffffcc00D|r) - [|cffffcc00等级 2|r],暗影突袭(|cffffcc00D|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"投掷出一把毒性的匕首，能对敌方的地面单位造成巨大的伤害。最初造成<AEsh,DataE1>点的伤害，随后每<AEsh,Cast1>秒造成<AEsh,DataA1>点的伤害，持续<AEsh,Dur1>秒。匕首上的毒素能在短时间内减慢目标单位的攻击速度和移动速度。\",\"投掷出一把毒性的匕首，能对敌方的地面单位造成巨大的伤害。最初造成<AEsh,DataE2>点的伤害，随后每<AEsh,Cast2>秒造成<AEsh,DataA2>点的伤害，持续<AEsh,Dur2>秒。匕首上的毒素能在短时间内减慢目标单位的攻击速度和移动速度。\",\"投掷出一把毒性的匕首，能对敌方的地面单位造成巨大的伤害。最初造成<AEsh,DataE3>点的伤害，随后每<AEsh,Cast3>秒造成<AEsh,DataA3>点的伤害，持续<AEsh,Dur3>秒。匕首上的毒素能在短时间内减慢目标单位的攻击速度和移动速度。\"",
+    "Hotkey": "D",
+    "Researchtip": "\"学习暗影突袭(|cffffcc00D|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"投掷出一把毒性的匕首，能对敌方的地面单位造成巨大的伤害。最初造成很大的伤害，随后每秒造成一定的伤害。匕首上的毒素能在短时间内减慢目标单位的攻击速度和移动速度。|n|n|cffffcc00等级 1|r - <AEsh,DataE1> 点初始伤害，<AEsh,DataA1> 点持续伤害。 |n|cffffcc00等级 2|r - <AEsh,DataE2>点初始伤害，<AEsh,DataA2>点持续伤害。 |n|cffffcc00等级 3|r - <AEsh,DataE3>点初始伤害，<AEsh,DataA3>点持续伤害。.\"",
+    "Researchhotkey": "D"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

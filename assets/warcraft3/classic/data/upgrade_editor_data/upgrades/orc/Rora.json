@@ -1,0 +1,163 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rora",
+  "displayName": "钢铁远程武器",
+  "identity": {
+    "class": "ranged",
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelRanged.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelRanged.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsteelranged.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumRanged.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumRanged.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnthoriumranged.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteRanged.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteRanged.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnarcaniteranged.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "钢铁远程武器",
+        "tooltip": "升级到钢铁远程武器(|cffffcc00R|r)",
+        "extendedTooltip": "能增加巨魔猎头者，风骑士，粉碎者和巨魔蝙蝠骑士的远程攻击力。",
+        "hotkey": "R",
+        "gold": 100,
+        "lumber": 100,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelRanged.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelRanged.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnsteelranged.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "金属远程武器",
+        "tooltip": "升级到金属远程武器(|cffffcc00R|r)",
+        "extendedTooltip": "进一步增加巨魔猎头者，风骑士，粉碎者和巨魔蝙蝠骑士的远程攻击力。",
+        "hotkey": "R",
+        "gold": 150,
+        "lumber": 200,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumRanged.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumRanged.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnthoriumranged.png"
+        },
+        "requirements": [
+          "ostr"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "终极远程武器",
+        "tooltip": "升级到终极远程武器(|cffffcc00R|r)",
+        "extendedTooltip": "进一步增加巨魔猎头者，风骑士，粉碎者和巨魔蝙蝠骑士的远程攻击力。",
+        "hotkey": "R",
+        "gold": 200,
+        "lumber": 300,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteRanged.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteRanged.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnarcaniteranged.png"
+        },
+        "requirements": [
+          "ofrt"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rora",
+    "comments": "orc ranged attack",
+    "class": "ranged",
+    "race": "orc",
+    "flag": "2",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "50",
+    "lumberbase": "100",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSteelRanged.blp,ReplaceableTextures\\CommandButtons\\BTNThoriumRanged.blp,ReplaceableTextures\\CommandButtons\\BTNArcaniteRanged.blp",
+    "Buttonpos": "1,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "ostr",
+    "Requires2": "ofrt",
+    "Name": "钢铁远程武器,金属远程武器,终极远程武器",
+    "Tip": "升级到钢铁远程武器(|cffffcc00R|r),升级到金属远程武器(|cffffcc00R|r),升级到终极远程武器(|cffffcc00R|r)",
+    "Ubertip": "\"能增加巨魔猎头者，风骑士，粉碎者和巨魔蝙蝠骑士的远程攻击力。\",\"进一步增加巨魔猎头者，风骑士，粉碎者和巨魔蝙蝠骑士的远程攻击力。\",\"进一步增加巨魔猎头者，风骑士，粉碎者和巨魔蝙蝠骑士的远程攻击力。\"",
+    "Hotkey": "R,R,R"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

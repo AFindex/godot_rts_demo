@@ -1,0 +1,141 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rgfo",
+  "displayName": "防御浮雕",
+  "identity": {
+    "race": "unknown",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnglyph.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnglyph.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnglyph.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "防御浮雕",
+        "gold": 100,
+        "lumber": 100,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnglyph.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "防御浮雕",
+        "gold": 150,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnglyph.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 3,
+        "name": "防御浮雕",
+        "gold": 200,
+        "lumber": 200,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnglyph.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      },
+      {
+        "slot": 2,
+        "type": "rhpo",
+        "base": 0.2,
+        "modifier": 0.2
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rgfo",
+    "comments": "glyph of fortification",
+    "class": "_",
+    "race": "unknown",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "50",
+    "lumberbase": "100",
+    "lumbermod": "50",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "rhpo",
+    "base2": "0.2",
+    "mod2": "0.2",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNGlyph.blp,ReplaceableTextures\\CommandButtons\\BTNGlyph.blp,ReplaceableTextures\\CommandButtons\\BTNGlyph.blp",
+    "Name": "防御浮雕,防御浮雕,防御浮雕",
+    "EditorSuffix": "(升级 1),(升级 2),(升级 3)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NeutralUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NeutralUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

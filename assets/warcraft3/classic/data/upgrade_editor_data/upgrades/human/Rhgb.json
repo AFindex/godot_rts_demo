@@ -1,0 +1,110 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhgb",
+  "displayName": "飞行机器炸弹",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArtilleryUpOne.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArtilleryUpOne.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanartilleryupone.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "飞行机器炸弹",
+        "tooltip": "研究飞行机器炸弹(|cffffcc00B|r)",
+        "extendedTooltip": "使得飞行机器能攻击地面单位。",
+        "hotkey": "B",
+        "gold": 150,
+        "lumber": 100,
+        "researchSeconds": 35,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArtilleryUpOne.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArtilleryUpOne.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanartilleryupone.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "renw",
+        "base": 3
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhgb",
+    "comments": "human gyro bombs",
+    "class": "_",
+    "race": "human",
+    "flag": "16",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "150",
+    "goldmod": "50",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "35",
+    "timemod": "0",
+    "effect1": "renw",
+    "base1": "3",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHumanArtilleryUpOne.blp",
+    "Buttonpos": "0,2",
+    "Requires": "hcas",
+    "Name": "飞行机器炸弹",
+    "Tip": "研究飞行机器炸弹(|cffffcc00B|r)",
+    "Ubertip": "\"使得飞行机器能攻击地面单位。\"",
+    "Hotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

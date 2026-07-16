@@ -1,0 +1,232 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "Arsw",
+  "displayName": "毒蛇守卫",
+  "identity": {
+    "baseCode": "AOwd",
+    "race": "orc",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 4,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSerpentWard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSerpentWard.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnserpentward.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "毒蛇守卫",
+        "tooltip": "毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp1,realHP>点生命值并对魔法免疫。攻击力为<osp1,mindmg1> —— <osp1,maxdmg1>点。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r",
+        "targets": [],
+        "castTime": 0,
+        "duration": 40,
+        "heroDuration": 40,
+        "cooldown": 6.5,
+        "manaCost": 30,
+        "range": 500,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "osp1",
+        "buffIds": [
+          "BOwd"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "毒蛇守卫",
+        "tooltip": "毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp2,realHP>点生命值并对魔法免疫。攻击力为<osp2,mindmg1> —  <osp2,maxdmg1>点。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r",
+        "targets": [],
+        "castTime": 0,
+        "duration": 40,
+        "heroDuration": 40,
+        "cooldown": 6.5,
+        "manaCost": 30,
+        "range": 500,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "osp2",
+        "buffIds": [
+          "BOwd"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "毒蛇守卫",
+        "tooltip": "毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp3,realHP>点生命值并对魔法免疫。攻击力为<osp3,mindmg1> —  <osp3,maxdmg1>点。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r",
+        "targets": [],
+        "castTime": 0,
+        "duration": 40,
+        "heroDuration": 40,
+        "cooldown": 6.5,
+        "manaCost": 30,
+        "range": 500,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "osp3",
+        "buffIds": [
+          "BOwd"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 4,
+        "name": "毒蛇守卫",
+        "tooltip": "毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 4|r]",
+        "extendedTooltip": "召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp4,realHP>点生命值并对魔法免疫。攻击力为<osp4,mindmg1> —  <osp4,maxdmg1>点溅射伤害。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r",
+        "targets": [],
+        "castTime": 0,
+        "duration": 40,
+        "heroDuration": 40,
+        "cooldown": 6.5,
+        "manaCost": 30,
+        "range": 500,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "osp4",
+        "buffIds": [
+          "BOwd"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "Arsw",
+    "code": "AOwd",
+    "comments": "Rokhan - Serpent Ward",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "orc",
+    "checkDep": "1",
+    "levels": "4",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "40",
+    "HeroDur1": "40",
+    "Cool1": "6.5",
+    "Cost1": "30",
+    "Area1": "-",
+    "Rng1": "500",
+    "DataA1": "1",
+    "DataB1": "-",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "UnitID1": "osp1",
+    "Cast2": "0",
+    "Dur2": "40",
+    "HeroDur2": "40",
+    "Cool2": "6.5",
+    "Cost2": "30",
+    "Area2": "-",
+    "Rng2": "500",
+    "DataA2": "1",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "UnitID2": "osp2",
+    "Cast3": "0",
+    "Dur3": "40",
+    "HeroDur3": "40",
+    "Cool3": "6.5",
+    "Cost3": "30",
+    "Area3": "-",
+    "Rng3": "500",
+    "DataA3": "1",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "UnitID3": "osp3",
+    "Cast4": "0",
+    "Dur4": "40",
+    "HeroDur4": "40",
+    "Cool4": "6.5",
+    "Cost4": "30",
+    "Area4": "-",
+    "Rng4": "500",
+    "DataA4": "1",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "UnitID4": "osp4",
+    "InBeta": "0",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BOwd",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BOwd",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BOwd",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BOwd"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSerpentWard.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNSerpentWard.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Order": "Serpentward",
+    "Name": "毒蛇守卫",
+    "Tip": "毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 1|r],毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 2|r],毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 3|r],毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 4|r]",
+    "Ubertip": "\"召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp1,realHP>点生命值并对魔法免疫。攻击力为<osp1,mindmg1> —— <osp1,maxdmg1>点。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r\",\"召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp2,realHP>点生命值并对魔法免疫。攻击力为<osp2,mindmg1> —  <osp2,maxdmg1>点。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r\",\"召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp3,realHP>点生命值并对魔法免疫。攻击力为<osp3,mindmg1> —  <osp3,maxdmg1>点。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r\",\"召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫具有<osp4,realHP>点生命值并对魔法免疫。攻击力为<osp4,mindmg1> —  <osp4,maxdmg1>点溅射伤害。|n持续<Arsw,Dur1>秒。 |n|n|cffffcc00能攻击地面和空中单位。|r\"",
+    "Hotkey": "W",
+    "Researchtip": "\"学习毒蛇守卫(|cffffcc00W|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"召唤出一个固定不动的毒蛇守卫来为暗影猎手攻击。守卫对魔法免疫。|n持续<Arsw,Dur1>秒。|n|n|cffffcc00能攻击地面和空中单位。|r|n|n|cffffcc00等级 1|r -<osp1,realHP>点生命值，<osp1,mindmg1>-<osp1,maxdmg1>点攻击力。|n|cffffcc00等级 2|r -<osp2,realHP>点生命值，<osp2,mindmg1>-<osp2,maxdmg1>点攻击力。|n|cffffcc00等级 3|r -<osp3,realHP>点生命值，<osp3,mindmg1>-<osp3,maxdmg1>点攻击力。|n|cffffcc00等级 4|r -<osp4,realHP>点生命值，<osp4,mindmg1>-<osp4,maxdmg1>点溅射攻击力。\"",
+    "Researchhotkey": "W",
+    "EditorSuffix": "(洛克汗)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

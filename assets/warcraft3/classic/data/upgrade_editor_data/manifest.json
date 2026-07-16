@@ -1,0 +1,867 @@
+{
+  "schema": "war3-upgrade-editor-manifest/v1",
+  "generatedAt": "2026-07-16T12:23:00.730Z",
+  "game": {
+    "edition": "Warcraft III Classic",
+    "localization": "zh-CN",
+    "overlayLayers": [
+      "roc",
+      "tft",
+      "tft-locale",
+      "patch"
+    ]
+  },
+  "layout": {
+    "objectPathPattern": "upgrades/{race}/{id}.json",
+    "valuePolicy": "editorData/profile 保留原始字符串；summary 对常用字段进行结构化。"
+  },
+  "statistics": {
+    "objectCount": 89,
+    "objectWithProfileCount": 89,
+    "resolvedAssetReferenceCount": 140
+  },
+  "sources": [
+    {
+      "path": "extracted/raw/classic/patch/Units/CampaignUpgradeStrings.txt",
+      "sha256": "10e4e32021f072aa02dd7f74cbc82b2f7d8a46e2b0460b0d1af1e4be6a1f3386"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "sha256": "91d3d18eecc9a2577b5dada088367c221ec41a68c02926a7b5d39bd1a259446b"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "sha256": "995ba2108a8e2cac03b653bdd21a7bd8084abd600915aae323cf27e42127336f"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/NeutralUpgradeStrings.txt",
+      "sha256": "8d27e657a5e5592bfb50e6f4948c535eb3fef15adb497293b1ce7b0f3604030b"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "sha256": "a6d283969819ab35e4b8c380d2da4ca5cf151e373e95a01ad2425728cd568e2c"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "sha256": "0428a9607320b3e0190c77e08670db9091820b7eb934f9ea4b4c2b0a271369c5"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "sha256": "733767319fac16a76b14b2d8438f94613e851935f82ddd4b024a32b1d94a5dcf"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "sha256": "ad1d04e2bf7bf82ee5dd2ddddb506f12498884d87a74c6a8c60341d86c63588d"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "sha256": "93a4a4bbbec457bcd78add5c6912997c46391177bd5fe8dac4816a3600edec9e"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "sha256": "ede42e9f642db364ddd932c9279ee03d366bd176d1dea1da1d003678d5523bbf"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "sha256": "c86878e3529f04e29d8cf430796eada08e371b1a70d0ae6ff31c5f9ae7be1519"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "sha256": "79eb6a120996ea85912a1169e61ca7caf565fa16efc7e886f21156e423045ac0"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "sha256": "185e889e1e7792339d37ad7116f4e6808b57cfc95f0d033c64d4eccc2addfef5"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "sha256": "c955163c0666989eae4d53f8e34986db3a5c2e77c9fc23acb52b91d2a57e17f0"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "sha256": "338a201152fd244730327f708187455ffbeb9210e14536b8ca953920918f074d"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "sha256": "a5c245fe9a0a31c780f025299e5fafcdc83de75d1696b654820701fb8a2a596f"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "sha256": "e9cb217aef6f7329fe8b4c94b078c044b042a19be09b0a3dfa0725a791a8db96"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "sha256": "691251eebfb62d054cf92c160ecacbc9cce4982e014c474f2eac65f487507875"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "sha256": "d47feced6adc774e7443c12adb30e303fb75ae52ddbd1b1a7144c5520ef00f1e"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/CampaignUpgradeStrings.txt",
+      "sha256": "10e4e32021f072aa02dd7f74cbc82b2f7d8a46e2b0460b0d1af1e4be6a1f3386"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "sha256": "dff9b61574241f22d28f7cb9eb085b1b6a563b0b03982933230d41639031fc05"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/NeutralUpgradeStrings.txt",
+      "sha256": "8d27e657a5e5592bfb50e6f4948c535eb3fef15adb497293b1ce7b0f3604030b"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "sha256": "a6d283969819ab35e4b8c380d2da4ca5cf151e373e95a01ad2425728cd568e2c"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "sha256": "733767319fac16a76b14b2d8438f94613e851935f82ddd4b024a32b1d94a5dcf"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "sha256": "c9e7da798a7f413b2449311ee443e05d3e4a379d43cf4307b6088cf9f1edadb6"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/CampaignUpgradeFunc.txt",
+      "sha256": "380c9ae8fc8f52dfb722a9b6fa946281b9998b0124b02c57cc6fd4ec62df9af4"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "sha256": "8c4b281b775ab9d9738249a3819839c1a6838a2dcb1234318d2e2f575d890ca8"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/NeutralUpgradeFunc.txt",
+      "sha256": "0674d10f78ef95d5741186f1c8c3629a9c30e462522c7afbe72123f5a66b23ee"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "sha256": "b71c7c75c072ef6693ed601b6e7db18f30e3c939640ec143146b25c88c8236e7"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "sha256": "b39c205b47f1e85d915638afc47d75326c1d7ebb58edf3567f9b9a65073bc6e9"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "sha256": "9eadc646dd97e239345152546758e7179342f50be554e9838255dfd8f0ba1cd9"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/UpgradeData.slk",
+      "sha256": "0fd1a241a367f754bd5899c94debe6b5a3753f3763e287ca10efb3cbb4ed4862"
+    }
+  ],
+  "objects": [
+    {
+      "id": "Recb",
+      "displayName": "腐蚀喷吐",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Recb.json",
+      "bytes": 2976,
+      "sha256": "2130f6f78c669c445cb9580494528542e0bed35a057ea44f3999271a270324a4"
+    },
+    {
+      "id": "Redc",
+      "displayName": "利爪德鲁伊专家训练",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Redc.json",
+      "bytes": 5059,
+      "sha256": "c0f7453aff8e36bd19edbc2a623ff4387f63ded32e5f2e0808f1984416c7e7e8"
+    },
+    {
+      "id": "Redt",
+      "displayName": "猛禽德鲁伊专家训练",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Redt.json",
+      "bytes": 5059,
+      "sha256": "1a227081194853f1aad97d2875515803eb07ad649ced4cb072262886327f8359"
+    },
+    {
+      "id": "Reeb",
+      "displayName": "利爪之痕",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Reeb.json",
+      "bytes": 2736,
+      "sha256": "7fef6df7f8674bf243a94c231d386c05a36c7d92ebc8f5812ae3c12ab1f621c3"
+    },
+    {
+      "id": "Reec",
+      "displayName": "猛禽之痕",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Reec.json",
+      "bytes": 2760,
+      "sha256": "bd5014591c94844e76fc35399091e1677a4313f9a6eee1eadcc8f5caef00fdfc"
+    },
+    {
+      "id": "Rehs",
+      "displayName": "硬化皮肤",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Rehs.json",
+      "bytes": 2694,
+      "sha256": "ff9d9ad3833906e914d6e925951ceba20fc6a74fcd2ededb446d9e8130b0e6b1"
+    },
+    {
+      "id": "Reht",
+      "displayName": "驯服角鹰兽",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Reht.json",
+      "bytes": 3041,
+      "sha256": "e0e577e2680ba98c78fd04e48d92424edfd03065d78e2da4223926ebad00471c"
+    },
+    {
+      "id": "Reib",
+      "displayName": "硬弓",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Reib.json",
+      "bytes": 2964,
+      "sha256": "24a127ddc8bc3ab368dfaf7117d9a81bf64755cffccb97d73d6e64f7ba991a4f"
+    },
+    {
+      "id": "Rema",
+      "displayName": "月之护甲",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Rema.json",
+      "bytes": 5512,
+      "sha256": "b3a5ca61113f8a86d042b0a44f6e4ca247b2828a477bd48ddddac448dcfe063b"
+    },
+    {
+      "id": "Remg",
+      "displayName": "升级月刃",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Remg.json",
+      "bytes": 3119,
+      "sha256": "b0f2088391b0393df13456673bb7f69506d3691e1c8919e5d287c2eec980a973"
+    },
+    {
+      "id": "Remk",
+      "displayName": "射击术",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Remk.json",
+      "bytes": 3002,
+      "sha256": "7c0e15846a604db43a94a5a73b58171f10902949b7a16c80829dcdccf0f4a760"
+    },
+    {
+      "id": "Renb",
+      "displayName": "自然的祝福",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Renb.json",
+      "bytes": 3080,
+      "sha256": "8cdd8bc7b4a3c89303779f30016284418dcbf1367fd2ca1c9da7fbeea7b0585b"
+    },
+    {
+      "id": "Repb",
+      "displayName": "穿刺剑刃",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Repb.json",
+      "bytes": 3267,
+      "sha256": "c259fb77871e2b821d354a369b1b2adb12a44061ac2d3e81de069c026b04b271"
+    },
+    {
+      "id": "Repm",
+      "displayName": "背包技能",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Repm.json",
+      "bytes": 2707,
+      "sha256": "b62d24fec5f8a853373aaa4c7fb2318f532865e19c748799a749524f73b3b2eb"
+    },
+    {
+      "id": "Rerh",
+      "displayName": "加强隐藏",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Rerh.json",
+      "bytes": 6239,
+      "sha256": "6d64fbd45f7bae10e933414b14b481ae799f0c3fb757b9d91418ba930058672d"
+    },
+    {
+      "id": "Rers",
+      "displayName": "抗性皮肤",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Rers.json",
+      "bytes": 2700,
+      "sha256": "200eef58c2068765cd2b6340e790d093c28a3b351d6fd60d5b9acc887cab9c2f"
+    },
+    {
+      "id": "Resc",
+      "displayName": "哨兵",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Resc.json",
+      "bytes": 2936,
+      "sha256": "8350daa23f0bb3058c79bfbec0c8723ce8cd08bb5d92b117ca5ff2ded2118148"
+    },
+    {
+      "id": "Resi",
+      "displayName": "驱逐魔法",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Resi.json",
+      "bytes": 3027,
+      "sha256": "baf09dd7a8f97b2eb0f8b36c19baf18ece0a19b6cfcc9543c75e4d61d27cc4ed"
+    },
+    {
+      "id": "Resm",
+      "displayName": "月之力量",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Resm.json",
+      "bytes": 5801,
+      "sha256": "678f4e54244c19d1837170b586f4d84ec8d7d39e55ebbf8a09ed543a63f030ae"
+    },
+    {
+      "id": "Resw",
+      "displayName": "野性力量",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Resw.json",
+      "bytes": 6343,
+      "sha256": "311f64868d8b7c64ac27ae3238f2d960e79363c5ca1573dd8442ab7d01541366"
+    },
+    {
+      "id": "Reuv",
+      "displayName": "夜视能力",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Reuv.json",
+      "bytes": 2852,
+      "sha256": "b31adf8e8109b0da71bf2e3dfa0e3077fcad10e3f0596ba9d3409c9fdf787ed4"
+    },
+    {
+      "id": "Rews",
+      "displayName": "月井之春",
+      "race": "nightelf",
+      "path": "upgrades/nightelf/Rews.json",
+      "bytes": 2931,
+      "sha256": "712338f4eb338f96ff8d2cca4d925c3d0c5f452135bcaf256085bbe2655744d3"
+    },
+    {
+      "id": "Rgfo",
+      "displayName": "防御浮雕",
+      "race": "unknown",
+      "path": "upgrades/unknown/Rgfo.json",
+      "bytes": 4115,
+      "sha256": "297bab2c3105841daa0e94fd7ec75fe0201d5865bc853075623a0c1558e22e5b"
+    },
+    {
+      "id": "Rguv",
+      "displayName": "夜视浮雕",
+      "race": "unknown",
+      "path": "upgrades/unknown/Rguv.json",
+      "bytes": 2340,
+      "sha256": "4d5b841974b8909e07b3e9ff2376866cc4418ecde4f3174e7796c59feeaa8f6b"
+    },
+    {
+      "id": "Rhac",
+      "displayName": "加强型石工技术",
+      "race": "human",
+      "path": "upgrades/human/Rhac.json",
+      "bytes": 5669,
+      "sha256": "d1a00227ac8c8beeb7ebb703a6f220e919f742413f8e883275f2301b63c8d9ed"
+    },
+    {
+      "id": "Rhan",
+      "displayName": "动物作战训练",
+      "race": "human",
+      "path": "upgrades/human/Rhan.json",
+      "bytes": 3170,
+      "sha256": "0c7f61654b24c33b07810ce3b5dddc172d46558191abf2d1e198608676561160"
+    },
+    {
+      "id": "Rhar",
+      "displayName": "铁甲",
+      "race": "human",
+      "path": "upgrades/human/Rhar.json",
+      "bytes": 5624,
+      "sha256": "4fb7d547a8e632716fea0411cd385f4e3c2bfa880e533dbaa1c0379d926c095f"
+    },
+    {
+      "id": "Rhcd",
+      "displayName": "乌云技能",
+      "race": "human",
+      "path": "upgrades/human/Rhcd.json",
+      "bytes": 2762,
+      "sha256": "4212ecc887d040730f9778879b74d7921c7552a7a4b0e99da0d36552626f8e83"
+    },
+    {
+      "id": "Rhde",
+      "displayName": "防御",
+      "race": "human",
+      "path": "upgrades/human/Rhde.json",
+      "bytes": 2743,
+      "sha256": "207daf88fe3bd618ee645245138bfc0fb2cc02362217bd9dfec559d3f65768bc"
+    },
+    {
+      "id": "Rhfc",
+      "displayName": "高射炮火",
+      "race": "human",
+      "path": "upgrades/human/Rhfc.json",
+      "bytes": 2774,
+      "sha256": "d26869e2245908e0885c8fcb30f55945037e9dff63da360f4bff5f2f5bdb5dfd"
+    },
+    {
+      "id": "Rhfl",
+      "displayName": "照明弹",
+      "race": "human",
+      "path": "upgrades/human/Rhfl.json",
+      "bytes": 3024,
+      "sha256": "ee75114f6d5e74ed29cabb265f49e84b5f3f865bdc15800eff15ed369a7885a6"
+    },
+    {
+      "id": "Rhfs",
+      "displayName": "碎片攻击",
+      "race": "human",
+      "path": "upgrades/human/Rhfs.json",
+      "bytes": 2833,
+      "sha256": "b3a576f7b16b911880c00bd3879afbf4262fe0b66c618c9253dddc44de9f7746"
+    },
+    {
+      "id": "Rhgb",
+      "displayName": "飞行机器炸弹",
+      "race": "human",
+      "path": "upgrades/human/Rhgb.json",
+      "bytes": 3063,
+      "sha256": "52a9fcded8e932bcb5c1d1c9f11d96b93cb5de5cbc136f04c6bd7a14892c0f88"
+    },
+    {
+      "id": "Rhhb",
+      "displayName": "风暴战锤",
+      "race": "human",
+      "path": "upgrades/human/Rhhb.json",
+      "bytes": 3054,
+      "sha256": "52946d9ca55906fcb272587d356084bf9f83abd96820ac84c2751918ba0e988e"
+    },
+    {
+      "id": "Rhla",
+      "displayName": "镶皮甲",
+      "race": "human",
+      "path": "upgrades/human/Rhla.json",
+      "bytes": 5693,
+      "sha256": "5e51166494da35a69d2a877a1e16729eea3d5d1d5aa41a802e7269424091a802"
+    },
+    {
+      "id": "Rhlh",
+      "displayName": "改进型伐木效率",
+      "race": "human",
+      "path": "upgrades/human/Rhlh.json",
+      "bytes": 4424,
+      "sha256": "bf467f79ba426add079259faeb4e741351cd67ea05f8fe07ce6ca53f82bbc558"
+    },
+    {
+      "id": "Rhme",
+      "displayName": "铁剑术",
+      "race": "human",
+      "path": "upgrades/human/Rhme.json",
+      "bytes": 5652,
+      "sha256": "c8fb5e16b67c24a9d84c1467be87aba467a6a244dfff92b6f5ac0eb56f40f679"
+    },
+    {
+      "id": "Rhpm",
+      "displayName": "背包技能",
+      "race": "human",
+      "path": "upgrades/human/Rhpm.json",
+      "bytes": 2708,
+      "sha256": "d05376871c0be0cb9d95770b2cfa23d654422e0a3c2737dfcb6024823ff1ed5a"
+    },
+    {
+      "id": "Rhpt",
+      "displayName": "牧师专家训练",
+      "race": "human",
+      "path": "upgrades/human/Rhpt.json",
+      "bytes": 4829,
+      "sha256": "69e6f6f534bd792e78bc196033853fdb350b7123c6639fa1dc0ed421101cbd10"
+    },
+    {
+      "id": "Rhra",
+      "displayName": "黑火药",
+      "race": "human",
+      "path": "upgrades/human/Rhra.json",
+      "bytes": 5751,
+      "sha256": "ee25f4b13c407d6979d4d5e58eda3e4ce1332419997bc1d6c366eae4a7457ada"
+    },
+    {
+      "id": "Rhri",
+      "displayName": "长管火枪",
+      "race": "human",
+      "path": "upgrades/human/Rhri.json",
+      "bytes": 3051,
+      "sha256": "6bdc84be388a94d6843e4bb2bb13ddcc3f6ccb7a806ecdece781d67618f7084c"
+    },
+    {
+      "id": "Rhrt",
+      "displayName": "弹幕攻击",
+      "race": "human",
+      "path": "upgrades/human/Rhrt.json",
+      "bytes": 3056,
+      "sha256": "39d0a286dd0ac7145570d812108d46a15260640c1a0c326c71f1cbc659cc1aa0"
+    },
+    {
+      "id": "Rhse",
+      "displayName": "魔法岗哨",
+      "race": "human",
+      "path": "upgrades/human/Rhse.json",
+      "bytes": 2872,
+      "sha256": "3abbb97af3fb3565aebbc11eb7e3ff1520d25f71241b56428a5c95c0364e5063"
+    },
+    {
+      "id": "Rhss",
+      "displayName": "控制魔法",
+      "race": "human",
+      "path": "upgrades/human/Rhss.json",
+      "bytes": 2754,
+      "sha256": "7ba1e3012a0db009a7c964a7a5c9c0d122ddc1f8f458b2d4529c08db3bc4a0ba"
+    },
+    {
+      "id": "Rhst",
+      "displayName": "女巫专家训练",
+      "race": "human",
+      "path": "upgrades/human/Rhst.json",
+      "bytes": 4850,
+      "sha256": "261d2cf4271a6825f9373cef9fb83bea96bac7ec2fbd546b9dcb617101fb639b"
+    },
+    {
+      "id": "Rnam",
+      "displayName": "珊瑚鳞甲",
+      "race": "naga",
+      "path": "upgrades/naga/Rnam.json",
+      "bytes": 4919,
+      "sha256": "0990fff890306e579d75c792979e2218bff01424e8802f65332cc624980665d5"
+    },
+    {
+      "id": "Rnat",
+      "displayName": "珊瑚剑",
+      "race": "naga",
+      "path": "upgrades/naga/Rnat.json",
+      "bytes": 4931,
+      "sha256": "80da40964d13b6f12d461cefcb9d14c11056689e1f70dcdd0108f0785b732ee3"
+    },
+    {
+      "id": "Rnen",
+      "displayName": "诱捕",
+      "race": "naga",
+      "path": "upgrades/naga/Rnen.json",
+      "bytes": 2795,
+      "sha256": "26575edb046a51c26810fc145f07fd9c6a310937513d92cd3ad95adce949ae62"
+    },
+    {
+      "id": "Rnsb",
+      "displayName": "潜水",
+      "race": "naga",
+      "path": "upgrades/naga/Rnsb.json",
+      "bytes": 2586,
+      "sha256": "e5d6dbaf358996102804e9569471fcfb093bcb3a38d1c6d3c4320381d809ec2b"
+    },
+    {
+      "id": "Rnsi",
+      "displayName": "驱逐魔法",
+      "race": "naga",
+      "path": "upgrades/naga/Rnsi.json",
+      "bytes": 2787,
+      "sha256": "20348eef8918267a1e1e4543430ed28fe5b4724905687d370bcbb3f9ed987064"
+    },
+    {
+      "id": "Rnsw",
+      "displayName": "娜迦海妖专家训练",
+      "race": "naga",
+      "path": "upgrades/naga/Rnsw.json",
+      "bytes": 4532,
+      "sha256": "fb775af18cf314e666cb4bfbfc9a825812e9248545ae40f34c6c4d11e1042478"
+    },
+    {
+      "id": "Roar",
+      "displayName": "钢铁护甲",
+      "race": "orc",
+      "path": "upgrades/orc/Roar.json",
+      "bytes": 5768,
+      "sha256": "805859aaa7a10d5d9071566223939ce5a88c682624a4f738b86dd20dfb46fe43"
+    },
+    {
+      "id": "Robf",
+      "displayName": "燃烧之油",
+      "race": "orc",
+      "path": "upgrades/orc/Robf.json",
+      "bytes": 2733,
+      "sha256": "eae77da51c197bdf2b0cf14471fff64e9b07f9005b7bda07400035b83e837dcc"
+    },
+    {
+      "id": "Robk",
+      "displayName": "狂暴愤怒升级",
+      "race": "orc",
+      "path": "upgrades/orc/Robk.json",
+      "bytes": 3099,
+      "sha256": "444c131b87e3e53398228c5433eaa04a41310b77dbbda617862434d6d6f66457"
+    },
+    {
+      "id": "Robs",
+      "displayName": "狂暴力量",
+      "race": "orc",
+      "path": "upgrades/orc/Robs.json",
+      "bytes": 3094,
+      "sha256": "710ef8910fbca3c92e3de86cc8e7a8a1b6b6b0e97bfc2308d28d52282b0941fa"
+    },
+    {
+      "id": "Roch",
+      "displayName": "混乱的",
+      "race": "demon",
+      "path": "upgrades/demon/Roch.json",
+      "bytes": 2522,
+      "sha256": "5f69f5c999fbffe0e90aed2065052151ba26822f697a43672e263f6da08c31a4"
+    },
+    {
+      "id": "Roen",
+      "displayName": "诱捕",
+      "race": "orc",
+      "path": "upgrades/orc/Roen.json",
+      "bytes": 2813,
+      "sha256": "b1a805c7e21e2832136812febcb0081fb6cc4a5a5e212b9f4ff056ecb786e3c4"
+    },
+    {
+      "id": "Rolf",
+      "displayName": "液体炸弹",
+      "race": "orc",
+      "path": "upgrades/orc/Rolf.json",
+      "bytes": 2966,
+      "sha256": "a132871ca478155a2f6318dd4e240b2275e72b5f450d5cea747bc60d48406343"
+    },
+    {
+      "id": "Rome",
+      "displayName": "钢铁近战武器",
+      "race": "orc",
+      "path": "upgrades/orc/Rome.json",
+      "bytes": 5577,
+      "sha256": "224c87d87817f6d88052cc95c7144e3aef5bd679c5eb01211c194cf129c08c7d"
+    },
+    {
+      "id": "Ropg",
+      "displayName": "掠夺",
+      "race": "orc",
+      "path": "upgrades/orc/Ropg.json",
+      "bytes": 2854,
+      "sha256": "b998813f263f436e3f6318dceccf6b7d2973e04af74484e2789e2bbc08a9979c"
+    },
+    {
+      "id": "Ropm",
+      "displayName": "背包技能",
+      "race": "orc",
+      "path": "upgrades/orc/Ropm.json",
+      "bytes": 2730,
+      "sha256": "38da4a4f546abc3aed784ad2bccd7d58e2b6d7c0bd7705ba6e1fdcb6f0768db8"
+    },
+    {
+      "id": "Rora",
+      "displayName": "钢铁远程武器",
+      "race": "orc",
+      "path": "upgrades/orc/Rora.json",
+      "bytes": 5747,
+      "sha256": "4b8bd112d3aa72378cbebcc2ff0ecb8f5a9fbefddfcb2192c76b3e83fdcb3311"
+    },
+    {
+      "id": "Rorb",
+      "displayName": "加强型防御",
+      "race": "orc",
+      "path": "upgrades/orc/Rorb.json",
+      "bytes": 2860,
+      "sha256": "fc229b700b34cf4716137c0eca5c43b9cb18443af78dc6826b154cc556fa112a"
+    },
+    {
+      "id": "Rosp",
+      "displayName": "尖刺障碍",
+      "race": "orc",
+      "path": "upgrades/orc/Rosp.json",
+      "bytes": 6167,
+      "sha256": "5550444e7eda2f6dcfe39cb7bb2918da5851598e91fa3c2b076891ca6f380e73"
+    },
+    {
+      "id": "Rost",
+      "displayName": "萨满祭司专家训练",
+      "race": "orc",
+      "path": "upgrades/orc/Rost.json",
+      "bytes": 4897,
+      "sha256": "69f43bae6a0779b5e6283c15c06db00b2bf75d52297b4e4bb949717fad8269a1"
+    },
+    {
+      "id": "Rotr",
+      "displayName": "巨魔再生",
+      "race": "orc",
+      "path": "upgrades/orc/Rotr.json",
+      "bytes": 3361,
+      "sha256": "ab5f7f3d320e98bd082d917256cd2d5e5a293731ac6f554762561708e4ff8dc2"
+    },
+    {
+      "id": "Rovs",
+      "displayName": "浸毒武器",
+      "race": "orc",
+      "path": "upgrades/orc/Rovs.json",
+      "bytes": 3059,
+      "sha256": "7d2bc0d672e8c515969d84528d422fcb969b42f5aa16121a569a1619e519197b"
+    },
+    {
+      "id": "Rowd",
+      "displayName": "巫医专家训练",
+      "race": "orc",
+      "path": "upgrades/orc/Rowd.json",
+      "bytes": 4923,
+      "sha256": "e9eaa8e5cc48ab84cbd238489fde777bd9d29073d6f2c48d92d5e0b8fd105bd3"
+    },
+    {
+      "id": "Rows",
+      "displayName": "粉碎",
+      "race": "orc",
+      "path": "upgrades/orc/Rows.json",
+      "bytes": 2867,
+      "sha256": "8450aca2cd1acd09c280eb7f97636e610b02b15eb216837794232bf911390b5f"
+    },
+    {
+      "id": "Rowt",
+      "displayName": "灵魂行者专家训练",
+      "race": "orc",
+      "path": "upgrades/orc/Rowt.json",
+      "bytes": 4866,
+      "sha256": "f968c97a427880a253e7da39b6bbce599eac07440e73db0b8a079405b5a4fd1c"
+    },
+    {
+      "id": "Ruac",
+      "displayName": "吞食尸体",
+      "race": "undead",
+      "path": "upgrades/undead/Ruac.json",
+      "bytes": 2934,
+      "sha256": "d13cb4242192e2624515557debe953e5e7e0e71b0c1e76e6bc8315f2705c7969"
+    },
+    {
+      "id": "Ruar",
+      "displayName": "邪恶装甲",
+      "race": "undead",
+      "path": "upgrades/undead/Ruar.json",
+      "bytes": 5678,
+      "sha256": "9cae9d33e5ebfb502e7984663c9f00180d48a773e48bcb45b17be8868f255a28"
+    },
+    {
+      "id": "Ruba",
+      "displayName": "女妖专家训练",
+      "race": "undead",
+      "path": "upgrades/undead/Ruba.json",
+      "bytes": 4859,
+      "sha256": "4d3fa437ac2421951bb1b31c9e015387d978289805dcbb25e75d1e98f4d4d20e"
+    },
+    {
+      "id": "Rubu",
+      "displayName": "钻地",
+      "race": "undead",
+      "path": "upgrades/undead/Rubu.json",
+      "bytes": 2893,
+      "sha256": "d32f6446496b90482d2a86a3601f4cc3120fa147ad27ddec9c24e4fd8f528c69"
+    },
+    {
+      "id": "Rucr",
+      "displayName": "生物甲壳",
+      "race": "undead",
+      "path": "upgrades/undead/Rucr.json",
+      "bytes": 5762,
+      "sha256": "9fa81e311a00a4111c7c4929d205457b441d1ef90b56849c2e91124da8896cb7"
+    },
+    {
+      "id": "Ruex",
+      "displayName": "挖掘尸体",
+      "race": "undead",
+      "path": "upgrades/undead/Ruex.json",
+      "bytes": 2680,
+      "sha256": "9ac71652d79e5af20fc07348fdd104c77d07e24602ed79ca5937afa56649bb17"
+    },
+    {
+      "id": "Rufb",
+      "displayName": "冰冻喷吐",
+      "race": "undead",
+      "path": "upgrades/undead/Rufb.json",
+      "bytes": 2981,
+      "sha256": "d84bfe4d76ef78a7057cd51744ff2e46f776f90e1a5e0222fc013194f33b6bdc"
+    },
+    {
+      "id": "Rugf",
+      "displayName": "食尸鬼狂热",
+      "race": "undead",
+      "path": "upgrades/undead/Rugf.json",
+      "bytes": 3174,
+      "sha256": "5aa4e75760c21c542d1979e23a0cb7f4c5858858f60d89a019b1b8af4d8cd68f"
+    },
+    {
+      "id": "Rume",
+      "displayName": "邪恶力量",
+      "race": "undead",
+      "path": "upgrades/undead/Rume.json",
+      "bytes": 5858,
+      "sha256": "8675268939fca6fe5aa662319ce93f9f4a41168a3b2fa9e184374da15ebaa29f"
+    },
+    {
+      "id": "Rune",
+      "displayName": "不死族巫师专家训练",
+      "race": "undead",
+      "path": "upgrades/undead/Rune.json",
+      "bytes": 5030,
+      "sha256": "ba0cfe134cb93f4348d116289be459e5869b3b37504f50edfa86868446519a02"
+    },
+    {
+      "id": "Rupc",
+      "displayName": "疾病云雾",
+      "race": "undead",
+      "path": "upgrades/undead/Rupc.json",
+      "bytes": 3426,
+      "sha256": "4ad7719cdb3ccd30a69c7036634b1b6cef52859b6505a187b96d8c153a7dfe6a"
+    },
+    {
+      "id": "Rupm",
+      "displayName": "背包技能",
+      "race": "undead",
+      "path": "upgrades/undead/Rupm.json",
+      "bytes": 2748,
+      "sha256": "1a02560b19ac846a7de4188d2c978b6286044012395309a8b859342e9abbbc06"
+    },
+    {
+      "id": "Rura",
+      "displayName": "生物攻击",
+      "race": "undead",
+      "path": "upgrades/undead/Rura.json",
+      "bytes": 5787,
+      "sha256": "016f24f9af0877f1f07fa924cf1fec95a0c2a878be31ee15e41b897cbbefbdcb"
+    },
+    {
+      "id": "Rusf",
+      "displayName": "石像形态",
+      "race": "undead",
+      "path": "upgrades/undead/Rusf.json",
+      "bytes": 3157,
+      "sha256": "73e4a0f4d23ca099114a3568d44cc28ef796742c34f83155d4633edbdd48a1b8"
+    },
+    {
+      "id": "Rusl",
+      "displayName": "骨质增强术",
+      "race": "undead",
+      "path": "upgrades/undead/Rusl.json",
+      "bytes": 3054,
+      "sha256": "3c60caaf5b056caf1c938531b2f2d1e3a5811d1ec531e8dc014ab92a15d4ec2b"
+    },
+    {
+      "id": "Rusm",
+      "displayName": "骷髅法术",
+      "race": "undead",
+      "path": "upgrades/undead/Rusm.json",
+      "bytes": 2928,
+      "sha256": "261ae3979ece27418660bacb1eaf2c6ac92333188c9d51748fd24d4858be82a6"
+    },
+    {
+      "id": "Rusp",
+      "displayName": "破坏者形态",
+      "race": "undead",
+      "path": "upgrades/undead/Rusp.json",
+      "bytes": 3177,
+      "sha256": "a130ed45fdfdcde3d25b50f261acffd9d95e3acfad91ef2f051bebaa70085e2e"
+    },
+    {
+      "id": "Ruwb",
+      "displayName": "蛛网",
+      "race": "undead",
+      "path": "upgrades/undead/Ruwb.json",
+      "bytes": 3004,
+      "sha256": "b284c5793962c0f91d3c74dfa91eb854817f154d09fa620d6da82d6e632b1da1"
+    },
+    {
+      "id": "Rwdm",
+      "displayName": "战鼓攻击力升级",
+      "race": "orc",
+      "path": "upgrades/orc/Rwdm.json",
+      "bytes": 3124,
+      "sha256": "7fafd28993ec9e5c1d4578e9ed44b8376bf73673972fbd251189e45fb193dc0d"
+    }
+  ]
+}

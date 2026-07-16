@@ -1,0 +1,154 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Redc",
+  "displayName": "利爪德鲁伊专家训练",
+  "identity": {
+    "class": "caster",
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 2,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCAdeptTraining.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCAdeptTraining.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndocadepttraining.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCMasterTraining.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCMasterTraining.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndocmastertraining.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "利爪德鲁伊专家训练",
+        "tooltip": "利爪德鲁伊专家训练(|cffffcc00L|r)",
+        "extendedTooltip": "增加利爪德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有生命恢复技能。",
+        "hotkey": "L",
+        "gold": 100,
+        "lumber": 50,
+        "researchSeconds": 25,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCAdeptTraining.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCAdeptTraining.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndocadepttraining.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "利爪德鲁伊大师训练",
+        "tooltip": "利爪德鲁伊大师训练(|cffffcc00L|r)",
+        "extendedTooltip": "增加利爪德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有变熊技能。",
+        "hotkey": "L",
+        "gold": 100,
+        "lumber": 150,
+        "researchSeconds": 35,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCMasterTraining.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOCMasterTraining.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndocmastertraining.png"
+        },
+        "requirements": [
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rmnx",
+        "base": 100,
+        "modifier": 100
+      },
+      {
+        "slot": 2,
+        "type": "rmnr",
+        "base": 0.325,
+        "modifier": 0.325
+      },
+      {
+        "slot": 3,
+        "type": "rhpx",
+        "base": 75,
+        "modifier": 75
+      },
+      {
+        "slot": 4,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Redc",
+    "comments": "nightelf DoC training",
+    "class": "caster",
+    "race": "nightelf",
+    "flag": "2048",
+    "used": "1",
+    "maxlevel": "2",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "100",
+    "timebase": "25",
+    "timemod": "10",
+    "effect1": "rmnx",
+    "base1": "100",
+    "mod1": "100",
+    "effect2": "rmnr",
+    "base2": "0.325",
+    "mod4": "1",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "0.325",
+    "code2": "-",
+    "effect3": "rhpx",
+    "base3": "75",
+    "mod3": "75",
+    "code3": "-",
+    "effect4": "ratd",
+    "base4": "1",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDOCAdeptTraining.blp,ReplaceableTextures\\CommandButtons\\BTNDOCMasterTraining.blp",
+    "Buttonpos": "1,2",
+    "Requirescount": "2",
+    "Requires": "",
+    "Requires1": "etoe",
+    "Name": "利爪德鲁伊专家训练,利爪德鲁伊大师训练",
+    "Tip": "利爪德鲁伊专家训练(|cffffcc00L|r), 利爪德鲁伊大师训练(|cffffcc00L|r)",
+    "Ubertip": "\"增加利爪德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有生命恢复技能。\",\"增加利爪德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有变熊技能。\"",
+    "Hotkey": "L,L"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

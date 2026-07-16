@@ -1,0 +1,160 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rema",
+  "displayName": "月之护甲",
+  "identity": {
+    "class": "armor",
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMoonArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMoonArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmoonarmor.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedMoonArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedMoonArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedmoonarmor.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedMoonArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedMoonArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedmoonarmor.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "月之护甲",
+        "tooltip": "升级到月之护甲(|cffffcc00A|r)",
+        "extendedTooltip": "增加弓箭手，女猎手和角鹰兽骑士的防御力。",
+        "hotkey": "A",
+        "gold": 150,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMoonArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMoonArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnmoonarmor.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级月之护甲",
+        "tooltip": "升级到中级月之护甲(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加弓箭手，女猎手和角鹰兽骑士的防御力。",
+        "hotkey": "A",
+        "gold": 200,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedMoonArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedMoonArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedmoonarmor.png"
+        },
+        "requirements": [
+          "etoa"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级月之护甲",
+        "tooltip": "升级到高级月之护甲(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加弓箭手，女猎手和角鹰兽骑士的防御力。",
+        "hotkey": "A",
+        "gold": 250,
+        "lumber": 225,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedMoonArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedMoonArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedmoonarmor.png"
+        },
+        "requirements": [
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rema",
+    "comments": "nightelf moon armor",
+    "class": "armor",
+    "race": "nightelf",
+    "flag": "4",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "150",
+    "goldmod": "50",
+    "lumberbase": "75",
+    "lumbermod": "75",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNMoonArmor.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedMoonArmor.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedMoonArmor.blp",
+    "Buttonpos": "0,1",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "etoa",
+    "Requires2": "etoe",
+    "Name": "月之护甲,中级月之护甲,高级月之护甲",
+    "Tip": "升级到月之护甲(|cffffcc00A|r),升级到中级月之护甲(|cffffcc00A|r),升级到高级月之护甲(|cffffcc00A|r)",
+    "Ubertip": "\"增加弓箭手，女猎手和角鹰兽骑士的防御力。\",\"进一步增加弓箭手，女猎手和角鹰兽骑士的防御力。\",\"进一步增加弓箭手，女猎手和角鹰兽骑士的防御力。\"",
+    "Hotkey": "A,A,A"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Robk",
+  "displayName": "狂暴愤怒升级",
+  "identity": {
+    "race": "orc",
+    "used": true,
+    "global": true,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHeadHunterBerserker.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHeadHunterBerserker.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnheadhunterberserker.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "狂暴愤怒升级",
+        "tooltip": "升级狂战士(|cffffcc00E|r)",
+        "extendedTooltip": "将巨魔猎头者变为巨魔狂暴战士。使其拥有更多的生命值和狂暴愤怒技能。",
+        "hotkey": "E",
+        "gold": 75,
+        "lumber": 175,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHeadHunterBerserker.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHeadHunterBerserker.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnheadhunterberserker.png"
+        },
+        "requirements": [
+          "ofrt",
+          "ofor"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rtma",
+        "base": 1,
+        "code": "ohun"
+      },
+      {
+        "slot": 2,
+        "type": "rtma",
+        "base": -1,
+        "code": "otbk"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Robk",
+    "comments": "orc berserkers",
+    "class": "_",
+    "race": "orc",
+    "sort": "_",
+    "used": "1",
+    "global": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "175",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "rtma",
+    "base1": "1",
+    "mod1": "-",
+    "code1": "ohun",
+    "effect2": "rtma",
+    "base2": "-1",
+    "mod2": "-",
+    "code2": "otbk",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHeadHunterBerserker.blp",
+    "Buttonpos": "1,2",
+    "Requires": "ofrt,ofor",
+    "Name": "狂暴愤怒升级",
+    "Tip": "升级狂战士(|cffffcc00E|r)",
+    "Ubertip": "\"将巨魔猎头者变为巨魔狂暴战士。使其拥有更多的生命值和狂暴愤怒技能。\"",
+    "Hotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhrt",
+  "displayName": "弹幕攻击",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": true,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNScatterRockets.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNScatterRockets.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnscatterrockets.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "弹幕攻击",
+        "tooltip": "研究弹幕攻击(|cffffcc00G|r)",
+        "extendedTooltip": "升级蒸汽机车，使其拥有弹幕攻击技能，从而可以对敌方的空中单位进行攻击。",
+        "hotkey": "G",
+        "gold": 50,
+        "lumber": 150,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNScatterRockets.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNScatterRockets.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnscatterrockets.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rtma",
+        "base": 1,
+        "code": "hmtt"
+      },
+      {
+        "slot": 2,
+        "type": "rtma",
+        "base": -1,
+        "code": "hrtt"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhrt",
+    "comments": "human rocket tank",
+    "class": "_",
+    "race": "human",
+    "sort": "_",
+    "used": "1",
+    "global": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "150",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "rtma",
+    "base1": "1",
+    "mod1": "-",
+    "code1": "hmtt",
+    "effect2": "rtma",
+    "base2": "-1",
+    "mod2": "-",
+    "code2": "hrtt",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNScatterRockets.blp",
+    "Buttonpos": "2,2",
+    "Requires": "hcas",
+    "Name": "弹幕攻击",
+    "Tip": "研究弹幕攻击(|cffffcc00G|r)",
+    "Ubertip": "\"升级蒸汽机车，使其拥有弹幕攻击技能，从而可以对敌方的空中单位进行攻击。\"",
+    "Hotkey": "G"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

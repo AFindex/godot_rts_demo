@@ -1,0 +1,227 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AUcb",
+  "displayName": "腐尸甲虫",
+  "identity": {
+    "baseCode": "AUcb",
+    "race": "undead",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabsOn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabsOn.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncarrionscarabson.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "腐尸甲虫",
+        "tooltip": "腐尸甲虫(|cffffcc00C|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "从目标尸体中召唤出<AUcb,DataA1>条甲虫来。每条甲虫具有<ucs1,realHP>点生命值和 <ucs1,mindmg1>-<ucs1,maxdmg1>点的攻击力。在被杀死之前，甲虫能一直存在。|n最多<AUcb,DataE1>条甲虫。",
+        "targets": [
+          "dead"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 6,
+        "manaCost": 30,
+        "area": 900,
+        "range": 900,
+        "data": {
+          "A": "1",
+          "B": "0",
+          "C": "ucs1",
+          "E": "5"
+        },
+        "buffIds": [
+          "BUcb"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "腐尸甲虫",
+        "tooltip": "腐尸甲虫(|cffffcc00C|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "从目标尸体中召唤出<AUcb,DataA2>条甲虫来。每条甲虫具有<ucs2,realHP>点生命值和<ucs2,mindmg1>-<ucs2,maxdmg1>点的攻击力。在被杀死之前，甲虫能一直存在。|n最多<AUcb,DataE2>条甲虫。",
+        "targets": [
+          "dead"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 6,
+        "manaCost": 30,
+        "area": 900,
+        "range": 900,
+        "data": {
+          "A": "1",
+          "B": "0",
+          "C": "ucs2",
+          "E": "5"
+        },
+        "buffIds": [
+          "BUcb"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "腐尸甲虫",
+        "tooltip": "腐尸甲虫(|cffffcc00C|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "从目标尸体中召唤出<AUcb,DataA3>条甲虫来。每条甲虫具有<ucs3,realHP>点生命值和<ucs3,mindmg1>-<ucs3,maxdmg1>点的攻击力。在被杀死之前，甲虫能一直存在。|n最多<AUcb,DataE3>条甲虫。",
+        "targets": [
+          "dead"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 6,
+        "manaCost": 30,
+        "area": 900,
+        "range": 900,
+        "data": {
+          "A": "1",
+          "B": "0",
+          "C": "ucs3",
+          "E": "5"
+        },
+        "buffIds": [
+          "BUcb"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AUcb",
+    "code": "AUcb",
+    "comments": "Crypt Lord - Carrion Scarabs",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "undead",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "dead",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "6",
+    "Cost1": "30",
+    "Area1": "900",
+    "Rng1": "900",
+    "DataA1": "1",
+    "DataB1": "0",
+    "DataC1": "ucs1",
+    "DataD1": "-",
+    "DataE1": "5",
+    "Cast2": "0",
+    "Dur2": "0",
+    "HeroDur2": "0",
+    "Cool2": "6",
+    "Cost2": "30",
+    "Area2": "900",
+    "Rng2": "900",
+    "DataA2": "1",
+    "DataB2": "0",
+    "DataC2": "ucs2",
+    "DataD2": "-",
+    "DataE2": "5",
+    "Cast3": "0",
+    "Dur3": "0",
+    "HeroDur3": "0",
+    "Cool3": "6",
+    "Cost3": "30",
+    "Area3": "900",
+    "Rng3": "900",
+    "DataA3": "1",
+    "DataB3": "0",
+    "DataC3": "ucs3",
+    "DataD3": "-",
+    "DataE3": "5",
+    "Cast4": "0",
+    "Dur4": "0",
+    "HeroDur4": "0",
+    "Cool4": "6",
+    "Cost4": "30",
+    "Area4": "900",
+    "Rng4": "900",
+    "DataA4": "1",
+    "DataB4": "0",
+    "DataC4": "ucs3",
+    "DataD4": "-",
+    "DataE4": "5",
+    "InBeta": "1",
+    "targs1": "dead",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BUcb",
+    "targs2": "dead",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BUcb",
+    "targs3": "dead",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BUcb",
+    "targs4": "dead",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BUcb"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabsOn.blp",
+    "Unart": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabsOff.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabs.blp",
+    "Buttonpos": "2,2",
+    "Unbuttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Order": "Carrionscarabs",
+    "Orderon": "Carrionscarabson",
+    "Orderoff": "Carrionscarabsoff",
+    "Name": "腐尸甲虫",
+    "Tip": "腐尸甲虫(|cffffcc00C|r) - [|cffffcc00等级 1|r],腐尸甲虫(|cffffcc00C|r) - [|cffffcc00等级 2|r],腐尸甲虫(|cffffcc00C|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"从目标尸体中召唤出<AUcb,DataA1>条甲虫来。每条甲虫具有<ucs1,realHP>点生命值和 <ucs1,mindmg1>-<ucs1,maxdmg1>点的攻击力。在被杀死之前，甲虫能一直存在。|n最多<AUcb,DataE1>条甲虫。\",\"从目标尸体中召唤出<AUcb,DataA2>条甲虫来。每条甲虫具有<ucs2,realHP>点生命值和<ucs2,mindmg1>-<ucs2,maxdmg1>点的攻击力。在被杀死之前，甲虫能一直存在。|n最多<AUcb,DataE2>条甲虫。\",\"从目标尸体中召唤出<AUcb,DataA3>条甲虫来。每条甲虫具有<ucs3,realHP>点生命值和<ucs3,mindmg1>-<ucs3,maxdmg1>点的攻击力。在被杀死之前，甲虫能一直存在。|n最多<AUcb,DataE3>条甲虫。\"",
+    "Hotkey": "C",
+    "Researchtip": "\"学习腐尸甲虫(|cffffcc00C|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"从目标尸体中召唤出<AUcb,DataA1>条甲虫来。但是每次你只能控制<AUcb,DataE1> 条甲虫。|n|n|cffffcc00等级 1|r - <ucs1,realHP>点生命值，<ucs1,mindmg1> - <ucs1,maxdmg1>点攻击力。|n|cffffcc00等级 2|r - <ucs2,realHP>点生命值，<ucs2,mindmg1> - <ucs2,maxdmg1>点攻击力，甲虫且具有钻地技能。|n|cffffcc00等级 3|r - <ucs3,realHP>点生命值，<ucs3,mindmg1> - <ucs3,maxdmg1>点攻击力，甲虫且具有钻地技能。\"",
+    "Researchhotkey": "C",
+    "Untip": "\"|cffc3dbff点击右键以启动自动施放功能。\"",
+    "Unubertip": "\"|cffc3dbff点击右键以取消自动施放功能。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

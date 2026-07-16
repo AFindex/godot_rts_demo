@@ -1,0 +1,172 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "Abof",
+  "displayName": "燃烧之油",
+  "identity": {
+    "baseCode": "Abof",
+    "race": "orc",
+    "hero": false,
+    "item": false,
+    "editorVisible": true,
+    "levels": 1,
+    "requiredHeroLevel": 0,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNFireRocks.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNFireRocks.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnfirerocks.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "燃烧之油",
+        "tooltip": "燃烧之油",
+        "extendedTooltip": "用凝固汽油浇在粉碎者的弹药上，使它们能够点燃地面，烧伤敌人。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "friend",
+          "structure",
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 2.51,
+        "heroDuration": 1.01,
+        "cooldown": 10,
+        "manaCost": 125,
+        "area": 150,
+        "range": 800,
+        "data": {
+          "A": "6",
+          "B": "0.5",
+          "C": "3",
+          "D": "1",
+          "E": "1"
+        },
+        "buffIds": [
+          "Bbof"
+        ],
+        "effectIds": [
+          "Xbof"
+        ]
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "Abof",
+    "code": "Abof",
+    "comments": "Balls of Fire",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "0",
+    "item": "0",
+    "sort": "unit",
+    "race": "orc",
+    "checkDep": "1",
+    "levels": "1",
+    "reqLevel": "0",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "ground,enemy,neutral,friend,structure,self",
+    "Cast1": "0",
+    "Dur1": "2.51",
+    "HeroDur1": "1.01",
+    "Cool1": "10",
+    "Cost1": "125",
+    "Area1": "150",
+    "Rng1": "800",
+    "DataA1": "6",
+    "DataB1": "0.5",
+    "DataC1": "3",
+    "DataD1": "1",
+    "DataE1": "1",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "-",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "-",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "-",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "ground,enemy,neutral,friend,structure,self",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "Bbof",
+    "EfctID1": "Xbof",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\PassiveButtons\\PASBTNFireRocks.blp",
+    "Buttonpos": "0,2",
+    "Missileart": "Abilities\\Weapons\\DemolisherFireMissile\\DemolisherFireMissile.mdl",
+    "Missilearc": "0.35",
+    "Missilespeed": "900",
+    "Requires": "Robf",
+    "Name": "燃烧之油",
+    "Tip": "燃烧之油",
+    "Ubertip": "\"用凝固汽油浇在粉碎者的弹药上，使它们能够点燃地面，烧伤敌人。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

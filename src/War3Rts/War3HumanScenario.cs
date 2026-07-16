@@ -107,6 +107,8 @@ public static class War3HumanScenario
         var enemyWorkers = SpawnWorkers(
             simulation, worker, EnemyId, enemyHome, enemyDirection);
 
+        simulation.CombatWeaponUpgradeTechnologyId = 0;
+        simulation.CombatBuildingArmorTechnologyId = 2;
         simulation.StartMatch([PlayerId, EnemyId]);
         CompleteStartingBase(simulation, buildings, PlayerId,
             playerHome, playerDirection,
@@ -322,7 +324,8 @@ public static class War3HumanScenario
                 direction * (105f + (index / 4) * 26f),
                 (index % 4 - 1.5f) * 30f);
             output[index] = simulation.AddUnit(
-                position, worker.Movement, player, worker.Combat);
+                position, worker.Movement, player, worker.Combat,
+                worker.Perception);
             simulation.Economy.RegisterWorker(output[index], player);
         }
         return output;

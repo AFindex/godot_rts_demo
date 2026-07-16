@@ -3,6 +3,7 @@ using RtsDemo.Demos;
 using RtsDemo.Demos.ThreeD;
 using RtsDemo.Demos.War3;
 using RtsDemo.Simulation;
+using War3Rts.Data;
 using War3Rts.Maps;
 using NVector2 = System.Numerics.Vector2;
 
@@ -27,6 +28,13 @@ public sealed partial class War3Rts : Node3D
     private War3RtsHud? _hud;
     private War3MapRuntime? _activeMap;
     private CanvasLayer? _mapSelectionLayer;
+    private War3MapLoadingOverlay? _mapLoadingOverlay;
+    private bool _mapLoadInProgress;
+    private bool _loadingUiReady;
+    private bool _loadingProgressMonotonic = true;
+    private bool _loadingReachedCompletion;
+    private double _lastLoadingProgress;
+    private int _loadingStageUpdateCount;
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
     private Vector2 _dragStart;
@@ -76,16 +84,14 @@ public sealed partial class War3Rts : Node3D
                 : requestedId;
             var entry = catalog.FirstOrDefault(value => value.Manifest.Id.Equals(
                 id, StringComparison.OrdinalIgnoreCase));
-            var error = entry is null ? "Map id is not present in the catalog." : string.Empty;
-            if (entry is null ||
-                !War3MapCatalog.TryLoadRuntime(entry, out var runtime, out error) ||
-                runtime is null)
+            if (entry is null)
             {
-                GD.PushError($"WAR3_MAP_LOAD_FAIL id={id} error={error}");
+                GD.PushError(
+                    $"WAR3_MAP_LOAD_FAIL id={id} error=Map id is not present in the catalog.");
                 GetTree().Quit(1);
                 return;
             }
-            StartMap(runtime, arguments);
+            _ = LoadMapAsync(entry, arguments, selectionStatus: null);
             return;
         }
         ShowMapSelection(catalog, arguments);
@@ -93,13 +99,37 @@ public sealed partial class War3Rts : Node3D
             _ = CaptureMapSelectionAsync();
     }
 
-    private void StartMap(War3MapRuntime map, string[] arguments)
+    private async Task StartMapAsync(
+        War3MapRuntime map,
+        string[] arguments)
     {
         _activeMap = map;
+        await AdvanceMapLoadingAsync(
+            1, 0.14d,
+            "检查 Human UI、模型、肖像、命令按钮和队列进度条资源。");
         ValidateHumanAssets();
+
+        await AdvanceMapLoadingAsync(
+            2, 0.24d,
+            "读取单位、技能、升级 manifest，并建立玩法目录与稠密类型映射。");
         _buildings = War3HumanContent.CreateBuildingCatalog();
         _production = War3HumanContent.CreateProductionCatalog();
         _technologies = War3HumanContent.CreateTechnologyCatalog();
+        var dataStatus = War3HumanContent.DataStatus;
+        var objectDataStatus = War3HumanContent.ObjectDataStatus;
+        _status = dataStatus.ManifestLoaded
+            ? $"War3 数据驱动已启用：{dataStatus.AppliedUnitCount} 单位 / " +
+              $"{dataStatus.AppliedBuildingCount} 建筑"
+            : "War3 数据不可用，已启用内置玩法回退";
+        if (dataStatus.ManifestLoaded)
+            GD.Print($"WAR3_GAMEPLAY_DATA {dataStatus.LogLine}");
+        else
+            GD.PushWarning($"WAR3_GAMEPLAY_DATA {dataStatus.LogLine}");
+        if (objectDataStatus.AbilityManifestLoaded &&
+            objectDataStatus.UpgradeManifestLoaded)
+            GD.Print($"WAR3_OBJECT_DATA {objectDataStatus.LogLine}");
+        else
+            GD.PushWarning($"WAR3_OBJECT_DATA {objectDataStatus.LogLine}");
         if (!ProductionRequirementCatalogValidator.TryValidate(
                 _production, _buildings, out var productionError))
             throw new InvalidOperationException(productionError.Message);
@@ -107,12 +137,24 @@ public sealed partial class War3Rts : Node3D
                 _technologies, _buildings, out var technologyError))
             throw new InvalidOperationException(technologyError);
 
+        await AdvanceMapLoadingAsync(
+            3, 0.36d,
+            $"展开 {map.Terrain.Columns}×{map.Terrain.Rows} 地形，" +
+            $"装载 {map.Objects.Length} 个地图对象并构建导航拓扑。");
         _terrain = map.Terrain;
         var navigation = map.CreateNavigation();
         var world = navigation.CreateWorld(_terrain);
         const float battlefieldPathCellSize = 24f;
+
+        await AdvanceMapLoadingAsync(
+            4, 0.50d,
+            $"按 {battlefieldPathCellSize:0} 世界单位网格烘焙 Small / Medium / Large 净空层。");
         var bake = ClearanceBakeSnapshot.Build(
             navigation, _terrain, battlefieldPathCellSize);
+
+        await AdvanceMapLoadingAsync(
+            5, 0.64d,
+            "创建确定性模拟、寻路器、路线规划、阻塞控制和双方初始经济状态。");
         _simulation = new RtsSimulation(
             world,
             new GridPathProvider(
@@ -124,13 +166,24 @@ public sealed partial class War3Rts : Node3D
         _runtime = War3HumanScenario.Prepare(
             _simulation, _buildings, _production, _technologies, map);
 
+        await AdvanceMapLoadingAsync(
+            6, 0.77d,
+            "生成灯光、经典地表、悬崖/坡道批次和 RTS 相机。");
         CreateLighting();
         CreateGround(_terrain);
         CreateCamera(world);
+
+        await AdvanceMapLoadingAsync(
+            7, 0.88d,
+            "创建单位/建筑表现器、War3 HUD、肖像视口与生产研究队列。");
         _presenter = new War3WorldPresenter { Name = "War3World" };
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
         CreateHud();
+
+        await AdvanceMapLoadingAsync(
+            8, 0.96d,
+            "同步初始选择、相机位置、可见性和自动化验收状态。");
         _selectedUnits.Add(_runtime.PlayerWorkers[0]);
         RefreshSelection();
         _cameraController!.FocusAt(map.PlayerSpawn, immediate: true);
@@ -165,13 +218,125 @@ public sealed partial class War3Rts : Node3D
                     map.PlayerSpawn + new NVector2(165f, 105f),
                     immediate: true);
             }
-            _smokeEndTick = _simulation.Metrics.Tick + 600;
+            // Warcraft's exported peasant speed is lower than the former demo
+            // tuning. Keep the deposit assertion and allow a complete lumber
+            // gather-and-return cycle at the data-driven movement speed.
+            _smokeEndTick = _simulation.Metrics.Tick + 900;
             _status = "自动回归：验证采集、AI、动画、肖像与特效";
         }
         if (_capture) _ = CaptureAsync();
         UpdateHud();
         GD.Print($"WAR3_MAP_LOADED id={map.Metadata.Id} hash={map.StableHashText} " +
                  $"terrain={map.Terrain.StableHashText} objects={map.Objects.Length}");
+    }
+
+    private async Task LoadMapAsync(
+        War3MapCatalogEntry entry,
+        string[] arguments,
+        Label? selectionStatus)
+    {
+        if (_mapLoadInProgress)
+        {
+            if (selectionStatus is not null)
+                selectionStatus.Text = "另一张地图正在加载，请稍候。";
+            return;
+        }
+
+        _mapLoadInProgress = true;
+        ShowMapLoading(entry.Manifest.DisplayName);
+        try
+        {
+            await AdvanceMapLoadingAsync(
+                0, 0.03d,
+                $"正在读取 {entry.Manifest.DisplayName} 的 manifest、地形块、对象和出生点…");
+            if (!War3MapCatalog.TryLoadRuntime(
+                    entry, out var runtime, out var error) || runtime is null)
+                throw new InvalidOperationException(error);
+
+            await AdvanceMapLoadingAsync(
+                0, 0.10d,
+                $"地图包读取完成：{runtime.Terrain.Columns}×{runtime.Terrain.Rows} 地形，" +
+                $"{runtime.Objects.Length} 个对象。稳定哈希 {runtime.StableHashText}。");
+            _mapSelectionLayer?.QueueFree();
+            _mapSelectionLayer = null;
+
+            await StartMapAsync(runtime, arguments);
+            await AdvanceMapLoadingAsync(
+                9, 1d,
+                $"{entry.Manifest.DisplayName} 已完成：地形、导航、模拟、HUD 与模型状态均已同步。");
+            _loadingReachedCompletion = true;
+
+            // Keep 100% visible for one rendered frame before handing input to
+            // the battlefield. The loading layer also prevents clicks from
+            // leaking into the world while the last UI nodes are being added.
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            HideMapLoading();
+        }
+        catch (Exception exception)
+        {
+            GD.PushError(
+                $"WAR3_MAP_LOAD_FAIL id={entry.Manifest.Id} error={exception.Message}");
+            _mapLoadingOverlay?.ShowFailure(exception.Message);
+            if (selectionStatus is not null)
+            {
+                selectionStatus.Text = $"加载失败：{exception.Message}";
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                HideMapLoading();
+            }
+            else
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                GetTree().Quit(1);
+            }
+        }
+        finally
+        {
+            _mapLoadInProgress = false;
+        }
+    }
+
+    private void ShowMapLoading(string mapName)
+    {
+        HideMapLoading();
+        _loadingUiReady = false;
+        _loadingProgressMonotonic = true;
+        _loadingReachedCompletion = false;
+        _lastLoadingProgress = 0d;
+        _loadingStageUpdateCount = 0;
+        _mapLoadingOverlay = new War3MapLoadingOverlay
+        {
+            Name = "MapLoading"
+        };
+        AddChild(_mapLoadingOverlay);
+        _mapLoadingOverlay.Initialize(mapName);
+        _loadingUiReady = _mapLoadingOverlay.InterfaceReady;
+    }
+
+    private void HideMapLoading()
+    {
+        if (_mapLoadingOverlay is null) return;
+        _mapLoadingOverlay.QueueFree();
+        _mapLoadingOverlay = null;
+    }
+
+    private async Task AdvanceMapLoadingAsync(
+        int stage,
+        double progress,
+        string detail)
+    {
+        var normalized = Math.Clamp(progress, 0d, 1d);
+        if (normalized + 0.000_001d < _lastLoadingProgress)
+            _loadingProgressMonotonic = false;
+        _lastLoadingProgress = Math.Max(_lastLoadingProgress, normalized);
+        _loadingStageUpdateCount++;
+        _mapLoadingOverlay?.SetProgress(stage, _lastLoadingProgress, detail);
+        GD.Print(
+            $"WAR3_MAP_LOADING step={stage} progress={_lastLoadingProgress:0.00} " +
+            $"detail={detail}");
+
+        // Each milestone represents completed work. Yielding here lets Godot
+        // render it and keeps the window responsive between expensive phases.
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
     private void ShowMapSelection(
@@ -221,18 +386,7 @@ public sealed partial class War3Rts : Node3D
                        $"{entry.Manifest.Description}",
                 CustomMinimumSize = new Vector2(0f, 72f)
             };
-            button.Pressed += () =>
-            {
-                if (!War3MapCatalog.TryLoadRuntime(
-                        entry, out var runtime, out var error) || runtime is null)
-                {
-                    status.Text = $"加载失败：{error}";
-                    return;
-                }
-                _mapSelectionLayer?.QueueFree();
-                _mapSelectionLayer = null;
-                StartMap(runtime, arguments);
-            };
+            button.Pressed += () => _ = LoadMapAsync(entry, arguments, status);
             panel.AddChild(button);
         }
         var back = new Button { Text = "返回启动页" };
@@ -262,7 +416,7 @@ public sealed partial class War3Rts : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
-        if (_simulation is null || _runtime is null) return;
+        if (_mapLoadInProgress || _simulation is null || _runtime is null) return;
         var frame = (float)Math.Min(delta, 0.05d);
         _runtime.AiDirector.Update(_simulation.Metrics.Tick);
         _simulation.Tick(frame);
@@ -281,14 +435,14 @@ public sealed partial class War3Rts : Node3D
 
     public override void _Process(double delta)
     {
-        if (_simulation is null) return;
+        if (_mapLoadInProgress || _simulation is null) return;
         UpdateBuildPreview();
         _presenter?.Sync((float)Engine.GetPhysicsInterpolationFraction());
     }
 
     public override void _UnhandledInput(InputEvent inputEvent)
     {
-        if (_simulation is null || _camera is null) return;
+        if (_mapLoadInProgress || _simulation is null || _camera is null) return;
         switch (inputEvent)
         {
             case InputEventMouseButton mouse:
@@ -612,6 +766,25 @@ public sealed partial class War3Rts : Node3D
         Report(resultText);
     }
 
+    private void CancelQueueItem(War3QueueItemSnapshot item)
+    {
+        if (_simulation is null || !item.CanCancel) return;
+        var canceled = item.Kind switch
+        {
+            War3QueueItemKind.Production => _simulation.CancelProduction(
+                War3HumanScenario.PlayerId,
+                new ProductionOrderId(item.OrderId)),
+            War3QueueItemKind.Research => _simulation.CancelResearch(
+                War3HumanScenario.PlayerId,
+                new ResearchOrderId(item.OrderId)),
+            _ => false
+        };
+        Report(canceled
+            ? $"已取消：{item.Label}"
+            : $"无法取消：{item.Label}");
+        UpdateHud();
+    }
+
     private void SelectAt(NVector2 point, bool additive)
     {
         if (_simulation is null) return;
@@ -769,16 +942,24 @@ public sealed partial class War3Rts : Node3D
                     _simulation.Combat.Teams[first],
                     _simulation.CombatWeaponUpgradeTechnologyId);
             var attack = _simulation.Combat.AttackDamage[first];
-            var attackClass = attack <= 0f
-                ? "无攻击"
-                : _simulation.Combat.AttackRanges[first] > 45f
-                    ? "远程"
-                    : "近战";
+            var attackClass = definition.AttackClass.Length > 0
+                ? definition.AttackClass
+                : attack <= 0f
+                    ? "无攻击"
+                    : _simulation.Combat.AttackRanges[first] > 45f
+                        ? "远程"
+                        : "近战";
             return new War3SelectionSnapshot(
                 homogeneous && living.Length > 1
                     ? $"{definition.Name} × {living.Length}"
                     : definition.Name,
-                homogeneous ? definition.Role : $"混合编队 · {living.Length} 个单位",
+                homogeneous
+                    ? string.Join(" · ", new[]
+                    {
+                        definition.Role,
+                        definition.AbilitySummary
+                    }.Where(value => value.Length > 0))
+                    : $"混合编队 · {living.Length} 个单位",
                 health, maximum,
                 definition.PortraitSource,
                 !definition.PortraitSource.Equals(
@@ -789,10 +970,12 @@ public sealed partial class War3Rts : Node3D
                 string.Empty,
                 attack,
                 _simulation.Combat.Armor[first],
-                1,
+                definition.Level,
                 weaponLevel,
                 attackClass,
-                ArmorClass(_simulation.Combat.Attributes[first]),
+                definition.ArmorClass.Length > 0
+                    ? definition.ArmorClass
+                    : ArmorClass(_simulation.Combat.Attributes[first]),
                 false);
         }
         if (_selectedBuildings.Count > 0)
@@ -801,14 +984,11 @@ public sealed partial class War3Rts : Node3D
             if (!_simulation.Construction.IsAlive(id)) return War3SelectionSnapshot.Empty;
             var building = _simulation.ObserveGameplayBuilding(id);
             var definition = War3HumanContent.Buildings[building.Type.Id];
-            var queue = _simulation.Production.Observe(id).Orders.FirstOrDefault();
-            var research = _simulation.Technology.Observe(id).Orders.FirstOrDefault();
-            var queueLabel = queue.Recipe.Name is not null
-                ? $"训练：{queue.Recipe.UnitType.Name}"
-                : research.Technology.Name is not null
-                    ? $"研究：{research.Technology.Name}"
-                    : string.Empty;
-            var progress = queue.Recipe.Name is not null ? queue.Progress : research.Progress;
+            var queueItems = CreateQueueItems(id);
+            var queueLabel = queueItems.Length == 0
+                ? string.Empty
+                : queueItems[0].StateLabel + "：" + queueItems[0].Label;
+            var progress = queueItems.Length == 0 ? 0f : queueItems[0].Progress;
             return new War3SelectionSnapshot(
                 definition.Name,
                 building.State == BuildingLifecycleState.Completed
@@ -827,11 +1007,73 @@ public sealed partial class War3Rts : Node3D
                 1,
                 0,
                 "无攻击",
-                ArmorClass(building.Type.Attributes),
-                true);
+                definition.ArmorClass.Length > 0
+                    ? definition.ArmorClass
+                    : ArmorClass(building.Type.Attributes),
+                true)
+            {
+                QueueItems = queueItems
+            };
         }
         return War3SelectionSnapshot.Empty;
     }
+
+    private War3QueueItemSnapshot[] CreateQueueItems(GameplayBuildingId building)
+    {
+        if (_simulation is null) return [];
+        var production = _simulation.Production.Observe(building).Orders;
+        if (production.Length > 0)
+        {
+            return production.Select(order =>
+            {
+                var definition = War3HumanContent.Units[order.Recipe.UnitType.Id];
+                var state = order.State switch
+                {
+                    ProductionOrderState.WaitingForExit => "等待出口",
+                    ProductionOrderState.Producing => "训练中",
+                    _ => "等待训练"
+                };
+                return new War3QueueItemSnapshot(
+                    War3QueueItemKind.Production,
+                    order.Id.Value,
+                    order.Recipe.Id,
+                    definition.Name,
+                    definition.IconPath,
+                    order.Progress,
+                    state,
+                    $"{state}：{definition.Name}\n点击取消并返还 " +
+                    $"{Refund(order.Recipe.Cost.Minerals,
+                        order.Recipe.CancelRefundFraction)} 黄金 / " +
+                    $"{Refund(order.Recipe.Cost.VespeneGas,
+                        order.Recipe.CancelRefundFraction)} 木材");
+            }).ToArray();
+        }
+
+        var research = _simulation.Technology.Observe(building).Orders;
+        return research.Select(order =>
+        {
+            var definition = War3HumanContent.Technologies[order.Technology.Id];
+            var currentLevel = _simulation.Technology.Level(
+                order.PlayerId, order.Technology.Id);
+            var label = definition.NameForLevel(currentLevel);
+            return new War3QueueItemSnapshot(
+                War3QueueItemKind.Research,
+                order.Id.Value,
+                order.Technology.Id,
+                label,
+                definition.IconPathForLevel(currentLevel),
+                order.Progress,
+                "研究中",
+                $"研究中：{label}\n点击取消并返还 " +
+                $"{Refund(order.Technology.Cost.Minerals,
+                    order.Technology.CancelRefundFraction)} 黄金 / " +
+                $"{Refund(order.Technology.Cost.VespeneGas,
+                    order.Technology.CancelRefundFraction)} 木材");
+        }).ToArray();
+    }
+
+    private static int Refund(int value, float fraction) =>
+        (int)MathF.Round(value * fraction, MidpointRounding.AwayFromZero);
 
     private static string ArmorClass(CombatAttribute attributes)
     {
@@ -861,11 +1103,14 @@ public sealed partial class War3Rts : Node3D
             Texture(unit.IconPath);
             if (unit.ProjectileSource.Length > 0) Model(unit.ProjectileSource);
             if (unit.ImpactSource.Length > 0) Model(unit.ImpactSource);
+            if (unit.SpecialEffectSource.Length > 0) Model(unit.SpecialEffectSource);
         }
         foreach (var building in War3HumanContent.Buildings)
         {
             Model(building.ModelSource);
             Texture(building.IconPath);
+            if (building.SpecialEffectSource.Length > 0)
+                Model(building.SpecialEffectSource);
             if (!War3RuntimeAssets.Contains(building.ModelSource)) continue;
             var metadata = War3RuntimeAssets.LoadMetadata(building.ModelSource);
             var idle = metadata.Sequences.FirstOrDefault(sequence =>
@@ -896,6 +1141,9 @@ public sealed partial class War3Rts : Node3D
                      @"UI\Feedback\Resources\ResourceGold.blp",
                      @"UI\Feedback\Resources\ResourceLumber.blp",
                      @"UI\Feedback\Resources\ResourceSupply.blp",
+                     @"UI\Widgets\Console\Human\human-unitqueue-border.blp",
+                     @"UI\Feedback\BuildProgressBar\human-buildprogressbar-fill.blp",
+                     @"UI\Feedback\BuildProgressBar\human-buildprogressbar-border.blp",
                      Btn("Move"), Btn("Attack"), Btn("Stop"), Btn("HoldPosition"),
                      Btn("BasicStruct"), Btn("RallyPoint"), Btn("SteelMelee"),
                      Btn("Cancel")
@@ -971,12 +1219,23 @@ public sealed partial class War3Rts : Node3D
                 foreach (var technology in _technologies.Technologies.ToArray()
                              .Where(value => value.ResearcherBuildingTypeId == building.Type.Id)
                              .Take(8 - slot))
+                {
+                    var presentation = War3HumanContent.Technologies[technology.Id];
+                    var currentLevel = _simulation.Technology.Level(
+                        War3HumanScenario.PlayerId, technology.Id);
+                    var nextName = presentation.NameForLevel(currentLevel);
                     result.Add(new War3CommandSnapshot(
                         slot++, War3CommandKind.Research, technology.Id,
-                        technology.Name,
-                        $"研究 {technology.Name} · {technology.Cost.Minerals} 黄金 / " +
-                        $"{technology.Cost.VespeneGas} 木材",
-                        Btn("SteelMelee"), Hotkey(slot - 1)));
+                        nextName,
+                        $"研究 {nextName} " +
+                        $"({currentLevel + 1}/{technology.MaximumLevel}) · " +
+                        $"{technology.Cost.Minerals} 黄金 / " +
+                        $"{technology.Cost.VespeneGas} 木材 / " +
+                        $"{technology.ResearchSeconds:0.#} 秒\n" +
+                        presentation.Description,
+                        presentation.IconPathForLevel(currentLevel),
+                        Hotkey(slot - 1)));
+                }
             }
             if (building.Type.Function is BuildingFunctionKind.Production or
                 BuildingFunctionKind.TownHall)
@@ -1207,6 +1466,7 @@ public sealed partial class War3Rts : Node3D
         AddChild(layer);
         _hud = new War3RtsHud { Name = "HumanHud" };
         _hud.CommandRequested += ExecuteCommand;
+        _hud.QueueItemCancelRequested += CancelQueueItem;
         _hud.ReturnRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
         _hud.MinimapFocusRequested += point => _cameraController?.FocusAt(point);
@@ -1215,7 +1475,8 @@ public sealed partial class War3Rts : Node3D
 
     private void FinishSmoke()
     {
-        if (_simulation is null || _runtime is null || _presenter is null || _hud is null)
+        if (_simulation is null || _runtime is null || _production is null ||
+            _presenter is null || _hud is null)
             return;
         _smoke = false;
         var player = _simulation.Economy.Players.Snapshot(War3HumanScenario.PlayerId);
@@ -1227,6 +1488,56 @@ public sealed partial class War3Rts : Node3D
                        _simulation.Production.Observe(
                            new GameplayBuildingId(_smokeRallyBuilding)).Rally.Position ==
                        _smokeRallyPosition;
+        var smokeQueueOrders = _smokeRallyBuilding < 0
+            ? []
+            : _simulation.Production.Observe(
+                new GameplayBuildingId(_smokeRallyBuilding)).Orders;
+        var queueUiValid = smokeQueueOrders.Length == 5 &&
+                           smokeQueueOrders[0].Progress is > 0f and < 1f &&
+                           _hud.QueueLayoutReady &&
+                           _hud.QueuePanelVisible &&
+                           !_hud.SelectionDetailsVisible &&
+                           _hud.QueuePresentationExclusive &&
+                           _hud.QueueIconsAboveBackdrop &&
+                           _hud.VisibleQueueItemCount == 5 &&
+                           _hud.ActiveQueueItemKind ==
+                               War3QueueItemKind.Production &&
+                           _hud.ActiveQueueIconReady;
+        var queueCancelValid = queueUiValid &&
+                               _hud.TryInvokeQueueSlot(4) &&
+                               _simulation.Production.Observe(
+                                   new GameplayBuildingId(_smokeRallyBuilding))
+                                   .Orders.Length == 4 &&
+                               _hud.VisibleQueueItemCount == 4;
+        var blacksmith = _simulation.CreateGameplayBuildingOverview()
+            .First(value => value.PlayerId == War3HumanScenario.PlayerId &&
+                            value.Type.Id == War3HumanContent.Blacksmith);
+        var smokeTechnology = _technologies!.Technology(0) with
+        {
+            Cost = default,
+            ResearchSeconds = 120f
+        };
+        var researchQueued = _simulation.IssueResearch(
+            War3HumanScenario.PlayerId, blacksmith.Id, smokeTechnology);
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        _selectedBuildings.Add(blacksmith.Id.Value);
+        RefreshSelection();
+        var researchQueueUiValid = researchQueued.Succeeded &&
+                                    _hud.QueuePanelVisible &&
+                                    !_hud.SelectionDetailsVisible &&
+                                    _hud.QueuePresentationExclusive &&
+                                    _hud.QueueIconsAboveBackdrop &&
+                                    _hud.VisibleQueueItemCount == 1 &&
+                                   _hud.ActiveQueueItemKind ==
+                                       War3QueueItemKind.Research &&
+                                   _hud.ActiveQueueIconReady &&
+                                   _hud.TryInvokeQueueSlot(0) &&
+                                    _simulation.Technology.Observe(blacksmith.Id)
+                                        .Orders.Length == 0 &&
+                                    !_hud.QueuePanelVisible &&
+                                    _hud.SelectionDetailsVisible &&
+                                    _hud.QueuePresentationExclusive;
         var resourceCentersClear = Enumerable.Range(0, _simulation.Units.Count)
             .Where(unit => _simulation.Units.Alive[unit])
             .All(unit => _simulation.World.Obstacles.ToArray().All(obstacle =>
@@ -1282,6 +1593,30 @@ public sealed partial class War3Rts : Node3D
                            War3HumanScenario.PcgTreeCount == 252 &&
                            _simulation.Economy.ResourceNodeCount ==
                            War3HumanScenario.ExpectedResourceNodeCount;
+        var objectData = War3HumanContent.ObjectDataStatus;
+        var peasantProfile = _production.UnitType(War3HumanContent.Peasant);
+        var flyingProfile = _production.UnitType(War3HumanContent.FlyingMachine);
+        var dataIntegrationReady =
+            objectData.AbilityManifestLoaded &&
+            objectData.UpgradeManifestLoaded &&
+            objectData.MissingAbilityIds.Count == 0 &&
+            objectData.MissingUpgradeIds.Count == 0 &&
+            objectData.AppliedTechnologyCount == 3 &&
+            War3HumanContent.DataCatalog.TryGet("hpea", out var peasantData) &&
+            peasantData.Summary.Sight.Day is > 0f &&
+            MathF.Abs(peasantProfile.Perception.VisionRange -
+                      peasantData.Summary.Sight.Day.Value *
+                      War3GameplayImportPolicy.Default.WorldDistanceScale) < 0.01f &&
+            flyingProfile.Perception.TerrainVisionMode ==
+                TerrainVisionMode.Elevated &&
+            _simulation.CombatWeaponUpgradeTechnologyId == 0 &&
+            _simulation.CombatBuildingArmorTechnologyId == 2 &&
+            War3HumanContent.Technologies.Count == 3;
+        var mapLoadingValid = _loadingUiReady &&
+                              _loadingProgressMonotonic &&
+                              _loadingReachedCompletion &&
+                              _lastLoadingProgress >= 1d &&
+                              _loadingStageUpdateCount >= 11;
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
@@ -1299,7 +1634,10 @@ public sealed partial class War3Rts : Node3D
                       harvestingSynchronized && buildingAnimationsValid &&
                        buildingEffectsValid && _presenter.SawBlendedTransition &&
                        _presenter.RallyMarkerUsesWar3Model && attackFacingValid &&
-                        constructionPresentationValid && terrainReady;
+                        constructionPresentationValid && terrainReady &&
+                         dataIntegrationReady && mapLoadingValid &&
+                         queueUiValid && queueCancelValid &&
+                         researchQueueUiValid;
         GD.Print(
             $"WAR3_RTS_SMOKE success={success} units={_presenter.PresentedUnitCount} " +
              $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
@@ -1324,6 +1662,10 @@ public sealed partial class War3Rts : Node3D
              $"animation_blend={_presenter.SawBlendedTransition} " +
             $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
              $"attack_facing={attackFacingValid} terrain={terrainReady} " +
+             $"data_integration={dataIntegrationReady} " +
+             $"map_loading={mapLoadingValid}/{_loadingStageUpdateCount} " +
+             $"queue_ui={queueUiValid}/5 queue_cancel={queueCancelValid}/" +
+             $"4 research_queue={researchQueueUiValid} " +
              $"terrain_hash={_terrain?.StableHashText ?? "none"} " +
              $"pcg_trees={War3HumanScenario.PcgTreeCount} " +
              $"pcg_dense={War3HumanScenario.DensePcgTreeCount} " +
@@ -1345,6 +1687,23 @@ public sealed partial class War3Rts : Node3D
                 War3HumanScenario.PlayerId, rallyBuilding.Id,
                 RallyTarget.Ground(_smokeRallyPosition)))
             throw new InvalidOperationException("Smoke rally target setup failed.");
+        var smokeRecipe = _production.Recipe(0) with
+        {
+            Cost = new EconomyCost(0, 0, 1),
+            ProductionSeconds = 120f
+        };
+        for (var index = 0; index < ProductionSystem.MaximumQueueLength; index++)
+        {
+            var queued = _simulation.IssueProduction(
+                War3HumanScenario.PlayerId, rallyBuilding.Id, smokeRecipe);
+            if (!queued.Succeeded)
+                throw new InvalidOperationException(
+                    $"Smoke production queue setup failed: {queued.Code}.");
+        }
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        _selectedBuildings.Add(rallyBuilding.Id.Value);
+        RefreshSelection();
         if (_buildings is null || _runtime is null)
             throw new InvalidOperationException("Smoke construction catalogs are unavailable.");
         var farm = _buildings.Type(War3HumanContent.Farm) with
@@ -1368,15 +1727,17 @@ public sealed partial class War3Rts : Node3D
             War3HumanContent.Buildings[War3HumanContent.Farm].ModelSource,
             valid: true);
         _presenter?.HidePointerPreview();
-        var rifleman = _production.UnitType(War3HumanContent.Rifleman);
+        // Rifleman is an instant-hit weapon in the Warcraft editor data.
+        // Exercise the projectile/effect pipeline with an actual missile unit.
+        var projectileUnit = _production.UnitType(War3HumanContent.Priest);
         var player = _simulation.AddUnit(
-            home + new NVector2(300f, 120f), rifleman.Movement,
-            War3HumanScenario.PlayerId, rifleman.Combat,
-            UnitPerceptionProfileSnapshot.Standard);
+            home + new NVector2(300f, 120f), projectileUnit.Movement,
+            War3HumanScenario.PlayerId, projectileUnit.Combat,
+            projectileUnit.Perception);
         var enemy = _simulation.AddUnit(
-            home + new NVector2(420f, 120f), rifleman.Movement,
-            War3HumanScenario.EnemyId, rifleman.Combat,
-            UnitPerceptionProfileSnapshot.Standard);
+            home + new NVector2(420f, 120f), projectileUnit.Movement,
+            War3HumanScenario.EnemyId, projectileUnit.Combat,
+            projectileUnit.Perception);
         // The scenario has already seeded fog-of-war before these smoke-only
         // units are appended. Refresh visibility once so their first attack
         // order is not discarded before the normal end-of-tick refresh.

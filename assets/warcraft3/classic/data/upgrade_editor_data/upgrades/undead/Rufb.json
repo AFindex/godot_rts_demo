@@ -1,0 +1,101 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rufb",
+  "displayName": "冰冻喷吐",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfreezingbreath.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "冰冻喷吐",
+        "tooltip": "研究冰冻喷吐(|cffffcc00B|r)",
+        "extendedTooltip": "使得霜冻巨龙的攻击能在一段时间内使受攻击的建筑物暂时失去功效。",
+        "hotkey": "B",
+        "gold": 150,
+        "lumber": 275,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnfreezingbreath.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rufb",
+    "comments": "undead frost wyrm breath",
+    "class": "_",
+    "race": "undead",
+    "flag": "512",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "150",
+    "goldmod": "0",
+    "lumberbase": "275",
+    "lumbermod": "0",
+    "timebase": "60",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+    "Buttonpos": "0,2",
+    "Name": "冰冻喷吐",
+    "Tip": "研究冰冻喷吐(|cffffcc00B|r)",
+    "Ubertip": "\"使得霜冻巨龙的攻击能在一段时间内使受攻击的建筑物暂时失去功效。\"",
+    "Hotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

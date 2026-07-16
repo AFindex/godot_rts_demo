@@ -1,0 +1,107 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rusl",
+  "displayName": "骨质增强术",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletalLongevity.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletalLongevity.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnskeletallongevity.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "骨质增强术",
+        "tooltip": "研究骨质增强术(|cffffcc00S|r)",
+        "extendedTooltip": "能增加召唤出来的骷髅战士的持续时间<Rusl,base1>秒。",
+        "hotkey": "S",
+        "gold": 50,
+        "lumber": 75,
+        "researchSeconds": 15,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletalLongevity.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletalLongevity.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnskeletallongevity.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rrai",
+        "base": 15
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rusl",
+    "comments": "undead skeleton life span",
+    "class": "_",
+    "race": "undead",
+    "flag": "1024",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "75",
+    "lumbermod": "0",
+    "timebase": "15",
+    "timemod": "0",
+    "effect1": "rrai",
+    "base1": "15",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSkeletalLongevity.blp",
+    "Buttonpos": "2,2",
+    "Name": "骨质增强术",
+    "Tip": "研究骨质增强术(|cffffcc00S|r)",
+    "Ubertip": "\"能增加召唤出来的骷髅战士的持续时间<Rusl,base1>秒。\"",
+    "Hotkey": "S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

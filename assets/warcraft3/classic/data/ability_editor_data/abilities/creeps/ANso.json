@@ -1,0 +1,229 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANso",
+  "displayName": "灵魂燃烧",
+  "identity": {
+    "baseCode": "ANso",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsoulburn.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "灵魂燃烧",
+        "tooltip": "(|cffffcc00B|r)灵魂燃烧 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "让一个单位处于烈焰的包围之中，对其造成每秒<ANso,DataA1>点的伤害，让其不能施放魔法，并减少其<ANso,DataC1,%>%的攻击力。|n持续 <ANso,Dur1> 秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 14,
+        "heroDuration": 6,
+        "cooldown": 12,
+        "manaCost": 85,
+        "range": 700,
+        "data": {
+          "A": "7.14",
+          "B": "1",
+          "C": "0.5",
+          "D": "0",
+          "E": "0"
+        },
+        "buffIds": [
+          "BNso"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "灵魂燃烧",
+        "tooltip": "(|cffffcc00B|r)灵魂燃烧 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "让一个单位处于烈焰的包围之中，对其造成每秒<<ANso,DataA2>点的伤害，让其不能施放魔法，并减少其<ANso,DataC2,%>% 的攻击力。|n持续<ANso,Dur2> 秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 16,
+        "heroDuration": 7,
+        "cooldown": 12,
+        "manaCost": 85,
+        "range": 700,
+        "data": {
+          "A": "14.06",
+          "B": "1",
+          "C": "0.5",
+          "D": "0",
+          "E": "0"
+        },
+        "buffIds": [
+          "BNso"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "灵魂燃烧",
+        "tooltip": "(|cffffcc00B|r)灵魂燃烧 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "让一个单位处于烈焰的包围之中，对其造成每秒 <ANso,DataA3>点的伤害，让其不能施放魔法，并减少其<ANso,DataC3,%>% 的攻击力。|n持续<ANso,Dur3> 秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 18,
+        "heroDuration": 8,
+        "cooldown": 12,
+        "manaCost": 85,
+        "range": 700,
+        "data": {
+          "A": "20.833",
+          "B": "1",
+          "C": "0.5",
+          "D": "0",
+          "E": "0"
+        },
+        "buffIds": [
+          "BNso"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANso",
+    "code": "ANso",
+    "comments": "Firelord - Soul Burn",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "air,ground,enemy,neutral,organic",
+    "Cast1": "0",
+    "Dur1": "14",
+    "HeroDur1": "6",
+    "Cool1": "12",
+    "Cost1": "85",
+    "Area1": "-",
+    "Rng1": "700",
+    "DataA1": "7.14",
+    "DataB1": "1",
+    "DataC1": "0.5",
+    "DataD1": "0",
+    "DataE1": "0",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNso",
+    "targs2": "air,ground,enemy,neutral,organic",
+    "Cast2": "0",
+    "Dur2": "16",
+    "HeroDur2": "7",
+    "Cool2": "12",
+    "Cost2": "85",
+    "Area2": "-",
+    "Rng2": "700",
+    "DataA2": "14.06",
+    "DataB2": "1",
+    "DataC2": "0.5",
+    "DataD2": "0",
+    "DataE2": "0",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNso",
+    "targs3": "air,ground,enemy,neutral,organic",
+    "Cast3": "0",
+    "Dur3": "18",
+    "HeroDur3": "8",
+    "Cool3": "12",
+    "Cost3": "85",
+    "Area3": "-",
+    "Rng3": "700",
+    "DataA3": "20.833",
+    "DataB3": "1",
+    "DataC3": "0.5",
+    "DataD3": "0",
+    "DataE3": "0",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNso",
+    "targs4": "air,ground,enemy,neutral,organic",
+    "Cast4": "0",
+    "Dur4": "20",
+    "HeroDur4": "10",
+    "Cool4": "12",
+    "Cost4": "85",
+    "Area4": "-",
+    "Rng4": "700",
+    "DataA4": "27.5",
+    "DataB4": "1",
+    "DataC4": "0.5",
+    "DataD4": "0",
+    "DataE4": "0",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNso",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "order": "soulburn",
+    "Name": "灵魂燃烧",
+    "Tip": "(|cffffcc00B|r)灵魂燃烧 - [|cffffcc00等级 1|r],(|cffffcc00B|r)灵魂燃烧 - [|cffffcc00等级 2|r],(|cffffcc00B|r)灵魂燃烧 - [|cffffcc00等级 3|r]",
+    "Researchtip": "\" (|cffffcc00B|r)学习灵魂燃烧 - [|cffffcc00等级 %d|r]\"",
+    "Ubertip": "\"让一个单位处于烈焰的包围之中，对其造成每秒<ANso,DataA1>点的伤害，让其不能施放魔法，并减少其<ANso,DataC1,%>%的攻击力。|n持续 <ANso,Dur1> 秒。\",\"让一个单位处于烈焰的包围之中，对其造成每秒<<ANso,DataA2>点的伤害，让其不能施放魔法，并减少其<ANso,DataC2,%>% 的攻击力。|n持续<ANso,Dur2> 秒。\",\"让一个单位处于烈焰的包围之中，对其造成每秒 <ANso,DataA3>点的伤害，让其不能施放魔法，并减少其<ANso,DataC3,%>% 的攻击力。|n持续<ANso,Dur3> 秒。\"",
+    "Researchubertip": "\"让火焰包围敌人，让其在一段时间之内持续受到伤害，并阻止其施放任何魔法和减少其<ANso,DataC1,%>%的攻击力。 |n|n|cffffcc00等级 1|r - 100 点伤害， 持续<ANso,Dur1>秒。|n|cffffcc00等级 2|r - 225 点伤害， 持续 <ANso,Dur2>秒。|n|cffffcc00等级 3|r - 375 点伤害， 持续<ANso,Dur3>秒。|n|n灵魂燃烧在英雄身上持续的时间会减半。\"",
+    "Hotkey": "B",
+    "Researchhotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

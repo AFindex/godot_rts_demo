@@ -1,0 +1,163 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rura",
+  "displayName": "生物攻击",
+  "identity": {
+    "class": "ranged",
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureAttack.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureAttack.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncreatureattack.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureAttack.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureAttack.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedcreatureattack.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureAttack.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureAttack.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedcreatureattack.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "生物攻击",
+        "tooltip": "升级到生物攻击(|cffffcc00A|r)",
+        "extendedTooltip": "增加穴居恶魔、石像鬼、冰霜巨龙和破坏者的攻击力。",
+        "hotkey": "A",
+        "gold": 150,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureAttack.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureAttack.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btncreatureattack.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级生物攻击",
+        "tooltip": "升级到中级生物攻击(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加穴居恶魔、石像鬼、冰霜巨龙和破坏者的攻击力。",
+        "hotkey": "A",
+        "gold": 200,
+        "lumber": 125,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureAttack.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureAttack.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedcreatureattack.png"
+        },
+        "requirements": [
+          "unp1"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级生物攻击",
+        "tooltip": "升级到高级生物攻击(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加穴居恶魔、石像鬼、冰霜巨龙和破坏者的攻击力。",
+        "hotkey": "A",
+        "gold": 250,
+        "lumber": 200,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureAttack.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureAttack.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedcreatureattack.png"
+        },
+        "requirements": [
+          "unp2"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rura",
+    "comments": "undead creature attack",
+    "class": "ranged",
+    "race": "undead",
+    "flag": "2",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "150",
+    "goldmod": "50",
+    "lumberbase": "50",
+    "lumbermod": "75",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNCreatureAttack.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureAttack.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureAttack.blp",
+    "Buttonpos": "1,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "unp1",
+    "Requires2": "unp2",
+    "Name": "生物攻击,中级生物攻击,高级生物攻击",
+    "Tip": "升级到生物攻击(|cffffcc00A|r),升级到中级生物攻击(|cffffcc00A|r),升级到高级生物攻击(|cffffcc00A|r)",
+    "Ubertip": "\"增加穴居恶魔、石像鬼、冰霜巨龙和破坏者的攻击力。\",\"进一步增加穴居恶魔、石像鬼、冰霜巨龙和破坏者的攻击力。\",\"进一步增加穴居恶魔、石像鬼、冰霜巨龙和破坏者的攻击力。\"",
+    "Hotkey": "A,A,A"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

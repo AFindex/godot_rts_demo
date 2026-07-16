@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rehs",
+  "displayName": "硬化皮肤",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHardenedSkin.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHardenedSkin.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhardenedskin.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "硬化皮肤",
+        "tooltip": "研究硬化皮肤(|cffffcc00H|r)",
+        "extendedTooltip": "让山岭巨人增加对攻击伤害的抵抗力。",
+        "hotkey": "H",
+        "gold": 100,
+        "lumber": 175,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHardenedSkin.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHardenedSkin.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhardenedskin.png"
+        },
+        "requirements": [
+          "etoe",
+          "eden"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rehs",
+    "comments": "nightelf hardened skin",
+    "class": "_",
+    "race": "nightelf",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "175",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHardenedSkin.blp",
+    "Buttonpos": "2,1",
+    "Requires": "etoe,eden",
+    "Name": "硬化皮肤",
+    "Tip": "研究硬化皮肤(|cffffcc00H|r)",
+    "Ubertip": "\"让山岭巨人增加对攻击伤害的抵抗力。\"",
+    "Hotkey": "H"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

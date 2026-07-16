@@ -1,0 +1,162 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rosp",
+  "displayName": "尖刺障碍",
+  "identity": {
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpikedBarricades.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpikedBarricades.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnspikedbarricades.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedSpikedBarricades.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedSpikedBarricades.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedspikedbarricades.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedSpikedBarricades.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedSpikedBarricades.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedspikedbarricades.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "尖刺障碍",
+        "tooltip": "升级到尖刺障碍(|cffffcc00S|r)",
+        "extendedTooltip": "使得兽族的建筑物周围都布满了具有攻击力的尖刺，如果敌人每进行一次近战攻击就会受到<Rosp,base1>点伤害。",
+        "hotkey": "S",
+        "gold": 25,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpikedBarricades.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpikedBarricades.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnspikedbarricades.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级尖刺障碍",
+        "tooltip": "升级到中级尖刺障碍(|cffffcc00S|r)",
+        "extendedTooltip": "使得兽族的建筑物周围都布满了具有攻击力的尖刺，如果敌人每进行一次近战攻击就会受到<Rosp,mod1>点伤害。",
+        "hotkey": "S",
+        "gold": 50,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedSpikedBarricades.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedSpikedBarricades.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedspikedbarricades.png"
+        },
+        "requirements": [
+          "ostr"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级尖刺障碍",
+        "tooltip": "升级到高级尖刺障碍(|cffffcc00S|r)",
+        "extendedTooltip": "使得兽族的建筑物周围都布满了具有攻击力的尖刺，如果敌人每进行一次近战攻击就会受到<Rosp,mod1>点伤害。",
+        "hotkey": "S",
+        "gold": 75,
+        "lumber": 275,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedSpikedBarricades.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedSpikedBarricades.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedspikedbarricades.png"
+        },
+        "requirements": [
+          "ofrt"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rspi",
+        "base": 4,
+        "modifier": 6
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rosp",
+    "comments": "orc spiked barricade",
+    "class": "_",
+    "race": "orc",
+    "flag": "2048",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "25",
+    "goldmod": "25",
+    "lumberbase": "75",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rspi",
+    "base1": "4",
+    "mod1": "6",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSpikedBarricades.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedSpikedBarricades.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedSpikedBarricades.blp",
+    "Buttonpos": "2,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "ostr",
+    "Requires2": "ofrt",
+    "Name": "尖刺障碍,中级尖刺障碍,高级尖刺障碍",
+    "Tip": "升级到尖刺障碍(|cffffcc00S|r),升级到中级尖刺障碍(|cffffcc00S|r),升级到高级尖刺障碍(|cffffcc00S|r)",
+    "Ubertip": "\"使得兽族的建筑物周围都布满了具有攻击力的尖刺，如果敌人每进行一次近战攻击就会受到<Rosp,base1>点伤害。\",\"使得兽族的建筑物周围都布满了具有攻击力的尖刺，如果敌人每进行一次近战攻击就会受到<Rosp,mod1>点伤害。\",\"使得兽族的建筑物周围都布满了具有攻击力的尖刺，如果敌人每进行一次近战攻击就会受到<Rosp,mod1>点伤害。\"",
+    "Hotkey": "S,S,S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

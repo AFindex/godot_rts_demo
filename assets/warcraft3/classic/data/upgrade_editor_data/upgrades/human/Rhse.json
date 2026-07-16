@@ -1,0 +1,101 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhse",
+  "displayName": "魔法岗哨",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicalSentry.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicalSentry.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmagicalsentry.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "魔法岗哨",
+        "tooltip": "研究魔法岗哨(|cffffcc00M|r)",
+        "extendedTooltip": "让人族的各类塔能探测到隐形单位。",
+        "hotkey": "M",
+        "gold": 50,
+        "lumber": 50,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicalSentry.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicalSentry.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnmagicalsentry.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rhse",
+    "comments": "human magical sentinal",
+    "class": "_",
+    "race": "human",
+    "flag": "8192",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "0",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "0",
+    "timebase": "30",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNMagicalSentry.blp",
+    "Buttonpos": "2,2",
+    "Name": "魔法岗哨",
+    "Tip": "研究魔法岗哨(|cffffcc00M|r)",
+    "Ubertip": "\"让人族的各类塔能探测到隐形单位。\"",
+    "Hotkey": "M"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

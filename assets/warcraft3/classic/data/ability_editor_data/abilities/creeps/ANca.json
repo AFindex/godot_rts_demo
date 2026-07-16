@@ -1,0 +1,205 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANca",
+  "displayName": "分裂攻击",
+  "identity": {
+    "baseCode": "ANca",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNCleavingAttack.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNCleavingAttack.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncleavingattack.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "分裂攻击",
+        "tooltip": "分裂攻击 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "深渊魔王使用如下方式攻击，<ANca,DataA1,%>%的伤害施加在第一位的攻击对象上。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 0,
+        "area": 200,
+        "data": {
+          "A": "0.3"
+        },
+        "buffIds": [],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "分裂攻击",
+        "tooltip": "分裂攻击 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "深渊魔王使用如下方式攻击，<ANca,DataA2,%>%的伤害施加在第一位的攻击对象上。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 0,
+        "area": 200,
+        "data": {
+          "A": "0.55"
+        },
+        "buffIds": [],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "分裂攻击",
+        "tooltip": "分裂攻击 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "深渊魔王使用如下方式攻击，<ANca,DataA3,%>%的伤害施加在第一位的攻击对象上。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 0,
+        "area": 200,
+        "data": {
+          "A": "0.8"
+        },
+        "buffIds": [],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANca",
+    "code": "ANca",
+    "comments": "Pit Lord - Cleaving Attack",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "ground,enemy,neutral",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "0",
+    "Cost1": "0",
+    "Area1": "200",
+    "Rng1": "-",
+    "DataA1": "0.3",
+    "DataB1": "-",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "0",
+    "Dur2": "0",
+    "HeroDur2": "0",
+    "Cool2": "0",
+    "Cost2": "0",
+    "Area2": "200",
+    "Rng2": "-",
+    "DataA2": "0.55",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "0",
+    "Dur3": "0",
+    "HeroDur3": "0",
+    "Cool3": "0",
+    "Cost3": "0",
+    "Area3": "200",
+    "Rng3": "-",
+    "DataA3": "0.8",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "0",
+    "Dur4": "0",
+    "HeroDur4": "0",
+    "Cool4": "0",
+    "Cost4": "0",
+    "Area4": "200",
+    "Rng4": "-",
+    "DataA4": "0.8",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "ground,enemy,neutral",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "targs2": "ground,enemy,neutral",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "targs3": "ground,enemy,neutral",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "targs4": "ground,enemy,neutral",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\PassiveButtons\\PASBTNCleavingAttack.blp",
+    "Buttonpos": "2,2",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNCleavingAttack.blp",
+    "Researchbuttonpos": "2,0",
+    "Specialart": "Abilities\\Spells\\Other\\Cleave\\CleaveDamageTarget.mdl",
+    "Specialattach": "chest",
+    "Name": "分裂攻击",
+    "Tip": "分裂攻击 - [|cffffcc00等级 1|r],分裂攻击 - [|cffffcc00等级 2|r],分裂攻击 - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"深渊魔王使用如下方式攻击，<ANca,DataA1,%>%的伤害施加在第一位的攻击对象上。\",\"深渊魔王使用如下方式攻击，<ANca,DataA2,%>%的伤害施加在第一位的攻击对象上。\",\"深渊魔王使用如下方式攻击，<ANca,DataA3,%>%的伤害施加在第一位的攻击对象上。\"",
+    "Researchtip": "\"学习分裂攻击(|cffffcc00C|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"深渊魔王同时对多个敌人单位造成伤害。|n|n|cffffcc00等级 1|r - <ANca,DataA1,%>%溅射伤害。|n|cffffcc00等级 2|r - <ANca,DataA2,%>%溅射伤害。|n|cffffcc00等级 3|r - <ANca,DataA3,%>%溅射伤害。\"",
+    "Researchhotkey": "C"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

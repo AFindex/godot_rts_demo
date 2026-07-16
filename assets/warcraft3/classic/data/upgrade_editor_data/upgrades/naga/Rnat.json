@@ -1,0 +1,150 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rnat",
+  "displayName": "珊瑚剑",
+  "identity": {
+    "class": "melee",
+    "race": "naga",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp1.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp1.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaweaponup1.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp2.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp2.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaweaponup2.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp3.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp3.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaweaponup3.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "珊瑚剑",
+        "tooltip": "升级到珊瑚剑(|cffffcc00B|r)",
+        "extendedTooltip": "增加娜迦族攻击单位的攻击力。",
+        "hotkey": "B",
+        "gold": 150,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp1.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp1.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaweaponup1.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "壳质剑",
+        "tooltip": "升级到壳质剑(|cffffcc00B|r)",
+        "extendedTooltip": "进一步增加娜迦族攻击单位的攻击。",
+        "hotkey": "B",
+        "gold": 225,
+        "lumber": 225,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp2.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp2.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaweaponup2.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 3,
+        "name": "尖刺剑",
+        "tooltip": "升级到尖刺剑(|cffffcc00B|r)",
+        "extendedTooltip": "增加娜迦族攻击单位的攻击。",
+        "hotkey": "B",
+        "gold": 300,
+        "lumber": 375,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp3.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp3.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaweaponup3.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rnat",
+    "comments": "naga attack",
+    "class": "melee",
+    "race": "naga",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "150",
+    "goldmod": "75",
+    "lumberbase": "75",
+    "lumbermod": "150",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp1.blp,ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp2.blp,ReplaceableTextures\\CommandButtons\\BTNNagaWeaponUp3.blp",
+    "Buttonpos": "0,2",
+    "Name": "珊瑚剑,壳质剑,尖刺剑",
+    "Tip": "升级到珊瑚剑(|cffffcc00B|r),升级到壳质剑(|cffffcc00B|r),升级到尖刺剑(|cffffcc00B|r)",
+    "Ubertip": "\"增加娜迦族攻击单位的攻击力。\",\"进一步增加娜迦族攻击单位的攻击。\",\"增加娜迦族攻击单位的攻击。\"",
+    "Hotkey": "B,B,B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/CampaignUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

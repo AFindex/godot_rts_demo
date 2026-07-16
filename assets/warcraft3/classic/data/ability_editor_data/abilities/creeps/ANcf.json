@@ -1,0 +1,260 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANcf",
+  "displayName": "火焰呼吸",
+  "identity": {
+    "baseCode": "ANbf",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 4,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbreathoffire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "火焰呼吸",
+        "tooltip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA1>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur1>秒内持续受到每秒<ANcf,DataE1>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "structure"
+        ],
+        "castTime": 0,
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 10,
+        "manaCost": 75,
+        "area": 150,
+        "range": 500,
+        "data": {
+          "A": "50",
+          "B": "99999",
+          "C": "500",
+          "D": "250",
+          "E": "7"
+        },
+        "buffIds": [
+          "BNbf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "火焰呼吸",
+        "tooltip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA2>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur2>秒内持续受到每秒<ANcf,DataE2>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "structure"
+        ],
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 10,
+        "manaCost": 75,
+        "area": 150,
+        "range": 700,
+        "data": {
+          "A": "100",
+          "B": "99999",
+          "C": "800",
+          "D": "150",
+          "E": "14"
+        },
+        "buffIds": [
+          "BNbf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "火焰呼吸",
+        "tooltip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA3>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur3>秒内持续受到每秒<ANcf,DataE3>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "structure"
+        ],
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 10,
+        "manaCost": 75,
+        "area": 150,
+        "range": 700,
+        "data": {
+          "A": "150",
+          "B": "99999",
+          "C": "800",
+          "D": "150",
+          "E": "21"
+        },
+        "buffIds": [
+          "BNbf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 4,
+        "name": "火焰呼吸",
+        "tooltip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 4|r]",
+        "extendedTooltip": "对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA4>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur4>秒内持续受到每秒<ANcf,DataE4>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "structure"
+        ],
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 10,
+        "manaCost": 75,
+        "area": 150,
+        "range": 700,
+        "data": {
+          "A": "225",
+          "B": "99999",
+          "C": "800",
+          "D": "150",
+          "E": "30"
+        },
+        "buffIds": [
+          "BNbf"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANcf",
+    "code": "ANbf",
+    "comments": "Chen - Breath of Fire",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "4",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "ground,air,structure",
+    "Cast1": "0",
+    "Dur1": "5",
+    "HeroDur1": "5",
+    "Cool1": "10",
+    "Cost1": "75",
+    "Area1": "150",
+    "Rng1": "500",
+    "DataA1": "50",
+    "DataB1": "99999",
+    "DataC1": "500",
+    "DataD1": "250",
+    "DataE1": "7",
+    "Cast2": "-",
+    "Dur2": "5",
+    "HeroDur2": "5",
+    "Cool2": "10",
+    "Cost2": "75",
+    "Area2": "150",
+    "Rng2": "700",
+    "DataA2": "100",
+    "DataB2": "99999",
+    "DataC2": "800",
+    "DataD2": "150",
+    "DataE2": "14",
+    "Cast3": "-",
+    "Dur3": "5",
+    "HeroDur3": "5",
+    "Cool3": "10",
+    "Cost3": "75",
+    "Area3": "150",
+    "Rng3": "700",
+    "DataA3": "150",
+    "DataB3": "99999",
+    "DataC3": "800",
+    "DataD3": "150",
+    "DataE3": "21",
+    "Cast4": "-",
+    "Dur4": "5",
+    "HeroDur4": "5",
+    "Cool4": "10",
+    "Cost4": "75",
+    "Area4": "150",
+    "Rng4": "700",
+    "DataA4": "225",
+    "DataB4": "99999",
+    "DataC4": "800",
+    "DataD4": "150",
+    "DataE4": "30",
+    "InBeta": "0",
+    "targs1": "ground,air,structure",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNbf",
+    "targs2": "ground,air,structure",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNbf",
+    "targs3": "ground,air,structure",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNbf",
+    "targs4": "ground,air,structure",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNbf"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Missileart": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireMissile.mdl",
+    "Missilespeed": "1050",
+    "Order": "breathoffire",
+    "Name": "火焰呼吸",
+    "Tip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 1|r],火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 2|r],火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 3|r],火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 4|r]",
+    "Ubertip": "\"对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA1>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur1>秒内持续受到每秒<ANcf,DataE1>点的伤害。\",\"对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA2>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur2>秒内持续受到每秒<ANcf,DataE2>点的伤害。\",\"对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA3>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur3>秒内持续受到每秒<ANcf,DataE3>点的伤害。\",\"对敌人呼出带有攻击力的火焰。最初造成<ANcf,DataA4>点的伤害。那些身上带有醉酒云雾的单位会自动引燃并在<ANcf,Dur4>秒内持续受到每秒<ANcf,DataE4>点的伤害。\"",
+    "Hotkey": "F",
+    "Researchtip": "\"学习火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"对敌人吐出一道火焰，在一开始对其就造成伤害之后，如果对方身上有醉酒云雾的话那还能在一定时间内持续地对其造成伤害。|n持续<ANcf,Dur1>秒。|n|n|cffffcc00等级 1|r - 最初造成<ANcf,DataA1>点的伤害随后造成每秒<ANcf,DataE1>点的伤害。|n|cffffcc00等级 2|r - 最初造成<ANcf,DataA2>点的伤害随后造成每秒<ANcf,DataE2>点的伤害。|n|cffffcc00等级 3|r - 最初造成<ANcf,DataA3>点的伤害随后造成每秒<ANcf,DataE3>点的伤害。|n|cffffcc00等级 4|r - 最初造成<ANcf,DataA4>点的伤害随后造成每秒<ANcf,DataE4>点的伤害。\"",
+    "Researchhotkey": "F",
+    "EditorSuffix": "(陈)",
+    "Animnames": "spell,slam"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

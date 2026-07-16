@@ -1,0 +1,161 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rucr",
+  "displayName": "生物甲壳",
+  "identity": {
+    "class": "armor",
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureCarapace.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureCarapace.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncreaturecarapace.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureCarapace.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureCarapace.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedcreaturecarapace.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureCarapace.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureCarapace.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedcreaturecarapace.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "生物甲壳",
+        "tooltip": "升级到生物甲壳(|cffffcc00C|r)",
+        "extendedTooltip": "增加地穴恶魔、石像鬼、 冰霜巨龙和破坏者的护甲。",
+        "hotkey": "C",
+        "gold": 150,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureCarapace.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCreatureCarapace.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btncreaturecarapace.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级生物甲壳",
+        "tooltip": "升级到中级生物甲壳(|cffffcc00C|r)",
+        "extendedTooltip": "进一步增加地穴恶魔、石像鬼、冰霜巨龙和破坏者的护甲。",
+        "hotkey": "C",
+        "gold": 200,
+        "lumber": 200,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureCarapace.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureCarapace.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedcreaturecarapace.png"
+        },
+        "requirements": [
+          "unp1"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级生物甲壳",
+        "tooltip": "升级到生物甲壳(|cffffcc00C|r)",
+        "extendedTooltip": "进一步增加地穴恶魔、石像鬼、冰霜巨龙和破坏者的护甲。",
+        "hotkey": "C",
+        "gold": 250,
+        "lumber": 325,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureCarapace.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureCarapace.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedcreaturecarapace.png"
+        },
+        "requirements": [
+          "unp2"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rucr",
+    "comments": "undead creature armor",
+    "class": "armor",
+    "race": "undead",
+    "flag": "2048",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "150",
+    "goldmod": "50",
+    "lumberbase": "75",
+    "lumbermod": "125",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNCreatureCarapace.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedCreatureCarapace.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedCreatureCarapace.blp",
+    "Buttonpos": "1,1",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "unp1",
+    "Requires2": "unp2",
+    "Name": "生物甲壳,中级生物甲壳,高级生物甲壳",
+    "Tip": "升级到生物甲壳(|cffffcc00C|r),升级到中级生物甲壳(|cffffcc00C|r),升级到生物甲壳(|cffffcc00C|r)",
+    "Ubertip": "\"增加地穴恶魔、石像鬼、 冰霜巨龙和破坏者的护甲。 \",\"进一步增加地穴恶魔、石像鬼、冰霜巨龙和破坏者的护甲。 \",\"进一步增加地穴恶魔、石像鬼、冰霜巨龙和破坏者的护甲。\"",
+    "Hotkey": "C,C,C"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

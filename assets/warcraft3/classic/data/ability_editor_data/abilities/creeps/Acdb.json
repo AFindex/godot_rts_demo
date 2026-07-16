@@ -1,0 +1,203 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "Acdb",
+  "displayName": "醉拳",
+  "identity": {
+    "baseCode": "ANdb",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 4,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNDrunkenDodge.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNDrunkenDodge.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtndrunkendodge.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "醉拳",
+        "tooltip": "醉拳 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "给予<Acdb,DataD1,%>%的概率来躲避攻击和<Acdb,DataA1>%的概率来施放出<Acdb,DataB1>倍于常规攻击的伤害。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 0,
+        "data": {
+          "A": "10",
+          "B": "2",
+          "C": "0",
+          "D": "0.07"
+        },
+        "buffIds": [],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "醉拳",
+        "tooltip": "醉拳 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "给予<Acdb,DataD2,%>%的概率来躲避攻击和<Acdb,DataA2>%的概率来施放出<Acdb,DataB2>倍于常规攻击的伤害。",
+        "targets": [],
+        "data": {
+          "A": "10",
+          "B": "3",
+          "C": "0",
+          "D": "0.14"
+        },
+        "buffIds": [],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "醉拳",
+        "tooltip": "醉拳 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "给予<Acdb,DataD3,%>%的概率来躲避攻击和<Acdb,DataA3>%的概率来施放出<Acdb,DataB3>倍于常规攻击的伤害。",
+        "targets": [],
+        "data": {
+          "A": "10",
+          "B": "4",
+          "C": "0",
+          "D": "0.21"
+        },
+        "buffIds": [],
+        "effectIds": []
+      },
+      {
+        "level": 4,
+        "name": "醉拳",
+        "tooltip": "醉拳 - [|cffffcc00等级 4|r]",
+        "extendedTooltip": "给予<Acdb,DataD4,%>%的概率来躲避攻击和<Acdb,DataA4>%的概率来施放出<Acdb,DataB4>倍于常规攻击的伤害。",
+        "targets": [],
+        "data": {
+          "A": "10",
+          "B": "6",
+          "C": "0",
+          "D": "0.3"
+        },
+        "buffIds": [],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "Acdb",
+    "code": "ANdb",
+    "comments": "Chen- Drunken Brawler",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "4",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "0",
+    "Cost1": "0",
+    "Area1": "-",
+    "Rng1": "-",
+    "DataA1": "10",
+    "DataB1": "2",
+    "DataC1": "0",
+    "DataD1": "0.07",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "10",
+    "DataB2": "3",
+    "DataC2": "0",
+    "DataD2": "0.14",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "10",
+    "DataB3": "4",
+    "DataC3": "0",
+    "DataD3": "0.21",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "10",
+    "DataB4": "6",
+    "DataC4": "0",
+    "DataD4": "0.3",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\PassiveButtons\\PASBTNDrunkenDodge.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNDrunkenDodge.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Name": "醉拳",
+    "Tip": "醉拳 - [|cffffcc00等级 1|r],醉拳 - [|cffffcc00等级 2|r],醉拳 - [|cffffcc00等级 3|r],醉拳 - [|cffffcc00等级 4|r]",
+    "Ubertip": "\"给予<Acdb,DataD1,%>%的概率来躲避攻击和<Acdb,DataA1>%的概率来施放出<Acdb,DataB1>倍于常规攻击的伤害。\",\"给予<Acdb,DataD2,%>%的概率来躲避攻击和<Acdb,DataA2>%的概率来施放出<Acdb,DataB2>倍于常规攻击的伤害。\",\"给予<Acdb,DataD3,%>%的概率来躲避攻击和<Acdb,DataA3>%的概率来施放出<Acdb,DataB3>倍于常规攻击的伤害。\",\"给予<Acdb,DataD4,%>%的概率来躲避攻击和<Acdb,DataA4>%的概率来施放出<Acdb,DataB4>倍于常规攻击的伤害。\"",
+    "Researchtip": "\"学习醉拳(|cffffcc00B|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"给予一定的概率来躲避攻击和<Acdb,DataA1>%的概率来对敌人造成额外的伤害。|n|n|cffffcc00等级 1|r -<Acdb,DataD1,%>%的概率来躲避攻击，<Acdb,DataB1>倍于常规攻击的额外伤害。|n|cffffcc00等级 2|r -<Acdb,DataD2,%>%的概率来躲避攻击，<Acdb,DataB2>倍于常规攻击的额外伤害。|n|cffffcc00等级 3|r -<Acdb,DataD3,%>%的概率来躲避攻击，<Acdb,DataB3>倍于常规攻击的额外伤害。|n|cffffcc00等级 4|r -<Acdb,DataD4,%>%的概率来躲避攻击，<Acdb,DataB4>倍于常规攻击的额外伤害。\"",
+    "Researchhotkey": "B",
+    "EditorSuffix": "(陈)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

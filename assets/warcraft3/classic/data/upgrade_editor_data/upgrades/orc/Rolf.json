@@ -1,0 +1,101 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rolf",
+  "displayName": "液体炸弹",
+  "identity": {
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLiquidFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLiquidFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnliquidfire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "液体炸弹",
+        "tooltip": "研究液体炸弹(|cffffcc00L|r)",
+        "extendedTooltip": "让巨魔蝙蝠骑士具有液体炸弹技能，从而可以对敌人的建筑物造成持续性的伤害，被液体炸弹攻击到的各类防御塔都会被减慢攻击速度。",
+        "hotkey": "L",
+        "gold": 75,
+        "lumber": 125,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLiquidFire.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLiquidFire.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnliquidfire.png"
+        },
+        "requirements": [
+          "ofrt",
+          "ovln"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rolf",
+    "comments": "orc liquid fire",
+    "class": "_",
+    "race": "orc",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "125",
+    "lumbermod": "0",
+    "timebase": "75",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNLiquidFire.blp",
+    "Buttonpos": "2,1",
+    "Requires": "ofrt,ovln",
+    "Name": "液体炸弹",
+    "Tip": "研究液体炸弹(|cffffcc00L|r)",
+    "Ubertip": "\"让巨魔蝙蝠骑士具有液体炸弹技能，从而可以对敌人的建筑物造成持续性的伤害，被液体炸弹攻击到的各类防御塔都会被减慢攻击速度。\"",
+    "Hotkey": "L"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

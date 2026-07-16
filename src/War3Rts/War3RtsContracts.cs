@@ -26,6 +26,23 @@ public readonly record struct War3CommandSnapshot(
     string Hotkey,
     bool Enabled = true);
 
+public enum War3QueueItemKind : byte
+{
+    Production,
+    Research
+}
+
+public readonly record struct War3QueueItemSnapshot(
+    War3QueueItemKind Kind,
+    int OrderId,
+    int DataId,
+    string Label,
+    string IconPath,
+    float Progress,
+    string StateLabel,
+    string Tooltip,
+    bool CanCancel = true);
+
 public sealed record War3SelectionSnapshot(
     string Title,
     string Subtitle,
@@ -45,6 +62,8 @@ public sealed record War3SelectionSnapshot(
     string ArmorClass,
     bool PortraitIsBuilding)
 {
+    public War3QueueItemSnapshot[] QueueItems { get; init; } = [];
+
     public static War3SelectionSnapshot Empty { get; } = new(
         "未选择单位", "左键选择，拖动框选", 0f, 0f,
         string.Empty, false, string.Empty, 0, 0f, string.Empty,

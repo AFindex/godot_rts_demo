@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Resi",
+  "displayName": "驱逐魔法",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndryaddispelmagic.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "驱逐魔法",
+        "tooltip": "研究驱散魔法(|cffffcc00S|r)",
+        "extendedTooltip": "使得树妖能去除掉敌人身上的有利魔法效果和友军单位身上的不利魔法效果。|n能伤害召唤出来的单位。",
+        "hotkey": "S",
+        "gold": 50,
+        "lumber": 50,
+        "researchSeconds": 45,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndryaddispelmagic.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Resi",
+    "comments": "nightelf abolish magic",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "4096",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "0",
+    "timebase": "45",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+    "Buttonpos": "0,2",
+    "Name": "驱逐魔法",
+    "Tip": "研究驱散魔法(|cffffcc00S|r)",
+    "Ubertip": "\"使得树妖能去除掉敌人身上的有利魔法效果和友军单位身上的不利魔法效果。|n能伤害召唤出来的单位。\"",
+    "Hotkey": "S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

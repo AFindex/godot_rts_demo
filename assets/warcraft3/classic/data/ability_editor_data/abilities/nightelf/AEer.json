@@ -1,0 +1,240 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AEer",
+  "displayName": "纠缠根须",
+  "identity": {
+    "baseCode": "AEer",
+    "race": "nightelf",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEntanglingRoots.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEntanglingRoots.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnentanglingroots.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "纠缠根须",
+        "tooltip": "纠缠根须(|cffffcc00E|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "从地下伸出缠绕的根须将目标在<AEer,Dur1>秒内固定住，并对其造成每秒<AEer,DataA1>点的伤害。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 9,
+        "heroDuration": 3,
+        "cooldown": 8,
+        "manaCost": 75,
+        "range": 800,
+        "data": {
+          "A": "15"
+        },
+        "buffIds": [
+          "BEer"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "纠缠根须",
+        "tooltip": "纠缠根须(|cffffcc00E|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "从地下伸出缠绕的根须将目标在<AEer,Dur2>秒内固定住，并对其造成每秒<AEer,DataA2>点的伤害。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "duration": 24,
+        "heroDuration": 4,
+        "cooldown": 8,
+        "manaCost": 75,
+        "range": 800,
+        "data": {
+          "A": "15"
+        },
+        "buffIds": [
+          "BEer"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "纠缠根须",
+        "tooltip": "纠缠根须(|cffffcc00E|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "从地下伸出缠绕的根须将目标在<AEer,Dur3>秒内固定住，并对其造成每秒<AEer,DataA3>点的伤害。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "duration": 36,
+        "heroDuration": 5,
+        "cooldown": 8,
+        "manaCost": 75,
+        "range": 800,
+        "data": {
+          "A": "25"
+        },
+        "buffIds": [
+          "BEer"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AEer",
+    "code": "AEer",
+    "uberAlias": "AEer",
+    "comments": "Keeper - Entangling Roots",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "targs": "ground,enemy,neutral,organic",
+    "Cast1": "0",
+    "Dur1": "9",
+    "HeroDur1": "3",
+    "Cool1": "8",
+    "Cost1": "75",
+    "Area1": "-",
+    "Rng1": "800",
+    "Data11": "15",
+    "Data12": "-",
+    "Data13": "-",
+    "Data14": "-",
+    "Cast2": "-",
+    "Dur2": "24",
+    "HeroDur2": "4",
+    "Cool2": "8",
+    "Cost2": "75",
+    "Area2": "-",
+    "Rng2": "800",
+    "Data21": "15",
+    "Data22": "-",
+    "Data23": "-",
+    "Data24": "-",
+    "Cast3": "-",
+    "Dur3": "36",
+    "HeroDur3": "5",
+    "Cool3": "8",
+    "Cost3": "75",
+    "Area3": "-",
+    "Rng3": "800",
+    "Data31": "15",
+    "Data32": "-",
+    "Data33": "-",
+    "Data34": "-",
+    "CastCheck": "-",
+    "DurCheck": "-",
+    "HeroDurCheck": "-",
+    "CoolCheck": "-",
+    "CostCheck": "-",
+    "AreaCheck": "-",
+    "RngCheck": "-",
+    "version": "0",
+    "race": "nightelf",
+    "levelSkip": "0",
+    "priority": "0",
+    "DataA1": "15",
+    "DataB1": "-",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "DataA2": "15",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "DataA3": "25",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "36",
+    "HeroDur4": "7",
+    "Cool4": "8",
+    "Cost4": "75",
+    "Area4": "-",
+    "Rng4": "800",
+    "DataA4": "25",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "ground,enemy,neutral,organic",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BEer",
+    "targs2": "ground,enemy,neutral,organic",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BEer",
+    "targs3": "ground,enemy,neutral,organic",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BEer",
+    "targs4": "ground,enemy,neutral,organic",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BEer"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNEntanglingRoots.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNEntanglingRoots.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Casterart": "",
+    "Order": "entanglingroots",
+    "Name": "纠缠根须",
+    "Tip": "纠缠根须(|cffffcc00E|r) - [|cffffcc00等级 1|r],纠缠根须(|cffffcc00E|r) - [|cffffcc00等级 2|r],纠缠根须(|cffffcc00E|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"从地下伸出缠绕的根须将目标在<AEer,Dur1>秒内固定住，并对其造成每秒<AEer,DataA1>点的伤害。\",\"从地下伸出缠绕的根须将目标在<AEer,Dur2>秒内固定住，并对其造成每秒<AEer,DataA2>点的伤害。\",\"从地下伸出缠绕的根须将目标在<AEer,Dur3>秒内固定住，并对其造成每秒<AEer,DataA3>点的伤害。\"",
+    "Hotkey": "E",
+    "Researchtip": "\"学习纠缠根须(|cffffcc00E|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"从地下伸出缠绕的根须将目标暂时固定，并造成持续伤害。|n|n|cffffcc00等级 1|r - <AEer,DataA1>伤害/秒，持续<AEer,Dur1>秒。|n|cffffcc00等级 2|r - <AEer,DataA2>伤害/秒，持续<AEer,Dur2>秒。|n|cffffcc00等级 3|r - <AEer,DataA3>伤害/秒，持续<AEer,Dur3>秒。\"",
+    "Researchhotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/AbilityData.slk",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

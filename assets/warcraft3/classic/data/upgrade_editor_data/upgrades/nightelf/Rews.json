@@ -1,0 +1,110 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rews",
+  "displayName": "月井之春",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWellSpring.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWellSpring.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwellspring.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "月井之春",
+        "tooltip": "研究月井之春(|cffffcc00E|r)",
+        "extendedTooltip": "月亮井所能存储的魔法值增加<Rews,base1>点，魔法值恢复速度加快<Rews,base2,%>%。",
+        "hotkey": "E",
+        "gold": 75,
+        "lumber": 150,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWellSpring.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWellSpring.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnwellspring.png"
+        },
+        "requirements": [
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rmnx",
+        "base": 125
+      },
+      {
+        "slot": 2,
+        "type": "rmnr",
+        "base": 0.52
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rews",
+    "comments": "nightelf well spring",
+    "class": "_",
+    "race": "nightelf",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "150",
+    "lumbermod": "0",
+    "timebase": "30",
+    "timemod": "0",
+    "effect1": "rmnx",
+    "base1": "125",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "rmnr",
+    "base2": "0.52",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWellSpring.blp",
+    "Buttonpos": "3,0",
+    "Requires": "etoe",
+    "Name": "月井之春",
+    "Tip": "研究月井之春(|cffffcc00E|r)",
+    "Ubertip": "\"月亮井所能存储的魔法值增加<Rews,base1>点，魔法值恢复速度加快<Rews,base2,%>%。\"",
+    "Hotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

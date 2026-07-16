@@ -1,0 +1,167 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhac",
+  "displayName": "加强型石工技术",
+  "identity": {
+    "class": "armor",
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneArchitecture.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneArchitecture.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstonearchitecture.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArchitecture.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArchitecture.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnarcanitearchitecture.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImbuedMasonry.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImbuedMasonry.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimbuedmasonry.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "加强型石工技术",
+        "tooltip": "升级到加强型石工技术(|cffffcc00M|r)",
+        "extendedTooltip": "增加人族建筑物的生命值和护甲。",
+        "hotkey": "M",
+        "gold": 100,
+        "lumber": 25,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneArchitecture.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneArchitecture.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnstonearchitecture.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "高级石工技术",
+        "tooltip": "升级到高级石工技术(|cffffcc00M|r)",
+        "extendedTooltip": "进一步增加人族建筑物的生命值和护甲。",
+        "hotkey": "M",
+        "gold": 125,
+        "lumber": 50,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArchitecture.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArchitecture.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnarcanitearchitecture.png"
+        },
+        "requirements": [
+          "hkee"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "终极石工技术",
+        "tooltip": "升级到终极石工技术(|cffffcc00M|r)",
+        "extendedTooltip": "进一步增加人族建筑物的生命值和护甲。",
+        "hotkey": "M",
+        "gold": 150,
+        "lumber": 75,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImbuedMasonry.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImbuedMasonry.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimbuedmasonry.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      },
+      {
+        "slot": 2,
+        "type": "rhpo",
+        "base": 0.1,
+        "modifier": 0.1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhac",
+    "comments": "human architecture",
+    "class": "armor",
+    "race": "human",
+    "flag": "32",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "25",
+    "lumberbase": "25",
+    "lumbermod": "25",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "rhpo",
+    "base2": "0.1",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "0.1",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStoneArchitecture.blp,ReplaceableTextures\\CommandButtons\\BTNArcaniteArchitecture.blp,ReplaceableTextures\\CommandButtons\\BTNImbuedMasonry.blp",
+    "Buttonpos": "1,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "hkee",
+    "Requires2": "hcas",
+    "Name": "加强型石工技术,高级石工技术,终极石工技术",
+    "Tip": "升级到加强型石工技术(|cffffcc00M|r),升级到高级石工技术(|cffffcc00M|r),升级到终极石工技术(|cffffcc00M|r)",
+    "Ubertip": "\"增加人族建筑物的生命值和护甲。\",\"进一步增加人族建筑物的生命值和护甲。\",\"进一步增加人族建筑物的生命值和护甲。\"",
+    "Hotkey": "M,M,M"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

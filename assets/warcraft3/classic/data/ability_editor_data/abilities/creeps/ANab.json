@@ -1,0 +1,240 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANab",
+  "displayName": "酸性炸弹",
+  "identity": {
+    "baseCode": "ANab",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAcidBomb.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAcidBomb.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnacidbomb.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "酸性炸弹",
+        "tooltip": "(|cffffcc00B|r)酸性炸弹 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "投掷出一瓶酸性液体，然后对其周围的单位同时也造成伤害。|n|n减少<ANab,DataC1>点护甲; 具有每秒 <ANab,DataD1> 点的攻击力; 对周围的单位造成一定程度的伤害。|n持续<ANab,Dur1> 秒。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic",
+          "air"
+        ],
+        "castTime": 0,
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 12,
+        "manaCost": 75,
+        "area": 200,
+        "range": 700,
+        "data": {
+          "A": "0",
+          "B": "0",
+          "C": "3",
+          "D": "5",
+          "E": "3",
+          "F": "1"
+        },
+        "buffIds": [
+          "BNab"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "酸性炸弹",
+        "tooltip": "(|cffffcc00B|r)酸性炸弹 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "投掷出一瓶酸性液体，然后对其周围的单位同时也造成伤害。<ANab,DataC2点护甲; 具有每秒<ANab,DataD2>点的攻击力; 对周围的单位造成一定程度的伤害。|n持续<ANab,Dur2> 秒。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic",
+          "air"
+        ],
+        "castTime": 0,
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 12,
+        "manaCost": 75,
+        "area": 200,
+        "range": 700,
+        "data": {
+          "A": "0",
+          "B": "0",
+          "C": "4",
+          "D": "10",
+          "E": "6.5",
+          "F": "1"
+        },
+        "buffIds": [
+          "BNab"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "酸性炸弹",
+        "tooltip": "(|cffffcc00B|r)酸性炸弹 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "投掷出一瓶酸性液体，然后对其周围的单位同时也造成伤害。|n|n减少<ANab,DataC3>点护甲; 具有每秒<ANab,DataD3>点的攻击力; 对周围的单位造成一定程度的伤害。|n持续<ANab,Dur3> 秒。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic",
+          "air"
+        ],
+        "castTime": 0,
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 12,
+        "manaCost": 75,
+        "area": 200,
+        "range": 700,
+        "data": {
+          "A": "0",
+          "B": "0",
+          "C": "5",
+          "D": "15",
+          "E": "10",
+          "F": "1"
+        },
+        "buffIds": [
+          "BNab"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANab",
+    "code": "ANab",
+    "comments": "Alchemist - Acid Bomb",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "ground,enemy,neutral,organic,air",
+    "Cast1": "0",
+    "Dur1": "15",
+    "HeroDur1": "15",
+    "Cool1": "12",
+    "Cost1": "75",
+    "Area1": "200",
+    "Rng1": "700",
+    "DataA1": "0",
+    "DataB1": "0",
+    "DataC1": "3",
+    "DataD1": "5",
+    "DataE1": "3",
+    "DataF1": "1",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNab",
+    "targs2": "ground,enemy,neutral,organic,air",
+    "Cast2": "0",
+    "Dur2": "15",
+    "HeroDur2": "15",
+    "Cool2": "12",
+    "Cost2": "75",
+    "Area2": "200",
+    "Rng2": "700",
+    "DataA2": "0",
+    "DataB2": "0",
+    "DataC2": "4",
+    "DataD2": "10",
+    "DataE2": "6.5",
+    "DataF2": "1",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNab",
+    "targs3": "ground,enemy,neutral,organic,air",
+    "Cast3": "0",
+    "Dur3": "15",
+    "HeroDur3": "15",
+    "Cool3": "12",
+    "Cost3": "75",
+    "Area3": "200",
+    "Rng3": "700",
+    "DataA3": "0",
+    "DataB3": "0",
+    "DataC3": "5",
+    "DataD3": "15",
+    "DataE3": "10",
+    "DataF3": "1",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNab",
+    "targs4": "ground,enemy,neutral,organic,air",
+    "Cast4": "0",
+    "Dur4": "15",
+    "HeroDur4": "15",
+    "Cool4": "12",
+    "Cost4": "75",
+    "Area4": "200",
+    "Rng4": "700",
+    "DataA4": "0",
+    "DataB4": "0",
+    "DataC4": "4",
+    "DataD4": "16",
+    "DataE4": "12",
+    "DataF4": "1",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNab",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNAcidBomb.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNAcidBomb.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Missileart": "Abilities\\Spells\\Other\\AcidBomb\\BottleMissile.mdl",
+    "Missilespeed": "700",
+    "Missilearc": "0.4",
+    "MissileHoming": "1",
+    "order": "acidbomb",
+    "Animnames": "Attack,two,Spell",
+    "Name": "酸性炸弹",
+    "Tip": "(|cffffcc00B|r)酸性炸弹 - [|cffffcc00等级 1|r],(|cffffcc00B|r)酸性炸弹 - [|cffffcc00等级 2|r],(|cffffcc00B|r)酸性炸弹 - [|cffffcc00等级 3|r]",
+    "Researchtip": "\"(|cffffcc00B|r)学习酸性炸弹 - [|cffffcc00等级 %d|r]\"",
+    "Ubertip": "\"投掷出一瓶酸性液体，然后对其周围的单位同时也造成伤害。|n|n减少<ANab,DataC1>点护甲; 具有每秒 <ANab,DataD1> 点的攻击力; 对周围的单位造成一定程度的伤害。|n持续<ANab,Dur1> 秒。\",\"投掷出一瓶酸性液体，然后对其周围的单位同时也造成伤害。<ANab,DataC2点护甲; 具有每秒<ANab,DataD2>点的攻击力; 对周围的单位造成一定程度的伤害。|n持续<ANab,Dur2> 秒。\",\"投掷出一瓶酸性液体，然后对其周围的单位同时也造成伤害。|n|n减少<ANab,DataC3>点护甲; 具有每秒<ANab,DataD3>点的攻击力; 对周围的单位造成一定程度的伤害。|n持续<ANab,Dur3> 秒。\"",
+    "Researchubertip": "\"向目标扔出一瓶酸液。在冲击之下，酸液瓶会被打碎，对周围的敌人造成一定程度的伤害。|n|n减少护甲，对于首个目标造成持续高伤害。对于周围的目标造成的伤害会稍小一些。|n持续 <ANab,Dur1>秒。|n|n|cffffcc00等级 1|r - 每秒最大<ANab,DataD1>点伤害。减少<ANab,DataC1>点护甲。|n|cffffcc00等级 2|r - 每秒最大<ANab,DataD2>点伤害。减少<ANab,DataC2>点护甲。|n|cffffcc00Level 3|r - 每秒最大<ANab,DataD3>点伤害。减少<ANab,DataC3>点护甲。\"",
+    "Hotkey": "B",
+    "Researchhotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

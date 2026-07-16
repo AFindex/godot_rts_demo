@@ -1,0 +1,101 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Ruac",
+  "displayName": "吞食尸体",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCannibalize.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCannibalize.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncannibalize.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "吞食尸体",
+        "tooltip": "研究吞食尸体(|cffffcc00C|r)",
+        "extendedTooltip": "使得食尸鬼和憎恶能吞食附近的一个尸体来恢复自己的生命值。",
+        "hotkey": "C",
+        "gold": 75,
+        "lumber": 0,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCannibalize.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCannibalize.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btncannibalize.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Ruac",
+    "comments": "undead ghoul cannibalize",
+    "class": "_",
+    "race": "undead",
+    "flag": "8",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "0",
+    "lumbermod": "0",
+    "timebase": "30",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNCannibalize.blp",
+    "Buttonpos": "0,1",
+    "Name": "吞食尸体",
+    "Tip": "研究吞食尸体(|cffffcc00C|r)",
+    "Ubertip": "\"使得食尸鬼和憎恶能吞食附近的一个尸体来恢复自己的生命值。\"",
+    "Hotkey": "C"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

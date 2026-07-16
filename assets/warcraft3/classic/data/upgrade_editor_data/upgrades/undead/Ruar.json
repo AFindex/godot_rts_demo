@@ -1,0 +1,161 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Ruar",
+  "displayName": "邪恶装甲",
+  "identity": {
+    "class": "armor",
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnunholyarmor.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedunholyarmor.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedunholyarmor.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "邪恶装甲",
+        "tooltip": "升级到邪恶装甲(|cffffcc00U|r)",
+        "extendedTooltip": "增加食尸鬼，憎恶，骷髅战士和骷髅魔法师的防御力。",
+        "hotkey": "U",
+        "gold": 125,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnunholyarmor.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级邪恶装甲",
+        "tooltip": "升级到中级邪恶装甲(|cffffcc00U|r)",
+        "extendedTooltip": "进一步增加食尸鬼，憎恶，骷髅战士和骷髅魔法师的防御力。",
+        "hotkey": "U",
+        "gold": 200,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedunholyarmor.png"
+        },
+        "requirements": [
+          "unp1"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级邪恶装甲",
+        "tooltip": "升级到高级邪恶装甲(|cffffcc00U|r)",
+        "extendedTooltip": "进一步增加食尸鬼，憎恶，骷髅战士和骷髅魔法师的防御力。",
+        "hotkey": "U",
+        "gold": 275,
+        "lumber": 250,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedunholyarmor.png"
+        },
+        "requirements": [
+          "unp2"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Ruar",
+    "comments": "undead unholy armor",
+    "class": "armor",
+    "race": "undead",
+    "flag": "4",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "125",
+    "goldmod": "75",
+    "lumberbase": "50",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNUnholyArmor.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyArmor.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyArmor.blp",
+    "Buttonpos": "0,1",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "unp1",
+    "Requires2": "unp2",
+    "Name": "邪恶装甲,中级邪恶装甲,高级邪恶装甲",
+    "Tip": "升级到邪恶装甲(|cffffcc00U|r),升级到中级邪恶装甲(|cffffcc00U|r),升级到高级邪恶装甲(|cffffcc00U|r)",
+    "Ubertip": "\"增加食尸鬼，憎恶，骷髅战士和骷髅魔法师的防御力。\",\"进一步增加食尸鬼，憎恶，骷髅战士和骷髅魔法师的防御力。\",\"进一步增加食尸鬼，憎恶，骷髅战士和骷髅魔法师的防御力。\"",
+    "Hotkey": "U,U,U"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

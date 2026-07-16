@@ -1,0 +1,138 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhlh",
+  "displayName": "改进型伐木效率",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 2,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade1.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade1.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanlumberupgrade1.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade2.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade2.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanlumberupgrade2.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "改进型伐木效率",
+        "tooltip": "改进型伐木效率(|cffffcc00L|r)",
+        "extendedTooltip": "增加<Rhlh,mod1>点农民每次能携带的木材数量。",
+        "hotkey": "L",
+        "gold": 100,
+        "lumber": 0,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade1.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade1.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanlumberupgrade1.png"
+        },
+        "requirements": [
+          "hkee"
+        ]
+      },
+      {
+        "level": 2,
+        "name": "高级伐木效率",
+        "tooltip": "高级伐木效率(|cffffcc00L|r)",
+        "extendedTooltip": "进一步增加<Rhlh,mod1>点农民每次能携带的木材数量。",
+        "hotkey": "L",
+        "gold": 200,
+        "lumber": 0,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade2.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade2.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanlumberupgrade2.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rlum",
+        "base": 10,
+        "modifier": 10
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhlh",
+    "comments": "human lumber harvesting",
+    "class": "_",
+    "race": "human",
+    "flag": "4096",
+    "used": "1",
+    "maxlevel": "2",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "100",
+    "lumberbase": "0",
+    "lumbermod": "0",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rlum",
+    "base1": "10",
+    "mod1": "10",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade1.blp,ReplaceableTextures\\CommandButtons\\BTNHumanLumberUpgrade2.blp",
+    "Buttonpos": "0,0",
+    "Requirescount": "2",
+    "Requires": "hkee",
+    "Requires1": "hcas",
+    "Name": "改进型伐木效率,高级伐木效率",
+    "Tip": "改进型伐木效率(|cffffcc00L|r),高级伐木效率(|cffffcc00L|r)",
+    "Ubertip": "\"增加<Rhlh,mod1>点农民每次能携带的木材数量。\",\"进一步增加<Rhlh,mod1>点农民每次能携带的木材数量。\"",
+    "Hotkey": "L,L"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

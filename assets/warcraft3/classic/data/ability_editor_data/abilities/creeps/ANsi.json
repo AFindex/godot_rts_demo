@@ -1,0 +1,234 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANsi",
+  "displayName": "沉默魔法",
+  "identity": {
+    "baseCode": "ANsi",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsilence.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "沉默魔法",
+        "tooltip": "沉默魔法(|cffffcc00E|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "在<ANsi,Dur1>秒内阻止一小块区域内所有的敌人施放魔法。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 16,
+        "heroDuration": 8,
+        "cooldown": 15,
+        "manaCost": 75,
+        "area": 200,
+        "range": 900,
+        "data": {
+          "A": "8",
+          "B": "0",
+          "C": "0",
+          "D": "0"
+        },
+        "buffIds": [
+          "BNsi"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "沉默魔法",
+        "tooltip": "沉默魔法 (|cffffcc00E|r)- [|cffffcc00等级 2|r]",
+        "extendedTooltip": "在<ANsi,Dur2>秒内阻止一普通大小区域内所有的敌人施放魔法。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 20,
+        "heroDuration": 10,
+        "cooldown": 15,
+        "manaCost": 75,
+        "area": 275,
+        "range": 900,
+        "data": {
+          "A": "8",
+          "B": "0",
+          "C": "0",
+          "D": "0"
+        },
+        "buffIds": [
+          "BNsi"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "沉默魔法",
+        "tooltip": "沉默魔法(|cffffcc00E|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "在<ANsi,Dur3>秒内阻止一大型区域内所有的敌人施放魔法。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 24,
+        "heroDuration": 12,
+        "cooldown": 15,
+        "manaCost": 75,
+        "area": 350,
+        "range": 900,
+        "data": {
+          "A": "8",
+          "B": "0",
+          "C": "0",
+          "D": "0"
+        },
+        "buffIds": [
+          "BNsi"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANsi",
+    "code": "ANsi",
+    "comments": "Dark Ranger - Silence",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,enemy,organic,neutral",
+    "Cast1": "0",
+    "Dur1": "16",
+    "HeroDur1": "8",
+    "Cool1": "15",
+    "Cost1": "75",
+    "Area1": "200",
+    "Rng1": "900",
+    "DataA1": "8",
+    "DataB1": "0",
+    "DataC1": "0",
+    "DataD1": "0",
+    "DataE1": "-",
+    "Cast2": "0",
+    "Dur2": "20",
+    "HeroDur2": "10",
+    "Cool2": "15",
+    "Cost2": "75",
+    "Area2": "275",
+    "Rng2": "900",
+    "DataA2": "8",
+    "DataB2": "0",
+    "DataC2": "0",
+    "DataD2": "0",
+    "DataE2": "-",
+    "Cast3": "0",
+    "Dur3": "24",
+    "HeroDur3": "12",
+    "Cool3": "15",
+    "Cost3": "75",
+    "Area3": "350",
+    "Rng3": "900",
+    "DataA3": "8",
+    "DataB3": "0",
+    "DataC3": "0",
+    "DataD3": "0",
+    "DataE3": "-",
+    "Cast4": "0",
+    "Dur4": "24",
+    "HeroDur4": "12",
+    "Cool4": "15",
+    "Cost4": "75",
+    "Area4": "350",
+    "Rng4": "900",
+    "DataA4": "8",
+    "DataB4": "0",
+    "DataC4": "0",
+    "DataD4": "0",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,enemy,organic,neutral",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNsi",
+    "targs2": "air,ground,enemy,organic,neutral",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNsi",
+    "targs3": "air,ground,enemy,organic,neutral",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNsi",
+    "targs4": "air,ground,enemy,organic,neutral",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNsi"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Order": "silence",
+    "Effectart": "Abilities\\Spells\\Other\\Silence\\SilenceAreaBirth.mdl",
+    "Name": "沉默魔法",
+    "Tip": "沉默魔法(|cffffcc00E|r) - [|cffffcc00等级 1|r],沉默魔法 (|cffffcc00E|r)- [|cffffcc00等级 2|r],沉默魔法(|cffffcc00E|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"在<ANsi,Dur1>秒内阻止一小块区域内所有的敌人施放魔法。\",\"在<ANsi,Dur2>秒内阻止一普通大小区域内所有的敌人施放魔法。\",\"在<ANsi,Dur3>秒内阻止一大型区域内所有的敌人施放魔法。\"",
+    "Hotkey": "E",
+    "Researchtip": "\"学习沉默魔法(|cffffcc00E|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"阻止一定范围内的所有敌人施放魔法。魔法的效果范围和持续时间会随着等级的增加而增加。|n|n|cffffcc00等级 1|r - 小范围，持续<ANsi,Dur1>秒。|n|cffffcc00等级 2|r - 中等范围，持续<ANsi,Dur2>秒。|n|cffffcc00等级 3|r - 大型范围，持续<ANsi,Dur3>秒。\"",
+    "Researchhotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

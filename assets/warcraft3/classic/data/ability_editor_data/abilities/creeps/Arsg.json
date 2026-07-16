@@ -1,0 +1,234 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "Arsg",
+  "displayName": "召唤米纱",
+  "identity": {
+    "baseCode": "AOsf",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 4,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGrizzlyBear.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGrizzlyBear.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngrizzlybear.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "召唤米纱",
+        "tooltip": "召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "召唤出米纱，一头具有<ngz1,realHP>点生命值的野熊来为你战斗。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 30,
+        "manaCost": 150,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "B": "1"
+        },
+        "summonedUnitId": "ngzc",
+        "buffIds": [
+          "BOsf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "召唤米纱",
+        "tooltip": "召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "召唤出米纱，一头具有<ngz2,realHP>点生命值的野熊来为你战斗。具有重击技能。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 30,
+        "manaCost": 150,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "B": "1"
+        },
+        "summonedUnitId": "ngzd",
+        "buffIds": [
+          "BOsf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "召唤米纱",
+        "tooltip": "召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "召唤出米纱，一头具有<ngz3,realHP>点生命值的野熊来为你战斗。具有大锤技能。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 30,
+        "manaCost": 150,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "B": "1"
+        },
+        "summonedUnitId": "ngza",
+        "buffIds": [
+          "BOsf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 4,
+        "name": "召唤米纱",
+        "tooltip": "召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 4|r]",
+        "extendedTooltip": "召唤出米纱，一头具有<ngz4,realHP>点生命值的野熊来为你战斗。具有大锤技能。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 30,
+        "manaCost": 150,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "B": "1"
+        },
+        "summonedUnitId": "ngz4",
+        "buffIds": [
+          "BOsf"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "Arsg",
+    "code": "AOsf",
+    "comments": "Rexxar - Summon Bear",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "4",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "30",
+    "Cost1": "150",
+    "Area1": "200",
+    "Rng1": "800",
+    "DataB1": "1",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "UnitID1": "ngzc",
+    "Cast2": "0",
+    "Dur2": "0",
+    "HeroDur2": "0",
+    "Cool2": "30",
+    "Cost2": "150",
+    "Area2": "200",
+    "Rng2": "800",
+    "DataB2": "1",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "UnitID2": "ngzd",
+    "Cast3": "0",
+    "Dur3": "0",
+    "HeroDur3": "0",
+    "Cool3": "30",
+    "Cost3": "150",
+    "Area3": "200",
+    "Rng3": "800",
+    "DataB3": "1",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "UnitID3": "ngza",
+    "Cast4": "0",
+    "Dur4": "0",
+    "HeroDur4": "0",
+    "Cool4": "30",
+    "Cost4": "150",
+    "Area4": "200",
+    "Rng4": "800",
+    "DataB4": "1",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "UnitID4": "ngz4",
+    "InBeta": "0",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BOsf",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BOsf",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BOsf",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BOsf"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNGrizzlyBear.blp",
+    "Buttonpos": "0,2",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNGrizzlyBear.blp",
+    "Researchbuttonpos": "0,0",
+    "Specialart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+    "Order": "spiritwolf",
+    "Name": "召唤米纱",
+    "Tip": "召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 1|r],召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 2|r],召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 3|r],召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 4|r]",
+    "Ubertip": "\"召唤出米纱，一头具有<ngz1,realHP>点生命值的野熊来为你战斗。\",\"召唤出米纱，一头具有<ngz2,realHP>点生命值的野熊来为你战斗。具有重击技能。\",\"召唤出米纱，一头具有<ngz3,realHP>点生命值的野熊来为你战斗。具有大锤技能。\",\"召唤出米纱，一头具有<ngz4,realHP>点生命值的野熊来为你战斗。具有大锤技能。\"",
+    "Hotkey": "I",
+    "Researchtip": "学习召唤米纱(|cffffcc00I|r) - [|cffffcc00等级 %d|r]",
+    "Researchubertip": "\"召唤出米纱，一头强大的野熊来为你战斗。|n|n|cffffcc00等级 1|r -<ngz1,realHP>点生命值，<ngz1,mindmg1>-<ngz1,maxdmg1>点攻击力。|n|cffffcc00等级 2|r -<ngz2,realHP>点生命值，<ngz2,mindmg1>-<ngz2,maxdmg1>点攻击力，具有重击技能。 |n|cffffcc00等级 3|r -<ngz3,realHP>点生命值，<ngz3,mindmg1>-<ngz3,maxdmg1>点攻击力，具有大锤技能。|n|cffffcc00等级 4|r -<ngz4,realHP>点生命值，<ngz4,mindmg1>-<ngz4,maxdmg1>点攻击力，具有大锤技能。\"",
+    "Researchhotkey": "I",
+    "EditorSuffix": "(雷克萨)",
+    "Animnames": "spell,slam"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

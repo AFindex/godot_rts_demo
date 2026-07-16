@@ -1,0 +1,161 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhla",
+  "displayName": "镶皮甲",
+  "identity": {
+    "class": "armor",
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeOne.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeOne.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnleatherupgradeone.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeTwo.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeTwo.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnleatherupgradetwo.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeThree.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeThree.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnleatherupgradethree.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "镶皮甲",
+        "tooltip": "升级到镶皮甲(|cffffcc00A|r)",
+        "extendedTooltip": "增加矮人火枪手、迫击炮小队、龙鹰骑士和狮鹫骑士的护甲。",
+        "hotkey": "A",
+        "gold": 100,
+        "lumber": 100,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeOne.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeOne.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnleatherupgradeone.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "加强型镶皮甲",
+        "tooltip": "升级到加强型镶皮甲(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加矮人火枪手、迫击炮小队、龙鹰骑士和狮鹫骑士的护甲。",
+        "hotkey": "A",
+        "gold": 150,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeTwo.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeTwo.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnleatherupgradetwo.png"
+        },
+        "requirements": [
+          "hkee"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "龙甲",
+        "tooltip": "升级到龙甲(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加矮人火枪手、迫击炮小队、龙鹰骑士和狮鹫骑士的护甲。",
+        "hotkey": "A",
+        "gold": 200,
+        "lumber": 250,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeThree.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeThree.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnleatherupgradethree.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhla",
+    "comments": "human leather armor",
+    "class": "armor",
+    "race": "human",
+    "flag": "1024",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "50",
+    "lumberbase": "100",
+    "lumbermod": "75",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeOne.blp,ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeTwo.blp,ReplaceableTextures\\CommandButtons\\BTNLeatherUpgradeThree.blp",
+    "Buttonpos": "1,1",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "hkee",
+    "Requires2": "hcas",
+    "Name": "镶皮甲,加强型镶皮甲,龙甲",
+    "Tip": "升级到镶皮甲(|cffffcc00A|r),升级到加强型镶皮甲(|cffffcc00A|r),升级到龙甲(|cffffcc00A|r)",
+    "Ubertip": "\"增加矮人火枪手、迫击炮小队、龙鹰骑士和狮鹫骑士的护甲。\",\"进一步增加矮人火枪手、迫击炮小队、龙鹰骑士和狮鹫骑士的护甲。\",\"进一步增加矮人火枪手、迫击炮小队、龙鹰骑士和狮鹫骑士的护甲。\"",
+    "Hotkey": "A,A,A"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

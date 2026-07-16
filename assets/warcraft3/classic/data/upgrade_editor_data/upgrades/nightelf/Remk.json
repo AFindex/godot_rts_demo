@@ -1,0 +1,110 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Remk",
+  "displayName": "射击术",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMarksmanship.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMarksmanship.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmarksmanship.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "射击术",
+        "tooltip": "研究射击术(|cffffcc00M|r)",
+        "extendedTooltip": "能增加弓箭手和角鹰兽骑士<Remk,base1>点的攻击力。",
+        "hotkey": "M",
+        "gold": 100,
+        "lumber": 175,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMarksmanship.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMarksmanship.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnmarksmanship.png"
+        },
+        "requirements": [
+          "edob",
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratx",
+        "base": 3
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Remk",
+    "comments": "nightelf marksmanship",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "512",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "175",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "ratx",
+    "base1": "3",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNMarksmanship.blp",
+    "Buttonpos": "0,2",
+    "Requires": "edob,etoe",
+    "Name": "射击术",
+    "Tip": "研究射击术(|cffffcc00M|r)",
+    "Ubertip": "\"能增加弓箭手和角鹰兽骑士<Remk,base1>点的攻击力。\"",
+    "Hotkey": "M"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

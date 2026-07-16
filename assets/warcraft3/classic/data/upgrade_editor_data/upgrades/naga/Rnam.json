@@ -1,0 +1,148 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rnam",
+  "displayName": "珊瑚鳞甲",
+  "identity": {
+    "class": "armor",
+    "race": "naga",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp1.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp1.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaarmorup1.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp2.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp2.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaarmorup2.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp3.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp3.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaarmorup3.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "珊瑚鳞甲",
+        "tooltip": "升级到珊瑚鳞甲(|cffffcc00C|r)",
+        "extendedTooltip": "增加娜迦族攻击单位的防御力。",
+        "hotkey": "C",
+        "gold": 125,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp1.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp1.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaarmorup1.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "壳质鳞甲",
+        "tooltip": "升级壳质鳞甲(|cffffcc00C|r)",
+        "extendedTooltip": "进一步增加娜迦攻击单位的防御力。",
+        "hotkey": "C",
+        "gold": 225,
+        "lumber": 225,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp2.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp2.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaarmorup2.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 3,
+        "name": "尖刺鳞甲",
+        "tooltip": "升级到尖刺鳞甲(|cffffcc00C|r)",
+        "extendedTooltip": "进一步增加娜迦攻击单位的防御力。",
+        "hotkey": "C",
+        "gold": 325,
+        "lumber": 375,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp3.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp3.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaarmorup3.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rnam",
+    "comments": "naga armor",
+    "class": "armor",
+    "race": "naga",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "125",
+    "goldmod": "100",
+    "lumberbase": "75",
+    "lumbermod": "150",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp1.blp,ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp2.blp,ReplaceableTextures\\CommandButtons\\BTNNagaArmorUp3.blp",
+    "Buttonpos": "1,2",
+    "Name": "珊瑚鳞甲,壳质鳞甲,尖刺鳞甲",
+    "Tip": "升级到珊瑚鳞甲(|cffffcc00C|r),升级壳质鳞甲(|cffffcc00C|r),升级到尖刺鳞甲(|cffffcc00C|r)",
+    "Ubertip": "\"增加娜迦族攻击单位的防御力。\",\"进一步增加娜迦攻击单位的防御力。\",\"进一步增加娜迦攻击单位的防御力。\"",
+    "Hotkey": "C,C,C"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/CampaignUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

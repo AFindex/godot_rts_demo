@@ -1,0 +1,96 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rnsb",
+  "displayName": "潜水",
+  "identity": {
+    "race": "naga",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaBurrow.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaBurrow.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaburrow.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "潜水",
+        "tooltip": "研究潜水(|cffffcc00U|r)",
+        "extendedTooltip": "给予娜迦暴徒和飞龙潜入水中，隐去行踪的能力。",
+        "hotkey": "U",
+        "gold": 25,
+        "lumber": 25,
+        "researchSeconds": 20,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaBurrow.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNagaBurrow.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnagaburrow.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rnsb",
+    "comments": "naga submerge",
+    "class": "_",
+    "race": "naga",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "25",
+    "goldmod": "0",
+    "lumberbase": "25",
+    "lumbermod": "0",
+    "timebase": "20",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNNagaBurrow.blp",
+    "Buttonpos": "2,2",
+    "Name": "潜水",
+    "Tip": "研究潜水(|cffffcc00U|r)",
+    "Ubertip": "\"给予娜迦暴徒和飞龙潜入水中，隐去行踪的能力。\"",
+    "Hotkey": "U"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/CampaignUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

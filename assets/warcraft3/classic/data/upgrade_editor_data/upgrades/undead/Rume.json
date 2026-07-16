@@ -1,0 +1,163 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rume",
+  "displayName": "邪恶力量",
+  "identity": {
+    "class": "melee",
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyStrength.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyStrength.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnunholystrength.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyStrength.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyStrength.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedunholystrength.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyStrength.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyStrength.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedunholystrength.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "邪恶力量",
+        "tooltip": "升级到邪恶力量(|cffffcc00S|r)",
+        "extendedTooltip": "增加食尸鬼，绞肉车，憎恶，骷髅战士和骷髅魔法师的攻击力。",
+        "hotkey": "S",
+        "gold": 125,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyStrength.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyStrength.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnunholystrength.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级邪恶力量",
+        "tooltip": "升级到中级邪恶力量(|cffffcc00S|r)",
+        "extendedTooltip": "进一步增加食尸鬼，绞肉车，憎恶，骷髅战士和骷髅魔法师的攻击力。",
+        "hotkey": "S",
+        "gold": 200,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyStrength.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyStrength.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedunholystrength.png"
+        },
+        "requirements": [
+          "unp1"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级邪恶力量",
+        "tooltip": "升级到高级邪恶力量(|cffffcc00S|r)",
+        "extendedTooltip": "进一步增加食尸鬼，绞肉车，憎恶，骷髅战士和骷髅魔法师的攻击力。",
+        "hotkey": "S",
+        "gold": 275,
+        "lumber": 250,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyStrength.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyStrength.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedunholystrength.png"
+        },
+        "requirements": [
+          "unp2"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rume",
+    "comments": "undead unholy strength",
+    "class": "melee",
+    "race": "undead",
+    "flag": "1",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "125",
+    "goldmod": "75",
+    "lumberbase": "50",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNUnholyStrength.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedUnholyStrength.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedUnholyStrength.blp",
+    "Buttonpos": "0,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "unp1",
+    "Requires2": "unp2",
+    "Name": "邪恶力量,中级邪恶力量,高级邪恶力量",
+    "Tip": "升级到邪恶力量(|cffffcc00S|r),升级到中级邪恶力量(|cffffcc00S|r),升级到高级邪恶力量(|cffffcc00S|r)",
+    "Ubertip": "\"增加食尸鬼，绞肉车，憎恶，骷髅战士和骷髅魔法师的攻击力。\",\"进一步增加食尸鬼，绞肉车，憎恶，骷髅战士和骷髅魔法师的攻击力。\",\"进一步增加食尸鬼，绞肉车，憎恶，骷髅战士和骷髅魔法师的攻击力。\"",
+    "Hotkey": "S,S,S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

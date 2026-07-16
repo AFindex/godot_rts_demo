@@ -1,0 +1,239 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AEah",
+  "displayName": "荆棘光环",
+  "identity": {
+    "baseCode": "AEah",
+    "race": "nightelf",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNThorns.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNThorns.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnthorns.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "荆棘光环",
+        "tooltip": "荆棘光环 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "该光环能给予周围的友军单位一个具有攻击力的护盾保护，敌人对这些单位进行一次近战攻击就会受到相当于<AEah,DataA1,%>%自身攻击力的伤害。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "vuln",
+          "invu"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "area": 900,
+        "data": {
+          "A": "0.1",
+          "B": "1"
+        },
+        "buffIds": [
+          "BEah"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "荆棘光环",
+        "tooltip": "荆棘光环 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "该光环能给予周围的友军单位一个具有攻击力的护盾保护，敌人对这些单位进行一次近战攻击就会受到相当于<AEah,DataA2,%>%自身攻击力的伤害。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "vuln",
+          "invu"
+        ],
+        "area": 900,
+        "data": {
+          "A": "0.2",
+          "B": "1"
+        },
+        "buffIds": [
+          "BEah"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "荆棘光环",
+        "tooltip": "荆棘光环 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "该光环能给予周围的友军单位一个具有攻击力的护盾保护，敌人对这些单位进行一次近战攻击就会受到相当于<AEah,DataA3,%>%自身攻击力的伤害。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "vuln",
+          "invu"
+        ],
+        "area": 900,
+        "data": {
+          "A": "0.3",
+          "B": "1"
+        },
+        "buffIds": [
+          "BEah"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AEah",
+    "code": "AEah",
+    "uberAlias": "AEah",
+    "comments": "Keeper - Thorns Aura",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "targs": "air,ground,friend,self,vuln,invu",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "0",
+    "Cost1": "-",
+    "Area1": "900",
+    "Rng1": "-",
+    "Data11": "4",
+    "Data12": "-",
+    "Data13": "-",
+    "Data14": "-",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "900",
+    "Rng2": "-",
+    "Data21": "8",
+    "Data22": "-",
+    "Data23": "-",
+    "Data24": "-",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "900",
+    "Rng3": "-",
+    "Data31": "12",
+    "Data32": "-",
+    "Data33": "-",
+    "Data34": "-",
+    "CastCheck": "-",
+    "DurCheck": "-",
+    "HeroDurCheck": "-",
+    "CoolCheck": "-",
+    "CostCheck": "-",
+    "AreaCheck": "-",
+    "RngCheck": "-",
+    "version": "0",
+    "race": "nightelf",
+    "levelSkip": "0",
+    "priority": "0",
+    "DataA1": "0.1",
+    "DataB1": "1",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "DataA2": "0.2",
+    "DataB2": "1",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "DataA3": "0.3",
+    "DataB3": "1",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "900",
+    "Rng4": "-",
+    "DataA4": "0.3",
+    "DataB4": "1",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,friend,self,vuln,invu",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BEah",
+    "targs2": "air,ground,friend,self,vuln,invu",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BEah",
+    "targs3": "air,ground,friend,self,vuln,invu",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BEah",
+    "targs4": "air,ground,friend,self,vuln,invu",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BEah"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\PassiveButtons\\PASBTNThorns.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNThorns.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Targetart": "Abilities\\Spells\\NightElf\\ThornsAura\\ThornsAura.mdl",
+    "Targetattach": "origin",
+    "Name": "荆棘光环",
+    "Tip": "荆棘光环 - [|cffffcc00等级 1|r],荆棘光环 - [|cffffcc00等级 2|r],荆棘光环 - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"该光环能给予周围的友军单位一个具有攻击力的护盾保护，敌人对这些单位进行一次近战攻击就会受到相当于<AEah,DataA1,%>%自身攻击力的伤害。\",\"该光环能给予周围的友军单位一个具有攻击力的护盾保护，敌人对这些单位进行一次近战攻击就会受到相当于<AEah,DataA2,%>%自身攻击力的伤害。\",\"该光环能给予周围的友军单位一个具有攻击力的护盾保护，敌人对这些单位进行一次近战攻击就会受到相当于<AEah,DataA3,%>%自身攻击力的伤害。\"",
+    "Researchtip": "\"学习荆棘光环(|cffffcc00R|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"该光环能给予周围的友军单位一个具有攻击力的护盾保护，敌人对这些单位进行一次近战攻击就会受到一定的伤害。|n|n|cffffcc00等级 1|r - 返回<AEah,DataA1,%>%的伤害。|n|cffffcc00等级 2|r - 返回<AEah,DataA2,%>%的伤害。|n|cffffcc00等级 3|r - 返回<AEah,DataA3,%>%的伤害。\"",
+    "Researchhotkey": "R"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/AbilityData.slk",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhhb",
+  "displayName": "风暴战锤",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStormHammer.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStormHammer.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstormhammer.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "风暴战锤",
+        "tooltip": "研究风暴战锤(|cffffcc00H|r)",
+        "extendedTooltip": "让狮鹫骑士的战锤能进行弹射，从而对多个敌人造成伤害。",
+        "hotkey": "H",
+        "gold": 125,
+        "lumber": 225,
+        "researchSeconds": 45,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStormHammer.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStormHammer.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnstormhammer.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rasd",
+        "base": 200
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhhb",
+    "comments": "human hammer bounce",
+    "class": "_",
+    "race": "human",
+    "flag": "4",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "125",
+    "goldmod": "0",
+    "lumberbase": "225",
+    "lumbermod": "0",
+    "timebase": "45",
+    "timemod": "0",
+    "effect1": "rasd",
+    "base1": "200",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStormHammer.blp",
+    "Buttonpos": "1,2",
+    "Requires": "hcas",
+    "Name": "风暴战锤",
+    "Tip": "研究风暴战锤(|cffffcc00H|r)",
+    "Ubertip": "\"让狮鹫骑士的战锤能进行弹射，从而对多个敌人造成伤害。\"",
+    "Hotkey": "H"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

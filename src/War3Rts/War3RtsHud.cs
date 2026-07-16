@@ -21,6 +21,13 @@ public sealed partial class War3RtsHud : Control
         -115f * PortraitMaskScale);
     private static readonly Vector2 PortraitMaskSize = Vector2.One *
         (256f * PortraitMaskScale);
+    private static readonly Vector2 QueueBackdropPosition = new(0f, 8f);
+    private static readonly Vector2 QueueBackdropSize = new(256f, 128f);
+    private static readonly Vector2 ActiveQueueIconPosition = new(13f, 31f);
+    private static readonly Vector2 ActiveQueueIconSize = new(42f, 42f);
+    private static readonly Vector2 WaitingQueueIconOrigin = new(13f, 83f);
+    private static readonly Vector2 WaitingQueueIconSize = new(30f, 30f);
+    private const float WaitingQueueIconStride = 40f;
     private static readonly Color Ink = new("071019f2");
     private static readonly Color Surface = new("101923e8");
     private static readonly Color Raised = new("182431f2");
@@ -31,6 +38,9 @@ public sealed partial class War3RtsHud : Control
     private readonly Button[] _commandButtons = new Button[12];
     private readonly War3CommandSnapshot?[] _slotCommands =
         new War3CommandSnapshot?[12];
+    private readonly Button[] _queueButtons = new Button[7];
+    private readonly War3QueueItemSnapshot?[] _queueSlotItems =
+        new War3QueueItemSnapshot?[7];
     private readonly Dictionary<Key, War3CommandSnapshot> _hotkeys = [];
     private Label? _goldValue;
     private Label? _lumberValue;
@@ -42,8 +52,12 @@ public sealed partial class War3RtsHud : Control
     private Label? _armorValue;
     private Label? _levelValue;
     private Label? _combatTypeValue;
-    private Label? _queueLabel;
-    private ProgressBar? _queue;
+    private Control? _selectionDetails;
+    private Control? _queuePanel;
+    private TextureRect? _queueBackdrop;
+    private Label? _queueActionLabel;
+    private Label? _queueStateLabel;
+    private TextureProgressBar? _queueProgress;
     private Label? _mode;
     private Label? _status;
     private Control? _commandGrid;
@@ -61,13 +75,39 @@ public sealed partial class War3RtsHud : Control
     private string _portraitSource = string.Empty;
     private bool _portraitBuildingView;
     private string _commandSignature = string.Empty;
+    private string _queueSignature = string.Empty;
     private War3SelectionOverlay? _selectionOverlay;
 
     public event Action<War3CommandSnapshot>? CommandRequested;
+    public event Action<War3QueueItemSnapshot>? QueueItemCancelRequested;
     public event Action? ReturnRequested;
     public event Action<System.Numerics.Vector2>? MinimapFocusRequested;
 
     public bool PortraitReady => _portraitActor?.Loaded == true;
+    public int VisibleQueueItemCount =>
+        _queueButtons.Count(button => button.Visible);
+    public War3QueueItemKind? ActiveQueueItemKind =>
+        _queueSlotItems[0]?.Kind;
+    public bool ActiveQueueIconReady => _queueButtons[0]?.Icon is not null;
+    public bool QueuePanelVisible => _queuePanel?.Visible == true;
+    public bool SelectionDetailsVisible => _selectionDetails?.Visible == true;
+    public bool QueuePresentationExclusive =>
+        QueuePanelVisible != SelectionDetailsVisible;
+    public bool QueueIconsAboveBackdrop =>
+        _queueButtons.All(button => button is not null && button.ZIndex > 10);
+    public bool QueueLayoutReady =>
+        _queuePanel is not null && _queueBackdrop is not null &&
+        _queueProgress is not null &&
+        _queueButtons[0] is not null && _queueButtons[6] is not null &&
+        _queueBackdrop.Position.IsEqualApprox(QueueBackdropPosition) &&
+        _queueBackdrop.Size.IsEqualApprox(QueueBackdropSize) &&
+        _queueButtons[0].Position.IsEqualApprox(ActiveQueueIconPosition) &&
+        _queueButtons[0].Size.IsEqualApprox(ActiveQueueIconSize) &&
+        _queueButtons[6].Position.IsEqualApprox(
+            WaitingQueueIconOrigin + new Vector2(
+                WaitingQueueIconStride * 5f, 0f)) &&
+        _queueButtons[6].Size.IsEqualApprox(WaitingQueueIconSize) &&
+        _queueProgress.Position.IsEqualApprox(new Vector2(64f, 39f));
     public bool ConsoleLayoutReady =>
         _consoleChrome is not null &&
         MathF.Abs(_consoleChrome.Size.X - ConsoleChromeWidth) < 0.1f &&
@@ -126,10 +166,19 @@ public sealed partial class War3RtsHud : Control
             _portraitHealthFill.Size = new Vector2(
                 PortraitBarWidth * healthRatio, PortraitBarHeight);
         }
-        _queue!.Visible = snapshot.Selection.QueueLabel.Length > 0;
-        _queueLabel!.Visible = _queue.Visible;
-        _queue!.Value = Math.Clamp(snapshot.Selection.QueueProgress, 0f, 1f) * 100f;
-        _queueLabel!.Text = snapshot.Selection.QueueLabel;
+        var queueVisible = snapshot.Selection.QueueItems.Length > 0;
+        _selectionDetails!.Visible = !queueVisible;
+        _selectionDetails.ProcessMode = queueVisible
+            ? ProcessModeEnum.Disabled
+            : ProcessModeEnum.Inherit;
+        _queuePanel!.Visible = queueVisible;
+        _queuePanel.ProcessMode = queueVisible
+            ? ProcessModeEnum.Inherit
+            : ProcessModeEnum.Disabled;
+        _queuePanel.MouseFilter = queueVisible
+            ? MouseFilterEnum.Pass
+            : MouseFilterEnum.Ignore;
+        UpdateQueue(snapshot.Selection);
         _mode!.Text = snapshot.Mode;
         _status!.Text = snapshot.Status;
         UpdatePortrait(snapshot.Selection);
@@ -143,6 +192,15 @@ public sealed partial class War3RtsHud : Control
         if (!_hotkeys.TryGetValue(key, out var command) || !command.Enabled)
             return false;
         CommandRequested?.Invoke(command);
+        return true;
+    }
+
+    public bool TryInvokeQueueSlot(int slot)
+    {
+        if ((uint)slot >= (uint)_queueSlotItems.Length ||
+            _queueSlotItems[slot] is not { CanCancel: true } item)
+            return false;
+        QueueItemCancelRequested?.Invoke(item);
         return true;
     }
 
@@ -404,7 +462,7 @@ public sealed partial class War3RtsHud : Control
         var panel = new PanelContainer
         {
             Position = new Vector2(376f, 62f),
-            Size = new Vector2(254f, 146f),
+            Size = new Vector2(256f, 146f),
             MouseFilter = MouseFilterEnum.Ignore,
             ZIndex = 5
         };
@@ -412,7 +470,16 @@ public sealed partial class War3RtsHud : Control
             new Color("071019e8"), Colors.Transparent, 0, 0));
         parent.AddChild(panel);
         var margin = Margin(10, 6, 10, 5);
-        panel.AddChild(margin);
+        var content = new Control
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            ClipContents = true
+        };
+        panel.AddChild(content);
+        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        content.AddChild(margin);
+        _selectionDetails = margin;
+        _selectionDetails.ZIndex = 5;
         var column = VBox(2);
         margin.AddChild(column);
         _selectionTitle = LabelText("未选择单位", 18, Text);
@@ -437,19 +504,102 @@ public sealed partial class War3RtsHud : Control
         AddStat(stats, "护甲", out _armorValue);
         AddStat(stats, "等级", out _levelValue);
         AddStat(stats, "攻防", out _combatTypeValue, true);
-        _queueLabel = LabelText("", 12, Gold);
-        column.AddChild(_queueLabel);
-        _queue = new ProgressBar
+        AddBuildQueuePanel(content);
+    }
+
+    private void AddBuildQueuePanel(Control parent)
+    {
+        _queuePanel = new Control
         {
-            CustomMinimumSize = new Vector2(234f, 9f),
-            ShowPercentage = false,
-            MaxValue = 100
+            Name = "War3BuildQueue",
+            MouseFilter = MouseFilterEnum.Ignore,
+            ProcessMode = ProcessModeEnum.Disabled,
+            Visible = false,
+            ClipContents = true,
+            ZIndex = 30
         };
-        _queue.AddThemeStyleboxOverride("background", Box(
-            new Color("10151a"), new Color("303b43"), 1, 1));
-        _queue.AddThemeStyleboxOverride("fill", Box(
-            new Color("b68732"), new Color("e1b64e"), 1, 1));
-        column.AddChild(_queue);
+        _queuePanel.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        parent.AddChild(_queuePanel);
+
+        _queueBackdrop = new TextureRect
+        {
+            Name = "BuildQueueBackdrop",
+            Position = QueueBackdropPosition,
+            Size = QueueBackdropSize,
+            Texture = War3RuntimeAssets.LoadTexture(
+                @"UI\Widgets\Console\Human\human-unitqueue-border.blp"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = MouseFilterEnum.Ignore,
+            TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
+            ZIndex = 10
+        };
+        _queuePanel.AddChild(_queueBackdrop);
+
+        _queueActionLabel = LabelText("", 14, Text);
+        _queueActionLabel.Position = new Vector2(64f, 10f);
+        _queueActionLabel.Size = new Vector2(183f, 24f);
+        _queueActionLabel.TextOverrunBehavior =
+            TextServer.OverrunBehavior.TrimEllipsis;
+        _queueActionLabel.MouseFilter = MouseFilterEnum.Ignore;
+        _queueActionLabel.ZIndex = 15;
+        _queuePanel.AddChild(_queueActionLabel);
+
+        _queueProgress = new TextureProgressBar
+        {
+            Position = new Vector2(64f, 39f),
+            Size = new Vector2(126f, 16f),
+            MinValue = 0d,
+            MaxValue = 100d,
+            Value = 0d,
+            FillMode = (int)TextureProgressBar.FillModeEnum.LeftToRight,
+            TextureProgress = War3RuntimeAssets.LoadTexture(
+                @"UI\Feedback\BuildProgressBar\human-buildprogressbar-fill.blp"),
+            TextureOver = War3RuntimeAssets.LoadTexture(
+                @"UI\Feedback\BuildProgressBar\human-buildprogressbar-border.blp"),
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 15
+        };
+        _queuePanel.AddChild(_queueProgress);
+
+        _queueStateLabel = LabelText("", 11, Gold);
+        _queueStateLabel.Position = new Vector2(194f, 37f);
+        _queueStateLabel.Size = new Vector2(54f, 20f);
+        _queueStateLabel.HorizontalAlignment = HorizontalAlignment.Right;
+        _queueStateLabel.MouseFilter = MouseFilterEnum.Ignore;
+        _queueStateLabel.ZIndex = 15;
+        _queuePanel.AddChild(_queueStateLabel);
+
+        var hint = LabelText("点击图标取消队列项目", 10, Muted);
+        hint.Position = new Vector2(64f, 57f);
+        hint.Size = new Vector2(180f, 18f);
+        hint.MouseFilter = MouseFilterEnum.Ignore;
+        hint.ZIndex = 15;
+        _queuePanel.AddChild(hint);
+
+        for (var index = 0; index < _queueButtons.Length; index++)
+        {
+            var button = QueueButton(index == 0);
+            button.Position = index == 0
+                ? ActiveQueueIconPosition
+                : WaitingQueueIconOrigin + new Vector2(
+                    (index - 1) * WaitingQueueIconStride, 0f);
+            button.Size = index == 0
+                ? ActiveQueueIconSize
+                : WaitingQueueIconSize;
+            // The original BLP has an opaque black center. Queue icons must be
+            // drawn over that frame; the previous z-index put every loaded icon
+            // behind it, which made populated slots look empty.
+            button.ZIndex = 25;
+            var slot = index;
+            button.Pressed += () =>
+            {
+                if (_queueSlotItems[slot] is { CanCancel: true } item)
+                    QueueItemCancelRequested?.Invoke(item);
+            };
+            _queueButtons[index] = button;
+            _queuePanel.AddChild(button);
+        }
     }
 
     private void AddCommandCard(Control parent)
@@ -567,6 +717,62 @@ public sealed partial class War3RtsHud : Control
         parent.AddChild(value);
     }
 
+    private void UpdateQueue(War3SelectionSnapshot selection)
+    {
+        if (_queueActionLabel is null || _queueProgress is null ||
+            _queueStateLabel is null)
+            return;
+        var items = selection.QueueItems;
+        if (items.Length == 0)
+        {
+            _queueActionLabel.Text = string.Empty;
+            _queueStateLabel.Text = string.Empty;
+            _queueProgress.Value = 0d;
+        }
+        else
+        {
+            var active = items[0];
+            _queueActionLabel.Text = selection.QueueLabel.Length > 0
+                ? selection.QueueLabel
+                : $"{active.StateLabel}：{active.Label}";
+            _queueProgress.Value =
+                Math.Clamp(active.Progress, 0f, 1f) * 100d;
+            _queueStateLabel.Text = active.Progress >= 1f
+                ? active.StateLabel
+                : $"{active.Progress:P0}";
+        }
+
+        var signature = string.Join(';', items.Take(_queueButtons.Length)
+            .Select(value =>
+                $"{value.Kind}:{value.OrderId}:{value.DataId}:" +
+                $"{value.IconPath}:{value.CanCancel}"));
+        if (signature == _queueSignature) return;
+        _queueSignature = signature;
+        for (var index = 0; index < _queueButtons.Length; index++)
+        {
+            _queueSlotItems[index] = null;
+            _queueButtons[index].Visible = false;
+            _queueButtons[index].Disabled = true;
+            _queueButtons[index].Icon = null;
+            _queueButtons[index].TooltipText = string.Empty;
+        }
+        for (var index = 0;
+             index < Math.Min(items.Length, _queueButtons.Length);
+             index++)
+        {
+            var item = items[index];
+            var button = _queueButtons[index];
+            _queueSlotItems[index] = item;
+            button.Visible = true;
+            button.Disabled = !item.CanCancel;
+            button.Icon = War3RuntimeAssets.LoadTexture(item.IconPath);
+            button.TooltipText = item.Tooltip +
+                                 (index == 0
+                                     ? "\n当前项目"
+                                     : $"\n队列第 {index + 1} 项");
+        }
+    }
+
     private void RebuildCommands(IReadOnlyList<War3CommandSnapshot> commands)
     {
         var signature = string.Join(';', commands.Select(value =>
@@ -648,6 +854,26 @@ public sealed partial class War3RtsHud : Control
             new Color("e5b84b18"), new Color("e6bd55"), 1, 1));
         button.AddThemeStyleboxOverride("pressed", Box(
             new Color("05080c88"), new Color("ffe17a"), 1, 1));
+        button.AddThemeStyleboxOverride("disabled", Box(
+            Colors.Transparent, Colors.Transparent, 0, 0));
+        return button;
+    }
+
+    private static Button QueueButton(bool active)
+    {
+        var button = new Button
+        {
+            FocusMode = FocusModeEnum.None,
+            ExpandIcon = true,
+            MouseDefaultCursorShape = CursorShape.PointingHand
+        };
+        button.AddThemeConstantOverride("icon_max_width", active ? 42 : 31);
+        button.AddThemeStyleboxOverride("normal", Box(
+            Colors.Transparent, Colors.Transparent, 0, 0));
+        button.AddThemeStyleboxOverride("hover", Box(
+            new Color("eac85822"), new Color("ffe071"), 1, 1));
+        button.AddThemeStyleboxOverride("pressed", Box(
+            new Color("03060999"), new Color("fff1a0"), 1, 1));
         button.AddThemeStyleboxOverride("disabled", Box(
             Colors.Transparent, Colors.Transparent, 0, 0));
         return button;

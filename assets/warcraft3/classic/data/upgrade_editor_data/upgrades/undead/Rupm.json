@@ -1,0 +1,101 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rupm",
+  "displayName": "背包技能",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPackBeast.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPackBeast.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpackbeast.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "背包技能",
+        "tooltip": "研究背包技能(|cffffcc00B|r)",
+        "extendedTooltip": "给予指定的不死族地面单位携带物品的能力。",
+        "hotkey": "B",
+        "gold": 50,
+        "lumber": 25,
+        "researchSeconds": 20,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPackBeast.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPackBeast.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnpackbeast.png"
+        },
+        "requirements": [
+          "utom"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rupm",
+    "comments": "undead backpack",
+    "class": "_",
+    "race": "undead",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "0",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "25",
+    "lumbermod": "0",
+    "timebase": "20",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNPackBeast.blp",
+    "Buttonpos": "3,0",
+    "Requires": "utom",
+    "Name": "背包技能",
+    "EditorSuffix": "(不死族)",
+    "Tip": "研究背包技能(|cffffcc00B|r)",
+    "Ubertip": "\"给予指定的不死族地面单位携带物品的能力。\"",
+    "Hotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

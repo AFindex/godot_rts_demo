@@ -1,0 +1,96 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rnsi",
+  "displayName": "驱逐魔法",
+  "identity": {
+    "race": "naga",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndryaddispelmagic.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "驱逐魔法",
+        "tooltip": "研究驱逐魔法(|cffffcc00B|r)",
+        "extendedTooltip": "给予飞蛇驱散敌单位正面效果的魔法，及友方单位负面效果魔法的能力。|n对召唤单位造成伤害。",
+        "hotkey": "B",
+        "gold": 50,
+        "lumber": 50,
+        "researchSeconds": 45,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndryaddispelmagic.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rnsi",
+    "comments": "naga abolish magic",
+    "class": "_",
+    "race": "naga",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "0",
+    "timebase": "45",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDryadDispelMagic.blp",
+    "Buttonpos": "1,2",
+    "Name": "驱逐魔法",
+    "Tip": "研究驱逐魔法(|cffffcc00B|r)",
+    "Ubertip": "\"给予飞蛇驱散敌单位正面效果的魔法，及友方单位负面效果魔法的能力。|n对召唤单位造成伤害。\"",
+    "Hotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/CampaignUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

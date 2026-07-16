@@ -178,6 +178,14 @@ public sealed partial class War3WorldPresenter : Node3D
                     dead.RemoveAt = Time.GetTicksMsec() + 3_400;
                     dead.Selection.Visible = false;
                     dead.Actor.PlayDeath();
+                    if (dead.Definition.SpecialEffectSource.Length > 0 &&
+                        War3RuntimeAssets.Contains(
+                            dead.Definition.SpecialEffectSource))
+                        SpawnTransient(
+                            dead.Definition.SpecialEffectSource,
+                            dead.LastPosition,
+                            camera,
+                            1_600);
                 }
                 continue;
             }
@@ -190,6 +198,7 @@ public sealed partial class War3WorldPresenter : Node3D
             var position = NVector2.Lerp(
                 simulation.Units.PreviousPositions[unit],
                 simulation.Units.Positions[unit], interpolation);
+            visual.LastPosition = position;
             var world = ToWorldAtGround(position, definition.FlyingHeight);
             visual.Actor.Position = world;
             var velocity = simulation.Units.Velocities[unit];
@@ -425,6 +434,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 _buildings.Add(id, visual);
             }
             var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+            visual.LastPosition = center;
             var world = ToWorldAtGround(center);
             visual.Actor.Position = world;
             var diameter = MathF.Max(
@@ -482,6 +492,14 @@ public sealed partial class War3WorldPresenter : Node3D
             pair.Value.RemoveAt = Time.GetTicksMsec() + 4_000;
             pair.Value.Selection.Visible = false;
             pair.Value.Actor.PlayDeath();
+            if (pair.Value.Definition.SpecialEffectSource.Length > 0 &&
+                War3RuntimeAssets.Contains(
+                    pair.Value.Definition.SpecialEffectSource))
+                SpawnTransient(
+                    pair.Value.Definition.SpecialEffectSource,
+                    pair.Value.LastPosition,
+                    camera,
+                    1_600);
         }
         foreach (var id in _buildings.Where(pair => pair.Value.Dying &&
                                                     Time.GetTicksMsec() >= pair.Value.RemoveAt)
@@ -783,6 +801,7 @@ public sealed partial class War3WorldPresenter : Node3D
         public War3UnitDefinition Definition { get; } = definition;
         public float LastWindup { get; set; }
         public float LastCooldown { get; set; }
+        public NVector2 LastPosition { get; set; }
         public bool Dying { get; set; }
         public ulong RemoveAt { get; set; }
     }
@@ -797,6 +816,7 @@ public sealed partial class War3WorldPresenter : Node3D
         public War3ModelActor Actor { get; } = actor;
         public MeshInstance3D Selection { get; } = selection;
         public War3BuildingDefinition Definition { get; } = definition;
+        public NVector2 LastPosition { get; set; }
         public bool WasGhost { get; set; }
         public bool Dying { get; set; }
         public ulong RemoveAt { get; set; }

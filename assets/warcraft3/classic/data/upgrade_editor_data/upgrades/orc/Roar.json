@@ -1,0 +1,161 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Roar",
+  "displayName": "钢铁护甲",
+  "identity": {
+    "class": "armor",
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsteelarmor.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnthoriumarmor.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnarcanitearmor.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "钢铁护甲",
+        "tooltip": "升级到钢铁护甲(|cffffcc00A|r)",
+        "extendedTooltip": "增加兽族步兵，掠夺者，牛头人，巨魔猎头者，巨魔蝙蝠骑士，风骑士和粉碎者的护甲。",
+        "hotkey": "A",
+        "gold": 150,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnsteelarmor.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "金属护甲",
+        "tooltip": "升级到钢铁护甲(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加兽族步兵，掠夺者，牛头人，巨魔猎头者，巨魔蝙蝠骑士，风骑士和粉碎者的护甲。",
+        "hotkey": "A",
+        "gold": 225,
+        "lumber": 225,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnthoriumarmor.png"
+        },
+        "requirements": [
+          "ostr"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "终极护甲",
+        "tooltip": "升级到终极护甲(|cffffcc00A|r)",
+        "extendedTooltip": "进一步增加兽族步兵，掠夺者，牛头人，巨魔猎头者，巨魔蝙蝠骑士，风骑士和粉碎者的护甲。",
+        "hotkey": "A",
+        "gold": 300,
+        "lumber": 375,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnarcanitearmor.png"
+        },
+        "requirements": [
+          "ofrt"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Roar",
+    "comments": "orc armor",
+    "class": "armor",
+    "race": "orc",
+    "flag": "4",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "150",
+    "goldmod": "75",
+    "lumberbase": "75",
+    "lumbermod": "150",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSteelArmor.blp,ReplaceableTextures\\CommandButtons\\BTNThoriumArmor.blp,ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+    "Buttonpos": "0,1",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "ostr",
+    "Requires2": "ofrt",
+    "Name": "钢铁护甲,金属护甲,终极护甲",
+    "Tip": "升级到钢铁护甲(|cffffcc00A|r),升级到钢铁护甲(|cffffcc00A|r),升级到终极护甲(|cffffcc00A|r)",
+    "Ubertip": "\"增加兽族步兵，掠夺者，牛头人，巨魔猎头者，巨魔蝙蝠骑士，风骑士和粉碎者的护甲。\",\"进一步增加兽族步兵，掠夺者，牛头人，巨魔猎头者，巨魔蝙蝠骑士，风骑士和粉碎者的护甲。\",\"进一步增加兽族步兵，掠夺者，牛头人，巨魔猎头者，巨魔蝙蝠骑士，风骑士和粉碎者的护甲。\"",
+    "Hotkey": "A,A,A"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

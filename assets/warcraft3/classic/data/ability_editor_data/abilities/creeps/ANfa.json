@@ -1,0 +1,235 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANfa",
+  "displayName": "霜冻之箭",
+  "identity": {
+    "baseCode": "AHca",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNColdArrowsOn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNColdArrowsOn.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncoldarrowson.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "霜冻之箭",
+        "tooltip": "霜冻之箭(|cffffcc00R|r)- [|cffffcc00等级 1|r]",
+        "extendedTooltip": "每次攻击带有冰冻效果，攻击值为<ANfa,DataA1> 。在<ANfa,Dur1>秒内使敌人减慢<ANfa,DataB1,%>%的攻击速度和<ANfa,DataC1,%>%的移动速度。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 5,
+        "heroDuration": 1.5,
+        "cooldown": 0,
+        "manaCost": 10,
+        "range": 600,
+        "data": {
+          "A": "5",
+          "B": "0.3",
+          "C": "0.3",
+          "D": "7"
+        },
+        "buffIds": [
+          "BHca",
+          "Bcsd"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "霜冻之箭",
+        "tooltip": "霜冻之箭(|cffffcc00R|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "每次攻击带有冰冻效果，攻击值为<ANfa,DataA2> 。在<ANfa,Dur1>秒内使敌人减慢<ANfa,DataB2,%>%的攻击速度和<ANfa,DataC2,%>%的移动速度。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "duration": 5,
+        "heroDuration": 1.5,
+        "manaCost": 10,
+        "range": 600,
+        "data": {
+          "A": "10",
+          "B": "0.5",
+          "C": "0.5",
+          "D": "7"
+        },
+        "buffIds": [
+          "BHca",
+          "Bcsd"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "霜冻之箭",
+        "tooltip": "霜冻之箭(|cffffcc00R|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "每次攻击带有冰冻效果，攻击值为<ANfa,DataA3> 。在<ANfa,Dur3>秒内使敌人减慢<ANfa,DataB3,%>%的攻击速度和<ANfa,DataC3,%>%的移动速度。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "duration": 5,
+        "heroDuration": 1.5,
+        "manaCost": 10,
+        "range": 600,
+        "data": {
+          "A": "15",
+          "B": "0.7",
+          "C": "0.7",
+          "D": "7"
+        },
+        "buffIds": [
+          "BHca",
+          "Bcsd"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANfa",
+    "code": "AHca",
+    "comments": "Sea Witch - Frost Arrows",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,enemy,neutral",
+    "Cast1": "0",
+    "Dur1": "5",
+    "HeroDur1": "1.5",
+    "Cool1": "0",
+    "Cost1": "10",
+    "Area1": "-",
+    "Rng1": "600",
+    "DataA1": "5",
+    "DataB1": "0.3",
+    "DataC1": "0.3",
+    "DataD1": "7",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "5",
+    "HeroDur2": "1.5",
+    "Cool2": "-",
+    "Cost2": "10",
+    "Area2": "-",
+    "Rng2": "600",
+    "DataA2": "10",
+    "DataB2": "0.5",
+    "DataC2": "0.5",
+    "DataD2": "7",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "5",
+    "HeroDur3": "1.5",
+    "Cool3": "-",
+    "Cost3": "10",
+    "Area3": "-",
+    "Rng3": "600",
+    "DataA3": "15",
+    "DataB3": "0.7",
+    "DataC3": "0.7",
+    "DataD3": "7",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "5",
+    "HeroDur4": "1.5",
+    "Cool4": "-",
+    "Cost4": "7",
+    "Area4": "-",
+    "Rng4": "600",
+    "DataA4": "15",
+    "DataB4": "0.7",
+    "DataC4": "0.7",
+    "DataD4": "7",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,enemy,neutral",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BHca,Bcsd",
+    "targs2": "air,ground,enemy,neutral",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BHca,Bcsd",
+    "targs3": "air,ground,enemy,neutral",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BHca,Bcsd",
+    "targs4": "air,ground,enemy,neutral",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BHca,Bcsd,Bcsi"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNColdArrowsOn.blp",
+    "Unart": "ReplaceableTextures\\CommandButtons\\BTNColdArrowsOff.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNColdArrows.blp",
+    "Buttonpos": "1,2",
+    "Unbuttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Missileart": "Abilities\\Spells\\Other\\FrostArrows\\NagaColdArrowMissile.mdl",
+    "Missilearc": "0.15",
+    "Missilespeed": "1500",
+    "MissileHoming": "1",
+    "Name": "霜冻之箭",
+    "Tip": "霜冻之箭(|cffffcc00R|r)- [|cffffcc00等级 1|r],霜冻之箭(|cffffcc00R|r) - [|cffffcc00等级 2|r],霜冻之箭(|cffffcc00R|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"每次攻击带有冰冻效果，攻击值为<ANfa,DataA1> 。在<ANfa,Dur1>秒内使敌人减慢<ANfa,DataB1,%>%的攻击速度和<ANfa,DataC1,%>%的移动速度。\",\"每次攻击带有冰冻效果，攻击值为<ANfa,DataA2> 。在<ANfa,Dur1>秒内使敌人减慢<ANfa,DataB2,%>%的攻击速度和<ANfa,DataC2,%>%的移动速度。\",\"每次攻击带有冰冻效果，攻击值为<ANfa,DataA3> 。在<ANfa,Dur3>秒内使敌人减慢<ANfa,DataB3,%>%的攻击速度和<ANfa,DataC3,%>%的移动速度。\"",
+    "Untip": "\"|cffc3dbff点击右键以激活自动施放功能。|r\"",
+    "Unubertip": "\"|cffc3dbff点击右键以取消自动施放功能。|r\"",
+    "Hotkey": "R",
+    "Unhotkey": "R",
+    "Researchtip": "\"学习霜冻之箭(|cffffcc00R|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"每次攻击带有冰冻效果，造成额外的伤害。使敌人单位减慢攻击和移动速度。 |n|n|cffffcc00等级 1|r - <ANfa,DataB1,%>% 攻击速度, <ANfa,DataC1,%>% 移动速度, <ANfa,DataA1> 点额外伤害。 |n|cffffcc00等级 2|r - <ANfa,DataB2,%>% 攻击速度， <ANfa,DataC2,%>% 移动速度，<ANfa,DataA2>点额外伤害。 |n|cffffcc00等级 3|r - <ANfa,DataB3,%>% 攻击速度， <ANfa,DataC3,%>% 移动速度，<ANfa,DataA3>点额外伤害。\"",
+    "Researchhotkey": "R",
+    "Animnames": "attack"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

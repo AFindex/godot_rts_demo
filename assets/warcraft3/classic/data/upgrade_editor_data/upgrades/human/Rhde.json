@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhde",
+  "displayName": "防御",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDefend.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDefend.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndefend.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "防御",
+        "tooltip": "研究防御(|cffffcc00D|r)",
+        "hotkey": "D",
+        "gold": 150,
+        "lumber": 100,
+        "researchSeconds": 45,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDefend.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDefend.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndefend.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rhde",
+    "comments": "human footman defend",
+    "class": "_",
+    "race": "human",
+    "flag": "64",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "150",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "45",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDefend.blp",
+    "Buttonpos": "0,2",
+    "Name": "防御",
+    "Tip": "研究防御(|cffffcc00D|r)",
+    "UberTip": "\"使得步兵能拥有防御技能，有效地抵抗敌人的穿刺型攻击。\"",
+    "Hotkey": "D"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

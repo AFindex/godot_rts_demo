@@ -1,0 +1,105 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Ruwb",
+  "displayName": "蛛网",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWeb.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWeb.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnweb.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "蛛网",
+        "tooltip": "研究蛛网(|cffffcc00W|r)",
+        "extendedTooltip": "使得穴居恶魔能将敌人的某个空中单位捕获到地面，从而让己方的地面单位可以对其进行攻击。",
+        "hotkey": "W",
+        "gold": 150,
+        "lumber": 150,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWeb.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWeb.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnweb.png"
+        },
+        "requirements": [
+          "ugrv",
+          "unp1"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Ruwb",
+    "comments": "undead fiend web",
+    "class": "_",
+    "race": "undead",
+    "flag": "32",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "150",
+    "goldmod": "0",
+    "lumberbase": "150",
+    "lumbermod": "0",
+    "timebase": "30",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWeb.blp",
+    "Buttonpos": "1,2",
+    "Requires": "ugrv,unp1",
+    "Name": "蛛网",
+    "Tip": "研究蛛网(|cffffcc00W|r)",
+    "Ubertip": "\"使得穴居恶魔能将敌人的某个空中单位捕获到地面，从而让己方的地面单位可以对其进行攻击。\"",
+    "Hotkey": "W"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Roch",
+  "displayName": "混乱的",
+  "identity": {
+    "race": "demon",
+    "used": true,
+    "global": true,
+    "levels": 1,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeupone.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "混乱的",
+        "gold": 0,
+        "lumber": 0,
+        "researchSeconds": 0,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeupone.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Roch",
+    "comments": "orc chaos conversion",
+    "class": "_",
+    "race": "demon",
+    "flag": "8192",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "0",
+    "goldbase": "0",
+    "goldmod": "0",
+    "lumberbase": "0",
+    "lumbermod": "0",
+    "timebase": "0",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "1",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+    "Name": "混乱的"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

@@ -40,7 +40,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 8;
+    public const int CurrentFormatVersion = 9;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {
@@ -328,16 +328,23 @@ internal static class ProductionSerialization
         writer.Write(value.Combat.CanMoveDuringWindup);
         writer.Write(value.Combat.CanMoveDuringCooldown);
         writer.Write(value.Combat.AutoTargetPriority);
+        writer.Write((byte)value.Perception.Concealment);
+        writer.Write(value.Perception.DetectionRange);
+        writer.Write(value.Perception.VisionRange);
+        writer.Write(value.Perception.ObservationHeight);
+        writer.Write((byte)value.Perception.TerrainVisionMode);
         writer.Write(value.IsWorker);
     }
 
-    private static UnitTypeProfile ReadUnitType(BinaryReader reader) => new(
-        reader.ReadInt32(), ReadString(reader),
-        new UnitMovementProfileSnapshot(
+    private static UnitTypeProfile ReadUnitType(BinaryReader reader)
+    {
+        var id = reader.ReadInt32();
+        var name = ReadString(reader);
+        var movement = new UnitMovementProfileSnapshot(
             reader.ReadInt32(), ReadString(reader), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(),
-            (MovementClass)reader.ReadByte(), reader.ReadSingle()),
-        new CombatProfileSnapshot(
+            (MovementClass)reader.ReadByte(), reader.ReadSingle());
+        var combat = new CombatProfileSnapshot(
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte(),
@@ -345,8 +352,17 @@ internal static class ProductionSerialization
             reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
-            reader.ReadInt32()),
-        reader.ReadBoolean());
+            reader.ReadInt32());
+        var perception = new UnitPerceptionProfileSnapshot(
+            (UnitConcealmentKind)reader.ReadByte(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            (TerrainVisionMode)reader.ReadByte());
+        return new UnitTypeProfile(id, name, movement, combat,
+            reader.ReadBoolean())
+        {
+            Perception = perception
+        };
+    }
 
     private static void WriteString(BinaryWriter writer, string value)
     {

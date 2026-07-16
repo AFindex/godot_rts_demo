@@ -1,0 +1,105 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rusf",
+  "displayName": "石像形态",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneForm.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneForm.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstoneform.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "石像形态",
+        "tooltip": "研究石像形态(|cffffcc00S|r)",
+        "extendedTooltip": "石像形态技能能使石像鬼变成一座具有极高护甲，魔法免疫，生命值恢复加快的雕像。在这期间石像鬼也不能攻击任何敌人。",
+        "hotkey": "S",
+        "gold": 75,
+        "lumber": 150,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneForm.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStoneForm.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnstoneform.png"
+        },
+        "requirements": [
+          "ugrv",
+          "unp2"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rusf",
+    "comments": "undead gargoyle stone",
+    "class": "_",
+    "race": "undead",
+    "flag": "64",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "150",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStoneForm.blp",
+    "Buttonpos": "2,2",
+    "Requires": "ugrv,unp2",
+    "Name": "石像形态",
+    "Tip": "研究石像形态(|cffffcc00S|r)",
+    "Ubertip": "\"石像形态技能能使石像鬼变成一座具有极高护甲，魔法免疫，生命值恢复加快的雕像。在这期间石像鬼也不能攻击任何敌人。\"",
+    "Hotkey": "S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

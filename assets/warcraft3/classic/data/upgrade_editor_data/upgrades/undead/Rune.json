@@ -1,0 +1,155 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rune",
+  "displayName": "不死族巫师专家训练",
+  "identity": {
+    "class": "caster",
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 2,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerAdept.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerAdept.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnecromanceradept.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerMaster.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerMaster.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnecromancermaster.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "不死族巫师专家训练",
+        "tooltip": "不死族巫师专家训练(|cffffcc00E|r)",
+        "extendedTooltip": "增加不死族巫师的魔法最大值，魔法恢复速度，生命值和攻击力。并使其具有邪恶狂热技能。",
+        "hotkey": "E",
+        "gold": 100,
+        "lumber": 50,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerAdept.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerAdept.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnecromanceradept.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "不死族巫师大师训练",
+        "tooltip": "不死族巫师大师训练(|cffffcc00E|r)",
+        "extendedTooltip": "增加不死族巫师的魔法最大值，魔法恢复速度，生命值和攻击力。并使其具有残废技能。",
+        "hotkey": "E",
+        "gold": 100,
+        "lumber": 150,
+        "researchSeconds": 45,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerMaster.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNecromancerMaster.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnecromancermaster.png"
+        },
+        "requirements": [
+          "unp2"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rmnx",
+        "base": 100,
+        "modifier": 100
+      },
+      {
+        "slot": 2,
+        "type": "rmnr",
+        "base": 0.325,
+        "modifier": 0.325
+      },
+      {
+        "slot": 3,
+        "type": "rhpx",
+        "base": 40,
+        "modifier": 40
+      },
+      {
+        "slot": 4,
+        "type": "ratd",
+        "base": 0,
+        "modifier": 0
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rune",
+    "comments": "undead necromancer training",
+    "class": "caster",
+    "race": "undead",
+    "flag": "128",
+    "used": "1",
+    "maxlevel": "2",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "100",
+    "timebase": "30",
+    "timemod": "15",
+    "effect1": "rmnx",
+    "base1": "100",
+    "mod1": "100",
+    "effect2": "rmnr",
+    "base2": "0.325",
+    "mod4": "0",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "0.325",
+    "code2": "-",
+    "effect3": "rhpx",
+    "base3": "40",
+    "mod3": "40",
+    "code3": "-",
+    "effect4": "ratd",
+    "base4": "0",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNNecromancerAdept.blp,ReplaceableTextures\\CommandButtons\\BTNNecromancerMaster.blp",
+    "Buttonpos": "0,2",
+    "Requirescount": "2",
+    "Requires": "",
+    "Requires1": "unp2",
+    "Name": "不死族巫师专家训练,不死族巫师大师训练",
+    "Tip": "不死族巫师专家训练(|cffffcc00E|r),不死族巫师大师训练(|cffffcc00E|r)",
+    "Ubertip": "\"增加不死族巫师的魔法最大值，魔法恢复速度，生命值和攻击力。并使其具有邪恶狂热技能。\",\"增加不死族巫师的魔法最大值，魔法恢复速度，生命值和攻击力。并使其具有残废技能。\"",
+    "Hotkey": "E,E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

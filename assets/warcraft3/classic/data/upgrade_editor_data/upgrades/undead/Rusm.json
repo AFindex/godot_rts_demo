@@ -1,0 +1,108 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rusm",
+  "displayName": "骷髅法术",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletonMage.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletonMage.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnskeletonmage.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "骷髅法术",
+        "tooltip": "研究骷髅法术(|cffffcc00M|r)",
+        "extendedTooltip": "让复活死尸技能召唤出来的两个骷髅中的一个成为骷髅魔法师。",
+        "hotkey": "M",
+        "gold": 125,
+        "lumber": 150,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletonMage.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSkeletonMage.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnskeletonmage.png"
+        },
+        "requirements": [
+          "unp2"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rlev",
+        "base": 1,
+        "modifier": 1,
+        "code": "Arai"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rusm",
+    "comments": "undead skeletal mastery",
+    "class": "_",
+    "race": "undead",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "125",
+    "goldmod": "0",
+    "lumberbase": "150",
+    "lumbermod": "0",
+    "timebase": "30",
+    "timemod": "0",
+    "effect1": "rlev",
+    "base1": "1",
+    "mod1": "1",
+    "code1": "Arai",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Requires": "unp2",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSkeletonMage.blp",
+    "Buttonpos": "2,1",
+    "Name": "骷髅法术",
+    "Tip": "研究骷髅法术(|cffffcc00M|r)",
+    "Ubertip": "\"让复活死尸技能召唤出来的两个骷髅中的一个成为骷髅魔法师。\"",
+    "Hotkey": "M"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

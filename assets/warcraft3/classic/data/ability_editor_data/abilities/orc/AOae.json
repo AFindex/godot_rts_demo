@@ -1,0 +1,239 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AOae",
+  "displayName": "耐久光环",
+  "identity": {
+    "baseCode": "AOae",
+    "race": "orc",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNCommand.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNCommand.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncommand.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "耐久光环",
+        "tooltip": "耐久光环 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "增加周围单位<AOae,DataA1,%>%的移动速度和<AOae,DataB1,%>%的攻击速度。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "vuln",
+          "invu"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "area": 900,
+        "data": {
+          "A": "0.1",
+          "B": "0.05"
+        },
+        "buffIds": [
+          "BOae"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "耐久光环",
+        "tooltip": "耐久光环 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "增加周围单位<AOae,DataA2,%>%的移动速度和<AOae,DataB2,%>%的攻击速度。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "vuln",
+          "invu"
+        ],
+        "area": 900,
+        "data": {
+          "A": "0.2",
+          "B": "0.1"
+        },
+        "buffIds": [
+          "BOae"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "耐久光环",
+        "tooltip": "耐久光环 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "增加周围单位<AOae,DataA3,%>%的移动速度和<AOae,DataB3,%>%的攻击速度。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "vuln",
+          "invu"
+        ],
+        "area": 900,
+        "data": {
+          "A": "0.3",
+          "B": "0.15"
+        },
+        "buffIds": [
+          "BOae"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AOae",
+    "code": "AOae",
+    "uberAlias": "AOae",
+    "comments": "Chieftain - Endurance Aura",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "targs": "air,ground,friend,self,vuln,invu",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "0",
+    "Cost1": "-",
+    "Area1": "900",
+    "Rng1": "-",
+    "Data11": "0.1",
+    "Data12": "0.05",
+    "Data13": "-",
+    "Data14": "-",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "900",
+    "Rng2": "-",
+    "Data21": "0.2",
+    "Data22": "0.1",
+    "Data23": "-",
+    "Data24": "-",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "900",
+    "Rng3": "-",
+    "Data31": "0.3",
+    "Data32": "0.15",
+    "Data33": "-",
+    "Data34": "-",
+    "CastCheck": "-",
+    "DurCheck": "-",
+    "HeroDurCheck": "-",
+    "CoolCheck": "-",
+    "CostCheck": "-",
+    "AreaCheck": "-",
+    "RngCheck": "-",
+    "version": "0",
+    "race": "orc",
+    "levelSkip": "0",
+    "priority": "0",
+    "DataA1": "0.1",
+    "DataB1": "0.05",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "DataA2": "0.2",
+    "DataB2": "0.1",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "DataA3": "0.3",
+    "DataB3": "0.15",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "900",
+    "Rng4": "-",
+    "DataA4": "0.3",
+    "DataB4": "0.15",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,friend,self,vuln,invu",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BOae",
+    "targs2": "air,ground,friend,self,vuln,invu",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BOae",
+    "targs3": "air,ground,friend,self,vuln,invu",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BOae",
+    "targs4": "air,ground,friend,self,vuln,invu",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BOae"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\PassiveButtons\\PASBTNCommand.blp",
+    "Buttonpos": "2,2",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNCommand.blp",
+    "Researchbuttonpos": "2,0",
+    "Targetart": "Abilities\\Spells\\Orc\\CommandAura\\CommandAura.mdl",
+    "Targetattach": "origin",
+    "Name": "耐久光环",
+    "Tip": "耐久光环 - [|cffffcc00等级 1|r],耐久光环 - [|cffffcc00等级 2|r],耐久光环 - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"增加周围单位<AOae,DataA1,%>%的移动速度和<AOae,DataB1,%>%的攻击速度。\",\"增加周围单位<AOae,DataA2,%>%的移动速度和<AOae,DataB2,%>%的攻击速度。\",\"增加周围单位<AOae,DataA3,%>%的移动速度和<AOae,DataB3,%>%的攻击速度。\"",
+    "Researchtip": "\"学习耐久光环(|cffffcc00E|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"能增加周围单位的移动速度和攻击速度。|n|n|cffffcc00等级 1|r - 提高<AOae,DataA1,%>%的移动速度和<AOae,DataB1,%>%的攻击速度。|n|cffffcc00等级 2|r - 提高<AOae,DataA2,%>%的移动速度和<AOae,DataB2,%>%的攻击速度。|n|cffffcc00等级 3|r - 提高<AOae,DataA3,%>%的移动速度和<AOae,DataB3,%>%的攻击速度。\"",
+    "Researchhotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/AbilityData.slk",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

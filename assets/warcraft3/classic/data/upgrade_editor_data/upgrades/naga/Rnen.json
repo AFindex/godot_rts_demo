@@ -1,0 +1,96 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rnen",
+  "displayName": "诱捕",
+  "identity": {
+    "race": "naga",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnensnare.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "诱捕",
+        "tooltip": "研究诱捕(|cffffcc00N|r)",
+        "extendedTooltip": "使娜迦暴徒能够使用诱捕技能。能将一个目标空中单位固定在地面上，使其不能移动。被诱捕的空中单位可以当作地面单位进行攻击。",
+        "hotkey": "N",
+        "gold": 50,
+        "lumber": 75,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnensnare.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rnen",
+    "comments": "naga myrmidon ensnare",
+    "class": "_",
+    "race": "naga",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "75",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+    "Buttonpos": "0,2",
+    "Name": "诱捕",
+    "Tip": "研究诱捕(|cffffcc00N|r)",
+    "Ubertip": "\"使娜迦暴徒能够使用诱捕技能。能将一个目标空中单位固定在地面上，使其不能移动。被诱捕的空中单位可以当作地面单位进行攻击。\"",
+    "Hotkey": "N"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/CampaignUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

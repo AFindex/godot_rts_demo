@@ -1,0 +1,150 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AIir",
+  "displayName": "能召唤冰冻幽灵的物品",
+  "identity": {
+    "baseCode": "AIfs",
+    "race": "other",
+    "hero": false,
+    "item": true,
+    "editorVisible": true,
+    "levels": 1,
+    "requiredHeroLevel": 0,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNIceShard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNIceShard.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btniceshard.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "能召唤冰冻幽灵的物品",
+        "targets": [],
+        "castTime": 0,
+        "duration": 180,
+        "heroDuration": 180,
+        "cooldown": 20,
+        "manaCost": 0,
+        "area": 200,
+        "data": {
+          "A": "1",
+          "C": "nrvi"
+        },
+        "buffIds": [
+          "BFig"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AIir",
+    "code": "AIfs",
+    "comments": "FigurineIceRevenant",
+    "version": "0",
+    "useInEditor": "1",
+    "hero": "0",
+    "item": "1",
+    "sort": "item",
+    "race": "other",
+    "checkDep": "0",
+    "levels": "1",
+    "reqLevel": "0",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "180",
+    "HeroDur1": "180",
+    "Cool1": "20",
+    "Cost1": "0",
+    "Area1": "200",
+    "Rng1": "-",
+    "DataA1": "1",
+    "DataB1": "-",
+    "DataC1": "nrvi",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "-",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "-",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "-",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BFig",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNIceShard.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+    "Name": "能召唤冰冻幽灵的物品"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

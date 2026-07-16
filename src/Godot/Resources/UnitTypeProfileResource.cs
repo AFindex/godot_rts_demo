@@ -49,5 +49,16 @@ public partial class UnitTypeProfileResource : Resource
     [Export] public bool CanMoveDuringCooldown { get; set; }
     [Export(PropertyHint.Range, "0,10,1")]
     public int AutoTargetPriority { get; set; }
+    [Export] public UnitConcealmentKind Concealment { get; set; }
+    [Export(PropertyHint.Range, "0,5000,1,or_greater")]
+    public float DetectionRange { get; set; }
+    [Export(PropertyHint.Range, "1,5000,1,or_greater")]
+    public float VisionRange { get; set; } =
+        PlayerVisibilitySystem.UnitVisionRadius;
+    [Export(PropertyHint.Range, "0,5000,1,or_greater")]
+    public float ObservationHeight { get; set; } =
+        PlayerVisibilitySystem.DefaultGroundObservationHeight;
+    [Export] public TerrainVisionMode TerrainVisionMode { get; set; } =
+        TerrainVisionMode.Ground;
     [Export] public bool IsWorker { get; set; }
 }

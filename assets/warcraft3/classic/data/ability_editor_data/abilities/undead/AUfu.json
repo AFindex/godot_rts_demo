@@ -1,0 +1,229 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AUfu",
+  "displayName": "霜冻护甲",
+  "identity": {
+    "baseCode": "AUfu",
+    "race": "undead",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFrostArmorOn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFrostArmorOn.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfrostarmoron.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "霜冻护甲",
+        "tooltip": "霜冻护甲(|cffffcc00F|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "使目标身上具有一层霜冻保护。这保护层能增加<AUfu,DataB1>点的护甲并使近战攻击该目标的敌人在<AUfu,Dur1>秒内减速。|n持续<AUfu,DataA1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 2,
+        "manaCost": 40,
+        "range": 800,
+        "data": {
+          "A": "45",
+          "B": "3"
+        },
+        "buffIds": [
+          "BUfa"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "霜冻护甲",
+        "tooltip": "霜冻护甲(|cffffcc00F|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "使目标身上具有一层霜冻保护。这保护层能增加<AUfa,DataB2>点的护甲并使近战攻击该目标的敌人在<AUfa,Dur1>秒内减速。|n持续<AUfa,DataA2>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "neutral"
+        ],
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 2,
+        "manaCost": 40,
+        "range": 800,
+        "data": {
+          "A": "45",
+          "B": "5"
+        },
+        "buffIds": [
+          "BUfa"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "霜冻护甲",
+        "tooltip": "霜冻护甲(|cffffcc00F|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "使目标身上具有一层霜冻保护。这保护层能增加<AUfa,DataB3>点的护甲并使近战攻击该目标的敌人在<AUfa,Dur1>秒内减速。|n持续<AUfa,DataA3>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self",
+          "neutral"
+        ],
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 2,
+        "manaCost": 40,
+        "range": 800,
+        "data": {
+          "A": "45",
+          "B": "7"
+        },
+        "buffIds": [
+          "BUfa"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AUfu",
+    "code": "AUfu",
+    "comments": "Lich - Frost Armor (Autocast)",
+    "version": "0",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "undead",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,friend,self,neutral",
+    "Cast1": "0",
+    "Dur1": "5",
+    "HeroDur1": "5",
+    "Cool1": "2",
+    "Cost1": "40",
+    "Area1": "-",
+    "Rng1": "800",
+    "DataA1": "45",
+    "DataB1": "3",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "5",
+    "HeroDur2": "5",
+    "Cool2": "2",
+    "Cost2": "40",
+    "Area2": "-",
+    "Rng2": "800",
+    "DataA2": "45",
+    "DataB2": "5",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "5",
+    "HeroDur3": "5",
+    "Cool3": "2",
+    "Cost3": "40",
+    "Area3": "-",
+    "Rng3": "800",
+    "DataA3": "45",
+    "DataB3": "7",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "5",
+    "HeroDur4": "5",
+    "Cool4": "2",
+    "Cost4": "40",
+    "Area4": "-",
+    "Rng4": "800",
+    "DataA4": "45",
+    "DataB4": "7",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,friend,self,neutral",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BUfa",
+    "targs2": "air,ground,friend,self,neutral",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BUfa",
+    "targs3": "air,ground,friend,self,neutral",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BUfa",
+    "targs4": "air,ground,friend,self,neutral",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BUfa"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNFrostArmorOn.blp",
+    "Unart": "ReplaceableTextures\\CommandButtons\\BTNFrostArmorOff.blp",
+    "Buttonpos": "1,2",
+    "Unbuttonpos": "1,2",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNFrostArmor.blp",
+    "Researchbuttonpos": "1,0",
+    "Order": "frostarmor",
+    "Orderon": "frostarmoron",
+    "Orderoff": "frostarmoroff",
+    "Name": "霜冻护甲",
+    "EditorSuffix": "(自动施放)",
+    "Tip": "霜冻护甲(|cffffcc00F|r) - [|cffffcc00等级 1|r],霜冻护甲(|cffffcc00F|r) - [|cffffcc00等级 2|r],霜冻护甲(|cffffcc00F|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"使目标身上具有一层霜冻保护。这保护层能增加<AUfu,DataB1>点的护甲并使近战攻击该目标的敌人在<AUfu,Dur1>秒内减速。|n持续<AUfu,DataA1>秒。\",\"使目标身上具有一层霜冻保护。这保护层能增加<AUfa,DataB2>点的护甲并使近战攻击该目标的敌人在<AUfa,Dur1>秒内减速。|n持续<AUfa,DataA2>秒。\",\"使目标身上具有一层霜冻保护。这保护层能增加<AUfa,DataB3>点的护甲并使近战攻击该目标的敌人在<AUfa,Dur1>秒内减速。|n持续<AUfa,DataA3>秒。\"",
+    "Untip": "\"|cffc3dbff点击右键以启动自动施放功能。\"",
+    "Unubertip": "\"|cffc3dbff点击右键以取消自动施放功能。\"",
+    "Hotkey": "F",
+    "Researchtip": "\"学习霜冻护甲(|cffffcc00F|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"使目标身上具有一层霜冻保护。这保护层能增加一定的护甲并使近战攻击该目标的敌人在一定时间内减速。|n|n|cffffcc00等级 1|r - 增加<AUfu,DataB1>点护甲。|n|cffffcc00等级 2|r - 增加<AUfu,DataB2>点护甲。|n|cffffcc00等级 3|r - 增加<AUfu,DataB3>点护甲。\"",
+    "Researchhotkey": "F"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

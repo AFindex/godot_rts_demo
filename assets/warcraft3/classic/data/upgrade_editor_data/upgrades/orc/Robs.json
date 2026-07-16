@@ -1,0 +1,115 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Robs",
+  "displayName": "狂暴力量",
+  "identity": {
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBerserk.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBerserk.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnberserk.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "狂暴力量",
+        "tooltip": "研究狂暴力量(|cffffcc00B|r)",
+        "extendedTooltip": "能增加兽族步兵<Robs,base1>点的生命值和<Robs,base2>点的攻击力。",
+        "hotkey": "B",
+        "gold": 50,
+        "lumber": 150,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBerserk.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBerserk.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnberserk.png"
+        },
+        "requirements": [
+          "ostr"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rhpx",
+        "base": 100
+      },
+      {
+        "slot": 2,
+        "type": "ratx",
+        "base": 3
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Robs",
+    "comments": "orc grunt berserk",
+    "class": "_",
+    "race": "orc",
+    "flag": "32",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "150",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "rhpx",
+    "base1": "100",
+    "mod1": "-",
+    "effect2": "ratx",
+    "base2": "3",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNBerserk.blp",
+    "Buttonpos": "0,2",
+    "Requires": "ostr",
+    "Name": "狂暴力量",
+    "Tip": "研究狂暴力量(|cffffcc00B|r)",
+    "Ubertip": "\"能增加兽族步兵<Robs,base1>点的生命值和<Robs,base2>点的攻击力。\"",
+    "Hotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

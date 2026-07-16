@@ -1,0 +1,153 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANfy",
+  "displayName": "工厂",
+  "identity": {
+    "baseCode": "ANfy",
+    "race": "creeps",
+    "hero": false,
+    "item": false,
+    "editorVisible": true,
+    "levels": 1,
+    "requiredHeroLevel": 0,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPocketFactory.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPocketFactory.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpocketfactory.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "工厂",
+        "tooltip": "工厂",
+        "extendedTooltip": "工厂.",
+        "targets": [],
+        "castTime": 0,
+        "duration": 12,
+        "heroDuration": 12,
+        "cooldown": 0,
+        "manaCost": 0,
+        "area": 200,
+        "data": {
+          "A": "6",
+          "B": "1100"
+        },
+        "summonedUnitId": "ncgb",
+        "buffIds": [
+          "BNcg"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANfy",
+    "code": "ANfy",
+    "comments": "Factory",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "0",
+    "item": "0",
+    "sort": "unit",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "1",
+    "reqLevel": "0",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "_",
+    "Cast1": "0",
+    "Dur1": "12",
+    "HeroDur1": "12",
+    "Cool1": "0",
+    "Cost1": "0",
+    "Area1": "200",
+    "Rng1": "-",
+    "DataA1": "6",
+    "DataB1": "1100",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "UnitID1": "ncgb",
+    "BuffID1": "BNcg",
+    "targs2": "_",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "-",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "targs3": "_",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "-",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "targs4": "_",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "-",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNPocketFactory.blp",
+    "Buttonpos": "0,2",
+    "Name": "工厂",
+    "Tip": "\"工厂\"",
+    "Ubertip": "\"工厂.\"",
+    "Hotkey": ""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

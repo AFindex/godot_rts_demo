@@ -10578,7 +10578,8 @@ public static partial class VisualTestCatalog
                     $"gap={bodyGap:0.######}, " +
                     $"protocol={protocol}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log8/package{package.FormatVersion}/hot{hot.FormatVersion}, " +
+                    $"versions=log{ProductionCommandLogSnapshot.CurrentFormatVersion}/" +
+                    $"package{package.FormatVersion}/hot{hot.FormatVersion}, " +
                     $"buildings={runtime.ObserveGameplayBuilding(townHall.BuildingId).State}/" +
                     $"{runtime.ObserveGameplayBuilding(barracks.BuildingId).State}, " +
                     $"issued={issued}({issueDetails}), ids={townHall.BuildingId.Value}/" +
@@ -10719,7 +10720,8 @@ public static partial class VisualTestCatalog
                     $"{secondBarracks.Succeeded}, train={trained}, " +
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log8/package{package.FormatVersion}/hot{hot.FormatVersion}");
+                    $"versions=log{ProductionCommandLogSnapshot.CurrentFormatVersion}/" +
+                    $"package{package.FormatVersion}/hot{hot.FormatVersion}");
             });
         session.At(650, "Reject advanced unit while one Barracks is missing", runtime =>
         {
@@ -10869,7 +10871,8 @@ public static partial class VisualTestCatalog
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"upgradedDamage={upgradedDamage.TotalDamage}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
-                    $"versions=log8/package{package.FormatVersion}/hot{hot.FormatVersion}");
+                    $"versions=log{ProductionCommandLogSnapshot.CurrentFormatVersion}/" +
+                    $"package{package.FormatVersion}/hot{hot.FormatVersion}");
             });
         session.At(700, "Reject doctrine, cancel first weapon order, then requeue", runtime =>
         {

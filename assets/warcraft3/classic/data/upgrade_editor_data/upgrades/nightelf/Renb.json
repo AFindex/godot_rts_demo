@@ -1,0 +1,113 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Renb",
+  "displayName": "自然的祝福",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNaturesBlessing.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNaturesBlessing.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnnaturesblessing.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "自然的祝福",
+        "tooltip": "研究自然的祝福(|cffffcc00N|r)",
+        "extendedTooltip": "能提高所有古树和树人的移动速度和护甲。",
+        "hotkey": "N",
+        "gold": 150,
+        "lumber": 200,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNaturesBlessing.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNaturesBlessing.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnnaturesblessing.png"
+        },
+        "requirements": [
+          "etoa"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rmvx",
+        "base": 40
+      },
+      {
+        "slot": 2,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Renb",
+    "comments": "nightelf nature's blessing",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "32",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "150",
+    "goldmod": "0",
+    "lumberbase": "200",
+    "lumbermod": "0",
+    "timebase": "60",
+    "timemod": "0",
+    "effect1": "rmvx",
+    "base1": "40",
+    "mod1": "-",
+    "effect2": "rarm",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNNaturesBlessing.blp",
+    "Buttonpos": "2,0",
+    "Requires": "etoa",
+    "Name": "自然的祝福",
+    "Tip": "研究自然的祝福(|cffffcc00N|r)",
+    "Ubertip": "\"能提高所有古树和树人的移动速度和护甲。\"",
+    "Hotkey": "N"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANhx",
+  "displayName": "妖术",
+  "identity": {
+    "baseCode": "AOhx",
+    "race": "orc",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 4,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHex.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHex.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhex.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "妖术",
+        "tooltip": "妖术(|cffffcc00X|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 15,
+        "heroDuration": 4,
+        "cooldown": 7,
+        "manaCost": 70,
+        "range": 800,
+        "data": {
+          "A": "99",
+          "B": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+          "C": "nalb,nvul,nsno",
+          "D": "nsha,npng",
+          "E": "nshw,npnw"
+        },
+        "buffIds": [
+          "BOhx"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "妖术",
+        "tooltip": "妖术(|cffffcc00X|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "T将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur2>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 30,
+        "heroDuration": 5,
+        "cooldown": 7,
+        "manaCost": 70,
+        "range": 800,
+        "data": {
+          "A": "99",
+          "B": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+          "C": "nalb,nvul,nsno",
+          "D": "nsha,npng",
+          "E": "nshw,npnw"
+        },
+        "buffIds": [
+          "BOhx"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "妖术",
+        "tooltip": "妖术(|cffffcc00X|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur3>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 45,
+        "heroDuration": 6,
+        "cooldown": 7,
+        "manaCost": 70,
+        "range": 800,
+        "data": {
+          "A": "99",
+          "B": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+          "C": "nalb,nvul,nsno",
+          "D": "nsha,npng",
+          "E": "nshw,npnw"
+        },
+        "buffIds": [
+          "BOhx"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 4,
+        "name": "妖术",
+        "tooltip": "妖术(|cffffcc00X|r) - [|cffffcc00等级 4|r]",
+        "extendedTooltip": "将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur4>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 45,
+        "heroDuration": 6,
+        "cooldown": 7,
+        "manaCost": 25,
+        "range": 800,
+        "data": {
+          "A": "99",
+          "B": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+          "C": "nalb,nvul,nsno",
+          "D": "nsha,npng",
+          "E": "nshw,npnw"
+        },
+        "buffIds": [
+          "BOhx"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANhx",
+    "code": "AOhx",
+    "comments": "Rokhan - Hex",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "orc",
+    "checkDep": "1",
+    "levels": "4",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,enemy,organic,neutral",
+    "Cast1": "0",
+    "Dur1": "15",
+    "HeroDur1": "4",
+    "Cool1": "7",
+    "Cost1": "70",
+    "Area1": "-",
+    "Rng1": "800",
+    "DataA1": "99",
+    "DataB1": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+    "DataC1": "nalb,nvul,nsno",
+    "DataD1": "nsha,npng",
+    "DataE1": "nshw,npnw",
+    "Cast2": "0",
+    "Dur2": "30",
+    "HeroDur2": "5",
+    "Cool2": "7",
+    "Cost2": "70",
+    "Area2": "-",
+    "Rng2": "800",
+    "DataA2": "99",
+    "DataB2": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+    "DataC2": "nalb,nvul,nsno",
+    "DataD2": "nsha,npng",
+    "DataE2": "nshw,npnw",
+    "Cast3": "0",
+    "Dur3": "45",
+    "HeroDur3": "6",
+    "Cool3": "7",
+    "Cost3": "70",
+    "Area3": "-",
+    "Rng3": "800",
+    "DataA3": "99",
+    "DataB3": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+    "DataC3": "nalb,nvul,nsno",
+    "DataD3": "nsha,npng",
+    "DataE3": "nshw,npnw",
+    "Cast4": "0",
+    "Dur4": "45",
+    "HeroDur4": "6",
+    "Cool4": "7",
+    "Cost4": "25",
+    "Area4": "-",
+    "Rng4": "800",
+    "DataA4": "99",
+    "DataB4": "npig,nsea,ncrb,nhmc,nrat,nfro,nech,necr,nrac",
+    "DataC4": "nalb,nvul,nsno",
+    "DataD4": "nsha,npng",
+    "DataE4": "nshw,npnw",
+    "InBeta": "0",
+    "targs1": "air,ground,enemy,organic,neutral",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BOhx",
+    "targs2": "air,ground,enemy,organic,neutral",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BOhx",
+    "targs3": "air,ground,enemy,organic,neutral",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BOhx",
+    "targs4": "air,ground,enemy,organic,neutral",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BOhx"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHex.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNHex.blp",
+    "Buttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Specialart": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdl",
+    "Order": "hex",
+    "Name": "妖术",
+    "Tip": "妖术(|cffffcc00X|r) - [|cffffcc00等级 1|r],妖术(|cffffcc00X|r) - [|cffffcc00等级 2|r],妖术(|cffffcc00X|r) - [|cffffcc00等级 3|r],妖术(|cffffcc00X|r) - [|cffffcc00等级 4|r]",
+    "Ubertip": "\"将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur1>秒。\",\"T将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur2>秒。\",\"将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur3>秒。\",\"将某个敌方单位变成随机的一种小动物，持续<ANhx,Dur4>秒。\"",
+    "Hotkey": "X",
+    "Researchtip": "\"学习妖术(|cffffcc00X|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"将敌方某个单位变成一种随机的小动物。|n|n|cffffcc00等级 1|r - 消耗<ANhx,Cost1>点魔法，持续<ANhx,Dur1>秒。|n|cffffcc00等级 2|r - 消耗<ANhx,Cost2>点魔法，持续<ANhx,Dur2>秒。|n|cffffcc00等级 3|r - 消耗<ANhx,Cost3>点魔法，持续<ANhx,Dur3>秒。|n|cffffcc00等级 4|r - 消耗<ANhx,Cost4>点魔法，持续<ANhx,Dur4>秒。\"",
+    "Researchhotkey": "X",
+    "EditorSuffix": "(洛克汗)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

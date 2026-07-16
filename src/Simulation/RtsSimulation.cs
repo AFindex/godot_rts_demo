@@ -2916,7 +2916,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int playerId,
         Vector2 position)
     {
-        var unit = AddUnit(position, type.Movement, playerId, type.Combat);
+        var unit = AddUnit(
+            position, type.Movement, playerId, type.Combat, type.Perception);
         if (type.IsWorker) Economy.RegisterWorker(unit, playerId);
         return unit;
     }

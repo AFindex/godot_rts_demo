@@ -1,0 +1,251 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANcs",
+  "displayName": "火箭群",
+  "identity": {
+    "baseCode": "ANcs",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNClusterRockets.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNClusterRockets.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnclusterrockets.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "火箭群",
+        "tooltip": "(|cffffcc00R|r)火箭群 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "对某个区域用火箭进行攻击，对周围的地面单位造成35点的伤害，并在<ANcs,Dur1> 秒内让其处于昏晕状态。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "structure"
+        ],
+        "castTime": 0,
+        "duration": 1.01,
+        "heroDuration": 1.01,
+        "cooldown": 6,
+        "manaCost": 70,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "A": "8.75",
+          "B": "0.25",
+          "C": "6",
+          "D": "105",
+          "E": "1",
+          "F": "1.01"
+        },
+        "buffIds": [
+          "BNcs"
+        ],
+        "effectIds": [
+          "XNcs"
+        ]
+      },
+      {
+        "level": 2,
+        "name": "火箭群",
+        "tooltip": "(|cffffcc00R|r)火箭群 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "对某个区域用火箭进行攻击，对周围的地面单位造成65点的伤害，并在<ANcs,Dur2> 秒内让其处于昏晕状态。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "structure"
+        ],
+        "castTime": 0,
+        "duration": 1.01,
+        "heroDuration": 1.01,
+        "cooldown": 6,
+        "manaCost": 70,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "A": "16.25",
+          "B": "0.25",
+          "C": "12",
+          "D": "195",
+          "E": "1",
+          "F": "1.01"
+        },
+        "buffIds": [
+          "BNcs"
+        ],
+        "effectIds": [
+          "XNcs"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "火箭群",
+        "tooltip": "(|cffffcc00R|r)火箭群 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "对某个区域用火箭进行攻击，对周围的地面单位造成100点的伤害，并在<ANcs,Dur3> 秒内让其处于昏晕状态。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "structure"
+        ],
+        "castTime": 0,
+        "duration": 1.01,
+        "heroDuration": 1.01,
+        "cooldown": 6,
+        "manaCost": 70,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "A": "25",
+          "B": "0.25",
+          "C": "18",
+          "D": "300",
+          "E": "1",
+          "F": "1.01"
+        },
+        "buffIds": [
+          "BNcs"
+        ],
+        "effectIds": [
+          "XNcs"
+        ]
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANcs",
+    "code": "ANcs",
+    "comments": "Tinkerer - Cluster Rockets (Level 0)",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "ground,enemy,neutral,structure",
+    "Cast1": "0",
+    "Dur1": "1.01",
+    "HeroDur1": "1.01",
+    "Cool1": "6",
+    "Cost1": "70",
+    "Area1": "200",
+    "Rng1": "800",
+    "DataA1": "8.75",
+    "DataB1": "0.25",
+    "DataC1": "6",
+    "DataD1": "105",
+    "DataE1": "1",
+    "DataF1": "1.01",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNcs",
+    "EfctID1": "XNcs",
+    "targs2": "ground,enemy,neutral,structure",
+    "Cast2": "0",
+    "Dur2": "1.01",
+    "HeroDur2": "1.01",
+    "Cool2": "6",
+    "Cost2": "70",
+    "Area2": "200",
+    "Rng2": "800",
+    "DataA2": "16.25",
+    "DataB2": "0.25",
+    "DataC2": "12",
+    "DataD2": "195",
+    "DataE2": "1",
+    "DataF2": "1.01",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNcs",
+    "EfctID2": "XNcs",
+    "targs3": "ground,enemy,neutral,structure",
+    "Cast3": "0",
+    "Dur3": "1.01",
+    "HeroDur3": "1.01",
+    "Cool3": "6",
+    "Cost3": "70",
+    "Area3": "200",
+    "Rng3": "800",
+    "DataA3": "25",
+    "DataB3": "0.25",
+    "DataC3": "18",
+    "DataD3": "300",
+    "DataE3": "1",
+    "DataF3": "1.01",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNcs",
+    "EfctID3": "XNcs",
+    "targs4": "ground,enemy,neutral,structure",
+    "Cast4": "0",
+    "Dur4": "1.01",
+    "HeroDur4": "1.01",
+    "Cool4": "6",
+    "Cost4": "70",
+    "Area4": "200",
+    "Rng4": "800",
+    "DataA4": "25",
+    "DataB4": "0.25",
+    "DataC4": "24",
+    "DataD4": "300",
+    "DataE4": "1",
+    "DataF4": "1.01",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNcs",
+    "EfctID4": "XNcs",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNClusterRockets.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNClusterRockets.blp",
+    "Buttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Order": "clusterrockets",
+    "Missileart": "Abilities\\Spells\\Other\\TinkerRocket\\TinkerRocketMissile.mdl",
+    "Missilespeed": "700",
+    "MissileHoming": "1",
+    "Missilearc": "0.2",
+    "Animnamescount": "4",
+    "Animnames": "spell,one",
+    "Animnames1": "spell,two",
+    "Animnames2": "spell,three",
+    "Animnames3": "spell,three",
+    "Name": "火箭群",
+    "Tip": "(|cffffcc00R|r)火箭群 - [|cffffcc00等级 1|r],(|cffffcc00R|r)火箭群 - [|cffffcc00等级 2|r],(|cffffcc00R|r)火箭群 - [|cffffcc00等级 3|r]",
+    "Researchtip": "\" (|cffffcc00R|r)学习火箭群 - [|cffffcc00等级 %d|r]\"",
+    "Ubertip": "\"对某个区域用火箭进行攻击，对周围的地面单位造成35点的伤害，并在<ANcs,Dur1> 秒内让其处于昏晕状态。\",\"对某个区域用火箭进行攻击，对周围的地面单位造成65点的伤害，并在<ANcs,Dur2> 秒内让其处于昏晕状态。\",\"对某个区域用火箭进行攻击，对周围的地面单位造成100点的伤害，并在<ANcs,Dur3> 秒内让其处于昏晕状态。\"",
+    "Researchubertip": "\"对某个区域用火箭进行攻击，使目标在<ANcs,Dur1> 秒内处于昏晕状态，并对其造成一定程度的伤害。|n|n|cffffcc00等级 1|r - 35 攻击力。|n|cffffcc00等级 2|r - 65 攻击力。|n|cffffcc00等级 3|r - 100 攻击力。\"",
+    "Hotkey": "R",
+    "Researchhotkey": "R"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

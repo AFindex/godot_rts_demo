@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Reht",
+  "displayName": "驯服角鹰兽",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTameHippogriff.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTameHippogriff.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntamehippogriff.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "驯服角鹰兽",
+        "tooltip": "研究驯服角鹰兽(|cffffcc00I|r)",
+        "extendedTooltip": "使得弓箭手能骑乘在角鹰兽的背上从而成为角鹰兽骑士。角鹰兽骑士既能攻击地面单位也能攻击空中单位。",
+        "hotkey": "I",
+        "gold": 75,
+        "lumber": 75,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTameHippogriff.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTameHippogriff.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btntamehippogriff.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Reht",
+    "comments": "nightelf hippogryph taming",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "16384",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "75",
+    "lumbermod": "0",
+    "timebase": "30",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNTameHippogriff.blp",
+    "Buttonpos": "0,2",
+    "Name": "驯服角鹰兽",
+    "Tip": "研究驯服角鹰兽(|cffffcc00I|r)",
+    "Ubertip": "\"使得弓箭手能骑乘在角鹰兽的背上从而成为角鹰兽骑士。角鹰兽骑士既能攻击地面单位也能攻击空中单位。\"",
+    "Hotkey": "I"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

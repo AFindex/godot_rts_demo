@@ -1,0 +1,240 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AEpa",
+  "displayName": "毒箭",
+  "identity": {
+    "baseCode": "AEpa",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSearingArrowsOn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSearingArrowsOn.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsearingarrowson.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "毒箭",
+        "tooltip": "毒箭(|cffffcc00R|r)- [|cffffcc00等级 1|r]",
+        "extendedTooltip": "增加<AHfa,DataA1>点的火焰伤害，但是每次攻击会消耗一定的魔法值。",
+        "targets": [
+          "air",
+          "ground",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 10,
+        "heroDuration": 10,
+        "cooldown": 0,
+        "manaCost": 0,
+        "range": 700,
+        "data": {
+          "A": "10",
+          "B": "4",
+          "C": "0",
+          "D": "0",
+          "E": "0"
+        },
+        "buffIds": [
+          "Bpoi",
+          "Bpsd",
+          "Bpsi"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "毒箭",
+        "tooltip": "毒箭(|cffffcc00R|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "增加<AHfa,DataA2>点的火焰伤害，但是每次攻击会消耗一定的魔法值。",
+        "targets": [
+          "air",
+          "ground",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 10,
+        "heroDuration": 10,
+        "cooldown": 0,
+        "manaCost": 0,
+        "data": {
+          "A": "20",
+          "B": "6",
+          "C": "0",
+          "D": "0",
+          "E": "0"
+        },
+        "buffIds": [
+          "Bpoi",
+          "Bpsd",
+          "Bpsi"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "毒箭",
+        "tooltip": "毒箭(|cffffcc00R|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "增加<AHfa,DataA3>点的火焰伤害，但是每次攻击会消耗一定的魔法值。",
+        "targets": [
+          "air",
+          "ground",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 10,
+        "heroDuration": 10,
+        "cooldown": 0,
+        "manaCost": 0,
+        "data": {
+          "A": "30",
+          "B": "8",
+          "C": "0",
+          "D": "0",
+          "E": "0"
+        },
+        "buffIds": [
+          "Bpoi",
+          "Bpsd",
+          "Bpsi"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AEpa",
+    "code": "AEpa",
+    "comments": "Poison Arrows",
+    "version": "0",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,organic",
+    "Cast1": "0",
+    "Dur1": "10",
+    "HeroDur1": "10",
+    "Cool1": "0",
+    "Cost1": "0",
+    "Area1": "-",
+    "Rng1": "700",
+    "DataA1": "10",
+    "DataB1": "4",
+    "DataC1": "0",
+    "DataD1": "0",
+    "DataE1": "0",
+    "Cast2": "0",
+    "Dur2": "10",
+    "HeroDur2": "10",
+    "Cool2": "0",
+    "Cost2": "0",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "20",
+    "DataB2": "6",
+    "DataC2": "0",
+    "DataD2": "0",
+    "DataE2": "0",
+    "Cast3": "0",
+    "Dur3": "10",
+    "HeroDur3": "10",
+    "Cool3": "0",
+    "Cost3": "0",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "30",
+    "DataB3": "8",
+    "DataC3": "0",
+    "DataD3": "0",
+    "DataE3": "0",
+    "Cast4": "0",
+    "Dur4": "10",
+    "HeroDur4": "10",
+    "Cool4": "0",
+    "Cost4": "0",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "30",
+    "DataB4": "8",
+    "DataC4": "0",
+    "DataD4": "0",
+    "DataE4": "0",
+    "InBeta": "1",
+    "targs1": "air,ground,organic",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "Bpoi,Bpsd,Bpsi",
+    "targs2": "air,ground,organic",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "Bpoi,Bpsd,Bpsi",
+    "targs3": "air,ground,organic",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "Bpoi,Bpsd,Bpsi",
+    "targs4": "air,ground,organic",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "Bpoi,Bpsd,Bpsi"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSearingArrowsOn.blp",
+    "Unart": "ReplaceableTextures\\CommandButtons\\BTNSearingArrowsOff.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNSearingArrows.blp",
+    "Buttonpos": "1,2",
+    "Unbuttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Missileart": "Abilities\\Weapons\\SearingArrow\\SearingArrowMissile.mdl",
+    "Missilespeed": "1500",
+    "MissileHoming": "1",
+    "Order": "poisonarrowstarg",
+    "Orderon": "poisonarrows",
+    "Orderoff": "unpoisonarrows",
+    "Animnames": "attack",
+    "Name": "毒箭",
+    "Tip": "毒箭(|cffffcc00R|r)- [|cffffcc00等级 1|r],毒箭(|cffffcc00R|r) - [|cffffcc00等级 2|r],毒箭(|cffffcc00R|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"增加<AHfa,DataA1>点的火焰伤害，但是每次攻击会消耗一定的魔法值。\",\"增加<AHfa,DataA2>点的火焰伤害，但是每次攻击会消耗一定的魔法值。\",\"增加<AHfa,DataA3>点的火焰伤害，但是每次攻击会消耗一定的魔法值。\"",
+    "Untip": "\"|cffc3dbff点击右键以激活自动施放功能。|r\"",
+    "Unubertip": "\"|cffc3dbff点击右键以取消自动施放功能。|r\"",
+    "Hotkey": "R",
+    "Unhotkey": "R",
+    "Researchtip": "\"学习毒箭(|cffffcc00R|r)- [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"通过附加的火焰伤害来增加女祭司的攻击力。|n|n|cffffcc00等级 1|r -增加<AHfa,DataA1>点伤害。|n|cffffcc00等级 2|r –增加 <AHfa,DataA2>点伤害。 |n|cffffcc00等级 3|r – 增加<AHfa,DataA3>点伤害。\"",
+    "Researchhotkey": "R"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk"
+    ]
+  }
+}

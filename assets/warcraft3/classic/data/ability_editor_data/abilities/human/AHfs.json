@@ -1,0 +1,261 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AHfs",
+  "displayName": "烈焰风暴",
+  "identity": {
+    "baseCode": "AHfs",
+    "race": "human",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwalloffire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "烈焰风暴",
+        "tooltip": "烈焰风暴(|cffffcc00F|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "召唤出一道巨大的火焰，持续时间为3秒，每秒对敌方的地面单位造成45点的伤害。在火焰慢慢熄灭的过程中，敌方单位将持续受到极度轻微的伤害。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "friend",
+          "structure",
+          "self",
+          "tree",
+          "debris"
+        ],
+        "castTime": 1.33,
+        "duration": 9,
+        "heroDuration": 2.67,
+        "cooldown": 10,
+        "manaCost": 135,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "A": "15",
+          "B": "0.33",
+          "C": "4",
+          "D": "1",
+          "E": "0.75",
+          "F": "90"
+        },
+        "buffIds": [
+          "BHfs"
+        ],
+        "effectIds": [
+          "XHfs"
+        ]
+      },
+      {
+        "level": 2,
+        "name": "烈焰风暴",
+        "tooltip": "烈焰风暴(|cffffcc00F|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "召唤出一道巨大的火焰，持续时间为3秒，每秒对敌方的地面单位造成80点的伤害。在火焰慢慢熄灭的过程中，敌方单位将持续受到轻微的伤害。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "friend",
+          "structure",
+          "self",
+          "tree",
+          "debris"
+        ],
+        "castTime": 1.33,
+        "duration": 9,
+        "heroDuration": 2.67,
+        "cooldown": 10,
+        "manaCost": 135,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "A": "26.666",
+          "B": "0.33",
+          "C": "6",
+          "D": "1",
+          "E": "0.75",
+          "F": "160"
+        },
+        "buffIds": [
+          "BHfs"
+        ],
+        "effectIds": [
+          "XHfs"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "烈焰风暴",
+        "tooltip": "烈焰风暴(|cffffcc00F|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "召唤出一道巨大的火焰，持续时间为3秒，每秒对敌方的地面单位造成110点的伤害。在火焰慢慢熄灭的过程中，敌方单位将持续受到中等程度的伤害。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "friend",
+          "structure",
+          "self",
+          "tree",
+          "debris"
+        ],
+        "castTime": 1.33,
+        "duration": 9,
+        "heroDuration": 2.67,
+        "cooldown": 10,
+        "manaCost": 135,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "A": "36.666",
+          "B": "0.33",
+          "C": "8",
+          "D": "1",
+          "E": "0.75",
+          "F": "220"
+        },
+        "buffIds": [
+          "BHfs"
+        ],
+        "effectIds": [
+          "XHfs"
+        ]
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AHfs",
+    "code": "AHfs",
+    "comments": "Blood Mage - Flame Strike",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "human",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "ground,enemy,neutral,friend,structure,self,tree,debris",
+    "Cast1": "1.33",
+    "Dur1": "9",
+    "HeroDur1": "2.67",
+    "Cool1": "10",
+    "Cost1": "135",
+    "Area1": "200",
+    "Rng1": "800",
+    "DataA1": "15",
+    "DataB1": "0.33",
+    "DataC1": "4",
+    "DataD1": "1",
+    "DataE1": "0.75",
+    "Cast2": "1.33",
+    "Dur2": "9",
+    "HeroDur2": "2.67",
+    "Cool2": "10",
+    "Cost2": "135",
+    "Area2": "200",
+    "Rng2": "800",
+    "DataA2": "26.666",
+    "DataB2": "0.33",
+    "DataC2": "6",
+    "DataD2": "1",
+    "DataE2": "0.75",
+    "Cast3": "1.33",
+    "Dur3": "9",
+    "HeroDur3": "2.67",
+    "Cool3": "10",
+    "Cost3": "135",
+    "Area3": "200",
+    "Rng3": "800",
+    "DataA3": "36.666",
+    "DataB3": "0.33",
+    "DataC3": "8",
+    "DataD3": "1",
+    "DataE3": "0.75",
+    "Cast4": "1.33",
+    "Dur4": "9",
+    "HeroDur4": "2.67",
+    "Cool4": "10",
+    "Cost4": "135",
+    "Area4": "200",
+    "Rng4": "800",
+    "DataA4": "36.666",
+    "DataB4": "0.33",
+    "DataC4": "8",
+    "DataD4": "1",
+    "DataE4": "0.75",
+    "InBeta": "1",
+    "targs1": "ground,enemy,neutral,friend,structure,self,tree,debris",
+    "DataF1": "90",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BHfs",
+    "EfctID1": "XHfs",
+    "targs2": "ground,enemy,neutral,friend,structure,self,tree,debris",
+    "DataF2": "160",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BHfs",
+    "EfctID2": "XHfs",
+    "targs3": "ground,enemy,neutral,friend,structure,self,tree,debris",
+    "DataF3": "220",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BHfs",
+    "EfctID3": "XHfs",
+    "targs4": "ground,enemy,neutral,friend,structure,self,tree,debris",
+    "DataF4": "220",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BHfs",
+    "EfctID4": "XHfs"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Order": "flamestrike",
+    "Effectart": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeTarget.mdl",
+    "Specialart": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrike1.mdl,Abilities\\Spells\\Human\\FlameStrike\\FlameStrike2.mdl,Abilities\\Spells\\Human\\FlameStrike\\FlameStrike.mdl",
+    "Name": "烈焰风暴",
+    "Tip": "烈焰风暴(|cffffcc00F|r) - [|cffffcc00等级 1|r],烈焰风暴(|cffffcc00F|r) - [|cffffcc00等级 2|r],烈焰风暴(|cffffcc00F|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"召唤出一道巨大的火焰，持续时间为3秒，每秒对敌方的地面单位造成45点的伤害。在火焰慢慢熄灭的过程中，敌方单位将持续受到极度轻微的伤害。\",\"召唤出一道巨大的火焰，持续时间为3秒，每秒对敌方的地面单位造成80点的伤害。在火焰慢慢熄灭的过程中，敌方单位将持续受到轻微的伤害。\",\"召唤出一道巨大的火焰，持续时间为3秒，每秒对敌方的地面单位造成110点的伤害。在火焰慢慢熄灭的过程中，敌方单位将持续受到中等程度的伤害。\"",
+    "Hotkey": "F",
+    "Researchtip": "\"学习烈焰风暴(|cffffcc00F|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"召唤出一道巨大的火焰，对目标区域内的敌方步兵造成长时间的伤害。|n|n|cffffcc00等级 1|r -持续3秒，每秒45点的伤害，在接下来的6秒时间内持续造成极度轻微的伤害。|n|cffffcc00等级 2|r -持续3秒，每秒80点的伤害，在接下来的6秒时间内持续造成轻微的伤害。|n|cffffcc00等级 3|r -持续3秒，每秒110点的伤害，在接下来的6秒时间内持续造成中等程度的伤害。\"",
+    "Researchhotkey": "F",
+    "Animnames": "spell,channel"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

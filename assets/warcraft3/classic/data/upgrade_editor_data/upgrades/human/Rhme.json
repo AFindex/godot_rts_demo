@@ -1,0 +1,163 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhme",
+  "displayName": "铁剑术",
+  "identity": {
+    "class": "melee",
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelMelee.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelMelee.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsteelmelee.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumMelee.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumMelee.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnthoriummelee.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteMelee.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteMelee.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnarcanitemelee.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "铁剑术",
+        "tooltip": "升级到铁剑术(|cffffcc00S|r)",
+        "extendedTooltip": "增加民兵、步兵、魔法破坏者、龙鹰骑士、狮鹫骑士和骑士的攻击力。",
+        "hotkey": "S",
+        "gold": 100,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelMelee.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSteelMelee.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnsteelmelee.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "钢剑术",
+        "tooltip": "升级到钢剑术(|cffffcc00S|r)",
+        "extendedTooltip": "进一步增加民兵、步兵、魔法破坏者、龙鹰骑士、狮鹫骑士和骑士的攻击力。",
+        "hotkey": "S",
+        "gold": 175,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumMelee.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThoriumMelee.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnthoriummelee.png"
+        },
+        "requirements": [
+          "hkee"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "毒剑术",
+        "tooltip": "升级到毒剑术(|cffffcc00S|r)",
+        "extendedTooltip": "进一步增加民兵、步兵、魔法破坏者、龙鹰骑士、狮鹫骑士和骑士的攻击力。",
+        "hotkey": "S",
+        "gold": 250,
+        "lumber": 300,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteMelee.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteMelee.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnarcanitemelee.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhme",
+    "comments": "human melee attack",
+    "class": "melee",
+    "race": "human",
+    "flag": "1",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "75",
+    "lumberbase": "50",
+    "lumbermod": "125",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSteelMelee.blp,ReplaceableTextures\\CommandButtons\\BTNThoriumMelee.blp,ReplaceableTextures\\CommandButtons\\BTNArcaniteMelee.blp",
+    "Buttonpos": "0,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "hkee",
+    "Requires2": "hcas",
+    "Name": "铁剑术,钢剑术,毒剑术",
+    "Tip": "升级到铁剑术(|cffffcc00S|r),升级到钢剑术(|cffffcc00S|r),升级到毒剑术(|cffffcc00S|r)",
+    "Ubertip": "\"增加民兵、步兵、魔法破坏者、龙鹰骑士、狮鹫骑士和骑士的攻击力。\",\"进一步增加民兵、步兵、魔法破坏者、龙鹰骑士、狮鹫骑士和骑士的攻击力。\",\"进一步增加民兵、步兵、魔法破坏者、龙鹰骑士、狮鹫骑士和骑士的攻击力。\"",
+    "Hotkey": "S,S,S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

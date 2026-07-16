@@ -1,0 +1,162 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Resm",
+  "displayName": "月之力量",
+  "identity": {
+    "class": "melee",
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheMoon.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheMoon.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstrengthofthemoon.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheMoon.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheMoon.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedstrengthofthemoon.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheMoon.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheMoon.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedstrengthofthemoon.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "月之力量",
+        "tooltip": "升级到月之力量(|cffffcc00M|r)",
+        "extendedTooltip": "增加弓箭手，女猎手，投刃车和角鹰兽骑士的攻击力。",
+        "hotkey": "M",
+        "gold": 125,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheMoon.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheMoon.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnstrengthofthemoon.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级月之力量",
+        "tooltip": "升级到中级月之力量(|cffffcc00M|r)",
+        "extendedTooltip": "进一步增加弓箭手，女猎手，投刃车和角鹰兽骑士的攻击力。",
+        "hotkey": "M",
+        "gold": 175,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheMoon.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheMoon.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedstrengthofthemoon.png"
+        },
+        "requirements": [
+          "etoa"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级月之力量",
+        "tooltip": "升级到高级月之力量(|cffffcc00M|r)",
+        "extendedTooltip": "进一步增加弓箭手，女猎手，投刃车和角鹰兽骑士的攻击力。",
+        "hotkey": "M",
+        "gold": 225,
+        "lumber": 275,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheMoon.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheMoon.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedstrengthofthemoon.png"
+        },
+        "requirements": [
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Resm",
+    "comments": "nightelf strength of moon",
+    "class": "melee",
+    "race": "nightelf",
+    "flag": "1",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "125",
+    "goldmod": "50",
+    "lumberbase": "75",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheMoon.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheMoon.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheMoon.blp",
+    "Buttonpos": "0,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "etoa",
+    "Requires2": "etoe",
+    "Name": "月之力量,中级月之力量,高级月之力量",
+    "Tip": "升级到月之力量(|cffffcc00M|r),升级到中级月之力量(|cffffcc00M|r),升级到高级月之力量(|cffffcc00M|r)",
+    "Ubertip": "\"增加弓箭手，女猎手，投刃车和角鹰兽骑士的攻击力。\",\"进一步增加弓箭手，女猎手，投刃车和角鹰兽骑士的攻击力。\",\"进一步增加弓箭手，女猎手，投刃车和角鹰兽骑士的攻击力。\"",
+    "Hotkey": "M,M,M"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

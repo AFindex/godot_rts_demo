@@ -1,0 +1,212 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANsw",
+  "displayName": "召唤战鹰",
+  "identity": {
+    "baseCode": "ANsw",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWarEagle.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWarEagle.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwareagle.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "召唤战鹰",
+        "tooltip": "召唤战鹰(|cffffcc00W|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "召唤一只生命值<nwe1,realHP>点的战鹰来侦察敌人，拥有真实视域技能。|n持续<ANsw,Dur1>秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 70,
+        "manaCost": 50,
+        "area": 200,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "nwe1",
+        "buffIds": [
+          "BNsw"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "召唤战鹰",
+        "tooltip": "召唤战鹰(|cffffcc00W|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "召唤一只生命值<nwe2,realHP>点的战鹰来侦察敌人，拥有真实视域技能。|n持续<ANsw,Dur2>秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 70,
+        "manaCost": 50,
+        "area": 200,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "nwe2",
+        "buffIds": [
+          "BNsw"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "召唤战鹰",
+        "tooltip": "召唤战鹰(|cffffcc00W|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "召唤一只生命值<nwe3,realHP>点的战鹰来侦察敌人，拥有真实视域技能。|n持续<ANsw,Dur3>秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 70,
+        "manaCost": 50,
+        "area": 200,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "nwe3",
+        "buffIds": [
+          "BNsw"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANsw",
+    "code": "ANsw",
+    "comments": "Beast Master - Summon Hawk",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "70",
+    "HeroDur1": "70",
+    "Cool1": "70",
+    "Cost1": "50",
+    "Area1": "200",
+    "Rng1": "-",
+    "DataA1": "1",
+    "DataB1": "-",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "UnitID1": "nwe1",
+    "Cast2": "0",
+    "Dur2": "70",
+    "HeroDur2": "70",
+    "Cool2": "70",
+    "Cost2": "50",
+    "Area2": "200",
+    "Rng2": "-",
+    "DataA2": "1",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "UnitID2": "nwe2",
+    "Cast3": "0",
+    "Dur3": "70",
+    "HeroDur3": "70",
+    "Cool3": "70",
+    "Cost3": "50",
+    "Area3": "200",
+    "Rng3": "-",
+    "DataA3": "1",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "UnitID3": "nwe3",
+    "Cast4": "0",
+    "Dur4": "70",
+    "HeroDur4": "70",
+    "Cool4": "70",
+    "Cost4": "50",
+    "Area4": "200",
+    "Rng4": "-",
+    "DataA4": "1",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "UnitID4": "nwe3",
+    "InBeta": "1",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNsw",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNsw",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNsw",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNsw"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWarEagle.blp",
+    "Buttonpos": "2,2",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNWarEagle.blp",
+    "Researchbuttonpos": "2,0",
+    "Targetart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+    "Order": "summonwareagle",
+    "Name": "召唤战鹰",
+    "Tip": "召唤战鹰(|cffffcc00W|r) - [|cffffcc00等级 1|r],召唤战鹰(|cffffcc00W|r) - [|cffffcc00等级 2|r],召唤战鹰(|cffffcc00W|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"召唤一只生命值<nwe1,realHP>点的战鹰来侦察敌人，拥有真实视域技能。|n持续<ANsw,Dur1>秒。\",\"召唤一只生命值<nwe2,realHP>点的战鹰来侦察敌人，拥有真实视域技能。|n持续<ANsw,Dur2>秒。\",\"召唤一只生命值<nwe3,realHP>点的战鹰来侦察敌人，拥有真实视域技能。|n持续<ANsw,Dur3>秒。\"",
+    "Hotkey": "W",
+    "Researchtip": "学习召唤战鹰(|cffffcc00W|r) - [|cffffcc00等级 %d|r]",
+    "Researchubertip": "\"召唤一只骄傲的战鹰来侦察敌人|n持续<ANsw,Dur1>秒。|n|n|cffffcc00等级 1|r - <nwe1,realHP>点生命值，有真实视域技能。|n|cffffcc00等级 2|r - <nwe2,realHP>点生命值，<nwe2,mindmg1>到<nwe2,maxdmg1>点攻击力，有真实视域技能。|n|cffffcc00等级 3|r - <nwe3,realHP>点生命值，<nwe3,mindmg1>到<nwe3,maxdmg1>点攻击力，有真实视域技能并且隐形。\"",
+    "Researchhotkey": "W",
+    "Animnames": "spell,slam"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "Agra",
+  "displayName": "战棍",
+  "identity": {
+    "baseCode": "Agra",
+    "race": "nightelf",
+    "hero": false,
+    "item": false,
+    "editorVisible": true,
+    "levels": 1,
+    "requiredHeroLevel": 0,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGrabTree.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGrabTree.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngrabtree.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "战棍",
+        "tooltip": "战棍(|cffffcc00W|r)",
+        "extendedTooltip": "让山岭巨人拔起一棵树木从而拥有攻城能力，并且增加远程攻击范围。|n持续<Agra,DataE1>次攻击。",
+        "targets": [
+          "tree"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 5,
+        "manaCost": 0,
+        "range": 32,
+        "data": {
+          "A": "0.8",
+          "B": "2.5",
+          "C": "0",
+          "D": "1",
+          "E": "15"
+        },
+        "buffIds": [
+          "Bgra"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "Agra",
+    "code": "Agra",
+    "comments": "Grab Tree",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "0",
+    "item": "0",
+    "sort": "unit",
+    "race": "nightelf",
+    "checkDep": "1",
+    "levels": "1",
+    "reqLevel": "0",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "tree",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "5",
+    "Cost1": "0",
+    "Area1": "-",
+    "Rng1": "32",
+    "DataA1": "0.8",
+    "DataB1": "2.5",
+    "DataC1": "0",
+    "DataD1": "1",
+    "DataE1": "15",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "-",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "-",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "-",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "tree",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "Bgra",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNGrabTree.blp",
+    "Buttonpos": "1,2",
+    "Order": "grabtree",
+    "Name": "战棍",
+    "Tip": "战棍(|cffffcc00W|r)",
+    "Ubertip": "\"让山岭巨人拔起一棵树木从而拥有攻城能力，并且增加远程攻击范围。|n持续<Agra,DataE1>次攻击。\"",
+    "Hotkey": "W",
+    "Animnames": "spell,eattree"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

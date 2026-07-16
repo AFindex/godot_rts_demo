@@ -1,0 +1,112 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rotr",
+  "displayName": "巨魔再生",
+  "identity": {
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRegenerate.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRegenerate.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnregenerate.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "巨魔再生",
+        "tooltip": "研究巨魔再生(|cffffcc00R|r)",
+        "extendedTooltip": "加快巫医，巨魔蝙蝠骑士和巨魔猎头者的生命值恢复。",
+        "hotkey": "R",
+        "gold": 100,
+        "lumber": 100,
+        "researchSeconds": 35,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRegenerate.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRegenerate.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnregenerate.png"
+        },
+        "requirements": [
+          "ostr",
+          "ofor"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rhpr",
+        "base": 0.8,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rotr",
+    "comments": "orc troll regeneration",
+    "class": "_",
+    "race": "orc",
+    "flag": "4096",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "35",
+    "timemod": "0",
+    "effect1": "rhpr",
+    "base1": "0.8",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRegenerate.blp",
+    "Buttonpos": "1,1",
+    "Requires": "ostr,ofor",
+    "Name": "巨魔再生,中级巨魔再生,高级巨魔再生",
+    "Tip": "研究巨魔再生(|cffffcc00R|r),研究中级巨魔再生(|cffffcc00R|r),研究高级巨魔再生(|cffffcc00R|r)",
+    "Ubertip": "\"加快巫医，巨魔蝙蝠骑士和巨魔猎头者的生命值恢复。\",\"进一步加快巫医，巨魔蝙蝠骑士和巨魔猎头者的生命值恢复。\",\"进一步加快巫医，巨魔蝙蝠骑士和巨魔猎头者的生命值恢复。\"",
+    "Hotkey": "R"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

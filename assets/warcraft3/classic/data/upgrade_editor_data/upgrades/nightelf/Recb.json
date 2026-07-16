@@ -1,0 +1,106 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Recb",
+  "displayName": "腐蚀喷吐",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCorrosiveBreath.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCorrosiveBreath.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncorrosivebreath.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "腐蚀喷吐",
+        "tooltip": "研究腐蚀喷吐(|cffffcc00B|r)",
+        "extendedTooltip": "使得奇美拉怪兽能对敌方的建筑物喷出酸性的毒汁。",
+        "hotkey": "B",
+        "gold": 125,
+        "lumber": 225,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCorrosiveBreath.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCorrosiveBreath.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btncorrosivebreath.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "renw",
+        "base": 3
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Recb",
+    "comments": "nightelf corrosive breath",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "8192",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "125",
+    "goldmod": "0",
+    "lumberbase": "225",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "renw",
+    "base1": "3",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNCorrosiveBreath.blp",
+    "Buttonpos": "0,2",
+    "Name": "腐蚀喷吐",
+    "Tip": "研究腐蚀喷吐(|cffffcc00B|r)",
+    "Ubertip": "\"使得奇美拉怪兽能对敌方的建筑物喷出酸性的毒汁。\"",
+    "Hotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

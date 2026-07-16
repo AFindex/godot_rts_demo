@@ -1,0 +1,155 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhpt",
+  "displayName": "牧师专家训练",
+  "identity": {
+    "class": "caster",
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 2,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestAdept.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestAdept.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpriestadept.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestMaster.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestMaster.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpriestmaster.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "牧师专家训练",
+        "tooltip": "牧师专家训练(|cffffcc00T|r)",
+        "extendedTooltip": "增加牧师的魔法值、魔法恢复速度、生命值、攻击力，还能使其拥有驱逐魔法技能。",
+        "hotkey": "T",
+        "gold": 100,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestAdept.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestAdept.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnpriestadept.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "牧师大师训练",
+        "tooltip": "牧师大师训练(|cffffcc00T|r)",
+        "extendedTooltip": "增加牧师的魔法值、魔法恢复速度、生命值、攻击力，还能使其拥有心灵之火技能。",
+        "hotkey": "T",
+        "gold": 100,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestMaster.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPriestMaster.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnpriestmaster.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rmnx",
+        "base": 100,
+        "modifier": 100
+      },
+      {
+        "slot": 2,
+        "type": "rmnr",
+        "base": 0.325,
+        "modifier": 0.325
+      },
+      {
+        "slot": 3,
+        "type": "rhpx",
+        "base": 40,
+        "modifier": 40
+      },
+      {
+        "slot": 4,
+        "type": "ratd",
+        "base": 0,
+        "modifier": 0
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhpt",
+    "comments": "human priest training",
+    "class": "caster",
+    "race": "human",
+    "flag": "256",
+    "used": "1",
+    "maxlevel": "2",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rmnx",
+    "base1": "100",
+    "mod1": "100",
+    "effect2": "rmnr",
+    "base2": "0.325",
+    "mod4": "0",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "0.325",
+    "code2": "-",
+    "effect3": "rhpx",
+    "base3": "40",
+    "mod3": "40",
+    "code3": "-",
+    "effect4": "ratd",
+    "base4": "0",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNPriestAdept.blp,ReplaceableTextures\\CommandButtons\\BTNPriestMaster.blp",
+    "Buttonpos": "1,2",
+    "Requirescount": "2",
+    "Requires": "",
+    "Requires1": "hcas",
+    "Name": "牧师专家训练,牧师大师训练",
+    "Tip": "牧师专家训练(|cffffcc00T|r),牧师大师训练(|cffffcc00T|r)",
+    "Ubertip": "\"增加牧师的魔法值、魔法恢复速度、生命值、攻击力，还能使其拥有驱逐魔法技能。\",\"增加牧师的魔法值、魔法恢复速度、生命值、攻击力，还能使其拥有心灵之火技能。\"",
+    "Hotkey": "T,T"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

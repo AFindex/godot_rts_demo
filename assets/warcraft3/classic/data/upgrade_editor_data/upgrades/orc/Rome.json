@@ -1,0 +1,163 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rome",
+  "displayName": "钢铁近战武器",
+  "identity": {
+    "class": "melee",
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeupone.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpTwo.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpTwo.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeuptwo.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeupthree.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "钢铁近战武器",
+        "tooltip": "升级到钢铁近战武器(|cffffcc00M|r)",
+        "extendedTooltip": "增加兽族步兵，掠夺者，牛头人的攻击力。",
+        "hotkey": "M",
+        "gold": 100,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeupone.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "金属近战武器",
+        "tooltip": "升级到金属近战武器(|cffffcc00M|r)",
+        "extendedTooltip": "进一步增加兽族步兵，掠夺者，牛头人的攻击力。",
+        "hotkey": "M",
+        "gold": 150,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpTwo.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpTwo.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeuptwo.png"
+        },
+        "requirements": [
+          "ostr"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "终极近战武器",
+        "tooltip": "升级到终极近战武器(|cffffcc00M|r)",
+        "extendedTooltip": "进一步增加兽族步兵，掠夺者，牛头人的攻击力。",
+        "hotkey": "M",
+        "gold": 200,
+        "lumber": 275,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeupthree.png"
+        },
+        "requirements": [
+          "ofrt"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rome",
+    "comments": "orc melee attack",
+    "class": "melee",
+    "race": "orc",
+    "flag": "1",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "50",
+    "lumberbase": "75",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpOne.blp,ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpTwo.blp,ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+    "Buttonpos": "0,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "ostr",
+    "Requires2": "ofrt",
+    "Name": "钢铁近战武器,金属近战武器,终极近战武器",
+    "Tip": "升级到钢铁近战武器(|cffffcc00M|r),升级到金属近战武器(|cffffcc00M|r),升级到终极近战武器(|cffffcc00M|r)",
+    "Ubertip": "\"增加兽族步兵，掠夺者，牛头人的攻击力。\",\"进一步增加兽族步兵，掠夺者，牛头人的攻击力。\",\"进一步增加兽族步兵，掠夺者，牛头人的攻击力。\"",
+    "Hotkey": "M,M,M"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

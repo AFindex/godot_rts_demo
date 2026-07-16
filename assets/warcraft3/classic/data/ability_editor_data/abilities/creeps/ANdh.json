@@ -1,0 +1,236 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANdh",
+  "displayName": "醉酒云雾",
+  "identity": {
+    "baseCode": "ANdh",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstrongdrink.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "醉酒云雾",
+        "tooltip": "醉酒云雾(|cffffcc00D|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "用酒精浸透目标单位，减慢其<ANdh,DataC1,%>%的移送速度，并使其有<ANdh,DataB1,%>%的概率不能击中其他单位。带有醉酒云雾的单位遭到火焰呼吸攻击的话，那么就会自动引燃身上的酒精从而持续受到火焰的伤害。|n持续<ANdh,Dur1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 12,
+        "heroDuration": 5,
+        "cooldown": 12,
+        "manaCost": 70,
+        "area": 200,
+        "range": 550,
+        "data": {
+          "A": "0",
+          "B": "0.45",
+          "C": "0.15",
+          "D": "0"
+        },
+        "buffIds": [
+          "BNdh"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "醉酒云雾",
+        "tooltip": "醉酒云雾(|cffffcc00D|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "用酒精浸透目标单位，减慢其<ANdh,DataC2,%>%的移送速度，并使其有<ANdh,DataB2,%>%的概率不能击中其他单位。带有醉酒云雾的单位遭到火焰呼吸攻击的话，那么就会自动引燃身上的酒精从而持续受到火焰的伤害。|n持续<ANdh,Dur2>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 12,
+        "heroDuration": 5,
+        "cooldown": 12,
+        "manaCost": 70,
+        "area": 200,
+        "range": 550,
+        "data": {
+          "A": "0",
+          "B": "0.65",
+          "C": "0.3",
+          "D": "0"
+        },
+        "buffIds": [
+          "BNdh"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "醉酒云雾",
+        "tooltip": "醉酒云雾(|cffffcc00D|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "用酒精浸透目标单位，减慢其<ANdh,DataC3,%>%的移送速度，并使其有<ANdh,DataB3,%>%的概率不能击中其他单位。带有醉酒云雾的单位遭到火焰呼吸攻击的话，那么就会自动引燃身上的酒精从而持续受到火焰的伤害。|n持续<ANdh,Dur3>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "organic",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 12,
+        "heroDuration": 5,
+        "cooldown": 12,
+        "manaCost": 70,
+        "area": 200,
+        "range": 550,
+        "data": {
+          "A": "0",
+          "B": "0.8",
+          "C": "0.5",
+          "D": "0"
+        },
+        "buffIds": [
+          "BNdh"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANdh",
+    "code": "ANdh",
+    "comments": "Brewmaster - Drunken Haze",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,enemy,organic,neutral",
+    "Cast1": "0",
+    "Dur1": "12",
+    "HeroDur1": "5",
+    "Cool1": "12",
+    "Cost1": "70",
+    "Area1": "200",
+    "Rng1": "550",
+    "DataA1": "0",
+    "DataB1": "0.45",
+    "DataC1": "0.15",
+    "DataD1": "0",
+    "DataE1": "-",
+    "Cast2": "0",
+    "Dur2": "12",
+    "HeroDur2": "5",
+    "Cool2": "12",
+    "Cost2": "70",
+    "Area2": "200",
+    "Rng2": "550",
+    "DataA2": "0",
+    "DataB2": "0.65",
+    "DataC2": "0.3",
+    "DataD2": "0",
+    "DataE2": "-",
+    "Cast3": "0",
+    "Dur3": "12",
+    "HeroDur3": "5",
+    "Cool3": "12",
+    "Cost3": "70",
+    "Area3": "200",
+    "Rng3": "550",
+    "DataA3": "0",
+    "DataB3": "0.8",
+    "DataC3": "0.5",
+    "DataD3": "0",
+    "DataE3": "-",
+    "Cast4": "0",
+    "Dur4": "12",
+    "HeroDur4": "5",
+    "Cool4": "12",
+    "Cost4": "70",
+    "Area4": "200",
+    "Rng4": "550",
+    "DataA4": "0",
+    "DataB4": "0.8",
+    "DataC4": "0.5",
+    "DataD4": "0",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,enemy,organic,neutral",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNdh",
+    "targs2": "air,ground,enemy,organic,neutral",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNdh",
+    "targs3": "air,ground,enemy,organic,neutral",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNdh",
+    "targs4": "air,ground,enemy,organic,neutral",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNdh"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+    "Buttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Missileart": "Abilities\\Spells\\Other\\StrongDrink\\BrewmasterMissile.mdl",
+    "Missilearc": "0.15",
+    "Missilespeed": "1500",
+    "Order": "drunkenhaze",
+    "Name": "醉酒云雾",
+    "Tip": "醉酒云雾(|cffffcc00D|r) - [|cffffcc00等级 1|r],醉酒云雾(|cffffcc00D|r) - [|cffffcc00等级 2|r],醉酒云雾(|cffffcc00D|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"用酒精浸透目标单位，减慢其<ANdh,DataC1,%>%的移送速度，并使其有<ANdh,DataB1,%>%的概率不能击中其他单位。带有醉酒云雾的单位遭到火焰呼吸攻击的话，那么就会自动引燃身上的酒精从而持续受到火焰的伤害。|n持续<ANdh,Dur1>秒。\",\"用酒精浸透目标单位，减慢其<ANdh,DataC2,%>%的移送速度，并使其有<ANdh,DataB2,%>%的概率不能击中其他单位。带有醉酒云雾的单位遭到火焰呼吸攻击的话，那么就会自动引燃身上的酒精从而持续受到火焰的伤害。|n持续<ANdh,Dur2>秒。\",\"用酒精浸透目标单位，减慢其<ANdh,DataC3,%>%的移送速度，并使其有<ANdh,DataB3,%>%的概率不能击中其他单位。带有醉酒云雾的单位遭到火焰呼吸攻击的话，那么就会自动引燃身上的酒精从而持续受到火焰的伤害。|n持续<ANdh,Dur3>秒。\"",
+    "Hotkey": "D",
+    "Researchtip": "\"学习醉酒云雾(|cffffcc00D|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"使敌方单位被酒精溅湿，造成其移动速度减慢，并使其攻击容易落空。当单位被施以醉酒云雾后再被火焰吐息积中，他们会被点燃并随着时间的流逝而受到伤害。|n持续<ANdh,Dur1>秒钟 |n|n|cffffcc00等级1|r - <ANdh,DataC1,%>%移动速度减缓，<ANdh,DataB1,%>%落空机率。|n|cffffcc00等级2|r - <ANdh,DataC2,%>%移动速度减缓，<ANdh,DataB2,%>%落空机率。|n|cffffcc00等级3|r - <ANdh,DataC3,%>%移动速度减缓，<ANdh,DataB3,%>%落空机率。\"",
+    "Researchhotkey": "D"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

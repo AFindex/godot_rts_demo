@@ -1,0 +1,232 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AUim",
+  "displayName": "穿刺",
+  "identity": {
+    "baseCode": "AUim",
+    "race": "undead",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimpale.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "穿刺",
+        "tooltip": "穿刺(|cffffcc00E|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "以地穴领主的巨爪震击地面，射出一道直线形尖刺蔓藤，造成<AUim,DataC1>点伤害力，并将其轨迹上的敌地面单位抛入空中，使他们晕眩<AUim,Dur1>秒。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 2,
+        "heroDuration": 1,
+        "cooldown": 9,
+        "manaCost": 100,
+        "area": 250,
+        "range": 700,
+        "data": {
+          "A": "600",
+          "B": "0.3",
+          "C": "50",
+          "D": "1"
+        },
+        "buffIds": [
+          "BUim"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "穿刺",
+        "tooltip": "穿刺(|cffffcc00E|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "以地穴领主的巨爪震击地面，射出一道直线形尖刺蔓藤，造成<AUim,DataC2>点伤害力，并将其轨迹上的敌地面单位抛入空中，使他们晕眩<AUim,Dur2>秒。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 3,
+        "heroDuration": 2,
+        "cooldown": 9,
+        "manaCost": 100,
+        "area": 250,
+        "range": 700,
+        "data": {
+          "A": "600",
+          "B": "0.3",
+          "C": "80",
+          "D": "1"
+        },
+        "buffIds": [
+          "BUim"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "穿刺",
+        "tooltip": "穿刺(|cffffcc00E|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "以地穴领主的巨爪震击地面，射出一道直线形尖刺蔓藤，造成<AUim,DataC3>点伤害力，并将其轨迹上的敌地面单位抛入空中，使他们晕眩<AUim,Dur3>秒。",
+        "targets": [
+          "ground",
+          "enemy",
+          "neutral",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 4,
+        "heroDuration": 3,
+        "cooldown": 9,
+        "manaCost": 100,
+        "area": 250,
+        "range": 700,
+        "data": {
+          "A": "600",
+          "B": "0.3",
+          "C": "110",
+          "D": "1"
+        },
+        "buffIds": [
+          "BUim"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AUim",
+    "code": "AUim",
+    "comments": "Crypt Lord - Impale",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "undead",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "ground,enemy,neutral,organic",
+    "Cast1": "0",
+    "Dur1": "2",
+    "HeroDur1": "1",
+    "Cool1": "9",
+    "Cost1": "100",
+    "Area1": "250",
+    "Rng1": "700",
+    "DataA1": "600",
+    "DataB1": "0.3",
+    "DataC1": "50",
+    "DataD1": "1",
+    "DataE1": "-",
+    "Cast2": "0",
+    "Dur2": "3",
+    "HeroDur2": "2",
+    "Cool2": "9",
+    "Cost2": "100",
+    "Area2": "250",
+    "Rng2": "700",
+    "DataA2": "600",
+    "DataB2": "0.3",
+    "DataC2": "80",
+    "DataD2": "1",
+    "DataE2": "-",
+    "Cast3": "0",
+    "Dur3": "4",
+    "HeroDur3": "3",
+    "Cool3": "9",
+    "Cost3": "100",
+    "Area3": "250",
+    "Rng3": "700",
+    "DataA3": "600",
+    "DataB3": "0.3",
+    "DataC3": "110",
+    "DataD3": "1",
+    "DataE3": "-",
+    "Cast4": "0",
+    "Dur4": "4",
+    "HeroDur4": "3",
+    "Cool4": "9",
+    "Cost4": "100",
+    "Area4": "300",
+    "Rng4": "700",
+    "DataA4": "600",
+    "DataB4": "0.3",
+    "DataC4": "110",
+    "DataD4": "1",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "ground,enemy,neutral,organic",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BUim",
+    "targs2": "ground,enemy,neutral,organic",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BUim",
+    "targs3": "ground,enemy,neutral,organic",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BUim",
+    "targs4": "ground,enemy,neutral,organic",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BUim"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Effectsound": "ImpaleCast",
+    "Specialart": "Abilities\\Spells\\Undead\\Impale\\ImpaleMissTarget.mdl",
+    "Order": "impale",
+    "Name": "穿刺",
+    "Tip": "穿刺(|cffffcc00E|r) - [|cffffcc00等级 1|r],穿刺(|cffffcc00E|r) - [|cffffcc00等级 2|r],穿刺(|cffffcc00E|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"以地穴领主的巨爪震击地面，射出一道直线形尖刺蔓藤，造成<AUim,DataC1>点伤害力，并将其轨迹上的敌地面单位抛入空中，使他们晕眩<AUim,Dur1>秒。\",\"以地穴领主的巨爪震击地面，射出一道直线形尖刺蔓藤，造成<AUim,DataC2>点伤害力，并将其轨迹上的敌地面单位抛入空中，使他们晕眩<AUim,Dur2>秒。\",\"以地穴领主的巨爪震击地面，射出一道直线形尖刺蔓藤，造成<AUim,DataC3>点伤害力，并将其轨迹上的敌地面单位抛入空中，使他们晕眩<AUim,Dur3>秒。\"",
+    "Hotkey": "E",
+    "Researchtip": "\"学习穿刺(|cffffcc00E|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"以地穴领主的巨爪震击地面，射出一道直线形尖刺蔓藤，造成极大伤害并将其轨迹上的敌地面单位抛入空中。|n|n|cffffcc00等级 1|r - <AUim,DataC1>伤害力，<AUim,Dur1>秒晕眩。|n|cffffcc00等级 2|r - <AUim,DataC2> 伤害力，<AUim,Dur2>秒晕眩。|n|cffffcc00等级 3|r - <AUim,DataC3>伤害力，<AUim,Dur3>秒晕眩。\"",
+    "Researchhotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

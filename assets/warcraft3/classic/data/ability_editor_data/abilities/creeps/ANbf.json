@@ -1,0 +1,231 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANbf",
+  "displayName": "火焰呼吸",
+  "identity": {
+    "baseCode": "ANbf",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbreathoffire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "火焰呼吸",
+        "tooltip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "对敌人呼出带有攻击力的火焰。最初造成<ANbf,DataA1>点的伤害。并在<ANbf,Dur1>秒内持续受到每秒 <ANbf,DataE1>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "structure"
+        ],
+        "castTime": 0,
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 10,
+        "manaCost": 70,
+        "area": 125,
+        "range": 375,
+        "data": {
+          "A": "65",
+          "B": "520",
+          "C": "375",
+          "D": "300",
+          "E": "7"
+        },
+        "buffIds": [
+          "BNbf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "火焰呼吸",
+        "tooltip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "对敌人呼出带有攻击力的火焰。最初造成<ANbf,DataA2>点的伤害。并在<ANbf,Dur2>秒内持续受到每秒<ANbf,DataE2>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "structure"
+        ],
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 10,
+        "manaCost": 70,
+        "area": 120,
+        "range": 375,
+        "data": {
+          "A": "125",
+          "B": "1000",
+          "C": "375",
+          "D": "300",
+          "E": "14"
+        },
+        "buffIds": [
+          "BNbf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "火焰呼吸",
+        "tooltip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "对敌人呼出带有攻击力的火焰。最初造成<ANbf,DataA3>点的伤害。并在<ANbf,Dur3>秒内持续受到每秒<ANbf,DataE3>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "structure"
+        ],
+        "duration": 5,
+        "heroDuration": 5,
+        "cooldown": 10,
+        "manaCost": 70,
+        "area": 125,
+        "range": 375,
+        "data": {
+          "A": "170",
+          "B": "1360",
+          "C": "375",
+          "D": "300",
+          "E": "21"
+        },
+        "buffIds": [
+          "BNbf"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANbf",
+    "code": "ANbf",
+    "comments": "Brewmaster - Breath of Fire",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "ground,air,structure",
+    "Cast1": "0",
+    "Dur1": "5",
+    "HeroDur1": "5",
+    "Cool1": "10",
+    "Cost1": "70",
+    "Area1": "125",
+    "Rng1": "375",
+    "DataA1": "65",
+    "DataB1": "520",
+    "DataC1": "375",
+    "DataD1": "300",
+    "DataE1": "7",
+    "Cast2": "-",
+    "Dur2": "5",
+    "HeroDur2": "5",
+    "Cool2": "10",
+    "Cost2": "70",
+    "Area2": "120",
+    "Rng2": "375",
+    "DataA2": "125",
+    "DataB2": "1000",
+    "DataC2": "375",
+    "DataD2": "300",
+    "DataE2": "14",
+    "Cast3": "-",
+    "Dur3": "5",
+    "HeroDur3": "5",
+    "Cool3": "10",
+    "Cost3": "70",
+    "Area3": "125",
+    "Rng3": "375",
+    "DataA3": "170",
+    "DataB3": "1360",
+    "DataC3": "375",
+    "DataD3": "300",
+    "DataE3": "21",
+    "Cast4": "-",
+    "Dur4": "5",
+    "HeroDur4": "5",
+    "Cool4": "10",
+    "Cost4": "70",
+    "Area4": "125",
+    "Rng4": "375",
+    "DataA4": "170",
+    "DataB4": "1360",
+    "DataC4": "375",
+    "DataD4": "300",
+    "DataE4": "21",
+    "InBeta": "1",
+    "targs1": "ground,air,structure",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNbf",
+    "targs2": "ground,air,structure",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNbf",
+    "targs3": "ground,air,structure",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNbf",
+    "targs4": "ground,air,structure",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNbf"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Missileart": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireMissile.mdl",
+    "Missilespeed": "1050",
+    "Order": "breathoffire",
+    "Name": "火焰呼吸",
+    "Tip": "火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 1|r],火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 2|r],火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"对敌人呼出带有攻击力的火焰。最初造成<ANbf,DataA1>点的伤害。并在<ANbf,Dur1>秒内持续受到每秒 <ANbf,DataE1>点的伤害。\",\"对敌人呼出带有攻击力的火焰。最初造成<ANbf,DataA2>点的伤害。并在<ANbf,Dur2>秒内持续受到每秒<ANbf,DataE2>点的伤害。\",\"对敌人呼出带有攻击力的火焰。最初造成<ANbf,DataA3>点的伤害。并在<ANbf,Dur3>秒内持续受到每秒<ANbf,DataE3>点的伤害。\"",
+    "Hotkey": "F",
+    "Researchtip": "\"学习火焰呼吸(|cffffcc00F|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"对敌人吐出一道火焰，在一开始对其就造成伤害之后，如果对方身上有醉酒云雾的话那还能在一定时间内持续地对其造成伤害。|n持续<ANbf,Dur1>秒。 |n|n|cffffcc00等级 1|r -最初造成<ANbf,DataA1>点的伤害，随后造成每秒<ANbf,DataE1>点的伤害。|n|cffffcc00等级 2|r -最初造成<ANbf,DataA2>点的伤害，随后造成每秒<ANbf,DataE2>点的伤害。|n|cffffcc00等级 3|r -最初造成<ANbf,DataA3>点的伤害，随后造成每秒<ANbf,DataE3>点的伤害。\"",
+    "Researchhotkey": "F",
+    "Animnames": "spell,slam"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

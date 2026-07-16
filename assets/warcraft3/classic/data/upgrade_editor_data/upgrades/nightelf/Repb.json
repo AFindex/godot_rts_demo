@@ -1,0 +1,115 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Repb",
+  "displayName": "穿刺剑刃",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNVorpalBlades.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNVorpalBlades.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnvorpalblades.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "穿刺剑刃",
+        "tooltip": "研究穿刺剑刃(|cffffcc00P|r)",
+        "extendedTooltip": "使得投刃车的攻击能穿透敌人从而对其他站在后面的敌方单位也造成一定伤害。同时也能让投刃车能攻击树木。",
+        "hotkey": "P",
+        "gold": 125,
+        "lumber": 100,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNVorpalBlades.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNVorpalBlades.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnvorpalblades.png"
+        },
+        "requirements": [
+          "etoa",
+          "edob"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rasd",
+        "base": 200
+      },
+      {
+        "slot": 2,
+        "type": "renw",
+        "base": 2
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Repb",
+    "comments": "nightelf impaling bolt",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "32768",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "125",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "60",
+    "timemod": "0",
+    "effect1": "rasd",
+    "base1": "200",
+    "mod1": "-",
+    "effect2": "renw",
+    "base2": "2",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNVorpalBlades.blp",
+    "Buttonpos": "2,2",
+    "Requires": "etoa,edob",
+    "Name": "穿刺剑刃",
+    "Tip": "研究穿刺剑刃(|cffffcc00P|r)",
+    "Ubertip": "\"使得投刃车的攻击能穿透敌人从而对其他站在后面的敌方单位也造成一定伤害。同时也能让投刃车能攻击树木。\"",
+    "Hotkey": "P"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

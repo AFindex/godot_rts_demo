@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Ruex",
+  "displayName": "挖掘尸体",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNExhumeCorpses.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNExhumeCorpses.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnexhumecorpses.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "挖掘尸体",
+        "tooltip": "挖掘尸体(|cffffcc00E|r)",
+        "extendedTooltip": "让绞肉车能制造出尸体。",
+        "hotkey": "E",
+        "gold": 75,
+        "lumber": 50,
+        "researchSeconds": 20,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNExhumeCorpses.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNExhumeCorpses.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnexhumecorpses.png"
+        },
+        "requirements": [
+          "unp1"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Ruex",
+    "comments": "undead exhume corpses",
+    "class": "_",
+    "race": "undead",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "0",
+    "timebase": "20",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNExhumeCorpses.blp",
+    "Buttonpos": "0,2",
+    "Requires": "unp1",
+    "Name": "挖掘尸体",
+    "Tip": "挖掘尸体(|cffffcc00E|r)",
+    "Ubertip": "\"让绞肉车能制造出尸体。\"",
+    "Hotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

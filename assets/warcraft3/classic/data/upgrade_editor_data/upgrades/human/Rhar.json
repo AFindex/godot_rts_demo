@@ -1,0 +1,161 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhar",
+  "displayName": "铁甲",
+  "identity": {
+    "class": "armor",
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpOne.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpOne.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanarmorupone.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpTwo.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpTwo.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanarmoruptwo.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpThree.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpThree.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanarmorupthree.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "铁甲",
+        "tooltip": "铁甲(|cffffcc00P|r)",
+        "extendedTooltip": "增加民兵、步兵、魔法破坏者、骑士、飞行机器和蒸汽机车的护甲。",
+        "hotkey": "P",
+        "gold": 125,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpOne.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpOne.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanarmorupone.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "钢甲",
+        "tooltip": "升级到钢甲(|cffffcc00P|r)",
+        "extendedTooltip": "进一步增加民兵、步兵、魔法破坏者、骑士、飞行机器和蒸汽机车的护甲。",
+        "hotkey": "P",
+        "gold": 150,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpTwo.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpTwo.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanarmoruptwo.png"
+        },
+        "requirements": [
+          "hkee"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "重金甲",
+        "tooltip": "升级到重金甲(|cffffcc00P|r)",
+        "extendedTooltip": "进一步增加民兵、步兵、魔法破坏者、骑士、飞行机器和蒸汽机车的护甲。",
+        "hotkey": "P",
+        "gold": 175,
+        "lumber": 275,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpThree.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpThree.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanarmorupthree.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhar",
+    "comments": "human armor",
+    "class": "armor",
+    "race": "human",
+    "flag": "8",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "125",
+    "goldmod": "25",
+    "lumberbase": "75",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpOne.blp,ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpTwo.blp,ReplaceableTextures\\CommandButtons\\BTNHumanArmorUpThree.blp",
+    "Buttonpos": "0,1",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "hkee",
+    "Requires2": "hcas",
+    "Name": "铁甲,钢甲,重金甲",
+    "Tip": "铁甲(|cffffcc00P|r),升级到钢甲(|cffffcc00P|r),升级到重金甲(|cffffcc00P|r)",
+    "Ubertip": "\"增加民兵、步兵、魔法破坏者、骑士、飞行机器和蒸汽机车的护甲。\",\"进一步增加民兵、步兵、魔法破坏者、骑士、飞行机器和蒸汽机车的护甲。\",\"进一步增加民兵、步兵、魔法破坏者、骑士、飞行机器和蒸汽机车的护甲。\"",
+    "Hotkey": "P,P,P"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

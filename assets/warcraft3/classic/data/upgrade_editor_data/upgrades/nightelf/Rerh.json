@@ -1,0 +1,160 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rerh",
+  "displayName": "加强隐藏",
+  "identity": {
+    "class": "armor",
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedHides.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedHides.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnreinforcedhides.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedReinforcedHides.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedReinforcedHides.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedreinforcedhides.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedReinforcedHides.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedReinforcedHides.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedreinforcedhides.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "加强隐藏",
+        "tooltip": "升级到加强隐藏(|cffffcc00R|r)",
+        "extendedTooltip": "增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的护甲。",
+        "hotkey": "R",
+        "gold": 150,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedHides.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedHides.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnreinforcedhides.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级加强隐藏",
+        "tooltip": "升级到中级加强隐藏(|cffffcc00R|r)",
+        "extendedTooltip": "进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的护甲。",
+        "hotkey": "R",
+        "gold": 200,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedReinforcedHides.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedReinforcedHides.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedreinforcedhides.png"
+        },
+        "requirements": [
+          "etoa"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级加强隐藏",
+        "tooltip": "升级到高级加强隐藏(|cffffcc00R|r)",
+        "extendedTooltip": "进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的护甲。",
+        "hotkey": "R",
+        "gold": 250,
+        "lumber": 250,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedReinforcedHides.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedReinforcedHides.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedreinforcedhides.png"
+        },
+        "requirements": [
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rarm"
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rerh",
+    "comments": "nightelf reinforced hides",
+    "class": "armor",
+    "race": "nightelf",
+    "flag": "8",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "150",
+    "goldmod": "50",
+    "lumberbase": "50",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rarm",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNReinforcedHides.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedReinforcedHides.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedReinforcedHides.blp",
+    "Buttonpos": "1,1",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "etoa",
+    "Requires2": "etoe",
+    "Name": "加强隐藏,中级加强隐藏,高级加强隐藏",
+    "Tip": "升级到加强隐藏(|cffffcc00R|r),升级到中级加强隐藏(|cffffcc00R|r),升级到高级加强隐藏(|cffffcc00R|r)",
+    "Ubertip": "\"增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的护甲。\",\"进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的护甲。\",\"进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的护甲。\"",
+    "Hotkey": "R,R,R"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

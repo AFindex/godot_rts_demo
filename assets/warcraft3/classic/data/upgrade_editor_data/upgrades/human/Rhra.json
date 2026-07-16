@@ -1,0 +1,163 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhra",
+  "displayName": "黑火药",
+  "identity": {
+    "class": "ranged",
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpOne.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpOne.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanmissileupone.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpTwo.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpTwo.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanmissileuptwo.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpThree.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpThree.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanmissileupthree.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "黑火药",
+        "tooltip": "升级到黑火药(|cffffcc00G|r)",
+        "extendedTooltip": "增加矮人火枪手、迫击炮小队、蒸汽机车和飞行机器的攻击力。",
+        "hotkey": "G",
+        "gold": 100,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpOne.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpOne.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanmissileupone.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "精练火药",
+        "tooltip": "升级到精练火药(|cffffcc00G|r)",
+        "extendedTooltip": "进一步增加矮人火枪手、迫击炮小队、蒸汽机车和飞行机器的攻击力。",
+        "hotkey": "G",
+        "gold": 175,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpTwo.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpTwo.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanmissileuptwo.png"
+        },
+        "requirements": [
+          "hkee"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "终极火药",
+        "tooltip": "升级到终极火药(|cffffcc00G|r)",
+        "extendedTooltip": "进一步增加矮人火枪手、迫击炮小队、蒸汽机车和飞行机器的攻击力。",
+        "hotkey": "G",
+        "gold": 250,
+        "lumber": 300,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpThree.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpThree.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanmissileupthree.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhra",
+    "comments": "human ranged attack",
+    "class": "ranged",
+    "race": "human",
+    "flag": "2",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "75",
+    "lumberbase": "50",
+    "lumbermod": "125",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpOne.blp,ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpTwo.blp,ReplaceableTextures\\CommandButtons\\BTNHumanMissileUpThree.blp",
+    "Buttonpos": "1,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "hkee",
+    "Requires2": "hcas",
+    "Name": "黑火药,精练火药,终极火药",
+    "Tip": "升级到黑火药(|cffffcc00G|r),升级到精练火药(|cffffcc00G|r),升级到终极火药(|cffffcc00G|r)",
+    "Ubertip": "\"增加矮人火枪手、迫击炮小队、蒸汽机车和飞行机器的攻击力。\",\"进一步增加矮人火枪手、迫击炮小队、蒸汽机车和飞行机器的攻击力。\",\"进一步增加矮人火枪手、迫击炮小队、蒸汽机车和飞行机器的攻击力。\"",
+    "Hotkey": "G,G,G"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

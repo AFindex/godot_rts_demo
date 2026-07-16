@@ -1,0 +1,218 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ACs8",
+  "displayName": "灵兽",
+  "identity": {
+    "baseCode": "AOsf",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFelHound.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFelHound.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfelhound.png"
+      }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFelHound.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFelHound.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfelhound.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "灵兽",
+        "tooltip": "灵兽(|cffffcc00B|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "召唤<ACs8,DataB1>灵兽伙伴。每只灵兽有<nsw1,realHP>生命值并造成<nsw1,mindmg1> - <nsw1,maxdmg1>伤害。|n持续<ACs8,Dur1>秒。|n|n|cffffcc00攻击地面单位。|r",
+        "targets": [],
+        "castTime": 0,
+        "duration": 60,
+        "heroDuration": 60,
+        "cooldown": 20,
+        "manaCost": 125,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "B": "2"
+        },
+        "summonedUnitId": "nsw1",
+        "buffIds": [
+          "BOsf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "灵兽",
+        "tooltip": "灵兽(|cffffcc00B|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "召唤<ACs8,DataB2>灵兽伙伴，拥有反馈技能。每只灵兽有<nsw2,realHP>生命值并造成<nsw2,mindmg1> - <nsw2,maxdmg1>伤害。|n持续<ACs8,Dur2>秒。|n|n|cffffcc00攻击地面单位。|r",
+        "targets": [],
+        "castTime": 0,
+        "duration": 60,
+        "heroDuration": 60,
+        "cooldown": 20,
+        "manaCost": 125,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "B": "2"
+        },
+        "summonedUnitId": "nsw2",
+        "buffIds": [
+          "BOsf"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "灵兽",
+        "tooltip": "灵兽(|cffffcc00B|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "召唤<ACs8,DataB3>灵兽伙伴，拥有反馈和法力燃烧技能。每只灵兽有<nsw3,realHP>生命值并造成<nsw3,mindmg1> - <nsw3,maxdmg1>伤害。|n持续<ACs8,Dur3>秒。|n|n|cffffcc00攻击地面单位。|r",
+        "targets": [],
+        "castTime": 0,
+        "duration": 60,
+        "heroDuration": 60,
+        "cooldown": 20,
+        "manaCost": 125,
+        "area": 200,
+        "range": 800,
+        "data": {
+          "B": "2"
+        },
+        "summonedUnitId": "nsw3",
+        "buffIds": [
+          "BOsf"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ACs8",
+    "code": "AOsf",
+    "comments": "Feral Spirit (Spirit Beast)",
+    "version": "0",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "60",
+    "HeroDur1": "60",
+    "Cool1": "20",
+    "Cost1": "125",
+    "Area1": "200",
+    "Rng1": "800",
+    "DataB1": "2",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "UnitID1": "nsw1",
+    "Cast2": "0",
+    "Dur2": "60",
+    "HeroDur2": "60",
+    "Cool2": "20",
+    "Cost2": "125",
+    "Area2": "200",
+    "Rng2": "800",
+    "DataB2": "2",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "UnitID2": "nsw2",
+    "Cast3": "0",
+    "Dur3": "60",
+    "HeroDur3": "60",
+    "Cool3": "20",
+    "Cost3": "125",
+    "Area3": "200",
+    "Rng3": "800",
+    "DataB3": "2",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "UnitID3": "nsw3",
+    "Cast4": "0",
+    "Dur4": "60",
+    "HeroDur4": "60",
+    "Cool4": "20",
+    "Cost4": "125",
+    "Area4": "200",
+    "Rng4": "800",
+    "DataB4": "2",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "UnitID4": "nsw3",
+    "InBeta": "0",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BOsf",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BOsf",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BOsf",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BOsf"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNFelHound.blp",
+    "ResearchArt": "ReplaceableTextures\\CommandButtons\\BTNFelHound.blp",
+    "Buttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Specialart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspirittarget.mdl",
+    "Order": "spiritwolf",
+    "Name": "灵兽",
+    "Tip": "灵兽(|cffffcc00B|r) - [|cffffcc00等级 1|r],灵兽(|cffffcc00B|r) - [|cffffcc00等级 2|r],灵兽(|cffffcc00B|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"召唤<ACs8,DataB1>灵兽伙伴。每只灵兽有<nsw1,realHP>生命值并造成<nsw1,mindmg1> - <nsw1,maxdmg1>伤害。|n持续<ACs8,Dur1>秒。|n|n|cffffcc00攻击地面单位。|r\",\"召唤<ACs8,DataB2>灵兽伙伴，拥有反馈技能。每只灵兽有<nsw2,realHP>生命值并造成<nsw2,mindmg1> - <nsw2,maxdmg1>伤害。|n持续<ACs8,Dur2>秒。|n|n|cffffcc00攻击地面单位。|r\",\"召唤<ACs8,DataB3>灵兽伙伴，拥有反馈和法力燃烧技能。每只灵兽有<nsw3,realHP>生命值并造成<nsw3,mindmg1> - <nsw3,maxdmg1>伤害。|n持续<ACs8,Dur3>秒。|n|n|cffffcc00攻击地面单位。|r\"",
+    "Researchtip": "\"学习灵兽(|cffffcc00B|r) - [|cffffcc00等级 %d|r]。\"",
+    "Researchubertip": "\"召唤<ACs8,DataB1>只灵兽攻击阿卡玛的敌人。|n持续 <ACs8,Dur1> 秒。|n|n|cffffcc00等级 1|r - <nsw1,realHP>生命值，<nsw1,mindmg1> - <nsw1,maxdmg1>伤害力。|n|cffffcc00等级 2|r - <nsw2,realHP>生命值，<nsw2,mindmg1> - <nsw2,maxdmg1>伤害力及反馈。|n|cffffcc00等级 3|r - <nsw3,realHP>生命值，<nsw3,mindmg1> - <nsw3,maxdmg1>伤害力，反馈和法力燃烧。\"",
+    "Hotkey": "B",
+    "Researchhotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

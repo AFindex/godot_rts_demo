@@ -41,6 +41,11 @@ public static class ProductionCatalogResourceConverter
                 CanMoveDuringWindup = type.Combat.CanMoveDuringWindup,
                 CanMoveDuringCooldown = type.Combat.CanMoveDuringCooldown,
                 AutoTargetPriority = type.Combat.AutoTargetPriority,
+                Concealment = type.Perception.Concealment,
+                DetectionRange = type.Perception.DetectionRange,
+                VisionRange = type.Perception.VisionRange,
+                ObservationHeight = type.Perception.ObservationHeight,
+                TerrainVisionMode = type.Perception.TerrainVisionMode,
                 IsWorker = type.IsWorker
             });
         }
@@ -123,7 +128,15 @@ public static class ProductionCatalogResourceConverter
 
             units[index] = new UnitTypeProfile(
                 source.Id, source.DisplayName ?? string.Empty,
-                movement, combat, source.IsWorker);
+                movement, combat, source.IsWorker)
+            {
+                Perception = new UnitPerceptionProfileSnapshot(
+                    source.Concealment,
+                    source.DetectionRange,
+                    source.VisionRange,
+                    source.ObservationHeight,
+                    source.TerrainVisionMode)
+            };
         }
 
         var recipes = new ProductionRecipeProfile[resource.Recipes.Count];

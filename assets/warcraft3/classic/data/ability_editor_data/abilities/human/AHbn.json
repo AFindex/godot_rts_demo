@@ -1,0 +1,220 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AHbn",
+  "displayName": "驱散",
+  "identity": {
+    "baseCode": "AHbn",
+    "race": "human",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbanish.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "驱散",
+        "tooltip": "驱散(|cffffcc00B|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "使一个非机械单位的重量变轻，并通过 <AHbn,DataA1,%>% 降低其移动速度持续 <AHbn,Dur1> 秒。变轻的单位不能攻击，但是他们能够施放魔法，几个魔法可以形成更强大的攻击。",
+        "targets": [
+          "air",
+          "ground",
+          "nonsapper",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 12,
+        "heroDuration": 4,
+        "cooldown": 0,
+        "manaCost": 75,
+        "range": 800,
+        "data": {
+          "A": "0.5",
+          "B": "0"
+        },
+        "buffIds": [
+          "BHbn"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "驱散",
+        "tooltip": "驱散(|cffffcc00B|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "使一个非机械单位的重量变轻，并通过 <AHbn,DataA2,%>% 降低其移动速度持续 <AHbn,Dur2> 秒。 变轻的单位不能攻击，但是他们能够施放魔法，几个魔法可以形成更强大的攻击。",
+        "targets": [
+          "air",
+          "ground",
+          "nonsapper",
+          "organic"
+        ],
+        "duration": 15,
+        "heroDuration": 5,
+        "cooldown": 0,
+        "manaCost": 60,
+        "range": 800,
+        "data": {
+          "A": "0.5",
+          "B": "0"
+        },
+        "buffIds": [
+          "BHbn"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "驱散",
+        "tooltip": "驱散(|cffffcc00B|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "使一个非机械单位的重量变轻，并通过 <AHbn,DataA3,%>% 降低其移动速度持续 <AHbn,Dur3> 秒。 变轻的单位不能攻击，但是他们能够施放魔法，几个魔法可以形成更强大的攻击。",
+        "targets": [
+          "air",
+          "ground",
+          "nonsapper",
+          "organic"
+        ],
+        "duration": 18,
+        "heroDuration": 6,
+        "cooldown": 0,
+        "manaCost": 50,
+        "range": 800,
+        "data": {
+          "A": "0.5",
+          "B": "0"
+        },
+        "buffIds": [
+          "BHbn"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AHbn",
+    "code": "AHbn",
+    "comments": "Blood Mage - Banish",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "human",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,nonsapper,organic",
+    "Cast1": "0",
+    "Dur1": "12",
+    "HeroDur1": "4",
+    "Cool1": "0",
+    "Cost1": "75",
+    "Area1": "-",
+    "Rng1": "800",
+    "DataA1": "0.5",
+    "DataB1": "0",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "15",
+    "HeroDur2": "5",
+    "Cool2": "0",
+    "Cost2": "60",
+    "Area2": "-",
+    "Rng2": "800",
+    "DataA2": "0.5",
+    "DataB2": "0",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "18",
+    "HeroDur3": "6",
+    "Cool3": "0",
+    "Cost3": "50",
+    "Area3": "-",
+    "Rng3": "800",
+    "DataA3": "0.5",
+    "DataB3": "0",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "18",
+    "HeroDur4": "6",
+    "Cool4": "1",
+    "Cost4": "75",
+    "Area4": "-",
+    "Rng4": "800",
+    "DataA4": "0.5",
+    "DataB4": "0",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,nonsapper,organic",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BHbn",
+    "targs2": "air,ground,nonsapper,organic",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BHbn",
+    "targs3": "air,ground,nonsapper,organic",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BHbn",
+    "targs4": "air,ground,nonsapper,organic",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BHbn"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+    "Buttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Effectsound": "BanishCaster",
+    "Order": "banish",
+    "Name": "驱散",
+    "Tip": "驱散(|cffffcc00B|r) - [|cffffcc00等级 1|r],驱散(|cffffcc00B|r) - [|cffffcc00等级 2|r],驱散(|cffffcc00B|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"使一个非机械单位的重量变轻，并通过 <AHbn,DataA1,%>% 降低其移动速度持续 <AHbn,Dur1> 秒。变轻的单位不能攻击，但是他们能够施放魔法，几个魔法可以形成更强大的攻击。\",\"使一个非机械单位的重量变轻，并通过 <AHbn,DataA2,%>% 降低其移动速度持续 <AHbn,Dur2> 秒。 变轻的单位不能攻击，但是他们能够施放魔法，几个魔法可以形成更强大的攻击。\",\"使一个非机械单位的重量变轻，并通过 <AHbn,DataA3,%>% 降低其移动速度持续 <AHbn,Dur3> 秒。 变轻的单位不能攻击，但是他们能够施放魔法，几个魔法可以形成更强大的攻击。\"",
+    "Hotkey": "B",
+    "Researchtip": "\"学习驱散(|cffffcc00B|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"使一个非机械单位的重量变轻，并通过 <AHbn,DataA1,%>% 在较短时期降低其移动速度。 变轻的单位不能攻击，但是他们能够施放魔法，几个魔法可以形成更强大的攻击。 |n|n|cffffcc00等级 1|r - <AHbn,Cost1> 魔法, 持续 <AHbn,Dur1> 秒。 |n|cffffcc00等级 2|r - <AHbn,Cost2> 魔法, 持续 <AHbn,Dur2> 秒。 |n|cffffcc00等级 3|r - <AHbn,Cost3> 魔法, 持续 <AHbn,Dur3> 秒。\"",
+    "Researchhotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

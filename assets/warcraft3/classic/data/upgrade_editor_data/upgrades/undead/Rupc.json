@@ -1,0 +1,104 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rupc",
+  "displayName": "疾病云雾",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnplaguecloud.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "疾病云雾",
+        "tooltip": "研究疾病云雾(|cffffcc00D|r)",
+        "extendedTooltip": "使得憎恶能带有疾病云雾光环，从而在<Aap1,DataA1>内对周围的单位造成每秒<Aap1,DataB1>点的伤害。而绞肉车的攻击也可以带有疾病效果从而在<Aap2,DataA1>秒内对周围的单位造成每秒<Aap2,DataB1>点的伤害。|n不死族的单位对疾病云雾免疫。",
+        "hotkey": "D",
+        "gold": 100,
+        "lumber": 200,
+        "researchSeconds": 45,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnplaguecloud.png"
+        },
+        "requirements": [
+          "unp2"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rupc",
+    "comments": "undead plague cloud",
+    "class": "_",
+    "race": "undead",
+    "flag": "4096",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "200",
+    "lumbermod": "0",
+    "timebase": "45",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+    "Buttonpos": "1,2",
+    "Requires": "unp2",
+    "Name": "疾病云雾",
+    "Tip": "研究疾病云雾(|cffffcc00D|r)",
+    "Ubertip": "\"使得憎恶能带有疾病云雾光环，从而在<Aap1,DataA1>内对周围的单位造成每秒<Aap1,DataB1>点的伤害。而绞肉车的攻击也可以带有疾病效果从而在<Aap2,DataA1>秒内对周围的单位造成每秒<Aap2,DataB1>点的伤害。|n不死族的单位对疾病云雾免疫。\"",
+    "Hotkey": "D"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

@@ -8,7 +8,11 @@ public readonly record struct UnitTypeProfile(
     string Name,
     UnitMovementProfileSnapshot Movement,
     CombatProfileSnapshot Combat,
-    bool IsWorker);
+    bool IsWorker)
+{
+    public UnitPerceptionProfileSnapshot Perception { get; init; } =
+        UnitPerceptionProfileSnapshot.Standard;
+}
 
 public readonly record struct ProductionRecipeProfile(
     int Id,
@@ -58,7 +62,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 6;
+    public const int CurrentFormatVersion = 7;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;
@@ -218,6 +222,14 @@ public sealed class ProductionCatalogSnapshot
         writer.Write(unit.Combat.CanMoveDuringWindup);
         writer.Write(unit.Combat.CanMoveDuringCooldown);
         writer.Write(unit.Combat.AutoTargetPriority);
+        writer.Write((byte)unit.Perception.Concealment);
+        writer.Write(BitConverter.SingleToInt32Bits(
+            unit.Perception.DetectionRange));
+        writer.Write(BitConverter.SingleToInt32Bits(
+            unit.Perception.VisionRange));
+        writer.Write(BitConverter.SingleToInt32Bits(
+            unit.Perception.ObservationHeight));
+        writer.Write((byte)unit.Perception.TerrainVisionMode);
         writer.Write(unit.IsWorker);
     }
 
@@ -256,7 +268,15 @@ public sealed class ProductionCatalogSnapshot
         unit.Combat.BonusUpgradeDamage >= 0f &&
         float.IsFinite(unit.Combat.BonusUpgradeDamage) &&
         unit.Combat.ProjectileSpeed >= 0f &&
-        float.IsFinite(unit.Combat.ProjectileSpeed);
+        float.IsFinite(unit.Combat.ProjectileSpeed) &&
+        ValidPerception(unit.Perception);
+
+    private static bool ValidPerception(UnitPerceptionProfileSnapshot value) =>
+        Enum.IsDefined(value.Concealment) &&
+        float.IsFinite(value.DetectionRange) && value.DetectionRange >= 0f &&
+        float.IsFinite(value.VisionRange) && value.VisionRange > 0f &&
+        float.IsFinite(value.ObservationHeight) && value.ObservationHeight >= 0f &&
+        Enum.IsDefined(value.TerrainVisionMode);
 
     internal static bool ValidRequirements(
         ImmutableArray<ProductionRequirementProfile> requirements)

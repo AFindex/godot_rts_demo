@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhcd",
+  "displayName": "乌云技能",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCloudOfFog.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCloudOfFog.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncloudoffog.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "乌云技能",
+        "tooltip": "研究乌云(|cffffcc00C|r)",
+        "extendedTooltip": "使龙鹰骑士掌握乌云技能，从而使得敌人远程防御建筑不能攻击。",
+        "hotkey": "C",
+        "gold": 50,
+        "lumber": 100,
+        "researchSeconds": 35,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCloudOfFog.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCloudOfFog.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btncloudoffog.png"
+        },
+        "requirements": [
+          "hvlt"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rhcd",
+    "comments": "human cloud research",
+    "class": "_",
+    "race": "human",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "35",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNCloudOfFog.blp",
+    "Buttonpos": "0,2",
+    "Requires": "hvlt",
+    "Name": "乌云技能",
+    "Tip": "研究乌云(|cffffcc00C|r)",
+    "Ubertip": "\"使龙鹰骑士掌握乌云技能，从而使得敌人远程防御建筑不能攻击。\"",
+    "Hotkey": "C"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

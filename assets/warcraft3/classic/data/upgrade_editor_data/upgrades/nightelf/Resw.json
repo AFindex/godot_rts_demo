@@ -1,0 +1,162 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Resw",
+  "displayName": "野性力量",
+  "identity": {
+    "class": "ranged",
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 3,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheWild.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheWild.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstrengthofthewild.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheWild.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheWild.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedstrengthofthewild.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheWild.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheWild.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedstrengthofthewild.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "野性力量",
+        "tooltip": "升级到野性力量(|cffffcc00W|r)",
+        "extendedTooltip": "增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的攻击力。",
+        "hotkey": "W",
+        "gold": 100,
+        "lumber": 75,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheWild.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheWild.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnstrengthofthewild.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "中级野性力量",
+        "tooltip": "升级到中级野性力量(|cffffcc00W|r)",
+        "extendedTooltip": "进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的攻击力。",
+        "hotkey": "W",
+        "gold": 175,
+        "lumber": 175,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheWild.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheWild.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedstrengthofthewild.png"
+        },
+        "requirements": [
+          "etoa"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "高级野性力量",
+        "tooltip": "升级到高级野性力量(|cffffcc00W|r)",
+        "extendedTooltip": "进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的攻击力。",
+        "hotkey": "W",
+        "gold": 250,
+        "lumber": 275,
+        "researchSeconds": 90,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheWild.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheWild.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnadvancedstrengthofthewild.png"
+        },
+        "requirements": [
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratd",
+        "base": 1,
+        "modifier": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Resw",
+    "comments": "nightelf strength of wild",
+    "class": "ranged",
+    "race": "nightelf",
+    "flag": "2",
+    "used": "1",
+    "maxlevel": "3",
+    "inherit": "0",
+    "goldbase": "100",
+    "goldmod": "75",
+    "lumberbase": "75",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "ratd",
+    "base1": "1",
+    "mod1": "1",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStrengthOfTheWild.blp,ReplaceableTextures\\CommandButtons\\BTNImprovedStrengthOfTheWild.blp,ReplaceableTextures\\CommandButtons\\BTNAdvancedStrengthOfTheWild.blp",
+    "Buttonpos": "1,0",
+    "Requirescount": "3",
+    "Requires": "",
+    "Requires1": "etoa",
+    "Requires2": "etoe",
+    "Name": "野性力量,中级野性力量,高级野性力量",
+    "Tip": "升级到野性力量(|cffffcc00W|r),升级到中级野性力量(|cffffcc00W|r),升级到高级野性力量(|cffffcc00W|r)",
+    "Ubertip": "\"增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的攻击力。\",\"进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的攻击力。\",\"进一步增加变熊之后的利爪德鲁伊，变为风暴之鸦之后的猛禽德鲁伊，树妖，角鹰兽，山岭巨人，精灵龙和奇美拉怪兽的攻击力。\"",
+    "Hotkey": "W,W,W"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

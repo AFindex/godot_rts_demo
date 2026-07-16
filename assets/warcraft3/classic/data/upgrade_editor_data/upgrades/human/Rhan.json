@@ -1,0 +1,112 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhan",
+  "displayName": "动物作战训练",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAnimalWarTraining.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAnimalWarTraining.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnanimalwartraining.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "动物作战训练",
+        "tooltip": "研究动物作战训练(|cffffcc00A|r)",
+        "extendedTooltip": "能增加骑士、龙鹰骑士和狮鹫骑士<Rhan,base1>点的生命值。",
+        "hotkey": "A",
+        "gold": 125,
+        "lumber": 175,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAnimalWarTraining.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAnimalWarTraining.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnanimalwartraining.png"
+        },
+        "requirements": [
+          "hlum",
+          "hcas",
+          "hbla"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rhpx",
+        "base": 150
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhan",
+    "comments": "human animal breeding",
+    "class": "_",
+    "race": "human",
+    "flag": "128",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "125",
+    "goldmod": "0",
+    "lumberbase": "175",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "rhpx",
+    "base1": "150",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNAnimalWarTraining.blp",
+    "Buttonpos": "2,2",
+    "Requires": "hlum,hcas,hbla",
+    "Name": "动物作战训练",
+    "Tip": "研究动物作战训练(|cffffcc00A|r)",
+    "Ubertip": "\"能增加骑士、龙鹰骑士和狮鹫骑士<Rhan,base1>点的生命值。\"",
+    "Hotkey": "A"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Redt",
+  "displayName": "猛禽德鲁伊专家训练",
+  "identity": {
+    "class": "caster",
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 2,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTAdeptTraining.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTAdeptTraining.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndotadepttraining.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTMasterTraining.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTMasterTraining.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndotmastertraining.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "猛禽德鲁伊专家训练",
+        "tooltip": "猛禽德鲁伊专家训练(|cffffcc00A|r)",
+        "extendedTooltip": "增加猛禽德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有风暴之鸦技能。",
+        "hotkey": "A",
+        "gold": 100,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTAdeptTraining.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTAdeptTraining.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndotadepttraining.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "猛禽德鲁伊大师训练",
+        "tooltip": "猛禽德鲁伊大师训练(|cffffcc00A|r)",
+        "extendedTooltip": "增加猛禽德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有飓风技能。",
+        "hotkey": "A",
+        "gold": 100,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTMasterTraining.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDOTMasterTraining.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndotmastertraining.png"
+        },
+        "requirements": [
+          "etoe"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rmnx",
+        "base": 100,
+        "modifier": 100
+      },
+      {
+        "slot": 2,
+        "type": "rmnr",
+        "base": 0.325,
+        "modifier": 0.325
+      },
+      {
+        "slot": 3,
+        "type": "rhpx",
+        "base": 40,
+        "modifier": 40
+      },
+      {
+        "slot": 4,
+        "type": "ratd",
+        "base": 0,
+        "modifier": 0
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Redt",
+    "comments": "nightelf DoT training",
+    "class": "caster",
+    "race": "nightelf",
+    "flag": "1024",
+    "used": "1",
+    "maxlevel": "2",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rmnx",
+    "base1": "100",
+    "mod1": "100",
+    "effect2": "rmnr",
+    "base2": "0.325",
+    "mod4": "0",
+    "sort": "_",
+    "global": "0",
+    "lumberbase": "50",
+    "code1": "-",
+    "mod2": "0.325",
+    "code2": "-",
+    "effect3": "rhpx",
+    "base3": "40",
+    "mod3": "40",
+    "code3": "-",
+    "effect4": "ratd",
+    "base4": "0",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDOTAdeptTraining.blp,ReplaceableTextures\\CommandButtons\\BTNDOTMasterTraining.blp",
+    "Buttonpos": "1,2",
+    "Requirescount": "2",
+    "Requires": "",
+    "Requires1": "etoe",
+    "Name": "猛禽德鲁伊专家训练,猛禽德鲁伊大师训练",
+    "Tip": "猛禽德鲁伊专家训练(|cffffcc00A|r), 猛禽德鲁伊大师训练(|cffffcc00A|r)",
+    "Ubertip": "\"增加猛禽德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有风暴之鸦技能。\",\"增加猛禽德鲁伊暗夜精灵状态下的魔法最大值，魔法恢复速度，生命值和攻击力。并使其拥有飓风技能。\"",
+    "Hotkey": "A,A"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

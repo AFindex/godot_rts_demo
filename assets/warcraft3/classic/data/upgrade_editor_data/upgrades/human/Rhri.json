@@ -1,0 +1,111 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhri",
+  "displayName": "长管火枪",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDwarvenLongRifle.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDwarvenLongRifle.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndwarvenlongrifle.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "长管火枪",
+        "tooltip": "升级到长管火枪(|cffffcc00L|r)",
+        "extendedTooltip": "增加矮人火枪手的攻击范围。",
+        "hotkey": "L",
+        "gold": 75,
+        "lumber": 125,
+        "researchSeconds": 30,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDwarvenLongRifle.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDwarvenLongRifle.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndwarvenlongrifle.png"
+        },
+        "requirements": [
+          "hkee"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratr",
+        "base": 200,
+        "modifier": 200
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rhri",
+    "comments": "human rifleman plus range",
+    "class": "_",
+    "race": "human",
+    "flag": "2048",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "125",
+    "lumbermod": "0",
+    "timebase": "30",
+    "timemod": "0",
+    "effect1": "ratr",
+    "base1": "200",
+    "mod1": "200",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDwarvenLongRifle.blp",
+    "Buttonpos": "1,2",
+    "Requires": "hkee",
+    "Name": "长管火枪",
+    "Tip": "升级到长管火枪(|cffffcc00L|r)",
+    "Ubertip": "\"增加矮人火枪手的攻击范围。\"",
+    "Hotkey": "L"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

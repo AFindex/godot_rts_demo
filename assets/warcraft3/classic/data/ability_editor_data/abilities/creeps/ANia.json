@@ -1,0 +1,240 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANia",
+  "displayName": "燃灰",
+  "identity": {
+    "baseCode": "ANia",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNIncinerateOn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNIncinerateOn.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnincinerateon.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "燃灰",
+        "tooltip": "(|cffffcc00c|r)燃灰 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "每次攻击都带有火焰伤害。第一次攻击的伤害值是<ANia,DataA1>，第二次攻击的附加伤害会是第一次的两倍，第三次为三倍，以此类推。|n|n如果某个单位是遭到这个攻击而死去的，那么他的燃灰会对周围的单位造成<ANia,DataB1>点的伤害。",
+        "targets": [
+          "enemy",
+          "neutral",
+          "organic",
+          "nonancient"
+        ],
+        "castTime": 0,
+        "duration": 2,
+        "heroDuration": 2,
+        "cooldown": 0,
+        "manaCost": 6,
+        "range": 550,
+        "data": {
+          "A": "1",
+          "B": "30",
+          "C": "90",
+          "D": "15",
+          "E": "180",
+          "F": "0.2"
+        },
+        "buffIds": [
+          "BNic"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "燃灰",
+        "tooltip": "(|cffffcc00c|r)燃灰 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "每次攻击都带有火焰伤害。第一次攻击的伤害值是<ANia,DataA2>，第二次是两倍，第三次是三倍，以此类推。|n|n如果某个单位是遭到这个攻击而死去的，那么他的燃灰会对周围的单位造成<ANia,DataB2>点的伤害。",
+        "targets": [
+          "enemy",
+          "neutral",
+          "organic",
+          "nonancient"
+        ],
+        "castTime": 0,
+        "duration": 2,
+        "heroDuration": 2,
+        "cooldown": 0,
+        "manaCost": 6,
+        "range": 550,
+        "data": {
+          "A": "2",
+          "B": "45",
+          "C": "90",
+          "D": "22",
+          "E": "180",
+          "F": "0.2"
+        },
+        "buffIds": [
+          "BNic"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "燃灰",
+        "tooltip": "(|cffffcc00c|r)燃灰 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "每次攻击都带有火焰伤害。第一次攻击的伤害值是<ANia,DataA3>，第二次攻击的附加伤害会是第一次的两倍，第三次为三倍，以此类推。|n|n如果某个单位是遭到这个攻击而死去的，那么他的燃灰会对周围的单位造成<ANia,DataB3>点的伤害。",
+        "targets": [
+          "enemy",
+          "neutral",
+          "organic",
+          "nonancient"
+        ],
+        "castTime": 0,
+        "duration": 2,
+        "heroDuration": 2,
+        "cooldown": 0,
+        "manaCost": 6,
+        "range": 550,
+        "data": {
+          "A": "3",
+          "B": "60",
+          "C": "100",
+          "D": "30",
+          "E": "180",
+          "F": "0.2"
+        },
+        "buffIds": [
+          "BNic"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANia",
+    "code": "ANia",
+    "comments": "Firelord - Incinerate",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "enemy,neutral,organic,nonancient",
+    "Cast1": "0",
+    "Dur1": "2",
+    "HeroDur1": "2",
+    "Cool1": "0",
+    "Cost1": "6",
+    "Area1": "-",
+    "Rng1": "550",
+    "DataA1": "1",
+    "DataB1": "30",
+    "DataC1": "90",
+    "DataD1": "15",
+    "DataE1": "180",
+    "DataF1": "0.2",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNic",
+    "targs2": "enemy,neutral,organic,nonancient",
+    "Cast2": "0",
+    "Dur2": "2",
+    "HeroDur2": "2",
+    "Cool2": "0",
+    "Cost2": "6",
+    "Area2": "-",
+    "Rng2": "550",
+    "DataA2": "2",
+    "DataB2": "45",
+    "DataC2": "90",
+    "DataD2": "22",
+    "DataE2": "180",
+    "DataF2": "0.2",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNic",
+    "targs3": "enemy,neutral,organic,nonancient",
+    "Cast3": "0",
+    "Dur3": "2",
+    "HeroDur3": "2",
+    "Cool3": "0",
+    "Cost3": "6",
+    "Area3": "-",
+    "Rng3": "550",
+    "DataA3": "3",
+    "DataB3": "60",
+    "DataC3": "100",
+    "DataD3": "30",
+    "DataE3": "180",
+    "DataF3": "0.2",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNic",
+    "targs4": "enemy,neutral,organic,nonancient",
+    "Cast4": "0",
+    "Dur4": "2",
+    "HeroDur4": "2",
+    "Cool4": "0",
+    "Cost4": "6",
+    "Area4": "-",
+    "Rng4": "550",
+    "DataA4": "9",
+    "DataB4": "80",
+    "DataC4": "100",
+    "DataD4": "40",
+    "DataE4": "200",
+    "DataF4": "0.2",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNic",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNIncinerateOn.blp",
+    "Unart": "ReplaceableTextures\\CommandButtons\\BTNIncinerateOff.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNIncinerate.blp",
+    "Buttonpos": "2,2",
+    "Unbuttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "order": "incineratearrow",
+    "orderon": "incineratearrowon",
+    "orderoff": "incineratearrowon",
+    "Missileart": "Abilities\\Weapons\\LordofFlameMissile\\LordofFlameMissile.mdl",
+    "Missilespeed": "1000",
+    "MissileHoming": "1",
+    "Missilearc": "0.35",
+    "Name": "燃灰",
+    "Tip": "(|cffffcc00c|r)燃灰 - [|cffffcc00等级 1|r],(|cffffcc00c|r)燃灰 - [|cffffcc00等级 2|r],(|cffffcc00c|r)燃灰 - [|cffffcc00等级 3|r]",
+    "Researchtip": "\"(|cffffcc00c|r)燃灰- [|cffffcc00等级 %d|r]\"",
+    "Ubertip": "\"每次攻击都带有火焰伤害。第一次攻击的伤害值是<ANia,DataA1>，第二次攻击的附加伤害会是第一次的两倍，第三次为三倍，以此类推。|n|n如果某个单位是遭到这个攻击而死去的，那么他的燃灰会对周围的单位造成<ANia,DataB1>点的伤害。\",\"每次攻击都带有火焰伤害。第一次攻击的伤害值是<ANia,DataA2>，第二次是两倍，第三次是三倍，以此类推。|n|n如果某个单位是遭到这个攻击而死去的，那么他的燃灰会对周围的单位造成<ANia,DataB2>点的伤害。\",\"每次攻击都带有火焰伤害。第一次攻击的伤害值是<ANia,DataA3>，第二次攻击的附加伤害会是第一次的两倍，第三次为三倍，以此类推。|n|n如果某个单位是遭到这个攻击而死去的，那么他的燃灰会对周围的单位造成<ANia,DataB3>点的伤害。\"",
+    "Researchubertip": "\"每次攻击都带有火焰伤害。第一次攻击将带有一定的附加伤害，第二次攻击的附加伤害会是第一次的两倍，第三次为三倍，以此类推。|n|n如果某个单位是遭到这个攻击而死去的，那么他的燃灰会对周围的单位造成一定程度的伤害。|n|n|cffffcc00等级 1|r - <ANia,DataA1> 附加伤害，<ANia,DataB1> 燃灰伤害。|n|cffffcc00等级 2|r - <ANia,DataA2> 附加伤害， <ANia,DataB2>燃灰伤害。|n|cffffcc00等级 3|r - <ANia,DataA3>附加伤害，<ANia,DataB3>燃灰伤害。\"",
+    "Untip": "\"|cffc3dbff|cffc3dbff点击右键以激活自动施放功能。|r\"",
+    "Unubertip": "\"|cffc3dbff|cffc3dbff点击右键以取消自动施放功能。|r\"",
+    "Hotkey": "C",
+    "Researchhotkey": "C",
+    "EditorSuffix": "(箭矢)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

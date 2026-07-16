@@ -1,0 +1,217 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANcr",
+  "displayName": "化学风暴",
+  "identity": {
+    "baseCode": "ANcr",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNChemicalRage.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNChemicalRage.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnchemicalrage.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "化学风暴",
+        "tooltip": "(|cffffcc00R|r)化学风暴 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "炼金术士让其食人魔进入了一种狂暴的状态，从而提高了<ANcr,DataE1,%>%的移动速度和<ANcr,DataF1,%>% 的攻击速度，持续时间<ANcr,HeroDur1> 秒。",
+        "targets": [
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 0.35,
+        "heroDuration": 15,
+        "cooldown": 30,
+        "manaCost": 25,
+        "data": {
+          "A": "Nalc",
+          "B": "1",
+          "C": "0",
+          "E": "0.5",
+          "F": "0.25"
+        },
+        "summonedUnitId": "Nalm",
+        "buffIds": [
+          "BNcr"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "化学风暴",
+        "tooltip": "(|cffffcc00R|r)化学风暴 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "炼金术士让其食人魔进入了一种狂暴的状态，从而提高了<ANcr,DataE2的移动速度和<ANcr,DataF2,%>% 的攻击速度，持续时间<ANcr,HeroDur1> 秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0.35,
+        "heroDuration": 15,
+        "cooldown": 30,
+        "manaCost": 25,
+        "data": {
+          "A": "Nalc",
+          "B": "1",
+          "C": "0",
+          "E": "0.5",
+          "F": "0.75"
+        },
+        "summonedUnitId": "Nal2",
+        "buffIds": [
+          "BNcr"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "化学风暴",
+        "tooltip": "(|cffffcc00R|r)化学风暴 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "炼金术士让其食人魔进入了一种狂暴的状态，从而提高了<ANcr,DataE3,%>% 的移动速度和<ANcr,DataF3,%>% 的攻击速度，持续时间<ANcr,HeroDur1> 秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0.35,
+        "heroDuration": 15,
+        "cooldown": 30,
+        "manaCost": 25,
+        "data": {
+          "A": "Nalc",
+          "B": "1",
+          "C": "0",
+          "E": "0.5",
+          "F": "1.25"
+        },
+        "summonedUnitId": "Nal3",
+        "buffIds": [
+          "BNcr"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANcr",
+    "code": "ANcr",
+    "comments": "Alchemist - Chemical Rage",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "self",
+    "Cast1": "0",
+    "Dur1": "0.35",
+    "HeroDur1": "15",
+    "Cool1": "30",
+    "Cost1": "25",
+    "Area1": "-",
+    "Rng1": "-",
+    "DataA1": "Nalc",
+    "DataB1": "1",
+    "DataC1": "0",
+    "DataD1": "-",
+    "DataE1": "0.5",
+    "DataF1": "0.25",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "UnitID1": "Nalm",
+    "BuffID1": "BNcr",
+    "targs2": "_",
+    "Cast2": "0",
+    "Dur2": "0.35",
+    "HeroDur2": "15",
+    "Cool2": "30",
+    "Cost2": "25",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "Nalc",
+    "DataB2": "1",
+    "DataC2": "0",
+    "DataD2": "-",
+    "DataE2": "0.5",
+    "DataF2": "0.75",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "UnitID2": "Nal2",
+    "BuffID2": "BNcr",
+    "targs3": "_",
+    "Cast3": "0",
+    "Dur3": "0.35",
+    "HeroDur3": "15",
+    "Cool3": "30",
+    "Cost3": "25",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "Nalc",
+    "DataB3": "1",
+    "DataC3": "0",
+    "DataD3": "-",
+    "DataE3": "0.5",
+    "DataF3": "1.25",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "UnitID3": "Nal3",
+    "BuffID3": "BNcr",
+    "targs4": "_",
+    "Cast4": "0",
+    "Dur4": "0.35",
+    "HeroDur4": "15",
+    "Cool4": "30",
+    "Cost4": "25",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "Nalc",
+    "DataB4": "1",
+    "DataC4": "0",
+    "DataD4": "-",
+    "DataE4": "0.5",
+    "DataF4": "1.25",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "UnitID4": "Nal3",
+    "BuffID4": "BNcr",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNChemicalRage.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNChemicalRage.blp",
+    "Buttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "order": "chemicalrage",
+    "Name": "化学风暴",
+    "Tip": "(|cffffcc00R|r)化学风暴 - [|cffffcc00等级 1|r],(|cffffcc00R|r)化学风暴 - [|cffffcc00等级 2|r],(|cffffcc00R|r)化学风暴 - [|cffffcc00等级 3|r]",
+    "Researchtip": "\"(|cffffcc00R|r)学习化学风暴 - [|cffffcc00等级 %d|r]\"\"",
+    "Ubertip": "\"炼金术士让其食人魔进入了一种狂暴的状态，从而提高了<ANcr,DataE1,%>%的移动速度和<ANcr,DataF1,%>% 的攻击速度，持续时间<ANcr,HeroDur1> 秒。\",\"炼金术士让其食人魔进入了一种狂暴的状态，从而提高了<ANcr,DataE2的移动速度和<ANcr,DataF2,%>% 的攻击速度，持续时间<ANcr,HeroDur1> 秒。\",\"炼金术士让其食人魔进入了一种狂暴的状态，从而提高了<ANcr,DataE3,%>% 的移动速度和<ANcr,DataF3,%>% 的攻击速度，持续时间<ANcr,HeroDur1> 秒。\"",
+    "Researchubertip": "\"炼金术士让其食人魔进入了一种狂暴的状态，从而提高了<ANcr,DataE1,%>%的移动速度和一定的攻击速度。|n持续<ANcr,HeroDur1> 秒。|n|n|cffffcc00等级 1|r – 提高<ANcr,DataF1,%>%的攻击速度。|n|cffffcc00等级 2|r – 提高<ANcr,DataF2,%>% 的攻击速度。|n|cffffcc00等级 3|r – 提高<ANcr,DataF3,%>% 的攻击速度。\"",
+    "Hotkey": "R",
+    "Researchhotkey": "R"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

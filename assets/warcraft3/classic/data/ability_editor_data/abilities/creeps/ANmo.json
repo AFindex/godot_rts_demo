@@ -1,0 +1,240 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANmo",
+  "displayName": "季风",
+  "identity": {
+    "baseCode": "ANmo",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMonsoon.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMonsoon.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmonsoon.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "季风",
+        "tooltip": "季风(|cffffcc00N|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "在一小块区域内召唤出闪电风暴对敌人造成<ANmo,DataA1>点的伤害。|n持续<ANmo,Dur1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "structure",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 12,
+        "heroDuration": 12,
+        "cooldown": 10,
+        "manaCost": 75,
+        "area": 300,
+        "range": 500,
+        "data": {
+          "A": "20",
+          "B": "1.5",
+          "C": "0.35"
+        },
+        "buffIds": [
+          "ANmd"
+        ],
+        "effectIds": [
+          "XNmo"
+        ]
+      },
+      {
+        "level": 2,
+        "name": "季风",
+        "tooltip": "季风(|cffffcc00N|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "在一小块区域内召唤出闪电风暴对敌人造成<ANmo,DataA2>点的伤害。|n持续<ANmo,Dur1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "structure",
+          "enemy",
+          "neutral"
+        ],
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 10,
+        "manaCost": 75,
+        "area": 400,
+        "range": 300,
+        "data": {
+          "A": "20",
+          "B": "1.5",
+          "C": "0.35"
+        },
+        "buffIds": [
+          "ANmd"
+        ],
+        "effectIds": [
+          "XNmo"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "季风",
+        "tooltip": "季风(|cffffcc00N|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "在一小块区域内召唤出闪电风暴对敌人造成<ANmo,DataA3>点的伤害。|n持续<ANmo,Dur1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "structure",
+          "enemy",
+          "neutral"
+        ],
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 10,
+        "manaCost": 75,
+        "area": 500,
+        "range": 300,
+        "data": {
+          "A": "20",
+          "B": "1.5",
+          "C": "0.35"
+        },
+        "buffIds": [
+          "ANmd"
+        ],
+        "effectIds": [
+          "XNmo"
+        ]
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANmo",
+    "code": "ANmo",
+    "comments": "Monsoon",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,structure,enemy,neutral",
+    "Cast1": "0",
+    "Dur1": "12",
+    "HeroDur1": "12",
+    "Cool1": "10",
+    "Cost1": "75",
+    "Area1": "300",
+    "Rng1": "500",
+    "DataA1": "20",
+    "DataB1": "1.5",
+    "DataC1": "0.35",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "15",
+    "HeroDur2": "15",
+    "Cool2": "10",
+    "Cost2": "75",
+    "Area2": "400",
+    "Rng2": "300",
+    "DataA2": "20",
+    "DataB2": "1.5",
+    "DataC2": "0.35",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "15",
+    "HeroDur3": "15",
+    "Cool3": "10",
+    "Cost3": "75",
+    "Area3": "500",
+    "Rng3": "300",
+    "DataA3": "20",
+    "DataB3": "1.5",
+    "DataC3": "0.35",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "15",
+    "HeroDur4": "15",
+    "Cool4": "10",
+    "Cost4": "75",
+    "Area4": "500",
+    "Rng4": "300",
+    "DataA4": "20",
+    "DataB4": "1.5",
+    "DataC4": "0.35",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,ground,structure,enemy,neutral",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "ANmd",
+    "EfctID1": "XNmo",
+    "targs2": "air,ground,structure,enemy,neutral",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "ANmd",
+    "EfctID2": "XNmo",
+    "targs3": "air,ground,structure,enemy,neutral",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "ANmd",
+    "EfctID3": "XNmo",
+    "targs4": "air,ground,structure,enemy,neutral",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "ANmd",
+    "EfctID4": "XNmo"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNMonsoon.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNMonsoon.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Casterart": "",
+    "Order": "monsoon",
+    "Name": "季风",
+    "Tip": "季风(|cffffcc00N|r) - [|cffffcc00等级 1|r],季风(|cffffcc00N|r) - [|cffffcc00等级 2|r],季风(|cffffcc00N|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"在一小块区域内召唤出闪电风暴对敌人造成<ANmo,DataA1>点的伤害。|n持续<ANmo,Dur1>秒。\",\"在一小块区域内召唤出闪电风暴对敌人造成<ANmo,DataA2>点的伤害。|n持续<ANmo,Dur1>秒。\",\"在一小块区域内召唤出闪电风暴对敌人造成<ANmo,DataA3>点的伤害。|n持续<ANmo,Dur1>秒。\"",
+    "Hotkey": "N",
+    "Researchtip": "\"学习季风(|cffffcc00N|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"在一小块区域内召唤出闪电风暴对敌人造成<ANmo,DataA1>点的伤害。|n持续<ANmo,Dur1>秒。|n|n|cffffcc00等级 1|r - 小型的区域。|n|cffffcc00等级 2|r - 中等大小的区域。|n|cffffcc00等级 3|r - 大型的区域。\"",
+    "Researchhotkey": "N",
+    "Animnames": "stand,channel"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

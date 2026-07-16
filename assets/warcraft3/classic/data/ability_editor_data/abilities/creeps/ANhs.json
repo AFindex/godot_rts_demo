@@ -1,0 +1,244 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANhs",
+  "displayName": "医疗气雾",
+  "identity": {
+    "baseCode": "ANhs",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingSpray.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingSpray.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingspray.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "医疗气雾",
+        "tooltip": "(|cffffcc00e|r)医疗气雾 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "喷出 <ANhs,DataF1> 阵医疗迷雾。每阵迷雾能医治<ANhs,DataA1>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 75,
+        "area": 250,
+        "range": 800,
+        "data": {
+          "A": "40",
+          "B": "1",
+          "C": "6",
+          "D": "280",
+          "E": "1",
+          "F": "3"
+        },
+        "buffIds": [
+          "BNhs"
+        ],
+        "effectIds": [
+          "XNhs"
+        ]
+      },
+      {
+        "level": 2,
+        "name": "医疗气雾",
+        "tooltip": "(|cffffcc00e|r)医疗气雾 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "喷出 <ANhs,DataF2阵医疗迷雾。每阵迷雾能医治<ANhs,DataA2>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 75,
+        "area": 250,
+        "range": 800,
+        "data": {
+          "A": "55",
+          "B": "1",
+          "C": "6",
+          "D": "385",
+          "E": "1",
+          "F": "4"
+        },
+        "buffIds": [
+          "BNhs"
+        ],
+        "effectIds": [
+          "XNhs"
+        ]
+      },
+      {
+        "level": 3,
+        "name": "医疗气雾",
+        "tooltip": "(|cffffcc00e|r)医疗气雾 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "喷出<ANhs,DataF3>阵医疗迷雾。每阵迷雾能医治<ANhs,DataA3>点的伤害。",
+        "targets": [
+          "ground",
+          "air",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 75,
+        "area": 250,
+        "range": 800,
+        "data": {
+          "A": "70",
+          "B": "1",
+          "C": "6",
+          "D": "490",
+          "E": "1",
+          "F": "5"
+        },
+        "buffIds": [
+          "BNhs"
+        ],
+        "effectIds": [
+          "XNhs"
+        ]
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANhs",
+    "code": "ANhs",
+    "comments": "Alchemist - Healing Spray",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "ground,air,organic",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "0",
+    "Cost1": "75",
+    "Area1": "250",
+    "Rng1": "800",
+    "DataA1": "40",
+    "DataB1": "1",
+    "DataC1": "6",
+    "DataD1": "280",
+    "DataE1": "1",
+    "DataF1": "3",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNhs",
+    "EfctID1": "XNhs",
+    "targs2": "ground,air,organic",
+    "Cast2": "0",
+    "Dur2": "0",
+    "HeroDur2": "0",
+    "Cool2": "0",
+    "Cost2": "75",
+    "Area2": "250",
+    "Rng2": "800",
+    "DataA2": "55",
+    "DataB2": "1",
+    "DataC2": "6",
+    "DataD2": "385",
+    "DataE2": "1",
+    "DataF2": "4",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNhs",
+    "EfctID2": "XNhs",
+    "targs3": "ground,air,organic",
+    "Cast3": "0",
+    "Dur3": "0",
+    "HeroDur3": "0",
+    "Cool3": "0",
+    "Cost3": "75",
+    "Area3": "250",
+    "Rng3": "800",
+    "DataA3": "70",
+    "DataB3": "1",
+    "DataC3": "6",
+    "DataD3": "490",
+    "DataE3": "1",
+    "DataF3": "5",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNhs",
+    "EfctID3": "XNhs",
+    "targs4": "ground,air,organic",
+    "Cast4": "0",
+    "Dur4": "0",
+    "HeroDur4": "0",
+    "Cool4": "0",
+    "Cost4": "75",
+    "Area4": "200",
+    "Rng4": "800",
+    "DataA4": "70",
+    "DataB4": "1",
+    "DataC4": "6",
+    "DataD4": "490",
+    "DataE4": "1",
+    "DataF4": "10",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNhs",
+    "EfctID4": "XNhs",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHealingSpray.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNHealingSpray.blp",
+    "Buttonpos": "0,2",
+    "Researchbuttonpos": "0,0",
+    "Missileart": "Abilities\\Spells\\Other\\HealingSpray\\HealBottleMissile.mdl",
+    "Missilespeed": "700",
+    "Missilearc": "0.4",
+    "Casterart": "",
+    "Order": "healingspray",
+    "Animnames": "spell,looping",
+    "Name": "医疗气雾",
+    "Tip": "(|cffffcc00e|r)医疗气雾 - [|cffffcc00等级 1|r],(|cffffcc00e|r)医疗气雾 - [|cffffcc00等级 2|r],(|cffffcc00e|r)医疗气雾 - [|cffffcc00等级 3|r]",
+    "Researchtip": "\"(|cffffcc00e|r)学习医疗气雾 - [|cffffcc00等级 %d|r]\"",
+    "Ubertip": "\"喷出 <ANhs,DataF1> 阵医疗迷雾。每阵迷雾能医治<ANhs,DataA1>点的伤害。\",\"喷出 <ANhs,DataF2阵医疗迷雾。每阵迷雾能医治<ANhs,DataA2>点的伤害。\",\"喷出<ANhs,DataF3>阵医疗迷雾。每阵迷雾能医治<ANhs,DataA3>点的伤害。\"",
+    "Researchubertip": "\"喷出迷雾对一定区域的单位进行治疗。|n|n|cffffcc00等级 1|r - <ANhs,DataF1> 阵迷雾，每阵迷雾能医治<ANhs,DataA1>点伤害。|n|cffffcc00等级 2|r - <ANhs,DataF2>阵迷雾，每阵迷雾能医治<ANhs,DataA2>点伤害。 |n|cffffcc00等级 3|r - <ANhs,DataF3>阵迷雾，每阵迷雾能医治<ANhs,DataA3>点伤害。\"",
+    "Hotkey": "E",
+    "Researchhotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

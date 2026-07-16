@@ -1,0 +1,238 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANht",
+  "displayName": "恐怖嚎叫",
+  "identity": {
+    "baseCode": "ANht",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhowlofterror.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "恐怖嚎叫",
+        "tooltip": "恐怖嚎叫(|cffffcc00T|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "深渊魔王发出恐怖的嚎叫，使周围敌人在恐惧中战栗，丢失当前的魔法效果，减少他们的伤害<ANht,DataA1,%>%，持续<ANht,Dur1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 12,
+        "manaCost": 75,
+        "area": 500,
+        "data": {
+          "A": "0.3",
+          "B": "0",
+          "C": "0",
+          "D": "0",
+          "E": "0",
+          "F": "0",
+          "G": "0"
+        },
+        "buffIds": [
+          "BNht"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "恐怖嚎叫",
+        "tooltip": "恐怖嚎叫(|cffffcc00T|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "深渊魔王发出恐怖的嚎叫，使周围敌人在恐惧中战栗，丢失当前的魔法效果，减少他们的伤害<ANht,DataA2,%>%，持续<ANht,Dur2>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 12,
+        "manaCost": 75,
+        "area": 500,
+        "data": {
+          "A": "0.4",
+          "B": "0",
+          "C": "0",
+          "D": "0",
+          "E": "0",
+          "F": "0",
+          "G": "0"
+        },
+        "buffIds": [
+          "BNht"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "恐怖嚎叫",
+        "tooltip": "恐怖嚎叫(|cffffcc00T|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "深渊魔王发出恐怖的嚎叫，使周围敌人在恐惧中战栗，丢失当前的魔法效果，减少他们的伤害<ANht,DataA3,%>%，持续<ANht,Dur3>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "enemy",
+          "neutral"
+        ],
+        "castTime": 0,
+        "duration": 15,
+        "heroDuration": 15,
+        "cooldown": 12,
+        "manaCost": 75,
+        "area": 500,
+        "data": {
+          "A": "0.5",
+          "B": "0",
+          "C": "0",
+          "D": "0",
+          "E": "0",
+          "F": "0",
+          "G": "0"
+        },
+        "buffIds": [
+          "BNht"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANht",
+    "code": "ANht",
+    "comments": "Pit Lord - Howl of Terror",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,enemy,neutral",
+    "Cast1": "0",
+    "Dur1": "15",
+    "HeroDur1": "15",
+    "Cool1": "12",
+    "Cost1": "75",
+    "Area1": "500",
+    "Rng1": "-",
+    "DataA1": "0.3",
+    "DataB1": "0",
+    "DataC1": "0",
+    "DataD1": "0",
+    "DataE1": "0",
+    "Cast2": "0",
+    "Dur2": "15",
+    "HeroDur2": "15",
+    "Cool2": "12",
+    "Cost2": "75",
+    "Area2": "500",
+    "Rng2": "-",
+    "DataA2": "0.4",
+    "DataB2": "0",
+    "DataC2": "0",
+    "DataD2": "0",
+    "DataE2": "0",
+    "Cast3": "0",
+    "Dur3": "15",
+    "HeroDur3": "15",
+    "Cool3": "12",
+    "Cost3": "75",
+    "Area3": "500",
+    "Rng3": "-",
+    "DataA3": "0.5",
+    "DataB3": "0",
+    "DataC3": "0",
+    "DataD3": "0",
+    "DataE3": "0",
+    "Cast4": "0",
+    "Dur4": "15",
+    "HeroDur4": "15",
+    "Cool4": "12",
+    "Cost4": "75",
+    "Area4": "500",
+    "Rng4": "-",
+    "DataA4": "0.45",
+    "DataB4": "0",
+    "DataC4": "0",
+    "DataD4": "0",
+    "DataE4": "0",
+    "InBeta": "1",
+    "targs1": "air,ground,enemy,neutral",
+    "DataF1": "0",
+    "DataG1": "0",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNht",
+    "targs2": "air,ground,enemy,neutral",
+    "DataF2": "0",
+    "DataG2": "0",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNht",
+    "targs3": "air,ground,enemy,neutral",
+    "DataF3": "0",
+    "DataG3": "0",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNht",
+    "targs4": "air,ground,enemy,neutral",
+    "DataF4": "0",
+    "DataG4": "0",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNht"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+    "Buttonpos": "1,2",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+    "Researchbuttonpos": "1,0",
+    "Casterart": "Abilities\\Spells\\Other\\HowlOfTerror\\HowlCaster.mdl",
+    "Order": "howlofterror",
+    "Name": "恐怖嚎叫",
+    "Tip": "恐怖嚎叫(|cffffcc00T|r) - [|cffffcc00等级 1|r],恐怖嚎叫(|cffffcc00T|r) - [|cffffcc00等级 2|r],恐怖嚎叫(|cffffcc00T|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"深渊魔王发出恐怖的嚎叫，使周围敌人在恐惧中战栗，丢失当前的魔法效果，减少他们的伤害<ANht,DataA1,%>%，持续<ANht,Dur1>秒。\",\"深渊魔王发出恐怖的嚎叫，使周围敌人在恐惧中战栗，丢失当前的魔法效果，减少他们的伤害<ANht,DataA2,%>%，持续<ANht,Dur2>秒。\",\"深渊魔王发出恐怖的嚎叫，使周围敌人在恐惧中战栗，丢失当前的魔法效果，减少他们的伤害<ANht,DataA3,%>%，持续<ANht,Dur3>秒。\"",
+    "Hotkey": "T",
+    "Researchtip": "\"学习恐怖嚎叫(|cffffcc00T|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"深渊魔王发出恐怖的嚎叫，使周围敌人在恐惧中战栗，丢失当前的魔法效果，减少他们的伤害力。|n持续<ANht,Dur1>秒。|n|n|cffffcc00等级 1|r - 攻击减少<ANht,DataA1,%>%。|n|cffffcc00等级 2|r - 攻击减少<ANht,DataA2,%>%。|n|cffffcc00等级 3|r - 攻击减少<ANht,DataA3,%>%。\"",
+    "Researchhotkey": "T",
+    "Animnames": "spell,slam"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

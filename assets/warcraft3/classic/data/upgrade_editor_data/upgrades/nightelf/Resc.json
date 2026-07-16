@@ -1,0 +1,104 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Resc",
+  "displayName": "哨兵",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSentinel.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSentinel.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsentinel.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "哨兵",
+        "tooltip": "研究哨兵(|cffffcc00S|r)",
+        "extendedTooltip": "使得女猎手能放出一只猫头鹰栖息在一棵树上进行侦察。|n能看见隐形单位。",
+        "hotkey": "S",
+        "gold": 100,
+        "lumber": 100,
+        "researchSeconds": 20,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSentinel.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSentinel.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnsentinel.png"
+        },
+        "requirements": [
+          "edob",
+          "etoa"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Resc",
+    "comments": "nightelf scout",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "64",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "20",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSentinel.blp",
+    "Buttonpos": "1,1",
+    "Requires": "edob,etoa",
+    "Name": "哨兵",
+    "Tip": "研究哨兵(|cffffcc00S|r)",
+    "Ubertip": "\"使得女猎手能放出一只猫头鹰栖息在一棵树上进行侦察。|n能看见隐形单位。\"",
+    "Hotkey": "S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

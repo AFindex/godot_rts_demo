@@ -1,0 +1,211 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANeg",
+  "displayName": "工程升级",
+  "identity": {
+    "baseCode": "ANeg",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\PASBTNEngineeringUpgrade.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\PASBTNEngineeringUpgrade.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/pasbtnengineeringupgrade.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "工程升级",
+        "tooltip": "工程升级 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "改进修补匠的技能，增加其<ANeg,DataB1>点的攻击力和提高其<ANeg,DataA1,%>%的移动速度。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 0,
+        "data": {
+          "A": "0.1",
+          "B": "2",
+          "C": "ANsy,ANs1",
+          "D": "ANcs,ANc1",
+          "E": "ANrg,ANg1",
+          "F": "ANde,ANd1"
+        },
+        "buffIds": [
+          "BNeg"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "工程升级",
+        "tooltip": "工程升级 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "改进修补匠的技能，增加其<ANeg,DataB2>点的攻击力和提高其<ANeg,DataA2,%>% 的移动速度。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 0,
+        "data": {
+          "A": "0.2",
+          "B": "4",
+          "C": "ANs1,ANs2",
+          "D": "ANc1,ANc2",
+          "E": "ANg1,ANg2",
+          "F": "ANd1,ANd2"
+        },
+        "buffIds": [
+          "BNeg"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "工程升级",
+        "tooltip": "工程升级 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "改进修补匠的技能，增加其<ANeg,DataB3>点的攻击力和提高其<ANeg,DataA3,%>% 的移动速度。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "manaCost": 0,
+        "data": {
+          "A": "0.3",
+          "B": "6",
+          "C": "ANs2,ANs3",
+          "D": "ANc2,ANc3",
+          "E": "ANg2,ANg3",
+          "F": "ANd2,ANd3"
+        },
+        "buffIds": [
+          "BNeg"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANeg",
+    "code": "ANeg",
+    "comments": "Tinkerer - Engineering Upgrade",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "_",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "0",
+    "Cost1": "0",
+    "Area1": "-",
+    "Rng1": "-",
+    "DataA1": "0.1",
+    "DataB1": "2",
+    "DataC1": "ANsy,ANs1",
+    "DataD1": "ANcs,ANc1",
+    "DataE1": "ANrg,ANg1",
+    "DataF1": "ANde,ANd1",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNeg",
+    "targs2": "_",
+    "Cast2": "0",
+    "Dur2": "0",
+    "HeroDur2": "0",
+    "Cool2": "0",
+    "Cost2": "0",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "0.2",
+    "DataB2": "4",
+    "DataC2": "ANs1,ANs2",
+    "DataD2": "ANc1,ANc2",
+    "DataE2": "ANg1,ANg2",
+    "DataF2": "ANd1,ANd2",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNeg",
+    "targs3": "_",
+    "Cast3": "0",
+    "Dur3": "0",
+    "HeroDur3": "0",
+    "Cool3": "0",
+    "Cost3": "0",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "0.3",
+    "DataB3": "6",
+    "DataC3": "ANs2,ANs3",
+    "DataD3": "ANc2,ANc3",
+    "DataE3": "ANg2,ANg3",
+    "DataF3": "ANd2,ANd3",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNeg",
+    "targs4": "_",
+    "Cast4": "0",
+    "Dur4": "0",
+    "HeroDur4": "0",
+    "Cool4": "0",
+    "Cost4": "0",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "0.3",
+    "DataB4": "9",
+    "DataC4": "ANs2,ANs3",
+    "DataD4": "ANc2,ANc3",
+    "DataE4": "ANg2,ANg3",
+    "DataF4": "ANd2,ANd3",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNeg",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\PASBTNEngineeringUpgrade.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNEngineeringUpgrade.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Order": "engineeringupgrade",
+    "Name": "工程升级",
+    "Tip": "工程升级 - [|cffffcc00等级 1|r],工程升级 - [|cffffcc00等级 2|r],工程升级 - [|cffffcc00等级 3|r]",
+    "Researchtip": "\"(|cffffcc00E|r)学习工程升级- [|cffffcc00等级 %d|r]\"",
+    "Ubertip": "\"改进修补匠的技能，增加其<ANeg,DataB1>点的攻击力和提高其<ANeg,DataA1,%>%的移动速度。\",\"改进修补匠的技能，增加其<ANeg,DataB2>点的攻击力和提高其<ANeg,DataA2,%>% 的移动速度。\",\"改进修补匠的技能，增加其<ANeg,DataB3>点的攻击力和提高其<ANeg,DataA3,%>% 的移动速度。\"",
+    "Researchubertip": "\"提高修补匠的技能。|n|n|cffffcc00火箭群|r - 大区域|n|cffffcc00口袋工厂|r – 能更快地建造出人工地精。|n|cffffcc00机器人地精|r – 增加护甲和力量。 |n|n同时提高攻击力和加快修补匠的移动速度。|n|n|cffffcc00等级 1|r - +<ANeg,DataB1> 攻击力, +<ANeg,DataA1,%>% 移动速度。|n|cffffcc00等级 2|r - +<ANeg,DataB2> 攻击力, +<ANeg,DataA2,%>% 移动速度。|n|cffffcc00等级 3|r - +<ANeg,DataB3> 攻击力, +<ANeg,DataA3,%>% 移动速度。\"",
+    "Hotkey": "E",
+    "Researchhotkey": "E"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

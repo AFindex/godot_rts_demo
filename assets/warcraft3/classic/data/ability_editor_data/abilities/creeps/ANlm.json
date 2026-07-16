@@ -1,0 +1,239 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANlm",
+  "displayName": "召唤炎魔",
+  "identity": {
+    "baseCode": "ANlm",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLavaSpawn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLavaSpawn.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlavaspawn.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "召唤炎魔",
+        "tooltip": "(|cffffcc00w|r)召唤炎魔  - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "召唤出一个炎魔。在炎魔攻击的时候，它能吸收目标的生命，并将其转换成自己的能量，最终裂变成两个炎魔。|n|n具有<nlv1,realHP>点生命值， <nlv1,mindmg1> - <nlv1,maxdmg1> 的攻击力。|n持续<ANlm,Dur1> 秒。|n|n|cffffcc00能攻击地面和空中单位。|r",
+        "targets": [
+          "enemy",
+          "neutral",
+          "air",
+          "ground",
+          "ward"
+        ],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 32,
+        "manaCost": 150,
+        "area": 200,
+        "data": {
+          "A": "1",
+          "B": "5",
+          "C": "15",
+          "D": "0.5",
+          "E": "12",
+          "F": "3"
+        },
+        "summonedUnitId": "nlv1",
+        "buffIds": [
+          "BNlm"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "召唤炎魔",
+        "tooltip": "(|cffffcc00w|r)召唤炎魔  - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "召唤出一个炎魔。在炎魔攻击的时候，它能吸收目标的生命，并将其转换成自己的能量，最终裂变成两个炎魔。|n|n具有<nlv2,realHP>点生命值， <nlv2,mindmg1> - <nlv2,maxdmg1>的攻击力。|n持续<ANlm,Dur2> 秒。|n|n|cffffcc00能攻击地面和空中单位。|r",
+        "targets": [
+          "enemy",
+          "neutral",
+          "air",
+          "ground",
+          "ward"
+        ],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 32,
+        "manaCost": 150,
+        "area": 200,
+        "data": {
+          "A": "1",
+          "B": "5",
+          "C": "15",
+          "D": "0.5",
+          "E": "12",
+          "F": "3"
+        },
+        "summonedUnitId": "nlv2",
+        "buffIds": [
+          "BNlm"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "召唤炎魔",
+        "tooltip": "(|cffffcc00w|r)召唤炎魔  - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "召唤出一个炎魔。在炎魔攻击的时候，它能吸收目标的生命，并将其转换成自己的能量，最终裂变成两个炎魔。|n|n具有<nlv3,realHP>点生命值， <nlv3,mindmg1> - <nlv3,maxdmg1>的攻击力。|n持续<ANlm,Dur3> 秒。|n|n|cffffcc00能攻击地面和空中单位。|r",
+        "targets": [
+          "enemy",
+          "neutral",
+          "air",
+          "ground",
+          "ward"
+        ],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 32,
+        "manaCost": 150,
+        "area": 200,
+        "data": {
+          "A": "1",
+          "B": "5",
+          "C": "15",
+          "D": "0.5",
+          "E": "12",
+          "F": "3"
+        },
+        "summonedUnitId": "nlv3",
+        "buffIds": [
+          "BNlm"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANlm",
+    "code": "ANlm",
+    "comments": "Firelord - Summon Lava Spawn",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs1": "enemy,neutral,air,ground,ward",
+    "Cast1": "0",
+    "Dur1": "70",
+    "HeroDur1": "70",
+    "Cool1": "32",
+    "Cost1": "150",
+    "Area1": "200",
+    "Rng1": "-",
+    "DataA1": "1",
+    "DataB1": "5",
+    "DataC1": "15",
+    "DataD1": "0.5",
+    "DataE1": "12",
+    "DataF1": "3",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "UnitID1": "nlv1",
+    "BuffID1": "BNlm",
+    "targs2": "enemy,neutral,air,ground,ward",
+    "Cast2": "0",
+    "Dur2": "70",
+    "HeroDur2": "70",
+    "Cool2": "32",
+    "Cost2": "150",
+    "Area2": "200",
+    "Rng2": "-",
+    "DataA2": "1",
+    "DataB2": "5",
+    "DataC2": "15",
+    "DataD2": "0.5",
+    "DataE2": "12",
+    "DataF2": "3",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "UnitID2": "nlv2",
+    "BuffID2": "BNlm",
+    "targs3": "enemy,neutral,air,ground,ward",
+    "Cast3": "0",
+    "Dur3": "70",
+    "HeroDur3": "70",
+    "Cool3": "32",
+    "Cost3": "150",
+    "Area3": "200",
+    "Rng3": "-",
+    "DataA3": "1",
+    "DataB3": "5",
+    "DataC3": "15",
+    "DataD3": "0.5",
+    "DataE3": "12",
+    "DataF3": "3",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "UnitID3": "nlv3",
+    "BuffID3": "BNlm",
+    "targs4": "enemy,neutral,air,ground,ward",
+    "Cast4": "0",
+    "Dur4": "60",
+    "HeroDur4": "60",
+    "Cool4": "35",
+    "Cost4": "150",
+    "Area4": "200",
+    "Rng4": "-",
+    "DataA4": "1",
+    "DataB4": "5",
+    "DataC4": "15",
+    "DataD4": "0.5",
+    "DataE4": "12",
+    "DataF4": "3",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "UnitID4": "nlv3",
+    "BuffID4": "BNlm",
+    "InBeta": "]"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNLavaSpawn.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNLavaSpawn.blp",
+    "Buttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "order": "slimemonster",
+    "Name": "召唤炎魔",
+    "Tip": "(|cffffcc00w|r)召唤炎魔  - [|cffffcc00等级 1|r],(|cffffcc00w|r)召唤炎魔  - [|cffffcc00等级 2|r],(|cffffcc00w|r)召唤炎魔  - [|cffffcc00等级 3|r]",
+    "Researchtip": "\"(|cffffcc00w|r)学习召唤炎魔  - [|cffffcc00等级 %d|r]\"",
+    "Ubertip": "\"召唤出一个炎魔。在炎魔攻击的时候，它能吸收目标的生命，并将其转换成自己的能量，最终裂变成两个炎魔。|n|n具有<nlv1,realHP>点生命值， <nlv1,mindmg1> - <nlv1,maxdmg1> 的攻击力。|n持续<ANlm,Dur1> 秒。|n|n|cffffcc00能攻击地面和空中单位。|r\",\"召唤出一个炎魔。在炎魔攻击的时候，它能吸收目标的生命，并将其转换成自己的能量，最终裂变成两个炎魔。|n|n具有<nlv2,realHP>点生命值， <nlv2,mindmg1> - <nlv2,maxdmg1>的攻击力。|n持续<ANlm,Dur2> 秒。|n|n|cffffcc00能攻击地面和空中单位。|r\",\"召唤出一个炎魔。在炎魔攻击的时候，它能吸收目标的生命，并将其转换成自己的能量，最终裂变成两个炎魔。|n|n具有<nlv3,realHP>点生命值， <nlv3,mindmg1> - <nlv3,maxdmg1>的攻击力。|n持续<ANlm,Dur3> 秒。|n|n|cffffcc00能攻击地面和空中单位。|r\"",
+    "Researchubertip": "\"召唤出一个炎魔。在炎魔攻击的时候，它能吸收目标的生命，并将其转换成自己的能量，最终裂变成两个炎魔。|n持续<ANlm,Dur1> 秒。|n|n|cffffcc00等级 1|r - <nlv1,realHP> 生命值，<nlv1,mindmg1> - <nlv1,maxdmg1> 攻击力。|n|cffffcc00等级 2|r - <nlv2,realHP> 生命值，<nlv2,mindmg1> - <nlv2,maxdmg1> 攻击力。|n|cffffcc00等级 3|r - <nlv3,realHP> 生命值，<nlv3,mindmg1> - <nlv3,maxdmg1> 攻击力。|n|n|cffffcc00能攻击地面和空中单位。|r",
+    "Hotkey": "W",
+    "Researchhotkey": "W"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

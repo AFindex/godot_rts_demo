@@ -1,0 +1,212 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANsq",
+  "displayName": "召唤豪猪",
+  "identity": {
+    "baseCode": "ANsq",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNQuillBeast.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNQuillBeast.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnquillbeast.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "召唤豪猪",
+        "tooltip": "召唤豪猪(|cffffcc00Q|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "召唤一只愤怒的生命值<nqb1,realHP>点的豪猪来为你作战。|n持续<ANsq,Dur1>秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 25,
+        "manaCost": 75,
+        "area": 200,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "nqb1",
+        "buffIds": [
+          "BNsq"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "召唤豪猪",
+        "tooltip": "召唤豪猪(|cffffcc00Q|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "召唤一只愤怒的生命值<nqb2,realHP>点的豪猪来为你作战，拥有狂热技能。|n持续<ANsq,Dur2>秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 25,
+        "manaCost": 75,
+        "area": 200,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "nqb2",
+        "buffIds": [
+          "BNsq"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "召唤豪猪",
+        "tooltip": "召唤豪猪(|cffffcc00Q|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "召唤一只愤怒的<nqb3,realHP>点生命值的豪猪来为你作战，拥有狂热并造成区域伤害。|n持续<ANsg,Dur3>秒。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 70,
+        "heroDuration": 70,
+        "cooldown": 25,
+        "manaCost": 75,
+        "area": 200,
+        "data": {
+          "A": "1"
+        },
+        "summonedUnitId": "nqb3",
+        "buffIds": [
+          "BNsq"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANsq",
+    "code": "ANsq",
+    "comments": "Beast Master - Summon Quilbeast",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "70",
+    "HeroDur1": "70",
+    "Cool1": "25",
+    "Cost1": "75",
+    "Area1": "200",
+    "Rng1": "-",
+    "DataA1": "1",
+    "DataB1": "-",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "UnitID1": "nqb1",
+    "Cast2": "0",
+    "Dur2": "70",
+    "HeroDur2": "70",
+    "Cool2": "25",
+    "Cost2": "75",
+    "Area2": "200",
+    "Rng2": "-",
+    "DataA2": "1",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "UnitID2": "nqb2",
+    "Cast3": "0",
+    "Dur3": "70",
+    "HeroDur3": "70",
+    "Cool3": "25",
+    "Cost3": "75",
+    "Area3": "200",
+    "Rng3": "-",
+    "DataA3": "1",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "UnitID3": "nqb3",
+    "Cast4": "0",
+    "Dur4": "70",
+    "HeroDur4": "70",
+    "Cool4": "25",
+    "Cost4": "75",
+    "Area4": "200",
+    "Rng4": "-",
+    "DataA4": "1",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "UnitID4": "nqb3",
+    "InBeta": "1",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNsq",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNsq",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNsq",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNsq"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNQuillBeast.blp",
+    "Buttonpos": "1,2",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNQuillBeast.blp",
+    "Researchbuttonpos": "1,0",
+    "Targetart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+    "Order": "summonquillbeast",
+    "Name": "召唤豪猪",
+    "Tip": "召唤豪猪(|cffffcc00Q|r) - [|cffffcc00等级 1|r],召唤豪猪(|cffffcc00Q|r) - [|cffffcc00等级 2|r],召唤豪猪(|cffffcc00Q|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"召唤一只愤怒的生命值<nqb1,realHP>点的豪猪来为你作战。|n持续<ANsq,Dur1>秒。\",\"召唤一只愤怒的生命值<nqb2,realHP>点的豪猪来为你作战，拥有狂热技能。|n持续<ANsq,Dur2>秒。\",\"召唤一只愤怒的<nqb3,realHP>点生命值的豪猪来为你作战，拥有狂热并造成区域伤害。|n持续<ANsg,Dur3>秒。\"",
+    "Hotkey": "Q",
+    "Researchtip": "学习召唤豪猪(|cffffcc00Q|r) - [|cffffcc00等级 %d|r]",
+    "Researchubertip": "\"召唤一只愤怒的豪猪来为你作战。|n持续<ANsq,Dur1>秒。|n|n|cffffcc00等级 1|r - <nqb1,realHP>点生命值, <nqb1,mindmg1>到<nqb1,maxdmg1>点攻击力。|n|n|cffffcc00等级 2|r - <nqb2,realHP>点生命值，<nqb2,mindmg1>到 <nqb2,maxdmg1>点攻击力，有狂热技能。|n|n|cffffcc00等级 3|r - <nqb3,realHP>点生命值，<nqb3,mindmg1>到<nqb3,maxdmg1>点区域伤害，有狂热技能。\"",
+    "Researchhotkey": "Q",
+    "Animnames": "spell,slam"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

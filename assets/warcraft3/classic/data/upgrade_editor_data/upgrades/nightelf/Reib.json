@@ -1,0 +1,110 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Reib",
+  "displayName": "硬弓",
+  "identity": {
+    "race": "nightelf",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedBows.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedBows.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedbows.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "硬弓",
+        "tooltip": "研究硬弓(|cffffcc00I|r)",
+        "extendedTooltip": "增加弓箭手和角鹰兽骑士的攻击范围。",
+        "hotkey": "I",
+        "gold": 50,
+        "lumber": 100,
+        "researchSeconds": 35,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedBows.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImprovedBows.blp",
+          "sourceLayer": "roc",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnimprovedbows.png"
+        },
+        "requirements": [
+          "etoa"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "ratr",
+        "base": 200,
+        "modifier": 200
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Reib",
+    "comments": "nightelf improved bows",
+    "class": "_",
+    "race": "nightelf",
+    "flag": "256",
+    "used": "1",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "35",
+    "timemod": "0",
+    "effect1": "ratr",
+    "base1": "200",
+    "mod1": "200",
+    "effect2": "_",
+    "base2": "-",
+    "mod4": "-",
+    "sort": "_",
+    "global": "0",
+    "code1": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "code4": "-",
+    "version": "0",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNImprovedBows.blp",
+    "Buttonpos": "0,1",
+    "Requires": "etoa",
+    "Name": "硬弓",
+    "Tip": "研究硬弓(|cffffcc00I|r)",
+    "Ubertip": "\"增加弓箭手和角鹰兽骑士的攻击范围。\"",
+    "Hotkey": "I"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/roc/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/NightElfUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

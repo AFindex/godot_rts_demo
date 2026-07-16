@@ -1,0 +1,106 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rorb",
+  "displayName": "加强型防御",
+  "identity": {
+    "race": "orc",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": false
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedBurrows.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedBurrows.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnreinforcedburrows.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "加强型防御",
+        "tooltip": "加强型防御(|cffffcc00D|r)",
+        "extendedTooltip": "升级地洞和了望塔从而让它们拥有加强型的护甲。",
+        "hotkey": "D",
+        "gold": 50,
+        "lumber": 200,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedBurrows.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNReinforcedBurrows.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnreinforcedburrows.png"
+        },
+        "requirements": [
+          "ofrt"
+        ]
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rart",
+        "base": 1
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rorb",
+    "comments": "orc reinforced defense",
+    "class": "_",
+    "race": "orc",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "0",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "200",
+    "lumbermod": "0",
+    "timebase": "60",
+    "timemod": "0",
+    "effect1": "rart",
+    "base1": "1",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Requires": "ofrt",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNReinforcedBurrows.blp",
+    "Buttonpos": "2,1",
+    "Name": "加强型防御",
+    "Tip": "加强型防御(|cffffcc00D|r)",
+    "Ubertip": "\"升级地洞和了望塔从而让它们拥有加强型的护甲。\"",
+    "Hotkey": "D"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/OrcUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

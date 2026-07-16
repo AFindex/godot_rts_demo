@@ -1,0 +1,269 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANbr",
+  "displayName": "战争咆哮",
+  "identity": {
+    "baseCode": "ANbr",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 4,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBattleRoar.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBattleRoar.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbattleroar.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "战争咆哮",
+        "tooltip": "战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "增加周围单位<ANbr,DataA1>点的攻击力。|n持续<ANbr,Dur1>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 10,
+        "heroDuration": 10,
+        "cooldown": 25,
+        "manaCost": 50,
+        "area": 650,
+        "data": {
+          "A": "10",
+          "B": "0",
+          "C": "0",
+          "D": "0",
+          "E": "0",
+          "F": "0",
+          "G": "0"
+        },
+        "buffIds": [
+          "BNbr"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "战争咆哮",
+        "tooltip": "战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "增加周围单位<ANbr,DataA2>点的攻击力。|n持续<ANbr,Dur2>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 10,
+        "heroDuration": 10,
+        "cooldown": 25,
+        "manaCost": 50,
+        "area": 650,
+        "data": {
+          "A": "20",
+          "B": "0",
+          "C": "0",
+          "D": "0",
+          "E": "0",
+          "F": "0",
+          "G": "0"
+        },
+        "buffIds": [
+          "BNbr"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "战争咆哮",
+        "tooltip": "战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "增加周围单位<ANbr,DataA3>点的攻击力。|n持续<ANbr,Dur3>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 10,
+        "heroDuration": 10,
+        "cooldown": 25,
+        "manaCost": 50,
+        "area": 650,
+        "data": {
+          "A": "30",
+          "B": "0",
+          "C": "0",
+          "D": "0",
+          "E": "0",
+          "F": "0",
+          "G": "0"
+        },
+        "buffIds": [
+          "BNbr"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 4,
+        "name": "战争咆哮",
+        "tooltip": "战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 4|r]",
+        "extendedTooltip": "增加周围单位<ANbr,DataA4>点的攻击力。|n持续<ANbr,Dur4>秒。",
+        "targets": [
+          "air",
+          "ground",
+          "friend",
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 10,
+        "heroDuration": 10,
+        "cooldown": 25,
+        "manaCost": 50,
+        "area": 650,
+        "data": {
+          "A": "40",
+          "B": "0",
+          "C": "0",
+          "D": "0",
+          "E": "0",
+          "F": "0",
+          "G": "0"
+        },
+        "buffIds": [
+          "BNbr"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANbr",
+    "code": "ANbr",
+    "comments": "Battle Roar",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "4",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,ground,friend,self",
+    "Cast1": "0",
+    "Dur1": "10",
+    "HeroDur1": "10",
+    "Cool1": "25",
+    "Cost1": "50",
+    "Area1": "650",
+    "Rng1": "-",
+    "DataA1": "10",
+    "DataB1": "0",
+    "DataC1": "0",
+    "DataD1": "0",
+    "DataE1": "0",
+    "Cast2": "0",
+    "Dur2": "10",
+    "HeroDur2": "10",
+    "Cool2": "25",
+    "Cost2": "50",
+    "Area2": "650",
+    "Rng2": "-",
+    "DataA2": "20",
+    "DataB2": "0",
+    "DataC2": "0",
+    "DataD2": "0",
+    "DataE2": "0",
+    "Cast3": "0",
+    "Dur3": "10",
+    "HeroDur3": "10",
+    "Cool3": "25",
+    "Cost3": "50",
+    "Area3": "650",
+    "Rng3": "-",
+    "DataA3": "30",
+    "DataB3": "0",
+    "DataC3": "0",
+    "DataD3": "0",
+    "DataE3": "0",
+    "Cast4": "0",
+    "Dur4": "10",
+    "HeroDur4": "10",
+    "Cool4": "25",
+    "Cost4": "50",
+    "Area4": "650",
+    "Rng4": "-",
+    "DataA4": "40",
+    "DataB4": "0",
+    "DataC4": "0",
+    "DataD4": "0",
+    "DataE4": "0",
+    "InBeta": "0",
+    "targs1": "air,ground,friend,self",
+    "DataF1": "0",
+    "DataG1": "0",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNbr",
+    "targs2": "air,ground,friend,self",
+    "DataF2": "0",
+    "DataG2": "0",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNbr",
+    "targs3": "air,ground,friend,self",
+    "DataF3": "0",
+    "DataG3": "0",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNbr",
+    "targs4": "air,ground,friend,self",
+    "DataF4": "0",
+    "DataG4": "0",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNbr"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNBattleRoar.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNBattleRoar.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Casterart": "Abilities\\Spells\\NightElf\\BattleRoar\\RoarCaster.mdl",
+    "Order": "battleroar",
+    "Name": "战争咆哮",
+    "Tip": "战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 1|r],战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 2|r],战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 3|r],战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 4|r]",
+    "Ubertip": "\"增加周围单位<ANbr,DataA1>点的攻击力。|n持续<ANbr,Dur1>秒。\",\"增加周围单位<ANbr,DataA2>点的攻击力。|n持续<ANbr,Dur2>秒。\",\"增加周围单位<ANbr,DataA3>点的攻击力。|n持续<ANbr,Dur3>秒。\",\"增加周围单位<ANbr,DataA4>点的攻击力。|n持续<ANbr,Dur4>秒。\"",
+    "Hotkey": "R",
+    "Researchtip": "\"学习战争咆哮(|cffffcc00R|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"增加周围单位的攻击力。|n持续 <ANbr,Dur1>秒。|n|n|cffffcc00等级 1|r - <ANbr,DataA1>点攻击力。|n|cffffcc00等级 2|r - <ANbr,DataA2>点攻击力。|n|cffffcc00等级 3|r - <ANbr,DataA3>点攻击力。|n|cffffcc00等级 4|r - <ANbr,DataA4>点攻击力。\"",
+    "Researchhotkey": "R",
+    "Animnames": "spell,slam"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

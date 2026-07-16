@@ -1,0 +1,145 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rnsw",
+  "displayName": "娜迦海妖专家训练",
+  "identity": {
+    "class": "caster",
+    "race": "naga",
+    "used": true,
+    "global": false,
+    "levels": 2,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenAdept.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenAdept.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsirenadept.png"
+      },
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenMaster.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenMaster.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsirenmaster.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "娜迦海妖专家训练",
+        "tooltip": "研究娜迦海妖专家训练(|cffffcc00N|r)",
+        "extendedTooltip": "增加娜迦海妖的魔力容量、魔力回复速率、生命值，并给予她们施放霜冻护甲的能力。",
+        "hotkey": "N",
+        "gold": 100,
+        "lumber": 50,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenAdept.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenAdept.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnsirenadept.png"
+        },
+        "requirements": []
+      },
+      {
+        "level": 2,
+        "name": "娜迦海妖大师训练",
+        "tooltip": "研究娜迦海妖大师训练(|cffffcc00N|r)",
+        "extendedTooltip": "增加娜迦海妖的魔力容量、魔力回复速率、生命值并给予她们施放飓风的能力。",
+        "hotkey": "N",
+        "gold": 100,
+        "lumber": 150,
+        "researchSeconds": 75,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenMaster.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSirenMaster.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnsirenmaster.png"
+        },
+        "requirements": []
+      }
+    ],
+    "effects": [
+      {
+        "slot": 1,
+        "type": "rmnx",
+        "base": 100,
+        "modifier": 100
+      },
+      {
+        "slot": 2,
+        "type": "rmnr",
+        "base": 0.325,
+        "modifier": 0.325
+      },
+      {
+        "slot": 3,
+        "type": "rhpx",
+        "base": 40,
+        "modifier": 40
+      },
+      {
+        "slot": 4,
+        "type": "ratd",
+        "base": 0,
+        "modifier": 0
+      }
+    ]
+  },
+  "editorData": {
+    "upgradeid": "Rnsw",
+    "comments": "naga sea witch training",
+    "class": "caster",
+    "race": "naga",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "2",
+    "inherit": "1",
+    "goldbase": "100",
+    "goldmod": "0",
+    "lumberbase": "50",
+    "lumbermod": "100",
+    "timebase": "60",
+    "timemod": "15",
+    "effect1": "rmnx",
+    "base1": "100",
+    "mod1": "100",
+    "code1": "-",
+    "effect2": "rmnr",
+    "base2": "0.325",
+    "mod2": "0.325",
+    "code2": "-",
+    "effect3": "rhpx",
+    "base3": "40",
+    "mod3": "40",
+    "code3": "-",
+    "effect4": "ratd",
+    "base4": "0",
+    "mod4": "0",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSirenAdept.blp,ReplaceableTextures\\CommandButtons\\BTNSirenMaster.blp",
+    "Buttonpos": "0,2",
+    "Name": "娜迦海妖专家训练,娜迦海妖大师训练",
+    "Tip": "研究娜迦海妖专家训练(|cffffcc00N|r),研究娜迦海妖大师训练(|cffffcc00N|r)",
+    "Ubertip": "\"增加娜迦海妖的魔力容量、魔力回复速率、生命值，并给予她们施放霜冻护甲的能力。\",\"增加娜迦海妖的魔力容量、魔力回复速率、生命值并给予她们施放飓风的能力。\"",
+    "Hotkey": "N,N"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/CampaignUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/CampaignUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

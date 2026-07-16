@@ -1,0 +1,218 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "ANms",
+  "displayName": "魔法护盾",
+  "identity": {
+    "baseCode": "ANms",
+    "race": "creeps",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShield.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShield.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnneutralmanashield.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "魔法护盾",
+        "tooltip": "激活魔法护盾(|cffffcc00N|r) - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "激活一个护盾，护盾会使用女海巫的魔法能量来吸收伤害，每一点魔法能量吸收1点伤害。",
+        "targets": [
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 10,
+        "manaCost": 25,
+        "range": 128,
+        "data": {
+          "A": "1",
+          "B": "1"
+        },
+        "buffIds": [
+          "BNms"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "魔法护盾",
+        "tooltip": "激活魔法护盾(|cffffcc00N|r) - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "激活一个护盾，护盾会使用女海巫的魔法能量来吸收伤害，每一点魔法能量吸收1.5点伤害。",
+        "targets": [
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 10,
+        "manaCost": 25,
+        "range": 128,
+        "data": {
+          "A": "1.5",
+          "B": "1"
+        },
+        "buffIds": [
+          "BNms"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "魔法护盾",
+        "tooltip": "激活魔法护盾(|cffffcc00N|r) - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "激活一个护盾，护盾会使用女海巫的魔法能量来吸收伤害，每一点魔法能量吸收2点伤害。",
+        "targets": [
+          "self"
+        ],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 10,
+        "manaCost": 25,
+        "range": 128,
+        "data": {
+          "A": "2",
+          "B": "1"
+        },
+        "buffIds": [
+          "BNms"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "ANms",
+    "code": "ANms",
+    "comments": "Sea Witch - Mana Shield",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "creeps",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "self",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "10",
+    "Cost1": "25",
+    "Area1": "-",
+    "Rng1": "128",
+    "DataA1": "1",
+    "DataB1": "1",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "0",
+    "Dur2": "0",
+    "HeroDur2": "0",
+    "Cool2": "10",
+    "Cost2": "25",
+    "Area2": "-",
+    "Rng2": "128",
+    "DataA2": "1.5",
+    "DataB2": "1",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "0",
+    "Dur3": "0",
+    "HeroDur3": "0",
+    "Cool3": "10",
+    "Cost3": "25",
+    "Area3": "-",
+    "Rng3": "128",
+    "DataA3": "2",
+    "DataB3": "1",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "0",
+    "Dur4": "0",
+    "HeroDur4": "0",
+    "Cool4": "10",
+    "Cost4": "25",
+    "Area4": "-",
+    "Rng4": "128",
+    "DataA4": "2",
+    "DataB4": "1",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "self",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BNms",
+    "targs2": "self",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BNms",
+    "targs3": "self",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BNms",
+    "targs4": "self",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BNms"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShield.blp",
+    "Unart": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShieldOff.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShield.blp",
+    "Buttonpos": "2,2",
+    "Unbuttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Effectsound": "ManaShieldCastSound",
+    "Orderon": "manashieldon",
+    "Orderoff": "manashieldoff",
+    "Name": "魔法护盾",
+    "Tip": "激活魔法护盾(|cffffcc00N|r) - [|cffffcc00等级 1|r],激活魔法护盾(|cffffcc00N|r) - [|cffffcc00等级 2|r],激活魔法护盾(|cffffcc00N|r) - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"激活一个护盾，护盾会使用女海巫的魔法能量来吸收伤害，每一点魔法能量吸收1点伤害。\",\"激活一个护盾，护盾会使用女海巫的魔法能量来吸收伤害，每一点魔法能量吸收1.5点伤害。\",\"激活一个护盾，护盾会使用女海巫的魔法能量来吸收伤害，每一点魔法能量吸收2点伤害。\"",
+    "Untip": "取消魔法护盾(|cffffcc00N|r)",
+    "Hotkey": "N",
+    "Unhotkey": "N",
+    "Researchtip": "\"学习魔法护盾(|cffffcc00N|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"建立一个护盾，用女海巫的魔法能量来吸收伤害。|n|n|cffffcc00等级 1|r - 每一点魔法能量能吸收1点的伤害。|n|cffffcc00等级 2|r -每一点魔法能量能吸收1.5点的伤害。|n|cffffcc00等级 3|r - 每一点魔法能量能吸收2点的伤害。\"",
+    "Researchhotkey": "N"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AHbh",
+  "displayName": "重击",
+  "identity": {
+    "baseCode": "AHbh",
+    "race": "human",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNBash.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNBash.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnbash.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "重击",
+        "tooltip": "重击 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "给予<AHbh,DataA1>%的概率使得山丘之王的常规攻击能附带<AHbh,DataC1>点的额外伤害值，并在<AHbh,Dur1>秒内使得对手处于眩晕状态。",
+        "targets": [
+          "ground",
+          "air"
+        ],
+        "castTime": 0,
+        "duration": 2,
+        "heroDuration": 1,
+        "cooldown": 0,
+        "area": 0,
+        "data": {
+          "A": "20",
+          "B": "0",
+          "C": "25",
+          "D": "0"
+        },
+        "buffIds": [
+          "BPSE"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "重击",
+        "tooltip": "重击 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "给予<AHbh,DataA2>%的概率使得山丘之王的常规攻击能附带<AHbh,DataC1>点的额外伤害值，并在<AHbh,Dur1>秒内使得对手处于眩晕状态。",
+        "targets": [
+          "ground",
+          "air"
+        ],
+        "duration": 2,
+        "heroDuration": 1,
+        "area": 0,
+        "data": {
+          "A": "30",
+          "B": "0",
+          "C": "25",
+          "D": "0"
+        },
+        "buffIds": [
+          "BPSE"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "重击",
+        "tooltip": "重击 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "给予<AHbh,DataA3>%的概率使得山丘之王的常规攻击能附带<AHbh,DataC1>点的额外伤害值，并在<AHbh,Dur1>秒内使得对手处于眩晕状态。",
+        "targets": [
+          "ground",
+          "air"
+        ],
+        "duration": 2,
+        "heroDuration": 1,
+        "area": 0,
+        "data": {
+          "A": "40",
+          "B": "0",
+          "C": "25",
+          "D": "0"
+        },
+        "buffIds": [
+          "BPSE"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AHbh",
+    "code": "AHbh",
+    "uberAlias": "AHbh",
+    "comments": "Mountain King - Bash",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "targs": "ground",
+    "Cast1": "0",
+    "Dur1": "2",
+    "HeroDur1": "1",
+    "Cool1": "0",
+    "Cost1": "-",
+    "Area1": "0",
+    "Rng1": "-",
+    "Data11": "15",
+    "Data12": "1",
+    "Data13": "25",
+    "Data14": "-",
+    "Cast2": "-",
+    "Dur2": "2",
+    "HeroDur2": "1",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "0",
+    "Rng2": "-",
+    "Data21": "25",
+    "Data22": "1",
+    "Data23": "25",
+    "Data24": "-",
+    "Cast3": "-",
+    "Dur3": "2",
+    "HeroDur3": "1",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "0",
+    "Rng3": "-",
+    "Data31": "35",
+    "Data32": "1",
+    "Data33": "25",
+    "Data34": "-",
+    "CastCheck": "-",
+    "DurCheck": "-",
+    "HeroDurCheck": "-",
+    "CoolCheck": "-",
+    "CostCheck": "-",
+    "AreaCheck": "-",
+    "RngCheck": "-",
+    "version": "0",
+    "race": "human",
+    "levelSkip": "0",
+    "priority": "0",
+    "DataA1": "20",
+    "DataB1": "0",
+    "DataC1": "25",
+    "DataD1": "0",
+    "DataE1": "-",
+    "DataA2": "30",
+    "DataB2": "0",
+    "DataC2": "25",
+    "DataD2": "0",
+    "DataE2": "-",
+    "DataA3": "40",
+    "DataB3": "0",
+    "DataC3": "25",
+    "DataD3": "0",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "2",
+    "HeroDur4": "1",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "0",
+    "Rng4": "-",
+    "DataA4": "35",
+    "DataB4": "0",
+    "DataC4": "25",
+    "DataD4": "0",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "ground,air",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BPSE",
+    "targs2": "ground,air",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BPSE",
+    "targs3": "ground,air",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BPSE",
+    "targs4": "ground,air",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BPSE"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\PassiveButtons\\PASBTNBash.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNBash.blp",
+    "Buttonpos": "2,2",
+    "Researchbuttonpos": "2,0",
+    "Order": "bash",
+    "Name": "重击",
+    "Tip": "重击 - [|cffffcc00等级 1|r],重击 - [|cffffcc00等级 2|r],重击 - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"给予<AHbh,DataA1>%的概率使得山丘之王的常规攻击能附带<AHbh,DataC1>点的额外伤害值，并在<AHbh,Dur1>秒内使得对手处于眩晕状态。\",\"给予<AHbh,DataA2>%的概率使得山丘之王的常规攻击能附带<AHbh,DataC1>点的额外伤害值，并在<AHbh,Dur1>秒内使得对手处于眩晕状态。\",\"给予<AHbh,DataA3>%的概率使得山丘之王的常规攻击能附带<AHbh,DataC1>点的额外伤害值，并在<AHbh,Dur1>秒内使得对手处于眩晕状态。\"",
+    "Researchtip": "\"学习重击(|cffffcc00B|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"给予一定的概率使得山丘之王的常规攻击能附带<AHbh,DataC1>点的附加伤害值并在<AHbh,Dur1>秒内使得对手处于眩晕状态。|n|n|cffffcc00等级 1|r - 每次攻击<AHbh,DataA1>%的概率。|n|cffffcc00等级 2|r - 每次攻击<AHbh,DataA2>%的概率。|n|cffffcc00等级 3|r - 每次攻击<AHbh,DataA3>%的概率。\"",
+    "Researchhotkey": "B"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/AbilityData.slk",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

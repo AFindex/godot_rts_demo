@@ -1,0 +1,100 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rhfs",
+  "displayName": "碎片攻击",
+  "identity": {
+    "race": "human",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFragmentationBombs.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFragmentationBombs.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfragmentationbombs.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "碎片攻击",
+        "tooltip": "研究碎片攻击(|cffffcc00S|r)",
+        "extendedTooltip": "升级迫击炮炮弹，增加迫击炮小队对无护甲和中型护甲单位的伤害。",
+        "hotkey": "S",
+        "gold": 50,
+        "lumber": 100,
+        "researchSeconds": 40,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFragmentationBombs.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFragmentationBombs.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btnfragmentationbombs.png"
+        },
+        "requirements": [
+          "hcas"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rhfs",
+    "comments": "human frag shards",
+    "class": "_",
+    "race": "human",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "50",
+    "goldmod": "0",
+    "lumberbase": "100",
+    "lumbermod": "0",
+    "timebase": "40",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNFragmentationBombs.blp",
+    "Buttonpos": "1,1",
+    "Requires": "hcas",
+    "Name": "碎片攻击",
+    "Tip": "研究碎片攻击(|cffffcc00S|r)",
+    "Ubertip": "\"升级迫击炮炮弹，增加迫击炮小队对无护甲和中型护甲单位的伤害。\"",
+    "Hotkey": "S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/HumanUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

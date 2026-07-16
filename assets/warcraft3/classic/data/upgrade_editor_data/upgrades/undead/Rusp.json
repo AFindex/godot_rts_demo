@@ -1,0 +1,101 @@
+{
+  "schema": "war3-upgrade-editor-data/v1",
+  "id": "Rusp",
+  "displayName": "破坏者形态",
+  "identity": {
+    "race": "undead",
+    "used": true,
+    "global": false,
+    "levels": 1,
+    "inheritance": true
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDestroyer.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDestroyer.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndestroyer.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "破坏者形态",
+        "tooltip": "研究破坏者形态(|cffffcc00X|r)",
+        "extendedTooltip": "让十胜石雕像能变成破坏者，一种必须吞噬其他单位的魔法能量来维持自己的魔法能量的大型飞行单位。破坏者具有吞噬魔法，吸收魔法，魔法免疫和毁灭之球技能。|n|n|cffffcc00能攻击地面和空中单位。|r",
+        "hotkey": "X",
+        "gold": 75,
+        "lumber": 150,
+        "researchSeconds": 60,
+        "icon": {
+          "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDestroyer.blp",
+          "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDestroyer.blp",
+          "sourceLayer": "tft",
+          "godotPath": "textures/replaceabletextures/commandbuttons/btndestroyer.png"
+        },
+        "requirements": [
+          "unp2",
+          "utom"
+        ]
+      }
+    ],
+    "effects": []
+  },
+  "editorData": {
+    "upgradeid": "Rusp",
+    "comments": "undead avenger transform",
+    "class": "_",
+    "race": "undead",
+    "sort": "_",
+    "used": "1",
+    "global": "0",
+    "maxlevel": "1",
+    "inherit": "1",
+    "goldbase": "75",
+    "goldmod": "0",
+    "lumberbase": "150",
+    "lumbermod": "0",
+    "timebase": "60",
+    "timemod": "0",
+    "effect1": "_",
+    "base1": "-",
+    "mod1": "-",
+    "code1": "-",
+    "effect2": "_",
+    "base2": "-",
+    "mod2": "-",
+    "code2": "-",
+    "effect3": "_",
+    "base3": "-",
+    "mod3": "-",
+    "code3": "-",
+    "effect4": "_",
+    "base4": "-",
+    "mod4": "-",
+    "code4": "-",
+    "version": "1",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDestroyer.blp",
+    "ButtonPos": "2,2",
+    "Requires": "unp2,utom",
+    "Name": "破坏者形态",
+    "Tip": "研究破坏者形态(|cffffcc00X|r)",
+    "Ubertip": "\"让十胜石雕像能变成破坏者，一种必须吞噬其他单位的魔法能量来维持自己的魔法能量的大型飞行单位。破坏者具有吞噬魔法，吸收魔法，魔法免疫和毁灭之球技能。|n|n|cffffcc00能攻击地面和空中单位。|r\"",
+    "Hotkey": "X"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/patch/Units/UpgradeData.slk",
+      "extracted/raw/classic/tft-locale/Units/UndeadUpgradeStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadUpgradeFunc.txt",
+      "extracted/raw/classic/tft/Units/UpgradeData.slk"
+    ]
+  }
+}

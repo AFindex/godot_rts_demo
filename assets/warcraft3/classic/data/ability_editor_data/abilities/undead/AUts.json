@@ -1,0 +1,195 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "AUts",
+  "displayName": "尖刺外壳",
+  "identity": {
+    "baseCode": "AUts",
+    "race": "undead",
+    "hero": true,
+    "item": false,
+    "editorVisible": true,
+    "levels": 3,
+    "requiredHeroLevel": 1,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNThornShield.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNThornShield.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnthornshield.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "尖刺外壳",
+        "tooltip": "尖刺外壳 - [|cffffcc00等级 1|r]",
+        "extendedTooltip": "增加地穴领主<AUts,DataC1>点的护甲并能将敌人<AUts,DataA1,%>%的近战攻击弹射回去。",
+        "targets": [],
+        "castTime": 0,
+        "duration": 0,
+        "heroDuration": 0,
+        "cooldown": 0,
+        "data": {
+          "A": "0.15",
+          "B": "1",
+          "C": "3"
+        },
+        "buffIds": [
+          "BUts"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 2,
+        "name": "尖刺外壳",
+        "tooltip": "尖刺外壳 - [|cffffcc00等级 2|r]",
+        "extendedTooltip": "增加地穴领主<AUts,DataC2>点的护甲并能将敌人<AUts,DataA2,%>%的近战攻击弹射回去。",
+        "targets": [],
+        "data": {
+          "A": "0.25",
+          "B": "1",
+          "C": "5"
+        },
+        "buffIds": [
+          "BUts"
+        ],
+        "effectIds": []
+      },
+      {
+        "level": 3,
+        "name": "尖刺外壳",
+        "tooltip": "尖刺外壳 - [|cffffcc00等级 3|r]",
+        "extendedTooltip": "增加地穴领主<AUts,DataC3>点的护甲并能将敌人<AUts,DataA3,%>%的近战攻击弹射回去。",
+        "targets": [],
+        "castTime": 0,
+        "data": {
+          "A": "0.35",
+          "B": "1",
+          "C": "7"
+        },
+        "buffIds": [
+          "BUts"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "AUts",
+    "code": "AUts",
+    "comments": "Crypt Lord - Spiked Carapace",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "1",
+    "item": "0",
+    "sort": "hero",
+    "race": "undead",
+    "checkDep": "1",
+    "levels": "3",
+    "reqLevel": "1",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "_",
+    "Cast1": "0",
+    "Dur1": "0",
+    "HeroDur1": "0",
+    "Cool1": "0",
+    "Cost1": "-",
+    "Area1": "-",
+    "Rng1": "-",
+    "DataA1": "0.15",
+    "DataB1": "1",
+    "DataC1": "3",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "0.25",
+    "DataB2": "1",
+    "DataC2": "5",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "0",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "0.35",
+    "DataB3": "1",
+    "DataC3": "7",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "0",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "0.35",
+    "DataB4": "1",
+    "DataC4": "7",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "_",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "BUts",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "BuffID2": "BUts",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "BuffID3": "BUts",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-",
+    "BuffID4": "BUts"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\PassiveButtons\\PASBTNThornShield.blp",
+    "Researchart": "ReplaceableTextures\\CommandButtons\\BTNThornShield.blp",
+    "Buttonpos": "1,2",
+    "Unbuttonpos": "1,2",
+    "Researchbuttonpos": "1,0",
+    "Name": "尖刺外壳",
+    "Tip": "尖刺外壳 - [|cffffcc00等级 1|r],尖刺外壳 - [|cffffcc00等级 2|r],尖刺外壳 - [|cffffcc00等级 3|r]",
+    "Ubertip": "\"增加地穴领主<AUts,DataC1>点的护甲并能将敌人<AUts,DataA1,%>%的近战攻击弹射回去。\",\"增加地穴领主<AUts,DataC2>点的护甲并能将敌人<AUts,DataA2,%>%的近战攻击弹射回去。\",\"增加地穴领主<AUts,DataC3>点的护甲并能将敌人<AUts,DataA3,%>%的近战攻击弹射回去。\"",
+    "Researchtip": "\"学习尖刺外壳(|cffffcc00S|r) - [|cffffcc00等级 %d|r]\"",
+    "Researchubertip": "\"在地穴领主的身上形成一层带有尖刺的保护壳，增加其防御能力并能弹射敌人的近战攻击。|n|n|cffffcc00等级 1|r - 弹射<AUts,DataA1,%>%的伤害，增加<AUts,DataC1>点护甲。|n|cffffcc00等级 2|r -  弹射<AUts,DataA2,%>%的伤害，增加<AUts,DataC2>点护甲。|n|cffffcc00等级 3|r -  弹射<AUts,DataA3,%>%点的伤害，增加<AUts,DataC3>点护甲。\"",
+    "Researchhotkey": "S"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

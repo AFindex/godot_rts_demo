@@ -1,0 +1,162 @@
+{
+  "schema": "war3-ability-editor-data/v1",
+  "id": "Amls",
+  "displayName": "空中锁镣",
+  "identity": {
+    "baseCode": "Amls",
+    "race": "human",
+    "hero": false,
+    "item": false,
+    "editorVisible": true,
+    "levels": 1,
+    "requiredHeroLevel": 0,
+    "heroLevelSkip": 0
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicLariet.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicLariet.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmagiclariet.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": [
+      {
+        "level": 1,
+        "name": "空中锁镣",
+        "tooltip": "空中锁镣(|cffffcc00E|r)",
+        "extendedTooltip": "以魔力禁锢一个目标敌空中单位，使其不能移动或攻击，并每秒受到<Amls,DataA1>伤害力。|n持续<Amls,Dur1>秒。",
+        "targets": [
+          "air",
+          "enemy",
+          "organic"
+        ],
+        "castTime": 0,
+        "duration": 40,
+        "heroDuration": 10,
+        "cooldown": 30,
+        "manaCost": 75,
+        "range": 550,
+        "data": {
+          "A": "30"
+        },
+        "buffIds": [
+          "Bmlc",
+          "Bmlt"
+        ],
+        "effectIds": []
+      }
+    ]
+  },
+  "editorData": {
+    "alias": "Amls",
+    "code": "Amls",
+    "comments": "Aerial Shackles",
+    "version": "1",
+    "useInEditor": "1",
+    "hero": "0",
+    "item": "0",
+    "sort": "unit",
+    "race": "human",
+    "checkDep": "1",
+    "levels": "1",
+    "reqLevel": "0",
+    "levelSkip": "0",
+    "priority": "0",
+    "targs": "air,enemy,organic",
+    "Cast1": "0",
+    "Dur1": "40",
+    "HeroDur1": "10",
+    "Cool1": "30",
+    "Cost1": "75",
+    "Area1": "-",
+    "Rng1": "550",
+    "DataA1": "30",
+    "DataB1": "-",
+    "DataC1": "-",
+    "DataD1": "-",
+    "DataE1": "-",
+    "Cast2": "-",
+    "Dur2": "-",
+    "HeroDur2": "-",
+    "Cool2": "-",
+    "Cost2": "-",
+    "Area2": "-",
+    "Rng2": "-",
+    "DataA2": "-",
+    "DataB2": "-",
+    "DataC2": "-",
+    "DataD2": "-",
+    "DataE2": "-",
+    "Cast3": "-",
+    "Dur3": "-",
+    "HeroDur3": "-",
+    "Cool3": "-",
+    "Cost3": "-",
+    "Area3": "-",
+    "Rng3": "-",
+    "DataA3": "-",
+    "DataB3": "-",
+    "DataC3": "-",
+    "DataD3": "-",
+    "DataE3": "-",
+    "Cast4": "-",
+    "Dur4": "-",
+    "HeroDur4": "-",
+    "Cool4": "-",
+    "Cost4": "-",
+    "Area4": "-",
+    "Rng4": "-",
+    "DataA4": "-",
+    "DataB4": "-",
+    "DataC4": "-",
+    "DataD4": "-",
+    "DataE4": "-",
+    "InBeta": "1",
+    "targs1": "air,enemy,organic",
+    "DataF1": "-",
+    "DataG1": "-",
+    "DataH1": "-",
+    "DataI1": "-",
+    "BuffID1": "Bmlc,Bmlt",
+    "targs2": "_",
+    "DataF2": "-",
+    "DataG2": "-",
+    "DataH2": "-",
+    "DataI2": "-",
+    "targs3": "_",
+    "DataF3": "-",
+    "DataG3": "-",
+    "DataH3": "-",
+    "DataI3": "-",
+    "targs4": "_",
+    "DataF4": "-",
+    "DataG4": "-",
+    "DataH4": "-",
+    "DataI4": "-"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNMagicLariet.blp",
+    "Buttonpos": "0,2",
+    "Order": "magicleash",
+    "Name": "空中锁镣",
+    "Tip": "空中锁镣(|cffffcc00E|r)",
+    "Ubertip": "\"以魔力禁锢一个目标敌空中单位，使其不能移动或攻击，并每秒受到<Amls,DataA1>伤害力。|n持续<Amls,Dur1>秒。\"",
+    "Hotkey": "E",
+    "Animnames": "spell,looping",
+    "LightningEffect": "LEAS"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/AbilityData.slk",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}
