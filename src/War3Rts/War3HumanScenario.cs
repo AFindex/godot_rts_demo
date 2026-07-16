@@ -24,9 +24,22 @@ public static class War3HumanScenario
     public const int EnemyId = 2;
     public const int InitialWorkers = 7;
     public const int Capacity = 512;
+    public const float TerrainCellSize = 32f;
+    public const float TerrainCliffHeight = 48f;
 
-    public static readonly Vector2 PlayerHome = new(430f, 640f);
-    public static readonly Vector2 EnemyHome = new(1970f, 640f);
+    public static readonly SimRect WorldBounds = new(
+        Vector2.Zero, new Vector2(3_200f, 1_920f));
+    public static readonly Vector2 PlayerHome = new(640f, 960f);
+    public static readonly Vector2 EnemyHome = new(2_560f, 960f);
+    private static readonly Vector2[] CenterResourcePositions =
+    [
+        new(1_600f, 560f),
+        new(1_600f, 1_360f)
+    ];
+
+    public static TerrainMapSnapshot CreateTerrain() =>
+        War3HumanBattlefield.Create(
+            WorldBounds, TerrainCellSize, TerrainCliffHeight);
 
     public static NavigationMapSnapshot CreateNavigation()
     {
@@ -36,7 +49,7 @@ public static class War3HumanScenario
         AddCenterResourceObstacles(obstacles);
         var created = NavigationMapSnapshot.TryCreate(
             NavigationMapSnapshot.CurrentFormatVersion,
-            new SimRect(new Vector2(-100f, -50f), new Vector2(2500f, 1330f)),
+            WorldBounds,
             obstacles.ToArray(), [], [], [], out var snapshot, out var validation);
         if (!created || snapshot is null)
             throw new InvalidOperationException(
@@ -132,9 +145,8 @@ public static class War3HumanScenario
         RtsSimulation simulation,
         List<EconomyResourceNodeId> all)
     {
-        foreach (var x in new[] { 980f, 1420f })
+        foreach (var goldPosition in CenterResourcePositions)
         {
-            var goldPosition = new Vector2(x, 640f);
             var gold = simulation.Economy.AddResourceNode(
                 EconomyResourceKind.Minerals, goldPosition,
                 25_000, 10, 1.05f, 5, activeHarvesterSlots: 5);
@@ -143,7 +155,7 @@ public static class War3HumanScenario
             all.Add(gold);
             for (var index = 0; index < 8; index++)
             {
-                var position = CenterTreePosition(x, index);
+                var position = CenterTreePosition(goldPosition, index);
                 var tree = simulation.Economy.AddResourceNode(
                     EconomyResourceKind.VespeneGas,
                     position, TreeHealth, LumberPerTrip, TreeHarvestSeconds, 1,
@@ -170,12 +182,12 @@ public static class War3HumanScenario
 
     private static void AddCenterResourceObstacles(List<SimRect> obstacles)
     {
-        foreach (var x in new[] { 980f, 1420f })
+        foreach (var goldPosition in CenterResourcePositions)
         {
-            obstacles.Add(ResourceBounds(new Vector2(x, 640f), GoldHalfExtents));
+            obstacles.Add(ResourceBounds(goldPosition, GoldHalfExtents));
             for (var index = 0; index < 8; index++)
                 obstacles.Add(ResourceBounds(
-                    CenterTreePosition(x, index), TreeHalfExtents));
+                    CenterTreePosition(goldPosition, index), TreeHalfExtents));
         }
     }
 
@@ -194,11 +206,11 @@ public static class War3HumanScenario
             row == 0 ? -300f : 300f);
     }
 
-    private static Vector2 CenterTreePosition(float x, int index)
+    private static Vector2 CenterTreePosition(Vector2 center, int index)
     {
         var angle = MathF.Tau * index / 8f;
-        return new Vector2(x, 640f) +
-               new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 150f;
+        return center + new Vector2(
+            MathF.Cos(angle), MathF.Sin(angle)) * 150f;
     }
 
     private static SimRect ResourceBounds(Vector2 center, Vector2 halfExtents) =>

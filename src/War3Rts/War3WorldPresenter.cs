@@ -20,6 +20,7 @@ public sealed partial class War3WorldPresenter : Node3D
     private readonly HashSet<int> _selectedBuildings = [];
     private RtsSimulation? _simulation;
     private ProductionCatalogSnapshot? _production;
+    private ITerrainMapQuery? _terrain;
     private Camera3D? _camera;
     private MeshInstance3D? _pointerPreview;
     private War3ModelActor? _pointerGhost;
@@ -86,6 +87,7 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         _simulation = simulation;
         _production = production;
+        _terrain = simulation.World.Terrain;
         _camera = camera;
         EnsurePointerPreview();
         EnsureRallyMarker();
@@ -117,7 +119,7 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         EnsurePointerPreview();
         var size = SimPlane3DTransform.ToWorldSize(footprint);
-        _pointerPreview!.Position = SimPlane3DTransform.ToWorld(position, 0.06f);
+        _pointerPreview!.Position = ToWorldAtGround(position, 0.06f);
         _pointerPreview.Scale = new Vector3(size.X, 0.06f, size.Y);
         _pointerPreview.MaterialOverride = valid ? _validPreview : _invalidPreview;
         _pointerPreview.Visible = true;
@@ -135,7 +137,7 @@ public sealed partial class War3WorldPresenter : Node3D
         }
         if (_pointerGhost is not null)
         {
-            _pointerGhost.Position = SimPlane3DTransform.ToWorld(position, 0.01f);
+            _pointerGhost.Position = ToWorldAtGround(position, 0.01f);
             _pointerGhost.SetGhostAppearance(true, valid);
             _pointerGhost.Visible = true;
         }
@@ -188,7 +190,7 @@ public sealed partial class War3WorldPresenter : Node3D
             var position = NVector2.Lerp(
                 simulation.Units.PreviousPositions[unit],
                 simulation.Units.Positions[unit], interpolation);
-            var world = SimPlane3DTransform.ToWorld(position, definition.FlyingHeight);
+            var world = ToWorldAtGround(position, definition.FlyingHeight);
             visual.Actor.Position = world;
             var velocity = simulation.Units.Velocities[unit];
             if (TryResolveActionDirection(
@@ -206,7 +208,8 @@ public sealed partial class War3WorldPresenter : Node3D
             var hiddenInsideGoldMine = IsGatheringGold(simulation, unit);
             visual.Actor.Visible = !hiddenInsideGoldMine;
             _sawGoldMinerHidden |= hiddenInsideGoldMine;
-            visual.Selection.Position = new Vector3(world.X, SelectionHeight, world.Z);
+            visual.Selection.Position = new Vector3(
+                world.X, world.Y + SelectionHeight, world.Z);
             visual.Selection.Visible = _selectedUnits.Contains(unit) &&
                                        !hiddenInsideGoldMine;
             UpdateUnitAnimation(simulation, unit, visual);
@@ -422,12 +425,13 @@ public sealed partial class War3WorldPresenter : Node3D
                 _buildings.Add(id, visual);
             }
             var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
-            var world = SimPlane3DTransform.ToWorld(center);
+            var world = ToWorldAtGround(center);
             visual.Actor.Position = world;
             var diameter = MathF.Max(
                 SimPlane3DTransform.ToWorldLength(building.Type.Size.X),
                 SimPlane3DTransform.ToWorldLength(building.Type.Size.Y)) * 0.62f;
-            visual.Selection.Position = new Vector3(world.X, SelectionHeight, world.Z);
+            visual.Selection.Position = new Vector3(
+                world.X, world.Y + SelectionHeight, world.Z);
             visual.Selection.Scale = Vector3.One * MathF.Max(0.85f, diameter);
             var foundationStarted = building.FootprintId.Value > 0 ||
                                     building.State is BuildingLifecycleState.Constructing or
@@ -502,7 +506,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual = CreateResource(id, snapshot.Kind, source, camera);
                 _resources.Add(id, visual);
             }
-            visual.Actor.Position = SimPlane3DTransform.ToWorld(snapshot.Position);
+            visual.Actor.Position = ToWorldAtGround(snapshot.Position);
             if (snapshot.Remaining <= 0)
             {
                 if (!visual.Depleted)
@@ -543,7 +547,7 @@ public sealed partial class War3WorldPresenter : Node3D
             visual.LastPosition = projectile.Position;
             visual.HasPosition = true;
             var height = MathF.Max(0.7f, definition.FlyingHeight * 0.55f + 0.55f);
-            visual.Root.Position = SimPlane3DTransform.ToWorld(projectile.Position, height);
+            visual.Root.Position = ToWorldAtGround(projectile.Position, height);
         }
         foreach (var id in _projectiles.Keys.Where(id => !_seenProjectiles.Contains(id)).ToArray())
         {
@@ -644,7 +648,7 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         var actor = new War3ModelActor { Name = "Impact" };
         AddChild(actor);
-        actor.Position = SimPlane3DTransform.ToWorld(position, 0.18f);
+        actor.Position = ToWorldAtGround(position, 0.18f);
         actor.Load(source, camera, 0);
         actor.PlayPreferred(false, "Birth", "Stand", "Death");
         _transients.Add(new TransientVisual(actor, Time.GetTicksMsec() + lifetime));
@@ -704,7 +708,7 @@ public sealed partial class War3WorldPresenter : Node3D
             var moved = !_rallyMarkerActive ||
                         NVector2.DistanceSquared(_rallyMarkerPosition, rally.Position) > 0.01f;
             _rallyMarkerPosition = rally.Position;
-            _rallyMarker.Position = SimPlane3DTransform.ToWorld(rally.Position, 0.01f);
+            _rallyMarker.Position = ToWorldAtGround(rally.Position, 0.01f);
             _rallyMarker.Visible = true;
             if (moved)
                 _rallyMarker.ReplayPreferred("Birth", "Stand");
@@ -717,6 +721,18 @@ public sealed partial class War3WorldPresenter : Node3D
         _rallyMarker.Visible = false;
         _rallyMarkerActive = false;
     }
+
+    private float GroundWorldHeight(NVector2 position) =>
+        _terrain is null
+            ? 0f
+            : SimPlane3DTransform.ToWorldLength(_terrain.HeightAt(position));
+
+    private Vector3 ToWorldAtGround(
+        NVector2 position,
+        float localHeight = 0f) =>
+        SimPlane3DTransform.ToWorld(
+            position,
+            GroundWorldHeight(position) + localHeight);
 
     private static MeshInstance3D SelectionRing(string name, float width, Color color)
     {

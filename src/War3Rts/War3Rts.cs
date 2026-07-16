@@ -1,6 +1,7 @@
 using Godot;
 using RtsDemo.Demos;
 using RtsDemo.Demos.ThreeD;
+using RtsDemo.Demos.War3;
 using RtsDemo.Simulation;
 using NVector2 = System.Numerics.Vector2;
 
@@ -15,6 +16,7 @@ public sealed partial class War3Rts : Node3D
     private const float MinimumDragPixels = 7f;
     private RtsSimulation? _simulation;
     private War3HumanRuntime? _runtime;
+    private TerrainMapSnapshot? _terrain;
     private BuildingTypeCatalogSnapshot? _buildings;
     private ProductionCatalogSnapshot? _production;
     private TechnologyCatalogSnapshot? _technologies;
@@ -39,6 +41,7 @@ public sealed partial class War3Rts : Node3D
     private bool _smoke;
     private long _smokeEndTick;
     private bool _capture;
+    private bool _terrainCapture;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
@@ -62,9 +65,10 @@ public sealed partial class War3Rts : Node3D
                 _technologies, _buildings, out var technologyError))
             throw new InvalidOperationException(technologyError);
 
+        _terrain = War3HumanScenario.CreateTerrain();
         var navigation = War3HumanScenario.CreateNavigation();
-        var world = navigation.CreateWorld();
-        var bake = ClearanceBakeSnapshot.Build(navigation);
+        var world = navigation.CreateWorld(_terrain);
+        var bake = ClearanceBakeSnapshot.Build(navigation, _terrain);
         _simulation = new RtsSimulation(
             world,
             new GridPathProvider(world, staticBake: bake),
@@ -76,7 +80,7 @@ public sealed partial class War3Rts : Node3D
             _simulation, _buildings, _production, _technologies);
 
         CreateLighting();
-        CreateGround(world);
+        CreateGround(_terrain);
         CreateCamera(world);
         _presenter = new War3WorldPresenter { Name = "War3World" };
         AddChild(_presenter);
@@ -88,7 +92,18 @@ public sealed partial class War3Rts : Node3D
 
         var arguments = OS.GetCmdlineUserArgs();
         _smoke = arguments.Contains("--war3-rts-smoke");
-        _capture = arguments.Contains("--war3-rts-capture");
+        _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
+        _capture = arguments.Contains("--war3-rts-capture") ||
+                   _terrainCapture;
+        if (_terrainCapture)
+        {
+            _hud!.Visible = false;
+            _cameraController!.SetAutomationTarget(
+                War3HumanScenario.PlayerHome + new NVector2(480f, 0f),
+                distance: 32f,
+                yaw: Mathf.DegToRad(90f),
+                pitch: Mathf.DegToRad(54f));
+        }
         if (_smoke)
         {
             PrepareSmokeCombat();
@@ -518,8 +533,10 @@ public sealed partial class War3Rts : Node3D
             if (!_simulation.Units.Alive[unit] ||
                 _simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId)
                 continue;
+            var position = _simulation.Units.Positions[unit];
             var world = SimPlane3DTransform.ToWorld(
-                _simulation.Units.Positions[unit], 0.8f);
+                position,
+                GroundWorldHeight(position) + 0.8f);
             if (!_camera.IsPositionBehind(world) &&
                 rect.HasPoint(_camera.UnprojectPosition(world)))
                 _selectedUnits.Add(unit);
@@ -925,11 +942,55 @@ public sealed partial class War3Rts : Node3D
         if (_camera is null) return false;
         var origin = _camera.ProjectRayOrigin(screen);
         var direction = _camera.ProjectRayNormal(screen);
-        if (MathF.Abs(direction.Y) < 0.0001f) return false;
-        var distance = -origin.Y / direction.Y;
-        if (distance < 0f) return false;
-        point = SimPlane3DTransform.ToSimulation(origin + direction * distance);
-        return true;
+        if (direction.Y >= -0.0001f) return false;
+        if (_terrain is null)
+        {
+            var distance = -origin.Y / direction.Y;
+            if (distance < 0f) return false;
+            point = SimPlane3DTransform.ToSimulation(origin + direction * distance);
+            return _simulation?.World.Bounds.Contains(point) == true;
+        }
+
+        var maximumHeight = SimPlane3DTransform.ToWorldLength(
+            (_terrain.MaximumCellLevel + 1f) * _terrain.CliffLevelHeight);
+        var begin = MathF.Max(0f, (maximumHeight - origin.Y) / direction.Y);
+        var end = -origin.Y / direction.Y;
+        if (end < begin) (begin, end) = (end, begin);
+        var previousDistance = begin;
+        var previousDelta = HeightDelta(origin + direction * previousDistance);
+        const int steps = 192;
+        for (var step = 1; step <= steps; step++)
+        {
+            var distance = begin + (end - begin) * step / steps;
+            var delta = HeightDelta(origin + direction * distance);
+            if (previousDelta >= 0f && delta <= 0f)
+            {
+                var low = previousDistance;
+                var high = distance;
+                for (var iteration = 0; iteration < 12; iteration++)
+                {
+                    var middle = (low + high) * 0.5f;
+                    if (HeightDelta(origin + direction * middle) > 0f)
+                        low = middle;
+                    else
+                        high = middle;
+                }
+                point = SimPlane3DTransform.ToSimulation(
+                    origin + direction * high);
+                return _terrain.Bounds.Contains(point);
+            }
+            previousDistance = distance;
+            previousDelta = delta;
+        }
+        return false;
+
+        float HeightDelta(Vector3 worldPoint)
+        {
+            var simulationPoint = SimPlane3DTransform.ToSimulation(worldPoint);
+            if (!_terrain.Bounds.Contains(simulationPoint))
+                return float.PositiveInfinity;
+            return worldPoint.Y - GroundWorldHeight(simulationPoint);
+        }
     }
 
     private void CreateCamera(StaticWorld world)
@@ -955,6 +1016,7 @@ public sealed partial class War3Rts : Node3D
         AddChild(_cameraController);
         _cameraController.EdgeScrollBlocked = point =>
             _hud?.BlocksWorldPointer(point) == true;
+        _cameraController.TargetWorldHeight = GroundWorldHeight;
         _cameraController.Initialize(_camera, world.Bounds);
     }
 
@@ -982,24 +1044,25 @@ public sealed partial class War3Rts : Node3D
         });
     }
 
-    private void CreateGround(StaticWorld world)
+    private void CreateGround(TerrainMapSnapshot terrain)
     {
-        var size = SimPlane3DTransform.ToWorldSize(world.Bounds.Max - world.Bounds.Min);
-        var center = (world.Bounds.Min + world.Bounds.Max) * 0.5f;
-        var material = new StandardMaterial3D
+        var presenter = new Rts3DTerrainPresenter
         {
-            AlbedoColor = new Color("294334"),
-            Roughness = 0.96f,
-            Metallic = 0.01f
+            Name = "War3BattlefieldTerrain"
         };
-        AddChild(new MeshInstance3D
-        {
-            Name = "PlainBattlefield",
-            Mesh = new PlaneMesh { Size = size },
-            MaterialOverride = material,
-            Position = SimPlane3DTransform.ToWorld(center, -0.025f)
-        });
+        AddChild(presenter);
+        presenter.Initialize(
+            terrain,
+            new War3TerrainMaterialSet(
+                War3TerrainBlendStyle.DualGrid,
+                classicCliffMeshesEnabled: true),
+            cliffStyleMap: TerrainClassicCliffStyleMap.Uniform(terrain, 1));
     }
+
+    private float GroundWorldHeight(NVector2 position) =>
+        _terrain is null
+            ? 0f
+            : SimPlane3DTransform.ToWorldLength(_terrain.HeightAt(position));
 
     private void CreateHud()
     {
@@ -1058,6 +1121,27 @@ public sealed partial class War3Rts : Node3D
             _presenter.SawConstructionGhost &&
             _presenter.FoundationAppearedAfterApproach &&
             _presenter.PointerPreviewUsesWar3Model;
+        var terrainReady = _terrain is not null &&
+                           _terrain.FormatVersion ==
+                           TerrainMapSnapshot.CurrentFormatVersion &&
+                           _terrain.HeightAt(War3HumanScenario.PlayerHome) >
+                           _terrain.HeightAt(
+                               (War3HumanScenario.PlayerHome +
+                                War3HumanScenario.EnemyHome) * 0.5f) + 32f &&
+                           _terrain.HeightAt(War3HumanScenario.EnemyHome) >
+                           _terrain.HeightAt(
+                               (War3HumanScenario.PlayerHome +
+                                War3HumanScenario.EnemyHome) * 0.5f) + 32f &&
+                           _terrain.Cells.ToArray().Count(
+                               static cell => cell.IsRamp) == 16 &&
+                           _simulation.World.IsSegmentFree(
+                               new NVector2(1_104f, 960f),
+                               new NVector2(1_232f, 960f),
+                               6f) &&
+                           _simulation.World.IsSegmentFree(
+                               new NVector2(1_968f, 960f),
+                               new NVector2(2_096f, 960f),
+                               6f);
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
@@ -1075,7 +1159,7 @@ public sealed partial class War3Rts : Node3D
                       harvestingSynchronized && buildingAnimationsValid &&
                        buildingEffectsValid && _presenter.SawBlendedTransition &&
                        _presenter.RallyMarkerUsesWar3Model && attackFacingValid &&
-                       constructionPresentationValid;
+                        constructionPresentationValid && terrainReady;
         GD.Print(
             $"WAR3_RTS_SMOKE success={success} units={_presenter.PresentedUnitCount} " +
              $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
@@ -1099,7 +1183,8 @@ public sealed partial class War3Rts : Node3D
              $"placement_model={_presenter.PointerPreviewUsesWar3Model} " +
              $"animation_blend={_presenter.SawBlendedTransition} " +
             $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
-            $"attack_facing={attackFacingValid}");
+             $"attack_facing={attackFacingValid} terrain={terrainReady} " +
+             $"terrain_hash={_terrain?.StableHashText ?? "none"}");
         if (!_capture) GetTree().Quit(success ? 0 : 1);
     }
 
@@ -1127,14 +1212,14 @@ public sealed partial class War3Rts : Node3D
             War3HumanScenario.PlayerId,
             _smokeConstructionBuilder,
             farm,
-            new NVector2(170f, 1_000f));
+            War3HumanScenario.PlayerHome + new NVector2(-340f, 330f));
         if (!construction.Succeeded)
             throw new InvalidOperationException(
                 $"Smoke construction setup failed: {construction.Code}/" +
                 $"{construction.PlacementCode}.");
         _smokeConstructionBuilding = construction.BuildingId.Value;
         _presenter?.SetPointerPreview(
-            new NVector2(170f, 1_000f), farm.Size,
+            War3HumanScenario.PlayerHome + new NVector2(-340f, 330f), farm.Size,
             War3HumanContent.Buildings[War3HumanContent.Farm].ModelSource,
             valid: true);
         _presenter?.HidePointerPreview();
@@ -1206,7 +1291,10 @@ public sealed partial class War3Rts : Node3D
         for (var frame = 0; frame < 180; frame++)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var image = GetViewport().GetTexture().GetImage();
-        var path = ProjectSettings.GlobalizePath("user://war3_rts_capture.png");
+        var path = ProjectSettings.GlobalizePath(
+            _terrainCapture
+                ? "user://war3_rts_terrain_capture.png"
+                : "user://war3_rts_capture.png");
         var result = image.SavePng(path);
         GD.Print($"WAR3_RTS_CAPTURE {result}: {path}");
         if (!_smoke) GetTree().Quit(result == Error.Ok ? 0 : 1);

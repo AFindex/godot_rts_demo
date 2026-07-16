@@ -55,6 +55,7 @@ public partial class Rts3DCameraController : Node
     public float Distance => _desiredDistance;
     public float Yaw => _desiredYaw;
     public Func<Vector2, bool>? EdgeScrollBlocked { get; set; }
+    public Func<NVector2, float>? TargetWorldHeight { get; set; }
 
     private Camera3D? _camera;
     private SimRect _simulationBounds;
@@ -311,7 +312,9 @@ public partial class Rts3DCameraController : Node
     private void ApplyCameraTransform()
     {
         if (_camera is null) return;
-        var target = SimPlane3DTransform.ToWorld(_currentTarget);
+        var target = SimPlane3DTransform.ToWorld(
+            _currentTarget,
+            TargetWorldHeight?.Invoke(_currentTarget) ?? 0f);
         var horizontalDistance = MathF.Cos(_currentPitch) * _currentDistance;
         var offset = new Vector3(
             MathF.Sin(_currentYaw) * horizontalDistance,
