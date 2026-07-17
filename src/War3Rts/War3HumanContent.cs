@@ -31,7 +31,8 @@ public sealed record War3BuildingDefinition(
     string IconPath,
     string SpecialEffectSource = "",
     string ArmorClass = "",
-    bool Constructible = true);
+    bool Constructible = true,
+    float SelectionCircleScale = 0f);
 
 /// <summary>
 /// Human-faction composition boundary. Stable dense IDs remain in the core

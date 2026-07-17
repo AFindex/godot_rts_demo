@@ -62,11 +62,11 @@ internal sealed class War3StressTestMode
     private War3StressTestMode(string[] arguments)
     {
         _unitsPerTeam = IntegerArgument(
-            arguments, "--war3-stress-units-per-team=", 96, 8, 220);
+            arguments, "--war3-stress-units-per-team=", 96, 8, 4_096);
         _builderCount = IntegerArgument(
-            arguments, "--war3-stress-builders=", 8, 1, 24);
+            arguments, "--war3-stress-builders=", 8, 1, 256);
         _slotCount = IntegerArgument(
-            arguments, "--war3-stress-build-slots=", 24, 4, 64);
+            arguments, "--war3-stress-build-slots=", 24, 4, 1_024);
         _buildIntervalTicks = IntegerArgument(
             arguments, "--war3-stress-build-interval=", 30, 1, 600);
         _buildingLifetimeTicks = IntegerArgument(
@@ -288,8 +288,7 @@ internal sealed class War3StressTestMode
     {
         if (_simulation is null || _production is null) return;
         var profile = _production.UnitType(War3HumanContent.Peasant);
-        for (var index = 0; index < _builderCount &&
-             _simulation.Units.Count < _simulation.Units.Capacity; index++)
+        for (var index = 0; index < _builderCount; index++)
         {
             var slot = _slots.Length == 0
                 ? playerHome
@@ -336,8 +335,7 @@ internal sealed class War3StressTestMode
         List<int> units,
         ref int ordinal)
     {
-        if (_simulation is null || _production is null ||
-            _simulation.Units.Count >= _simulation.Units.Capacity)
+        if (_simulation is null || _production is null)
             return false;
         int[] unitTypes =
         [

@@ -12,10 +12,10 @@ public static class War3SpatialSizingSelfTest
         {
             Vector2[] expectedBuildingSizes =
             [
-                new(32f, 32f), new(64f, 64f), new(96f, 96f), new(64f, 64f),
-                new(48f, 48f), new(80f, 80f), new(64f, 64f), new(64f, 64f),
-                new(64f, 64f), new(64f, 64f), new(32f, 32f), new(96f, 96f),
-                new(96f, 96f), new(32f, 32f), new(32f, 32f), new(32f, 32f)
+                new(32f, 32f), new(96f, 96f), new(128f, 128f), new(64f, 64f),
+                new(80f, 80f), new(80f, 80f), new(96f, 96f), new(96f, 96f),
+                new(64f, 64f), new(96f, 96f), new(32f, 32f), new(128f, 128f),
+                new(128f, 128f), new(32f, 32f), new(32f, 32f), new(32f, 32f)
             ];
             var buildings = War3HumanContent.CreateBuildingCatalog().Types.ToArray();
             var buildingFit = buildings.Length == expectedBuildingSizes.Length &&
@@ -25,6 +25,8 @@ public static class War3SpatialSizingSelfTest
                 War3HumanContent.DataCatalog.TryGetEditorValue(
                     value.ObjectId, "UnitData", "pathTex", out var path) &&
                 path is not "_" and not "-");
+            var selectionScaleCoverage = War3HumanContent.Buildings.All(value =>
+                value.SelectionCircleScale > 0f);
 
             var production = War3HumanContent.CreateProductionCatalog();
             var policy = War3GameplayImportPolicy.Default;
@@ -48,11 +50,13 @@ public static class War3SpatialSizingSelfTest
             var upgrades = War3HumanContent.CreateBuildingUpgradeCatalog();
             var upgradeFit = upgrades.Profiles.ToArray().All(value =>
                 buildings[value.SourceBuildingTypeId].Size == value.TargetType.Size);
-            var passed = buildingFit && pathingCoverage && radiusFit && upgradeFit;
+            var passed = buildingFit && pathingCoverage && selectionScaleCoverage &&
+                         radiusFit && upgradeFit;
             return new SelfTestResult(
                 passed,
                 $"buildings={buildingFit}/{buildings.Length}, " +
-                $"pathing={pathingCoverage}, units={radiusFit}/" +
+                $"pathing={pathingCoverage}, circles={selectionScaleCoverage}, " +
+                $"units={radiusFit}/" +
                 $"{War3HumanContent.Units.Count}, upgrades={upgradeFit}, " +
                 $"unit_scale={policy.UnitCollisionRadiusScale:0.###}, " +
                 $"path_cell={policy.PathingCellSize:0.###}");

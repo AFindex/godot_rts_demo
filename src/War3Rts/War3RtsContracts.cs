@@ -74,6 +74,24 @@ public readonly record struct War3QueueItemSnapshot(
     string Tooltip,
     bool CanCancel = true);
 
+/// <summary>
+/// One mini portrait in Warcraft's multi-selection information card. Entries
+/// are already ordered by subgroup priority and capped by the runtime at the
+/// classic twelve-selection limit.
+/// </summary>
+public readonly record struct War3SelectionGroupEntry(
+    int EntityId,
+    bool Building,
+    int TypeId,
+    string SubgroupKey,
+    string Name,
+    string IconPath,
+    float HealthRatio,
+    float ManaRatio,
+    bool ActiveSubgroup,
+    bool Debuffed,
+    int HeroLevel = 0);
+
 public sealed record War3SelectionSnapshot(
     string Title,
     string Subtitle,
@@ -110,6 +128,9 @@ public sealed record War3SelectionSnapshot(
     public bool IsHero { get; init; }
     public bool SupportsInventory { get; init; }
     public int InventorySlotCount { get; init; }
+    public War3SelectionGroupEntry[] GroupEntries { get; init; } = [];
+    public bool IsConstructing { get; init; }
+    public float ConstructionProgress { get; init; }
 
     public static War3SelectionSnapshot Empty { get; } = new(
         "未选择单位", "左键选择，拖动框选", 0f, 0f,

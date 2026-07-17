@@ -190,69 +190,157 @@ public sealed class UnitStore
     }
 
     public int Count { get; private set; }
-    public int Capacity { get; }
-    public Vector2[] Positions { get; }
-    public bool[] Alive { get; }
-    public Vector2[] PreviousPositions { get; }
-    public float[] Facings { get; }
-    public float[] PreviousFacings { get; }
-    public float[] TurnRatesRadiansPerSecond { get; }
-    public Vector2[] Velocities { get; }
-    public Vector2[] PreferredVelocities { get; }
-    public Vector2[] NextVelocities { get; }
-    public Vector2[] SlotTargets { get; }
-    public Vector2[] MoveGoals { get; }
-    public UnitMovementGoalKind[] MovementGoalKinds { get; }
-    public SimRect[] MovementGoalBounds { get; }
-    public float[] MovementGoalRadii { get; }
-    public int[] MovementGoalTargetIds { get; }
-    public UnitMovementLegResult[] MovementLegResults { get; }
-    public float[] Radii { get; }
-    public MovementClass[] MovementClasses { get; }
-    public float[] NavigationRadii { get; }
-    public float[] MaxSpeeds { get; }
-    public float[] Accelerations { get; }
-    public UnitMoveMode[] Modes { get; }
-    public UnitPath?[] Paths { get; }
-    public Vector2[][] RouteWaypoints { get; }
-    public int[] CommandVersions { get; }
-    public bool[] PathPending { get; }
-    public sbyte[] AvoidanceSides { get; }
-    public short[] AvoidanceLockTicks { get; }
-    public Vector2[] ProgressOrigins { get; }
-    public float[] ProgressTimers { get; }
-    public float[] ProgressBestDistances { get; }
-    public float[] RepathCooldowns { get; }
-    public Vector2[] CollisionCorrections { get; }
-    public int[] ActiveChokeIds { get; }
-    public sbyte[] ChokeDirections { get; }
-    public float[] ChokeLaneOffsets { get; }
-    public ChokePhase[] ChokePhases { get; }
-    public bool[] ChokeAdmitted { get; }
-    public int[] ChokeQueueRanks { get; }
-    public int[] ChokeWaitTicks { get; }
-    public bool[] BlockedByNavigation { get; }
-    public RecoveryStage[] RecoveryStages { get; }
-    public int[] RecoveryEventCounts { get; }
-    public float[] RecoveryStableTimers { get; }
-    public byte[] RecoveryRetryCounts { get; }
-    public int[] MovementGroupIds { get; }
-    public int[] MovementGroupSizes { get; }
-    public long[] SlotReflowCooldownTicks { get; }
-    public float[] DestinationBestDistances { get; }
-    public int[] DestinationStallTicks { get; }
-    public int[] DestinationNearTicks { get; }
-    public bool[] DestinationOverflowed { get; }
-    public DestinationYieldPhase[] DestinationYieldPhases { get; }
-    public Vector2[] DestinationYieldReturnTargets { get; }
-    public Vector2[] DestinationYieldPoints { get; }
-    public int[] DestinationYieldForUnits { get; }
-    public int[] DestinationYieldForCommandVersions { get; }
-    public long[] DestinationYieldDeadlines { get; }
-    public long[] DestinationYieldCooldownTicks { get; }
-    public int[] DynamicBlockageTicks { get; }
-    public float[] DynamicBlockageBestDistances { get; }
-    public int[] ReservationMigrationTicks { get; }
+    public int Capacity { get; private set; }
+    public Vector2[] Positions { get; private set; }
+    public bool[] Alive { get; private set; }
+    public Vector2[] PreviousPositions { get; private set; }
+    public float[] Facings { get; private set; }
+    public float[] PreviousFacings { get; private set; }
+    public float[] TurnRatesRadiansPerSecond { get; private set; }
+    public Vector2[] Velocities { get; private set; }
+    public Vector2[] PreferredVelocities { get; private set; }
+    public Vector2[] NextVelocities { get; private set; }
+    public Vector2[] SlotTargets { get; private set; }
+    public Vector2[] MoveGoals { get; private set; }
+    public UnitMovementGoalKind[] MovementGoalKinds { get; private set; }
+    public SimRect[] MovementGoalBounds { get; private set; }
+    public float[] MovementGoalRadii { get; private set; }
+    public int[] MovementGoalTargetIds { get; private set; }
+    public UnitMovementLegResult[] MovementLegResults { get; private set; }
+    public float[] Radii { get; private set; }
+    public MovementClass[] MovementClasses { get; private set; }
+    public float[] NavigationRadii { get; private set; }
+    public float[] MaxSpeeds { get; private set; }
+    public float[] Accelerations { get; private set; }
+    public UnitMoveMode[] Modes { get; private set; }
+    public UnitPath?[] Paths { get; private set; }
+    public Vector2[][] RouteWaypoints { get; private set; }
+    public int[] CommandVersions { get; private set; }
+    public bool[] PathPending { get; private set; }
+    public sbyte[] AvoidanceSides { get; private set; }
+    public short[] AvoidanceLockTicks { get; private set; }
+    public Vector2[] ProgressOrigins { get; private set; }
+    public float[] ProgressTimers { get; private set; }
+    public float[] ProgressBestDistances { get; private set; }
+    public float[] RepathCooldowns { get; private set; }
+    public Vector2[] CollisionCorrections { get; private set; }
+    public int[] ActiveChokeIds { get; private set; }
+    public sbyte[] ChokeDirections { get; private set; }
+    public float[] ChokeLaneOffsets { get; private set; }
+    public ChokePhase[] ChokePhases { get; private set; }
+    public bool[] ChokeAdmitted { get; private set; }
+    public int[] ChokeQueueRanks { get; private set; }
+    public int[] ChokeWaitTicks { get; private set; }
+    public bool[] BlockedByNavigation { get; private set; }
+    public RecoveryStage[] RecoveryStages { get; private set; }
+    public int[] RecoveryEventCounts { get; private set; }
+    public float[] RecoveryStableTimers { get; private set; }
+    public byte[] RecoveryRetryCounts { get; private set; }
+    public int[] MovementGroupIds { get; private set; }
+    public int[] MovementGroupSizes { get; private set; }
+    public long[] SlotReflowCooldownTicks { get; private set; }
+    public float[] DestinationBestDistances { get; private set; }
+    public int[] DestinationStallTicks { get; private set; }
+    public int[] DestinationNearTicks { get; private set; }
+    public bool[] DestinationOverflowed { get; private set; }
+    public DestinationYieldPhase[] DestinationYieldPhases { get; private set; }
+    public Vector2[] DestinationYieldReturnTargets { get; private set; }
+    public Vector2[] DestinationYieldPoints { get; private set; }
+    public int[] DestinationYieldForUnits { get; private set; }
+    public int[] DestinationYieldForCommandVersions { get; private set; }
+    public long[] DestinationYieldDeadlines { get; private set; }
+    public long[] DestinationYieldCooldownTicks { get; private set; }
+    public int[] DynamicBlockageTicks { get; private set; }
+    public float[] DynamicBlockageBestDistances { get; private set; }
+    public int[] ReservationMigrationTicks { get; private set; }
+
+    internal void EnsureCapacity(int capacity)
+    {
+        if (capacity <= Capacity)
+        {
+            return;
+        }
+
+        var previous = Capacity;
+        Positions = Grow(Positions, capacity);
+        Alive = Grow(Alive, capacity);
+        PreviousPositions = Grow(PreviousPositions, capacity);
+        Facings = Grow(Facings, capacity);
+        PreviousFacings = Grow(PreviousFacings, capacity);
+        TurnRatesRadiansPerSecond = Grow(
+            TurnRatesRadiansPerSecond, capacity);
+        Velocities = Grow(Velocities, capacity);
+        PreferredVelocities = Grow(PreferredVelocities, capacity);
+        NextVelocities = Grow(NextVelocities, capacity);
+        SlotTargets = Grow(SlotTargets, capacity);
+        MoveGoals = Grow(MoveGoals, capacity);
+        MovementGoalKinds = Grow(MovementGoalKinds, capacity);
+        MovementGoalBounds = Grow(MovementGoalBounds, capacity);
+        MovementGoalRadii = Grow(MovementGoalRadii, capacity);
+        MovementGoalTargetIds = Grow(MovementGoalTargetIds, capacity);
+        MovementLegResults = Grow(MovementLegResults, capacity);
+        Radii = Grow(Radii, capacity);
+        MovementClasses = Grow(MovementClasses, capacity);
+        NavigationRadii = Grow(NavigationRadii, capacity);
+        MaxSpeeds = Grow(MaxSpeeds, capacity);
+        Accelerations = Grow(Accelerations, capacity);
+        Modes = Grow(Modes, capacity);
+        Paths = Grow(Paths, capacity);
+        RouteWaypoints = Grow(RouteWaypoints, capacity);
+        CommandVersions = Grow(CommandVersions, capacity);
+        PathPending = Grow(PathPending, capacity);
+        AvoidanceSides = Grow(AvoidanceSides, capacity);
+        AvoidanceLockTicks = Grow(AvoidanceLockTicks, capacity);
+        ProgressOrigins = Grow(ProgressOrigins, capacity);
+        ProgressTimers = Grow(ProgressTimers, capacity);
+        ProgressBestDistances = Grow(ProgressBestDistances, capacity);
+        RepathCooldowns = Grow(RepathCooldowns, capacity);
+        CollisionCorrections = Grow(CollisionCorrections, capacity);
+        ActiveChokeIds = Grow(ActiveChokeIds, capacity);
+        ChokeDirections = Grow(ChokeDirections, capacity);
+        ChokeLaneOffsets = Grow(ChokeLaneOffsets, capacity);
+        ChokePhases = Grow(ChokePhases, capacity);
+        ChokeAdmitted = Grow(ChokeAdmitted, capacity);
+        ChokeQueueRanks = Grow(ChokeQueueRanks, capacity);
+        ChokeWaitTicks = Grow(ChokeWaitTicks, capacity);
+        BlockedByNavigation = Grow(BlockedByNavigation, capacity);
+        RecoveryStages = Grow(RecoveryStages, capacity);
+        RecoveryEventCounts = Grow(RecoveryEventCounts, capacity);
+        RecoveryStableTimers = Grow(RecoveryStableTimers, capacity);
+        RecoveryRetryCounts = Grow(RecoveryRetryCounts, capacity);
+        MovementGroupIds = Grow(MovementGroupIds, capacity);
+        MovementGroupSizes = Grow(MovementGroupSizes, capacity);
+        SlotReflowCooldownTicks = Grow(SlotReflowCooldownTicks, capacity);
+        DestinationBestDistances = Grow(DestinationBestDistances, capacity);
+        DestinationStallTicks = Grow(DestinationStallTicks, capacity);
+        DestinationNearTicks = Grow(DestinationNearTicks, capacity);
+        DestinationOverflowed = Grow(DestinationOverflowed, capacity);
+        DestinationYieldPhases = Grow(DestinationYieldPhases, capacity);
+        DestinationYieldReturnTargets = Grow(
+            DestinationYieldReturnTargets, capacity);
+        DestinationYieldPoints = Grow(DestinationYieldPoints, capacity);
+        DestinationYieldForUnits = Grow(
+            DestinationYieldForUnits, capacity);
+        DestinationYieldForCommandVersions = Grow(
+            DestinationYieldForCommandVersions, capacity);
+        DestinationYieldDeadlines = Grow(DestinationYieldDeadlines, capacity);
+        DestinationYieldCooldownTicks = Grow(
+            DestinationYieldCooldownTicks, capacity);
+        DynamicBlockageTicks = Grow(DynamicBlockageTicks, capacity);
+        DynamicBlockageBestDistances = Grow(
+            DynamicBlockageBestDistances, capacity);
+        ReservationMigrationTicks = Grow(
+            ReservationMigrationTicks, capacity);
+
+        Array.Fill(MovementGoalTargetIds, -1, previous, capacity - previous);
+        Array.Fill(ActiveChokeIds, -1, previous, capacity - previous);
+        Array.Fill(DestinationYieldForUnits, -1, previous, capacity - previous);
+        for (var unit = previous; unit < capacity; unit++)
+        {
+            RouteWaypoints[unit] = [];
+        }
+        Capacity = capacity;
+    }
 
     public int Add(
         Vector2 position,
@@ -431,4 +519,11 @@ public sealed class UnitStore
 
     private static void Copy<T>(T[] source, T[] destination) =>
         Array.Copy(source, destination, source.Length);
+
+    private static T[] Grow<T>(T[] source, int capacity)
+    {
+        var result = new T[capacity];
+        Array.Copy(source, result, source.Length);
+        return result;
+    }
 }

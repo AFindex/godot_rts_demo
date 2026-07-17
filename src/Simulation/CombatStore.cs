@@ -385,66 +385,153 @@ public sealed class CombatStore
         Array.Fill(AttackCooldownMultipliers, 1f);
     }
 
-    public int[] Teams { get; }
-    public float[] Health { get; }
-    public float[] MaximumHealth { get; }
-    public float[] AttackDamage { get; }
-    public float[] Armor { get; }
-    public CombatArmorType[] ArmorTypes { get; }
-    public int[] ArmorUpgradeTechnologyIds { get; }
-    public float[] ArmorUpgradePerLevel { get; }
-    public CombatAttribute[] Attributes { get; }
-    public int[] AttacksPerVolley { get; }
-    public CombatAttribute[] BonusVs { get; }
-    public float[] BonusDamage { get; }
-    public float[] BaseUpgradeDamage { get; }
-    public float[] BonusUpgradeDamage { get; }
-    public float[] ProjectileSpeed { get; }
-    public bool[] CanMoveDuringWindup { get; }
-    public bool[] CanMoveDuringCooldown { get; }
-    public int[] AutoTargetPriority { get; }
-    public CombatAttackType[] AttackTypes { get; }
-    public int[] DamageUpgradeTechnologyIds { get; }
-    public float[] MinimumAttackRanges { get; }
-    public CombatWeaponAreaSnapshot[] WeaponAreas { get; }
-    public CombatWeaponPropagationSnapshot[] WeaponPropagations { get; }
-    public UnitConcealmentKind[] ConcealmentKinds { get; }
-    public UnitConcealmentCapabilitySnapshot[] ConcealmentCapabilities { get; }
-    public UnitConcealmentPhase[] ConcealmentPhases { get; }
-    public float[] ConcealmentTransitionRemaining { get; }
-    public float[] DetectionRanges { get; }
-    public float[] BaseVisionRanges { get; }
-    public float[] VisionRanges { get; }
-    public float[] ObservationHeights { get; }
-    public TerrainVisionMode[] TerrainVisionModes { get; }
-    public float[] AttackRanges { get; }
-    public float[] AcquisitionRanges { get; }
-    public float[] AttackCooldownDurations { get; }
-    public float[] AttackWindupDurations { get; }
-    public float[] LeashDistances { get; }
-    public CombatPositioningKind[] PositioningKinds { get; }
-    public UnitCommandIntent[] CommandIntents { get; }
-    public CombatPhase[] Phases { get; }
-    public int[] TargetUnits { get; }
-    public int[] TargetBuildings { get; }
-    public CombatTargetKind[] TargetKinds { get; }
-    public Vector2[] AttackMoveGoals { get; }
-    public Vector2[] EngagementOrigins { get; }
-    public Vector2[] LastChaseTargets { get; }
-    public Vector2[] AttackSlotTargets { get; }
-    public float[] AttackSlotAngles { get; }
-    public float[] AttackSlotRadii { get; }
-    public bool[] HasAttackSlots { get; }
-    public float[] CooldownRemaining { get; }
-    public float[] WindupRemaining { get; }
-    public float[] ChaseRepathRemaining { get; }
-    public float[] TargetLockRemaining { get; }
-    public ImmutableArray<CombatWeaponProfileSnapshot>[] WeaponProfiles { get; }
-    public int[] ActiveWeaponSlots { get; }
-    public float[] AttackDamageMultipliers { get; }
-    public float[] AttackDamageAdds { get; }
-    public float[] AttackCooldownMultipliers { get; }
-    public float[] AttackHalfAngles { get; }
+    public int[] Teams { get; private set; }
+    public float[] Health { get; private set; }
+    public float[] MaximumHealth { get; private set; }
+    public float[] AttackDamage { get; private set; }
+    public float[] Armor { get; private set; }
+    public CombatArmorType[] ArmorTypes { get; private set; }
+    public int[] ArmorUpgradeTechnologyIds { get; private set; }
+    public float[] ArmorUpgradePerLevel { get; private set; }
+    public CombatAttribute[] Attributes { get; private set; }
+    public int[] AttacksPerVolley { get; private set; }
+    public CombatAttribute[] BonusVs { get; private set; }
+    public float[] BonusDamage { get; private set; }
+    public float[] BaseUpgradeDamage { get; private set; }
+    public float[] BonusUpgradeDamage { get; private set; }
+    public float[] ProjectileSpeed { get; private set; }
+    public bool[] CanMoveDuringWindup { get; private set; }
+    public bool[] CanMoveDuringCooldown { get; private set; }
+    public int[] AutoTargetPriority { get; private set; }
+    public CombatAttackType[] AttackTypes { get; private set; }
+    public int[] DamageUpgradeTechnologyIds { get; private set; }
+    public float[] MinimumAttackRanges { get; private set; }
+    public CombatWeaponAreaSnapshot[] WeaponAreas { get; private set; }
+    public CombatWeaponPropagationSnapshot[] WeaponPropagations { get; private set; }
+    public UnitConcealmentKind[] ConcealmentKinds { get; private set; }
+    public UnitConcealmentCapabilitySnapshot[] ConcealmentCapabilities { get; private set; }
+    public UnitConcealmentPhase[] ConcealmentPhases { get; private set; }
+    public float[] ConcealmentTransitionRemaining { get; private set; }
+    public float[] DetectionRanges { get; private set; }
+    public float[] BaseVisionRanges { get; private set; }
+    public float[] VisionRanges { get; private set; }
+    public float[] ObservationHeights { get; private set; }
+    public TerrainVisionMode[] TerrainVisionModes { get; private set; }
+    public float[] AttackRanges { get; private set; }
+    public float[] AcquisitionRanges { get; private set; }
+    public float[] AttackCooldownDurations { get; private set; }
+    public float[] AttackWindupDurations { get; private set; }
+    public float[] LeashDistances { get; private set; }
+    public CombatPositioningKind[] PositioningKinds { get; private set; }
+    public UnitCommandIntent[] CommandIntents { get; private set; }
+    public CombatPhase[] Phases { get; private set; }
+    public int[] TargetUnits { get; private set; }
+    public int[] TargetBuildings { get; private set; }
+    public CombatTargetKind[] TargetKinds { get; private set; }
+    public Vector2[] AttackMoveGoals { get; private set; }
+    public Vector2[] EngagementOrigins { get; private set; }
+    public Vector2[] LastChaseTargets { get; private set; }
+    public Vector2[] AttackSlotTargets { get; private set; }
+    public float[] AttackSlotAngles { get; private set; }
+    public float[] AttackSlotRadii { get; private set; }
+    public bool[] HasAttackSlots { get; private set; }
+    public float[] CooldownRemaining { get; private set; }
+    public float[] WindupRemaining { get; private set; }
+    public float[] ChaseRepathRemaining { get; private set; }
+    public float[] TargetLockRemaining { get; private set; }
+    public ImmutableArray<CombatWeaponProfileSnapshot>[] WeaponProfiles { get; private set; }
+    public int[] ActiveWeaponSlots { get; private set; }
+    public float[] AttackDamageMultipliers { get; private set; }
+    public float[] AttackDamageAdds { get; private set; }
+    public float[] AttackCooldownMultipliers { get; private set; }
+    public float[] AttackHalfAngles { get; private set; }
+
+    internal void EnsureCapacity(int capacity)
+    {
+        if (capacity <= Teams.Length)
+        {
+            return;
+        }
+
+        var previous = Teams.Length;
+        Teams = Grow(Teams, capacity);
+        Health = Grow(Health, capacity);
+        MaximumHealth = Grow(MaximumHealth, capacity);
+        AttackDamage = Grow(AttackDamage, capacity);
+        Armor = Grow(Armor, capacity);
+        ArmorTypes = Grow(ArmorTypes, capacity);
+        ArmorUpgradeTechnologyIds = Grow(
+            ArmorUpgradeTechnologyIds, capacity);
+        ArmorUpgradePerLevel = Grow(ArmorUpgradePerLevel, capacity);
+        Attributes = Grow(Attributes, capacity);
+        AttacksPerVolley = Grow(AttacksPerVolley, capacity);
+        BonusVs = Grow(BonusVs, capacity);
+        BonusDamage = Grow(BonusDamage, capacity);
+        BaseUpgradeDamage = Grow(BaseUpgradeDamage, capacity);
+        BonusUpgradeDamage = Grow(BonusUpgradeDamage, capacity);
+        ProjectileSpeed = Grow(ProjectileSpeed, capacity);
+        CanMoveDuringWindup = Grow(CanMoveDuringWindup, capacity);
+        CanMoveDuringCooldown = Grow(CanMoveDuringCooldown, capacity);
+        AutoTargetPriority = Grow(AutoTargetPriority, capacity);
+        AttackTypes = Grow(AttackTypes, capacity);
+        DamageUpgradeTechnologyIds = Grow(
+            DamageUpgradeTechnologyIds, capacity);
+        MinimumAttackRanges = Grow(MinimumAttackRanges, capacity);
+        WeaponAreas = Grow(WeaponAreas, capacity);
+        WeaponPropagations = Grow(WeaponPropagations, capacity);
+        ConcealmentKinds = Grow(ConcealmentKinds, capacity);
+        ConcealmentCapabilities = Grow(ConcealmentCapabilities, capacity);
+        ConcealmentPhases = Grow(ConcealmentPhases, capacity);
+        ConcealmentTransitionRemaining = Grow(
+            ConcealmentTransitionRemaining, capacity);
+        DetectionRanges = Grow(DetectionRanges, capacity);
+        BaseVisionRanges = Grow(BaseVisionRanges, capacity);
+        VisionRanges = Grow(VisionRanges, capacity);
+        ObservationHeights = Grow(ObservationHeights, capacity);
+        TerrainVisionModes = Grow(TerrainVisionModes, capacity);
+        AttackRanges = Grow(AttackRanges, capacity);
+        AcquisitionRanges = Grow(AcquisitionRanges, capacity);
+        AttackCooldownDurations = Grow(
+            AttackCooldownDurations, capacity);
+        AttackWindupDurations = Grow(AttackWindupDurations, capacity);
+        LeashDistances = Grow(LeashDistances, capacity);
+        PositioningKinds = Grow(PositioningKinds, capacity);
+        CommandIntents = Grow(CommandIntents, capacity);
+        Phases = Grow(Phases, capacity);
+        TargetUnits = Grow(TargetUnits, capacity);
+        TargetBuildings = Grow(TargetBuildings, capacity);
+        TargetKinds = Grow(TargetKinds, capacity);
+        AttackMoveGoals = Grow(AttackMoveGoals, capacity);
+        EngagementOrigins = Grow(EngagementOrigins, capacity);
+        LastChaseTargets = Grow(LastChaseTargets, capacity);
+        AttackSlotTargets = Grow(AttackSlotTargets, capacity);
+        AttackSlotAngles = Grow(AttackSlotAngles, capacity);
+        AttackSlotRadii = Grow(AttackSlotRadii, capacity);
+        HasAttackSlots = Grow(HasAttackSlots, capacity);
+        CooldownRemaining = Grow(CooldownRemaining, capacity);
+        WindupRemaining = Grow(WindupRemaining, capacity);
+        ChaseRepathRemaining = Grow(ChaseRepathRemaining, capacity);
+        TargetLockRemaining = Grow(TargetLockRemaining, capacity);
+        WeaponProfiles = Grow(WeaponProfiles, capacity);
+        ActiveWeaponSlots = Grow(ActiveWeaponSlots, capacity);
+        AttackDamageMultipliers = Grow(AttackDamageMultipliers, capacity);
+        AttackDamageAdds = Grow(AttackDamageAdds, capacity);
+        AttackCooldownMultipliers = Grow(
+            AttackCooldownMultipliers, capacity);
+        AttackHalfAngles = Grow(AttackHalfAngles, capacity);
+
+        Array.Fill(ArmorUpgradeTechnologyIds, -1,
+            previous, capacity - previous);
+        Array.Fill(DamageUpgradeTechnologyIds, -1,
+            previous, capacity - previous);
+        Array.Fill(TargetUnits, -1, previous, capacity - previous);
+        Array.Fill(TargetBuildings, -1, previous, capacity - previous);
+        Array.Fill(ActiveWeaponSlots, -1, previous, capacity - previous);
+        Array.Fill(AttackDamageMultipliers, 1f,
+            previous, capacity - previous);
+        Array.Fill(AttackCooldownMultipliers, 1f,
+            previous, capacity - previous);
+    }
 
     public void Register(
         int unit,
@@ -759,6 +846,13 @@ public sealed class CombatStore
 
     private static void Copy<T>(T[] source, T[] destination) =>
         Array.Copy(source, destination, source.Length);
+
+    private static T[] Grow<T>(T[] source, int capacity)
+    {
+        var result = new T[capacity];
+        Array.Copy(source, result, source.Length);
+        return result;
+    }
 
     public void SetCommand(
         int unit,

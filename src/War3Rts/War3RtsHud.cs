@@ -15,6 +15,7 @@ public sealed partial class War3RtsHud : Control
     private const float PortraitMaskScale = 0.98f;
     private const float PortraitBarWidth = 98f * PortraitMaskScale;
     private const float PortraitBarHeight = 14f * PortraitMaskScale;
+    private const int MaximumSelectionGroupEntries = 12;
     private static readonly Vector2 PortraitSlotPosition = new(270f, 69f);
     private static readonly Vector2 PortraitSlotSize = new(93f, 100f);
     private static readonly Vector2 PortraitMaskPosition = new(
@@ -90,6 +91,19 @@ public sealed partial class War3RtsHud : Control
     private Control? _inventoryPanel;
     private TextureRect? _inventoryCover;
     private Control? _selectionDetails;
+    private Control? _selectionGroupPanel;
+    private Label? _selectionGroupHeader;
+    private readonly Button[] _selectionGroupButtons =
+        new Button[MaximumSelectionGroupEntries];
+    private readonly ColorRect[] _selectionGroupHealthFills =
+        new ColorRect[MaximumSelectionGroupEntries];
+    private readonly ColorRect[] _selectionGroupManaFills =
+        new ColorRect[MaximumSelectionGroupEntries];
+    private readonly War3SelectionGroupEntry?[] _selectionGroupSlotEntries =
+        new War3SelectionGroupEntry?[MaximumSelectionGroupEntries];
+    private Control? _constructionProgressPanel;
+    private TextureProgressBar? _constructionProgress;
+    private Label? _constructionProgressLabel;
     private Control? _queuePanel;
     private TextureRect? _queueBackdrop;
     private Label? _queueActionLabel;
@@ -121,6 +135,7 @@ public sealed partial class War3RtsHud : Control
 
     public event Action<War3CommandSnapshot>? CommandRequested;
     public event Action<War3QueueItemSnapshot>? QueueItemCancelRequested;
+    public event Action<War3SelectionGroupEntry>? SelectionGroupEntryRequested;
     public event Action? ReturnRequested;
     public event Action<System.Numerics.Vector2>? MinimapFocusRequested;
 
@@ -132,8 +147,14 @@ public sealed partial class War3RtsHud : Control
     public bool ActiveQueueIconReady => _queueButtons[0]?.Icon is not null;
     public bool QueuePanelVisible => _queuePanel?.Visible == true;
     public bool SelectionDetailsVisible => _selectionDetails?.Visible == true;
+    public bool SelectionGroupVisible => _selectionGroupPanel?.Visible == true;
+    public int VisibleSelectionGroupEntryCount =>
+        _selectionGroupButtons.Count(button => button?.Visible == true);
+    public bool ConstructionProgressVisible =>
+        _constructionProgressPanel?.Visible == true;
     public bool QueuePresentationExclusive =>
-        QueuePanelVisible != SelectionDetailsVisible;
+        new[] { QueuePanelVisible, SelectionDetailsVisible, SelectionGroupVisible }
+            .Count(value => value) == 1;
     public bool QueueIconsAboveBackdrop =>
         _queueButtons.All(button => button is not null && button.ZIndex > 10);
     public bool MinimapAspectFitReady =>
@@ -270,10 +291,19 @@ public sealed partial class War3RtsHud : Control
         }
         UpdateHeroAndInventory(snapshot.Selection);
         var queueVisible = snapshot.Selection.QueueItems.Length > 0;
-        _selectionDetails!.Visible = !queueVisible;
-        _selectionDetails.ProcessMode = queueVisible
+        var groupVisible = !queueVisible &&
+                           snapshot.Selection.GroupEntries.Length > 1;
+        _selectionDetails!.Visible = !queueVisible && !groupVisible;
+        _selectionDetails.ProcessMode = queueVisible || groupVisible
             ? ProcessModeEnum.Disabled
             : ProcessModeEnum.Inherit;
+        _selectionGroupPanel!.Visible = groupVisible;
+        _selectionGroupPanel.ProcessMode = groupVisible
+            ? ProcessModeEnum.Inherit
+            : ProcessModeEnum.Disabled;
+        _selectionGroupPanel.MouseFilter = groupVisible
+            ? MouseFilterEnum.Pass
+            : MouseFilterEnum.Ignore;
         _queuePanel!.Visible = queueVisible;
         _queuePanel.ProcessMode = queueVisible
             ? ProcessModeEnum.Inherit
@@ -282,6 +312,8 @@ public sealed partial class War3RtsHud : Control
             ? MouseFilterEnum.Pass
             : MouseFilterEnum.Ignore;
         UpdateQueue(snapshot.Selection);
+        UpdateSelectionGroup(snapshot.Selection);
+        UpdateConstructionProgress(snapshot.Selection);
         _mode!.Text = snapshot.Mode;
         _status!.Text = snapshot.Status;
         UpdatePortrait(snapshot.Selection);
@@ -651,7 +683,122 @@ public sealed partial class War3RtsHud : Control
         _heroExperienceLabel.CustomMinimumSize = new Vector2(60f, 20f);
         _heroExperienceLabel.HorizontalAlignment = HorizontalAlignment.Right;
         _heroProgressPanel.AddChild(_heroExperienceLabel);
+        _constructionProgressPanel = new HBoxContainer
+        {
+            CustomMinimumSize = new Vector2(234f, 20f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            Visible = false
+        };
+        ((HBoxContainer)_constructionProgressPanel)
+            .AddThemeConstantOverride("separation", 5);
+        column.AddChild(_constructionProgressPanel);
+        _constructionProgressLabel = LabelText("建造 0%", 11, Gold);
+        _constructionProgressLabel.CustomMinimumSize = new Vector2(65f, 18f);
+        _constructionProgressPanel.AddChild(_constructionProgressLabel);
+        _constructionProgress = new TextureProgressBar
+        {
+            MinValue = 0d,
+            MaxValue = 100d,
+            Value = 0d,
+            FillMode = (int)TextureProgressBar.FillModeEnum.LeftToRight,
+            TextureProgress = War3RuntimeAssets.LoadTexture(
+                @"UI\Feedback\BuildProgressBar\human-buildprogressbar-fill.blp"),
+            TextureOver = War3RuntimeAssets.LoadTexture(
+                @"UI\Feedback\BuildProgressBar\human-buildprogressbar-border.blp"),
+            CustomMinimumSize = new Vector2(158f, 16f),
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _constructionProgressPanel.AddChild(_constructionProgress);
         AddBuildQueuePanel(content);
+        AddSelectionGroupPanel(content);
+    }
+
+    private void AddSelectionGroupPanel(Control parent)
+    {
+        _selectionGroupPanel = new Control
+        {
+            Name = "War3SelectionGroup",
+            Position = new Vector2(8f, 4f),
+            Size = new Vector2(240f, 138f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            ProcessMode = ProcessModeEnum.Disabled,
+            Visible = false,
+            ZIndex = 35
+        };
+        parent.AddChild(_selectionGroupPanel);
+        _selectionGroupHeader = LabelText("编队", 11, Gold);
+        _selectionGroupHeader.Position = new Vector2(2f, 0f);
+        _selectionGroupHeader.Size = new Vector2(236f, 18f);
+        _selectionGroupHeader.HorizontalAlignment = HorizontalAlignment.Center;
+        _selectionGroupHeader.MouseFilter = MouseFilterEnum.Ignore;
+        _selectionGroupPanel.AddChild(_selectionGroupHeader);
+
+        const float cellWidth = 58f;
+        const float cellHeight = 39f;
+        for (var index = 0; index < MaximumSelectionGroupEntries; index++)
+        {
+            var button = new Button
+            {
+                Name = $"SelectionPortrait{index + 1}",
+                Position = new Vector2(
+                    index % 4 * cellWidth + 10f,
+                    18f + index / 4 * cellHeight + 3f),
+                Size = new Vector2(38f, 32f),
+                ExpandIcon = true,
+                FocusMode = FocusModeEnum.None,
+                MouseFilter = MouseFilterEnum.Stop,
+                Visible = false
+            };
+            button.AddThemeStyleboxOverride(
+                "normal", Box(new Color("09121be8"), Border, 1, 1));
+            button.AddThemeStyleboxOverride(
+                "hover", Box(Raised, Gold, 1, 2));
+            button.AddThemeStyleboxOverride(
+                "pressed", Box(Ink, Gold, 1, 2));
+            var slot = index;
+            button.Pressed += () =>
+            {
+                if (_selectionGroupSlotEntries[slot] is { } entry)
+                    SelectionGroupEntryRequested?.Invoke(entry);
+            };
+            _selectionGroupPanel.AddChild(button);
+            _selectionGroupButtons[index] = button;
+
+            var healthBack = new ColorRect
+            {
+                Position = new Vector2(2f, 25f),
+                Size = new Vector2(34f, 3f),
+                Color = new Color("210909"),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            button.AddChild(healthBack);
+            var health = new ColorRect
+            {
+                Size = healthBack.Size,
+                Color = new Color("35b54a"),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            healthBack.AddChild(health);
+            _selectionGroupHealthFills[index] = health;
+
+            var manaBack = new ColorRect
+            {
+                Position = new Vector2(2f, 29f),
+                Size = new Vector2(34f, 2f),
+                Color = new Color("071629"),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            button.AddChild(manaBack);
+            var mana = new ColorRect
+            {
+                Size = manaBack.Size,
+                Color = new Color("1766bb"),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            manaBack.AddChild(mana);
+            _selectionGroupManaFills[index] = mana;
+        }
     }
 
     private void AddInventory(Control parent)
@@ -984,6 +1131,95 @@ public sealed partial class War3RtsHud : Control
         }
         if (_inventoryCover is not null)
             _inventoryCover.Visible = !selection.SupportsInventory;
+    }
+
+    private void UpdateConstructionProgress(War3SelectionSnapshot selection)
+    {
+        if (_constructionProgressPanel is null ||
+            _constructionProgress is null ||
+            _constructionProgressLabel is null)
+            return;
+        _constructionProgressPanel.Visible = selection.IsConstructing;
+        var progress = Math.Clamp(selection.ConstructionProgress, 0f, 1f);
+        _constructionProgress.Value = progress * 100d;
+        _constructionProgressLabel.Text = selection.IsConstructing
+            ? $"建造 {progress:P0}"
+            : string.Empty;
+    }
+
+    private void UpdateSelectionGroup(War3SelectionSnapshot selection)
+    {
+        if (_selectionGroupPanel is null || _selectionGroupHeader is null)
+            return;
+        var entries = selection.GroupEntries;
+        var subgroupKeys = entries.Select(value => value.SubgroupKey)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var activeKey = entries.FirstOrDefault(value => value.ActiveSubgroup)
+            .SubgroupKey;
+        var activeIndex = Array.IndexOf(subgroupKeys, activeKey);
+        _selectionGroupHeader.Text = entries.Length > 1
+            ? $"编队 {entries.Length}/{MaximumSelectionGroupEntries} · " +
+              $"子组 {Math.Max(0, activeIndex) + 1}/{subgroupKeys.Length} · Tab 切换"
+            : string.Empty;
+
+        for (var index = 0; index < _selectionGroupButtons.Length; index++)
+        {
+            var button = _selectionGroupButtons[index];
+            _selectionGroupSlotEntries[index] = null;
+            if (index >= entries.Length)
+            {
+                button.Visible = false;
+                button.Icon = null;
+                continue;
+            }
+            var entry = entries[index];
+            _selectionGroupSlotEntries[index] = entry;
+            var active = entry.ActiveSubgroup;
+            var size = active ? new Vector2(46f, 36f) : new Vector2(38f, 32f);
+            var cellOrigin = new Vector2(
+                index % 4 * 58f,
+                18f + index / 4 * 39f);
+            button.Position = cellOrigin + new Vector2(
+                (58f - size.X) * 0.5f,
+                (39f - size.Y) * 0.5f);
+            button.Size = size;
+            button.Visible = true;
+            button.Icon = War3RuntimeAssets.LoadTexture(entry.IconPath);
+            button.TooltipText = entry.Name +
+                                 (entry.HeroLevel > 0
+                                     ? $" · 等级 {entry.HeroLevel}"
+                                     : string.Empty) +
+                                 $"\n生命 {entry.HealthRatio:P0}" +
+                                 (entry.ManaRatio > 0f
+                                     ? $" · 法力 {entry.ManaRatio:P0}"
+                                     : string.Empty) +
+                                 (active
+                                     ? "\n当前子组；再次点击仅选择这个单位"
+                                     : "\n点击切换到该子组");
+            var border = entry.Debuffed
+                ? new Color("dc493f")
+                : active ? Gold : Border;
+            button.AddThemeStyleboxOverride(
+                "normal", Box(new Color("09121be8"), border, 1, active ? 2 : 1));
+
+            var barWidth = MathF.Max(1f, size.X - 4f);
+            if (_selectionGroupHealthFills[index].GetParent() is ColorRect healthBack)
+            {
+                healthBack.Position = new Vector2(2f, size.Y - 7f);
+                healthBack.Size = new Vector2(barWidth, 3f);
+                _selectionGroupHealthFills[index].Size = new Vector2(
+                    barWidth * Math.Clamp(entry.HealthRatio, 0f, 1f), 3f);
+            }
+            if (_selectionGroupManaFills[index].GetParent() is ColorRect manaBack)
+            {
+                manaBack.Visible = entry.ManaRatio > 0f;
+                manaBack.Position = new Vector2(2f, size.Y - 3f);
+                manaBack.Size = new Vector2(barWidth, 2f);
+                _selectionGroupManaFills[index].Size = new Vector2(
+                    barWidth * Math.Clamp(entry.ManaRatio, 0f, 1f), 2f);
+            }
+        }
     }
 
     private void UpdateQueue(War3SelectionSnapshot selection)

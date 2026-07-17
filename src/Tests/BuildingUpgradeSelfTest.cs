@@ -169,6 +169,26 @@ public static class BuildingUpgradeSelfTest
                               replaySimulation.ComputeStateHash() ==
                               simulation.ComputeStateHash();
 
+            // A running match or restored save can retain an older authored
+            // source footprint while keeping the same stable building type.
+            // Completion is keyed by that stable source ID; redundant live
+            // profile equality must not crash or wedge the paid upgrade.
+            var drifted = CreateSimulation(
+                buildings,
+                upgrades,
+                buildings.Type(War3HumanContent.TownHall) with
+                {
+                    Size = buildings.Type(War3HumanContent.TownHall).Size +
+                           new Vector2(8f, 0f)
+                });
+            var driftedStarted = drifted.IssueBuildingUpgrade(
+                PlayerId, townHall, profiles[0]);
+            for (var tick = 0; tick < 141; tick++) drifted.Tick(1f);
+            var driftedCompleted = driftedStarted.Succeeded &&
+                drifted.Construction.Observe(townHall).Type.Id ==
+                    War3HumanContent.Keep &&
+                drifted.BuildingUpgrades.ActiveOrderCount == 0;
+
             var malformed = CreateSimulation(buildings, upgrades);
             malformed.IssueBuildingUpgrade(
                 PlayerId, townHall, profiles[0]);
@@ -196,7 +216,8 @@ public static class BuildingUpgradeSelfTest
                              AbilityCommandCode.CasterDisabled &&
                          hotRoundTrip && canceled && refundValid && keepValid &&
                          inheritedCanceled && inheritedResearch && castleValid &&
-                         commandRoundTrip && replayValid && exclusivityRejected;
+                         commandRoundTrip && replayValid && driftedCompleted &&
+                         exclusivityRejected;
             return new SelfTestResult(
                 passed,
                 $"catalog={profiles.Length}/{catalogValid}, towers=" +
@@ -214,6 +235,7 @@ public static class BuildingUpgradeSelfTest
                 $"refund={refundValid}, forms={keepValid}/{castleValid}, " +
                 $"inherit={inheritedCanceled}/{inheritedResearch}, " +
                 $"commands={commandRoundTrip}, replay={replayValid}, " +
+                $"drifted={driftedCompleted}, " +
                 $"invalid={exclusivityRejected}");
         }
         catch (Exception exception)
@@ -224,7 +246,8 @@ public static class BuildingUpgradeSelfTest
 
     private static RtsSimulation CreateSimulation(
         BuildingTypeCatalogSnapshot buildings,
-        BuildingUpgradeCatalogSnapshot upgrades)
+        BuildingUpgradeCatalogSnapshot upgrades,
+        BuildingTypeProfile? sourceOverride = null)
     {
         var world = new StaticWorld(new SimRect(
             Vector2.Zero, new Vector2(1_024f, 768f)));
@@ -238,7 +261,8 @@ public static class BuildingUpgradeSelfTest
             supplyUsed: 0);
         simulation.BuildingUpgrades.ConfigureCatalog(upgrades);
 
-        var townHallType = buildings.Type(War3HumanContent.TownHall);
+        var townHallType = sourceOverride ??
+                           buildings.Type(War3HumanContent.TownHall);
         var altarType = buildings.Type(War3HumanContent.AltarOfKings);
         var townHallBounds = Bounds(
             new Vector2(250f, 300f), townHallType.Size);

@@ -442,10 +442,34 @@ public sealed class BuildingUpgradeSystem
                 order.Progress + delta / order.Profile.UpgradeSeconds, 0f, 1f);
             if (order.Progress < 1f) continue;
             var before = construction.Observe(order.Building);
-            if (!construction.TryTransformCompleted(
-                    order.Building, order.Profile.TargetType, economy))
-                throw new InvalidOperationException(
-                    "Building could not apply its completed upgrade profile.");
+            var alreadyApplied =
+                before.State == BuildingLifecycleState.Completed &&
+                before.Health > 0f &&
+                before.Type.Id == order.Profile.TargetType.Id;
+            if (!alreadyApplied && !construction.TryTransformCompleted(
+                    order.Building,
+                    order.Profile.SourceBuildingTypeId,
+                    order.Profile.TargetType,
+                    economy))
+            {
+                // Runtime state can be replaced by destruction, restoration,
+                // or a content hot reload between enqueue and completion. A
+                // paid order must never crash every subsequent simulation
+                // tick. Retire the stale order and fully refund it.
+                economy.Players.Refund(
+                    order.PlayerId, order.Profile.Cost);
+                events.Publish(
+                    tick,
+                    GameplayEventKind.BuildingUpgradeCanceled,
+                    building: order.Building.Value,
+                    value: order.Profile.TargetType.Id,
+                    worldPosition:
+                        (before.Bounds.Min + before.Bounds.Max) * 0.5f,
+                    player: order.PlayerId);
+                retired ??= [];
+                retired.Add(pair.Key);
+                continue;
+            }
             events.Publish(
                 tick,
                 GameplayEventKind.BuildingUpgradeCompleted,

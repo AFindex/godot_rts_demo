@@ -285,42 +285,42 @@ internal sealed record AbilityRuntimeSnapshot(
 /// </summary>
 public sealed class AbilitySystem
 {
-    private readonly int _capacity;
-    private readonly int[] _unitTypeIds;
-    private readonly bool[] _heroes;
-    private readonly AbilityUnitTraits[] _traits;
-    private readonly int[] _heroLevels;
-    private readonly int[] _heroMaximumLevels;
-    private readonly int[] _heroExperience;
-    private readonly int[] _experienceBounty;
-    private readonly int[] _unspentSkillPoints;
-    private readonly float[] _mana;
-    private readonly float[] _maximumMana;
-    private readonly float[] _baseManaRegeneration;
-    private readonly float[] _effectiveManaRegeneration;
-    private readonly float[] _baseMaximumSpeed;
-    private readonly float[] _baseAttackDamage;
-    private readonly float[] _baseArmor;
-    private readonly float[] _baseAttackCooldown;
-    private readonly float[] _baseMaximumHealth;
-    private readonly float[] _baseDetectionRange;
-    private readonly UnitConcealmentKind[] _baseConcealment;
-    private readonly UnitConcealmentPhase[] _baseConcealmentPhase;
-    private readonly int[][] _abilityIds;
-    private readonly int[][] _levels;
-    private readonly float[][] _cooldowns;
-    private readonly bool[][] _toggles;
-    private readonly bool[][] _autoCast;
-    private readonly AbilityStatusFlags[] _statuses;
-    private readonly bool[] _abilityAppliedInvisibility;
-    private readonly AbilityCastPhase[] _castPhases;
-    private readonly int[] _activeSlots;
-    private readonly float[] _castRemaining;
-    private readonly float[] _channelRemaining;
-    private readonly float[] _pulseRemaining;
-    private readonly int[] _pulsesRemaining;
-    private readonly AbilityCastTarget[] _targets;
-    private readonly AbilityStatModifier[] _modifierScratch;
+    private int _capacity;
+    private int[] _unitTypeIds;
+    private bool[] _heroes;
+    private AbilityUnitTraits[] _traits;
+    private int[] _heroLevels;
+    private int[] _heroMaximumLevels;
+    private int[] _heroExperience;
+    private int[] _experienceBounty;
+    private int[] _unspentSkillPoints;
+    private float[] _mana;
+    private float[] _maximumMana;
+    private float[] _baseManaRegeneration;
+    private float[] _effectiveManaRegeneration;
+    private float[] _baseMaximumSpeed;
+    private float[] _baseAttackDamage;
+    private float[] _baseArmor;
+    private float[] _baseAttackCooldown;
+    private float[] _baseMaximumHealth;
+    private float[] _baseDetectionRange;
+    private UnitConcealmentKind[] _baseConcealment;
+    private UnitConcealmentPhase[] _baseConcealmentPhase;
+    private int[][] _abilityIds;
+    private int[][] _levels;
+    private float[][] _cooldowns;
+    private bool[][] _toggles;
+    private bool[][] _autoCast;
+    private AbilityStatusFlags[] _statuses;
+    private bool[] _abilityAppliedInvisibility;
+    private AbilityCastPhase[] _castPhases;
+    private int[] _activeSlots;
+    private float[] _castRemaining;
+    private float[] _channelRemaining;
+    private float[] _pulseRemaining;
+    private int[] _pulsesRemaining;
+    private AbilityCastTarget[] _targets;
+    private AbilityStatModifier[] _modifierScratch;
     private readonly List<AbilityBuffRuntimeEntry> _buffs = [];
     private readonly List<AbilitySummonRuntimeEntry> _summons = [];
     private readonly List<AbilityPersistentEffectRuntimeEntry>
@@ -390,6 +390,62 @@ public sealed class AbilitySystem
     public int ActivePersistentEffectCount => _persistentEffects.Count;
     public int ActiveUnitFormCount => _unitForms.Count;
     public int ActiveBuildingToggleCount => _buildingToggles.Count;
+
+    internal void EnsureCapacity(int capacity)
+    {
+        if (capacity <= _capacity)
+        {
+            return;
+        }
+
+        var previous = _capacity;
+        Array.Resize(ref _unitTypeIds, capacity);
+        Array.Resize(ref _heroes, capacity);
+        Array.Resize(ref _traits, capacity);
+        Array.Resize(ref _heroLevels, capacity);
+        Array.Resize(ref _heroMaximumLevels, capacity);
+        Array.Resize(ref _heroExperience, capacity);
+        Array.Resize(ref _experienceBounty, capacity);
+        Array.Resize(ref _unspentSkillPoints, capacity);
+        Array.Resize(ref _mana, capacity);
+        Array.Resize(ref _maximumMana, capacity);
+        Array.Resize(ref _baseManaRegeneration, capacity);
+        Array.Resize(ref _effectiveManaRegeneration, capacity);
+        Array.Resize(ref _baseMaximumSpeed, capacity);
+        Array.Resize(ref _baseAttackDamage, capacity);
+        Array.Resize(ref _baseArmor, capacity);
+        Array.Resize(ref _baseAttackCooldown, capacity);
+        Array.Resize(ref _baseMaximumHealth, capacity);
+        Array.Resize(ref _baseDetectionRange, capacity);
+        Array.Resize(ref _baseConcealment, capacity);
+        Array.Resize(ref _baseConcealmentPhase, capacity);
+        Array.Resize(ref _abilityIds, capacity);
+        Array.Resize(ref _levels, capacity);
+        Array.Resize(ref _cooldowns, capacity);
+        Array.Resize(ref _toggles, capacity);
+        Array.Resize(ref _autoCast, capacity);
+        Array.Resize(ref _statuses, capacity);
+        Array.Resize(ref _abilityAppliedInvisibility, capacity);
+        Array.Resize(ref _castPhases, capacity);
+        Array.Resize(ref _activeSlots, capacity);
+        Array.Resize(ref _castRemaining, capacity);
+        Array.Resize(ref _channelRemaining, capacity);
+        Array.Resize(ref _pulseRemaining, capacity);
+        Array.Resize(ref _pulsesRemaining, capacity);
+        Array.Resize(ref _targets, capacity);
+        Array.Resize(ref _modifierScratch, capacity);
+        Array.Fill(_unitTypeIds, -1, previous, capacity - previous);
+        Array.Fill(_activeSlots, -1, previous, capacity - previous);
+        for (var unit = previous; unit < capacity; unit++)
+        {
+            _abilityIds[unit] = [];
+            _levels[unit] = [];
+            _cooldowns[unit] = [];
+            _toggles[unit] = [];
+            _autoCast[unit] = [];
+        }
+        _capacity = capacity;
+    }
 
     internal AbilityUnitTraits UnitTraits(int unit) =>
         (uint)unit < (uint)_traits.Length

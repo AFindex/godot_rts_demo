@@ -89,8 +89,13 @@ public static class War3NavigationTraversalSelfTest
             simulation.IssuePlayerStop(
                 War3HumanScenario.EnemyId, runtime.EnemyWorkers);
             simulation.Tick(TickSeconds);
-            var highGround = map.PlayerSpawn + new Vector2(105f, -45f);
-            var farHighGround = map.EnemySpawn + new Vector2(-105f, -45f);
+            // Keep the group destination outside the complete 16x16 Town Hall
+            // pathing envelope. The former 105/-45 fixture only cleared the
+            // red 12x12 walk-blocking core and left formation slots inside the
+            // blue placement-blocking edge once that edge became authoritative
+            // for the simulation's rectangular obstacle.
+            var highGround = map.PlayerSpawn + new Vector2(240f, -120f);
+            var farHighGround = map.EnemySpawn + new Vector2(-240f, -120f);
             var outbound = RunLeg(simulation, workers, farHighGround);
             var returningWorkers = workers
                 .Where(unit => simulation.Units.Alive[unit])
@@ -156,6 +161,11 @@ public static class War3NavigationTraversalSelfTest
                 runtime.PlayerWorkers[5],
                 new EconomyResourceNodeId(14),
                 new Vector2(1360.9f, 1999f));
+            var pathRequestCoalescing = RunPathRequestCoalescingRegression(
+                simulation,
+                runtime.PlayerWorkers.Where(unit =>
+                    simulation.Units.Alive[unit]).ToArray(),
+                highGround);
 
             var combatResults = new List<string>();
             var combatPassed = true;
@@ -219,16 +229,19 @@ public static class War3NavigationTraversalSelfTest
                          blockedStartEscape.Arrived &&
                          surfaceStartEscape.Arrived &&
                          resourceApproach.Arrived &&
-                         dropOffApproach.Arrived && combatPassed;
+                         dropOffApproach.Arrived &&
+                         pathRequestCoalescing.Arrived && combatPassed;
             return new SelfTestResult(
                 passed,
-                $"bootstrap={bootstrapMode}, high={Point(highGround)}, " +
+                $"bootstrap={bootstrapMode}, fixture=full-pathing-envelope, " +
+                $"high={Point(highGround)}, " +
                 $"farHigh={Point(farHighGround)}, " +
                 $"workers={returningWorkers.Length}/{workers.Length}:" +
                 $"{outbound}>{returnLeg}, escape={blockedStartEscape}, " +
                 $"surfaceEscape={surfaceStartEscape}, " +
                 $"resource={resourceApproach}, " +
                 $"dropoff={dropOffApproach}, " +
+                $"pathQueue={pathRequestCoalescing}, " +
                 $"combat=[{string.Join(";", combatResults)}]");
         }
         catch (Exception exception)
@@ -303,7 +316,17 @@ public static class War3NavigationTraversalSelfTest
             $"recovery={simulation.Units.RecoveryStages[first]}," +
             $"speed={simulation.Units.Velocities[first].Length():0.#}," +
             $"path={simulation.Units.Paths[first]?.Cursor ?? -1}/" +
-            $"{simulation.Units.Paths[first]?.Points.Length ?? 0}",
+            $"{simulation.Units.Paths[first]?.Points.Length ?? 0}," +
+            $"unsettled=[{string.Join(';', units.Where(unit =>
+                simulation.Units.MovementLegResults[unit] !=
+                    UnitMovementLegResult.Reached &&
+                simulation.Units.Modes[unit] != UnitMoveMode.Arrived)
+                .Select(unit =>
+                    $"u{unit}@{Point(simulation.Units.Positions[unit])}/" +
+                    $"{simulation.Units.Modes[unit]}/" +
+                    $"{simulation.Units.MovementLegResults[unit]}/" +
+                    $"{simulation.Units.RecoveryStages[unit]}/" +
+                    $"slot={Point(simulation.Units.SlotTargets[unit])}"))}]",
             simulation.Units.Positions[units[0]]);
     }
 
@@ -559,6 +582,88 @@ public static class War3NavigationTraversalSelfTest
             $"commands=" +
             $"{simulation.Units.CommandVersions[worker] - initialVersion}",
             simulation.Units.Positions[worker]);
+    }
+
+    private static LegResult RunPathRequestCoalescingRegression(
+        RtsSimulation simulation,
+        int[] workers,
+        Vector2 center)
+    {
+        if (workers.Length < 2)
+        {
+            return LegResult.NotRun("requires at least two workers");
+        }
+
+        simulation.IssuePlayerStop(War3HumanScenario.PlayerId, workers);
+        simulation.Tick(TickSeconds);
+        var originalBudget = simulation.PathBudgetPerTick;
+        simulation.PathBudgetPerTick = 1;
+        var firstGoal = center + new Vector2(-24f, 12f);
+        var secondGoal = center + new Vector2(24f, 12f);
+        var target = workers[^1];
+        var maximumQueue = 0;
+
+        try
+        {
+            var initial = simulation.IssuePlayerMove(
+                War3HumanScenario.PlayerId, workers, firstGoal);
+            if (!initial.Succeeded)
+            {
+                return new LegResult(
+                    false, 0, 0, $"initial={initial.Code}",
+                    simulation.Units.Positions[target]);
+            }
+
+            for (var tick = 1; tick <= workers.Length + 4; tick++)
+            {
+                // Continuously replace the last unit's command while its first
+                // path request sits behind the group. An immutable FIFO entry
+                // starves forever here; a per-unit token keeps its queue place
+                // and is evaluated against the newest destination.
+                var reissue = simulation.IssuePlayerMove(
+                    War3HumanScenario.PlayerId,
+                    [target],
+                    tick % 2 == 0 ? firstGoal : secondGoal);
+                if (!reissue.Succeeded)
+                {
+                    return new LegResult(
+                        false, tick, 0, $"reissue={reissue.Code}",
+                        simulation.Units.Positions[target]);
+                }
+
+                maximumQueue = Math.Max(
+                    maximumQueue,
+                    simulation.PendingPathRequestCountForDiagnostics);
+                simulation.Tick(TickSeconds);
+                if (!simulation.Units.PathPending[target] &&
+                    simulation.Units.Modes[target] is
+                        UnitMoveMode.Moving or UnitMoveMode.Arrived)
+                {
+                    return new LegResult(
+                        maximumQueue <= workers.Length,
+                        tick,
+                        0,
+                        $"processed,queueMax={maximumQueue}/" +
+                        $"units={workers.Length}",
+                        simulation.Units.Positions[target]);
+                }
+            }
+
+            return new LegResult(
+                false,
+                workers.Length + 4,
+                0,
+                $"starved,queueMax={maximumQueue}," +
+                $"pending={simulation.Units.PathPending[target]}," +
+                $"queue={simulation.PendingPathRequestCountForDiagnostics}",
+                simulation.Units.Positions[target]);
+        }
+        finally
+        {
+            simulation.PathBudgetPerTick = originalBudget;
+            simulation.IssuePlayerStop(War3HumanScenario.PlayerId, workers);
+            simulation.Tick(TickSeconds);
+        }
     }
 
     private static string Point(Vector2 value) =>

@@ -76,13 +76,13 @@ public sealed class UnitCommandQueueStore
 {
     public const int MaximumPendingOrders = 16;
 
-    private readonly UnitOrderKind[] _pendingKinds;
-    private readonly Vector2[] _pendingPositions;
-    private readonly int[] _pendingTargetUnits;
-    private readonly int[] _pendingTargetBuildings;
-    private readonly int[] _pendingTargetResourceNodes;
-    private readonly int[] _pendingSequenceIds;
-    private readonly byte[] _heads;
+    private UnitOrderKind[] _pendingKinds;
+    private Vector2[] _pendingPositions;
+    private int[] _pendingTargetUnits;
+    private int[] _pendingTargetBuildings;
+    private int[] _pendingTargetResourceNodes;
+    private int[] _pendingSequenceIds;
+    private byte[] _heads;
 
     public UnitCommandQueueStore(int capacity)
     {
@@ -120,24 +120,87 @@ public sealed class UnitCommandQueueStore
         Array.Fill(ConstructionEvacuationBuildings, -1);
     }
 
-    public byte[] PendingCounts { get; }
-    public UnitOrderKind[] ActiveKinds { get; }
-    public Vector2[] ActivePositions { get; }
-    public int[] ActiveTargetUnits { get; }
-    public int[] ActiveTargetBuildings { get; }
-    public int[] ActiveTargetResourceNodes { get; }
-    public int[] ActiveSequenceIds { get; }
-    public bool[] HasActiveOrders { get; }
-    public bool[] ActiveOrdersWereQueued { get; }
-    public int[] CompletedQueuedOrders { get; }
-    public int[] QueueOverflowCounts { get; }
-    public bool[] ConstructionEvacuationActive { get; }
-    public int[] ConstructionEvacuationBuildings { get; }
-    public Vector2[] ConstructionEvacuationTargets { get; }
-    public SimRect[] ConstructionEvacuationFootprints { get; }
-    public bool[] ProductionEvacuationActive { get; }
-    public Vector2[] ProductionEvacuationTargets { get; }
-    public SimRect[] ProductionEvacuationFootprints { get; }
+    public byte[] PendingCounts { get; private set; }
+    public UnitOrderKind[] ActiveKinds { get; private set; }
+    public Vector2[] ActivePositions { get; private set; }
+    public int[] ActiveTargetUnits { get; private set; }
+    public int[] ActiveTargetBuildings { get; private set; }
+    public int[] ActiveTargetResourceNodes { get; private set; }
+    public int[] ActiveSequenceIds { get; private set; }
+    public bool[] HasActiveOrders { get; private set; }
+    public bool[] ActiveOrdersWereQueued { get; private set; }
+    public int[] CompletedQueuedOrders { get; private set; }
+    public int[] QueueOverflowCounts { get; private set; }
+    public bool[] ConstructionEvacuationActive { get; private set; }
+    public int[] ConstructionEvacuationBuildings { get; private set; }
+    public Vector2[] ConstructionEvacuationTargets { get; private set; }
+    public SimRect[] ConstructionEvacuationFootprints { get; private set; }
+    public bool[] ProductionEvacuationActive { get; private set; }
+    public Vector2[] ProductionEvacuationTargets { get; private set; }
+    public SimRect[] ProductionEvacuationFootprints { get; private set; }
+
+    internal void EnsureCapacity(int capacity)
+    {
+        if (capacity <= PendingCounts.Length)
+        {
+            return;
+        }
+
+        var previous = PendingCounts.Length;
+        PendingCounts = Grow(PendingCounts, capacity);
+        ActiveKinds = Grow(ActiveKinds, capacity);
+        ActivePositions = Grow(ActivePositions, capacity);
+        ActiveTargetUnits = Grow(ActiveTargetUnits, capacity);
+        ActiveTargetBuildings = Grow(ActiveTargetBuildings, capacity);
+        ActiveTargetResourceNodes = Grow(
+            ActiveTargetResourceNodes, capacity);
+        ActiveSequenceIds = Grow(ActiveSequenceIds, capacity);
+        HasActiveOrders = Grow(HasActiveOrders, capacity);
+        ActiveOrdersWereQueued = Grow(ActiveOrdersWereQueued, capacity);
+        CompletedQueuedOrders = Grow(CompletedQueuedOrders, capacity);
+        QueueOverflowCounts = Grow(QueueOverflowCounts, capacity);
+        ConstructionEvacuationActive = Grow(
+            ConstructionEvacuationActive, capacity);
+        ConstructionEvacuationBuildings = Grow(
+            ConstructionEvacuationBuildings, capacity);
+        ConstructionEvacuationTargets = Grow(
+            ConstructionEvacuationTargets, capacity);
+        ConstructionEvacuationFootprints = Grow(
+            ConstructionEvacuationFootprints, capacity);
+        ProductionEvacuationActive = Grow(
+            ProductionEvacuationActive, capacity);
+        ProductionEvacuationTargets = Grow(
+            ProductionEvacuationTargets, capacity);
+        ProductionEvacuationFootprints = Grow(
+            ProductionEvacuationFootprints, capacity);
+        _heads = Grow(_heads, capacity);
+        var pendingCapacity = checked(capacity * MaximumPendingOrders);
+        var previousPendingCapacity = _pendingKinds.Length;
+        _pendingKinds = Grow(_pendingKinds, pendingCapacity);
+        _pendingPositions = Grow(_pendingPositions, pendingCapacity);
+        _pendingTargetUnits = Grow(_pendingTargetUnits, pendingCapacity);
+        _pendingTargetBuildings = Grow(
+            _pendingTargetBuildings, pendingCapacity);
+        _pendingTargetResourceNodes = Grow(
+            _pendingTargetResourceNodes, pendingCapacity);
+        _pendingSequenceIds = Grow(_pendingSequenceIds, pendingCapacity);
+
+        Array.Fill(ActiveTargetUnits, -1, previous, capacity - previous);
+        Array.Fill(ActiveTargetBuildings, -1, previous, capacity - previous);
+        Array.Fill(ActiveTargetResourceNodes, -1,
+            previous, capacity - previous);
+        Array.Fill(ConstructionEvacuationBuildings, -1,
+            previous, capacity - previous);
+        Array.Fill(_pendingTargetUnits, -1,
+            previousPendingCapacity,
+            pendingCapacity - previousPendingCapacity);
+        Array.Fill(_pendingTargetBuildings, -1,
+            previousPendingCapacity,
+            pendingCapacity - previousPendingCapacity);
+        Array.Fill(_pendingTargetResourceNodes, -1,
+            previousPendingCapacity,
+            pendingCapacity - previousPendingCapacity);
+    }
 
     public void Begin(int unit, UnitOrder order, bool wasQueued)
     {
@@ -300,6 +363,13 @@ public sealed class UnitCommandQueueStore
 
     private static void Copy<T>(T[] source, T[] destination) =>
         Array.Copy(source, destination, source.Length);
+
+    private static T[] Grow<T>(T[] source, int capacity)
+    {
+        var result = new T[capacity];
+        Array.Copy(source, result, source.Length);
+        return result;
+    }
 }
 
 public enum SmartCommandTargetKind : byte

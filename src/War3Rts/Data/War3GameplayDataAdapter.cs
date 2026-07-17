@@ -111,7 +111,14 @@ public sealed class War3GameplayDataAdapter(
             SpecialEffectSource = ModelPath(
                 data.Assets.SpecialEffect, fallback.SpecialEffectSource),
             ArmorClass = LocalizeArmorType(
-                data.Summary.Armor.Type, fallback.ArmorClass)
+                data.Summary.Armor.Type, fallback.ArmorClass),
+            // UnitUI.scale is the original Warcraft selection-circle scale.
+            // It is deliberately kept separate from the pathing footprint:
+            // pathTex controls occupied cells, while this value follows the
+            // visible model and is also used by irregular buildings.
+            SelectionCircleScale = Positive(EditorFloat(data, "scale"))
+                ? EditorFloat(data, "scale")!.Value
+                : fallback.SelectionCircleScale
         };
     }
 
@@ -685,7 +692,7 @@ public sealed class War3GameplayDataAdapter(
                     Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
                 if (absolute.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) &&
                     File.Exists(absolute) &&
-                    TryReadUnwalkableTgaBounds(
+                    TryReadBlockedPathingTgaBounds(
                         absolute, out var width, out var height))
                     result = new System.Numerics.Vector2(
                         width * Policy.PathingCellSize,
@@ -702,7 +709,7 @@ public sealed class War3GameplayDataAdapter(
         return result;
     }
 
-    private static bool TryReadUnwalkableTgaBounds(
+    private static bool TryReadBlockedPathingTgaBounds(
         string path,
         out int blockedWidth,
         out int blockedHeight)
@@ -727,10 +734,17 @@ public sealed class War3GameplayDataAdapter(
         var maxY = -1;
         for (var pixel = 0; pixel < width * height; pixel++)
         {
-            // Warcraft pathing TGAs are BGR. A set red channel means that the
-            // cell blocks ground movement; blue-only cells only block building.
+            // Warcraft pathing TGAs are BGR. Red blocks ground movement while
+            // blue blocks building placement. The simulation currently owns a
+            // single rectangular building obstacle, so collapsing the texture
+            // to red alone makes large buildings (12x12 Barracks, 16x16 Town
+            // Hall) physically too small. Preserve the complete blocked
+            // envelope until the navigation layer has separate walk/build
+            // channel masks.
+            var blue = bytes[offset + pixel * bytesPerPixel];
+            var green = bytes[offset + pixel * bytesPerPixel + 1];
             var red = bytes[offset + pixel * bytesPerPixel + 2];
-            if (red < 128) continue;
+            if (red < 128 && green < 128 && blue < 128) continue;
             var x = pixel % width;
             var y = pixel / width;
             minX = Math.Min(minX, x);

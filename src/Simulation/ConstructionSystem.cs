@@ -861,20 +861,23 @@ public sealed class ConstructionSystem
     /// </summary>
     internal bool TryTransformCompleted(
         GameplayBuildingId id,
+        int expectedSourceTypeId,
         BuildingTypeProfile target,
         EconomySystem economy)
     {
         if (!TryGet(id, out var building) ||
             building.State != BuildingLifecycleState.Completed ||
             building.Health <= 0f || !ValidProfile(target) ||
-            building.Type.Id == target.Id ||
-            building.Type.Function != target.Function ||
-            building.Type.Size != target.Size ||
-            building.Type.MinimumPassageClass != target.MinimumPassageClass ||
-            building.Type.RequiresVespeneNode != target.RequiresVespeneNode ||
-            building.Type.ConstructionMethod != target.ConstructionMethod)
+            building.Type.Id != expectedSourceTypeId ||
+            building.Type.Id == target.Id)
             return false;
 
+        // Source/target footprint compatibility is a content-catalog
+        // invariant, validated before the match starts. Do not re-compare the
+        // live source profile here: a restored or hot-reloaded building can
+        // legitimately carry an older authored profile with the same stable
+        // type ID. Rejecting that drift at completion leaves a paid upgrade
+        // permanently wedged and used to throw out of the main game loop.
         var previous = building.Type;
         var healthRatio = Math.Clamp(
             building.Health / previous.MaximumHealth, 0f, 1f);

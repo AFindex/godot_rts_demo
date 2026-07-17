@@ -43,6 +43,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private readonly IPathProvider _pathProvider;
     private readonly Queue<PathRequest> _pathRequests = new();
+    private bool[] _pathRequestQueued;
     private readonly SpatialHash _spatialHash;
     private readonly DestinationSlotAllocator _slotAllocator;
     private readonly DestinationSlotReflow _slotReflow;
@@ -68,15 +69,15 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private readonly Func<int, int, SimRect, float, bool>
         _productionEvacuateExitBlocker;
     private readonly int[] _collisionNeighbors = new int[64];
-    private readonly CombatContactSnapshot[] _combatContacts;
-    private readonly bool[] _unitCollisionSuppressed;
-    private readonly int[] _orderReadyUnits;
-    private readonly UnitOrder[] _orderReadyOrders;
-    private readonly bool[] _orderReadyProcessed;
-    private readonly int[] _orderDispatchUnits;
-    private readonly int[] _displacedStationaryUnits;
-    private readonly Vector2[] _reservationTargetScratch;
-    private readonly int[] _reservationSelectionScratch;
+    private CombatContactSnapshot[] _combatContacts;
+    private bool[] _unitCollisionSuppressed;
+    private int[] _orderReadyUnits;
+    private UnitOrder[] _orderReadyOrders;
+    private bool[] _orderReadyProcessed;
+    private int[] _orderDispatchUnits;
+    private int[] _displacedStationaryUnits;
+    private Vector2[] _reservationTargetScratch;
+    private int[] _reservationSelectionScratch;
     private int _pendingNavigationInvalidations;
     private int _nextMovementGroupId = 1;
     private int _nextOrderSequenceId = 1;
@@ -100,6 +101,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         World = world;
         _pathProvider = pathProvider;
         Units = new UnitStore(capacity);
+        _pathRequestQueued = new bool[capacity];
         Combat = new CombatStore(capacity);
         CombatObjects = new CombatObjectStore();
         Concealment = new UnitConcealmentController(Units, Combat);
@@ -219,6 +221,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     public PathRequest[] CapturePendingPathRequestsForDiagnostics() =>
         _pathRequests.ToArray();
+
+    public int PendingPathRequestCountForDiagnostics => _pathRequests.Count;
 
     /// <summary>
     /// Runs the authoritative low-level path provider without issuing a unit
@@ -430,6 +434,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     internal void RestoreRuntimeState(SimulationRuntimeStateCapture snapshot)
     {
+        if (snapshot.Units.Capacity > Units.Capacity)
+        {
+            ResizeUnitCapacity(snapshot.Units.Capacity);
+        }
         if (snapshot.Units.Capacity != Units.Capacity)
         {
             throw new InvalidOperationException("Simulation runtime capacity mismatch.");
@@ -479,9 +487,17 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _nextMovementGroupId = snapshot.PrivateState.NextMovementGroupId;
         _nextOrderSequenceId = snapshot.PrivateState.NextOrderSequenceId;
         _pathRequests.Clear();
+        Array.Clear(_pathRequestQueued);
         for (var index = 0; index < snapshot.PrivateState.PathRequests.Length; index++)
         {
-            _pathRequests.Enqueue(snapshot.PrivateState.PathRequests[index]);
+            var request = snapshot.PrivateState.PathRequests[index];
+            if ((uint)request.UnitIndex >= (uint)Units.Count ||
+                _pathRequestQueued[request.UnitIndex])
+            {
+                continue;
+            }
+            _pathRequestQueued[request.UnitIndex] = true;
+            _pathRequests.Enqueue(request);
         }
         _commandRecorder = null;
         _economyCommandRecorder = null;
@@ -1164,6 +1180,41 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
     }
 
+    private void EnsureUnitCapacityForSpawn()
+    {
+        if (Units.Count < Units.Capacity)
+        {
+            return;
+        }
+
+        var next = checked(Math.Max(Units.Capacity + 1, Units.Capacity * 2));
+        ResizeUnitCapacity(next);
+    }
+
+    private void ResizeUnitCapacity(int capacity)
+    {
+        if (capacity <= Units.Capacity)
+        {
+            return;
+        }
+
+        Units.EnsureCapacity(capacity);
+        Combat.EnsureCapacity(capacity);
+        Abilities.EnsureCapacity(capacity);
+        CommandQueues.EnsureCapacity(capacity);
+        Economy.EnsureUnitCapacity(capacity);
+        Array.Resize(ref _pathRequestQueued, capacity);
+        Array.Resize(ref _orderReadyUnits, capacity);
+        Array.Resize(ref _orderReadyOrders, capacity);
+        Array.Resize(ref _orderReadyProcessed, capacity);
+        Array.Resize(ref _orderDispatchUnits, capacity);
+        Array.Resize(ref _displacedStationaryUnits, capacity);
+        Array.Resize(ref _reservationTargetScratch, capacity);
+        Array.Resize(ref _reservationSelectionScratch, capacity);
+        Array.Resize(ref _combatContacts, capacity);
+        Array.Resize(ref _unitCollisionSuppressed, capacity);
+    }
+
     public int AddUnit(
         Vector2 position,
         float radius = 7.5f,
@@ -1184,6 +1235,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             UnitFacing.LegacyTurnRateRadiansPerSecond,
         float facingRadians = 0f)
     {
+        EnsureUnitCapacityForSpawn();
         var unit = Units.Add(
             position, radius, maxSpeed, acceleration,
             turnRateRadiansPerSecond, facingRadians);
@@ -2870,7 +2922,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Units.RecoveryEventCounts[unit] = 0;
             Units.RecoveryStableTimers[unit] = 0f;
             Units.RecoveryRetryCounts[unit] = 0;
-            _pathRequests.Enqueue(new PathRequest(unit, Units.CommandVersions[unit]));
+            EnqueuePathRequest(unit);
         }
     }
 
@@ -3994,19 +4046,33 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         {
             var request = _pathRequests.Dequeue();
             var unit = request.UnitIndex;
-            if (!Units.Alive[unit] ||
-                request.CommandVersion != Units.CommandVersions[unit] ||
-                !Units.PathPending[unit])
+            _pathRequestQueued[unit] = false;
+            if (!Units.Alive[unit] || !Units.PathPending[unit])
             {
                 continue;
             }
 
+            // A queue entry is a per-unit scheduling token, not an immutable
+            // order snapshot. Command replacement updates the unit state while
+            // retaining its place in line; processing always uses the latest
+            // version and destination.
+            var commandVersion = Units.CommandVersions[unit];
             var start = Units.Positions[unit];
             var goal = Units.SlotTargets[unit];
             var points = BuildUnitPath(unit, start, goal);
-
-            if (request.CommandVersion != Units.CommandVersions[unit])
+            if (points.Length == 0 &&
+                Units.RouteWaypoints[unit].Length > 0)
             {
+                // Region/choke routes are acceleration hints. A stale or
+                // clearance-incompatible waypoint must not overrule a valid
+                // low-level path from the unit's actual position to its goal.
+                Units.RouteWaypoints[unit] = [];
+                points = BuildUnitPath(unit, start, goal);
+            }
+
+            if (commandVersion != Units.CommandVersions[unit])
+            {
+                EnqueuePathRequest(unit);
                 continue;
             }
 
@@ -4026,13 +4092,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 points = [start, points[0]];
             }
 
-            Units.Paths[unit] = new UnitPath(points, request.CommandVersion);
+            Units.Paths[unit] = new UnitPath(points, commandVersion);
             Units.Modes[unit] = UnitMoveMode.Moving;
             Units.BlockedByNavigation[unit] = false;
             Units.ProgressBestDistances[unit] = RemainingPathDistance(
                 unit, Units.Paths[unit]);
             Metrics.PathsCompleted++;
         }
+    }
+
+    private void EnqueuePathRequest(int unit)
+    {
+        if (_pathRequestQueued[unit])
+        {
+            return;
+        }
+
+        _pathRequestQueued[unit] = true;
+        _pathRequests.Enqueue(new PathRequest(
+            unit, Units.CommandVersions[unit]));
     }
 
     private Vector2[] BuildUnitPath(int unit, Vector2 start, Vector2 finalGoal)
@@ -4520,7 +4598,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Units.RecoveryStableTimers[unit] = 0f;
             Units.RecoveryRetryCounts[unit] = 0;
         }
-        _pathRequests.Enqueue(new PathRequest(unit, Units.CommandVersions[unit]));
+        EnqueuePathRequest(unit);
         if (countInvalidation)
         {
             _pendingNavigationInvalidations++;
@@ -4572,7 +4650,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Units.ProgressBestDistances[unit] = Vector2.Distance(
             Units.Positions[unit], Units.SlotTargets[unit]);
         Units.RepathCooldowns[unit] = 0.45f;
-        _pathRequests.Enqueue(new PathRequest(unit, Units.CommandVersions[unit]));
+        EnqueuePathRequest(unit);
         Metrics.RepathRequests++;
     }
 
@@ -6161,7 +6239,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Units.DestinationNearTicks[unit] = 0;
         }
         Units.RepathCooldowns[unit] = 0f;
-        _pathRequests.Enqueue(new PathRequest(unit, Units.CommandVersions[unit]));
+        EnqueuePathRequest(unit);
     }
 
     private float RemainingPathDistance(int unit, UnitPath? path)

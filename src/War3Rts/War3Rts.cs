@@ -17,6 +17,7 @@ public sealed partial class War3Rts : Node3D
 {
     private const float MinimumDragPixels = 7f;
     private const float CursorEdgePixels = 10f;
+    private const int MaximumSelectionCount = 12;
     private RtsSimulation? _simulation;
     private War3HumanRuntime? _runtime;
     private TerrainMapSnapshot? _terrain;
@@ -40,6 +41,7 @@ public sealed partial class War3Rts : Node3D
     private int _loadingStageUpdateCount;
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
+    private string _activeSelectionSubgroup = string.Empty;
     private Vector2 _dragStart;
     private bool _dragging;
     private bool _selectionAdditive;
@@ -77,6 +79,8 @@ public sealed partial class War3Rts : Node3D
     private bool _smokeConstructionPauseStable = true;
     private bool _smokeConstructionResumed;
     private bool _smokeConstructionAdvancedAfterResume;
+    private bool _smokeSelectionGroupUiValid;
+    private bool _smokeConstructionProgressUiValid;
     private bool _smokeAbilityCastsIssued;
     private bool _smokeAbilityDamageApplied;
     private int _smokeSummonedUnit = -1;
@@ -944,6 +948,9 @@ public sealed partial class War3Rts : Node3D
                 _cameraController?.FocusAt(
                     _runtime?.PlayerHome ?? War3HumanScenario.PlayerHome);
                 return;
+            case Key.Tab:
+                CycleSelectionSubgroup(input.ShiftPressed ? -1 : 1);
+                return;
         }
         _hud?.TryInvokeHotkey(input.Keycode);
     }
@@ -1039,7 +1046,7 @@ public sealed partial class War3Rts : Node3D
         if (_simulation is null ||
             (uint)abilityId >= (uint)_simulation.Abilities.Catalog.Count)
             return;
-        var caster = _selectedUnits.Order().FirstOrDefault(unit =>
+        var caster = ActiveSubgroupUnits().FirstOrDefault(unit =>
             _simulation.Units.Alive[unit] &&
             _simulation.Combat.Teams[unit] == War3HumanScenario.PlayerId &&
             _simulation.Abilities.Observe(unit).Abilities.Any(value =>
@@ -1079,8 +1086,7 @@ public sealed partial class War3Rts : Node3D
     private void UseBuildingAbility(int abilityId)
     {
         if (_simulation is null || _selectedBuildings.Count == 0) return;
-        var building = new GameplayBuildingId(
-            _selectedBuildings.Order().First());
+        var building = new GameplayBuildingId(ActiveSelectionBuilding());
         var result = _simulation.IssueBuildingAbility(
             War3HumanScenario.PlayerId, building, abilityId);
         if ((uint)abilityId < (uint)_simulation.Abilities.Catalog.Count)
@@ -1095,7 +1101,7 @@ public sealed partial class War3Rts : Node3D
     private void LearnAbility(int abilityId)
     {
         if (_simulation is null) return;
-        var caster = _selectedUnits.Order().FirstOrDefault(unit =>
+        var caster = ActiveSubgroupUnits().FirstOrDefault(unit =>
         {
             if (!_simulation.Units.Alive[unit] ||
                 _simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId)
@@ -1501,7 +1507,16 @@ public sealed partial class War3Rts : Node3D
             }
             else
             {
-                _selectedUnits.Add(best);
+                if (SelectionCount() < MaximumSelectionCount)
+                {
+                    _selectedUnits.Add(best);
+                    _activeSelectionSubgroup = UnitSubgroupKey(best);
+                }
+                else
+                {
+                    selected = false;
+                    Report($"编队最多选择 {MaximumSelectionCount} 个单位");
+                }
             }
             RefreshSelection();
             if (selected) PlaySelectionAudio();
@@ -1515,8 +1530,13 @@ public sealed partial class War3Rts : Node3D
         {
             if (additive && _selectedBuildings.Contains(building.Id.Value))
                 _selectedBuildings.Remove(building.Id.Value);
-            else
+            else if (SelectionCount() < MaximumSelectionCount)
+            {
                 _selectedBuildings.Add(building.Id.Value);
+                _activeSelectionSubgroup = BuildingSubgroupKey(building.Type.Id);
+            }
+            else
+                Report($"编队最多选择 {MaximumSelectionCount} 个单位");
         }
         RefreshSelection();
     }
@@ -1543,6 +1563,7 @@ public sealed partial class War3Rts : Node3D
             if (!_camera.IsPositionBehind(world) &&
                 rect.HasPoint(_camera.UnprojectPosition(world)))
             {
+                if (SelectionCount() >= MaximumSelectionCount) break;
                 if (!_selectedUnits.Contains(unit)) selectedNewUnit = true;
                 _selectedUnits.Add(unit);
             }
@@ -1553,6 +1574,7 @@ public sealed partial class War3Rts : Node3D
 
     private void RefreshSelection()
     {
+        NormalizeActiveSelectionSubgroup();
         CancelMode();
         _presenter?.SetSelection(_selectedUnits, _selectedBuildings);
         _navigationDebugger?.SetSelection(_selectedUnits);
@@ -1577,6 +1599,152 @@ public sealed partial class War3Rts : Node3D
             changed = true;
         }
         if (changed) RefreshSelection();
+    }
+
+    private int SelectionCount() =>
+        _selectedUnits.Count + _selectedBuildings.Count;
+
+    private string UnitSubgroupKey(int unit)
+    {
+        if (_simulation is null || _production is null || unit < 0 ||
+            unit >= _simulation.Units.Count)
+            return string.Empty;
+        var definition = War3HumanContent.ResolveUnit(
+            _simulation, _production, unit);
+        return $"unit:{definition.ObjectId}";
+    }
+
+    private static string BuildingSubgroupKey(int typeId) =>
+        $"building:{typeId}";
+
+    private SelectionSubgroup[] OrderedUnitSubgroups()
+    {
+        if (_simulation is null || _production is null) return [];
+        var candidates = _selectedUnits
+            .Where(unit => (uint)unit < (uint)_simulation.Units.Count &&
+                           _simulation.Units.Alive[unit])
+            .Select(unit =>
+            {
+                var definition = War3HumanContent.ResolveUnit(
+                    _simulation, _production, unit);
+                var state = _simulation.Abilities.Observe(unit);
+                var caster = state.Abilities.Any(slot =>
+                    slot.Level > 0 &&
+                    (uint)slot.AbilityId <
+                    (uint)_simulation.Abilities.Catalog.Count &&
+                    !_simulation.Abilities.Catalog.Ability(slot.AbilityId)
+                        .IsPassive);
+                return new SelectionUnitCandidate(
+                    unit,
+                    $"unit:{definition.ObjectId}",
+                    state.Hero ? 0 : caster ? 1 : 2,
+                    state.Hero ? state.HeroLevel : 0);
+            })
+            .ToArray();
+        return candidates
+            .GroupBy(value => value.Key, StringComparer.Ordinal)
+            .Select(group => new SelectionSubgroup(
+                group.Key,
+                group.Min(value => value.Priority),
+                group.Max(value => value.HeroLevel),
+                group.Min(value => value.Unit),
+                group.OrderByDescending(value => value.HeroLevel)
+                    .ThenBy(value => value.Unit)
+                    .Select(value => value.Unit)
+                    .ToArray()))
+            .OrderBy(value => value.Priority)
+            .ThenByDescending(value => value.HeroLevel)
+            .ThenBy(value => value.FirstEntity)
+            .ToArray();
+    }
+
+    private SelectionSubgroup[] OrderedBuildingSubgroups()
+    {
+        if (_simulation is null) return [];
+        return _selectedBuildings
+            .Select(value => new GameplayBuildingId(value))
+            .Where(_simulation.Construction.IsAlive)
+            .Select(id => _simulation.ObserveGameplayBuilding(id))
+            .GroupBy(value => value.Type.Id)
+            .Select(group => new SelectionSubgroup(
+                BuildingSubgroupKey(group.Key),
+                3,
+                0,
+                group.Min(value => value.Id.Value),
+                group.OrderBy(value => value.Id.Value)
+                    .Select(value => value.Id.Value)
+                    .ToArray()))
+            .OrderBy(value => value.FirstEntity)
+            .ToArray();
+    }
+
+    private SelectionSubgroup[] ActiveSelectionSubgroups() =>
+        _selectedUnits.Count > 0
+            ? OrderedUnitSubgroups()
+            : OrderedBuildingSubgroups();
+
+    private void NormalizeActiveSelectionSubgroup()
+    {
+        var groups = ActiveSelectionSubgroups();
+        if (groups.Length == 0)
+        {
+            _activeSelectionSubgroup = string.Empty;
+            return;
+        }
+        if (!groups.Any(value => value.Key.Equals(
+                _activeSelectionSubgroup, StringComparison.Ordinal)))
+            _activeSelectionSubgroup = groups[0].Key;
+    }
+
+    private int[] ActiveSubgroupUnits()
+    {
+        var group = OrderedUnitSubgroups().FirstOrDefault(value =>
+            value.Key.Equals(_activeSelectionSubgroup, StringComparison.Ordinal));
+        return group?.Entities ?? [];
+    }
+
+    private int ActiveSelectionUnit() =>
+        ActiveSubgroupUnits().FirstOrDefault(-1);
+
+    private int ActiveSelectionBuilding()
+    {
+        var group = OrderedBuildingSubgroups().FirstOrDefault(value =>
+            value.Key.Equals(_activeSelectionSubgroup, StringComparison.Ordinal));
+        return group?.Entities.FirstOrDefault() ??
+               _selectedBuildings.Order().FirstOrDefault(-1);
+    }
+
+    private void CycleSelectionSubgroup(int direction)
+    {
+        var groups = ActiveSelectionSubgroups();
+        if (groups.Length < 2) return;
+        var current = Array.FindIndex(groups, value => value.Key.Equals(
+            _activeSelectionSubgroup, StringComparison.Ordinal));
+        if (current < 0) current = 0;
+        current = (current + direction + groups.Length) % groups.Length;
+        _activeSelectionSubgroup = groups[current].Key;
+        CancelMode();
+        UpdateHud();
+    }
+
+    private void SelectGroupEntry(War3SelectionGroupEntry entry)
+    {
+        if (!entry.SubgroupKey.Equals(
+                _activeSelectionSubgroup, StringComparison.Ordinal))
+        {
+            _activeSelectionSubgroup = entry.SubgroupKey;
+            CancelMode();
+            UpdateHud();
+            return;
+        }
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        if (entry.Building)
+            _selectedBuildings.Add(entry.EntityId);
+        else
+            _selectedUnits.Add(entry.EntityId);
+        _activeSelectionSubgroup = entry.SubgroupKey;
+        RefreshSelection();
     }
 
     private void UpdatePointerFeedback()
@@ -1837,16 +2005,19 @@ public sealed partial class War3Rts : Node3D
             return War3SelectionSnapshot.Empty;
         if (_selectedUnits.Count > 0)
         {
-            var living = _selectedUnits.Where(unit => _simulation.Units.Alive[unit])
-                .Order().ToArray();
+            var living = OrderedUnitSubgroups()
+                .SelectMany(value => value.Entities)
+                .ToArray();
             if (living.Length == 0) return War3SelectionSnapshot.Empty;
-            var first = living[0];
+            var first = ActiveSelectionUnit();
+            if (first < 0) first = living[0];
             var definition = War3HumanContent.ResolveUnit(
                 _simulation, _production, first);
-            var health = living.Sum(unit => _simulation.Combat.Health[unit]);
-            var maximum = living.Sum(unit => _simulation.Combat.MaximumHealth[unit]);
+            var health = _simulation.Combat.Health[first];
+            var maximum = _simulation.Combat.MaximumHealth[first];
             var homogeneous = living.All(unit => War3HumanContent.ResolveUnit(
                 _simulation, _production, unit).TypeId == definition.TypeId);
+            var activeGroupCount = ActiveSubgroupUnits().Length;
             var attack = _simulation.Combat.AttackDamage[first];
             var weapons = _simulation.Combat.WeaponProfiles[first];
             var activeWeaponSlot = _simulation.Combat.ActiveWeaponSlots[first];
@@ -1878,8 +2049,8 @@ public sealed partial class War3Rts : Node3D
             var inventorySlots = InventorySlotCount(
                 definition.ObjectId, abilityState.Hero);
             return new War3SelectionSnapshot(
-                homogeneous && living.Length > 1
-                    ? $"{definition.Name} × {living.Length}"
+                living.Length > 1
+                    ? $"{definition.Name} × {Math.Max(1, activeGroupCount)}"
                     : definition.Name,
                 homogeneous
                     ? string.Join(" · ", new[]
@@ -1908,13 +2079,8 @@ public sealed partial class War3Rts : Node3D
                     : ArmorClass(_simulation.Combat.Attributes[first]),
                 false)
             {
-                Mana = homogeneous
-                    ? living.Sum(unit => _simulation.Abilities.Observe(unit).Mana)
-                    : abilityState.Mana,
-                MaximumMana = homogeneous
-                    ? living.Sum(unit =>
-                        _simulation.Abilities.Observe(unit).MaximumMana)
-                    : abilityState.MaximumMana,
+                Mana = abilityState.Mana,
+                MaximumMana = abilityState.MaximumMana,
                 ManaRegeneration = abilityState.ManaRegeneration,
                 HeroExperience = abilityState.HeroExperience,
                 ExperienceForNextLevel =
@@ -1933,12 +2099,17 @@ public sealed partial class War3Rts : Node3D
                 ArmorIconPath = Btn("HumanArmorUpOne"),
                 IsHero = abilityState.Hero,
                 SupportsInventory = inventorySlots > 0,
-                InventorySlotCount = inventorySlots
+                InventorySlotCount = inventorySlots,
+                GroupEntries = CreateSelectionGroupEntries()
             };
         }
         if (_selectedBuildings.Count > 0)
         {
-            var id = new GameplayBuildingId(_selectedBuildings.Order().First());
+            var activeGroup = OrderedBuildingSubgroups().FirstOrDefault(value =>
+                value.Key.Equals(_activeSelectionSubgroup, StringComparison.Ordinal));
+            var activeId = activeGroup?.Entities.FirstOrDefault() ??
+                           _selectedBuildings.Order().First();
+            var id = new GameplayBuildingId(activeId);
             if (!_simulation.Construction.IsAlive(id)) return War3SelectionSnapshot.Empty;
             var building = _simulation.ObserveGameplayBuilding(id);
             var definition = War3HumanContent.Buildings[building.Type.Id];
@@ -1982,10 +2153,75 @@ public sealed partial class War3Rts : Node3D
                 ArmorIconPath = Btn("ImbuedMasonry"),
                 IsHero = false,
                 SupportsInventory = false,
-                InventorySlotCount = 0
+                InventorySlotCount = 0,
+                GroupEntries = CreateSelectionGroupEntries(),
+                IsConstructing = building.State !=
+                                 BuildingLifecycleState.Completed,
+                ConstructionProgress = building.Progress
             };
         }
         return War3SelectionSnapshot.Empty;
+    }
+
+    private War3SelectionGroupEntry[] CreateSelectionGroupEntries()
+    {
+        if (_simulation is null || _production is null) return [];
+        var result = new List<War3SelectionGroupEntry>(MaximumSelectionCount);
+        if (_selectedUnits.Count > 0)
+        {
+            foreach (var group in OrderedUnitSubgroups())
+            foreach (var unit in group.Entities)
+            {
+                if (result.Count >= MaximumSelectionCount) break;
+                var definition = War3HumanContent.ResolveUnit(
+                    _simulation, _production, unit);
+                var state = _simulation.Abilities.Observe(unit);
+                var maximumHealth = _simulation.Combat.MaximumHealth[unit];
+                result.Add(new War3SelectionGroupEntry(
+                    unit,
+                    false,
+                    definition.TypeId,
+                    group.Key,
+                    definition.Name,
+                    definition.IconPath,
+                    maximumHealth > 0f
+                        ? _simulation.Combat.Health[unit] / maximumHealth
+                        : 0f,
+                    state.MaximumMana > 0f
+                        ? state.Mana / state.MaximumMana
+                        : 0f,
+                    group.Key.Equals(
+                        _activeSelectionSubgroup, StringComparison.Ordinal),
+                    _simulation.Abilities.ObserveBuffs(unit)
+                        .Any(value => !value.Beneficial),
+                    state.Hero ? state.HeroLevel : 0));
+            }
+            return result.ToArray();
+        }
+
+        foreach (var group in OrderedBuildingSubgroups())
+        foreach (var value in group.Entities)
+        {
+            if (result.Count >= MaximumSelectionCount) break;
+            var building = _simulation.ObserveGameplayBuilding(
+                new GameplayBuildingId(value));
+            var definition = War3HumanContent.Buildings[building.Type.Id];
+            result.Add(new War3SelectionGroupEntry(
+                value,
+                true,
+                building.Type.Id,
+                group.Key,
+                definition.Name,
+                definition.IconPath,
+                building.MaximumHealth > 0f
+                    ? building.Health / building.MaximumHealth
+                    : 0f,
+                0f,
+                group.Key.Equals(
+                    _activeSelectionSubgroup, StringComparison.Ordinal),
+                false));
+        }
+        return result.ToArray();
     }
 
     private int InventorySlotCount(string objectId, bool hero)
@@ -2387,7 +2623,7 @@ public sealed partial class War3Rts : Node3D
             };
             if (_simulation is not null)
             {
-                var caster = _selectedUnits.Order().FirstOrDefault(unit =>
+                var caster = ActiveSubgroupUnits().FirstOrDefault(unit =>
                     _simulation.Units.Alive[unit] &&
                     _simulation.Combat.Teams[unit] ==
                     War3HumanScenario.PlayerId, -1);
@@ -2479,7 +2715,7 @@ public sealed partial class War3Rts : Node3D
                             Badge: state.UnspentSkillPoints.ToString()));
                 }
             }
-            if (_simulation is not null && _selectedUnits.Any(unit =>
+            if (_simulation is not null && ActiveSubgroupUnits().Any(unit =>
                     _simulation.Economy.IsWorkerOwnedBy(
                         unit, War3HumanScenario.PlayerId)))
                 commands.Add(Command(7, War3CommandKind.OpenBuildMenu, -1,
@@ -2490,7 +2726,7 @@ public sealed partial class War3Rts : Node3D
             _production is not null && _technologies is not null &&
             _buildingUpgrades is not null)
         {
-            var id = new GameplayBuildingId(_selectedBuildings.Order().First());
+            var id = new GameplayBuildingId(ActiveSelectionBuilding());
             if (!_simulation.Construction.IsAlive(id)) return [];
             var building = _simulation.Construction.Observe(id);
             var result = new List<War3CommandSnapshot>();
@@ -3027,6 +3263,7 @@ public sealed partial class War3Rts : Node3D
         _hud = new War3RtsHud { Name = "HumanHud" };
         _hud.CommandRequested += ExecuteCommand;
         _hud.QueueItemCancelRequested += CancelQueueItem;
+        _hud.SelectionGroupEntryRequested += SelectGroupEntry;
         _hud.ReturnRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
         _hud.MinimapFocusRequested += point => _cameraController?.FocusAt(point);
@@ -3228,6 +3465,8 @@ public sealed partial class War3Rts : Node3D
                       constructionPresentationValid && terrainReady &&
                       dataIntegrationReady && mapLoadingValid &&
                       abilityIntegrationReady &&
+                      _smokeSelectionGroupUiValid &&
+                      _smokeConstructionProgressUiValid &&
                       queueUiValid && queueCancelValid &&
                       researchQueueUiValid;
         success &= combatObjectsReady;
@@ -3270,6 +3509,8 @@ public sealed partial class War3Rts : Node3D
              $"ability_integration={abilityIntegrationReady}/" +
              $"{_simulation.AbilityEvents.LatestSequence} " +
              $"map_loading={mapLoadingValid}/{_loadingStageUpdateCount} " +
+             $"selection_group_ui={_smokeSelectionGroupUiValid} " +
+             $"construction_progress_ui={_smokeConstructionProgressUiValid} " +
              $"queue_ui={queueUiValid}/5 queue_cancel={queueCancelValid}/" +
              $"4 research_queue={researchQueueUiValid} " +
              $"terrain_hash={_terrain?.StableHashText ?? "none"} " +
@@ -3367,6 +3608,32 @@ public sealed partial class War3Rts : Node3D
             home + new NVector2(355f, -40f),
             _production.UnitType(War3HumanContent.Footman),
             War3HumanScenario.EnemyId);
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        _selectedUnits.Add(player);
+        _selectedUnits.Add(hero);
+        _selectedUnits.Add(mountainKing);
+        RefreshSelection();
+        var initialSubgroup = _activeSelectionSubgroup;
+        CycleSelectionSubgroup(1);
+        _smokeSelectionGroupUiValid = _hud is not null &&
+                                      _hud.SelectionGroupVisible &&
+                                      _hud.VisibleSelectionGroupEntryCount == 3 &&
+                                      _hud.QueuePresentationExclusive &&
+                                      !_activeSelectionSubgroup.Equals(
+                                          initialSubgroup,
+                                          StringComparison.Ordinal);
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        _selectedBuildings.Add(_smokeConstructionBuilding);
+        RefreshSelection();
+        _smokeConstructionProgressUiValid = _hud is not null &&
+                                            _hud.ConstructionProgressVisible &&
+                                            _hud.SelectionDetailsVisible &&
+                                            _hud.QueuePresentationExclusive;
+        _selectedBuildings.Clear();
+        _selectedBuildings.Add(rallyBuilding.Id.Value);
+        RefreshSelection();
         // The scenario has already seeded fog-of-war before these smoke-only
         // units are appended. Refresh visibility once so their first attack
         // order is not discarded before the normal end-of-tick refresh.
@@ -3484,6 +3751,19 @@ public sealed partial class War3Rts : Node3D
         4 => "A", 5 => "S", 6 => "D", 7 => "F",
         8 => "Z", 9 => "X", 10 => "C", _ => string.Empty
     };
+
+    private readonly record struct SelectionUnitCandidate(
+        int Unit,
+        string Key,
+        int Priority,
+        int HeroLevel);
+
+    private sealed record SelectionSubgroup(
+        string Key,
+        int Priority,
+        int HeroLevel,
+        int FirstEntity,
+        int[] Entities);
 
     private enum TargetMode : byte
     {

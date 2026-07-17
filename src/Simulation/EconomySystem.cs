@@ -533,14 +533,14 @@ public sealed class EconomySystem
     private const float NodeArrivalPadding = 30f;
     private const float DefaultDropOffArrivalRadius = 52f;
     private const float BaseResourceRadius = 360f;
-    private readonly bool[] _workers;
-    private readonly int[] _workerPlayers;
-    private readonly GathererCapability[] _gathererCapabilities;
-    private readonly WorkerEconomyState[] _workerStates;
-    private readonly int[] _workerNodes;
-    private readonly EconomyResourceKind[] _cargoKinds;
-    private readonly int[] _cargoAmounts;
-    private readonly float[] _workRemaining;
+    private bool[] _workers;
+    private int[] _workerPlayers;
+    private GathererCapability[] _gathererCapabilities;
+    private WorkerEconomyState[] _workerStates;
+    private int[] _workerNodes;
+    private EconomyResourceKind[] _cargoKinds;
+    private int[] _cargoAmounts;
+    private float[] _workRemaining;
     private readonly List<ResourceNode> _nodes = [];
     private readonly List<DropOff> _dropOffs = [];
     private readonly List<EconomyBase> _bases = [];
@@ -570,6 +570,25 @@ public sealed class EconomySystem
     public bool HasRuntimeState =>
         Players.HasRegisteredPlayers || _nodes.Count > 0 || _dropOffs.Count > 0 ||
         _workers.Any(value => value);
+
+    internal void EnsureUnitCapacity(int capacity)
+    {
+        if (capacity <= _workers.Length)
+        {
+            return;
+        }
+
+        var previous = _workers.Length;
+        Array.Resize(ref _workers, capacity);
+        Array.Resize(ref _workerPlayers, capacity);
+        Array.Resize(ref _gathererCapabilities, capacity);
+        Array.Resize(ref _workerStates, capacity);
+        Array.Resize(ref _workerNodes, capacity);
+        Array.Resize(ref _cargoKinds, capacity);
+        Array.Resize(ref _cargoAmounts, capacity);
+        Array.Resize(ref _workRemaining, capacity);
+        Array.Fill(_workerNodes, -1, previous, capacity - previous);
+    }
 
     public bool IsWorker(int unit) =>
         IsGatherer(unit) &&

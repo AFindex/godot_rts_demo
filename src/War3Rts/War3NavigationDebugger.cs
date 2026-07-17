@@ -212,6 +212,9 @@ internal sealed partial class War3NavigationDebugger : Node3D
                 $"slotFree={_simulation.World.IsDiscFree(slot, navigationRadius)} " +
                 $"mode={store.Modes[unit]} leg={store.MovementLegResults[unit]} " +
                 $"pending={store.PathPending[unit]} " +
+                $"cmd={store.CommandVersions[unit]} " +
+                $"pathQueue=" +
+                $"{_simulation.PendingPathRequestCountForDiagnostics} " +
                 $"path={(path?.Cursor ?? -1)}/{(path?.Points.Length ?? 0)} " +
                 $"route={store.RouteWaypoints[unit].Length} " +
                 $"choke={store.ActiveChokeIds[unit]}/" +

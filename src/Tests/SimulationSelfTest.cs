@@ -58,6 +58,7 @@ public static class SimulationSelfTest
             var technologyCatalogResult = TechnologyCatalogSelfTest.Run(
                 technologyCatalog);
             var buildingUpgradeResult = BuildingUpgradeSelfTest.Run();
+            var unitCapacityGrowthResult = UnitCapacityGrowthSelfTest.Run();
             var aiArchitectureResult = AiArchitectureSelfTest.Run();
             var aiConfigurationResult = AiConfigurationSelfTest.Run(
                 aiConfigurations);
@@ -100,6 +101,7 @@ public static class SimulationSelfTest
                       productionCatalogResult.Passed &&
                       technologyCatalogResult.Passed &&
                       buildingUpgradeResult.Passed &&
+                      unitCapacityGrowthResult.Passed &&
                        aiArchitectureResult.Passed &&
                        aiConfigurationResult.Passed && modularAiResult.Passed;
             passed &= operationPresentationResult.Passed && interface3DResult.Passed &&
@@ -199,6 +201,9 @@ public static class SimulationSelfTest
                 $"building-upgrade=" +
                 $"{(buildingUpgradeResult.Passed ? "PASS" : "FAIL")}" +
                 $"({buildingUpgradeResult.Summary})",
+                $"unit-capacity-growth=" +
+                $"{(unitCapacityGrowthResult.Passed ? "PASS" : "FAIL")}" +
+                $"({unitCapacityGrowthResult.Summary})",
                 $"ai-architecture=" +
                 $"{(aiArchitectureResult.Passed ? "PASS" : "FAIL")}" +
                 $"({aiArchitectureResult.Summary})",

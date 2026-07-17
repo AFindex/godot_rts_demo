@@ -38,6 +38,9 @@ public readonly record struct War3TreeHarvestFeedbackEvent(
 /// <summary>Read-only Warcraft presentation of the authoritative RTS state.</summary>
 public sealed partial class War3WorldPresenter : Node3D
 {
+    // Warcraft's selection circle uses a 32-coordinate base radius and MDX
+    // models are imported at 0.01 world units per source coordinate.
+    private const float WarcraftSelectionCircleWorldRadius = 32f * 0.01f;
     private const float SelectionHeight = 0.035f;
     private const int BuildingAudioEmitterBase = 1_000_000_000;
     private const int ProjectileAudioEmitterBase = 1_250_000_000;
@@ -826,12 +829,16 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual.LastPosition = center;
                 var world = ToWorldAtGround(center);
                 visual.Actor.Position = world;
-                var diameter = MathF.Max(
+                var footprintRadius = MathF.Max(
                     SimPlane3DTransform.ToWorldLength(building.Type.Size.X),
                     SimPlane3DTransform.ToWorldLength(building.Type.Size.Y)) * 0.62f;
                 visual.Selection.Position = new Vector3(
                     world.X, world.Y + SelectionHeight, world.Z);
-                visual.Selection.Scale = Vector3.One * MathF.Max(0.85f, diameter);
+                var selectionRadius = visual.Definition.SelectionCircleScale > 0f
+                    ? visual.Definition.SelectionCircleScale *
+                      WarcraftSelectionCircleWorldRadius
+                    : MathF.Max(0.85f, footprintRadius);
+                visual.Selection.Scale = Vector3.One * selectionRadius;
                 visual.ShadowProxy.Position = new Vector3(
                     world.X,
                     world.Y + visual.ShadowProxyHeight * 0.5f,

@@ -1420,7 +1420,9 @@ public partial class RtsDemo : Node2D
         {
             result[unit] = new SelectionCandidate(
                 unit,
-                _selectionTypeIds[unit],
+                (uint)unit < (uint)_selectionTypeIds.Length
+                    ? _selectionTypeIds[unit]
+                    : -1,
                 _simulation.Combat.Teams[unit],
                 _simulation.Units.Alive[unit],
                 _simulation.Units.Positions[unit],
