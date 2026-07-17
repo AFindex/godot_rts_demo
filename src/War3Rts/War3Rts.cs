@@ -17,7 +17,6 @@ public sealed partial class War3Rts : Node3D
 {
     private const float MinimumDragPixels = 7f;
     private const float CursorEdgePixels = 10f;
-    private const int MaximumSelectionCount = 12;
     private RtsSimulation? _simulation;
     private War3HumanRuntime? _runtime;
     private TerrainMapSnapshot? _terrain;
@@ -30,6 +29,7 @@ public sealed partial class War3Rts : Node3D
     private Camera3D? _camera;
     private Rts3DCameraController? _cameraController;
     private War3RtsHud? _hud;
+    private War3ItemShopRuntime? _itemShops;
     private War3MapRuntime? _activeMap;
     private CanvasLayer? _mapSelectionLayer;
     private War3MapLoadingOverlay? _mapLoadingOverlay;
@@ -68,12 +68,15 @@ public sealed partial class War3Rts : Node3D
     private int _earlyExitCode;
     private War3RuntimeProfiler? _runtimeProfiler;
     private War3StressTestMode? _stressTest;
+    private War3AutomatedSkirmishStressMode? _automatedSkirmish;
+    private bool _automatedSkirmishRequested;
     private War3NavigationDebugger? _navigationDebugger;
     private War3CursorController? _cursor;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
     private int _smokeConstructionBuilder = -1;
+    private int _smokeShopBuilding = -1;
     private long _smokeConstructionPauseTick = -1;
     private float _smokeConstructionPauseProgress;
     private bool _smokeConstructionPauseStable = true;
@@ -81,6 +84,10 @@ public sealed partial class War3Rts : Node3D
     private bool _smokeConstructionAdvancedAfterResume;
     private bool _smokeSelectionGroupUiValid;
     private bool _smokeConstructionProgressUiValid;
+    private bool _smokeBuildingPortraitValid;
+    private bool _smokeUnitPortraitValid;
+    private bool _smokeEnemySelectionValid;
+    private bool _smokeShopValid;
     private bool _smokeAbilityCastsIssued;
     private bool _smokeAbilityDamageApplied;
     private int _smokeSummonedUnit = -1;
@@ -99,6 +106,14 @@ public sealed partial class War3Rts : Node3D
         _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
         _rightClickInputSmoke = arguments.Contains(
             "--war3-right-click-input-smoke");
+        _automatedSkirmishRequested =
+            War3AutomatedSkirmishStressMode.IsRequested(arguments);
+        if (_automatedSkirmishRequested &&
+            War3StressTestMode.IsRequested(arguments))
+        {
+            throw new InvalidOperationException(
+                "The synthetic and automated skirmish stress modes cannot run together.");
+        }
         var navigationAuditRequested =
             arguments.Contains(War3NavigationMapAudit.EnableArgument);
         if (navigationAuditRequested)
@@ -135,6 +150,7 @@ public sealed partial class War3Rts : Node3D
         if (_smoke || _capture || _offlineBakeRequested ||
             _rightClickInputSmoke ||
             navigationAuditRequested || _stressTest is not null ||
+            _automatedSkirmishRequested ||
             !string.IsNullOrWhiteSpace(requestedId))
         {
             var id = string.IsNullOrWhiteSpace(requestedId)
@@ -348,6 +364,7 @@ public sealed partial class War3Rts : Node3D
         }
 
         _simulation.WarmPathingCaches();
+        _itemShops = new War3ItemShopRuntime();
 
         await AdvanceMapLoadingAsync(
             6, 0.77d,
@@ -367,7 +384,8 @@ public sealed partial class War3Rts : Node3D
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
         _simulation.DetailedProfilingEnabled =
-            _runtimeProfiler is not null || _stressTest is not null;
+            _runtimeProfiler is not null || _stressTest is not null ||
+            _automatedSkirmishRequested;
         CreateHud();
         _navigationDebugger = new War3NavigationDebugger
         {
@@ -445,6 +463,22 @@ public sealed partial class War3Rts : Node3D
             RefreshSelection();
             _cameraController!.FocusAt(_stressTest.FocusPoint, immediate: true);
             _status = "War3 压测：自动战斗、补兵、免费建造与定时自毁";
+        }
+        if (_automatedSkirmishRequested)
+        {
+            _automatedSkirmish = War3AutomatedSkirmishStressMode.TryCreate(
+                arguments,
+                _simulation,
+                _buildings,
+                _production,
+                _technologies,
+                _runtime);
+            _selectedUnits.Clear();
+            _selectedBuildings.Clear();
+            RefreshSelection();
+            _cameraController!.FocusAt(
+                _automatedSkirmish!.FocusPoint, immediate: true);
+            _status = "War3 自动运营压测：双边采集、建造、科技、生产与交战";
         }
         if (_capture) _ = CaptureAsync();
         UpdateHud();
@@ -753,22 +787,76 @@ public sealed partial class War3Rts : Node3D
         var frame = (float)Math.Min(delta, 0.05d);
         var advanceSimulation =
             _navigationDebugger?.ConsumeAdvanceSimulation() ?? true;
-        if (advanceSimulation) _stressTest?.Update();
-        var stressEnd = System.Diagnostics.Stopwatch.GetTimestamp();
-        if (advanceSimulation)
-            _runtime.AiDirector.Update(_simulation.Metrics.Tick);
-        var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        var simulationSteps = advanceSimulation
+            ? _automatedSkirmish?.TicksPerPhysicsFrame ?? 1
+            : 0;
+        var stressMilliseconds = 0d;
+        var aiMilliseconds = 0d;
+        var simulationMilliseconds = 0d;
+        var aiProfile = default(RtsDemo.AI.RtsAiUpdateProfile);
+        var stressProfile = default(War3StressUpdateProfile);
         if (advanceSimulation)
         {
-            _simulation.Tick(frame);
-            ConsumeAudioEvents();
+            for (var step = 0; step < simulationSteps; step++)
+            {
+                var stepAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+                var stepStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                var automationProfile =
+                    default(War3AutomatedSkirmishUpdateProfile);
+                if (_automatedSkirmish is not null)
+                {
+                    _automatedSkirmish.UpdateBeforeSimulation();
+                    automationProfile = _automatedSkirmish.LastUpdateProfile;
+                    aiProfile = _automatedSkirmish.LastAiProfile;
+                    stressMilliseconds += Math.Max(
+                        0d,
+                        automationProfile.TotalMilliseconds -
+                        automationProfile.AiMilliseconds);
+                    aiMilliseconds += automationProfile.AiMilliseconds;
+                }
+                else
+                {
+                    _stressTest?.Update();
+                    var stressEnd =
+                        System.Diagnostics.Stopwatch.GetTimestamp();
+                    stressMilliseconds +=
+                        ElapsedMilliseconds(stepStart, stressEnd);
+                    _runtime.AiDirector.Update(_simulation.Metrics.Tick);
+                    var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+                    aiMilliseconds += ElapsedMilliseconds(stressEnd, aiEnd);
+                    aiProfile = _runtime.AiDirector.LastUpdateProfile;
+                    stressProfile = _stressTest?.LastUpdateProfile ?? default;
+                }
+
+                var simulationStart =
+                    System.Diagnostics.Stopwatch.GetTimestamp();
+                _simulation.Tick(frame);
+                _itemShops?.Update(frame);
+                ConsumeAudioEvents();
+                var stepEnd =
+                    System.Diagnostics.Stopwatch.GetTimestamp();
+                var stepSimulationMilliseconds = ElapsedMilliseconds(
+                    simulationStart, stepEnd);
+                simulationMilliseconds += stepSimulationMilliseconds;
+                if (_automatedSkirmish is not null)
+                {
+                    _runtimeProfiler?.RecordAutomatedSkirmishStep(
+                        ElapsedMilliseconds(stepStart, stepEnd),
+                        stepSimulationMilliseconds,
+                        GC.GetAllocatedBytesForCurrentThread() -
+                        stepAllocationStart,
+                        _simulation.Metrics,
+                        aiProfile,
+                        automationProfile);
+                }
+                _elapsed += frame;
+            }
         }
         var simulationEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         if (_smoke && advanceSimulation) UpdateSmokeConstructionCycle();
-        if (advanceSimulation) _elapsed += frame;
         PruneSelection();
         _navigationDebugger?.SamplePhysics(delta);
-        _hudAccumulator += advanceSimulation ? frame : delta;
+        _hudAccumulator += advanceSimulation ? frame * simulationSteps : delta;
         if (_hudAccumulator >= 0.1d)
         {
             _hudAccumulator = 0d;
@@ -779,14 +867,14 @@ public sealed partial class War3Rts : Node3D
         var profileEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         _runtimeProfiler?.RecordPhysics(
             ElapsedMilliseconds(profileStart, profileEnd),
-            ElapsedMilliseconds(profileStart, stressEnd),
-            ElapsedMilliseconds(stressEnd, aiEnd),
-            ElapsedMilliseconds(aiEnd, simulationEnd),
+            stressMilliseconds,
+            aiMilliseconds,
+            simulationMilliseconds,
             ElapsedMilliseconds(simulationEnd, profileEnd),
             GC.GetAllocatedBytesForCurrentThread() - allocationStart,
             _simulation.Metrics,
-            _runtime.AiDirector.LastUpdateProfile,
-            _stressTest?.LastUpdateProfile ?? default);
+            aiProfile,
+            stressProfile);
     }
 
     public override void _Process(double delta)
@@ -805,6 +893,7 @@ public sealed partial class War3Rts : Node3D
                 _presenter?.LastSyncProfile ?? default) == true)
         {
             _stressTest?.PrintSummary();
+            _automatedSkirmish?.PrintSummary();
             GetTree().Quit(0);
         }
     }
@@ -1006,6 +1095,9 @@ public sealed partial class War3Rts : Node3D
                 break;
             case War3CommandKind.BuildingAbility:
                 UseBuildingAbility(command.DataId);
+                break;
+            case War3CommandKind.PurchaseItem:
+                PurchaseShopItem(command.DataId);
                 break;
             case War3CommandKind.OpenLearnMenu:
                 _learnMenu = true;
@@ -1474,6 +1566,154 @@ public sealed partial class War3Rts : Node3D
         UpdateHud();
     }
 
+    private War3CommandSnapshot[] CreateArcaneVaultCommands(
+        GameplayBuildingId shop,
+        int buyer)
+    {
+        if (_simulation is null || _itemShops is null)
+            return [];
+        var inventorySlots = buyer >= 0 ? InventorySlotsForUnit(buyer) : 0;
+        var townTier = HighestHumanTownTier();
+        return War3ItemShopRuntime.ArcaneVaultItems
+            .Select(item =>
+            {
+                var offer = _itemShops.Offer(
+                    shop.Value, item.RuntimeId, buyer, inventorySlots,
+                    townTier, _simulation.Economy.Players,
+                    War3HumanScenario.PlayerId);
+                var lumber = item.Cost.VespeneGas > 0
+                    ? $" / {item.Cost.VespeneGas} 木材"
+                    : string.Empty;
+                var buyerLabel = buyer >= 0
+                    ? War3HumanContent.ResolveUnit(
+                        _simulation, _production!, buyer).Name
+                    : "无可用购买者";
+                var state = offer.Available
+                    ? War3CommandVisualState.Ready
+                    : War3CommandVisualState.Unavailable;
+                var reason = offer.Available
+                    ? "可购买"
+                    : offer.Reason;
+                return new War3CommandSnapshot(
+                    item.CommandSlot,
+                    War3CommandKind.PurchaseItem,
+                    item.RuntimeId,
+                    item.Name,
+                    $"{item.Description}\n" +
+                    $"价格：{item.Cost.Minerals} 黄金{lumber}\n" +
+                    $"库存：{offer.Stock}/{item.MaximumStock} · " +
+                    $"补货 {item.RestockSeconds:0} 秒\n" +
+                    $"解锁：{item.RequirementLabel} · " +
+                    $"购买者：{buyerLabel}\n状态：{reason}",
+                    item.IconPath,
+                    item.Hotkey,
+                    offer.Available,
+                    State: state,
+                    Badge: offer.Stock.ToString());
+            })
+            .ToArray();
+    }
+
+    private void PurchaseShopItem(int itemRuntimeId)
+    {
+        if (_simulation is null || _itemShops is null ||
+            _selectedBuildings.Count == 0)
+            return;
+        var id = new GameplayBuildingId(ActiveSelectionBuilding());
+        if (!_simulation.Construction.IsAlive(id)) return;
+        var building = _simulation.Construction.Observe(id);
+        if (building.PlayerId != War3HumanScenario.PlayerId ||
+            building.State != BuildingLifecycleState.Completed ||
+            building.Type.Id != War3HumanContent.ArcaneVault)
+        {
+            Report("当前选择不是可用的神秘藏宝室");
+            return;
+        }
+        var buyer = LocalShopUser(building);
+        var slots = buyer >= 0 ? InventorySlotsForUnit(buyer) : 0;
+        var purchase = _itemShops.Purchase(
+            id.Value, itemRuntimeId, buyer, slots, HighestHumanTownTier(),
+            _simulation.Economy.Players, War3HumanScenario.PlayerId);
+        Report(purchase.Succeeded
+            ? $"{purchase.Item.Name} 已放入 " +
+              $"{War3HumanContent.ResolveUnit(_simulation, _production!, buyer).Name} 的物品栏"
+            : $"购买失败：{ShopPurchaseReason(purchase.Code)}");
+    }
+
+    private int LocalShopUser(GameplayBuildingSnapshot building)
+    {
+        if (_simulation is null || _production is null) return -1;
+        return Enumerable.Range(0, _simulation.Units.Count)
+            .Where(unit => _simulation.Units.Alive[unit] &&
+                           _simulation.Combat.Teams[unit] ==
+                           War3HumanScenario.PlayerId &&
+                           InventorySlotsForUnit(unit) > 0)
+            .Select(unit => new
+            {
+                Unit = unit,
+                DistanceSquared = DistanceSquaredToBounds(
+                    _simulation.Units.Positions[unit], building.Bounds)
+            })
+            .Where(value => value.DistanceSquared <=
+                            War3ItemShopRuntime.InteractionRange *
+                            War3ItemShopRuntime.InteractionRange)
+            .OrderBy(value => value.DistanceSquared)
+            .ThenBy(value => value.Unit)
+            .Select(value => value.Unit)
+            .FirstOrDefault(-1);
+    }
+
+    private int InventorySlotsForUnit(int unit)
+    {
+        if (_simulation is null || _production is null ||
+            (uint)unit >= (uint)_simulation.Units.Count ||
+            !_simulation.Units.Alive[unit])
+            return 0;
+        var definition = War3HumanContent.ResolveUnit(
+            _simulation, _production, unit);
+        return InventorySlotCount(
+            definition.ObjectId, _simulation.Abilities.Observe(unit).Hero);
+    }
+
+    private int HighestHumanTownTier()
+    {
+        if (_simulation is null) return 0;
+        var tier = 0;
+        foreach (var building in _simulation.CreateGameplayBuildingOverview())
+        {
+            if (building.PlayerId != War3HumanScenario.PlayerId ||
+                building.State != BuildingLifecycleState.Completed)
+                continue;
+            if (building.Type.Id == War3HumanContent.Castle)
+                return 2;
+            if (building.Type.Id == War3HumanContent.Keep)
+                tier = Math.Max(tier, 1);
+        }
+        return tier;
+    }
+
+    private static float DistanceSquaredToBounds(
+        NVector2 point,
+        SimRect bounds)
+    {
+        var x = Math.Clamp(point.X, bounds.Min.X, bounds.Max.X);
+        var y = Math.Clamp(point.Y, bounds.Min.Y, bounds.Max.Y);
+        return NVector2.DistanceSquared(point, new NVector2(x, y));
+    }
+
+    private static string ShopPurchaseReason(War3ShopPurchaseCode code) =>
+        code switch
+        {
+            War3ShopPurchaseCode.NoShopUser =>
+                "需要带物品栏的己方单位靠近商店",
+            War3ShopPurchaseCode.InventoryFull => "购买者物品栏已满",
+            War3ShopPurchaseCode.RequirementMissing => "主基地等级不足",
+            War3ShopPurchaseCode.OutOfStock => "商品正在补货",
+            War3ShopPurchaseCode.InsufficientGold => "黄金不足",
+            War3ShopPurchaseCode.InsufficientLumber => "木材不足",
+            _ => "商店或商品无效"
+        };
+
     private void SelectAt(NVector2 point, bool additive)
     {
         if (_simulation is null) return;
@@ -1482,7 +1722,10 @@ public sealed partial class War3Rts : Node3D
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
             if (!_simulation.Units.Alive[unit] ||
-                _simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId)
+                (_simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId &&
+                 !_simulation.Visibility.IsUnitVisible(
+                     War3HumanScenario.PlayerId, unit,
+                     _simulation.Units, _simulation.Combat)))
                 continue;
             var distance = NVector2.DistanceSquared(point, _simulation.Units.Positions[unit]);
             var radius = _simulation.Units.Radii[unit] + 22f;
@@ -1492,13 +1735,17 @@ public sealed partial class War3Rts : Node3D
                 bestDistance = distance;
             }
         }
-        if (!additive)
-        {
-            _selectedUnits.Clear();
-            _selectedBuildings.Clear();
-        }
+        var ownedUnit = best >= 0 &&
+                        _simulation.Combat.Teams[best] ==
+                        War3HumanScenario.PlayerId;
         if (best >= 0)
         {
+            if (!additive || !ownedUnit || SelectionContainsNonLocal() ||
+                _selectedBuildings.Count > 0)
+            {
+                _selectedUnits.Clear();
+                _selectedBuildings.Clear();
+            }
             var selected = true;
             if (additive && _selectedUnits.Contains(best))
             {
@@ -1507,38 +1754,61 @@ public sealed partial class War3Rts : Node3D
             }
             else
             {
-                if (SelectionCount() < MaximumSelectionCount)
-                {
-                    _selectedUnits.Add(best);
-                    _activeSelectionSubgroup = UnitSubgroupKey(best);
-                }
-                else
-                {
-                    selected = false;
-                    Report($"编队最多选择 {MaximumSelectionCount} 个单位");
-                }
+                _selectedUnits.Add(best);
+                _activeSelectionSubgroup = UnitSubgroupKey(best);
             }
             RefreshSelection();
-            if (selected) PlaySelectionAudio();
+            if (selected && ownedUnit) PlaySelectionAudio();
             return;
         }
         var building = _simulation.CreateGameplayBuildingOverview()
-            .FirstOrDefault(value => value.PlayerId == War3HumanScenario.PlayerId &&
-                                     !value.IsTerminal &&
-                                     value.Bounds.Expanded(8f).Contains(point));
+            .Where(value => !value.IsTerminal &&
+                            value.Bounds.Expanded(8f).Contains(point))
+            .Where(value => value.PlayerId == War3HumanScenario.PlayerId ||
+                            _simulation.Visibility.IsVisible(
+                                War3HumanScenario.PlayerId,
+                                BuildingCenter(value.Bounds)))
+            .OrderBy(value => value.Bounds.Width * value.Bounds.Height)
+            .FirstOrDefault();
         if (building.Type.Name is not null)
         {
+            var ownedBuilding = building.PlayerId == War3HumanScenario.PlayerId;
+            if (!additive || !ownedBuilding || SelectionContainsNonLocal() ||
+                _selectedUnits.Count > 0)
+            {
+                _selectedUnits.Clear();
+                _selectedBuildings.Clear();
+            }
             if (additive && _selectedBuildings.Contains(building.Id.Value))
                 _selectedBuildings.Remove(building.Id.Value);
-            else if (SelectionCount() < MaximumSelectionCount)
+            else
             {
                 _selectedBuildings.Add(building.Id.Value);
                 _activeSelectionSubgroup = BuildingSubgroupKey(building.Type.Id);
             }
-            else
-                Report($"编队最多选择 {MaximumSelectionCount} 个单位");
+        }
+        else if (!additive)
+        {
+            _selectedUnits.Clear();
+            _selectedBuildings.Clear();
         }
         RefreshSelection();
+    }
+
+    private bool SelectionContainsNonLocal()
+    {
+        if (_simulation is null) return false;
+        if (_selectedUnits.Any(unit =>
+                (uint)unit < (uint)_simulation.Units.Count &&
+                _simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId))
+            return true;
+        return _selectedBuildings.Any(value =>
+        {
+            var id = new GameplayBuildingId(value);
+            return _simulation.Construction.IsAlive(id) &&
+                   _simulation.Construction.Observe(id).PlayerId !=
+                   War3HumanScenario.PlayerId;
+        });
     }
 
     private void SelectRectangle(Vector2 from, Vector2 to, bool additive)
@@ -1563,7 +1833,6 @@ public sealed partial class War3Rts : Node3D
             if (!_camera.IsPositionBehind(world) &&
                 rect.HasPoint(_camera.UnprojectPosition(world)))
             {
-                if (SelectionCount() >= MaximumSelectionCount) break;
                 if (!_selectedUnits.Contains(unit)) selectedNewUnit = true;
                 _selectedUnits.Add(unit);
             }
@@ -1600,9 +1869,6 @@ public sealed partial class War3Rts : Node3D
         }
         if (changed) RefreshSelection();
     }
-
-    private int SelectionCount() =>
-        _selectedUnits.Count + _selectedBuildings.Count;
 
     private string UnitSubgroupKey(int unit)
     {
@@ -2048,10 +2314,12 @@ public sealed partial class War3Rts : Node3D
                         : "近战";
             var inventorySlots = InventorySlotCount(
                 definition.ObjectId, abilityState.Hero);
+            var team = _simulation.Combat.Teams[first];
+            var controllable = team == War3HumanScenario.PlayerId;
             return new War3SelectionSnapshot(
                 living.Length > 1
                     ? $"{definition.Name} × {Math.Max(1, activeGroupCount)}"
-                    : definition.Name,
+                    : SelectionPrefix(team) + definition.Name,
                 homogeneous
                     ? string.Join(" · ", new[]
                     {
@@ -2100,7 +2368,11 @@ public sealed partial class War3Rts : Node3D
                 IsHero = abilityState.Hero,
                 SupportsInventory = inventorySlots > 0,
                 InventorySlotCount = inventorySlots,
-                GroupEntries = CreateSelectionGroupEntries()
+                InventoryItems = _itemShops?.InventorySnapshot(first) ?? [],
+                GroupEntries = CreateSelectionGroupEntries(),
+                PortraitTeam = team,
+                PortraitAnimated = controllable,
+                Controllable = controllable
             };
         }
         if (_selectedBuildings.Count > 0)
@@ -2119,8 +2391,13 @@ public sealed partial class War3Rts : Node3D
                 : queueItems[0].StateLabel + "：" + queueItems[0].Label;
             var progress = queueItems.Length == 0 ? 0f : queueItems[0].Progress;
             var rawAttack = RawBuildingAttack(definition.ObjectId);
+            var controllable = building.PlayerId == War3HumanScenario.PlayerId;
+            var shopUser = controllable &&
+                           definition.TypeId == War3HumanContent.ArcaneVault
+                ? LocalShopUser(building)
+                : -1;
             return new War3SelectionSnapshot(
-                definition.Name,
+                SelectionPrefix(building.PlayerId) + definition.Name,
                 _simulation.BuildingUpgrades.TryObserve(
                     id, out var activeUpgrade)
                     ? $"升级为{activeUpgrade.Profile.TargetType.Name} · " +
@@ -2157,7 +2434,12 @@ public sealed partial class War3Rts : Node3D
                 GroupEntries = CreateSelectionGroupEntries(),
                 IsConstructing = building.State !=
                                  BuildingLifecycleState.Completed,
-                ConstructionProgress = building.Progress
+                ConstructionProgress = building.Progress,
+                PortraitTeam = building.PlayerId,
+                PortraitAnimated = controllable,
+                Controllable = controllable,
+                IsShop = definition.TypeId == War3HumanContent.ArcaneVault,
+                ShopUserUnit = shopUser
             };
         }
         return War3SelectionSnapshot.Empty;
@@ -2166,13 +2448,13 @@ public sealed partial class War3Rts : Node3D
     private War3SelectionGroupEntry[] CreateSelectionGroupEntries()
     {
         if (_simulation is null || _production is null) return [];
-        var result = new List<War3SelectionGroupEntry>(MaximumSelectionCount);
+        var result = new List<War3SelectionGroupEntry>(
+            _selectedUnits.Count + _selectedBuildings.Count);
         if (_selectedUnits.Count > 0)
         {
             foreach (var group in OrderedUnitSubgroups())
             foreach (var unit in group.Entities)
             {
-                if (result.Count >= MaximumSelectionCount) break;
                 var definition = War3HumanContent.ResolveUnit(
                     _simulation, _production, unit);
                 var state = _simulation.Abilities.Observe(unit);
@@ -2202,7 +2484,6 @@ public sealed partial class War3Rts : Node3D
         foreach (var group in OrderedBuildingSubgroups())
         foreach (var value in group.Entities)
         {
-            if (result.Count >= MaximumSelectionCount) break;
             var building = _simulation.ObserveGameplayBuilding(
                 new GameplayBuildingId(value));
             var definition = War3HumanContent.Buildings[building.Type.Id];
@@ -2238,6 +2519,13 @@ public sealed partial class War3Rts : Node3D
             ? 2
             : 0;
     }
+
+    private static string SelectionPrefix(int playerId) => playerId switch
+    {
+        War3HumanScenario.PlayerId => string.Empty,
+        War3HumanScenario.EnemyId => "敌方 · ",
+        _ => "中立 · "
+    };
 
     private static (float Damage, string Class, bool Ranged) RawBuildingAttack(
         string objectId)
@@ -2553,6 +2841,16 @@ public sealed partial class War3Rts : Node3D
                          .Concat(ability.MissileModels))
                 OptionalModel(model);
         }
+        foreach (var item in War3ItemShopRuntime.ArcaneVaultItems)
+            Texture(item.IconPath);
+        if (!War3HumanContent.DataCatalog.TryGet("hvlt", out var vaultData) ||
+            !vaultData.Summary.MakesItems.Order(StringComparer.Ordinal)
+                .SequenceEqual(
+                    War3ItemShopRuntime.ArcaneVaultItems
+                        .Select(value => value.ItemId)
+                        .Order(StringComparer.Ordinal),
+                    StringComparer.Ordinal))
+            missing.Add("商店数据:hvlt.Makeitems");
         Model(War3HumanContent.GoldMineSource);
         Model(@"UI\Feedback\RallyPoint\RallyPoint.mdx");
         Model(War3CommandFeedbackCatalog.ConfirmationSource);
@@ -2614,6 +2912,12 @@ public sealed partial class War3Rts : Node3D
         }
         if (_selectedUnits.Count > 0)
         {
+            if (_simulation is null)
+                return [];
+            var active = ActiveSelectionUnit();
+            if (active < 0 ||
+                _simulation.Combat.Teams[active] != War3HumanScenario.PlayerId)
+                return [];
             var commands = new List<War3CommandSnapshot>
             {
                 Command(0, War3CommandKind.Move, -1, "移动", "移动到目标位置", Btn("Move"), "M"),
@@ -2729,8 +3033,13 @@ public sealed partial class War3Rts : Node3D
             var id = new GameplayBuildingId(ActiveSelectionBuilding());
             if (!_simulation.Construction.IsAlive(id)) return [];
             var building = _simulation.Construction.Observe(id);
+            if (building.PlayerId != War3HumanScenario.PlayerId)
+                return [];
             var result = new List<War3CommandSnapshot>();
             if (_simulation.BuildingUpgrades.IsUpgrading(id)) return [];
+            if (building.State == BuildingLifecycleState.Completed &&
+                building.Type.Id == War3HumanContent.ArcaneVault)
+                return CreateArcaneVaultCommands(id, LocalShopUser(building));
             foreach (var learned in _simulation.Abilities.ObserveBuilding(
                          id, building.Type.Id))
             {
@@ -3092,7 +3401,14 @@ public sealed partial class War3Rts : Node3D
         _movePending || _attackMovePending || _rallyPending ||
         _pendingAbilityId >= 0 || _pendingBuilding >= 0;
 
-    private int[] SelectedUnits() => _selectedUnits.Order().ToArray();
+    private int[] SelectedUnits() => _simulation is null
+        ? []
+        : _selectedUnits
+            .Where(unit => (uint)unit < (uint)_simulation.Units.Count &&
+                           _simulation.Units.Alive[unit] &&
+                           _simulation.Combat.Teams[unit] ==
+                           War3HumanScenario.PlayerId)
+            .Order().ToArray();
 
     private int[] SelectedProductionBuildings() => _selectedBuildings
         .Where(value =>
@@ -3101,7 +3417,8 @@ public sealed partial class War3Rts : Node3D
             var id = new GameplayBuildingId(value);
             if (!_simulation.Construction.IsAlive(id)) return false;
             var building = _simulation.Construction.Observe(id);
-            return building.State == BuildingLifecycleState.Completed &&
+            return building.PlayerId == War3HumanScenario.PlayerId &&
+                   building.State == BuildingLifecycleState.Completed &&
                    building.Type.Function is BuildingFunctionKind.Production or
                        BuildingFunctionKind.TownHall;
         })
@@ -3183,19 +3500,37 @@ public sealed partial class War3Rts : Node3D
                 BackgroundColor = new Color("18262d"),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color("9aafbd"),
-                AmbientLightEnergy = 0.74f,
-                TonemapMode = Godot.Environment.ToneMapper.Filmic
+                AmbientLightEnergy = 0.5f,
+                TonemapMode = Godot.Environment.ToneMapper.Filmic,
+                TonemapExposure = 1.05f,
+                SsaoEnabled = true,
+                SsaoRadius = 1.6f,
+                SsaoIntensity = 1.8f,
+                SsaoPower = 1.35f,
+                SsaoLightAffect = 0.14f,
+                GlowEnabled = true,
+                GlowIntensity = 0.55f,
+                GlowBloom = 0.06f
             }
         });
         AddChild(new DirectionalLight3D
         {
             RotationDegrees = new Vector3(-56f, -32f, 0f),
             LightColor = new Color("fff0cf"),
-            LightEnergy = 1.4f,
+            LightEnergy = 1.7f,
             ShadowEnabled = true,
-            DirectionalShadowMaxDistance = 75f
+            ShadowBias = 0.06f,
+            ShadowNormalBias = 1.1f,
+            DirectionalShadowMode =
+                DirectionalLight3D.ShadowMode.Parallel4Splits,
+            DirectionalShadowMaxDistance = 160f,
+            DirectionalShadowBlendSplits = true,
+            DirectionalShadowFadeStart = 0.88f
         });
     }
+
+    private static NVector2 BuildingCenter(SimRect bounds) =>
+        (bounds.Min + bounds.Max) * 0.5f;
 
     private void CreateGround(TerrainMapSnapshot terrain)
     {
@@ -3218,6 +3553,7 @@ public sealed partial class War3Rts : Node3D
         switch (_runtimeProfiler.Variant.ToLowerInvariant())
         {
             case "baseline":
+            case "auto-skirmish":
                 break;
             case "terrain-hidden":
                 if (_terrainPresenter is not null) _terrainPresenter.Visible = false;
@@ -3335,6 +3671,53 @@ public sealed partial class War3Rts : Node3D
                                     !_hud.QueuePanelVisible &&
                                     _hud.SelectionDetailsVisible &&
                                     _hud.QueuePresentationExclusive;
+        if (_smokeShopBuilding >= 0 && _itemShops is not null)
+        {
+            var shopId = new GameplayBuildingId(_smokeShopBuilding);
+            if (_simulation.Construction.IsAlive(shopId))
+            {
+                var shopBuilding = _simulation.Construction.Observe(shopId);
+                _selectedUnits.Clear();
+                _selectedBuildings.Clear();
+                _selectedBuildings.Add(shopId.Value);
+                RefreshSelection();
+                var shopSelection = CreateSelectionSnapshot();
+                var shopCommands = CreateCommands();
+                var buy = shopCommands.FirstOrDefault(value =>
+                    value.Kind == War3CommandKind.PurchaseItem &&
+                    value.DataId == 0);
+                var buyer = shopSelection.ShopUserUnit;
+                var beforeGold = _simulation.Economy.Players.Snapshot(
+                    War3HumanScenario.PlayerId).Minerals;
+                if (buy.Enabled) ExecuteCommand(buy);
+                var afterShopCommands = CreateCommands();
+                var stockBadge = afterShopCommands.FirstOrDefault(value =>
+                    value.Kind == War3CommandKind.PurchaseItem &&
+                    value.DataId == 0).Badge;
+                var afterGold = _simulation.Economy.Players.Snapshot(
+                    War3HumanScenario.PlayerId).Minerals;
+                if (buyer >= 0)
+                {
+                    _selectedBuildings.Clear();
+                    _selectedUnits.Add(buyer);
+                    RefreshSelection();
+                }
+                _smokeShopValid =
+                    shopBuilding.State == BuildingLifecycleState.Completed &&
+                    shopSelection.IsShop && buyer >= 0 &&
+                    shopCommands.Length == 9 &&
+                    shopCommands.Count(value =>
+                        value.Kind == War3CommandKind.PurchaseItem) == 9 &&
+                    shopCommands.Any(value => value.Slot == 0) &&
+                    shopCommands.Any(value => value.Slot == 9) &&
+                    buy.Enabled && beforeGold - afterGold == 100 &&
+                    stockBadge == "1" &&
+                    _itemShops.InventoryCount(buyer) == 1 &&
+                    _hud.VisibleInventoryItemCount == 1;
+            }
+        }
+        player = _simulation.Economy.Players.Snapshot(
+            War3HumanScenario.PlayerId);
         var liveCombatObjects = _simulation.CombatObjects.CreateOverview()
             .Where(value => value.Alive)
             .ToArray();
@@ -3447,7 +3830,7 @@ public sealed partial class War3Rts : Node3D
                       _hud.InventoryLayoutReady &&
                       _hud.MinimapAspectFitReady &&
                       _presenter.UnitSelectionAgentFitReady &&
-                      player.Minerals > 1_250 &&
+                      player.Minerals + (_smokeShopValid ? 100 : 0) > 1_250 &&
                       player.VespeneGas > 700 &&
                       enemyArmy > 0 &&
                       _presenter.PeakEffectCount > 0 &&
@@ -3467,6 +3850,10 @@ public sealed partial class War3Rts : Node3D
                       abilityIntegrationReady &&
                       _smokeSelectionGroupUiValid &&
                       _smokeConstructionProgressUiValid &&
+                      _smokeBuildingPortraitValid &&
+                      _smokeUnitPortraitValid &&
+                      _smokeEnemySelectionValid &&
+                      _smokeShopValid &&
                       queueUiValid && queueCancelValid &&
                       researchQueueUiValid;
         success &= combatObjectsReady;
@@ -3511,6 +3898,10 @@ public sealed partial class War3Rts : Node3D
              $"map_loading={mapLoadingValid}/{_loadingStageUpdateCount} " +
              $"selection_group_ui={_smokeSelectionGroupUiValid} " +
              $"construction_progress_ui={_smokeConstructionProgressUiValid} " +
+             $"portrait_building={_smokeBuildingPortraitValid} " +
+             $"portrait_unit={_smokeUnitPortraitValid} " +
+             $"enemy_selection={_smokeEnemySelectionValid} " +
+             $"shop={_smokeShopValid} " +
              $"queue_ui={queueUiValid}/5 queue_cancel={queueCancelValid}/" +
              $"4 research_queue={researchQueueUiValid} " +
              $"terrain_hash={_terrain?.StableHashText ?? "none"} " +
@@ -3564,6 +3955,12 @@ public sealed partial class War3Rts : Node3D
         _selectedBuildings.Clear();
         _selectedBuildings.Add(rallyBuilding.Id.Value);
         RefreshSelection();
+        _smokeBuildingPortraitValid = _hud is not null &&
+                                      _hud.PortraitReady &&
+                                      _hud.PortraitAnimationPlaying &&
+                                      _hud.PortraitSequence.StartsWith(
+                                          "Portrait",
+                                          StringComparison.OrdinalIgnoreCase);
         if (_buildings is null || _runtime is null)
             throw new InvalidOperationException("Smoke construction catalogs are unavailable.");
         var farm = _buildings.Type(War3HumanContent.Farm) with
@@ -3582,6 +3979,42 @@ public sealed partial class War3Rts : Node3D
                 $"Smoke construction setup failed: {construction.Code}/" +
                 $"{construction.PlacementCode}.");
         _smokeConstructionBuilding = construction.BuildingId.Value;
+        var vault = _buildings.Type(War3HumanContent.ArcaneVault) with
+        {
+            Cost = default,
+            BuildSeconds = 0.03f,
+            ConstructionMethod = ConstructionMethodKind.StartAndRelease
+        };
+        var shopBuilder = _runtime.PlayerWorkers[1];
+        var shopOffsets = new[]
+        {
+            new NVector2(380f, -300f),
+            new NVector2(380f, 300f),
+            new NVector2(-520f, 320f),
+            new NVector2(-520f, -320f),
+            new NVector2(0f, -430f),
+            new NVector2(0f, 430f)
+        };
+        foreach (var offset in shopOffsets)
+        {
+            var center = home + offset;
+            if (!_simulation.PreviewConstruction(
+                    War3HumanScenario.PlayerId, shopBuilder, vault, center)
+                .Succeeded)
+                continue;
+            var shopConstruction = _simulation.IssueConstruction(
+                War3HumanScenario.PlayerId, shopBuilder, vault, center);
+            if (!shopConstruction.Succeeded) continue;
+            _smokeShopBuilding = shopConstruction.BuildingId.Value;
+            _simulation.AddUnit(
+                center + new NVector2(100f, 0f),
+                _production.UnitType(War3HumanContent.Archmage),
+                War3HumanScenario.PlayerId);
+            break;
+        }
+        if (_smokeShopBuilding < 0)
+            throw new InvalidOperationException(
+                "Smoke Arcane Vault construction setup failed.");
         _presenter?.SetPointerPreview(
             home + new NVector2(-340f, 330f), farm.Size,
             War3HumanContent.Buildings[War3HumanContent.Farm].ModelSource,
@@ -3608,21 +4041,64 @@ public sealed partial class War3Rts : Node3D
             home + new NVector2(355f, -40f),
             _production.UnitType(War3HumanContent.Footman),
             War3HumanScenario.EnemyId);
+        var pagingUnits = Enumerable.Range(0, 10)
+            .Select(index => _simulation.AddUnit(
+                home + new NVector2(
+                    320f + index % 5 * 26f,
+                    180f + index / 5 * 26f),
+                _production.UnitType(War3HumanContent.Footman),
+                War3HumanScenario.PlayerId))
+            .ToArray();
         _selectedUnits.Clear();
         _selectedBuildings.Clear();
+        _selectedUnits.Add(pagingUnits[0]);
+        RefreshSelection();
+        _smokeUnitPortraitValid = _hud is not null &&
+                                  _hud.PortraitReady &&
+                                  _hud.PortraitAnimationPlaying &&
+                                  _hud.PortraitManaBackgroundVisible &&
+                                  _hud.PortraitSequence.StartsWith(
+                                      "Portrait",
+                                      StringComparison.OrdinalIgnoreCase);
+        _selectedUnits.Clear();
+        _selectedUnits.Add(enemy);
+        RefreshSelection();
+        var enemySelection = CreateSelectionSnapshot();
+        _smokeEnemySelectionValid = _hud is not null &&
+                                    !enemySelection.Controllable &&
+                                    !enemySelection.PortraitAnimated &&
+                                    enemySelection.PortraitTeam ==
+                                        War3HumanScenario.EnemyId &&
+                                    CreateCommands().Length == 0 &&
+                                    _hud.PortraitReady &&
+                                    !_hud.PortraitAnimationPlaying;
+        _selectedUnits.Clear();
+        _selectedBuildings.Clear();
+        foreach (var worker in _runtime.PlayerWorkers)
+            _selectedUnits.Add(worker);
         _selectedUnits.Add(player);
         _selectedUnits.Add(hero);
         _selectedUnits.Add(mountainKing);
+        foreach (var unit in pagingUnits) _selectedUnits.Add(unit);
         RefreshSelection();
-        var initialSubgroup = _activeSelectionSubgroup;
-        CycleSelectionSubgroup(1);
-        _smokeSelectionGroupUiValid = _hud is not null &&
+        const int expectedSelectionEntries =
+            War3HumanScenario.InitialWorkers + 13;
+        var firstSelectionPageValid = _hud is not null &&
                                       _hud.SelectionGroupVisible &&
-                                      _hud.VisibleSelectionGroupEntryCount == 3 &&
-                                      _hud.QueuePresentationExclusive &&
-                                      !_activeSelectionSubgroup.Equals(
-                                          initialSubgroup,
-                                          StringComparison.Ordinal);
+                                      _hud.SelectionGroupTotalEntryCount ==
+                                          expectedSelectionEntries &&
+                                      _hud.SelectionGroupPageCount == 2 &&
+                                      _hud.SelectionGroupPage == 0 &&
+                                      _hud.VisibleSelectionGroupEntryCount == 18 &&
+                                      _hud.VisibleSelectionPageTabCount == 2 &&
+                                      _hud.SelectionGroupIconsAreSquare;
+        var secondPageInvoked = _hud?.TryInvokeSelectionPageTab(1) == true;
+        _smokeSelectionGroupUiValid = firstSelectionPageValid &&
+                                      secondPageInvoked &&
+                                      _hud is not null &&
+                                      _hud.SelectionGroupPage == 1 &&
+                                      _hud.VisibleSelectionGroupEntryCount == 2 &&
+                                      _hud.QueuePresentationExclusive;
         _selectedUnits.Clear();
         _selectedBuildings.Clear();
         _selectedBuildings.Add(_smokeConstructionBuilding);

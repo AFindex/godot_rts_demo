@@ -41,7 +41,7 @@ internal sealed partial class War3StaticModelBatch : Node3D
         {
             Name = "Instances",
             Multimesh = _multiMesh,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.On
         });
     }
 

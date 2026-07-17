@@ -15,7 +15,11 @@ public sealed partial class War3RtsHud : Control
     private const float PortraitMaskScale = 0.98f;
     private const float PortraitBarWidth = 98f * PortraitMaskScale;
     private const float PortraitBarHeight = 14f * PortraitMaskScale;
-    private const int MaximumSelectionGroupEntries = 12;
+    private const int SelectionGroupColumns = 6;
+    private const int SelectionGroupRows = 3;
+    private const int SelectionGroupPageCapacity =
+        SelectionGroupColumns * SelectionGroupRows;
+    private const int MaximumVisibleSelectionPageTabs = 4;
     private static readonly Vector2 PortraitSlotPosition = new(270f, 69f);
     private static readonly Vector2 PortraitSlotSize = new(93f, 100f);
     private static readonly Vector2 PortraitMaskPosition = new(
@@ -90,17 +94,30 @@ public sealed partial class War3RtsHud : Control
     private Label? _heroExperienceLabel;
     private Control? _inventoryPanel;
     private TextureRect? _inventoryCover;
+    private readonly Button[] _inventorySlots = new Button[6];
+    private readonly TextureRect[] _inventoryIcons = new TextureRect[6];
     private Control? _selectionDetails;
     private Control? _selectionGroupPanel;
     private Label? _selectionGroupHeader;
     private readonly Button[] _selectionGroupButtons =
-        new Button[MaximumSelectionGroupEntries];
+        new Button[SelectionGroupPageCapacity];
+    private readonly TextureRect[] _selectionGroupIcons =
+        new TextureRect[SelectionGroupPageCapacity];
     private readonly ColorRect[] _selectionGroupHealthFills =
-        new ColorRect[MaximumSelectionGroupEntries];
+        new ColorRect[SelectionGroupPageCapacity];
     private readonly ColorRect[] _selectionGroupManaFills =
-        new ColorRect[MaximumSelectionGroupEntries];
+        new ColorRect[SelectionGroupPageCapacity];
     private readonly War3SelectionGroupEntry?[] _selectionGroupSlotEntries =
-        new War3SelectionGroupEntry?[MaximumSelectionGroupEntries];
+        new War3SelectionGroupEntry?[SelectionGroupPageCapacity];
+    private readonly Button[] _selectionPageTabButtons =
+        new Button[MaximumVisibleSelectionPageTabs];
+    private readonly int[] _selectionPageTabIndices =
+        new int[MaximumVisibleSelectionPageTabs];
+    private Button? _selectionPreviousPageButton;
+    private Button? _selectionNextPageButton;
+    private War3SelectionGroupEntry[] _selectionGroupEntries = [];
+    private int _selectionGroupPage;
+    private string _selectionGroupActiveKey = string.Empty;
     private Control? _constructionProgressPanel;
     private TextureProgressBar? _constructionProgress;
     private Label? _constructionProgressLabel;
@@ -129,6 +146,9 @@ public sealed partial class War3RtsHud : Control
     private Label? _portraitManaValue;
     private string _portraitSource = string.Empty;
     private bool _portraitBuildingView;
+    private int _portraitTeam = int.MinValue;
+    private bool _portraitAnimated;
+    private double _portraitTalkRemaining;
     private string _commandSignature = string.Empty;
     private string _queueSignature = string.Empty;
     private War3SelectionOverlay? _selectionOverlay;
@@ -140,6 +160,13 @@ public sealed partial class War3RtsHud : Control
     public event Action<System.Numerics.Vector2>? MinimapFocusRequested;
 
     public bool PortraitReady => _portraitActor?.Loaded == true;
+    public bool PortraitAnimationPlaying =>
+        _portraitActor?.IsAnimationPlaying == true;
+    public string PortraitSequence => _portraitActor?.CurrentSequence ?? string.Empty;
+    public bool PortraitManaBackgroundVisible =>
+        _portraitManaBack?.Visible == true;
+    public int VisibleInventoryItemCount =>
+        _inventoryIcons.Count(icon => icon?.Texture is not null);
     public int VisibleQueueItemCount =>
         _queueButtons.Count(button => button.Visible);
     public War3QueueItemKind? ActiveQueueItemKind =>
@@ -150,6 +177,17 @@ public sealed partial class War3RtsHud : Control
     public bool SelectionGroupVisible => _selectionGroupPanel?.Visible == true;
     public int VisibleSelectionGroupEntryCount =>
         _selectionGroupButtons.Count(button => button?.Visible == true);
+    public int VisibleSelectionPageTabCount =>
+        _selectionPageTabButtons.Count(button => button?.Visible == true);
+    public int SelectionGroupPage => _selectionGroupPage;
+    public int SelectionGroupPageCount => Math.Max(1,
+        (_selectionGroupEntries.Length + SelectionGroupPageCapacity - 1) /
+        SelectionGroupPageCapacity);
+    public int SelectionGroupTotalEntryCount => _selectionGroupEntries.Length;
+    public bool SelectionGroupIconsAreSquare =>
+        _selectionGroupButtons
+            .Where(button => button?.Visible == true)
+            .All(button => MathF.Abs(button.Size.X - button.Size.Y) < 0.1f);
     public bool ConstructionProgressVisible =>
         _constructionProgressPanel?.Visible == true;
     public bool QueuePresentationExclusive =>
@@ -201,12 +239,34 @@ public sealed partial class War3RtsHud : Control
     public void SetDragSelection(Vector2 start, Vector2 end, bool visible) =>
         _selectionOverlay?.SetSelection(start, end, visible);
 
+    public bool PlayPortraitTalk()
+    {
+        if (!_portraitAnimated || _portraitBuildingView ||
+            _portraitActor is null ||
+            !_portraitActor.ReplayPreferred("Portrait Talk"))
+            return false;
+        _portraitTalkRemaining = Math.Max(
+            0.2d, _portraitActor.CurrentSequenceDurationSeconds);
+        return true;
+    }
+
     public override void _Ready()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Pass;
         CreateInterface();
         UpdateSnapshot(War3HudSnapshot.Empty);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_portraitTalkRemaining <= 0d) return;
+        _portraitTalkRemaining -= delta;
+        if (_portraitTalkRemaining > 0d || !_portraitAnimated ||
+            _portraitActor is null)
+            return;
+        _portraitTalkRemaining = 0d;
+        _portraitActor.PlayRepeatedPreferred("Portrait", "Stand Work", "Stand");
     }
 
     public void UpdateSnapshot(War3HudSnapshot snapshot)
@@ -272,9 +332,18 @@ public sealed partial class War3RtsHud : Control
                 : string.Empty;
         var hasMana = snapshot.Selection.MaximumMana > 0f;
         if (_portraitManaBack is not null)
-            _portraitManaBack.Visible = hasMana;
+        {
+            // The portrait mask has a transparent aperture behind this strip.
+            // Keep an opaque filler when the selection has no mana so the 3D
+            // portrait never leaks through the missing blue bar.
+            _portraitManaBack.Visible = true;
+            _portraitManaBack.Color = hasMana
+                ? new Color("09203b")
+                : new Color("071019");
+        }
         if (_portraitManaFill is not null)
         {
+            _portraitManaFill.Visible = hasMana;
             var manaRatio = hasMana
                 ? Math.Clamp(snapshot.Selection.Mana /
                              snapshot.Selection.MaximumMana, 0f, 1f)
@@ -337,6 +406,16 @@ public sealed partial class War3RtsHud : Control
             _queueSlotItems[slot] is not { CanCancel: true } item)
             return false;
         QueueItemCancelRequested?.Invoke(item);
+        return true;
+    }
+
+    public bool TryInvokeSelectionPageTab(int slot)
+    {
+        if ((uint)slot >= (uint)_selectionPageTabIndices.Length ||
+            !_selectionPageTabButtons[slot].Visible ||
+            _selectionPageTabIndices[slot] < 0)
+            return false;
+        SetSelectionGroupPage(_selectionPageTabIndices[slot]);
         return true;
     }
 
@@ -728,24 +807,87 @@ public sealed partial class War3RtsHud : Control
         };
         parent.AddChild(_selectionGroupPanel);
         _selectionGroupHeader = LabelText("编队", 11, Gold);
-        _selectionGroupHeader.Position = new Vector2(2f, 0f);
-        _selectionGroupHeader.Size = new Vector2(236f, 18f);
+        _selectionGroupHeader.Position = new Vector2(32f, 0f);
+        _selectionGroupHeader.Size = new Vector2(206f, 18f);
         _selectionGroupHeader.HorizontalAlignment = HorizontalAlignment.Center;
         _selectionGroupHeader.MouseFilter = MouseFilterEnum.Ignore;
         _selectionGroupPanel.AddChild(_selectionGroupHeader);
 
-        const float cellWidth = 58f;
+        var tabDivider = new ColorRect
+        {
+            Position = new Vector2(29f, 18f),
+            Size = new Vector2(1f, 118f),
+            Color = new Color("705629a0"),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _selectionGroupPanel.AddChild(tabDivider);
+        _selectionPreviousPageButton = new Button
+        {
+            Name = "SelectionPreviousPage",
+            Position = new Vector2(0f, 19f),
+            Size = new Vector2(28f, 16f),
+            Text = "▲",
+            FocusMode = FocusModeEnum.None,
+            MouseFilter = MouseFilterEnum.Stop,
+            Visible = false,
+            Disabled = true
+        };
+        StyleSelectionPageControl(_selectionPreviousPageButton);
+        _selectionPreviousPageButton.Pressed += () =>
+            SetSelectionGroupPage(_selectionGroupPage - 1);
+        _selectionGroupPanel.AddChild(_selectionPreviousPageButton);
+
+        for (var index = 0; index < MaximumVisibleSelectionPageTabs; index++)
+        {
+            var tab = new Button
+            {
+                Name = $"SelectionPageTab{index + 1}",
+                Position = new Vector2(0f, 37f + index * 20f),
+                Size = new Vector2(28f, 18f),
+                FocusMode = FocusModeEnum.None,
+                MouseFilter = MouseFilterEnum.Stop,
+                Visible = false
+            };
+            StyleSelectionPageControl(tab);
+            var slot = index;
+            tab.Pressed += () =>
+            {
+                var page = _selectionPageTabIndices[slot];
+                if (page >= 0) SetSelectionGroupPage(page);
+            };
+            _selectionGroupPanel.AddChild(tab);
+            _selectionPageTabButtons[index] = tab;
+            _selectionPageTabIndices[index] = -1;
+        }
+
+        _selectionNextPageButton = new Button
+        {
+            Name = "SelectionNextPage",
+            Position = new Vector2(0f, 119f),
+            Size = new Vector2(28f, 16f),
+            Text = "▼",
+            FocusMode = FocusModeEnum.None,
+            MouseFilter = MouseFilterEnum.Stop,
+            Visible = false,
+            Disabled = true
+        };
+        StyleSelectionPageControl(_selectionNextPageButton);
+        _selectionNextPageButton.Pressed += () =>
+            SetSelectionGroupPage(_selectionGroupPage + 1);
+        _selectionGroupPanel.AddChild(_selectionNextPageButton);
+
+        const float gridLeft = 31f;
+        const float cellWidth = 34.5f;
         const float cellHeight = 39f;
-        for (var index = 0; index < MaximumSelectionGroupEntries; index++)
+        for (var index = 0; index < SelectionGroupPageCapacity; index++)
         {
             var button = new Button
             {
                 Name = $"SelectionPortrait{index + 1}",
                 Position = new Vector2(
-                    index % 4 * cellWidth + 10f,
-                    18f + index / 4 * cellHeight + 3f),
-                Size = new Vector2(38f, 32f),
-                ExpandIcon = true,
+                    gridLeft + index % SelectionGroupColumns * cellWidth + 3f,
+                    18f + index / SelectionGroupColumns * cellHeight + 5f),
+                Size = new Vector2(28f, 28f),
                 FocusMode = FocusModeEnum.None,
                 MouseFilter = MouseFilterEnum.Stop,
                 Visible = false
@@ -765,10 +907,21 @@ public sealed partial class War3RtsHud : Control
             _selectionGroupPanel.AddChild(button);
             _selectionGroupButtons[index] = button;
 
+            var portrait = new TextureRect
+            {
+                Position = new Vector2(2f, 2f),
+                Size = new Vector2(24f, 24f),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.Scale,
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            button.AddChild(portrait);
+            _selectionGroupIcons[index] = portrait;
+
             var healthBack = new ColorRect
             {
-                Position = new Vector2(2f, 25f),
-                Size = new Vector2(34f, 3f),
+                Position = new Vector2(2f, 21f),
+                Size = new Vector2(24f, 3f),
                 Color = new Color("210909"),
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -784,8 +937,8 @@ public sealed partial class War3RtsHud : Control
 
             var manaBack = new ColorRect
             {
-                Position = new Vector2(2f, 29f),
-                Size = new Vector2(34f, 2f),
+                Position = new Vector2(2f, 25f),
+                Size = new Vector2(24f, 2f),
                 Color = new Color("071629"),
                 MouseFilter = MouseFilterEnum.Ignore
             };
@@ -799,6 +952,19 @@ public sealed partial class War3RtsHud : Control
             manaBack.AddChild(mana);
             _selectionGroupManaFills[index] = mana;
         }
+    }
+
+    private static void StyleSelectionPageControl(Button button)
+    {
+        button.AddThemeFontSizeOverride("font_size", 9);
+        button.AddThemeStyleboxOverride(
+            "normal", Box(new Color("09121be8"), Border, 1, 1));
+        button.AddThemeStyleboxOverride(
+            "hover", Box(Raised, Gold, 1, 1));
+        button.AddThemeStyleboxOverride(
+            "pressed", Box(Ink, Gold, 1, 2));
+        button.AddThemeStyleboxOverride(
+            "disabled", Box(new Color("071019a0"), Border, 1, 1));
     }
 
     private void AddInventory(Control parent)
@@ -831,18 +997,34 @@ public sealed partial class War3RtsHud : Control
         parent.AddChild(_inventoryPanel);
         for (var slot = 0; slot < 6; slot++)
         {
-            var frame = new Panel
+            var frame = new Button
             {
                 Name = $"InventorySlot{slot + 1}",
                 Position = new Vector2(
                     slot % 2 * InventorySlotStride.X,
                     slot / 2 * InventorySlotStride.Y),
                 Size = InventorySlotSize,
+                FocusMode = FocusModeEnum.None,
+                MouseFilter = MouseFilterEnum.Stop
+            };
+            frame.AddThemeStyleboxOverride("normal", Box(
+                new Color("05080ccf"), new Color("806329"), 2, 1));
+            frame.AddThemeStyleboxOverride("hover", Box(
+                new Color("101923ef"), Gold, 2, 1));
+            frame.AddThemeStyleboxOverride("pressed", Box(
+                new Color("05080cef"), Gold, 2, 2));
+            _inventoryPanel.AddChild(frame);
+            _inventorySlots[slot] = frame;
+            var icon = new TextureRect
+            {
+                Position = new Vector2(2f, 2f),
+                Size = InventorySlotSize - new Vector2(4f, 4f),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.Scale,
                 MouseFilter = MouseFilterEnum.Ignore
             };
-            frame.AddThemeStyleboxOverride("panel", Box(
-                new Color("05080ccf"), new Color("806329"), 2, 1));
-            _inventoryPanel.AddChild(frame);
+            frame.AddChild(icon);
+            _inventoryIcons[slot] = icon;
         }
     }
 
@@ -1010,9 +1192,14 @@ public sealed partial class War3RtsHud : Control
     {
         if (_portraitWorld is null || _portraitCamera is null) return;
         if (selection.PortraitSource == _portraitSource &&
-            selection.PortraitIsBuilding == _portraitBuildingView) return;
+            selection.PortraitIsBuilding == _portraitBuildingView &&
+            selection.PortraitTeam == _portraitTeam &&
+            selection.PortraitAnimated == _portraitAnimated) return;
         _portraitSource = selection.PortraitSource;
         _portraitBuildingView = selection.PortraitIsBuilding;
+        _portraitTeam = selection.PortraitTeam;
+        _portraitAnimated = selection.PortraitAnimated;
+        _portraitTalkRemaining = 0d;
         _portraitActor?.QueueFree();
         _portraitActor = null;
         if (_portraitSource.Length == 0 || !War3RuntimeAssets.Contains(_portraitSource))
@@ -1022,12 +1209,20 @@ public sealed partial class War3RtsHud : Control
             _portraitActor = new War3ModelActor { Name = "SelectedPortrait" };
             _portraitWorld.AddChild(_portraitActor);
             _portraitActor.Load(_portraitSource, _portraitCamera,
-                War3HumanScenario.PlayerId, includeEffects: false);
-            _portraitActor.PlayPreferred(true,
-                selection.PortraitUsesOriginalCamera && !selection.PortraitIsBuilding
-                    ? "Portrait"
-                    : "Stand",
-                "Stand");
+                selection.PortraitTeam, includeEffects: false);
+            if (selection.PortraitAnimated)
+            {
+                if (selection.PortraitIsBuilding)
+                    _portraitActor.PlayRepeatedPreferred(
+                        "Portrait", "Stand Work", "Stand");
+                else
+                    _portraitActor.PlayRepeatedPreferred("Portrait", "Stand");
+            }
+            else if (selection.PortraitIsBuilding)
+                _portraitActor.SetSequenceProgress(
+                    0f, "Portrait", "Stand Work", "Stand");
+            else
+                _portraitActor.SetSequenceProgress(0f, "Portrait", "Stand");
             _portraitActor.FrameCamera(
                 _portraitCamera,
                 selection.PortraitUsesOriginalCamera,
@@ -1125,9 +1320,24 @@ public sealed partial class War3RtsHud : Control
         if (_inventoryPanel is not null)
         {
             _inventoryPanel.Visible = selection.SupportsInventory;
-            var slots = _inventoryPanel.GetChildren().OfType<Control>().ToArray();
-            for (var index = 0; index < slots.Length; index++)
-                slots[index].Visible = index < selection.InventorySlotCount;
+            for (var index = 0; index < _inventorySlots.Length; index++)
+            {
+                var visible = selection.SupportsInventory &&
+                              index < selection.InventorySlotCount;
+                _inventorySlots[index].Visible = visible;
+                if (!visible || index >= selection.InventoryItems.Length)
+                {
+                    _inventoryIcons[index].Texture = null;
+                    _inventorySlots[index].TooltipText = "空物品栏";
+                    continue;
+                }
+                var item = selection.InventoryItems[index];
+                _inventoryIcons[index].Texture =
+                    War3RuntimeAssets.LoadTexture(item.IconPath);
+                _inventorySlots[index].TooltipText = item.Name +
+                    (item.Charges > 0 ? $" · {item.Charges} 次" : string.Empty) +
+                    $"\n{item.Tooltip}";
+            }
         }
         if (_inventoryCover is not null)
             _inventoryCover.Visible = !selection.SupportsInventory;
@@ -1152,40 +1362,130 @@ public sealed partial class War3RtsHud : Control
         if (_selectionGroupPanel is null || _selectionGroupHeader is null)
             return;
         var entries = selection.GroupEntries;
-        var subgroupKeys = entries.Select(value => value.SubgroupKey)
+        var activeKey = entries.FirstOrDefault(value => value.ActiveSubgroup)
+            .SubgroupKey ?? string.Empty;
+        var activeKeyChanged = !_selectionGroupActiveKey.Equals(
+            activeKey, StringComparison.Ordinal);
+        _selectionGroupEntries = entries;
+        _selectionGroupActiveKey = activeKey;
+        if (activeKeyChanged)
+        {
+            var activeEntry = Array.FindIndex(
+                entries, value => value.ActiveSubgroup);
+            if (activeEntry >= 0)
+                _selectionGroupPage =
+                    activeEntry / SelectionGroupPageCapacity;
+        }
+        var pageCount = SelectionGroupPageCount;
+        _selectionGroupPage = Math.Clamp(
+            _selectionGroupPage, 0, pageCount - 1);
+        UpdateSelectionPageTabs(pageCount);
+        RenderSelectionGroupPage();
+    }
+
+    private void SetSelectionGroupPage(int page)
+    {
+        var clamped = Math.Clamp(page, 0, SelectionGroupPageCount - 1);
+        if (_selectionGroupPage == clamped) return;
+        _selectionGroupPage = clamped;
+        UpdateSelectionPageTabs(SelectionGroupPageCount);
+        RenderSelectionGroupPage();
+    }
+
+    private void UpdateSelectionPageTabs(int pageCount)
+    {
+        if (_selectionGroupHeader is null) return;
+        var subgroupKeys = _selectionGroupEntries
+            .Select(value => value.SubgroupKey)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var activeKey = entries.FirstOrDefault(value => value.ActiveSubgroup)
-            .SubgroupKey;
-        var activeIndex = Array.IndexOf(subgroupKeys, activeKey);
-        _selectionGroupHeader.Text = entries.Length > 1
-            ? $"编队 {entries.Length}/{MaximumSelectionGroupEntries} · " +
-              $"子组 {Math.Max(0, activeIndex) + 1}/{subgroupKeys.Length} · Tab 切换"
+        var activeIndex = Array.IndexOf(
+            subgroupKeys, _selectionGroupActiveKey);
+        _selectionGroupHeader.Text = _selectionGroupEntries.Length > 1
+            ? $"编队 {_selectionGroupEntries.Length} · " +
+              $"页 {_selectionGroupPage + 1}/{pageCount} · " +
+              $"子组 {Math.Max(0, activeIndex) + 1}/" +
+              $"{Math.Max(1, subgroupKeys.Length)}"
             : string.Empty;
 
+        var firstVisiblePage = Math.Clamp(
+            _selectionGroupPage - 1,
+            0,
+            Math.Max(0, pageCount - MaximumVisibleSelectionPageTabs));
+        for (var index = 0; index < _selectionPageTabButtons.Length; index++)
+        {
+            var tab = _selectionPageTabButtons[index];
+            var page = firstVisiblePage + index;
+            if (page >= pageCount || _selectionGroupEntries.Length == 0)
+            {
+                _selectionPageTabIndices[index] = -1;
+                tab.Visible = false;
+                tab.Text = string.Empty;
+                tab.TooltipText = string.Empty;
+                continue;
+            }
+            _selectionPageTabIndices[index] = page;
+            tab.Visible = true;
+            tab.Text = (page + 1).ToString();
+            var firstEntry = page * SelectionGroupPageCapacity + 1;
+            var lastEntry = Math.Min(
+                (page + 1) * SelectionGroupPageCapacity,
+                _selectionGroupEntries.Length);
+            tab.TooltipText =
+                $"选择集合第 {page + 1} 页（{firstEntry}–{lastEntry}）";
+            var active = page == _selectionGroupPage;
+            tab.AddThemeStyleboxOverride(
+                "normal", Box(new Color("09121be8"),
+                    active ? Gold : Border, 1, active ? 2 : 1));
+        }
+
+        if (_selectionPreviousPageButton is not null)
+        {
+            _selectionPreviousPageButton.Visible = pageCount > 1;
+            _selectionPreviousPageButton.Disabled = _selectionGroupPage == 0;
+            _selectionPreviousPageButton.TooltipText = "上一页选择单位";
+        }
+        if (_selectionNextPageButton is not null)
+        {
+            _selectionNextPageButton.Visible = pageCount > 1;
+            _selectionNextPageButton.Disabled =
+                _selectionGroupPage >= pageCount - 1;
+            _selectionNextPageButton.TooltipText = "下一页选择单位";
+        }
+    }
+
+    private void RenderSelectionGroupPage()
+    {
+        var pageOffset = _selectionGroupPage * SelectionGroupPageCapacity;
+        const float cellWidth = 34.5f;
+        const float cellHeight = 39f;
         for (var index = 0; index < _selectionGroupButtons.Length; index++)
         {
             var button = _selectionGroupButtons[index];
             _selectionGroupSlotEntries[index] = null;
-            if (index >= entries.Length)
+            var entryIndex = pageOffset + index;
+            if (entryIndex >= _selectionGroupEntries.Length)
             {
                 button.Visible = false;
-                button.Icon = null;
+                _selectionGroupIcons[index].Texture = null;
                 continue;
             }
-            var entry = entries[index];
+            var entry = _selectionGroupEntries[entryIndex];
             _selectionGroupSlotEntries[index] = entry;
             var active = entry.ActiveSubgroup;
-            var size = active ? new Vector2(46f, 36f) : new Vector2(38f, 32f);
+            var size = active ? new Vector2(30f, 30f) : new Vector2(28f, 28f);
             var cellOrigin = new Vector2(
-                index % 4 * 58f,
-                18f + index / 4 * 39f);
+                31f + index % SelectionGroupColumns * cellWidth,
+                18f + index / SelectionGroupColumns * cellHeight);
             button.Position = cellOrigin + new Vector2(
-                (58f - size.X) * 0.5f,
-                (39f - size.Y) * 0.5f);
+                (cellWidth - size.X) * 0.5f,
+                (cellHeight - size.Y) * 0.5f);
             button.Size = size;
             button.Visible = true;
-            button.Icon = War3RuntimeAssets.LoadTexture(entry.IconPath);
+            _selectionGroupIcons[index].Texture =
+                War3RuntimeAssets.LoadTexture(entry.IconPath);
+            _selectionGroupIcons[index].Position = new Vector2(2f, 2f);
+            _selectionGroupIcons[index].Size = size - new Vector2(4f, 4f);
             button.TooltipText = entry.Name +
                                  (entry.HeroLevel > 0
                                      ? $" · 等级 {entry.HeroLevel}"

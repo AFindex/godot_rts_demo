@@ -7,6 +7,7 @@
 **/obj/
 /benchmark_results/*.json
 !/benchmark_results/latest.json
+/reports/war3_auto_skirmish_*.log
 /tools/.cache/
 /test_videos/**/*.avi
 /test_videos/**/*.partial.webm

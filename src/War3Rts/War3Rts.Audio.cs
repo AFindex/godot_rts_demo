@@ -607,13 +607,16 @@ public sealed partial class War3Rts
         if (_simulation is null || _worldAudio is null) return;
         var unit = _selectedUnits
             .Where(value => (uint)value < (uint)_simulation.Units.Count &&
-                            _simulation.Units.Alive[value])
+                            _simulation.Units.Alive[value] &&
+                            _simulation.Combat.Teams[value] ==
+                            War3HumanScenario.PlayerId)
             .Order()
             .FirstOrDefault(-1);
         if (unit < 0 || !TryUnitObjectId(unit, out var objectId)) return;
-        _worldAudio.PlayUnitSelection(
+        if (_worldAudio.PlayUnitSelection(
             objectId, _simulation.Combat.Teams[unit],
-            _simulation.Units.Positions[unit], unit);
+            _simulation.Units.Positions[unit], unit))
+            _hud?.PlayPortraitTalk();
     }
 
     private void PlayCommandAudio(bool attack, bool queued = false)

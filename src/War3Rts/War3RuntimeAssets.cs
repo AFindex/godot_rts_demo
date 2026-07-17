@@ -168,8 +168,13 @@ public static class War3RuntimeAssets
                                 replaceableElement.TryGetInt32(out var replaceable)
                 ? replaceable
                 : 0;
+            var shading = extras.TryGetProperty("war3Shading", out var shadingElement) &&
+                          shadingElement.TryGetInt32(out var shadingFlags)
+                ? shadingFlags
+                : 0;
             if (!string.IsNullOrWhiteSpace(name))
-                output[name] = new MaterialDescriptor(filterMode, replaceableId);
+                output[name] = new MaterialDescriptor(
+                    filterMode, replaceableId, shading);
         }
         return output;
     }
@@ -194,6 +199,13 @@ public static class War3RuntimeAssets
                         continue;
                     var material = (StandardMaterial3D)source.Duplicate();
                     material.ResourceName = source.ResourceName;
+                    var explicitlyUnshaded = (descriptor.Shading & 1) != 0;
+                    material.ShadingMode = !explicitlyUnshaded &&
+                                           descriptor.FilterMode is 0 or 1 or 2
+                        ? BaseMaterial3D.ShadingModeEnum.PerPixel
+                        : BaseMaterial3D.ShadingModeEnum.Unshaded;
+                    material.Metallic = 0f;
+                    material.Roughness = 0.9f;
                     if (descriptor.FilterMode >= 2)
                     {
                         material.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
@@ -241,7 +253,10 @@ public static class War3RuntimeAssets
         }
     }
 
-    private sealed record MaterialDescriptor(int FilterMode, int ReplaceableId);
+    private sealed record MaterialDescriptor(
+        int FilterMode,
+        int ReplaceableId,
+        int Shading);
 
     private static string NormalizeSource(string source) =>
         source.Replace('/', '\\').TrimStart('\\').ToLowerInvariant();

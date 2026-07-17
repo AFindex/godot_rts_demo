@@ -21,7 +21,8 @@ public enum War3CommandKind : byte
     OpenLearnMenu,
     LearnAbility,
     Cancel,
-    Upgrade
+    Upgrade,
+    PurchaseItem
 }
 
 public enum War3CommandVisualState : byte
@@ -74,10 +75,17 @@ public readonly record struct War3QueueItemSnapshot(
     string Tooltip,
     bool CanCancel = true);
 
+public readonly record struct War3InventoryItemSnapshot(
+    string ItemId,
+    string Name,
+    string IconPath,
+    string Tooltip,
+    int Charges = 0);
+
 /// <summary>
 /// One mini portrait in Warcraft's multi-selection information card. Entries
-/// are already ordered by subgroup priority and capped by the runtime at the
-/// classic twelve-selection limit.
+/// are ordered by subgroup priority. The HUD pages the complete selection;
+/// gameplay selection itself is limited only by the live entity set.
 /// </summary>
 public readonly record struct War3SelectionGroupEntry(
     int EntityId,
@@ -128,6 +136,12 @@ public sealed record War3SelectionSnapshot(
     public bool IsHero { get; init; }
     public bool SupportsInventory { get; init; }
     public int InventorySlotCount { get; init; }
+    public War3InventoryItemSnapshot[] InventoryItems { get; init; } = [];
+    public int PortraitTeam { get; init; }
+    public bool PortraitAnimated { get; init; }
+    public bool Controllable { get; init; }
+    public bool IsShop { get; init; }
+    public int ShopUserUnit { get; init; } = -1;
     public War3SelectionGroupEntry[] GroupEntries { get; init; } = [];
     public bool IsConstructing { get; init; }
     public float ConstructionProgress { get; init; }

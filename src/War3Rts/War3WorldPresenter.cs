@@ -989,7 +989,6 @@ public sealed partial class War3WorldPresenter : Node3D
                         visual.Actor = CreateResourceActor(
                             id, visual.Kind, visual.Source, camera);
                         visual.Actor.Position = ToWorldAtGround(snapshot.Position);
-                        visual.Actor.SetShadowCastingEnabled(false);
                     }
                     visual.Actor?.PlayDeath();
                 }
@@ -1245,7 +1244,6 @@ public sealed partial class War3WorldPresenter : Node3D
         visual.StaticBatch?.SetInstanceVisible(visual.StaticBatchIndex, false);
         var actor = CreateResourceActor(id, visual.Kind, visual.Source, camera);
         actor.Position = ToWorldAtGround(position);
-        actor.SetShadowCastingEnabled(false);
         actor.PlayPreferred(true, "Stand");
         visual.Actor = actor;
         visual.Positioned = true;

@@ -6,7 +6,8 @@ namespace War3Rts;
 
 /// <summary>
 /// Opt-in fixed-scene profiler used by the War3 skirmish runtime. It is kept
-/// out of the normal execution path unless --war3-runtime-profile is present.
+/// out of the normal execution path unless profiling or the automated
+/// skirmish stress mode is explicitly requested.
 /// </summary>
 internal sealed class War3RuntimeProfiler
 {
@@ -23,6 +24,14 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _stressCombatOrders = new();
     private readonly Series _stressConstructionIssue = new();
     private readonly Series _stressAllocated = new();
+    private readonly Series _automatedSkirmishTick = new();
+    private readonly Series _automatedSkirmishBankTopUp = new();
+    private readonly Series _automatedSkirmishSupportConstruction = new();
+    private readonly Series _automatedSkirmishAi = new();
+    private readonly Series _automatedSkirmishStatus = new();
+    private readonly Series _automatedSkirmishSimulation = new();
+    private readonly Series _automatedSkirmishAllocated = new();
+    private readonly Series _automatedSkirmishSpikeBurstInterval = new();
     private readonly Series _ai = new();
     private readonly Series _simulation = new();
     private readonly Series _selectionHud = new();
@@ -96,6 +105,7 @@ internal sealed class War3RuntimeProfiler
     private bool _samplingAnnounced;
     private bool _completed;
     private readonly double _spikeMilliseconds;
+    private readonly double _automatedSkirmishSpikeMilliseconds;
     private double _lastPhysicsMilliseconds;
     private double _lastSimulationMilliseconds;
     private long _lastPhysicsAllocatedBytes;
@@ -105,40 +115,58 @@ internal sealed class War3RuntimeProfiler
     private int _lastGen0Collections;
     private int _lastGen1Collections;
     private int _lastGen2Collections;
+    private long _lastAutomatedSkirmishSpikeTick = -1;
+    private long _lastAutomatedSkirmishSpikeBurstTick = -1;
+    private int _automatedSkirmishSpikeCount;
+    private int _automatedSkirmishSpikeBurstCount;
+    private int _automatedSkirmishConsecutiveSpikes;
+    private int _automatedSkirmishMaximumConsecutiveSpikes;
 
     private War3RuntimeProfiler(
         string variant,
         double warmupSeconds,
         double sampleSeconds,
-        double spikeMilliseconds)
+        double spikeMilliseconds,
+        double automatedSkirmishSpikeMilliseconds)
     {
         Variant = variant;
         _warmupUsec = (ulong)(warmupSeconds * 1_000_000d);
         _sampleUsec = (ulong)(sampleSeconds * 1_000_000d);
         _spikeMilliseconds = spikeMilliseconds;
+        _automatedSkirmishSpikeMilliseconds =
+            automatedSkirmishSpikeMilliseconds;
         GD.Print(
             $"WAR3_RUNTIME_PROFILE configured variant={Variant} " +
             $"warmup_s={warmupSeconds:0.###} sample_s={sampleSeconds:0.###} " +
-            $"spike_ms={spikeMilliseconds:0.###}");
+            $"spike_ms={spikeMilliseconds:0.###} " +
+            $"auto_tick_spike_ms={automatedSkirmishSpikeMilliseconds:0.###}");
     }
 
     public string Variant { get; }
 
     public static War3RuntimeProfiler? TryCreate(string[] arguments)
     {
-        if (!arguments.Contains("--war3-runtime-profile")) return null;
+        var automatedSkirmish =
+            War3AutomatedSkirmishStressMode.IsRequested(arguments);
+        if (!arguments.Contains("--war3-runtime-profile") &&
+            !automatedSkirmish)
+            return null;
         var variant = ArgumentValue(arguments, "--war3-profile-variant=") ??
-                      "baseline";
+                      (automatedSkirmish ? "auto-skirmish" : "baseline");
         var warmup = PositiveDouble(
             ArgumentValue(arguments, "--war3-profile-warmup="),
-            DefaultWarmupSeconds);
+            automatedSkirmish ? 2d : DefaultWarmupSeconds);
         var sample = PositiveDouble(
             ArgumentValue(arguments, "--war3-profile-seconds="),
-            DefaultSampleSeconds);
+            automatedSkirmish ? 20d : DefaultSampleSeconds);
         var spike = PositiveDouble(
             ArgumentValue(arguments, "--war3-profile-spike-ms="),
             DefaultSpikeMilliseconds);
-        return new War3RuntimeProfiler(variant, warmup, sample, spike);
+        var automatedSkirmishSpike = PositiveDouble(
+            ArgumentValue(arguments, "--war3-auto-skirmish-spike-ms="),
+            8d);
+        return new War3RuntimeProfiler(
+            variant, warmup, sample, spike, automatedSkirmishSpike);
     }
 
     public void MapReady()
@@ -254,6 +282,93 @@ internal sealed class War3RuntimeProfiler
             metrics.LifecycleFinalizeAllocatedBytes);
         _simAllocated.Add(metrics.AllocatedBytes);
     }
+
+    public void RecordAutomatedSkirmishStep(
+        double totalMilliseconds,
+        double simulationMilliseconds,
+        long allocatedBytes,
+        SimulationMetrics metrics,
+        RtsAiUpdateProfile aiProfile,
+        War3AutomatedSkirmishUpdateProfile automationProfile)
+    {
+        if (!IsSampling(Time.GetTicksUsec())) return;
+        _automatedSkirmishTick.Add(totalMilliseconds);
+        _automatedSkirmishBankTopUp.Add(
+            automationProfile.BankTopUpMilliseconds);
+        _automatedSkirmishSupportConstruction.Add(
+            automationProfile.SupportConstructionMilliseconds);
+        _automatedSkirmishAi.Add(automationProfile.AiMilliseconds);
+        _automatedSkirmishStatus.Add(
+            automationProfile.StatusSampleMilliseconds);
+        _automatedSkirmishSimulation.Add(simulationMilliseconds);
+        _automatedSkirmishAllocated.Add(allocatedBytes);
+
+        if (totalMilliseconds < _automatedSkirmishSpikeMilliseconds)
+        {
+            _automatedSkirmishConsecutiveSpikes = 0;
+            return;
+        }
+
+        _automatedSkirmishSpikeCount++;
+        var newBurst = _lastAutomatedSkirmishSpikeTick != metrics.Tick - 1;
+        if (newBurst)
+        {
+            _automatedSkirmishSpikeBurstCount++;
+            _automatedSkirmishConsecutiveSpikes = 1;
+            if (_lastAutomatedSkirmishSpikeBurstTick >= 0)
+            {
+                _automatedSkirmishSpikeBurstInterval.Add(
+                    metrics.Tick - _lastAutomatedSkirmishSpikeBurstTick);
+            }
+            _lastAutomatedSkirmishSpikeBurstTick = metrics.Tick;
+        }
+        else
+        {
+            _automatedSkirmishConsecutiveSpikes++;
+        }
+        _automatedSkirmishMaximumConsecutiveSpikes = Math.Max(
+            _automatedSkirmishMaximumConsecutiveSpikes,
+            _automatedSkirmishConsecutiveSpikes);
+        _lastAutomatedSkirmishSpikeTick = metrics.Tick;
+
+        GD.Print(
+            $"WAR3_AUTO_SKIRMISH_TICK_SPIKE tick={metrics.Tick} " +
+            $"tick_ms={totalMilliseconds:0.###} " +
+            $"driver_ms={automationProfile.TotalMilliseconds:0.###} " +
+            $"bank_ms={automationProfile.BankTopUpMilliseconds:0.###} " +
+            $"support_build_ms=" +
+            $"{automationProfile.SupportConstructionMilliseconds:0.###} " +
+            $"ai_ms={automationProfile.AiMilliseconds:0.###} " +
+            $"status_ms={automationProfile.StatusSampleMilliseconds:0.###} " +
+            $"simulation_ms={simulationMilliseconds:0.###} " +
+            $"allocated={allocatedBytes} " +
+            $"activities={ActivityText(automationProfile.Activities)} " +
+            $"intents={automationProfile.ExecutedIntents} " +
+            $"ai_detail={aiProfile.CaptureMilliseconds:0.###}/" +
+            $"{aiProfile.DecisionMilliseconds:0.###}/" +
+            $"{aiProfile.ExecutionMilliseconds:0.###}/" +
+            $"{aiProfile.AllocatedBytes}/" +
+            $"{aiProfile.SlowestIntent}/" +
+            $"{aiProfile.SlowestIntentMilliseconds:0.###} " +
+            $"economy_ms={metrics.EconomyMilliseconds:0.###} " +
+            $"construction_ms={metrics.ConstructionMilliseconds:0.###} " +
+            $"production_ms={metrics.ProductionMilliseconds:0.###} " +
+            $"technology_ms={metrics.TechnologyMilliseconds:0.###} " +
+            $"combat_ms={metrics.CombatMilliseconds:0.###} " +
+            $"path_ms={metrics.PathMilliseconds:0.###} " +
+            $"steering_ms={metrics.SteeringMilliseconds:0.###} " +
+            $"collision_ms={metrics.CollisionMilliseconds:0.###} " +
+            $"visibility_ms={metrics.VisibilityMilliseconds:0.###} " +
+            $"visibility_cells={metrics.VisibilityCandidateCells} " +
+            $"paths={metrics.PathsCompleted}/{metrics.PathsFailed}/" +
+            $"{metrics.PendingPathRequests}");
+    }
+
+    private static string ActivityText(
+        War3AutomatedSkirmishActivity activities) =>
+        activities == War3AutomatedSkirmishActivity.None
+            ? "none"
+            : activities.ToString().Replace(", ", "+");
 
     private static void ReportPhysicsSpike(
         double totalMilliseconds,
@@ -466,7 +581,11 @@ internal sealed class War3RuntimeProfiler
     {
         GD.Print(
             $"WAR3_RUNTIME_PROFILE_SUMMARY variant={Variant} " +
-            $"frames={_frame.Count} physics_ticks={_physics.Count}");
+            $"frames={_frame.Count} physics_ticks={_physics.Count} " +
+            $"auto_tick_spikes={_automatedSkirmishSpikeCount} " +
+            $"auto_spike_bursts={_automatedSkirmishSpikeBurstCount} " +
+            $"auto_max_consecutive_spikes=" +
+            $"{_automatedSkirmishMaximumConsecutiveSpikes}");
         Print("frame_ms", _frame);
         Print("physics_ms", _physics);
         Print("stress_driver_ms", _stressDriver);
@@ -475,6 +594,16 @@ internal sealed class War3RuntimeProfiler
         Print("stress_combat_orders_ms", _stressCombatOrders);
         Print("stress_construction_issue_ms", _stressConstructionIssue);
         Print("stress_alloc_bytes", _stressAllocated);
+        Print("auto_skirmish_tick_ms", _automatedSkirmishTick);
+        Print("auto_skirmish_bank_top_up_ms", _automatedSkirmishBankTopUp);
+        Print("auto_skirmish_support_construction_ms",
+            _automatedSkirmishSupportConstruction);
+        Print("auto_skirmish_ai_ms", _automatedSkirmishAi);
+        Print("auto_skirmish_status_ms", _automatedSkirmishStatus);
+        Print("auto_skirmish_simulation_ms", _automatedSkirmishSimulation);
+        Print("auto_skirmish_alloc_bytes", _automatedSkirmishAllocated);
+        Print("auto_skirmish_spike_burst_interval_ticks",
+            _automatedSkirmishSpikeBurstInterval);
         Print("ai_ms", _ai);
         Print("simulation_call_ms", _simulation);
         Print("selection_hud_ms", _selectionHud);

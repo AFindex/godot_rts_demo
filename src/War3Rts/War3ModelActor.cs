@@ -55,6 +55,11 @@ public sealed partial class War3ModelActor : Node3D
                                      _sequenceIndex < _metadata.Sequences.Count
         ? _metadata.Sequences[_sequenceIndex].Name
         : string.Empty;
+    public double CurrentSequenceDurationSeconds =>
+        _sequenceIndex >= 0 && _metadata is not null &&
+        _sequenceIndex < _metadata.Sequences.Count
+            ? _metadata.Sequences[_sequenceIndex].DurationMilliseconds / 1000d
+            : 0d;
 
     public override void _Ready()
     {
@@ -71,7 +76,7 @@ public sealed partial class War3ModelActor : Node3D
         Source = source;
         _metadata = War3RuntimeAssets.LoadMetadata(source);
         _model = War3RuntimeAssets.InstantiateModel(
-            source, team == War3HumanScenario.PlayerId ? 0 : 1);
+            source, TeamColorIndex(team));
         _model.Name = "Model";
         if (_model is Node3D spatialModel)
             spatialModel.Rotation = new Vector3(0f, ImportedFacingCorrection, 0f);
@@ -85,7 +90,7 @@ public sealed partial class War3ModelActor : Node3D
             _effects = new War3EffectRuntime { Name = "Effects" };
             AddChild(_effects);
             _effects.Initialize(_model, camera, _metadata);
-            _effects.SetTeamColor(team == War3HumanScenario.PlayerId ? 0 : 1);
+            _effects.SetTeamColor(TeamColorIndex(team));
         }
         _sequenceIndex = -1;
         _requestedSequence = string.Empty;
@@ -470,13 +475,28 @@ public sealed partial class War3ModelActor : Node3D
         camera.Fov = building ? 45f : portrait ? 36f : 44f;
         camera.Near = 0.005f;
         camera.Far = 100f;
-        camera.Position = target + (building
+        var localOffset = building
             ? new Vector3(distance * 0.72f, distance * 0.48f, distance * 0.92f)
             : portrait
-            ? new Vector3(distance * 0.78f, distance * 0.12f, distance)
-            : new Vector3(distance * 0.72f, distance * 0.48f, distance * 0.92f));
+                ? new Vector3(distance * 0.78f, distance * 0.12f, distance)
+                : new Vector3(distance * 0.72f, distance * 0.48f, distance * 0.92f);
+        // The actor applies a -90 degree correction to imported Warcraft
+        // models. Keep fallback cameras in the corrected model basis too;
+        // otherwise buildings are viewed from a different side while MDX
+        // portrait cameras (which already inherit the root basis) look right.
+        var offset = root is null
+            ? localOffset
+            : root.GlobalBasis.Orthonormalized() * localOffset;
+        camera.Position = target + offset;
         camera.LookAt(target, Vector3.Up);
     }
+
+    private static int TeamColorIndex(int team) => team switch
+    {
+        War3HumanScenario.PlayerId => 0,
+        War3HumanScenario.EnemyId => 1,
+        _ => 12
+    };
 
     private static bool TryGetVisibleMeshBounds(
         Node node,
