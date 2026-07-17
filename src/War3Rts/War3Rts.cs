@@ -1098,8 +1098,9 @@ public sealed partial class War3Rts : Node3D
         foreach (var building in simulation.CreateGameplayBuildingOverview())
         {
             if (building.IsTerminal) continue;
-            var nearest = building.Bounds.Clamp(point);
-            var distance = NVector2.DistanceSquared(point, nearest);
+            if (!War3PointerTargeting.HitsBuilding(building.Bounds, point))
+                continue;
+            const float distance = 0f;
             if (distance >= bestDistance) continue;
             var friendly = simulation.Diplomacy.IsFriendly(
                 War3HumanScenario.PlayerId, building.PlayerId);

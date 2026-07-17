@@ -1,4 +1,5 @@
 using RtsDemo.Simulation;
+using NVector2 = System.Numerics.Vector2;
 
 namespace War3Rts;
 
@@ -108,4 +109,16 @@ public sealed record War3HudSnapshot(
         0, 0, 0, 0, 0d, War3SelectionSnapshot.Empty, [], [], [],
         new SimRect(System.Numerics.Vector2.Zero, System.Numerics.Vector2.One),
         "普通选择", "正在载入人族对战…");
+}
+
+internal static class War3PointerTargeting
+{
+    /// <summary>
+    /// Buildings already expose their complete gameplay footprint. Unlike
+    /// units and resource nodes, they must not inherit a world-space snap ring:
+    /// otherwise a ground click visibly outside a large building becomes a
+    /// building command target.
+    /// </summary>
+    public static bool HitsBuilding(in SimRect bounds, NVector2 point) =>
+        bounds.Contains(point);
 }
