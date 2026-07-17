@@ -38,7 +38,11 @@
           "B": "200",
           "C": "250"
         },
+        "unitIds": [
+          "ugho"
+        ],
         "summonedUnitId": "ugho",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

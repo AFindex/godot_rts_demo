@@ -1,0 +1,129 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIrm",
+  "displayName": "BIrm",
+  "identity": {
+    "baseCode": "BIrm",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/anrl/anrltarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionOfClarity.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionOfClarity.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpotionofclarity.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIrl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIpr",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIpl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp1",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp2",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp3",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp4",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp5",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp6",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIrm",
+    "code": "BIrm",
+    "comments": "RegenMana              ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNPotionOfClarity.blp",
+    "Targetart": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "净化药水",
+    "Buffubertip": "\"该单位使用了净化药水，因此其魔法值会持续地恢复。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

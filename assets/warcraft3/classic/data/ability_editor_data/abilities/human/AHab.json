@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnbrilliance.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBrilliance.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBrilliance.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbrilliance.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Brilliance\\Brilliance.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Brilliance\\Brilliance.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/brilliance/brilliance.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
           "A": "0.75",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHab"
         ],
@@ -69,6 +87,8 @@
           "A": "1.5",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHab"
         ],
@@ -92,6 +112,8 @@
           "A": "2.25",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHab"
         ],

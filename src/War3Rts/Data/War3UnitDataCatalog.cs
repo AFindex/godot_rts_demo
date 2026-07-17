@@ -364,8 +364,15 @@ public sealed class War3UnitSummary
     public War3HeroAttributeSummary HeroAttributes { get; init; } = new();
     public War3CombatSummary Combat { get; init; } = new();
     public string[] Abilities { get; init; } = [];
+    public string[] HeroAbilities { get; init; } = [];
     public string? DefaultActiveAbility { get; init; }
     public string[] Upgrades { get; init; } = [];
+    public string[] Builds { get; init; } = [];
+    public string[] Trains { get; init; } = [];
+    public string[] Researches { get; init; } = [];
+    public string[] SellsUnits { get; init; } = [];
+    public string[] SellsItems { get; init; } = [];
+    public string[] MakesItems { get; init; } = [];
 }
 
 public sealed class War3HitPointSummary

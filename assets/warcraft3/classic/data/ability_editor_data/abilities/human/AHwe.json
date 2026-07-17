@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnsummonwaterelemental.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSummonWaterElemental.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSummonWaterElemental.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsummonwaterelemental.png"
+      }
     ]
   },
   "summary": {
@@ -39,7 +47,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "hwat"
+        ],
         "summonedUnitId": "hwat",
+        "requirements": [],
         "buffIds": [
           "BHwe"
         ],
@@ -59,7 +71,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "hwt2"
+        ],
         "summonedUnitId": "hwt2",
+        "requirements": [],
         "buffIds": [
           "BHwe"
         ],
@@ -79,7 +95,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "hwt3"
+        ],
         "summonedUnitId": "hwt3",
+        "requirements": [],
         "buffIds": [
           "BHwe"
         ],

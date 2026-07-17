@@ -1,0 +1,63 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIcb",
+  "displayName": "BIcb",
+  "identity": {
+    "baseCode": "BIcb",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfCorruption.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfCorruption.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofcorruption.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIcb",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIcb",
+    "code": "BIcb",
+    "comments": "Corruption             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNOrbOfCorruption.blp",
+    "Bufftip": "腐蚀",
+    "Buffubertip": "\"该单位受到了腐蚀之球的攻击，因此其护甲得到了削弱。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BEsh",
+  "displayName": "BEsh",
+  "identity": {
+    "baseCode": "BEsh",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\shadowstrike\\shadowstrike.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\shadowstrike\\shadowstrike.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/nightelf/shadowstrike/shadowstrike.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnshadowstrike.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEsh",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEsh",
+      "level": 2,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEsh",
+      "level": 3,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "ACss",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BEsh",
+    "code": "BEsh",
+    "comments": "ShadowStrike           ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+    "Targetart": "Abilities\\Spells\\NightElf\\shadowstrike\\shadowstrike.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "暗影突袭",
+    "Buffubertip": "\"This unit was hit by Shadow Strike; it will take damage over time and move more slowly.\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

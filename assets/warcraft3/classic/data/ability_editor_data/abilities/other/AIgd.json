@@ -20,6 +20,30 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorboffire.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIfb\\AIfbTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIfb\\AIfbTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aifb/aifbtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIfb\\AIfbSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIfb\\AIfbSpecialArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aifb/aifbspecialart.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\IllidanMissile\\IllidanMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\IllidanMissile\\IllidanMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/illidanmissile/illidanmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -42,6 +66,8 @@
           "A": "6",
           "E": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,46 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bphx",
+  "displayName": "Bphx",
+  "identity": {
+    "baseCode": "Bphx",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Bphx",
+    "code": "Bphx",
+    "comments": "Phoenix                ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Bufftip": "火凤凰",
+    "Buffubertip": "\"火凤凰的力量显现了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

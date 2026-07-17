@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritwolf.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritWolf.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritWolf.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritwolf.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspirittarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspirittarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspirittarget.glb"
+      }
     ]
   },
   "summary": {
@@ -40,7 +56,11 @@
         "data": {
           "B": "2"
         },
+        "unitIds": [
+          "osw1"
+        ],
         "summonedUnitId": "osw1",
+        "requirements": [],
         "buffIds": [
           "BOsf"
         ],
@@ -61,7 +81,11 @@
         "data": {
           "B": "2"
         },
+        "unitIds": [
+          "osw2"
+        ],
         "summonedUnitId": "osw2",
+        "requirements": [],
         "buffIds": [
           "BOsf"
         ],
@@ -82,7 +106,11 @@
         "data": {
           "B": "2"
         },
+        "unitIds": [
+          "osw3"
+        ],
         "summonedUnitId": "osw3",
+        "requirements": [],
         "buffIds": [
           "BOsf"
         ],

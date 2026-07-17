@@ -20,6 +20,30 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorboflightning.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIlb\\AIlbTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIlb\\AIlbTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/ailb/ailbtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIlb\\AIlbSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIlb\\AIlbSpecialArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/ailb/ailbspecialart.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\FarseerMissile\\FarseerMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\FarseerMissile\\FarseerMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/farseermissile/farseermissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,7 +68,11 @@
           "D": "35",
           "E": "2"
         },
+        "unitIds": [
+          "AIpg"
+        ],
         "summonedUnitId": "AIpg",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

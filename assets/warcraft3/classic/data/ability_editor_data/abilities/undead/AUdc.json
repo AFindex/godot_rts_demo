@@ -20,6 +20,30 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndeathcoil.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDeathCoil.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDeathCoil.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndeathcoil.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DeathCoil\\DeathCoilSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DeathCoil\\DeathCoilSpecialArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/deathcoil/deathcoilspecialart.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DeathCoil\\DeathCoilMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DeathCoil\\DeathCoilMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/deathcoil/deathcoilmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +71,8 @@
         "data": {
           "A": "200"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -70,6 +96,8 @@
         "data": {
           "A": "400"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -93,6 +121,8 @@
         "data": {
           "A": "600"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

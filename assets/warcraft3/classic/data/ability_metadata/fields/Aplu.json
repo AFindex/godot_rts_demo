@@ -1,0 +1,60 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Aplu",
+  "field": "UnitID",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_APLU",
+  "displayName": "灾祸守卫单位类型",
+  "sort": "x0a00u",
+  "valueType": "unitCode",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Aapl",
+      "Aap1",
+      "Aap2",
+      "Aap3",
+      "Aap4"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Aplu",
+    "field": "UnitID",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_APLU",
+    "sort": "x0a00u",
+    "type": "unitCode",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Aapl,Aap1,Aap2,Aap3,Aap4",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

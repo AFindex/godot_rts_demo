@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmetamorphosis.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMetamorphosis.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMetamorphosis.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmetamorphosis.png"
+      }
     ]
   },
   "summary": {
@@ -41,7 +49,11 @@
           "C": "0",
           "E": "500"
         },
+        "unitIds": [
+          "Eilm"
+        ],
         "summonedUnitId": "Eilm",
+        "requirements": [],
         "buffIds": [
           "BEme"
         ],

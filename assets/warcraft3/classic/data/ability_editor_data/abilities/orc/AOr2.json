@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncommand.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCommand.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCommand.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncommand.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\CommandAura\\CommandAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\CommandAura\\CommandAura.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/commandaura/commandaura.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
           "A": "0.1",
           "B": "0.05"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOae"
         ],
@@ -69,6 +87,8 @@
           "A": "0.2",
           "B": "0.1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOae"
         ],
@@ -92,6 +112,8 @@
           "A": "0.3",
           "B": "0.15"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOae"
         ],
@@ -115,6 +137,8 @@
           "A": "0.4",
           "B": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOae"
         ],

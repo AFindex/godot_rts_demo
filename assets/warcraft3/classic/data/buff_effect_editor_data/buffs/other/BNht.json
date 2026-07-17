@@ -1,0 +1,90 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNht",
+  "displayName": "BNht",
+  "identity": {
+    "baseCode": "BNht",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\HowlOfTerror\\HowlTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\HowlOfTerror\\HowlTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/howlofterror/howltarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhowlofterror.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANht",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANht",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANht",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Acht",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNht",
+    "code": "BNht",
+    "comments": "HowlOfTerror           ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+    "Targetart": "Abilities\\Spells\\Other\\HowlOfTerror\\HowlTarget.mdl",
+    "Bufftip": "恐怖嚎叫",
+    "Buffubertip": "\"这个单位被恐怖嚎叫震住了；它已经丢失了魔法效果，并将持续一段时间减弱攻击。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

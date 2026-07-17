@@ -1,0 +1,102 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUau",
+  "displayName": "BUau",
+  "identity": {
+    "baseCode": "BUau",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/generalauratarget/generalauratarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyAura.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyAura.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnunholyaura.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUau",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUau",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUau",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACua",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIau",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BUau",
+    "code": "BUau",
+    "comments": "AuraUnholy             ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNUnholyAura.blp",
+    "Targetart": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "邪恶光环",
+    "Spelldetail": "2",
+    "Buffubertip": "\"该单位处在邪恶光环的作用之下; 因此它的移动速度和生命值恢复速度都加快了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

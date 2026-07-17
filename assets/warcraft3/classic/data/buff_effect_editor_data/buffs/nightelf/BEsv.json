@@ -1,0 +1,72 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BEsv",
+  "displayName": "BEsv",
+  "identity": {
+    "baseCode": "BEsv",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritOfVengeance.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritOfVengeance.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritofvengeance.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEsv",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    }
+  ],
+  "editorData": {
+    "alias": "BEsv",
+    "code": "BEsv",
+    "comments": "SpiritOfVengeance      ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSpiritOfVengeance.blp",
+    "Effectart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+    "Bufftip": "复仇之魂",
+    "Buffubertip": "\"复仇之魂暴怒中。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

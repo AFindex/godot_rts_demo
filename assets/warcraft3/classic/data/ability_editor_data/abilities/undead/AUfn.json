@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnglacier.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGlacier.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGlacier.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnglacier.png"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\FrostNova\\FrostNovaTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\FrostNova\\FrostNovaTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/frostnova/frostnovatarget.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "A": "50",
           "B": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bfro"
         ],
@@ -74,6 +92,8 @@
           "A": "100",
           "B": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bfro"
         ],
@@ -101,6 +121,8 @@
           "A": "150",
           "B": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bfro"
         ],

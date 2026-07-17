@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnflare.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Flare\\FlareCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Flare\\FlareCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/flare/flarecaster.glb"
+      }
     ]
   },
   "summary": {
@@ -39,6 +47,8 @@
           "A": "1",
           "B": "0.8"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": [
           "Xfla"

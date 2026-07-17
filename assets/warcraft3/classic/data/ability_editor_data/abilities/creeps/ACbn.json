@@ -45,6 +45,8 @@
           "A": "0.5",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHbn"
         ],

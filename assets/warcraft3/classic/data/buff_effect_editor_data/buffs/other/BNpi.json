@@ -1,0 +1,74 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNpi",
+  "displayName": "永久的献祭",
+  "identity": {
+    "baseCode": "BNpi",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/immolation/immolationdamage.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [
+      "head"
+    ]
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANpi",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "Apmf",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BNpi",
+    "code": "BNpi",
+    "comments": "PermImmolation         ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "",
+    "Specialart": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdl",
+    "Specialartattach": "head",
+    "Specialattach": "head",
+    "EditorName": "永久的献祭",
+    "EditorSuffix": "(中立的单位但是是敌对的1)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

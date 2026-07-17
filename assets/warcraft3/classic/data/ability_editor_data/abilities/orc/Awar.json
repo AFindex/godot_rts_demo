@@ -45,6 +45,11 @@
           "C": "250",
           "D": "350"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rows"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

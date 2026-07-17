@@ -1,0 +1,55 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "anam",
+  "field": "Name",
+  "storage": "Profile",
+  "index": 0,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "text",
+  "displayNameKey": "WESTRING_AEVAL_ANAM",
+  "displayName": "名字",
+  "sort": "c1a00",
+  "valueType": "string",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "anam",
+    "field": "Name",
+    "slk": "Profile",
+    "index": "0",
+    "repeat": "0",
+    "data": "0",
+    "category": "text",
+    "displayName": "WESTRING_AEVAL_ANAM",
+    "sort": "c1a00",
+    "type": "string",
+    "changeFlags": "t",
+    "stringExt": "1",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "maxVal": "TTName",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

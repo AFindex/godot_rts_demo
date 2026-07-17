@@ -1,0 +1,73 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BCbf",
+  "displayName": "BCbf",
+  "identity": {
+    "baseCode": "BCbf",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\BreathOfFrost\\BreathOfFrostTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\BreathOfFrost\\BreathOfFrostTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/breathoffrost/breathoffrosttarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFrost.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFrost.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbreathoffrost.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ACbf",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BCbf",
+    "code": "BCbf",
+    "comments": "BreathOfFrost          ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFrost.blp",
+    "Targetart": "Abilities\\Spells\\Other\\BreathOfFrost\\BreathOfFrostTarget.mdl",
+    "Targetattach": "",
+    "Bufftip": "霜冻闪电",
+    "Buffubertip": "\"该单位遭到了霜冻闪电的攻击，因此会持续地受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

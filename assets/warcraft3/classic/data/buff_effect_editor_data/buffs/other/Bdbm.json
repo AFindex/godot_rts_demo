@@ -1,0 +1,93 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bdbm",
+  "displayName": "吸取魔法（附加）",
+  "identity": {
+    "baseCode": "Bdbm",
+    "race": "other",
+    "effect": false,
+    "editorVisible": null,
+    "profileOnly": true
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManaDrain.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManaDrain.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanadrain.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHdr",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHdr",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHdr",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ANdr",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANdr",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANdr",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACdr",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACsm",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {},
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNManaDrain.blp",
+    "Name": "吸取魔法（附加）",
+    "Bufftip": "吸取魔法",
+    "Buffubertip": "\"这个单位具有额外的魔法值。但是这个额外的值会消失得很快。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt"
+    ]
+  }
+}

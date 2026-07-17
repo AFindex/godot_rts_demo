@@ -1,0 +1,42 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Btrv",
+  "displayName": "传送 显示",
+  "identity": {
+    "baseCode": "Btrv",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Btrv",
+    "code": "Btrv",
+    "comments": "TeleportReveal ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "传送 显示"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt"
+    ]
+  }
+}

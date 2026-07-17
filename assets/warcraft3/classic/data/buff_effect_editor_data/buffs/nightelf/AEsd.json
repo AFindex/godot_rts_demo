@@ -1,0 +1,71 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "AEsd",
+  "displayName": "群星坠落(目标)",
+  "identity": {
+    "baseCode": "AEsd",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Starfall\\StarfallTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Starfall\\StarfallTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/starfall/starfalltarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEsf",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEsb",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "AEsd",
+    "code": "AEsd",
+    "comments": "Starfall target",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "Abilities\\Spells\\NightElf\\Starfall\\StarfallTarget.mdl",
+    "Targetattach": "origin",
+    "EditorName": "群星坠落(目标)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

@@ -39,7 +39,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nfgt"
+        ],
         "summonedUnitId": "nfgt",
+        "requirements": [],
         "buffIds": [
           "BOwd"
         ],

@@ -1,0 +1,77 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bpig",
+  "displayName": "永久的献祭",
+  "identity": {
+    "baseCode": "Bpig",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ImmolationRed\\ImmolationRedTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ImmolationRed\\ImmolationREDTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/immolationred/immolationredtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ImmolationRed\\ImmolationRedDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ImmolationRed\\ImmolationRedDamage.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/immolationred/immolationreddamage.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest"
+    ],
+    "specialAttachments": [
+      "chest"
+    ]
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Apig",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bpig",
+    "code": "Bpig",
+    "comments": "PandaImmolation        ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "Abilities\\Spells\\Other\\ImmolationRed\\ImmolationRedTarget.mdl",
+    "Targetattach": "chest",
+    "Specialart": "Abilities\\Spells\\Other\\ImmolationRed\\ImmolationRedDamage.mdl",
+    "Specialattach": "chest",
+    "EditorName": "永久的献祭",
+    "EditorSuffix": "(中立的单位但是是敌对的 2)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

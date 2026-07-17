@@ -1,0 +1,68 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xfla",
+  "displayName": "照明弹(效果)",
+  "identity": {
+    "baseCode": "Xfla",
+    "race": "human",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Flare\\FlareTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Flare\\FlareTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/flare/flaretarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Afla",
+      "level": 1,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "AIfa",
+      "level": 1,
+      "kind": "effect",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Xfla",
+    "code": "Xfla",
+    "comments": "Flare                ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Human\\Flare\\FlareTarget.mdl",
+    "EditorName": "照明弹(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

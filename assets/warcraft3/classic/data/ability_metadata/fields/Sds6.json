@@ -1,0 +1,60 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Sds6",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 6,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_SDS6",
+  "displayName": "尸体爆炸",
+  "sort": "x0a005",
+  "valueType": "bool",
+  "minimum": 0,
+  "maximum": 1,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Asds",
+      "Asdg",
+      "Asd2",
+      "Asd3"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Sds6",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "6",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_SDS6",
+    "sort": "x0a005",
+    "type": "bool",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "1",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Asds,Asdg,Asd2,Asd3",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

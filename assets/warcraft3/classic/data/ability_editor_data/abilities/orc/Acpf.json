@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritwalker.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\EtherealForm\\SpiritWalkerChange.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\EtherealForm\\SpiritWalkerChange.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/etherealform/spiritwalkerchange.glb"
+      }
     ]
   },
   "summary": {
@@ -40,7 +48,11 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [
+          "ospw"
+        ],
         "summonedUnitId": "ospw",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

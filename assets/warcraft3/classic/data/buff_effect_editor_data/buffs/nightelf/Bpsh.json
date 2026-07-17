@@ -1,0 +1,72 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bpsh",
+  "displayName": "Bpsh",
+  "identity": {
+    "baseCode": "Bpsh",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\FaerieDragonInvis\\FaerieDragon_Invis.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\FaerieDragonInvis\\FaerieDragon_Invis.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/faeriedragoninvis/faeriedragon_invis.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPhaseShift.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPhaseShift.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnphaseshift.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Apsh",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    }
+  ],
+  "editorData": {
+    "alias": "Bpsh",
+    "code": "Bpsh",
+    "comments": "PhaseShift             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNPhaseShift.blp",
+    "Specialart": "Abilities\\Spells\\NightElf\\FaerieDragonInvis\\FaerieDragon_Invis.mdl",
+    "Bufftip": "变相移动",
+    "Buffubertip": "\"该单位处于消失的状态中，因此在短时间内不会受到任何的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnrune.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/dispelmagic/dispelmagictarget.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AItb\\AItbTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AItb\\AItbTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aitb/aitbtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
           "A": "0",
           "B": "250"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

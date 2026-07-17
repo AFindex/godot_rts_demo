@@ -20,6 +20,38 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndarksummoning.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDarkSummoning.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDarkSummoning.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndarksummoning.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Darksummoning\\DarkSummonTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DarkSummoning\\DarkSummonTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/darksummoning/darksummontarget.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Darksummoning\\DarkSummonTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DarkSummoning\\DarkSummonTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/darksummoning/darksummontarget.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DarkSummoning\\DarkSummonMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DarkSummoning\\DarkSummonMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/darksummoning/darksummonmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +80,8 @@
           "B": "1",
           "C": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

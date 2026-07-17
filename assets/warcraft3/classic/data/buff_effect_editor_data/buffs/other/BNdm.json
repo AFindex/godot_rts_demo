@@ -1,0 +1,87 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNdm",
+  "displayName": "BNdm",
+  "identity": {
+    "baseCode": "BNdm",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTheBlackArrow.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTheBlackArrow.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntheblackarrow.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANba",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANba",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANba",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACbk",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANbs",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BNdm",
+    "code": "BNdm",
+    "comments": "DarkMinion             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNTheBlackArrow.blp",
+    "Bufftip": "黑暗之奴",
+    "Buffubertip": "\"召唤出来的单位会受到驱逐魔法的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

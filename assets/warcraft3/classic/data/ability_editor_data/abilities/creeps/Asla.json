@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\CreepSleep\\CreepSleepTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\CreepSleep\\CreepSleepTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/creepsleep/creepsleeptarget.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -27,6 +36,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

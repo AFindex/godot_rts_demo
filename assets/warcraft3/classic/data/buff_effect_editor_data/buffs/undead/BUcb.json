@@ -1,0 +1,75 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUcb",
+  "displayName": "BUcb",
+  "identity": {
+    "baseCode": "BUcb",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabs.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabs.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncarrionscarabs.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUcb",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUcb",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUcb",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    }
+  ],
+  "editorData": {
+    "alias": "BUcb",
+    "code": "BUcb",
+    "comments": "CarrionScarab          ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabs.blp",
+    "Bufftip": "腐尸甲虫",
+    "Buffubertip": "\"召唤出来的单位会受到驱逐魔法的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

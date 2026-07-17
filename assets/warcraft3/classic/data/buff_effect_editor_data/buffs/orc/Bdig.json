@@ -1,0 +1,55 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bdig",
+  "displayName": "吞噬 (施法者)",
+  "identity": {
+    "baseCode": "Bdig",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Adev",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ACdv",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bdig",
+    "code": "Bdig",
+    "comments": "Digesting              ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "吞噬 (施法者)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt"
+    ]
+  }
+}

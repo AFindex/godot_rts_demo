@@ -1,0 +1,94 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNbr",
+  "displayName": "BNbr",
+  "identity": {
+    "baseCode": "BNbr",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\BattleRoar\\RoarTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\BattleRoar\\RoarTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/battleroar/roartarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBattleRoar.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBattleRoar.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbattleroar.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANbr",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANbr",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANbr",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANbr",
+      "level": 4,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNbr",
+    "code": "BNbr",
+    "comments": "BattleRoar             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Spelldetail": "1",
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBattleRoar.blp",
+    "Targetart": "Abilities\\Spells\\NightElf\\BattleRoar\\RoarTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "战争咆哮",
+    "Buffubertip": "\"该单位具有战争咆哮技能，因此它的攻击力增加了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt"
+    ]
+  }
+}

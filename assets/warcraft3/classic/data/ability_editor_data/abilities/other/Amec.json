@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmechanicalcritter.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
     ]
   },
   "summary": {
@@ -37,6 +45,8 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bmec"
         ],

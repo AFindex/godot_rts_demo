@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtntrueshot.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\TrueshotAura\\TrueshotAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\TrueshotAura\\TrueshotAura.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/trueshotaura/trueshotaura.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +57,8 @@
           "C": "1",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BEar"
         ],

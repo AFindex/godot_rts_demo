@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnfire.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFire.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfire.png"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "E": "5",
           "F": "125"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNrd",
           "BNrf"
@@ -74,6 +84,8 @@
           "E": "10",
           "F": "150"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNrd",
           "BNrf"
@@ -103,6 +115,8 @@
           "E": "15",
           "F": "175"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNrd",
           "BNrf"

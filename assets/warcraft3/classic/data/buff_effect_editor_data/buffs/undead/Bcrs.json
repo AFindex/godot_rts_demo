@@ -1,0 +1,84 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bcrs",
+  "displayName": "Bcrs",
+  "identity": {
+    "baseCode": "Bcrs",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Curse\\CurseTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Curse\\CurseTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/curse/cursetarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCurse.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCurse.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncurse.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Acrs",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACcs",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bcrs",
+    "code": "Bcrs",
+    "comments": "Curse                  ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNCurse.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\Curse\\CurseTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "诅咒",
+    "Spelldetail": "1",
+    "Buffubertip": "\"该单位受到了诅咒的作用，因此在攻击的时候会有一定的概率击空。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

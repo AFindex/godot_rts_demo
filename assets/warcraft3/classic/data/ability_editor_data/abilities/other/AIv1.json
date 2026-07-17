@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnlesserinvisibility.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIvi\\AIviTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIvi\\AIviTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aivi/aivitarget.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Binv"
         ],

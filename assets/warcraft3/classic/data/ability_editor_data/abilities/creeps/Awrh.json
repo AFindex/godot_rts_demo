@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnhydrawarstomp.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\WarStomp\\WarStompCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\WarStomp\\WarStompCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/warstomp/warstompcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -43,6 +51,8 @@
           "B": "-50",
           "C": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],

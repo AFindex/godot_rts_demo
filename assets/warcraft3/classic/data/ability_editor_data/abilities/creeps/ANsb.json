@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnstormbolt.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStormBolt.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStormBolt.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstormbolt.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\StormBolt\\StormBoltMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\StormBolt\\StormBoltMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/stormbolt/stormboltmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
         "data": {
           "A": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],
@@ -72,6 +90,8 @@
         "data": {
           "A": "200"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],
@@ -98,6 +118,8 @@
         "data": {
           "A": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],
@@ -124,6 +146,8 @@
         "data": {
           "A": "450"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],

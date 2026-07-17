@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btntheblackarrowonoff.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTheBlackArrow.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTheBlackArrow.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntheblackarrow.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\BlackArrow\\BlackArrowMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\BlackArrow\\BlackArrowMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/blackarrow/blackarrowmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,7 +63,11 @@
           "B": "1",
           "C": "80"
         },
+        "unitIds": [
+          "ndr1"
+        ],
         "summonedUnitId": "ndr1",
+        "requirements": [],
         "buffIds": [
           "BNba",
           "BNdm"
@@ -76,7 +96,11 @@
           "B": "1",
           "C": "80"
         },
+        "unitIds": [
+          "ndr2"
+        ],
         "summonedUnitId": "ndr2",
+        "requirements": [],
         "buffIds": [
           "BNba",
           "BNdm"
@@ -105,7 +129,11 @@
           "B": "1",
           "C": "80"
         },
+        "unitIds": [
+          "ndr3"
+        ],
         "summonedUnitId": "ndr3",
+        "requirements": [],
         "buffIds": [
           "BNba",
           "BNdm"

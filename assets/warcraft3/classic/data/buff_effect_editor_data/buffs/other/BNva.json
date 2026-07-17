@@ -1,0 +1,49 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNva",
+  "displayName": "Volcano (Area)",
+  "identity": {
+    "baseCode": "BNva",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANvc",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNva",
+    "code": "BNva",
+    "comments": "VolcanoAOE",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "Volcano (Area)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

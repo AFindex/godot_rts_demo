@@ -1,0 +1,42 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUad",
+  "displayName": "操纵死尸(额外的)",
+  "identity": {
+    "baseCode": "BUad",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "BUad",
+    "code": "BUad",
+    "comments": "AnimateDead            ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "操纵死尸(额外的)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt"
+    ]
+  }
+}

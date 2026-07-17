@@ -1,0 +1,60 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Prg5",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 5,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_PRG5",
+  "displayName": "英雄暂定持续时间",
+  "sort": "x0a004",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 300,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Aprg",
+      "ACpu",
+      "AIlp",
+      "AIpg"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Prg5",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "5",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_PRG5",
+    "sort": "x0a004",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "300",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Aprg,ACpu,AIlp,AIpg",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

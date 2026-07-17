@@ -1,0 +1,53 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "arhk",
+  "field": "Researchhotkey",
+  "storage": "Profile",
+  "index": 0,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "text",
+  "displayNameKey": "WESTRING_AEVAL_ARHK",
+  "displayName": "热键 - 学习",
+  "sort": "d0a02",
+  "valueType": "char",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": false,
+    "hero": true,
+    "item": false,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "arhk",
+    "field": "Researchhotkey",
+    "slk": "Profile",
+    "index": "0",
+    "repeat": "0",
+    "data": "0",
+    "category": "text",
+    "displayName": "WESTRING_AEVAL_ARHK",
+    "sort": "d0a02",
+    "type": "char",
+    "stringExt": "1",
+    "caseSens": "1",
+    "canBeEmpty": "1",
+    "forceNonNeg": "0",
+    "useUnit": "0",
+    "useHero": "1",
+    "useItem": "0",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

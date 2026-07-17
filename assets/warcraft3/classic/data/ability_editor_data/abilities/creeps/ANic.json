@@ -20,6 +20,22 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnincinerate.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNIncinerate.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNIncinerate.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnincinerate.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\LordofFlameMissile\\LordofFlameMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\LordofFlameMissile\\LordofFlameMissile.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/weapons/lordofflamemissile/lordofflamemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +64,8 @@
           "E": "180",
           "F": "0.2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNic"
         ],
@@ -77,6 +95,8 @@
           "E": "180",
           "F": "0.2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNic"
         ],
@@ -106,6 +126,8 @@
           "E": "180",
           "F": "0.2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNic"
         ],

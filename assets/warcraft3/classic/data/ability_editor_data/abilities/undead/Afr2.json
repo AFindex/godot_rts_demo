@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnfrost.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\ZigguratFrostMissile\\ZigguratFrostMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\ZigguratFrostMissile\\ZigguratFrostMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/zigguratfrostmissile/zigguratfrostmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -39,6 +47,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bfro"
         ],

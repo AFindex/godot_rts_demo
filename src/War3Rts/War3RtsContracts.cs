@@ -13,6 +13,8 @@ public enum War3CommandKind : byte
     Train,
     Research,
     Rally,
+    Ability,
+    LearnAbility,
     Cancel
 }
 
@@ -24,7 +26,10 @@ public readonly record struct War3CommandSnapshot(
     string Tooltip,
     string IconPath,
     string Hotkey,
-    bool Enabled = true);
+    bool Enabled = true,
+    float CooldownRemaining = 0f,
+    float ManaCost = 0f,
+    bool Toggled = false);
 
 public enum War3QueueItemKind : byte
 {
@@ -63,6 +68,11 @@ public sealed record War3SelectionSnapshot(
     bool PortraitIsBuilding)
 {
     public War3QueueItemSnapshot[] QueueItems { get; init; } = [];
+    public float Mana { get; init; }
+    public float MaximumMana { get; init; }
+    public float ManaRegeneration { get; init; }
+    public AbilityStatusFlags AbilityStatuses { get; init; }
+    public AbilityBuffSnapshot[] Buffs { get; init; } = [];
 
     public static War3SelectionSnapshot Empty { get; } = new(
         "未选择单位", "左键选择，拖动框选", 0f, 0f,

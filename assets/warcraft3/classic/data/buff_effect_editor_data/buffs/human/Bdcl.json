@@ -1,0 +1,106 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bdcl",
+  "displayName": "汲取生命值(施法者)",
+  "identity": {
+    "baseCode": "Bdcl",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Drain\\DrainCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Drain\\DrainCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/drain/draincaster.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHdr",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHdr",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHdr",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ANdr",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANdr",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANdr",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACdr",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACsm",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bdcl",
+    "code": "Bdcl",
+    "comments": "DrainCasterLife        ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "Abilities\\Spells\\Other\\Drain\\DrainCaster.mdl",
+    "Targetattach": "chest",
+    "EditorName": "汲取生命值(施法者)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

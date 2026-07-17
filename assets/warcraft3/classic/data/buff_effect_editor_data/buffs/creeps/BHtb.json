@@ -1,0 +1,66 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BHtb",
+  "displayName": "BHtb",
+  "identity": {
+    "baseCode": "BHtb",
+    "race": "creeps",
+    "effect": false,
+    "editorVisible": null,
+    "profileOnly": true
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\StormBolt\\StormBoltTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\StormBolt\\StormBoltTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/stormbolt/stormbolttarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStormBolt.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStormBolt.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstormbolt.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ACcb",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {},
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNStormBolt.blp",
+    "Targetart": "Abilities\\Spells\\Human\\StormBolt\\StormBoltTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "风暴之锤",
+    "Buffubertip": "\"该单位遭到了风暴之锤的攻击，因此不能移动，攻击或者施放魔法。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

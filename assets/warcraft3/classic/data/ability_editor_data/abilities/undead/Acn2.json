@@ -44,6 +44,11 @@
           "A": "15",
           "B": "800"
         },
+        "unitIds": [],
+        "requirements": [
+          "Ruac"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

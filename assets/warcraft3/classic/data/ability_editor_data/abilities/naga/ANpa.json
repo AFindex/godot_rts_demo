@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnparasiteon.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Parasite\\ParasiteMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Parasite\\ParasiteMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/parasite/parasitemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -50,7 +58,11 @@
           "D": "8",
           "E": "1"
         },
+        "unitIds": [
+          "ncfs"
+        ],
         "summonedUnitId": "ncfs",
+        "requirements": [],
         "buffIds": [
           "BNpa",
           "BNpm"

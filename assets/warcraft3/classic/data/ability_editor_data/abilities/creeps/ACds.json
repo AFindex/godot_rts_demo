@@ -39,6 +39,8 @@
         "cooldown": 60,
         "manaCost": 125,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHds"
         ],

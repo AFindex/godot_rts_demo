@@ -20,6 +20,14 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnsoulburn.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsoulburn.png"
+      }
     ]
   },
   "summary": {
@@ -49,6 +57,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNso"
         ],
@@ -79,6 +89,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNso"
         ],
@@ -109,6 +121,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNso"
         ],

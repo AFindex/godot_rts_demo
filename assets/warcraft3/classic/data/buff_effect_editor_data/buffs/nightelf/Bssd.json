@@ -1,0 +1,80 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bssd",
+  "displayName": "Bssd",
+  "identity": {
+    "baseCode": "Bssd",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdl",
+        "resolvedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/poisonsting/poisonstingtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNSlowPoison.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNSlowPoison.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnslowpoison.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aspo",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AIsz",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bssd",
+    "code": "Bssd",
+    "comments": "SlowPoisonStackDoT     ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Spelldetail": "2",
+    "Buffart": "ReplaceableTextures\\PassiveButtons\\PASBTNSlowPoison.blp",
+    "Targetart": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdl",
+    "Bufftip": "慢性毒药",
+    "Buffubertip": "\"该单位受到了慢性毒药的攻击;因此其移动速度和攻击速度都减慢了，而且会在一定时间内持续地受到伤害。\"",
+    "EditorSuffix": "(堆积)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

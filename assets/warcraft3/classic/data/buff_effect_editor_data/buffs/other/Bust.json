@@ -1,0 +1,52 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bust",
+  "displayName": "Bust",
+  "identity": {
+    "baseCode": "Bust",
+    "race": "other",
+    "effect": false,
+    "editorVisible": null,
+    "profileOnly": true
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUsl",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUsl",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {},
+  "profile": {},
+  "provenance": {
+    "sourceFiles": []
+  }
+}

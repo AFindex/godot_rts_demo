@@ -52,6 +52,25 @@ public static class TerrainNavigationTopologySelfTest
                              sameRegion.Waypoints.Length == 0 &&
                              sameRegion.ChokeIds.Length == 0;
 
+            // The direct row crosses two cliff faces away from their ramps.
+            // Grid A* must reject those locally adjacent but physically
+            // non-traversable edges and detour through the authored ramps.
+            var edgeWorld = multiNavigation.CreateWorld(multiTerrain);
+            var edgeProvider = new GridPathProvider(
+                edgeWorld, cellSize: 8f, staticBake: multiBake);
+            var edgePath = edgeProvider.FindPath(
+                Center(2, 0, 32f),
+                Center(15, 0, 32f),
+                MovementClearance.MediumNavigationRadius);
+            var terrainEdgesSafe = edgePath.Length >= 2;
+            for (var index = 1; index < edgePath.Length; index++)
+            {
+                terrainEdgesSafe &= edgeWorld.IsSegmentFree(
+                    edgePath[index - 1],
+                    edgePath[index],
+                    MovementClearance.MediumNavigationRadius);
+            }
+
             var repeated = TerrainNavigationTopologyBuilder.Build(
                 multiTerrain, multiBake);
             var stable = repeated.StableHash == multi.StableHash &&
@@ -112,7 +131,8 @@ public static class TerrainNavigationTopologySelfTest
                 mismatchRejected = true;
             }
 
-            var passed = automatic && multiLevel && multiRuntime.Passed &&
+            var passed = automatic && multiLevel && terrainEdgesSafe &&
+                         multiRuntime.Passed &&
                          stable && staticBlocker && classWidth &&
                          mismatchRejected && dynamicBuildings.Passed;
             var summary =
@@ -123,7 +143,8 @@ public static class TerrainNavigationTopologySelfTest
                 $"multi={multiLevel}[regions=" +
                 $"{multi.Layer(MovementClass.Medium).RegionCount}," +
                 $"route={forward.Waypoints.Length},chokes=" +
-                $"{string.Join(',', forward.ChokeIds)}], " +
+                $"{string.Join(',', forward.ChokeIds)}," +
+                $"edgeSafe={terrainEdgesSafe}/{edgePath.Length}], " +
                 $"runtime={multiRuntime.Passed}[seen=" +
                 $"{multiRuntime.SeenFirst}/{multiRuntime.SeenSecond}," +
                 $"arrived={multiRuntime.Arrived},state={multiRuntime.Detail}], " +

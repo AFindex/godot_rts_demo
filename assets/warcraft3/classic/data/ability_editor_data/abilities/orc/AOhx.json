@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnhex.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHex.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHex.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhex.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/polymorph/polymorphdoneground.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +65,8 @@
           "D": "nsha,npng",
           "E": "nshw,npnw"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOhx"
         ],
@@ -79,6 +97,8 @@
           "D": "nsha,npng",
           "E": "nshw,npnw"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOhx"
         ],
@@ -109,6 +129,8 @@
           "D": "nsha,npng",
           "E": "nshw,npnw"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOhx"
         ],

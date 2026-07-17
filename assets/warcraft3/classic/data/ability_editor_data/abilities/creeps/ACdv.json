@@ -45,6 +45,8 @@
         "data": {
           "A": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bdig",
           "Bdvv"

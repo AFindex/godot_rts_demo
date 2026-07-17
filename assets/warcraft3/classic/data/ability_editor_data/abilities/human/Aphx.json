@@ -31,7 +31,11 @@
           "C": "0.5",
           "D": "0.5"
         },
+        "unitIds": [
+          "hpxe"
+        ],
         "summonedUnitId": "hpxe",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

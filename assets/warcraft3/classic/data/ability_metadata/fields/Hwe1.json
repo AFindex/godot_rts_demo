@@ -1,0 +1,68 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Hwe1",
+  "field": "UnitID",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_HWE1",
+  "displayName": "召唤单位类型",
+  "sort": "x0a000",
+  "valueType": "unitCode",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AHwe",
+      "AEst",
+      "ANsg",
+      "ANsq",
+      "ANsw",
+      "ANwm",
+      "AOsw",
+      "AOwd",
+      "Anwm",
+      "ACwe",
+      "AHpx",
+      "ACtn",
+      "ANlm"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Hwe1",
+    "field": "UnitID",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_HWE1",
+    "sort": "x0a000",
+    "type": "unitCode",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AHwe,AEst,ANsg,ANsq,ANsw,ANwm,AOsw,AOwd,Anwm,ACwe,AHpx,ACtn,ANlm",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

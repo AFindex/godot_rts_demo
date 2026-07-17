@@ -1,0 +1,93 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bbsk",
+  "displayName": "Bbsk",
+  "identity": {
+    "baseCode": "Bbsk",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\TrollBerserk\\HeadhunterWEAPONSLeft.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\TrollBerserk\\HeadhunterWEAPONSLeft.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/trollberserk/headhunterweaponsleft.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\TrollBerserk\\HeadhunterWEAPONSRight.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\TrollBerserk\\HeadhunterWEAPONSRight.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/trollberserk/headhunterweaponsright.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBerserkForTrolls.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBerserkForTrolls.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnberserkfortrolls.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "weapon",
+      "left"
+    ],
+    "targetAttachmentCount": 2,
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Absk",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AIxk",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bbsk",
+    "code": "Bbsk",
+    "comments": "BerserkerRage          ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBerserkForTrolls.blp",
+    "Bufftip": "狂战士",
+    "Targetart": "Abilities\\Spells\\Orc\\TrollBerserk\\HeadhunterWEAPONSLeft.mdl,Abilities\\Spells\\Orc\\TrollBerserk\\HeadhunterWEAPONSRight.mdl",
+    "Targetattachcount": "2",
+    "Targetattach": "weapon,left",
+    "Targetattach1": "weapon,right",
+    "Buffubertip": "\"该单位处于狂热愤怒的作用之下，因此攻击力得到了加强，但是同时也会受到更多的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

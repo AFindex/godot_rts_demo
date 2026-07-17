@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnlesserrejuvscroll.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/heal/healtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +57,8 @@
           "D": "1",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BIrg",
           "BIrl",

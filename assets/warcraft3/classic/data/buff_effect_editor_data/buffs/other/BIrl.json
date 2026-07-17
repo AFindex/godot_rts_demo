@@ -1,0 +1,129 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIrl",
+  "displayName": "BIrl",
+  "identity": {
+    "baseCode": "BIrl",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/anrm/anrmtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingSalve.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingSalve.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingsalve.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIrl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIpr",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIpl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp1",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp2",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp3",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp4",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp5",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp6",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIrl",
+    "code": "BIrl",
+    "comments": "RegenLife              ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNHealingSalve.blp",
+    "Targetart": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "再生物品",
+    "Buffubertip": "\"该单位身上带有再生物品，因此其生命值将会持续地恢复。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

@@ -43,6 +43,8 @@
         "data": {
           "A": "30"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bmlc",
           "Bmlt"

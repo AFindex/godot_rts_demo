@@ -1,0 +1,70 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BSTN",
+  "displayName": "BSTN",
+  "identity": {
+    "baseCode": "BSTN",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/thunderclap/thunderclaptarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStun.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStun.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstun.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "BSTN",
+    "code": "BSTN",
+    "comments": "Stun",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNStun.blp",
+    "Targetart": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "被击晕的",
+    "Buffubertip": "\"该单位被击晕了，所以不能移动，攻击和施放魔法。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt"
+    ]
+  }
+}

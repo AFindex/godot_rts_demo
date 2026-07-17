@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnglacier.png"
       }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\FrostNova\\FrostNovaTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\FrostNova\\FrostNovaTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/frostnova/frostnovatarget.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,8 @@
           "A": "50",
           "B": "50"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bfro"
         ],

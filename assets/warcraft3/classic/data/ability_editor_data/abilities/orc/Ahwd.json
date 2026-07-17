@@ -37,7 +37,14 @@
         "manaCost": 200,
         "range": 500,
         "data": {},
+        "unitIds": [
+          "ohwd"
+        ],
         "summonedUnitId": "ohwd",
+        "requirements": [
+          "Rowd"
+        ],
+        "requirementLevel": 2,
         "buffIds": [
           "Bhwd"
         ],

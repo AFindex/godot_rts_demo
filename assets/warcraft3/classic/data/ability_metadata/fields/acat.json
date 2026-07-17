@@ -1,0 +1,53 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "acat",
+  "field": "CasterArt",
+  "storage": "Profile",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "art",
+  "displayNameKey": "WESTRING_AEVAL_ACAT",
+  "displayName": "魔法施放者",
+  "sort": "c4a00",
+  "valueType": "modelList",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "acat",
+    "field": "CasterArt",
+    "slk": "Profile",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "art",
+    "displayName": "WESTRING_AEVAL_ACAT",
+    "sort": "c4a00",
+    "type": "modelList",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "1",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

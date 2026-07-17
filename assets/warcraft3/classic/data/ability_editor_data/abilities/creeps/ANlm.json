@@ -20,6 +20,14 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnlavaspawn.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLavaSpawn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLavaSpawn.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlavaspawn.png"
+      }
     ]
   },
   "summary": {
@@ -50,7 +58,11 @@
           "E": "12",
           "F": "3"
         },
+        "unitIds": [
+          "nlv1"
+        ],
         "summonedUnitId": "nlv1",
+        "requirements": [],
         "buffIds": [
           "BNlm"
         ],
@@ -82,7 +94,11 @@
           "E": "12",
           "F": "3"
         },
+        "unitIds": [
+          "nlv2"
+        ],
         "summonedUnitId": "nlv2",
+        "requirements": [],
         "buffIds": [
           "BNlm"
         ],
@@ -114,7 +130,11 @@
           "E": "12",
           "F": "3"
         },
+        "unitIds": [
+          "nlv3"
+        ],
         "summonedUnitId": "nlv3",
+        "requirements": [],
         "buffIds": [
           "BNlm"
         ],

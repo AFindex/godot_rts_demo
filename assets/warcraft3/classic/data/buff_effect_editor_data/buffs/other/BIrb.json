@@ -1,0 +1,72 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIrb",
+  "displayName": "BIrb",
+  "identity": {
+    "baseCode": "BIrb",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrune.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIrb",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIrb",
+    "code": "BIrb",
+    "comments": "Rebirth                ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+    "Bufftip": "再生",
+    "Buffubertip": "\"这个单位重生了。\"",
+    "Effectart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

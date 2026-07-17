@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnbattleroar.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\BattleRoar\\RoarCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\BattleRoar\\RoarCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/battleroar/roarcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +58,8 @@
           "F": "0",
           "G": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Broa"
         ],

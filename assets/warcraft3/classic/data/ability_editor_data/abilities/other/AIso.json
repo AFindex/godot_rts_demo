@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnsoulgem.png"
       }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIso\\AIsoTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIso\\AIsoTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aiso/aisotarget.glb"
+      }
     ]
   },
   "summary": {
@@ -38,6 +46,8 @@
         "manaCost": 0,
         "range": 500,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

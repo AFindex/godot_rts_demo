@@ -1,0 +1,90 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNms",
+  "displayName": "BNms",
+  "identity": {
+    "baseCode": "BNms",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\ManaShield\\ManaShieldCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\ManaShield\\ManaShieldCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/manashield/manashieldcaster.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShield.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShield.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnneutralmanashield.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANms",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANms",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANms",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACmf",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNms",
+    "code": "BNms",
+    "comments": "ManaShield             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNNeutralManaShield.blp",
+    "Targetart": "Abilities\\Spells\\Human\\ManaShield\\ManaShieldCaster.mdl",
+    "Bufftip": "魔法护盾",
+    "Buffubertip": "\"这个单位身上有着魔法护盾，所以他暂时对物理攻击和负面魔法有着一定的抵抗能力。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

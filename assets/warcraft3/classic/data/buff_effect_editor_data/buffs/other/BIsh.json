@@ -1,0 +1,62 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIsh",
+  "displayName": "BIsh",
+  "identity": {
+    "baseCode": "BIsh",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIsh",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIsh",
+    "code": "BIsh",
+    "comments": "SpiritTroll            ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+    "Bufftip": "猎头者灵魂"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritlink.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\SpiritLink\\SpiritLinkZapTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\SpiritLink\\SpiritLinkZapTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/spiritlink/spiritlinkzaptarget.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\SpiritLink\\SpiritLinkZapTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\SpiritLink\\SpiritLinkZapTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/spiritlink/spiritlinkzaptarget.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "A": "0.5",
           "B": "4"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bspl"
         ],

@@ -1,0 +1,58 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Iobu",
+  "field": "UnitID",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_IOBU",
+  "displayName": "影响技能",
+  "sort": "x0a00u",
+  "valueType": "abilCode",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AIdf",
+      "AIll",
+      "AIsb"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Iobu",
+    "field": "UnitID",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_IOBU",
+    "sort": "x0a00u",
+    "type": "abilCode",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AIdf,AIll,AIsb",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

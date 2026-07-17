@@ -1,0 +1,64 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BEst",
+  "displayName": "BEst",
+  "identity": {
+    "baseCode": "BEst",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEst",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEst",
+      "level": 2,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEst",
+      "level": 3,
+      "kind": "buff",
+      "race": "nightelf"
+    }
+  ],
+  "editorData": {
+    "alias": "BEst",
+    "code": "BEst",
+    "comments": "Scout                  ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Bufftip": "侦察",
+    "Buffubertip": "\"召唤出来的单位会受到驱逐魔法的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt"
+    ]
+  }
+}

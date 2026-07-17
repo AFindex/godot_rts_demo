@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnfreezingbreath.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\FreezingBreath\\FreezingBreathMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\FreezingBreath\\FreezingBreathMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/freezingbreath/freezingbreathmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -40,6 +48,11 @@
         "manaCost": 0,
         "area": 100,
         "data": {},
+        "unitIds": [],
+        "requirements": [
+          "Rufb"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bfrz"
         ],

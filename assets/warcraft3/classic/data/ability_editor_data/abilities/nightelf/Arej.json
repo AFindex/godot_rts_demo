@@ -51,6 +51,11 @@
           "C": "3",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [
+          "Redc"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Brej"
         ],

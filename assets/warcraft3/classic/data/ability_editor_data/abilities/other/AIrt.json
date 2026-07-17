@@ -20,6 +20,30 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnamulet.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleportcaster.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleporttarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleporttarget.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +70,8 @@
           "A": "12",
           "B": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,49 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XIct",
+  "displayName": "能更改时间的物品",
+  "identity": {
+    "baseCode": "XIct",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIct",
+      "level": 1,
+      "kind": "effect",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "XIct",
+    "code": "XIct",
+    "comments": "ItemChangeTOD        ",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "能更改时间的物品"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

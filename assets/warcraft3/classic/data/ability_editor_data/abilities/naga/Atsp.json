@@ -32,6 +32,8 @@
           "A": "22",
           "B": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Btsp",
           "Btsa"

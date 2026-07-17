@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnbreathoffrost.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\BreathOfFrost\\BreathOfFrostMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\BreathOfFrost\\BreathOfFrostMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/breathoffrost/breathoffrostmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,8 @@
           "D": "150",
           "E": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BCbf"
         ],

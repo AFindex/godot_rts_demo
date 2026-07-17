@@ -25,7 +25,14 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [
+          "ncpn"
+        ],
         "summonedUnitId": "ncpn",
+        "requirements": [
+          "Roch"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

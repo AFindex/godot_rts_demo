@@ -44,6 +44,11 @@
           "B": "1",
           "C": "-1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rupc"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bapl",
           "Bplg"

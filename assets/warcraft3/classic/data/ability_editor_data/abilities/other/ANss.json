@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnspellshieldamulet.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\SpellShieldAmulet\\SpellShieldCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\SpellShieldAmulet\\SpellShieldCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/spellshieldamulet/spellshieldcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 40,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNss"
         ],

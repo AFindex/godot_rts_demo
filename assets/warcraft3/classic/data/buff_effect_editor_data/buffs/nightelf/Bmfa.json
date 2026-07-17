@@ -1,0 +1,96 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bmfa",
+  "displayName": "Bmfa",
+  "identity": {
+    "baseCode": "Bmfa",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/manaflare/manaflaretarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareBoltImpact.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareBoltImpact.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/manaflare/manaflareboltimpact.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/manaflare/manaflaremissile.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManaFlare.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManaFlare.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanaflare.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Amfl",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    }
+  ],
+  "editorData": {
+    "alias": "Bmfa",
+    "code": "Bmfa",
+    "comments": "ManaFlareAoe           ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNManaFlare.blp",
+    "Targetart": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareTarget.mdl",
+    "Targetattach": "overhead",
+    "Missileart": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareMissile.mdl",
+    "Missilespeed": "1000",
+    "MissileHoming": "1",
+    "Specialart": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareBoltImpact.mdl",
+    "Bufftip": "魔力之焰",
+    "Buffubertip": "\"该单位身上有魔力之焰的作用;周围任何敌方单位施放魔法都会受到伤害。\"",
+    "EditorSuffix": "(额外的)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

@@ -12,7 +12,28 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\TreeofLifeUpgrade\\TreeofLifeUpgradeTargetArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\TreeofLifeUpgrade\\TreeofLifeUpgradeTargetArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/treeoflifeupgrade/treeoflifeupgradetargetart.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\TreeofLifeUpgrade\\TreeofLifeUpgradeTargetArtHand.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\TreeofLifeUpgrade\\TreeofLifeUpgradeTargetArtHand.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/treeoflifeupgrade/treeoflifeupgradetargetarthand.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\TreeofLifeUpgrade\\TreeofLifeUpgradeTargetArtHand.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\TreeofLifeUpgrade\\TreeofLifeUpgradeTargetArtHand.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/treeoflifeupgrade/treeoflifeupgradetargetarthand.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +46,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

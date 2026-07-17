@@ -1,0 +1,57 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Nhs6",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 6,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_NHS6",
+  "displayName": "波数",
+  "sort": "x0a006",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 100,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "ANhs"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Nhs6",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "6",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_NHS6",
+    "sort": "x0a006",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "100",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "ANhs",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

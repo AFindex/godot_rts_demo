@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btntornado.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntornado.png"
+      }
     ]
   },
   "summary": {
@@ -37,7 +45,11 @@
         "manaCost": 200,
         "range": 700,
         "data": {},
+        "unitIds": [
+          "ntor"
+        ],
         "summonedUnitId": "ntor",
+        "requirements": [],
         "buffIds": [
           "BNto"
         ],

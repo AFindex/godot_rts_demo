@@ -36,7 +36,11 @@
         "area": 200,
         "range": 100,
         "data": {},
+        "unitIds": [
+          "nglm"
+        ],
         "summonedUnitId": "nglm",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

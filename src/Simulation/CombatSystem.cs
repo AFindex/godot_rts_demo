@@ -67,6 +67,7 @@ public sealed class CombatSystem
     private readonly Func<int, int, bool> _canPerceiveTarget;
     private readonly Func<int, int, bool> _isHostileTarget;
     private readonly Func<int, bool> _canAttack;
+    private readonly Func<int, bool> _canTakeDamage;
     private double _targetSearchMilliseconds;
     private int _targetSearches;
     public CombatProjectileSystem Projectiles { get; } = new();
@@ -81,7 +82,8 @@ public sealed class CombatSystem
         CombatEventStream events,
         Func<int, int, bool> canPerceiveTarget,
         Func<int, int, bool> isHostileTarget,
-        Func<int, bool> canAttack)
+        Func<int, bool> canAttack,
+        Func<int, bool> canTakeDamage)
     {
         _units = units;
         _combat = combat;
@@ -91,6 +93,7 @@ public sealed class CombatSystem
         _canPerceiveTarget = canPerceiveTarget;
         _isHostileTarget = isHostileTarget;
         _canAttack = canAttack;
+        _canTakeDamage = canTakeDamage;
     }
 
     public void Update(float delta, long tick)
@@ -544,6 +547,7 @@ public sealed class CombatSystem
         (uint)target < (uint)_units.Count &&
         target != unit &&
         _units.Alive[target] &&
+        _canTakeDamage(target) &&
         _isHostileTarget(_combat.Teams[unit], _combat.Teams[target]);
 
     private void UpdateBuildingTarget(

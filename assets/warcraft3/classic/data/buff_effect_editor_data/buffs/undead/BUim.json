@@ -1,0 +1,103 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUim",
+  "displayName": "BUim",
+  "identity": {
+    "baseCode": "BUim",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\StormBolt\\StormBoltTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\StormBolt\\StormBoltTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/stormbolt/stormbolttarget.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Impale\\ImpaleHitTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Impale\\ImpaleHitTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/impale/impalehittarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimpale.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUim",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUim",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUim",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACmp",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BUim",
+    "code": "BUim",
+    "comments": "Impale                 ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+    "Effectart": "Abilities\\Spells\\Undead\\Impale\\ImpaleHitTarget.mdl",
+    "Effectattach": "sprite,first",
+    "Targetart": "Abilities\\Spells\\Human\\StormBolt\\StormBoltTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "穿刺",
+    "Buffubertip": "\"该单位被穿刺攻击了，因此在短时间内会被抛在空中。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

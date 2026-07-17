@@ -1,0 +1,115 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUav",
+  "displayName": "BUav",
+  "identity": {
+    "baseCode": "BUav",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/generalauratarget/generalauratarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\VampiricAura\\VampiricAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\VampiricAura\\VampiricAuraTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/vampiricaura/vampiricauratarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNVampiricAura.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNVampiricAura.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnvampiricaura.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": [
+      "origin"
+    ]
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUav",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUav",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUav",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACvp",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIav",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BUav",
+    "code": "BUav",
+    "comments": "AuraVampiric           ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNVampiricAura.blp",
+    "Targetart": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+    "Targetattach": "origin",
+    "Specialart": "Abilities\\Spells\\Undead\\VampiricAura\\VampiricAuraTarget.mdl",
+    "Specialartattach": "chest",
+    "Bufftip": "吸血光环",
+    "Spelldetail": "2",
+    "Specialattach": "origin",
+    "Buffubertip": "\"该单位处在吸血光环的作用之下，因此它对敌人的攻击会恢复自己的生命值。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

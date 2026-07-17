@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofvenom.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenom.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenom.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbvenom/orbvenom.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenomSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenomSpecialArt.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbvenom/orbvenomspecialart.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenomMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenomMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbvenom/orbvenommissile.glb"
+      }
     ]
   },
   "summary": {
@@ -41,6 +65,8 @@
           "A": "5",
           "E": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

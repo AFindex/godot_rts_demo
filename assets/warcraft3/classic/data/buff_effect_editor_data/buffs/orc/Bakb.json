@@ -1,0 +1,78 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bakb",
+  "displayName": "Bakb",
+  "identity": {
+    "baseCode": "Bakb",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/generalauratarget/generalauratarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDrum.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDrum.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndrum.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aakb",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "Bakb",
+    "code": "Bakb",
+    "comments": "AuraKotoBeast          ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNDrum.blp",
+    "Targetart": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "战鼓",
+    "Spelldetail": "2",
+    "Buffubertip": "\"该单位受到了战鼓的作用，因此攻击力得到了加强。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

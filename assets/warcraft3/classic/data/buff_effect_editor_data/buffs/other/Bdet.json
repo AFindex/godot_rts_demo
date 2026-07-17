@@ -1,0 +1,76 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bdet",
+  "displayName": "Bdet",
+  "identity": {
+    "baseCode": "Bdet",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDustOfAppearance.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDustOfAppearance.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndustofappearance.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIta",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AItb",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bdet",
+    "code": "Bdet",
+    "comments": "Detected       ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNDustOfAppearance.blp",
+    "Targetart": "",
+    "Bufftip": "尘土之影",
+    "Buffubertip": "\"尘土之影能显示出敌人的隐形单位。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

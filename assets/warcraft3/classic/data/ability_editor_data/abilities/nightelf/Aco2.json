@@ -44,7 +44,14 @@
           "A": "ehip",
           "B": "0"
         },
+        "unitIds": [
+          "ehpr"
+        ],
         "summonedUnitId": "ehpr",
+        "requirements": [
+          "Reht"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,106 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bpoi",
+  "displayName": "Bpoi",
+  "identity": {
+    "baseCode": "Bpoi",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdl",
+        "resolvedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/poisonsting/poisonstingtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEnvenomedSpear.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEnvenomedSpear.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnenvenomedspear.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Apoi",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "Aven",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ACvs",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AEpa",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AEpa",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AEpa",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bpoi",
+    "code": "Bpoi",
+    "comments": "PoisonAttack   ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNEnvenomedSpear.blp",
+    "Targetart": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdl",
+    "Bufftip": "毒",
+    "Spelldetail": "2",
+    "Buffubertip": "\"该单位被毒刺攻击了, 因此会持续受到伤害。\"",
+    "EditorSuffix": "(没有堆积)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtndevotion.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DevotionAura\\DevotionAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DevotionAura\\DevotionAura.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/devotionaura/devotionaura.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,8 @@
           "A": "3",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHad"
         ],

@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnquillspray.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\QuillSprayMissile\\QuillSprayMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\QuillSprayMissile\\QuillSprayMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/quillspraymissile/quillspraymissile.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +58,8 @@
           "D": "150",
           "E": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

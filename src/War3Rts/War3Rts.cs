@@ -44,6 +44,8 @@ public sealed partial class War3Rts : Node3D
     private bool _movePending;
     private bool _attackMovePending;
     private bool _rallyPending;
+    private int _pendingAbilityId = -1;
+    private int _pendingAbilityCaster = -1;
     private int _pendingBuilding = -1;
     private bool _buildMenu;
     private string _mode = "普通选择";
@@ -56,8 +58,10 @@ public sealed partial class War3Rts : Node3D
     private bool _terrainCapture;
     private bool _pcgCapture;
     private bool _offlineBakeRequested;
+    private int _earlyExitCode;
     private War3RuntimeProfiler? _runtimeProfiler;
     private War3StressTestMode? _stressTest;
+    private War3NavigationDebugger? _navigationDebugger;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
@@ -67,6 +71,9 @@ public sealed partial class War3Rts : Node3D
     private bool _smokeConstructionPauseStable = true;
     private bool _smokeConstructionResumed;
     private bool _smokeConstructionAdvancedAfterResume;
+    private bool _smokeAbilityCastsIssued;
+    private bool _smokeAbilityDamageApplied;
+    private int _smokeSummonedUnit = -1;
 
     public override void _Ready()
     {
@@ -75,6 +82,14 @@ public sealed partial class War3Rts : Node3D
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
         _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
         _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
+        var navigationAuditRequested =
+            arguments.Contains(War3NavigationMapAudit.EnableArgument);
+        if (navigationAuditRequested)
+        {
+            War3NavigationMapAudit.BeginProgress(
+                War3MapCodec.DefaultMapId, arguments);
+            War3NavigationMapAudit.TraceBootstrap("status=ready_entered");
+        }
         _runtimeProfiler = War3RuntimeProfiler.TryCreate(arguments);
         _stressTest = War3StressTestMode.TryCreate(arguments);
         if (arguments.Contains("--war3-audio-smoke"))
@@ -84,12 +99,18 @@ public sealed partial class War3Rts : Node3D
         }
         _capture = arguments.Contains("--war3-rts-capture") ||
                    _terrainCapture || _pcgCapture;
+        if (navigationAuditRequested)
+            War3NavigationMapAudit.TraceBootstrap("status=catalog_begin");
         var catalog = War3MapCatalog.Enumerate();
+        if (navigationAuditRequested)
+            War3NavigationMapAudit.TraceBootstrap(
+                $"status=catalog_complete count={catalog.Count}");
         var requestedId = arguments
             .FirstOrDefault(value => value.StartsWith(
                 "--war3-map=", StringComparison.OrdinalIgnoreCase))?
             .Split('=', 2)[1];
-        if (_smoke || _capture || _offlineBakeRequested || _stressTest is not null ||
+        if (_smoke || _capture || _offlineBakeRequested ||
+            navigationAuditRequested || _stressTest is not null ||
             !string.IsNullOrWhiteSpace(requestedId))
         {
             var id = string.IsNullOrWhiteSpace(requestedId)
@@ -119,10 +140,14 @@ public sealed partial class War3Rts : Node3D
         string[] arguments)
     {
         _activeMap = map;
+        var navigationAuditRequested =
+            arguments.Contains(War3NavigationMapAudit.EnableArgument);
         await AdvanceMapLoadingAsync(
             1, 0.14d,
-            "检查 Human UI、模型、肖像、命令按钮和队列进度条资源。");
-        ValidateHumanAssets();
+            navigationAuditRequested
+                ? "导航专项模式：跳过表现资源，仅加载权威地图与模拟数据。"
+                : "检查 Human UI、模型、肖像、命令按钮和队列进度条资源。");
+        if (!navigationAuditRequested) ValidateHumanAssets();
 
         await AdvanceMapLoadingAsync(
             2, 0.24d,
@@ -132,6 +157,8 @@ public sealed partial class War3Rts : Node3D
         _technologies = War3HumanContent.CreateTechnologyCatalog();
         var dataStatus = War3HumanContent.DataStatus;
         var objectDataStatus = War3HumanContent.ObjectDataStatus;
+        var buffEffectCatalog = War3HumanContent.BuffEffectDataCatalog;
+        var abilityMetadataCatalog = War3HumanContent.AbilityMetadataCatalog;
         _status = dataStatus.ManifestLoaded
             ? $"War3 数据驱动已启用：{dataStatus.AppliedUnitCount} 单位 / " +
               $"{dataStatus.AppliedBuildingCount} 建筑"
@@ -145,6 +172,21 @@ public sealed partial class War3Rts : Node3D
             GD.Print($"WAR3_OBJECT_DATA {objectDataStatus.LogLine}");
         else
             GD.PushWarning($"WAR3_OBJECT_DATA {objectDataStatus.LogLine}");
+        var relatedDataLine =
+            $"buff_effect={(buffEffectCatalog.IsAvailable ? "loaded" : "missing")}/" +
+            $"{buffEffectCatalog.Count} metadata=" +
+            $"{(abilityMetadataCatalog.IsAvailable ? "loaded" : "missing")}/" +
+            $"{abilityMetadataCatalog.FieldCount}/" +
+            $"{abilityMetadataCatalog.BindingCount}";
+        if (buffEffectCatalog.IsAvailable && abilityMetadataCatalog.IsAvailable)
+            GD.Print($"WAR3_ABILITY_RELATED_DATA {relatedDataLine}");
+        else
+            GD.PushWarning($"WAR3_ABILITY_RELATED_DATA {relatedDataLine}");
+        var abilityDataStatus = War3HumanContent.AbilityImportStatus;
+        if (abilityDataStatus.MissingObjectIds.Length == 0)
+            GD.Print($"WAR3_ABILITY_DATA {abilityDataStatus.LogLine}");
+        else
+            GD.PushWarning($"WAR3_ABILITY_DATA {abilityDataStatus.LogLine}");
         if (!ProductionRequirementCatalogValidator.TryValidate(
                 _production, _buildings, out var productionError))
             throw new InvalidOperationException(productionError.Message);
@@ -189,8 +231,10 @@ public sealed partial class War3Rts : Node3D
         await AdvanceMapLoadingAsync(
             5, 0.64d,
             "创建确定性模拟、寻路器、路线规划、阻塞控制和双方初始经济状态。");
+        if (navigationAuditRequested)
+            War3NavigationMapAudit.BeginProgress(map, arguments);
         StaticWorld world;
-        if (offlineCache is not null)
+        if (offlineCache is not null && !navigationAuditRequested)
         {
             var candidate = CreateSimulation(
                 navigation, _terrain, bake, out var candidateWorld);
@@ -227,8 +271,18 @@ public sealed partial class War3Rts : Node3D
         {
             _simulation = CreateSimulation(
                 navigation, _terrain, bake, out world);
-            _runtime = War3HumanScenario.Prepare(
-                _simulation, _buildings, _production, _technologies, map);
+            if (navigationAuditRequested)
+            {
+                War3NavigationMapAudit.TraceBootstrap(
+                    "status=simulation_created");
+                _runtime = War3HumanScenario.PrepareNavigationAudit(
+                    _simulation, _buildings, _production, _technologies, map);
+            }
+            else
+            {
+                _runtime = War3HumanScenario.Prepare(
+                    _simulation, _buildings, _production, _technologies, map);
+            }
         }
 
         if (_offlineBakeRequested)
@@ -257,6 +311,14 @@ public sealed partial class War3Rts : Node3D
             return true;
         }
 
+        if (navigationAuditRequested)
+        {
+            var audit = War3NavigationMapAudit.Run(
+                _simulation, _runtime, map, arguments);
+            _earlyExitCode = audit.Passed ? 0 : 2;
+            return true;
+        }
+
         _simulation.WarmPathingCaches();
 
         await AdvanceMapLoadingAsync(
@@ -279,6 +341,16 @@ public sealed partial class War3Rts : Node3D
         _simulation.DetailedProfilingEnabled =
             _runtimeProfiler is not null || _stressTest is not null;
         CreateHud();
+        _navigationDebugger = new War3NavigationDebugger
+        {
+            Name = "War3NavigationDebugger"
+        };
+        AddChild(_navigationDebugger);
+        _navigationDebugger.Initialize(
+            _simulation,
+            _terrain,
+            arguments.Contains("--war3-navigation-debug"),
+            arguments.Contains("--war3-navigation-debug-grid"));
         InitializeAudio();
         ApplyRuntimeProfileVariant();
 
@@ -350,6 +422,8 @@ public sealed partial class War3Rts : Node3D
         out StaticWorld world)
     {
         world = navigation.CreateWorld(terrain);
+        var terrainTopology = TerrainNavigationTopologyBuilder.Build(
+            terrain, bake);
         return new RtsSimulation(
             world,
             new GridPathProvider(
@@ -357,8 +431,8 @@ public sealed partial class War3Rts : Node3D
                 War3OfflineMapCache.BattlefieldPathCellSize,
                 staticBake: bake),
             War3HumanScenario.Capacity,
-            navigation.CreateRoutePlanner(world),
-            navigation.CreateChokeController(),
+            terrainTopology.CreateRoutePlanner(),
+            terrainTopology.CreateChokeController(),
             bake);
     }
 
@@ -375,6 +449,9 @@ public sealed partial class War3Rts : Node3D
         }
 
         _mapLoadInProgress = true;
+        _earlyExitCode = 0;
+        if (arguments.Contains(War3NavigationMapAudit.EnableArgument))
+            War3NavigationMapAudit.BeginProgress(entry.Manifest.Id, arguments);
         ShowMapLoading(entry.Manifest.DisplayName);
         try
         {
@@ -417,12 +494,12 @@ public sealed partial class War3Rts : Node3D
             _mapSelectionLayer?.QueueFree();
             _mapSelectionLayer = null;
 
-            var cacheGenerated = await StartMapAsync(
+            var earlyExitRequested = await StartMapAsync(
                 runtime, entry, offlineCache, arguments);
-            if (cacheGenerated)
+            if (earlyExitRequested)
             {
                 HideMapLoading();
-                GetTree().Quit(0);
+                GetTree().Quit(_earlyExitCode);
                 return;
             }
             await AdvanceMapLoadingAsync(
@@ -584,17 +661,24 @@ public sealed partial class War3Rts : Node3D
         var profileStart = System.Diagnostics.Stopwatch.GetTimestamp();
         var allocationStart = GC.GetAllocatedBytesForCurrentThread();
         var frame = (float)Math.Min(delta, 0.05d);
-        _stressTest?.Update();
+        var advanceSimulation =
+            _navigationDebugger?.ConsumeAdvanceSimulation() ?? true;
+        if (advanceSimulation) _stressTest?.Update();
         var stressEnd = System.Diagnostics.Stopwatch.GetTimestamp();
-        _runtime.AiDirector.Update(_simulation.Metrics.Tick);
+        if (advanceSimulation)
+            _runtime.AiDirector.Update(_simulation.Metrics.Tick);
         var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
-        _simulation.Tick(frame);
-        ConsumeAudioEvents();
+        if (advanceSimulation)
+        {
+            _simulation.Tick(frame);
+            ConsumeAudioEvents();
+        }
         var simulationEnd = System.Diagnostics.Stopwatch.GetTimestamp();
-        if (_smoke) UpdateSmokeConstructionCycle();
-        _elapsed += frame;
+        if (_smoke && advanceSimulation) UpdateSmokeConstructionCycle();
+        if (advanceSimulation) _elapsed += frame;
         PruneSelection();
-        _hudAccumulator += frame;
+        _navigationDebugger?.SamplePhysics(delta);
+        _hudAccumulator += advanceSimulation ? frame : delta;
         if (_hudAccumulator >= 0.1d)
         {
             _hudAccumulator = 0d;
@@ -657,6 +741,8 @@ public sealed partial class War3Rts : Node3D
 
     private void HandleMouse(InputEventMouseButton mouse)
     {
+        if (_navigationDebugger?.BlocksWorldPointer(mouse.Position) == true)
+            return;
         if (mouse.ButtonIndex == MouseButton.Left)
         {
             if (HasTargetMode())
@@ -704,6 +790,7 @@ public sealed partial class War3Rts : Node3D
 
     private void HandleKey(InputEventKey input)
     {
+        if (_navigationDebugger?.HandleHotkey(input.Keycode) == true) return;
         switch (input.Keycode)
         {
             case Key.Escape:
@@ -763,6 +850,12 @@ public sealed partial class War3Rts : Node3D
             case War3CommandKind.Rally:
                 BeginTarget(TargetMode.Rally);
                 break;
+            case War3CommandKind.Ability:
+                BeginAbility(command.DataId);
+                break;
+            case War3CommandKind.LearnAbility:
+                LearnAbility(command.DataId);
+                break;
             case War3CommandKind.Cancel:
                 CancelMode();
                 break;
@@ -777,6 +870,8 @@ public sealed partial class War3Rts : Node3D
         _rallyPending = target == TargetMode.Rally && SelectedProductionBuildings().Length > 0;
         _pendingBuilding = -1;
         _buildMenu = false;
+        _pendingAbilityId = -1;
+        _pendingAbilityCaster = -1;
         _mode = target switch
         {
             TargetMode.Move when _movePending => "移动：左键指定位置",
@@ -786,12 +881,84 @@ public sealed partial class War3Rts : Node3D
         };
     }
 
+    private void BeginAbility(int abilityId)
+    {
+        if (_simulation is null ||
+            (uint)abilityId >= (uint)_simulation.Abilities.Catalog.Count)
+            return;
+        var caster = _selectedUnits.Order().FirstOrDefault(unit =>
+            _simulation.Units.Alive[unit] &&
+            _simulation.Combat.Teams[unit] == War3HumanScenario.PlayerId &&
+            _simulation.Abilities.Observe(unit).Abilities.Any(value =>
+                value.AbilityId == abilityId), -1);
+        if (caster < 0)
+        {
+            Report("当前选择没有能够施放该技能的单位");
+            return;
+        }
+        var ability = _simulation.Abilities.Catalog.Ability(abilityId);
+        if (ability.Activation is AbilityActivationKind.Instant or
+            AbilityActivationKind.Toggle)
+        {
+            var result = _simulation.IssueAbility(
+                War3HumanScenario.PlayerId, caster, abilityId,
+                AbilityCastTarget.Self(caster, _simulation.Units.Positions[caster]));
+            Report(result.Succeeded
+                ? $"已施放 {ability.Name}"
+                : $"{ability.Name} 施放失败：{result.Code}");
+            return;
+        }
+        _movePending = false;
+        _attackMovePending = false;
+        _rallyPending = false;
+        _pendingAbilityId = -1;
+        _pendingAbilityCaster = -1;
+        _pendingBuilding = -1;
+        _buildMenu = false;
+        _pendingAbilityId = abilityId;
+        _pendingAbilityCaster = caster;
+        _mode = ability.Activation is AbilityActivationKind.TargetUnit or
+            AbilityActivationKind.ChannelUnit
+            ? $"{ability.Name}：选择目标单位"
+            : $"{ability.Name}：选择目标位置";
+    }
+
+    private void LearnAbility(int abilityId)
+    {
+        if (_simulation is null) return;
+        var caster = _selectedUnits.Order().FirstOrDefault(unit =>
+        {
+            if (!_simulation.Units.Alive[unit] ||
+                _simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId)
+                return false;
+            var state = _simulation.Abilities.Observe(unit);
+            return state.Hero && state.Abilities.Any(value =>
+                value.AbilityId == abilityId);
+        }, -1);
+        if (caster < 0)
+        {
+            Report("当前选择没有能够学习该技能的英雄");
+            return;
+        }
+        var ability = _simulation.Abilities.Catalog.Ability(abilityId);
+        var result = _simulation.IssueLearnAbility(
+            War3HumanScenario.PlayerId, caster, abilityId);
+        Report(result.Succeeded
+            ? $"已学习 {ability.Name}"
+            : $"{ability.Name} 学习失败：{result.Code}");
+    }
+
     private void CompleteTarget(NVector2 point, bool queued)
     {
         if (_simulation is null) return;
         if (_pendingBuilding >= 0)
         {
             IssueConstruction(point, queued);
+            return;
+        }
+        if (_pendingAbilityId >= 0)
+        {
+            CompleteAbilityTarget(point);
             return;
         }
         if (_movePending)
@@ -813,6 +980,50 @@ public sealed partial class War3Rts : Node3D
             SetRallyAt(point);
         }
         if (!queued) CancelMode();
+    }
+
+    private void CompleteAbilityTarget(NVector2 point)
+    {
+        if (_simulation is null || _pendingAbilityCaster < 0 ||
+            !_simulation.Units.Alive[_pendingAbilityCaster])
+        {
+            CancelMode();
+            return;
+        }
+        var ability = _simulation.Abilities.Catalog.Ability(_pendingAbilityId);
+        AbilityCastTarget target;
+        if (ability.Activation is AbilityActivationKind.TargetUnit or
+            AbilityActivationKind.ChannelUnit)
+        {
+            var smart = ResolveSmartTarget(point);
+            target = smart.Kind switch
+            {
+                SmartCommandTargetKind.FriendlyUnit or
+                    SmartCommandTargetKind.EnemyUnit =>
+                    AbilityCastTarget.Unit(smart.Unit, smart.Position),
+                SmartCommandTargetKind.FriendlyBuilding or
+                    SmartCommandTargetKind.EnemyBuilding =>
+                    AbilityCastTarget.Building(
+                        new GameplayBuildingId(smart.Building), smart.Position),
+                _ => default
+            };
+            if (target.Kind == AbilityTargetKind.None)
+            {
+                Report($"{ability.Name} 需要选择单位或建筑目标");
+                return;
+            }
+        }
+        else
+        {
+            target = AbilityCastTarget.Point(point);
+        }
+        var result = _simulation.IssueAbility(
+            War3HumanScenario.PlayerId, _pendingAbilityCaster,
+            _pendingAbilityId, target);
+        Report(result.Succeeded
+            ? $"已施放 {ability.Name}"
+            : $"{ability.Name} 施放失败：{result.Code}");
+        if (result.Succeeded) CancelMode();
     }
 
     private void SetRallyAt(NVector2 point)
@@ -1085,6 +1296,7 @@ public sealed partial class War3Rts : Node3D
     {
         CancelMode();
         _presenter?.SetSelection(_selectedUnits, _selectedBuildings);
+        _navigationDebugger?.SetSelection(_selectedUnits);
         UpdateHud();
     }
 
@@ -1169,6 +1381,8 @@ public sealed partial class War3Rts : Node3D
                     _simulation.Combat.Teams[first],
                     _simulation.CombatWeaponUpgradeTechnologyId);
             var attack = _simulation.Combat.AttackDamage[first];
+            var abilityState = _simulation.Abilities.Observe(first);
+            var abilityStatus = AbilityStatusLabel(first, abilityState);
             var attackClass = definition.AttackClass.Length > 0
                 ? definition.AttackClass
                 : attack <= 0f
@@ -1184,7 +1398,8 @@ public sealed partial class War3Rts : Node3D
                     ? string.Join(" · ", new[]
                     {
                         definition.Role,
-                        definition.AbilitySummary
+                        definition.AbilitySummary,
+                        abilityStatus
                     }.Where(value => value.Length > 0))
                     : $"混合编队 · {living.Length} 个单位",
                 health, maximum,
@@ -1203,7 +1418,19 @@ public sealed partial class War3Rts : Node3D
                 definition.ArmorClass.Length > 0
                     ? definition.ArmorClass
                     : ArmorClass(_simulation.Combat.Attributes[first]),
-                false);
+                false)
+            {
+                Mana = homogeneous
+                    ? living.Sum(unit => _simulation.Abilities.Observe(unit).Mana)
+                    : abilityState.Mana,
+                MaximumMana = homogeneous
+                    ? living.Sum(unit =>
+                        _simulation.Abilities.Observe(unit).MaximumMana)
+                    : abilityState.MaximumMana,
+                ManaRegeneration = abilityState.ManaRegeneration,
+                AbilityStatuses = abilityState.Statuses,
+                Buffs = _simulation.Abilities.ObserveBuffs(first)
+            };
         }
         if (_selectedBuildings.Count > 0)
         {
@@ -1311,9 +1538,47 @@ public sealed partial class War3Rts : Node3D
         return "普通";
     }
 
+    private string AbilityStatusLabel(
+        int unit,
+        UnitAbilitySnapshot snapshot)
+    {
+        if (_simulation is null) return string.Empty;
+        var values = new List<string>();
+        if (snapshot.MaximumMana > 0f)
+            values.Add(
+                $"法力 {snapshot.Mana:0}/{snapshot.MaximumMana:0} " +
+                $"(+{snapshot.ManaRegeneration:0.##}/秒)");
+        if (snapshot.CastPhase != AbilityCastPhase.None &&
+            snapshot.ActiveAbilityId >= 0)
+            values.Add($"施法：{_simulation.Abilities.Catalog
+                .Ability(snapshot.ActiveAbilityId).Name}");
+        if ((snapshot.Statuses & AbilityStatusFlags.Stunned) != 0) values.Add("眩晕");
+        if ((snapshot.Statuses & AbilityStatusFlags.Invulnerable) != 0) values.Add("无敌");
+        if ((snapshot.Statuses & AbilityStatusFlags.MagicImmune) != 0) values.Add("魔免");
+        if ((snapshot.Statuses & AbilityStatusFlags.Invisible) != 0) values.Add("隐形");
+        if ((snapshot.Statuses & AbilityStatusFlags.Polymorphed) != 0) values.Add("变形");
+        if ((snapshot.Statuses & AbilityStatusFlags.Banished) != 0) values.Add("放逐");
+        var buffs = _simulation.Abilities.ObserveBuffs(unit)
+            .Select(value =>
+            {
+                var name = _simulation.Abilities.Catalog
+                    .Ability(value.AbilityId).Name;
+                return float.IsPositiveInfinity(value.RemainingSeconds)
+                    ? name
+                    : $"{name} {value.RemainingSeconds:0.#}秒";
+            })
+            .Distinct(StringComparer.Ordinal)
+            .Take(4)
+            .ToArray();
+        if (buffs.Length > 0) values.Add($"效果 {string.Join("/", buffs)}");
+        return string.Join(" · ", values);
+    }
+
     private static void ValidateHumanAssets()
     {
         var missing = new List<string>();
+        var optionalMissing = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
         var warmedModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var warmupStart = System.Diagnostics.Stopwatch.GetTimestamp();
         void Model(string path)
@@ -1329,6 +1594,17 @@ public sealed partial class War3Rts : Node3D
         void Texture(string path)
         {
             if (War3RuntimeAssets.LoadTexture(path) is null) missing.Add($"贴图:{path}");
+        }
+        void OptionalModel(string path)
+        {
+            if (path.Length == 0) return;
+            if (!War3RuntimeAssets.Contains(path))
+            {
+                optionalMissing.Add(path);
+                return;
+            }
+            if (warmedModels.Add(path))
+                War3RuntimeAssets.PreloadModelTemplate(path);
         }
 
         foreach (var unit in War3HumanContent.Units)
@@ -1360,6 +1636,15 @@ public sealed partial class War3Rts : Node3D
                 missing.Add($"建筑建造动画:{building.ModelSource}");
             if (death is null || !death.NonLooping)
                 missing.Add($"建筑销毁动画:{building.ModelSource}");
+        }
+        foreach (var ability in War3HumanContent.Abilities)
+        {
+            if (ability.IconPath.Length > 0) Texture(ability.IconPath);
+            foreach (var model in ability.CasterModels
+                         .Concat(ability.TargetModels)
+                         .Concat(ability.EffectModels)
+                         .Concat(ability.MissileModels))
+                OptionalModel(model);
         }
         Model(War3HumanContent.GoldMineSource);
         Model(@"UI\Feedback\RallyPoint\RallyPoint.mdx");
@@ -1394,6 +1679,10 @@ public sealed partial class War3Rts : Node3D
         GD.Print(
             $"WAR3_MODEL_PREWARM templates={warmedModels.Count} " +
             $"elapsed_ms={warmupMilliseconds:0.###}");
+        if (optionalMissing.Count > 0)
+            GD.PushWarning(
+                $"WAR3_ABILITY_ART missing_optional={optionalMissing.Count} " +
+                string.Join(';', optionalMissing.Take(12)));
     }
 
     private War3CommandSnapshot[] CreateCommands()
@@ -1420,6 +1709,73 @@ public sealed partial class War3Rts : Node3D
                 Command(8, War3CommandKind.Stop, -1, "停止", "停止当前命令", Btn("Stop"), "S"),
                 Command(9, War3CommandKind.Hold, -1, "保持位置", "不再追击远处敌人", Btn("HoldPosition"), "H")
             };
+            if (_simulation is not null)
+            {
+                var caster = _selectedUnits.Order().FirstOrDefault(unit =>
+                    _simulation.Units.Alive[unit] &&
+                    _simulation.Combat.Teams[unit] ==
+                    War3HumanScenario.PlayerId, -1);
+                if (caster >= 0)
+                {
+                    var state = _simulation.Abilities.Observe(caster);
+                    var abilitySlots = new[] { 1, 2, 3, 5, 6, 7, 10 };
+                    var commandSlot = 0;
+                    foreach (var learned in state.Abilities)
+                    {
+                        var ability = _simulation.Abilities.Catalog.Ability(
+                            learned.AbilityId);
+                        if (commandSlot >= abilitySlots.Length)
+                            continue;
+                        if (learned.Level <= 0)
+                        {
+                            if (!ability.HeroAbility) continue;
+                            var required = ability.RequiredHeroLevel;
+                            var enabled = state.UnspentSkillPoints > 0 &&
+                                          state.HeroLevel >= required;
+                            commands.Add(new War3CommandSnapshot(
+                                abilitySlots[commandSlot++],
+                                War3CommandKind.LearnAbility,
+                                ability.Id,
+                                $"学习 {ability.Name}",
+                                $"消耗 1 技能点 · 需要英雄等级 {required}\n" +
+                                ability.Description,
+                                ability.IconPath,
+                                ability.Hotkey.Length > 0
+                                    ? ability.Hotkey
+                                    : Hotkey(commandSlot),
+                                enabled));
+                            continue;
+                        }
+                        if (ability.IsPassive) continue;
+                        var level = ability.Levels[learned.Level - 1];
+                        var ready = learned.CooldownRemaining <= 0.001f &&
+                                    state.Mana + 0.001f >= level.ManaCost &&
+                                    _simulation.Abilities.CanCast(caster);
+                        var range = level.Range > 0f
+                            ? $" · 距离 {level.Range:0}"
+                            : string.Empty;
+                        var cooldown = learned.CooldownRemaining > 0f
+                            ? $"\n剩余冷却 {learned.CooldownRemaining:0.0} 秒"
+                            : string.Empty;
+                        commands.Add(new War3CommandSnapshot(
+                            abilitySlots[commandSlot++],
+                            War3CommandKind.Ability,
+                            ability.Id,
+                            ability.Name,
+                            $"{ability.Description}\n等级 {learned.Level} · " +
+                            $"法力 {level.ManaCost:0} · 冷却 " +
+                            $"{level.CooldownSeconds:0.#} 秒{range}{cooldown}",
+                            ability.IconPath,
+                            ability.Hotkey.Length > 0
+                                ? ability.Hotkey
+                                : Hotkey(commandSlot),
+                            ready,
+                            learned.CooldownRemaining,
+                            level.ManaCost,
+                            learned.Toggled));
+                    }
+                }
+            }
             if (_simulation is not null && _selectedUnits.Any(unit =>
                     _simulation.Economy.IsWorkerOwnedBy(
                         unit, War3HumanScenario.PlayerId)))
@@ -1455,7 +1811,8 @@ public sealed partial class War3Rts : Node3D
                         ProductionCommandCode.SupplyBlocked));
                 slot++;
             }
-            if (building.Type.Function == BuildingFunctionKind.Research)
+            if (_technologies.Technologies.ToArray().Any(value =>
+                    value.ResearcherBuildingTypeId == building.Type.Id))
             {
                 foreach (var technology in _technologies.Technologies.ToArray()
                              .Where(value => value.ResearcherBuildingTypeId == building.Type.Id)
@@ -1525,6 +1882,8 @@ public sealed partial class War3Rts : Node3D
         _movePending = false;
         _attackMovePending = false;
         _rallyPending = false;
+        _pendingAbilityId = -1;
+        _pendingAbilityCaster = -1;
         _pendingBuilding = -1;
         _buildMenu = false;
         _mode = "普通选择";
@@ -1538,7 +1897,8 @@ public sealed partial class War3Rts : Node3D
     }
 
     private bool HasTargetMode() =>
-        _movePending || _attackMovePending || _rallyPending || _pendingBuilding >= 0;
+        _movePending || _attackMovePending || _rallyPending ||
+        _pendingAbilityId >= 0 || _pendingBuilding >= 0;
 
     private int[] SelectedUnits() => _selectedUnits.Order().ToArray();
 
@@ -1881,7 +2241,7 @@ public sealed partial class War3Rts : Node3D
             objectData.UpgradeManifestLoaded &&
             objectData.MissingAbilityIds.Count == 0 &&
             objectData.MissingUpgradeIds.Count == 0 &&
-            objectData.AppliedTechnologyCount == 3 &&
+            objectData.AppliedTechnologyCount == 15 &&
             War3HumanContent.DataCatalog.TryGet("hpea", out var peasantData) &&
             peasantData.Summary.Sight.Day is > 0f &&
             MathF.Abs(peasantProfile.Perception.VisionRange -
@@ -1891,7 +2251,17 @@ public sealed partial class War3Rts : Node3D
                 TerrainVisionMode.Elevated &&
             _simulation.CombatWeaponUpgradeTechnologyId == 0 &&
             _simulation.CombatBuildingArmorTechnologyId == 2 &&
-            War3HumanContent.Technologies.Count == 3;
+            War3HumanContent.Technologies.Count == 15;
+        var abilityIntegrationReady =
+            War3HumanContent.AbilityImportStatus.Catalog.Count == 43 &&
+            War3HumanContent.AbilityImportStatus.MissingObjectIds.Length == 0 &&
+            _smokeAbilityCastsIssued && _smokeAbilityDamageApplied &&
+            _smokeSummonedUnit >= 0 &&
+            _simulation.Units.Alive[_smokeSummonedUnit] &&
+            _simulation.Abilities.TrySummonedObjectId(
+                _smokeSummonedUnit, out var summonedObjectId) &&
+            summonedObjectId is "hwat" or "hwt2" or "hwt3" &&
+            _simulation.AbilityEvents.LatestSequence >= 6;
         var mapLoadingValid = _loadingUiReady &&
                               _loadingProgressMonotonic &&
                               _loadingReachedCompletion &&
@@ -1917,6 +2287,7 @@ public sealed partial class War3Rts : Node3D
                        _presenter.RallyMarkerUsesWar3Model && attackFacingValid &&
                         constructionPresentationValid && terrainReady &&
                          dataIntegrationReady && mapLoadingValid &&
+                         abilityIntegrationReady &&
                          queueUiValid && queueCancelValid &&
                          researchQueueUiValid;
         GD.Print(
@@ -1945,6 +2316,8 @@ public sealed partial class War3Rts : Node3D
             $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
              $"attack_facing={attackFacingValid} terrain={terrainReady} " +
              $"data_integration={dataIntegrationReady} " +
+             $"ability_integration={abilityIntegrationReady}/" +
+             $"{_simulation.AbilityEvents.LatestSequence} " +
              $"map_loading={mapLoadingValid}/{_loadingStageUpdateCount} " +
              $"queue_ui={queueUiValid}/5 queue_cancel={queueCancelValid}/" +
              $"4 research_queue={researchQueueUiValid} " +
@@ -2013,18 +2386,53 @@ public sealed partial class War3Rts : Node3D
         // Exercise the projectile/effect pipeline with an actual missile unit.
         var projectileUnit = _production.UnitType(War3HumanContent.Priest);
         var player = _simulation.AddUnit(
-            home + new NVector2(300f, 120f), projectileUnit.Movement,
-            War3HumanScenario.PlayerId, projectileUnit.Combat,
-            projectileUnit.Perception);
+            home + new NVector2(300f, 120f), projectileUnit,
+            War3HumanScenario.PlayerId);
         var enemy = _simulation.AddUnit(
-            home + new NVector2(420f, 120f), projectileUnit.Movement,
-            War3HumanScenario.EnemyId, projectileUnit.Combat,
-            projectileUnit.Perception);
+            home + new NVector2(420f, 120f), projectileUnit,
+            War3HumanScenario.EnemyId);
+        var hero = _simulation.AddUnit(
+            home + new NVector2(260f, -40f),
+            _production.UnitType(War3HumanContent.Archmage),
+            War3HumanScenario.PlayerId);
+        var mountainKing = _simulation.AddUnit(
+            home + new NVector2(260f, -115f),
+            _production.UnitType(War3HumanContent.MountainKing),
+            War3HumanScenario.PlayerId);
+        var skillTarget = _simulation.AddUnit(
+            home + new NVector2(355f, -40f),
+            _production.UnitType(War3HumanContent.Footman),
+            War3HumanScenario.EnemyId);
         // The scenario has already seeded fog-of-war before these smoke-only
         // units are appended. Refresh visibility once so their first attack
         // order is not discarded before the normal end-of-tick refresh.
         _simulation.Visibility.Update(
             _simulation.Units, _simulation.Combat, _simulation.Construction);
+        if (!War3HumanContent.TryAbility("AHwe", out var waterElemental) ||
+            waterElemental is null ||
+            !War3HumanContent.TryAbility("AHtb", out var stormBolt) ||
+            stormBolt is null)
+            throw new InvalidOperationException(
+                "Smoke ability definitions are unavailable.");
+        var learnSummon = _simulation.IssueLearnAbility(
+            War3HumanScenario.PlayerId, hero, waterElemental.AbilityId);
+        var learnBolt = _simulation.IssueLearnAbility(
+            War3HumanScenario.PlayerId, mountainKing, stormBolt.AbilityId);
+        var summon = _simulation.IssueAbility(
+            War3HumanScenario.PlayerId, hero, waterElemental.AbilityId,
+            AbilityCastTarget.Self(hero, _simulation.Units.Positions[hero]));
+        var targetHealth = _simulation.Combat.Health[skillTarget];
+        var bolt = _simulation.IssueAbility(
+            War3HumanScenario.PlayerId, mountainKing, stormBolt.AbilityId,
+            AbilityCastTarget.Unit(
+                skillTarget, _simulation.Units.Positions[skillTarget]));
+        _smokeAbilityCastsIssued = learnSummon.Succeeded &&
+                                   learnBolt.Succeeded &&
+                                   summon.Succeeded && bolt.Succeeded;
+        _smokeAbilityDamageApplied =
+            _simulation.Combat.Health[skillTarget] < targetHealth;
+        _smokeSummonedUnit = _simulation.Abilities.ObserveSummons()
+            .Select(value => value.Unit).DefaultIfEmpty(-1).First();
         _simulation.IssueAttackTarget([player], enemy);
         _simulation.IssueAttackTarget([enemy], player);
     }

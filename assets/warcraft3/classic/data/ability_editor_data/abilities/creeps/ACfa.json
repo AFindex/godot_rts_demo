@@ -46,6 +46,8 @@
           "A": "45",
           "B": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUfa",
           "Bfro"

@@ -35,7 +35,14 @@
         "manaCost": 0,
         "range": 100,
         "data": {},
+        "unitIds": [
+          "hlum",
+          "hlum",
+          "hlum",
+          "hlum"
+        ],
         "summonedUnitId": "hlum,hlum,hlum,hlum",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

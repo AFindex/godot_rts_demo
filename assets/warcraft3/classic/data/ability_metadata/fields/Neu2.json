@@ -1,0 +1,58 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Neu2",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 2,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_NEU2",
+  "displayName": "相互作用类型",
+  "sort": "x0a002",
+  "valueType": "interactionFlags",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Aneu",
+      "Ane2",
+      "Aall"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Neu2",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "2",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_NEU2",
+    "sort": "x0a002",
+    "type": "interactionFlags",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Aneu,Ane2,Aall",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

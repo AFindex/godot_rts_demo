@@ -1,0 +1,64 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUst",
+  "displayName": "睡眠(震晕)",
+  "identity": {
+    "baseCode": "BUst",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Sleep\\SleepSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Sleep\\SleepSpecialArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/sleep/sleepspecialart.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "BUst",
+    "code": "BUst",
+    "comments": "SleepStun              ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\Sleep\\SleepSpecialArt.mdl",
+    "EditorName": "睡眠(震晕)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

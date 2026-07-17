@@ -35,7 +35,14 @@
         "manaCost": 0,
         "range": 100,
         "data": {},
+        "unitIds": [
+          "htow",
+          "ogre",
+          "unpl",
+          "etol"
+        ],
         "summonedUnitId": "htow,ogre,unpl,etol",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

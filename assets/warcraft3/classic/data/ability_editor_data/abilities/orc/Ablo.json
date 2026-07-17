@@ -48,6 +48,11 @@
           "B": "0.25",
           "C": "0.3"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rost"
+        ],
+        "requirementLevel": 2,
         "buffIds": [
           "Bblo"
         ],

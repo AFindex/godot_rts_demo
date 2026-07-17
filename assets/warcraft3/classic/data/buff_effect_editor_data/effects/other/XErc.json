@@ -1,0 +1,79 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XErc",
+  "displayName": "混乱之雨(效果)",
+  "identity": {
+    "baseCode": "XErc",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANrc",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANrc",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANrc",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANr3",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANr3",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANr3",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XErc",
+    "code": "XErc",
+    "comments": "RainOfChaos          ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "混乱之雨(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

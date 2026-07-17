@@ -45,6 +45,8 @@
         "data": {
           "A": "20"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Blsh",
           "Blsa"

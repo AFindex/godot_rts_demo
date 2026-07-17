@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnreplenishmanaon.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\ReplenishManaCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\ReplenishManaCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/replenishmana/replenishmanacaster.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIma\\AImaTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIma\\AImaTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aima/aimatarget.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +66,8 @@
           "D": "-1",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

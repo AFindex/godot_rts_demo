@@ -1,0 +1,57 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Mbt5",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 5,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_MBT5",
+  "displayName": "只能在夜间回复",
+  "sort": "x0a005",
+  "valueType": "bool",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Ambt",
+      "Amb2"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Mbt5",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "5",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_MBT5",
+    "sort": "x0a005",
+    "type": "bool",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Ambt,Amb2",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -120,6 +120,50 @@ public sealed class DynamicOccupancyGrid
         return id;
     }
 
+    /// <summary>
+    /// Test/bootstrap-only bulk commit. All footprints become visible in one
+    /// navigation revision so downstream incremental topology can resample one
+    /// combined dirty area instead of replaying a long construction history.
+    /// </summary>
+    internal DynamicFootprintId[] PlaceBatchForDiagnostics(
+        ReadOnlySpan<SimRect> footprints)
+    {
+        if (footprints.IsEmpty) return [];
+        var minimum = new Vector2(float.PositiveInfinity);
+        var maximum = new Vector2(float.NegativeInfinity);
+        for (var index = 0; index < footprints.Length; index++)
+        {
+            ValidateFootprint(footprints[index]);
+            minimum = Vector2.Min(minimum, footprints[index].Min);
+            maximum = Vector2.Max(maximum, footprints[index].Max);
+        }
+
+        Revision++;
+        var changedBounds = new SimRect(minimum, maximum);
+        _lastChangedRevision = Revision;
+        _lastChangedBounds = changedBounds;
+        RecordChange(changedBounds);
+        var result = new DynamicFootprintId[footprints.Length];
+        for (var footprintIndex = 0;
+             footprintIndex < footprints.Length;
+             footprintIndex++)
+        {
+            var bounds = footprints[footprintIndex];
+            var id = new DynamicFootprintId(_nextId++);
+            result[footprintIndex] = id;
+            var cells = CollectCells(bounds);
+            var value = new DynamicFootprint(id, bounds, Revision);
+            _footprints.Add(id.Value, new FootprintEntry(value, cells));
+            for (var cellIndex = 0; cellIndex < cells.Length; cellIndex++)
+            {
+                var cell = cells[cellIndex];
+                if (_occupancy[cell] < ushort.MaxValue) _occupancy[cell]++;
+                (_footprintsByCell[cell] ??= []).Add(id.Value);
+            }
+        }
+        return result;
+    }
+
     public bool Remove(DynamicFootprintId id, out SimRect removedBounds)
     {
         if (!_footprints.Remove(id.Value, out var entry))

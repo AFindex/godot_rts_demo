@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\SpikeBarrier\\SpikeBarrier.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\SpikeBarrier\\SpikeBarrier.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/spikebarrier/spikebarrier.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -27,6 +36,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

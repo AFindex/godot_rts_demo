@@ -1,0 +1,86 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bspe",
+  "displayName": "Bspe",
+  "identity": {
+    "baseCode": "Bspe",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIsp\\SpeedTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIsp\\SpeedTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/aisp/speedtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBoots.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBoots.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnboots.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIsp",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIsa",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "APsa",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bspe",
+    "code": "Bspe",
+    "comments": "SpeedBonus     ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBoots.blp",
+    "Targetart": "Abilities\\Spells\\Items\\AIsp\\SpeedTarget.mdl",
+    "Bufftip": "速度加快",
+    "Buffubertip": "\"该单位速度被加快了，所以移动起来要比其他一般的单位要快。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt"
+    ]
+  }
+}

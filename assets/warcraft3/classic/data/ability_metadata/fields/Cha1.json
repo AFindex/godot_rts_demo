@@ -1,0 +1,64 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Cha1",
+  "field": "UnitID",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_CHA1",
+  "displayName": "新的单位类型",
+  "sort": "x0a000",
+  "valueType": "unitCode",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Acha",
+      "Sca1",
+      "Sca2",
+      "Sca3",
+      "Sca4",
+      "Sca5",
+      "Sca6",
+      "Sbsk",
+      "Srtt"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Cha1",
+    "field": "UnitID",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_CHA1",
+    "sort": "x0a000",
+    "type": "unitCode",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Acha,Sca1,Sca2,Sca3,Sca4,Sca5,Sca6,Sbsk,Srtt",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

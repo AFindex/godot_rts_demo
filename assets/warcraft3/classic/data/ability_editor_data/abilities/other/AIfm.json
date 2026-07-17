@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnhumancaptureflag.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\HumanCaptureFlag\\HumanCaptureFlag.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\HumanCaptureFlag\\HumanCaptureFlag.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/humancaptureflag/humancaptureflag.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

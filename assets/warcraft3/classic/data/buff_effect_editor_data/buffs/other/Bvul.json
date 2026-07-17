@@ -1,0 +1,83 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bvul",
+  "displayName": "Bvul",
+  "identity": {
+    "baseCode": "Bvul",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DivineShield\\DivineShieldTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DivineShield\\DivineShieldTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/divineshield/divineshieldtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNInvulnerable.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNInvulnerable.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btninvulnerable.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIvu",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIvl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bvul",
+    "code": "Bvul",
+    "comments": "Invulnerable   ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNInvulnerable.blp",
+    "Targetart": "Abilities\\Spells\\Human\\DivineShield\\DivineShieldTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "无敌的",
+    "Buffubertip": "\"该单位是无敌的，所以任何的攻击和魔法都对其无效。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt"
+    ]
+  }
+}

@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnselectheroon.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Aneu\\AneuCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Aneu\\AneuCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/aneu/aneucaster.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Aneu\\AneuTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Aneu\\AneuTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/aneu/aneutarget.glb"
+      }
     ]
   },
   "summary": {
@@ -40,6 +56,8 @@
           "C": "1",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

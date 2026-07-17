@@ -64,6 +64,7 @@ public enum ReplayPackageValidationCode : byte
     InvalidConstructionManifest,
     InvalidProductionManifest,
     InvalidTechnologyManifest,
+    InvalidAbilityManifest,
     InvalidMatchManifest,
     InvalidWorldCommand,
     InvalidEconomyCommandLog,
@@ -90,9 +91,9 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 30;
+    public const int CurrentFormatVersion = 31;
 
-    public SimulationReplayPackageSnapshot(
+    internal SimulationReplayPackageSnapshot(
         int simulationCapacity,
         ulong initialStateHash,
         ReplayResourceManifest resources,
@@ -103,6 +104,7 @@ public sealed class SimulationReplayPackageSnapshot
         ConstructionRuntimeSnapshot construction,
         ProductionRuntimeSnapshot production,
         TechnologyRuntimeSnapshot technology,
+        AbilityRuntimeSnapshot abilities,
         MatchRuntimeSnapshot match,
         RecordedWorldCommand[] worldCommands,
         EconomyCommandLogSnapshot economyCommandLog,
@@ -120,6 +122,7 @@ public sealed class SimulationReplayPackageSnapshot
         Construction = construction;
         Production = production;
         Technology = technology;
+        Abilities = abilities;
         Match = match;
         WorldCommands = worldCommands;
         EconomyCommandLog = economyCommandLog;
@@ -141,6 +144,7 @@ public sealed class SimulationReplayPackageSnapshot
     public ConstructionRuntimeSnapshot Construction { get; }
     public ProductionRuntimeSnapshot Production { get; }
     public TechnologyRuntimeSnapshot Technology { get; }
+    internal AbilityRuntimeSnapshot Abilities { get; }
     public MatchRuntimeSnapshot Match { get; }
     public RecordedWorldCommand[] WorldCommands { get; }
     public EconomyCommandLogSnapshot EconomyCommandLog { get; }
@@ -318,6 +322,18 @@ public sealed class SimulationReplayPackageSnapshot
                     ReplayPackageValidationCode.InvalidTechnologyManifest);
                 return false;
             }
+            AbilityRuntimeSnapshot abilities;
+            try
+            {
+                abilities = AbilitySerialization.ReadRuntime(reader, unitCount);
+            }
+            catch (Exception exception) when (
+                exception is InvalidDataException or ArgumentException)
+            {
+                validation = new ReplayPackageValidationResult(
+                    ReplayPackageValidationCode.InvalidAbilityManifest);
+                return false;
+            }
             MatchRuntimeSnapshot match;
             try
             {
@@ -456,6 +472,7 @@ public sealed class SimulationReplayPackageSnapshot
                 construction,
                 production,
                 technology,
+                abilities,
                 match,
                 worldCommands,
                 economyLog!,
@@ -505,6 +522,7 @@ public sealed class SimulationReplayPackageSnapshot
         RuntimeHotSnapshotCodec.WriteConstruction(writer, Construction);
         RuntimeHotSnapshotCodec.WriteProduction(writer, Production);
         RuntimeHotSnapshotCodec.WriteTechnology(writer, Technology);
+        AbilitySerialization.WriteRuntime(writer, Abilities);
         RuntimeHotSnapshotCodec.WriteMatch(writer, Match);
         writer.Write(WorldCommands.Length);
         for (var index = 0; index < WorldCommands.Length; index++)
@@ -715,6 +733,7 @@ public sealed class SimulationReplayPackageRecorder
     private readonly ConstructionRuntimeSnapshot _construction;
     private readonly ProductionRuntimeSnapshot _production;
     private readonly TechnologyRuntimeSnapshot _technology;
+    private readonly AbilityRuntimeSnapshot _abilities;
     private readonly MatchRuntimeSnapshot _match;
     private readonly List<RecordedWorldCommand> _worldCommands = [];
 
@@ -737,6 +756,8 @@ public sealed class SimulationReplayPackageRecorder
         _construction = simulation.Construction.CaptureRuntimeState();
         _production = simulation.Production.CaptureRuntimeState();
         _technology = simulation.Technology.CaptureRuntimeState();
+        _abilities = simulation.Abilities.CaptureRuntimeState(
+            simulation.Units.Count);
         _match = simulation.Match.CaptureRuntimeState();
         _buildings = simulation.World.DynamicOccupancy.Snapshot()
             .Select(value => new ReplayInitialBuilding(
@@ -776,6 +797,7 @@ public sealed class SimulationReplayPackageRecorder
         _construction,
         _production,
         _technology,
+        _abilities,
         _match,
         _worldCommands.ToArray(),
         economyCommandLog,
@@ -948,6 +970,20 @@ public static class SimulationReplayPackageFactory
             simulation = null;
             validation = new ReplayPackageValidationResult(
                 ReplayPackageValidationCode.InvalidTechnologyManifest);
+            return false;
+        }
+        try
+        {
+            simulation.Abilities.RestoreRuntimeState(
+                package.Abilities, simulation.Units.Count);
+            simulation.Abilities.RefreshDerivedState(
+                simulation, simulation.Units, simulation.Combat);
+        }
+        catch (InvalidOperationException)
+        {
+            simulation = null;
+            validation = new ReplayPackageValidationResult(
+                ReplayPackageValidationCode.InvalidAbilityManifest);
             return false;
         }
         try

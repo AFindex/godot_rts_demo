@@ -1,0 +1,111 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNdh",
+  "displayName": "BNdh",
+  "identity": {
+    "baseCode": "BNdh",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\StrongDrink\\BrewmasterTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\StrongDrink\\BrewmasterTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/strongdrink/brewmastertarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstrongdrink.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANdh",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANdh",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANdh",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Acdh",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Acdh",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Acdh",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Acdh",
+      "level": 4,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNdh",
+    "code": "BNdh",
+    "comments": "DrunkenHaze            ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+    "Targetart": "Abilities\\Spells\\Other\\StrongDrink\\BrewmasterTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "醉酒云雾",
+    "Buffubertip": "\"该单位遭到了醉酒云雾的攻击，因此其移动速度被减慢了，并有一定的概率不能击中其他单位。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

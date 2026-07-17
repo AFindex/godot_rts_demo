@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnstarfall.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStarfall.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStarFall.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstarfall.png"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,8 @@
           "B": "2",
           "C": "0.35"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "AEsd"
         ],

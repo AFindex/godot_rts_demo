@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnflakcannons.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlakCannons\\FlakTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlakCannons\\FlakTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flakcannons/flaktarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlakCannons\\FlakTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlakCannons\\FlakTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flakcannons/flaktarget.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,11 @@
           "D": "6",
           "E": "5"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rhfc"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

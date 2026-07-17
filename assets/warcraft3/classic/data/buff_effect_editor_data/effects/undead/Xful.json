@@ -1,0 +1,98 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xful",
+  "displayName": "建筑物伤害 – 不死族  大",
+  "identity": {
+    "baseCode": "Xful",
+    "race": "undead",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire1.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadlargebuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadlargebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadlargebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire1.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadsmallbuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire2.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire2.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadlargebuildingfire2.glb"
+      },
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire0.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadsmallbuildingfire0.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "sprite",
+      "first"
+    ],
+    "targetAttachmentCount": 6,
+    "specialAttachments": [],
+    "effectSoundLooped": "UndeadFireLarge"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xful",
+    "code": "Xful",
+    "comments": "EFFECT_OnFireUndeadLrg",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "TargetArt": "Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire1.mdl,Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire0.mdl,Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire0.mdl,Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire1.mdl,Environment\\UndeadBuildingFire\\UndeadLargeBuildingFire2.mdl,Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire0.mdl",
+    "Targetattachcount": "6",
+    "Targetattach": "sprite,first",
+    "Targetattach1": "sprite,second",
+    "Targetattach2": "sprite,fifth",
+    "Targetattach3": "sprite,third",
+    "Targetattach4": "sprite,fourth",
+    "Targetattach5": "sprite,sixth",
+    "Effectsoundlooped": "UndeadFireLarge",
+    "EditorName": "建筑物伤害 – 不死族  大"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

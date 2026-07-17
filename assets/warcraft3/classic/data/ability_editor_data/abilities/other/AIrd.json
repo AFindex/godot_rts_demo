@@ -42,7 +42,11 @@
           "B": "0",
           "C": "uske"
         },
+        "unitIds": [
+          "uske"
+        ],
         "summonedUnitId": "uske",
+        "requirements": [],
         "buffIds": [
           "Brai"
         ],

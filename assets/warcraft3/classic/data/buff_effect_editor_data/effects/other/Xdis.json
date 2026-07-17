@@ -1,0 +1,42 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xdis",
+  "displayName": "英雄  驱散 (效果)",
+  "identity": {
+    "baseCode": "Xdis",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xdis",
+    "code": "Xdis",
+    "comments": "EFFECT_HERODISSIPATE",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "英雄  驱散 (效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt"
+    ]
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BOae",
+  "displayName": "BOae",
+  "identity": {
+    "baseCode": "BOae",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/generalauratarget/generalauratarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCommand.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCommand.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncommand.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOae",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOae",
+      "level": 2,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOae",
+      "level": 3,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "SCae",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIae",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AOr2",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOr2",
+      "level": 2,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOr2",
+      "level": 3,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOr2",
+      "level": 4,
+      "kind": "buff",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "BOae",
+    "code": "BOae",
+    "comments": "AuraEndurance          ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNCommand.blp",
+    "Targetart": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "耐久光环",
+    "Spelldetail": "2",
+    "Buffubertip": "\"该单位处在耐久光环的作用之下，因此其移动速度和攻击速度都加快了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

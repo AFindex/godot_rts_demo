@@ -40,7 +40,11 @@
           "B": "5",
           "C": "2"
         },
+        "unitIds": [
+          "nlur"
+        ],
         "summonedUnitId": "nlur",
+        "requirements": [],
         "buffIds": [
           "BImo"
         ],

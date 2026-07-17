@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleporttarget.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +34,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

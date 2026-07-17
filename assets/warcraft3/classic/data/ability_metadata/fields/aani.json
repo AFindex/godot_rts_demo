@@ -1,0 +1,51 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "aani",
+  "field": "Animnames",
+  "storage": "Profile",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "art",
+  "displayNameKey": "WESTRING_AEVAL_AANI",
+  "displayName": "动画名字",
+  "sort": null,
+  "valueType": "stringList",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "aani",
+    "field": "Animnames",
+    "slk": "Profile",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "art",
+    "displayName": "WESTRING_AEVAL_AANI",
+    "type": "stringList",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "1",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

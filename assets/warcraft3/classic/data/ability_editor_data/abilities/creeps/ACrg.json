@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnfire.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFire.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfire.png"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "D": "0.75",
           "E": "20"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNrd",
           "BNrf"

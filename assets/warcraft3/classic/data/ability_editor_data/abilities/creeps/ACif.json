@@ -48,6 +48,8 @@
           "C": "500",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Binf"
         ],

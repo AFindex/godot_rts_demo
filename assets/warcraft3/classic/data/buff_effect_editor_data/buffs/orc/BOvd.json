@@ -1,0 +1,75 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BOvd",
+  "displayName": "BOvd",
+  "identity": {
+    "baseCode": "BOvd",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Voodoo\\VoodooAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Voodoo\\VoodooAuraTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/voodoo/voodooauratarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBigBadVoodooSpell.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBigBadVoodooSpell.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbigbadvoodoospell.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOvd",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "BOvd",
+    "code": "BOvd",
+    "comments": "Voodoo                 ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBigBadVoodooSpell.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\Voodoo\\VoodooAuraTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "巫毒",
+    "Buffubertip": "\"该单位处在巫毒的作用之下, 因此暂时是无敌的。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

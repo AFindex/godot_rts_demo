@@ -45,6 +45,8 @@
         "data": {
           "A": "0.33"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bcrs"
         ],

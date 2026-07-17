@@ -20,6 +20,14 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnvolcano.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNVolcano.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNVolcano.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnvolcano.png"
+      }
     ]
   },
   "summary": {
@@ -51,7 +59,11 @@
           "E": "100",
           "F": "0.5"
         },
+        "unitIds": [
+          "Volc"
+        ],
         "summonedUnitId": "Volc",
+        "requirements": [],
         "buffIds": [
           "BNvc",
           "BNva"

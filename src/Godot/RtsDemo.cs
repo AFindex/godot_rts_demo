@@ -6,7 +6,10 @@ using RtsDemo.Scenarios;
 using RtsDemo.Simulation;
 using RtsDemo.Tests;
 using RtsDemo.GodotRuntime.Resources;
+using RtsDemo.Demos.War3;
 using System.Text.Json;
+using War3Rts;
+using War3Rts.Data;
 using NVector2 = System.Numerics.Vector2;
 
 namespace RtsDemo.GodotRuntime;
@@ -421,6 +424,31 @@ public partial class RtsDemo : Node2D
             GD.Print($"WAR3_TERRAIN_STRESS_SELF_TEST " +
                      $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--ability-self-test"))
+        {
+            var result = AbilitySystemSelfTest.Run();
+            GD.Print($"RTS_ABILITY_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--war3-ability-data-self-test"))
+        {
+            var result = War3AbilityDataClosureSelfTest.Run();
+            GD.Print($"WAR3_ABILITY_DATA_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains(
+                "--generate-war3-ability-runtime-coverage"))
+        {
+            GenerateWar3AbilityRuntimeCoverage();
             return;
         }
 
@@ -3818,6 +3846,38 @@ public partial class RtsDemo : Node2D
 
         GD.PushError($"Unable to create navigation data directory: {error}");
         return false;
+    }
+
+    private void GenerateWar3AbilityRuntimeCoverage()
+    {
+        try
+        {
+            var dataRoot = War3AssetPack.AbsolutePath("data");
+            var units = War3UnitDataCatalog.Load(
+                Path.Combine(dataRoot, "unit_editor_data"));
+            var abilities = War3ObjectDataCatalog.LoadAbility(
+                Path.Combine(dataRoot, "ability_editor_data"));
+            var report = War3AbilityRuntimeCoverageAudit.Analyze(
+                abilities,
+                units,
+                War3HumanContent.AbilityImportStatus.Definitions.Select(
+                    value => value.ObjectId),
+                War3HumanContent.Technologies.Select(
+                    value => value.ObjectId));
+            var outputPath = ProjectSettings.GlobalizePath(
+                "res://reports/war3_ability_runtime_coverage.json");
+            report.Write(outputPath);
+            GD.Print($"WAR3_ABILITY_RUNTIME_COVERAGE PASS: " +
+                     $"{report.Summary} path={outputPath}");
+            GetTree().Quit(0);
+        }
+        catch (Exception exception)
+        {
+            GD.PushError(
+                $"WAR3_ABILITY_RUNTIME_COVERAGE FAIL: " +
+                $"{exception.GetType().Name}: {exception.Message}");
+            GetTree().Quit(1);
+        }
     }
 
     private void PreparePlayableSkirmish()

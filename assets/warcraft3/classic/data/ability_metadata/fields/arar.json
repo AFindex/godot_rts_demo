@@ -1,0 +1,55 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "arar",
+  "field": "ResearchArt",
+  "storage": "Profile",
+  "index": 0,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "art",
+  "displayNameKey": "WESTRING_AEVAL_ARAR",
+  "displayName": "图标 - 研究",
+  "sort": "c3a02",
+  "valueType": "icon",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": false,
+    "hero": true,
+    "item": false,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "arar",
+    "field": "ResearchArt",
+    "slk": "Profile",
+    "index": "0",
+    "repeat": "0",
+    "data": "0",
+    "category": "art",
+    "displayName": "WESTRING_AEVAL_ARAR",
+    "sort": "c3a02",
+    "type": "icon",
+    "changeFlags": "i",
+    "importType": "Image",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "1",
+    "forceNonNeg": "0",
+    "useUnit": "0",
+    "useHero": "1",
+    "useItem": "0",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

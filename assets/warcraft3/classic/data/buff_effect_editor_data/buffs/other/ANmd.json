@@ -1,0 +1,82 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "ANmd",
+  "displayName": "季风",
+  "identity": {
+    "baseCode": "ANmd",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Monsoon\\MonsoonBoltTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Monsoon\\MonsoonBoltTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/monsoon/monsoonbolttarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANmo",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANmo",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANmo",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACmo",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "ANmd",
+    "code": "ANmd",
+    "comments": "Monsoon              ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "Abilities\\Spells\\Other\\Monsoon\\MonsoonBoltTarget.mdl",
+    "Targetattach": "origin",
+    "EditorName": "季风"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

@@ -35,7 +35,11 @@
         "manaCost": 0,
         "range": 500,
         "data": {},
+        "unitIds": [
+          "nwad"
+        ],
         "summonedUnitId": "nwad",
+        "requirements": [],
         "buffIds": [
           "Beye"
         ],

@@ -37,6 +37,8 @@
         "manaCost": 0,
         "range": 128,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

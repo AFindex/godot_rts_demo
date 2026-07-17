@@ -1,0 +1,61 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "acas",
+  "field": "Cast",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "stats",
+  "displayNameKey": "WESTRING_AEVAL_ACAS",
+  "displayName": "魔法施放时间",
+  "sort": "g0a00",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 3600,
+  "canBeEmpty": false,
+  "forceNonNegative": true,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": [
+      "Arpb",
+      "Arpl",
+      "Arpm",
+      "ANpa"
+    ]
+  },
+  "editorData": {
+    "ID": "acas",
+    "field": "Cast",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "stats",
+    "displayName": "WESTRING_AEVAL_ACAS",
+    "sort": "g0a00",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "3600",
+    "forceNonNeg": "1",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1",
+    "notSpecific": "Arpb,Arpl,Arpm,ANpa"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

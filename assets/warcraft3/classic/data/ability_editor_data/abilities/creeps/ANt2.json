@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnthornshield.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThornShield.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThornShield.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnthornshield.png"
+      }
     ]
   },
   "summary": {
@@ -39,6 +47,8 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUts"
         ],

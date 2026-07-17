@@ -1,0 +1,87 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XHfs",
+  "displayName": "烈焰风暴(效果)",
+  "identity": {
+    "baseCode": "XHfs",
+    "race": "human",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeEmbers.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeEmbers.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrikeembers.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "HumanFireLarge"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHfs",
+      "level": 1,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHfs",
+      "level": 2,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHfs",
+      "level": 3,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACfs",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANfs",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XHfs",
+    "code": "XHfs",
+    "comments": "FlameStrike          ",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeEmbers.mdl",
+    "Effectsoundlooped": "HumanFireLarge",
+    "EditorName": "烈焰风暴(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

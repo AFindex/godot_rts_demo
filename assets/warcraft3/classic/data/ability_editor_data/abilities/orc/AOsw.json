@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnserpentward.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSerpentWard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSerpentWard.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnserpentward.png"
+      }
     ]
   },
   "summary": {
@@ -39,7 +47,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "osp1"
+        ],
         "summonedUnitId": "osp1",
+        "requirements": [],
         "buffIds": [
           "BOwd"
         ],
@@ -60,7 +72,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "osp2"
+        ],
         "summonedUnitId": "osp2",
+        "requirements": [],
         "buffIds": [
           "BOwd"
         ],
@@ -81,7 +97,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "osp3"
+        ],
         "summonedUnitId": "osp3",
+        "requirements": [],
         "buffIds": [
           "BOwd"
         ],

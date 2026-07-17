@@ -1,0 +1,89 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Brej",
+  "displayName": "Brej",
+  "identity": {
+    "baseCode": "Brej",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Rejuvenation\\RejuvenationTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Rejuvenation\\RejuvenationTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/rejuvenation/rejuvenationtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRejuvenation.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRejuvenation.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrejuvenation.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Arej",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "ACrj",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACr2",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Brej",
+    "code": "Brej",
+    "comments": "Rejuvination           ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNRejuvenation.blp",
+    "TargetArt": "Abilities\\Spells\\NightElf\\Rejuvenation\\RejuvenationTarget.mdl",
+    "Targetattach": "chest",
+    "Bufftip": "生命恢复",
+    "Buffubertip": "\"该单位具有生命恢复技能，因此其能持续地恢复自己的生命值。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

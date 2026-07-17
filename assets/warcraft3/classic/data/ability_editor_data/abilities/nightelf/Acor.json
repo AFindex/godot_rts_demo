@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncorrosivebreath.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\ChimaeraAcidMissile\\ChimaeraAcidMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\ChimaeraAcidMissile\\ChimaeraAcidMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/chimaeraacidmissile/chimaeraacidmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -41,6 +49,11 @@
         "data": {
           "A": "50"
         },
+        "unitIds": [],
+        "requirements": [
+          "Recb"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

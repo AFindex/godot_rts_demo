@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnfirerocks.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\DemolisherFireMissile\\DemolisherFireMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\DemolisherFireMissile\\DemolisherFireMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/demolisherfiremissile/demolisherfiremissile.glb"
+      }
     ]
   },
   "summary": {
@@ -51,6 +59,11 @@
           "D": "1",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Robf"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bbof"
         ],

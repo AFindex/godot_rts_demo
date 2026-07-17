@@ -42,6 +42,11 @@
           "D": "1",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Ropm"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

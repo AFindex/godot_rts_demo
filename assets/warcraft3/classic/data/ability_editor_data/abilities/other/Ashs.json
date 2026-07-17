@@ -40,6 +40,8 @@
         "manaCost": 0,
         "range": 800,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bshs"
         ],

@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnabsorbmagic.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\AbsorbMana\\AbsorbManaBirthMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\AbsorbMana\\AbsorbManaBirthMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/absorbmana/absorbmanabirthmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "A": "0",
           "B": "99999"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

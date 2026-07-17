@@ -1,0 +1,60 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XEsn",
+  "displayName": "哨兵(效果)",
+  "identity": {
+    "baseCode": "XEsn",
+    "race": "nightelf",
+    "effect": true,
+    "editorVisible": null,
+    "profileOnly": true
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Units\\NightElf\\Owl\\Owl.mdl",
+        "resolvedPath": "Units\\NightElf\\Owl\\Owl.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/nightelf/owl/owl.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aesn",
+      "level": 1,
+      "kind": "effect",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "Aesr",
+      "level": 1,
+      "kind": "effect",
+      "race": "nightelf"
+    }
+  ],
+  "editorData": {},
+  "profile": {
+    "Targetart": "Units\\NightElf\\Owl\\Owl.mdl",
+    "Targetattach": "overhead",
+    "EditorName": "哨兵(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

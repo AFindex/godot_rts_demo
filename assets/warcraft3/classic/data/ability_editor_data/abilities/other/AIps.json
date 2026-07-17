@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnentrapmentward.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Purge\\PurgeBuffTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Purge\\PurgeBuffTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/purge/purgebufftarget.glb"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "D": "3",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bprg"
         ],

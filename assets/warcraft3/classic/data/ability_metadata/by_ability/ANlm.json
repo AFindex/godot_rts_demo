@@ -1,0 +1,764 @@
+{
+  "schema": "war3-ability-metadata-binding/v1",
+  "id": "ANlm",
+  "baseCode": "ANlm",
+  "identity": {
+    "race": "creeps",
+    "hero": true,
+    "item": false
+  },
+  "fieldIds": [
+    "aani",
+    "alig",
+    "anam",
+    "aher",
+    "aite",
+    "ansf",
+    "arac",
+    "abpx",
+    "abpy",
+    "aubx",
+    "auby",
+    "arpx",
+    "arpy",
+    "aart",
+    "auar",
+    "arar",
+    "acat",
+    "atat",
+    "asat",
+    "aeat",
+    "aaea",
+    "amat",
+    "amsp",
+    "amac",
+    "amho",
+    "acac",
+    "atac",
+    "ata0",
+    "ata1",
+    "ata2",
+    "ata3",
+    "ata4",
+    "ata5",
+    "aca1",
+    "acap",
+    "aspt",
+    "aret",
+    "arut",
+    "arhk",
+    "ahky",
+    "auhk",
+    "areq",
+    "arqa",
+    "achd",
+    "apri",
+    "aord",
+    "aoru",
+    "aoro",
+    "aorf",
+    "aefs",
+    "aefl",
+    "arlv",
+    "alsk",
+    "atar",
+    "alev",
+    "acas",
+    "adur",
+    "ahdu",
+    "acdn",
+    "amcs",
+    "aare",
+    "aran",
+    "abuf",
+    "aeff",
+    "Hwe1",
+    "Hwe2",
+    "Nlm2",
+    "Nlm3",
+    "Nlm4",
+    "Nlm5",
+    "Nlm6",
+    "atp1",
+    "aut1",
+    "aub1",
+    "auu1"
+  ],
+  "fields": [
+    {
+      "id": "aani",
+      "field": "Animnames",
+      "dataIndex": 0,
+      "displayName": "动画名字",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "alig",
+      "field": "LightningEffect",
+      "dataIndex": 0,
+      "displayName": "光影效果",
+      "valueType": "lightningList",
+      "minimum": null,
+      "maximum": 3
+    },
+    {
+      "id": "anam",
+      "field": "Name",
+      "dataIndex": 0,
+      "displayName": "名字",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aher",
+      "field": "hero",
+      "dataIndex": 0,
+      "displayName": "英雄技能",
+      "valueType": "bool",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aite",
+      "field": "item",
+      "dataIndex": 0,
+      "displayName": "物品技能",
+      "valueType": "bool",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "ansf",
+      "field": "EditorSuffix",
+      "dataIndex": 0,
+      "displayName": "编辑器后缀",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": 50
+    },
+    {
+      "id": "arac",
+      "field": "race",
+      "dataIndex": 0,
+      "displayName": "种族",
+      "valueType": "unitRace",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "abpx",
+      "field": "Buttonpos",
+      "dataIndex": 0,
+      "displayName": "按钮位置- 普通 (X)",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 3
+    },
+    {
+      "id": "abpy",
+      "field": "Buttonpos",
+      "dataIndex": 0,
+      "displayName": "按钮位置- 普通 (Y)",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 2
+    },
+    {
+      "id": "aubx",
+      "field": "UnButtonpos",
+      "dataIndex": 0,
+      "displayName": "按钮位置- 关闭 (X)",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 3
+    },
+    {
+      "id": "auby",
+      "field": "UnButtonpos",
+      "dataIndex": 0,
+      "displayName": "按钮位置- 关闭 (Y)",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 2
+    },
+    {
+      "id": "arpx",
+      "field": "Researchbuttonpos",
+      "dataIndex": 0,
+      "displayName": "按钮位置- 研究 (X)",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 3
+    },
+    {
+      "id": "arpy",
+      "field": "Researchbuttonpos",
+      "dataIndex": 0,
+      "displayName": "按钮位置- 研究 (Y)",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 2
+    },
+    {
+      "id": "aart",
+      "field": "Art",
+      "dataIndex": 0,
+      "displayName": "图标 - 普通",
+      "valueType": "icon",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "auar",
+      "field": "Unart",
+      "dataIndex": 0,
+      "displayName": "图标 - 关闭",
+      "valueType": "icon",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "arar",
+      "field": "ResearchArt",
+      "dataIndex": 0,
+      "displayName": "图标 - 研究",
+      "valueType": "icon",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "acat",
+      "field": "CasterArt",
+      "dataIndex": 0,
+      "displayName": "魔法施放者",
+      "valueType": "modelList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "atat",
+      "field": "TargetArt",
+      "dataIndex": 0,
+      "displayName": "目标",
+      "valueType": "modelList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "asat",
+      "field": "SpecialArt",
+      "dataIndex": 0,
+      "displayName": "特殊的",
+      "valueType": "modelList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aeat",
+      "field": "EffectArt",
+      "dataIndex": 0,
+      "displayName": "效果",
+      "valueType": "modelList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aaea",
+      "field": "Areaeffectart",
+      "dataIndex": 0,
+      "displayName": "区域影响",
+      "valueType": "modelList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "amat",
+      "field": "Missileart",
+      "dataIndex": 0,
+      "displayName": "射箭技巧",
+      "valueType": "modelList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "amsp",
+      "field": "Missilespeed",
+      "dataIndex": 0,
+      "displayName": "射箭速度",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    {
+      "id": "amac",
+      "field": "Missilearc",
+      "dataIndex": 0,
+      "displayName": "弓形箭",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "id": "amho",
+      "field": "MissileHoming",
+      "dataIndex": 0,
+      "displayName": "可以使用自导箭",
+      "valueType": "bool",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "acac",
+      "field": "Casterattachcount",
+      "dataIndex": 0,
+      "displayName": "魔法施放者附加",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 2
+    },
+    {
+      "id": "atac",
+      "field": "Targetattachcount",
+      "dataIndex": 0,
+      "displayName": "目标附加",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 6
+    },
+    {
+      "id": "ata0",
+      "field": "Targetattach",
+      "dataIndex": 0,
+      "displayName": "目标附加点 1",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "ata1",
+      "field": "Targetattach1",
+      "dataIndex": 0,
+      "displayName": "目标附加点 2",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "ata2",
+      "field": "Targetattach2",
+      "dataIndex": 0,
+      "displayName": "目标附加点 3",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "ata3",
+      "field": "Targetattach3",
+      "dataIndex": 0,
+      "displayName": "目标附加点 4",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "ata4",
+      "field": "Targetattach4",
+      "dataIndex": 0,
+      "displayName": "目标附加点 5",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "ata5",
+      "field": "Targetattach5",
+      "dataIndex": 0,
+      "displayName": "目标附加点 6",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "aca1",
+      "field": "Casterattach1",
+      "dataIndex": 0,
+      "displayName": "魔法施放者附加点2",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "acap",
+      "field": "Casterattach",
+      "dataIndex": 0,
+      "displayName": "魔法施放者附加点1",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "aspt",
+      "field": "Specialattach",
+      "dataIndex": 0,
+      "displayName": "特别附加点",
+      "valueType": "stringList",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "aret",
+      "field": "Researchtip",
+      "dataIndex": 0,
+      "displayName": "提示工具 - 学习",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "arut",
+      "field": "Researchubertip",
+      "dataIndex": 0,
+      "displayName": "提示工具 - 学习 - 扩展的",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "arhk",
+      "field": "Researchhotkey",
+      "dataIndex": 0,
+      "displayName": "热键 - 学习",
+      "valueType": "char",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "ahky",
+      "field": "Hotkey",
+      "dataIndex": 0,
+      "displayName": "热键 - 普通",
+      "valueType": "char",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "auhk",
+      "field": "Unhotkey",
+      "dataIndex": 0,
+      "displayName": "热键 - 关闭",
+      "valueType": "char",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "areq",
+      "field": "Requires",
+      "dataIndex": 0,
+      "displayName": "要求",
+      "valueType": "techList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "arqa",
+      "field": "Requiresamount",
+      "dataIndex": 0,
+      "displayName": "要求 - 等级",
+      "valueType": "intList",
+      "minimum": null,
+      "maximum": 100
+    },
+    {
+      "id": "achd",
+      "field": "checkDep",
+      "dataIndex": 0,
+      "displayName": "检查所在地",
+      "valueType": "bool",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "apri",
+      "field": "priority",
+      "dataIndex": 0,
+      "displayName": "魔法偷取优先",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 100
+    },
+    {
+      "id": "aord",
+      "field": "Order",
+      "dataIndex": 0,
+      "displayName": "命令串 - 使用/打开",
+      "valueType": "orderString",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "aoru",
+      "field": "Unorder",
+      "dataIndex": 0,
+      "displayName": "命令串 - 关闭",
+      "valueType": "orderString",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "aoro",
+      "field": "Orderon",
+      "dataIndex": 0,
+      "displayName": "命令串 - 有效",
+      "valueType": "orderString",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "aorf",
+      "field": "Orderoff",
+      "dataIndex": 0,
+      "displayName": "命令串 - 无效",
+      "valueType": "orderString",
+      "minimum": null,
+      "maximum": 32
+    },
+    {
+      "id": "aefs",
+      "field": "Effectsound",
+      "dataIndex": 0,
+      "displayName": "音效",
+      "valueType": "soundLabel",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aefl",
+      "field": "Effectsoundlooped",
+      "dataIndex": 0,
+      "displayName": "音效(循环)",
+      "valueType": "soundLabel",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "arlv",
+      "field": "reqLevel",
+      "dataIndex": 0,
+      "displayName": "要求等级",
+      "valueType": "int",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    {
+      "id": "alsk",
+      "field": "levelSkip",
+      "dataIndex": 0,
+      "displayName": "跳级要求",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    {
+      "id": "atar",
+      "field": "targs",
+      "dataIndex": 0,
+      "displayName": "所定允许",
+      "valueType": "targetList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "alev",
+      "field": "levels",
+      "dataIndex": 0,
+      "displayName": "等级",
+      "valueType": "int",
+      "minimum": 1,
+      "maximum": 100
+    },
+    {
+      "id": "acas",
+      "field": "Cast",
+      "dataIndex": 0,
+      "displayName": "魔法施放时间",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 3600
+    },
+    {
+      "id": "adur",
+      "field": "Dur",
+      "dataIndex": 0,
+      "displayName": "持续时间 - 普通",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 3600
+    },
+    {
+      "id": "ahdu",
+      "field": "HeroDur",
+      "dataIndex": 0,
+      "displayName": "持续时间 - 英雄",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 3600
+    },
+    {
+      "id": "acdn",
+      "field": "Cool",
+      "dataIndex": 0,
+      "displayName": "魔法施放时间间隔",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 3600
+    },
+    {
+      "id": "amcs",
+      "field": "Cost",
+      "dataIndex": 0,
+      "displayName": "魔法消耗",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 1000
+    },
+    {
+      "id": "aare",
+      "field": "Area",
+      "dataIndex": 0,
+      "displayName": "影响区域",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 99999
+    },
+    {
+      "id": "aran",
+      "field": "Rng",
+      "dataIndex": 0,
+      "displayName": "魔法施放范围",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 99999
+    },
+    {
+      "id": "abuf",
+      "field": "BuffID",
+      "dataIndex": 0,
+      "displayName": "魔法效果",
+      "valueType": "buffList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aeff",
+      "field": "EfctID",
+      "dataIndex": 0,
+      "displayName": "特效",
+      "valueType": "effectList",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "Hwe1",
+      "field": "UnitID",
+      "dataIndex": 0,
+      "displayName": "召唤单位类型",
+      "valueType": "unitCode",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "Hwe2",
+      "field": "Data",
+      "dataIndex": 1,
+      "displayName": "召唤单位计算",
+      "valueType": "int",
+      "minimum": 1,
+      "maximum": 24
+    },
+    {
+      "id": "Nlm2",
+      "field": "Data",
+      "dataIndex": 2,
+      "displayName": "分割延迟",
+      "valueType": "unreal",
+      "minimum": 0.001,
+      "maximum": 300
+    },
+    {
+      "id": "Nlm3",
+      "field": "Data",
+      "dataIndex": 3,
+      "displayName": "分割攻击数",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 99999
+    },
+    {
+      "id": "Nlm4",
+      "field": "Data",
+      "dataIndex": 4,
+      "displayName": "最大生命值参数",
+      "valueType": "unreal",
+      "minimum": 0,
+      "maximum": 100
+    },
+    {
+      "id": "Nlm5",
+      "field": "Data",
+      "dataIndex": 5,
+      "displayName": "生命持续时间分割奖励",
+      "valueType": "unreal",
+      "minimum": 0.001,
+      "maximum": 300
+    },
+    {
+      "id": "Nlm6",
+      "field": "Data",
+      "dataIndex": 6,
+      "displayName": "代数",
+      "valueType": "int",
+      "minimum": 0,
+      "maximum": 100
+    },
+    {
+      "id": "atp1",
+      "field": "Tip",
+      "dataIndex": 0,
+      "displayName": "提示工具 - 普通",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aut1",
+      "field": "Untip",
+      "dataIndex": 0,
+      "displayName": "提示工具 - 关闭",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "aub1",
+      "field": "Ubertip",
+      "dataIndex": 0,
+      "displayName": "提示工具 - 普通 - 扩展的",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "id": "auu1",
+      "field": "Unubertip",
+      "dataIndex": 0,
+      "displayName": "提示工具 - 关闭 - 扩展的",
+      "valueType": "string",
+      "minimum": null,
+      "maximum": null
+    }
+  ]
+}

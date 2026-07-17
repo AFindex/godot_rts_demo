@@ -20,6 +20,22 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnpocketfactory.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPocketFactory.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPocketFactory.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpocketfactory.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Units\\Creeps\\HeroTinkerFactory\\HeroTinkerFactoryMissle.mdl",
+        "resolvedPath": "Units\\Creeps\\HeroTinkerFactory\\HeroTinkerFactoryMissle.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/units/creeps/herotinkerfactory/herotinkerfactorymissle.glb"
+      }
     ]
   },
   "summary": {
@@ -43,7 +59,11 @@
           "D": "200",
           "E": "1100"
         },
+        "unitIds": [
+          "nfac"
+        ],
         "summonedUnitId": "nfac",
+        "requirements": [],
         "buffIds": [
           "BNfy",
           "BNcg"
@@ -69,7 +89,11 @@
           "D": "200",
           "E": "1100"
         },
+        "unitIds": [
+          "nfa1"
+        ],
         "summonedUnitId": "nfa1",
+        "requirements": [],
         "buffIds": [
           "BNfy",
           "BNcg"
@@ -95,7 +119,11 @@
           "D": "200",
           "E": "1100"
         },
+        "unitIds": [
+          "nfa2"
+        ],
         "summonedUnitId": "nfa2",
+        "requirements": [],
         "buffIds": [
           "BNfy",
           "BNcg"

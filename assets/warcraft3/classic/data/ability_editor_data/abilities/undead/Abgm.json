@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\UndeadMine\\UndeadMineCircle.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\UndeadMine\\UndeadMineCircle.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/undeadmine/undeadminecircle.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -30,6 +39,8 @@
           "C": "5",
           "D": "200"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

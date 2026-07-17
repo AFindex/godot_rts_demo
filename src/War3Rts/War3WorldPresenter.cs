@@ -37,6 +37,8 @@ public sealed partial class War3WorldPresenter : Node3D
     private readonly List<War3StaticModelBatch> _resourceBatches = [];
     private readonly Dictionary<int, ProjectileVisual> _projectiles = [];
     private readonly List<TransientVisual> _transients = [];
+    private readonly Dictionary<int, AbilityBuffVisual> _abilityBuffs = [];
+    private readonly HashSet<int> _seenAbilityBuffs = [];
     private readonly HashSet<int> _seenBuildings = [];
     private readonly HashSet<int> _seenProjectiles = [];
     private readonly HashSet<int> _selectedUnits = [];
@@ -74,13 +76,15 @@ public sealed partial class War3WorldPresenter : Node3D
     private bool _foundationAppearedAfterApproach;
     private int _nextTransientAudioEmitterId = 1_500_000_000;
     private ulong _animationAudioSequence;
+    private ulong _abilityEventCursor;
 
     public event Action<War3AnimationAudioEvent>? AnimationAudioEvent;
 
     public int PresentedUnitCount => _units.Values.Count(value => !value.Dying);
     public int PresentedBuildingCount => _buildings.Values.Count(value => !value.Dying);
     public int PresentedResourceCount => _resources.Count;
-    public int ActiveEffectCount => _projectiles.Count + _transients.Count;
+    public int ActiveEffectCount =>
+        _projectiles.Count + _transients.Count + _abilityBuffs.Count;
     public int PeakEffectCount => _peakEffectCount;
     public bool SawGoldGatherAnimation => _sawGoldGatherAnimation;
     public bool SawLumberGatherAnimation => _sawLumberGatherAnimation;
@@ -291,6 +295,8 @@ public sealed partial class War3WorldPresenter : Node3D
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
         SyncProjectiles(_simulation, _production, _camera);
+        SyncAbilityEvents(_simulation, _camera);
+        SyncAbilityBuffs(_simulation, _camera);
         var projectilesEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
@@ -360,6 +366,12 @@ public sealed partial class War3WorldPresenter : Node3D
                     unit, resolvedDefinition,
                     simulation.Combat.Teams[unit], camera);
                 _units.Add(unit, visual);
+            }
+            else if (visual.Dying)
+            {
+                visual.Dying = false;
+                visual.RemoveAt = 0;
+                visual.Actor.Revive();
             }
             var definition = visual.Definition;
             var position = NVector2.Lerp(
@@ -469,6 +481,15 @@ public sealed partial class War3WorldPresenter : Node3D
             cooldown > visual.LastCooldown + 0.001f;
         visual.LastWindup = windup;
         visual.LastCooldown = cooldown;
+        var abilityState = simulation.Abilities.Observe(unit);
+        if (abilityState.CastPhase != AbilityCastPhase.None)
+        {
+            visual.Actor.PlayRepeatedPreferred(
+                "Spell Channel", "Spell", "Spell Slam", "Attack");
+            return;
+        }
+        if (Time.GetTicksMsec() < visual.AbilityAnimationUntil)
+            return;
         if (simulation.Economy.IsWorker(unit))
         {
             if (simulation.Construction.IsAssignedBuilder(unit))
@@ -575,6 +596,135 @@ public sealed partial class War3WorldPresenter : Node3D
             visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
         else
             visual.Actor.PlayPreferred(true, "Stand");
+    }
+
+    private void SyncAbilityEvents(
+        RtsSimulation simulation,
+        Camera3D camera)
+    {
+        var batch = simulation.AbilityEvents.ReadAfter(_abilityEventCursor);
+        _abilityEventCursor = batch.LatestSequence;
+        foreach (var value in batch.Events)
+        {
+            if (!War3HumanContent.TryAbility(
+                    value.AbilityId, out var definition) || definition is null)
+                continue;
+            var sourcePlayerId = (uint)value.CasterUnit <
+                                 (uint)simulation.Units.Count
+                ? simulation.Combat.Teams[value.CasterUnit]
+                : -1;
+            if (value.Kind == AbilityEventKind.Started)
+            {
+                if (_units.TryGetValue(value.CasterUnit, out var caster))
+                {
+                    caster.AbilityAnimationUntil = Time.GetTicksMsec() + 700;
+                    caster.Actor.ReplayPreferred(
+                        "Spell", "Spell Slam", "Spell Channel", "Attack");
+                }
+                SpawnAbilityModels(
+                    definition.CasterModels,
+                    AbilityCasterPosition(simulation, value),
+                    camera, sourcePlayerId);
+                continue;
+            }
+            if (value.Kind != AbilityEventKind.Impact) continue;
+            var position = AbilityTargetPosition(simulation, value);
+            SpawnAbilityModels(
+                definition.TargetModels, position, camera, sourcePlayerId);
+            SpawnAbilityModels(
+                definition.EffectModels, position, camera, sourcePlayerId);
+            SpawnAbilityModels(
+                definition.MissileModels, position, camera, sourcePlayerId);
+        }
+    }
+
+    private void SpawnAbilityModels(
+        IEnumerable<string> models,
+        NVector2 position,
+        Camera3D camera,
+        int sourcePlayerId)
+    {
+        foreach (var model in models
+                     .Where(War3RuntimeAssets.Contains)
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .Take(6))
+            SpawnTransient(model, position, camera, 1_800, sourcePlayerId);
+    }
+
+    private void SyncAbilityBuffs(
+        RtsSimulation simulation,
+        Camera3D camera)
+    {
+        _seenAbilityBuffs.Clear();
+        foreach (var buff in simulation.Abilities.ObserveAllBuffs())
+        {
+            if ((uint)buff.TargetUnit >= (uint)simulation.Units.Count ||
+                !simulation.Units.Alive[buff.TargetUnit])
+                continue;
+            _seenAbilityBuffs.Add(buff.InstanceId);
+            if (!_abilityBuffs.TryGetValue(buff.InstanceId, out var visual))
+            {
+                var definition = War3HumanContent.Ability(buff.AbilityId);
+                var source = definition.TargetModels
+                    .Concat(definition.EffectModels)
+                    .FirstOrDefault(War3RuntimeAssets.Contains);
+                if (source is null) continue;
+                var actor = new War3ModelActor
+                {
+                    Name = $"AbilityBuff{buff.InstanceId}"
+                };
+                AddChild(actor);
+                var sourcePlayerId = simulation.Combat.Teams[buff.SourceUnit];
+                var emitterId = _nextTransientAudioEmitterId++;
+                actor.SoundTimelineEvent += value => PublishAnimationAudio(
+                    value,
+                    simulation.Units.Positions[buff.TargetUnit],
+                    emitterId,
+                    sourcePlayerId);
+                actor.Load(
+                    source, camera,
+                    simulation.Combat.Teams[buff.TargetUnit]);
+                actor.PlayPreferred(true, "Stand", "Birth");
+                visual = new AbilityBuffVisual(actor, buff.TargetUnit);
+                _abilityBuffs.Add(buff.InstanceId, visual);
+            }
+            visual.Actor.Position = ToWorldAtGround(
+                simulation.Units.Positions[visual.TargetUnit], 0.18f);
+        }
+
+        foreach (var id in _abilityBuffs.Keys
+                     .Where(value => !_seenAbilityBuffs.Contains(value))
+                     .ToArray())
+        {
+            _abilityBuffs[id].Actor.QueueFree();
+            _abilityBuffs.Remove(id);
+        }
+    }
+
+    private static NVector2 AbilityCasterPosition(
+        RtsSimulation simulation,
+        in AbilityEvent value) =>
+        (uint)value.CasterUnit < (uint)simulation.Units.Count
+            ? simulation.Units.Positions[value.CasterUnit]
+            : value.WorldPosition;
+
+    private static NVector2 AbilityTargetPosition(
+        RtsSimulation simulation,
+        in AbilityEvent value)
+    {
+        if (value.TargetKind is AbilityTargetKind.Unit or AbilityTargetKind.Self &&
+            (uint)value.TargetId < (uint)simulation.Units.Count)
+            return simulation.Units.Positions[value.TargetId];
+        if (value.TargetKind == AbilityTargetKind.Building)
+        {
+            var building = new GameplayBuildingId(value.TargetId);
+            if (simulation.Construction.IsAlive(building))
+            {
+                var bounds = simulation.Construction.Observe(building).Bounds;
+                return (bounds.Min + bounds.Max) * 0.5f;
+            }
+        }
+        return value.WorldPosition;
     }
 
     private static bool IsGatheringGold(RtsSimulation simulation, int unit)
@@ -1162,6 +1312,7 @@ public sealed partial class War3WorldPresenter : Node3D
         public NVector2 LastPosition { get; set; }
         public bool Dying { get; set; }
         public ulong RemoveAt { get; set; }
+        public ulong AbilityAnimationUntil { get; set; }
     }
 
     private sealed class BuildingVisual(
@@ -1216,4 +1367,7 @@ public sealed partial class War3WorldPresenter : Node3D
     }
 
     private sealed record TransientVisual(Node3D Root, ulong RemoveAt);
+    private sealed record AbilityBuffVisual(
+        War3ModelActor Actor,
+        int TargetUnit);
 }

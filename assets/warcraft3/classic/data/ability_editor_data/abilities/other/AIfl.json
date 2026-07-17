@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "UI\\Feedback\\RallyPoint\\RallyPoint.mdl",
+        "resolvedPath": "UI\\Feedback\\RallyPoint\\RallyPoint.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/ui/feedback/rallypoint/rallypoint.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +34,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

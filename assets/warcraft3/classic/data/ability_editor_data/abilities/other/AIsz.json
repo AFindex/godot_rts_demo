@@ -43,6 +43,8 @@
           "C": "0.25",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bspo",
           "Bssd",

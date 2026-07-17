@@ -1,0 +1,90 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BHbd",
+  "displayName": "BHbd",
+  "identity": {
+    "baseCode": "BHbd",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\FrostDamage\\FrostDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\FrostDamage\\FrostDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/frostdamage/frostdamage.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBlizzard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBlizzard.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnblizzard.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHbz",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbz",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbz",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACbz",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BHbd",
+    "code": "BHbd",
+    "comments": "Blizzard               ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBlizzard.blp",
+    "Targetart": "Abilities\\Spells\\Other\\FrostDamage\\FrostDamage.mdl",
+    "Bufftip": "暴风雪",
+    "Buffubertip": "\"该单位正受到暴风雪的攻击伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

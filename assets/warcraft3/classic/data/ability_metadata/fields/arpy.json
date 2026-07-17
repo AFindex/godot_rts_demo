@@ -1,0 +1,55 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "arpy",
+  "field": "Researchbuttonpos",
+  "storage": "Profile",
+  "index": 1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "art",
+  "displayNameKey": "WESTRING_AEVAL_ARPY",
+  "displayName": "按钮位置- 研究 (Y)",
+  "sort": "c2a05",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 2,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": false,
+    "hero": true,
+    "item": false,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "arpy",
+    "field": "Researchbuttonpos",
+    "slk": "Profile",
+    "index": "1",
+    "repeat": "0",
+    "data": "0",
+    "category": "art",
+    "displayName": "WESTRING_AEVAL_ARPY",
+    "sort": "c2a05",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "2",
+    "forceNonNeg": "0",
+    "useUnit": "0",
+    "useHero": "1",
+    "useItem": "0",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

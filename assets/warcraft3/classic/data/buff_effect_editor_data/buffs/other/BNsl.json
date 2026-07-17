@@ -1,0 +1,64 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNsl",
+  "displayName": "灵魂保存",
+  "identity": {
+    "baseCode": "BNsl",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSound": "SoulPreservation"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNsl",
+    "code": "BNsl",
+    "comments": "SoulPreservation       ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+    "Effectsound": "SoulPreservation",
+    "EditorName": "灵魂保存"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

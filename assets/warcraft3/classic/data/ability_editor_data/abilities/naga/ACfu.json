@@ -46,6 +46,11 @@
           "A": "45",
           "B": "3"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rnsw"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "BUfa",
           "Bfro"

@@ -111,6 +111,8 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
     private IncrementalNavigationConnectivityUpdater? _incrementalUpdater;
     private readonly NavigationConnectivitySnapshot?[] _snapshots =
         new NavigationConnectivitySnapshot?[3];
+    private readonly EdgeValidationCache?[] _edgeValidationCaches =
+        new EdgeValidationCache?[3];
 
     public GridPathProvider(
         StaticWorld world,
@@ -163,6 +165,20 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
         LastSimplifiedPathPoints = 0;
     }
 
+    /// <summary>
+    /// Returns the same connectivity snapshot used by pathfinding. This is an
+    /// explicit diagnostics hook: callers may trigger an incremental refresh
+    /// after a navigation revision, so it must stay out of normal UI updates.
+    /// </summary>
+    public NavigationConnectivitySnapshot GetConnectivitySnapshotForDiagnostics(
+        MovementClass movementClass)
+    {
+        if (!Enum.IsDefined(movementClass))
+            throw new ArgumentOutOfRangeException(nameof(movementClass));
+        return GetConnectivitySnapshot(
+            MovementClearance.ForClass(movementClass));
+    }
+
     public Vector2[] FindPath(
         Vector2 start,
         Vector2 goal,
@@ -182,6 +198,7 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
         }
 
         var snapshot = GetConnectivitySnapshot(clearance);
+        var edgeValidation = GetEdgeValidationCache(clearance, snapshot);
         var searchStart = Stopwatch.GetTimestamp();
         var startNode = FindNearestFreeNode(start, snapshot);
         var goalNode = FindNearestFreeNode(goal, snapshot);
@@ -251,6 +268,17 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
                          snapshot, currentRow * snapshot.Columns + column) ||
                      !IsNodeFree(
                          snapshot, row * snapshot.Columns + currentColumn)))
+                {
+                    continue;
+                }
+
+                if (!IsTransitionFree(
+                        snapshot,
+                        edgeValidation,
+                        current,
+                        neighbor,
+                        offsetIndex,
+                        navigationRadius))
                 {
                     continue;
                 }
@@ -395,6 +423,65 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
         NavigationConnectivitySnapshot snapshot,
         int node) => snapshot.IsWalkable(node);
 
+    private EdgeValidationCache GetEdgeValidationCache(
+        MovementClearanceProfile clearance,
+        NavigationConnectivitySnapshot snapshot)
+    {
+        var classIndex = (int)clearance.Class;
+        var cache = _edgeValidationCaches[classIndex];
+        if (cache is null ||
+            cache.WorldRevision != snapshot.WorldRevision ||
+            cache.NodeCount != snapshot.NodeCount ||
+            MathF.Abs(cache.NavigationRadius -
+                      clearance.NavigationRadius) > 0.0001f)
+        {
+            cache = new EdgeValidationCache(
+                snapshot.WorldRevision,
+                snapshot.NodeCount,
+                clearance.NavigationRadius,
+                new byte[snapshot.NodeCount *
+                         NavigationConnectivityAnalyzer.NeighborOffsets.Length]);
+            _edgeValidationCaches[classIndex] = cache;
+        }
+        return cache;
+    }
+
+    private bool IsTransitionFree(
+        NavigationConnectivitySnapshot snapshot,
+        EdgeValidationCache cache,
+        int from,
+        int to,
+        int offsetIndex,
+        float navigationRadius)
+    {
+        var offsetCount =
+            NavigationConnectivityAnalyzer.NeighborOffsets.Length;
+        var edgeIndex = from * offsetCount + offsetIndex;
+        var state = cache.States[edgeIndex];
+        if (state != 0) return state == 2;
+        var free = _world.IsSegmentFree(
+            snapshot.CellCenter(from),
+            snapshot.CellCenter(to),
+            navigationRadius);
+        cache.States[edgeIndex] = free ? (byte)2 : (byte)1;
+        cache.States[to * offsetCount + ReverseOffset(offsetIndex)] =
+            free ? (byte)2 : (byte)1;
+        return free;
+    }
+
+    private static int ReverseOffset(int offsetIndex) => offsetIndex switch
+    {
+        0 => 2,
+        1 => 3,
+        2 => 0,
+        3 => 1,
+        4 => 6,
+        5 => 7,
+        6 => 4,
+        7 => 5,
+        _ => throw new ArgumentOutOfRangeException(nameof(offsetIndex))
+    };
+
     private NavigationConnectivitySnapshot GetConnectivitySnapshot(
         MovementClearanceProfile clearance)
     {
@@ -468,7 +555,14 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
         _incrementalUpdater = new IncrementalNavigationConnectivityUpdater(
             _world, candidate);
         Array.Clear(_snapshots);
+        Array.Clear(_edgeValidationCaches);
         ClearanceBakeReloads++;
     }
+
+    private sealed record EdgeValidationCache(
+        int WorldRevision,
+        int NodeCount,
+        float NavigationRadius,
+        byte[] States);
 
 }

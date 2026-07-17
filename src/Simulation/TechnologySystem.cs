@@ -162,9 +162,7 @@ public static class TechnologyCatalogDependencyValidator
         foreach (var technology in technologies.Technologies)
         {
             if ((uint)technology.ResearcherBuildingTypeId >=
-                    (uint)buildings.Types.Length ||
-                buildings.Type(technology.ResearcherBuildingTypeId).Function !=
-                    BuildingFunctionKind.Research)
+                    (uint)buildings.Types.Length)
             {
                 error = $"Technology {technology.Id} has an invalid researcher.";
                 return false;
@@ -308,8 +306,7 @@ public sealed class TechnologySystem
         if (building.PlayerId != playerId) return Failure(ResearchCommandCode.WrongOwner);
         if (building.State != BuildingLifecycleState.Completed)
             return Failure(ResearchCommandCode.ResearcherNotCompleted);
-        if (building.Type.Id != technology.ResearcherBuildingTypeId ||
-            building.Type.Function != BuildingFunctionKind.Research)
+        if (building.Type.Id != technology.ResearcherBuildingTypeId)
             return Failure(ResearchCommandCode.WrongResearcherType);
         if (_queues.TryGetValue(researcher.Value, out var queue) &&
             queue.Orders.Count >= MaximumQueueLength)
@@ -496,8 +493,6 @@ public sealed class TechnologySystem
             if (!construction.IsAlive(value.Researcher) ||
                 construction.Observe(value.Researcher).State !=
                     BuildingLifecycleState.Completed ||
-                construction.Observe(value.Researcher).Type.Function !=
-                    BuildingFunctionKind.Research ||
                 value.Orders.Length > MaximumQueueLength ||
                 !_queues.TryAdd(value.Researcher.Value,
                     new ResearchQueue(value.Researcher)))

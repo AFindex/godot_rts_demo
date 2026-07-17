@@ -28,6 +28,8 @@
           "A": "2",
           "B": "nspd"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

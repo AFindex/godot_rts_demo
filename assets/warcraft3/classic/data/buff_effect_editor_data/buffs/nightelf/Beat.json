@@ -1,0 +1,49 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Beat",
+  "displayName": "吃树",
+  "identity": {
+    "baseCode": "Beat",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aeat",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    }
+  ],
+  "editorData": {
+    "alias": "Beat",
+    "code": "Beat",
+    "comments": "EatTree                ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "吃树"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt"
+    ]
+  }
+}

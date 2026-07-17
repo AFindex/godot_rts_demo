@@ -1,0 +1,92 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNdc",
+  "displayName": "BNdc",
+  "identity": {
+    "baseCode": "BNdc",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Sleep\\SleepTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Sleep\\SleepTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/sleep/sleeptarget.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Demon\\DarkConversion\\ZombifyTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Demon\\DarkConversion\\ZombifyTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/demon/darkconversion/zombifytarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANdc",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "SNdc",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNdc",
+    "code": "BNdc",
+    "comments": "DarkConversion         ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\Sleep\\SleepTarget.mdl",
+    "Targetattach": "overhead",
+    "Effectart": "Abilities\\Spells\\Demon\\DarkConversion\\ZombifyTarget.mdl",
+    "Bufftip": "黑暗转换",
+    "Buffubertip": "\"这个村民受到了黑暗转换的攻击，因此会陷入睡眠并变成一个僵尸。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

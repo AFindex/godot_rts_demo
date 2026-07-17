@@ -1,0 +1,63 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xbof",
+  "displayName": "燃烧之油(效果)",
+  "identity": {
+    "baseCode": "Xbof",
+    "race": "orc",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeEmbers.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeEmbers.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrikeembers.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "HumanFireLarge"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Abof",
+      "level": 1,
+      "kind": "effect",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "Xbof",
+    "code": "Xbof",
+    "comments": "BallsOfFire          ",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeEmbers.mdl",
+    "Effectsoundlooped": "HumanFireLarge",
+    "EditorName": "燃烧之油(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

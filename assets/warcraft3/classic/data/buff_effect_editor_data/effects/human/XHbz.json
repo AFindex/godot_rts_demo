@@ -1,0 +1,84 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XHbz",
+  "displayName": "暴风雪 (效果)",
+  "identity": {
+    "baseCode": "XHbz",
+    "race": "human",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Blizzard\\BlizzardTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Blizzard\\BlizzardTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/blizzard/blizzardtarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSound": "BlizzardWave",
+    "effectSoundLooped": "BlizzardLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHbz",
+      "level": 1,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbz",
+      "level": 2,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbz",
+      "level": 3,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACbz",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XHbz",
+    "code": "XHbz",
+    "comments": "Blizzard             ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Human\\Blizzard\\BlizzardTarget.mdl",
+    "Effectsoundlooped": "BlizzardLoop",
+    "Effectsound": "BlizzardWave",
+    "EditorName": "暴风雪 (效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

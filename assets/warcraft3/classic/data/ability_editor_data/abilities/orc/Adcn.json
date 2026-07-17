@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndisenchant.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Disenchant\\DisenchantSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Disenchant\\DisenchantSpecialArt.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/disenchant/disenchantspecialart.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +56,11 @@
           "A": "0",
           "B": "250"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rowt"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

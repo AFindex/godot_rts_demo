@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnfrostbolt.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\FrostBolt\\FrostBoltMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\FrostBolt\\FrostBoltMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/frostbolt/frostboltmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
         "data": {
           "A": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHtb"
         ],

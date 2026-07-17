@@ -44,6 +44,11 @@
           "A": "0.75",
           "B": "4"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rune"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "BUhf"
         ],

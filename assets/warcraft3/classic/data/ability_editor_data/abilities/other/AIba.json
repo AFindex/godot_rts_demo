@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnbrilliance.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Brilliance\\Brilliance.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Brilliance\\Brilliance.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/brilliance/brilliance.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "A": "0.75",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHab"
         ],

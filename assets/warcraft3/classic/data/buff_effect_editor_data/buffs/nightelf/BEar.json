@@ -1,0 +1,102 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BEar",
+  "displayName": "BEar",
+  "identity": {
+    "baseCode": "BEar",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/generalauratarget/generalauratarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTrueShot.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTrueShot.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntrueshot.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEar",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEar",
+      "level": 2,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEar",
+      "level": 3,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "ACat",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIar",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BEar",
+    "code": "BEar",
+    "comments": "AuraTrueshot           ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNTrueShot.blp",
+    "Targetart": "Abilities\\Spells\\Other\\GeneralAuraTarget\\GeneralAuraTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "强击光环",
+    "Spelldetail": "2",
+    "Buffubertip": "\"该单位处在强击光环的作用之下，因此其远程攻击力得到了加强。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

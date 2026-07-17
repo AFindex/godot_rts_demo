@@ -45,6 +45,8 @@
           "D": "1",
           "E": "15"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bgra"
         ],

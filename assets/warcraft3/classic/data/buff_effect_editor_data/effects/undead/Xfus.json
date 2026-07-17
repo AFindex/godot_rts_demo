@@ -1,0 +1,70 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xfus",
+  "displayName": "建筑物伤害 – 不死族 小",
+  "identity": {
+    "baseCode": "Xfus",
+    "race": "undead",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire2.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire2.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadsmallbuildingfire2.glb"
+      },
+      {
+        "requestedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire1.mdl",
+        "resolvedPath": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/undeadbuildingfire/undeadsmallbuildingfire1.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "sprite",
+      "first"
+    ],
+    "targetAttachmentCount": 2,
+    "specialAttachments": [],
+    "effectSoundLooped": "UndeadFireSmall"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xfus",
+    "code": "Xfus",
+    "comments": "EFFECT_OnFireUndeadSml",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "TargetArt": "Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire2.mdl,Environment\\UndeadBuildingFire\\UndeadSmallBuildingFire1.mdl",
+    "Targetattachcount": "2",
+    "Targetattach": "sprite,first",
+    "Targetattach1": "sprite,fourth",
+    "Effectsoundlooped": "UndeadFireSmall",
+    "EditorName": "建筑物伤害 – 不死族 小"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

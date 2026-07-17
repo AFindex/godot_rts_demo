@@ -42,7 +42,14 @@
           "C": "1",
           "D": "1"
         },
+        "unitIds": [
+          "edtm"
+        ],
         "summonedUnitId": "edtm",
+        "requirements": [
+          "Redt"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

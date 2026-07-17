@@ -1,0 +1,53 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "atar",
+  "field": "targs",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "stats",
+  "displayNameKey": "WESTRING_AEVAL_ATAR",
+  "displayName": "所定允许",
+  "sort": "f0a02",
+  "valueType": "targetList",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "atar",
+    "field": "targs",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "stats",
+    "displayName": "WESTRING_AEVAL_ATAR",
+    "sort": "f0a02",
+    "type": "targetList",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

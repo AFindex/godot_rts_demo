@@ -12,7 +12,48 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs1.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs1.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/spiritofvengeance/spiritofvengeanceorbs1.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs2.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs2.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/spiritofvengeance/spiritofvengeanceorbs2.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs3.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs3.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/spiritofvengeance/spiritofvengeanceorbs3.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs1.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs1.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/spiritofvengeance/spiritofvengeanceorbs1.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs2.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs2.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/spiritofvengeance/spiritofvengeanceorbs2.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs3.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceOrbs3.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/spiritofvengeance/spiritofvengeanceorbs3.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +66,8 @@
         "cooldown": 1,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

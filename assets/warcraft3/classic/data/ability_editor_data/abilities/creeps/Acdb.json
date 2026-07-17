@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtndrunkendodge.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDrunkenDodge.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDrunkenDodge.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndrunkendodge.png"
+      }
     ]
   },
   "summary": {
@@ -41,6 +49,8 @@
           "C": "0",
           "D": "0.07"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -56,6 +66,8 @@
           "C": "0",
           "D": "0.14"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -71,6 +83,8 @@
           "C": "0",
           "D": "0.21"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -86,6 +100,8 @@
           "C": "0",
           "D": "0.3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

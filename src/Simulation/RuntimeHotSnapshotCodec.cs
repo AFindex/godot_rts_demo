@@ -25,6 +25,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteDynamic(writer, state.DynamicOccupancy);
         WriteUnits(writer, state.Units);
         WriteCombat(writer, state.Combat, state.Units.Count);
+        AbilitySerialization.WriteRuntime(writer, state.Abilities);
         WriteProjectiles(writer, state.CombatProjectiles);
         WriteEconomy(writer, state.Economy, state.Units.Count);
         WriteDiplomacy(writer, state.Diplomacy);
@@ -86,6 +87,7 @@ internal static class RuntimeHotSnapshotCodec
             var dynamic = ReadDynamic(reader);
             var units = ReadUnits(reader, capacity);
             var combat = ReadCombat(reader, capacity, units.Count);
+            var abilities = AbilitySerialization.ReadRuntime(reader, units.Count);
             var projectiles = ReadProjectiles(reader, units.Count);
             var economy = ReadEconomy(reader, units.Count);
             var diplomacy = ReadDiplomacy(reader);
@@ -115,6 +117,7 @@ internal static class RuntimeHotSnapshotCodec
                 DynamicOccupancy = dynamic,
                 Units = units,
                 Combat = combat,
+                Abilities = abilities,
                 CombatProjectiles = projectiles,
                 Economy = economy,
                 Diplomacy = diplomacy,
@@ -1392,8 +1395,7 @@ internal static class RuntimeHotSnapshotCodec
                 ? construction.Buildings[researcher.Value]
                 : default;
             if (!researchers.Add(researcher.Value) || building.Id != researcher ||
-                building.State != BuildingLifecycleState.Completed ||
-                building.Type.Function != BuildingFunctionKind.Research)
+                building.State != BuildingLifecycleState.Completed)
                 throw new InvalidDataException();
             var orders = new ResearchOrderRuntimeEntry[orderCount];
             for (var orderIndex = 0; orderIndex < orderCount; orderIndex++)

@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnnightelfcaptureflag.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\NightElfCaptureFlag\\NightElfCaptureFlag.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\NightElfCaptureFlag\\NightElfCaptureFlag.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/nightelfcaptureflag/nightelfcaptureflag.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

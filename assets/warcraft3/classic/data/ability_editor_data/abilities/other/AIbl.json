@@ -35,7 +35,14 @@
         "manaCost": 0,
         "range": 100,
         "data": {},
+        "unitIds": [
+          "hcas",
+          "ofrt",
+          "unp2",
+          "etoe"
+        ],
         "summonedUnitId": "hcas,ofrt,unp2,etoe",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

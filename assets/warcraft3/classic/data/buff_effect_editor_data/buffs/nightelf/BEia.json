@@ -1,0 +1,67 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BEia",
+  "displayName": "献祭(施法者)",
+  "identity": {
+    "baseCode": "BEia",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEim",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEim",
+      "level": 2,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEim",
+      "level": 3,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "ACim",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BEia",
+    "code": "BEia",
+    "comments": "ImmolationAoe          ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "献祭(施法者)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt"
+    ]
+  }
+}

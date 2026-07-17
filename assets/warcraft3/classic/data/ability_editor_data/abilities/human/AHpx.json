@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmarkoffire.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMarkOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMarkOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmarkoffire.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MarkOfChaos\\MarkOfChaosTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MarkOfChaos\\MarkOfChaosTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/markofchaos/markofchaostarget.glb"
+      }
     ]
   },
   "summary": {
@@ -39,7 +55,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "hphx"
+        ],
         "summonedUnitId": "hphx",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

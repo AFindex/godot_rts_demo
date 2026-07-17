@@ -24,7 +24,14 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [
+          "nckb"
+        ],
         "summonedUnitId": "nckb",
+        "requirements": [
+          "Roch"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

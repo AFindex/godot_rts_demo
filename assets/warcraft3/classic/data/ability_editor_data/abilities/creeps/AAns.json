@@ -41,6 +41,8 @@
           "E": "neutralspell",
           "F": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -40,7 +40,11 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [
+          "ucsC"
+        ],
         "summonedUnitId": "ucsC",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

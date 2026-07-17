@@ -1,0 +1,61 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BOvc",
+  "displayName": "巫毒(施法者)",
+  "identity": {
+    "baseCode": "BOvc",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Voodoo\\VoodooAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Voodoo\\VoodooAura.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/voodoo/voodooaura.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOvd",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "BOvc",
+    "code": "BOvc",
+    "comments": "VoodooCaster           ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "Abilities\\Spells\\Orc\\Voodoo\\VoodooAura.mdl",
+    "EditorName": "巫毒(施法者)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

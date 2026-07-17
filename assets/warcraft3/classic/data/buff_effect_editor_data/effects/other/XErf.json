@@ -1,0 +1,90 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XErf",
+  "displayName": "火焰雨(效果)",
+  "identity": {
+    "baseCode": "XErf",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Demon\\RainOfFire\\RainOfFireTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Demon\\RainOfFire\\RainOfFireTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/demon/rainoffire/rainoffiretarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSound": "RainOfFireWave",
+    "effectSoundLooped": "RainOfFireLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANrf",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANrf",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANrf",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACrf",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACrg",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XErf",
+    "code": "XErf",
+    "comments": "RainOfFire           ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Demon\\RainOfFire\\RainOfFireTarget.mdl",
+    "Effectsoundlooped": "RainOfFireLoop",
+    "Effectsound": "RainOfFireWave",
+    "EditorName": "火焰雨(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

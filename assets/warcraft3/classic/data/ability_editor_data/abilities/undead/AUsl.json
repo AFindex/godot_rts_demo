@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
         "data": {
           "A": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUsl",
           "BUsp",
@@ -72,6 +82,8 @@
         "data": {
           "A": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUsl",
           "BUsp",
@@ -99,6 +111,8 @@
         "data": {
           "A": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUsl",
           "BUsp",

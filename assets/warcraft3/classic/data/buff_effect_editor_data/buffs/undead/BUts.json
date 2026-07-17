@@ -1,0 +1,122 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUts",
+  "displayName": "尖刺外壳",
+  "identity": {
+    "baseCode": "BUts",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestLeft.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestLeft.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestleft.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestRight.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestRight.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestright.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountLeft.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountLeft.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestmountleft.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountRight.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountRight.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestmountright.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThornShield.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThornShield.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnthornshield.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest",
+      "left"
+    ],
+    "targetAttachmentCount": 4,
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUts",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUts",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUts",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ANth",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANt2",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BUts",
+    "code": "BUts",
+    "comments": "ThornyShield           ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Spelldetail": "2",
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNThornShield.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestLeft.mdl,Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestRight.mdl,Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountLeft.mdl,Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountRight.mdl",
+    "Targetattachcount": "4",
+    "Targetattach": "chest,left",
+    "Targetattach1": "chest,right",
+    "Targetattach2": "chest,mount,left",
+    "Targetattach3": "chest,mount,right",
+    "EditorName": "尖刺外壳"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

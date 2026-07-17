@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnundeadcaptureflag.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\UndeadCaptureFlag\\UndeadCaptureFlag.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\UndeadCaptureFlag\\UndeadCaptureFlag.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/undeadcaptureflag/undeadcaptureflag.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

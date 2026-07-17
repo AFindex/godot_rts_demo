@@ -1,0 +1,73 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNdi",
+  "displayName": "BNdi",
+  "identity": {
+    "baseCode": "BNdi",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Doom\\DoomDeath.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Doom\\DoomDeath.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/doom/doomdeath.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Doom\\DoomDeath.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Doom\\DoomDeath.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/doom/doomdeath.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANdo",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNdi",
+    "code": "BNdi",
+    "comments": "DoomMinion             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "Abilities\\Spells\\Other\\Doom\\DoomDeath.mdl",
+    "Effectart": "Abilities\\Spells\\Other\\Doom\\DoomDeath.mdl",
+    "Bufftip": "魔鬼缠身",
+    "Buffubertip": "\"这个单位受到魔鬼缠身的折磨；它将会持续受到伤害直到死亡，一个魔鬼将会从他的尸体上诞生。魔鬼缠身不能被驱散或取消。\"",
+    "EditorSuffix": "(奴)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

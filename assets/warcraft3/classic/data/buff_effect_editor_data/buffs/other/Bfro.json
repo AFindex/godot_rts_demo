@@ -1,0 +1,140 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bfro",
+  "displayName": "Bfro",
+  "identity": {
+    "baseCode": "Bfro",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\FrostDamage\\FrostDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\FrostDamage\\FrostDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/frostdamage/frostdamage.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFrost.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFrost.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfrost.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUfn",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUfn",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUfn",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACfa",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Afrb",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACfn",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIob",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "ACf2",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACfu",
+      "level": 1,
+      "kind": "buff",
+      "race": "naga"
+    },
+    {
+      "abilityId": "Afra",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AIft",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "Afr2",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    }
+  ],
+  "editorData": {
+    "alias": "Bfro",
+    "code": "Bfro",
+    "comments": "Frost          ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNFrost.blp",
+    "Targetart": "Abilities\\Spells\\Other\\FrostDamage\\FrostDamage.mdl",
+    "Bufftip": "被减速的",
+    "Buffubertip": "\"该单位速度被减慢了，所以移动起来要比其他一般的单位要慢。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt"
+    ]
+  }
+}

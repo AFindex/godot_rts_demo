@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmonsoon.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMonsoon.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMonsoon.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmonsoon.png"
+      }
     ]
   },
   "summary": {
@@ -48,6 +56,8 @@
           "B": "1.5",
           "C": "0.35"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "ANmd"
         ],
@@ -78,6 +88,8 @@
           "B": "1.5",
           "C": "0.35"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "ANmd"
         ],
@@ -108,6 +120,8 @@
           "B": "1.5",
           "C": "0.35"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "ANmd"
         ],

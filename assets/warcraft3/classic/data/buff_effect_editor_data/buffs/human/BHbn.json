@@ -1,0 +1,92 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BHbn",
+  "displayName": "BHbn",
+  "identity": {
+    "baseCode": "BHbn",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Banish\\BanishTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Banish\\BanishTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/banish/banishtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbanish.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "BanishLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHbn",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbn",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbn",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACbn",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BHbn",
+    "code": "BHbn",
+    "comments": "Banish                 ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+    "Targetart": "Abilities\\Spells\\Human\\Banish\\BanishTarget.mdl",
+    "Effectsoundlooped": "BanishLoop",
+    "Bufftip": "驱散",
+    "Buffubertip": "\"该单位被驱散了并处于虚无状态之中。被化为虚无的单位不能攻击，但是能施放魔法。敌人的魔法也会对其造成额外的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bslo",
+  "displayName": "Bslo",
+  "identity": {
+    "baseCode": "Bslo",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\slow\\slowtarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Slow\\SlowTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/slow/slowtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSlow.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSlow.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnslow.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aslo",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACsw",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIos",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bslo",
+    "code": "Bslo",
+    "comments": "Slow                   ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSlow.blp",
+    "Targetart": "Abilities\\Spells\\Human\\slow\\slowtarget.mdl",
+    "Bufftip": "减速",
+    "Spelldetail": "1",
+    "Buffubertip": "\"该单位被减速了，其移动速度和攻击速度都会下降。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

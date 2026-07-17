@@ -25,7 +25,14 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [
+          "otbk"
+        ],
         "summonedUnitId": "otbk",
+        "requirements": [
+          "Robk"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

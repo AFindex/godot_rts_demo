@@ -27,7 +27,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "Rguv"
+        ],
         "summonedUnitId": "Rguv",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -38,7 +42,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "Reuv"
+        ],
         "summonedUnitId": "Reuv",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

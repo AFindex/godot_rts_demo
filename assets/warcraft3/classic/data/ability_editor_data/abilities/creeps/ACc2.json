@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncrushingwave.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCrushingWave.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCrushingWave.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncrushingwave.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\CrushingWave\\CrushingWaveDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\CrushingWave\\CrushingWaveDamage.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/crushingwave/crushingwavedamage.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\CrushingWave\\CrushingWaveMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\CrushingWave\\CrushingWaveMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/crushingwave/crushingwavemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +73,8 @@
           "C": "800",
           "D": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUcs"
         ],

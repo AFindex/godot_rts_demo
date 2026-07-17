@@ -1,0 +1,49 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Btdg",
+  "displayName": "龙卷风伤害",
+  "identity": {
+    "baseCode": "Btdg",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Atdg",
+      "level": 1,
+      "kind": "buff",
+      "race": "naga"
+    }
+  ],
+  "editorData": {
+    "alias": "Btdg",
+    "code": "Btdg",
+    "comments": "TornadoDamageAoe       ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "龙卷风伤害"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

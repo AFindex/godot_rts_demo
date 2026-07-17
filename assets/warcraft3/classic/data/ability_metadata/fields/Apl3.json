@@ -1,0 +1,62 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Apl3",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 3,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_APL3",
+  "displayName": "灾祸守卫持续时间",
+  "sort": "x0a002",
+  "valueType": "unreal",
+  "minimum": -1,
+  "maximum": 300,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Aapl",
+      "Aap1",
+      "Aap2",
+      "Aap3",
+      "Aap4"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Apl3",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "3",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_APL3",
+    "sort": "x0a002",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "-1",
+    "maxVal": "300",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Aapl,Aap1,Aap2,Aap3,Aap4",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

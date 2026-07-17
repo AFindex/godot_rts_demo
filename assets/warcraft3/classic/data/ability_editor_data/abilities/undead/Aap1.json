@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnplaguecloud.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\PlagueCloud\\PlagueCloudCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\PlagueCloud\\PlagueCloudCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/plaguecloud/plaguecloudcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -46,7 +54,14 @@
           "B": "1",
           "C": "10"
         },
+        "unitIds": [
+          "uplg"
+        ],
         "summonedUnitId": "uplg",
+        "requirements": [
+          "Rupc"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bapl"
         ],

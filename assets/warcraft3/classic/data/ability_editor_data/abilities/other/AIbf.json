@@ -35,7 +35,14 @@
         "manaCost": 0,
         "range": 100,
         "data": {},
+        "unitIds": [
+          "hhou",
+          "hhou",
+          "hhou",
+          "hhou"
+        ],
         "summonedUnitId": "hhou,hhou,hhou,hhou",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncoldarrowson.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNColdArrows.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNColdArrows.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncoldarrows.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\FrostArrows\\NagaColdArrowMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\FrostArrows\\NagaColdArrowMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/frostarrows/nagacoldarrowmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "C": "0.3",
           "D": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHca",
           "Bcsd"
@@ -74,6 +92,8 @@
           "C": "0.5",
           "D": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHca",
           "Bcsd"
@@ -101,6 +121,8 @@
           "C": "0.7",
           "D": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHca",
           "Bcsd"

@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnreddragon.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspirittarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspirittarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspirittarget.glb"
+      }
     ]
   },
   "summary": {
@@ -38,6 +46,8 @@
           "A": "1",
           "C": "nrdr"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BFig"
         ],

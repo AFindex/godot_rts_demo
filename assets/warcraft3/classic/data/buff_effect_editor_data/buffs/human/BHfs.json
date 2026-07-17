@@ -1,0 +1,96 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BHfs",
+  "displayName": "BHfs",
+  "identity": {
+    "baseCode": "BHfs",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrikedamagetarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwalloffire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHfs",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHfs",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHfs",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACfs",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANfs",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BHfs",
+    "code": "BHfs",
+    "comments": "FlameStrike            ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+    "Targetart": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdl",
+    "Bufftip": "烈焰风暴",
+    "Buffubertip": "\"该单位处于烈焰风暴的攻击之中，因此会在一定时间内持续受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

@@ -44,6 +44,8 @@
           "A": "0.75",
           "B": "4"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUhf"
         ],

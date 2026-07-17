@@ -1,0 +1,99 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNsi",
+  "displayName": "BNsi",
+  "identity": {
+    "baseCode": "BNsi",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Silence\\SilenceTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Silence\\SilenceTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/silence/silencetarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsilence.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANsi",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANsi",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANsi",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACsi",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIse",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BNsi",
+    "code": "BNsi",
+    "comments": "Silence                ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+    "Targetart": "Abilities\\Spells\\Other\\Silence\\SilenceTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "沉默魔法",
+    "Buffubertip": "\"该单位受到了沉默魔法的攻击，因此其不能施放任何魔法。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

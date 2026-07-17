@@ -1,0 +1,59 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "coau",
+  "field": "UnitID",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_COAU",
+  "displayName": "合成单位类型",
+  "sort": "x0a00u",
+  "valueType": "unitCode",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Acoa",
+      "Acoh",
+      "Aco2",
+      "Aco3"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "coau",
+    "field": "UnitID",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_COAU",
+    "sort": "x0a00u",
+    "type": "unitCode",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Acoa,Acoh,Aco2,Aco3",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

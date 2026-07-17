@@ -44,6 +44,8 @@
           "D": "0.5",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNrd",
           "BNrf"

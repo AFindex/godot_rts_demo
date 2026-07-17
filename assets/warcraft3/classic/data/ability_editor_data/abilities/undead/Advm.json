@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndevourmagic.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/dispelmagic/dispelmagictarget.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DevourMagic\\DevourMagicBirthMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DevourMagic\\DevourMagicBirthMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/devourmagic/devourmagicbirthmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -52,6 +68,8 @@
           "E": "180",
           "F": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

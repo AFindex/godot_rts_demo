@@ -27,7 +27,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "Rgfo"
+        ],
         "summonedUnitId": "Rgfo",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

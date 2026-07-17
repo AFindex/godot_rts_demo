@@ -28,6 +28,8 @@
           "A": "2",
           "B": "nspr"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

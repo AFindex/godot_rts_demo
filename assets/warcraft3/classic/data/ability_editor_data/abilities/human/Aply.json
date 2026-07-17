@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnpolymorph.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/polymorph/polymorphtarget.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphFallingSheepArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphFallingSheepArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/polymorph/polymorphfallingsheepart.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +66,11 @@
           "D": "nsha",
           "E": "nshw"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rhst"
+        ],
+        "requirementLevel": 2,
         "buffIds": [
           "Bply"
         ],

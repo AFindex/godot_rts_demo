@@ -1,0 +1,60 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Sod2",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 2,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_SOD2",
+  "displayName": "单位类型",
+  "sort": "x0a000",
+  "valueType": "unitCode",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Asod",
+      "Assp",
+      "Aspd",
+      "Aspy",
+      "Aspt"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Sod2",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "2",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_SOD2",
+    "sort": "x0a000",
+    "type": "unitCode",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Asod,Assp,Aspd,Aspy,Aspt",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

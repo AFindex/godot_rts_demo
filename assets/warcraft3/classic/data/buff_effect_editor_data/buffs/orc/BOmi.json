@@ -1,0 +1,86 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BOmi",
+  "displayName": "BOmi",
+  "identity": {
+    "baseCode": "BOmi",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageDeathCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageDeathCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/mirrorimage/mirrorimagedeathcaster.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMirrorImage.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMirrorImage.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmirrorimage.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOmi",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOmi",
+      "level": 2,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOmi",
+      "level": 3,
+      "kind": "buff",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "BOmi",
+    "code": "BOmi",
+    "comments": "MirrorImage            ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNMirrorImage.blp",
+    "Specialart": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageDeathCaster.mdl",
+    "Bufftip": "镜像",
+    "Buffubertip": "\"一个剑圣的幻象。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

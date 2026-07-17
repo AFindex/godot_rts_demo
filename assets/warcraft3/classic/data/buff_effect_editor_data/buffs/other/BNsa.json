@@ -1,0 +1,72 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNsa",
+  "displayName": "BNsa",
+  "identity": {
+    "baseCode": "BNsa",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\StaffOfSanctuary\\Staff_Sanctuary_Target.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\StaffOfSanctuary\\Staff_Sanctuary_Target.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/staffofsanctuary/staff_sanctuary_target.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfSanctuary.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfSanctuary.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstaffofsanctuary.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANsa",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BNsa",
+    "code": "BNsa",
+    "comments": "Sanctuary              ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNStaffOfSanctuary.blp",
+    "Targetart": "Abilities\\Spells\\Items\\StaffOfSanctuary\\Staff_Sanctuary_Target.mdl",
+    "Bufftip": "避难权杖",
+    "Buffubertip": "\"该单位处于避难权杖的效果之下，因此其生命值将持续地恢复，但是不能移动，攻击和施放任何魔法。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

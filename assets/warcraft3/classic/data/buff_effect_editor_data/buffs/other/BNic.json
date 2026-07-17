@@ -1,0 +1,112 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNic",
+  "displayName": "BNic",
+  "identity": {
+    "baseCode": "BNic",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Incinerate\\IncinerateBuff.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Incinerate\\IncinerateBuff.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/incinerate/incineratebuff.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Incinerate\\FireLordDeathExplode.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Incinerate\\FireLordDeathExplode.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/incinerate/firelorddeathexplode.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNIncinerate.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNIncinerate.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnincinerate.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANic",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANic",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANic",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANia",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANia",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANia",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNic",
+    "code": "BNic",
+    "comments": "Incinerate",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNIncinerate.blp",
+    "Specialart": "Abilities\\Spells\\Other\\Incinerate\\FireLordDeathExplode.mdl",
+    "Targetart": "Abilities\\Spells\\Other\\Incinerate\\IncinerateBuff.mdl",
+    "Targetattach": "chest",
+    "Bufftip": "燃灰",
+    "Buffubertip": "\"这个单位处于了烈焰之中，在死去之后会对周围的单位造成一定的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

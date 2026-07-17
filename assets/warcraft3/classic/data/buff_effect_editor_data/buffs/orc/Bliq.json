@@ -1,0 +1,72 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bliq",
+  "displayName": "液体炸弹",
+  "identity": {
+    "baseCode": "Bliq",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\LiquidFire\\Liquidfire.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\LiquidFire\\Liquidfire.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/liquidfire/liquidfire.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNLiquidFire.blp",
+        "resolvedPath": "ReplaceableTextures\\PassiveButtons\\PASBTNLiquidFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnliquidfire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "LiquidFireLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aliq",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "Bliq",
+    "code": "Bliq",
+    "comments": "LiquidFire             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\PassiveButtons\\PASBTNLiquidFire.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\LiquidFire\\Liquidfire.mdl",
+    "Effectsoundlooped": "LiquidFireLoop",
+    "EditorName": "液体炸弹"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

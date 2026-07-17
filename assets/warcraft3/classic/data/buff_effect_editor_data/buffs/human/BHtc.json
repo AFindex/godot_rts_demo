@@ -1,0 +1,89 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BHtc",
+  "displayName": "BHtc",
+  "identity": {
+    "baseCode": "BHtc",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/stasistrap/stasistotemtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThunderclap.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThunderClap.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnthunderclap.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHtc",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHtc",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHtc",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    }
+  ],
+  "editorData": {
+    "alias": "BHtc",
+    "code": "BHtc",
+    "comments": "ThunderClap            ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNThunderclap.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "雷霆一击",
+    "Buffubertip": "\"该单位受到了雷霆一击的攻击，其移动速度和攻击速度都会减慢。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

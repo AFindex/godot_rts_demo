@@ -1,0 +1,51 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bmec",
+  "displayName": "Bmec",
+  "identity": {
+    "baseCode": "Bmec",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Amec",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bmec",
+    "code": "Bmec",
+    "comments": "MechanicalCritter      ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Bufftip": "机械类的小玩艺",
+    "Buffubertip": "\"召唤出来的单位会受到驱逐魔法的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt"
+    ]
+  }
+}

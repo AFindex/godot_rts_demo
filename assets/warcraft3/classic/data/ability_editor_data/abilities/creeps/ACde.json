@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndevourmagic.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DevourMagic\\DevourMagicBirthMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DevourMagic\\DevourMagicBirthMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/devourmagic/devourmagicbirthmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -52,6 +60,8 @@
           "E": "180",
           "F": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,97 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUsl",
+  "displayName": "BUsl",
+  "identity": {
+    "baseCode": "BUsl",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Sleep\\SleepTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Sleep\\SleepTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/sleep/sleeptarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": [],
+    "effectSoundLooped": "CreepSleepSnoreLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUsl",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUsl",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BUsl",
+    "code": "BUsl",
+    "comments": "Sleep                  ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\Sleep\\SleepTarget.mdl",
+    "Targetattach": "overhead",
+    "Effectsoundlooped": "CreepSleepSnoreLoop",
+    "Bufftip": "睡眠",
+    "Buffubertip": "\"该单位正在睡眠，因此其不能移动，攻击或者施放魔法。如果遭到攻击就会自动苏醒过来。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

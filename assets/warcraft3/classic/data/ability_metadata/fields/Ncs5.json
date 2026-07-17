@@ -1,0 +1,61 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Ncs5",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 5,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_NCS5",
+  "displayName": "建筑物攻击伤害参数",
+  "sort": "x0a005",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 10,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "ANhs",
+      "ANcs",
+      "ANc1",
+      "ANc2",
+      "ANc3"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Ncs5",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "5",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_NCS5",
+    "sort": "x0a005",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "10",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "ANhs,ANcs,ANc1,ANc2,ANc3",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

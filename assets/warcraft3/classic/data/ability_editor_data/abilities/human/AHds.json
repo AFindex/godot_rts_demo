@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndivineintervention.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDivineIntervention.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDivineIntervention.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndivineintervention.png"
+      }
     ]
   },
   "summary": {
@@ -41,6 +49,8 @@
         "data": {
           "A": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHds"
         ],
@@ -62,6 +72,8 @@
         "data": {
           "A": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHds"
         ],
@@ -83,6 +95,8 @@
         "data": {
           "A": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHds"
         ],

@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnlesserclaritypotion.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIma\\AImaTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIma\\AImaTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aima/aimatarget.glb"
+      }
     ]
   },
   "summary": {
@@ -40,6 +48,8 @@
           "D": "1",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BIrg",
           "BIrl",

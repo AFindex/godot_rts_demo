@@ -12,7 +12,32 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\WarStomp\\WarStompCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\WarStomp\\WarStompCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/warstomp/warstompcaster.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\Mortar\\MortarMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\Mortar\\MortarMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/mortar/mortarmissile.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Objects\\Spawnmodels\\Human\\HumanLargeDeathExplode\\HumanLargeDeathExplode.mdl",
+        "resolvedPath": "Objects\\Spawnmodels\\Human\\HumanLargeDeathExplode\\HumanLargeDeathExplode.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/objects/spawnmodels/human/humanlargedeathexplode/humanlargedeathexplode.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +50,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

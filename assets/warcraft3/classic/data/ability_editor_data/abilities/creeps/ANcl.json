@@ -20,6 +20,30 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndeathpact.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DeathPact\\DeathPactTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DeathPact\\DeathPactTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/deathpact/deathpacttarget.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DeathPact\\DeathPactTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DeathPact\\DeathPactTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/deathpact/deathpacttarget.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DeathPact\\DeathPactTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DeathPact\\DeathPactTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/deathpact/deathpacttarget.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +68,8 @@
           "E": "1",
           "F": "channel"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -66,6 +92,8 @@
           "D": "0.98",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -88,6 +116,8 @@
           "D": "0.98",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

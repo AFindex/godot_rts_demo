@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnscatterrockets.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\RocketMissile\\RocketMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\RocketMissile\\RocketMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/rocketmissile/rocketmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,11 @@
           "B": "630",
           "C": "9"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rhrt"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,96 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bapl",
+  "displayName": "Bapl",
+  "identity": {
+    "baseCode": "Bapl",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Units\\Undead\\PlagueCloud\\PlagueCloudtarget.mdl",
+        "resolvedPath": "Units\\Undead\\PlagueCloud\\PlagueCloudTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/units/undead/plaguecloud/plaguecloudtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnplaguecloud.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "head"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aap1",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "Aap2",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "Aap3",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Aap4",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bapl",
+    "code": "Bapl",
+    "comments": "AuraPlague             ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNPlagueCloud.blp",
+    "Targetart": "Units\\Undead\\PlagueCloud\\PlagueCloudtarget.mdl",
+    "Targetattach": "head",
+    "Bufftip": "疾病",
+    "Spelldetail": "2",
+    "Buffubertip": "\"该单位受到了疾病云雾的攻击，因此会在短时间内持续地受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

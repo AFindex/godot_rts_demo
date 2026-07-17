@@ -20,6 +20,42 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnstormearth&fire.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStormEarth&Fire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStormEarth&Fire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstormearth&fire.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/polymorph/polymorphdoneground.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Units\\Creeps\\FirePandarenBrewmaster\\FirePandarenBrewmaster_Missile.mdl",
+        "resolvedPath": "Units\\Creeps\\FirePandarenBrewmaster\\FirePandarenBrewmaster_Missile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/creeps/firepandarenbrewmaster/firepandarenbrewmaster_missile.glb"
+      },
+      {
+        "requestedPath": "Units\\Creeps\\StormPandarenBrewmaster\\StormPandarenBrewmaster_Missile.mdl",
+        "resolvedPath": "Units\\Creeps\\StormPandarenBrewmaster\\StormPandarenBrewmaster_Missile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/creeps/stormpandarenbrewmaster/stormpandarenbrewmaster_missile.glb"
+      },
+      {
+        "requestedPath": "Units\\Creeps\\EarthPandarenBrewmaster\\EarthPandarenBrewmaster_Missile.mdl",
+        "resolvedPath": "Units\\Creeps\\EarthPandarenBrewmaster\\EarthPandarenBrewmaster_Missile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/creeps/earthpandarenbrewmaster/earthpandarenbrewmaster_missile.glb"
+      }
     ]
   },
   "summary": {
@@ -39,6 +75,8 @@
         "data": {
           "A": "npn1,npn2,npn3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNef"
         ],
@@ -59,6 +97,8 @@
         "data": {
           "A": "npn4,npn5,npn6"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNef"
         ],

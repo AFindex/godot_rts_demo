@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btntome.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIim\\AIimTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIim\\AIimTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aiim/aiimtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -38,6 +46,8 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

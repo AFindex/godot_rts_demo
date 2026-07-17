@@ -46,6 +46,8 @@
           "B": "0",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bpig"
         ],

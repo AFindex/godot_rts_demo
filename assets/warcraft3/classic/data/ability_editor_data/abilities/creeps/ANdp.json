@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndizzy.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDizzy.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDizzy.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndizzy.png"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Demon\\DarkPortal\\DarkPortalTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Demon\\DarkPortal\\DarkPortalTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/demon/darkportal/darkportaltarget.glb"
+      }
     ]
   },
   "summary": {
@@ -41,6 +57,8 @@
           "B": "3",
           "C": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -61,6 +79,8 @@
           "B": "3",
           "C": "6"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -81,6 +101,8 @@
           "B": "5",
           "C": "6"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

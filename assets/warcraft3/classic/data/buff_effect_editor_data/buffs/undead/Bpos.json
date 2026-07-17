@@ -1,0 +1,73 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bpos",
+  "displayName": "Bpos",
+  "identity": {
+    "baseCode": "Bpos",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Possession\\PossessionTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Possession\\PossessionTarget.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/undead/possession/possessiontarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPossession.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPossession.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpossession.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aps2",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    }
+  ],
+  "editorData": {
+    "alias": "Bpos",
+    "code": "Bpos",
+    "comments": "Possession",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNPossession.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\Possession\\PossessionTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "占据",
+    "Buffubertip": "\"该单位被占据了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt"
+    ]
+  }
+}

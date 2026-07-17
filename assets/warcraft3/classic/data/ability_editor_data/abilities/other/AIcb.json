@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofcorruption.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbCorruption\\OrbCorruption.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbCorruption\\OrbCorruption.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbcorruption/orbcorruption.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbCorruption\\OrbCorruptionSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbCorruption\\OrbCorruptionSpecialArt.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbcorruption/orbcorruptionspecialart.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbCorruption\\OrbCorruptionMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbCorruption\\OrbCorruptionMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbcorruption/orbcorruptionmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -42,6 +66,8 @@
           "B": "5",
           "E": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BIcb"
         ],

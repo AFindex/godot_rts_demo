@@ -12,7 +12,24 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\Bolt\\BoltImpact.mdl",
+        "resolvedPath": "Abilities\\Weapons\\Bolt\\BoltImpact.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/bolt/boltimpact.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\ChimaeraLightningMissile\\ChimaeraLightningMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\ChimaeraLightningMissile\\ChimaeraLightningMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/chimaeralightningmissile/chimaeralightningmissile.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -35,6 +52,8 @@
           "A": "0.25",
           "B": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnsilence.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSilence.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsilence.png"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Silence\\SilenceAreaBirth.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Silence\\SilenceAreaBirth.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/silence/silenceareabirth.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +65,8 @@
           "C": "0",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNsi"
         ],
@@ -79,6 +97,8 @@
           "C": "0",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNsi"
         ],
@@ -109,6 +129,8 @@
           "C": "0",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNsi"
         ],

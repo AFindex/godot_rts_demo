@@ -36,6 +36,11 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [
+          "Repb"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

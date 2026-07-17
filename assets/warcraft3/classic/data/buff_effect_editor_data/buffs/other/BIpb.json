@@ -1,0 +1,57 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIpb",
+  "displayName": "BIpb",
+  "identity": {
+    "baseCode": "BIpb",
+    "race": "other",
+    "effect": false,
+    "editorVisible": null,
+    "profileOnly": true
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdl",
+        "resolvedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/poisonsting/poisonstingtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfVenom.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfVenom.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofvenom.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Apo2",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {},
+  "profile": {
+    "Spelldetail": "2",
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNOrbOfVenom.blp",
+    "Targetart": "Abilities\\Weapons\\PoisonSting\\PoisonStingTarget.mdl"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

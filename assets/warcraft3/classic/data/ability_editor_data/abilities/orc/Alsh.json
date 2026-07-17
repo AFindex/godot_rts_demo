@@ -45,6 +45,11 @@
         "data": {
           "A": "20"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rost"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Blsh",
           "Blsa"

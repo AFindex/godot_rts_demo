@@ -1,0 +1,139 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUfa",
+  "displayName": "BUfa",
+  "identity": {
+    "baseCode": "BUfa",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\FrostArmor\\FrostArmorTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\FrostArmor\\FrostArmorTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/frostarmor/frostarmortarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\FrostArmor\\FrostArmorDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\FrostArmor\\FrostArmorDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/frostarmor/frostarmordamage.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFrostArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFrostArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfrostarmor.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest"
+    ],
+    "specialAttachments": [
+      "chest"
+    ]
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUfa",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUfa",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUfa",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACfa",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AUfu",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUfu",
+      "level": 2,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "AUfu",
+      "level": 3,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACf2",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACfu",
+      "level": 1,
+      "kind": "buff",
+      "race": "naga"
+    }
+  ],
+  "editorData": {
+    "alias": "BUfa",
+    "code": "BUfa",
+    "comments": "FrostArmor             ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNFrostArmor.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\FrostArmor\\FrostArmorTarget.mdl",
+    "Targetattach": "chest",
+    "Specialart": "Abilities\\Spells\\Undead\\FrostArmor\\FrostArmorDamage.mdl",
+    "Specialartattach": "chest",
+    "Bufftip": "霜冻护甲",
+    "Spelldetail": "1",
+    "Specialattach": "chest",
+    "Buffubertip": "\"该单位有着霜冻护甲; 因此其护甲加强了，攻击它的近战单位也会被在短时间内减速。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

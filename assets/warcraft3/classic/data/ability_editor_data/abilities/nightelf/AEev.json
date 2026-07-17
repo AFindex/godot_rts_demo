@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnevasion.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEvasion.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEvasion.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnevasion.png"
+      }
     ]
   },
   "summary": {
@@ -37,6 +45,8 @@
         "data": {
           "A": "0.1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -49,6 +59,8 @@
         "data": {
           "A": "0.2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -61,6 +73,8 @@
         "data": {
           "A": "0.3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,68 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XEsf",
+  "displayName": "群星坠落(效果)",
+  "identity": {
+    "baseCode": "XEsf",
+    "race": "nightelf",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Starfall\\StarfallCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Starfall\\StarfallCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/starfall/starfallcaster.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEsf",
+      "level": 1,
+      "kind": "effect",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEsb",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XEsf",
+    "code": "XEsf",
+    "comments": "Starfall             ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\NightElf\\Starfall\\StarfallCaster.mdl",
+    "EditorName": "群星坠落(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

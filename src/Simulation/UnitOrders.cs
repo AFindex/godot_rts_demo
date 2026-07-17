@@ -16,7 +16,10 @@ public enum UnitOrderKind : byte
     ReturnCargo,
     FollowFriendly,
     ActivateConcealment,
-    DeactivateConcealment
+    DeactivateConcealment,
+    CastAbility,
+    LearnAbility,
+    SetAbilityAutoCast
 }
 
 public readonly record struct UnitOrder(
@@ -35,16 +38,26 @@ public static class UnitOrderContract
         float.IsFinite(order.TargetPosition.Y) &&
         (order.Kind is UnitOrderKind.AttackTarget or UnitOrderKind.FollowFriendly
             ? order.TargetUnit >= 0
-            : order.TargetUnit == -1) &&
+            : order.Kind == UnitOrderKind.CastAbility
+                ? order.TargetUnit >= -1
+                : order.Kind == UnitOrderKind.SetAbilityAutoCast
+                    ? order.TargetUnit is 0 or 1
+                : order.TargetUnit == -1) &&
         (order.Kind is UnitOrderKind.AttackBuilding or
             UnitOrderKind.ResumeConstruction or UnitOrderKind.Move
             ? order.TargetBuilding >= 0
                 || order.Kind == UnitOrderKind.Move &&
                    order.TargetBuilding == -1
-            : order.TargetBuilding == -1) &&
-        (order.Kind == UnitOrderKind.GatherResource
+            : order.Kind == UnitOrderKind.CastAbility
+                ? order.TargetBuilding >= -1
+                : order.TargetBuilding == -1) &&
+        (order.Kind is UnitOrderKind.GatherResource or
+            UnitOrderKind.CastAbility or UnitOrderKind.LearnAbility or
+            UnitOrderKind.SetAbilityAutoCast
             ? order.TargetResourceNode >= 0
             : order.TargetResourceNode == -1) &&
+        (order.Kind != UnitOrderKind.CastAbility ||
+         order.TargetUnit == -1 || order.TargetBuilding == -1) &&
         order.SequenceId >= 0;
 }
 

@@ -35,7 +35,14 @@
         "manaCost": 0,
         "range": 100,
         "data": {},
+        "unitIds": [
+          "hbar",
+          "hbar",
+          "hbar",
+          "hbar"
+        ],
         "summonedUnitId": "hbar,hbar,hbar,hbar",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

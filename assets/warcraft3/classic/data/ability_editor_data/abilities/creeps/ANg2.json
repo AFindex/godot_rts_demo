@@ -20,6 +20,14 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnrobogoblin.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNROBOGOBLIN.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNROBOGOBLIN.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrobogoblin.png"
+      }
     ]
   },
   "summary": {
@@ -42,7 +50,11 @@
           "E": "9",
           "F": "3"
         },
+        "unitIds": [
+          "Nrob"
+        ],
         "summonedUnitId": "Nrob",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

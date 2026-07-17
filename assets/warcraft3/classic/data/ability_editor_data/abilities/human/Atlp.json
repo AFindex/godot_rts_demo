@@ -42,6 +42,11 @@
         "manaCost": 0,
         "range": 80,
         "data": {},
+        "unitIds": [],
+        "requirements": [
+          "hcas"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

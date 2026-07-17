@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnbanish.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBanish.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbanish.png"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "A": "0.5",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHbn"
         ],
@@ -70,6 +80,8 @@
           "A": "0.5",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHbn"
         ],
@@ -95,6 +107,8 @@
           "A": "0.5",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHbn"
         ],

@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnensnare.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Ensnare\\EnsnareMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Ensnare\\ensnaremissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/ensnare/ensnaremissile.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +54,11 @@
           "B": "200",
           "C": "128"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rnen"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bena",
           "Beng"

@@ -1083,6 +1083,8 @@ public sealed class TerrainTopologyRoutePlanner : IGroupRoutePlanner
         _topology = topology;
     }
 
+    public TerrainNavigationTopologySnapshot Topology => _topology;
+
     public GroupRoutePlan Plan(Vector2 start, Vector2 goal, float agentRadius)
     {
         var movementClass = MovementClearance.FromPhysicalRadius(

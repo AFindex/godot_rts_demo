@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncoldarrowson.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNColdArrows.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNColdArrows.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncoldarrows.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\ColdArrow\\ColdArrowMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\ColdArrow\\ColdArrowMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/coldarrow/coldarrowmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "C": "0.3",
           "D": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHca",
           "Bcsd",
@@ -75,6 +93,8 @@
           "C": "0.5",
           "D": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHca",
           "Bcsd",
@@ -103,6 +123,8 @@
           "C": "0.7",
           "D": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHca",
           "Bcsd",

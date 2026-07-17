@@ -1,0 +1,139 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIrg",
+  "displayName": "BIrg",
+  "identity": {
+    "baseCode": "BIrg",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/anrl/anrltarget.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/anrm/anrmtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGreaterRejuvScroll.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGreaterRejuvScroll.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngreaterrejuvscroll.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "targetAttachmentCount": 2,
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIrl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIpr",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIsl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIpl",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp1",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp2",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp3",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp4",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp5",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "AIp6",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIrg",
+    "code": "BIrg",
+    "comments": "Regeneration           ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNGreaterRejuvScroll.blp",
+    "Targetart": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdl,Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdl",
+    "Targetattach": "origin",
+    "Targetattach1": "origin",
+    "Targetattachcount": "2",
+    "Bufftip": "生命恢复",
+    "Buffubertip": "\"该单位将会逐渐恢复生命值和魔力值。\"",
+    "EditorSuffix": "(物品)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

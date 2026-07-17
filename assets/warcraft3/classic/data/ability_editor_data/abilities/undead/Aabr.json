@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnregenerationaura.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\RegenerationAura\\ObsidianRegenAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\RegenerationAura\\ObsidianRegenAura.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/regenerationaura/obsidianregenaura.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +56,8 @@
           "A": "0.004",
           "B": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Babr"
         ],

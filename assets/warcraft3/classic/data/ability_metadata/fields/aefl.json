@@ -1,0 +1,53 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "aefl",
+  "field": "Effectsoundlooped",
+  "storage": "Profile",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "sound",
+  "displayNameKey": "WESTRING_AEVAL_AEFL",
+  "displayName": "音效(循环)",
+  "sort": "e4b01",
+  "valueType": "soundLabel",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "aefl",
+    "field": "Effectsoundlooped",
+    "slk": "Profile",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "sound",
+    "displayName": "WESTRING_AEVAL_AEFL",
+    "sort": "e4b01",
+    "type": "soundLabel",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "1",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

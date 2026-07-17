@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingwave.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingWave.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingWave.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingwave.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\HealingWave\\HealingWaveTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\HealingWave\\HealingWaveTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/healingwave/healingwavetarget.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +66,8 @@
           "B": "3",
           "C": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -76,6 +94,8 @@
           "B": "4",
           "C": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -102,6 +122,8 @@
           "B": "5",
           "C": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

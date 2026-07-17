@@ -1,0 +1,78 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bmfl",
+  "displayName": "Bmfl",
+  "identity": {
+    "baseCode": "Bmfl",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareBase.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareBase.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/manaflare/manaflarebase.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManaFlare.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManaFlare.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanaflare.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": [],
+    "effectSoundLooped": "ManaFlareLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Amfl",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    }
+  ],
+  "editorData": {
+    "alias": "Bmfl",
+    "code": "Bmfl",
+    "comments": "ManaFlare              ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNManaFlare.blp",
+    "Targetart": "Abilities\\Spells\\Human\\ManaFlare\\ManaFlareBase.mdl",
+    "Targetattach": "overhead",
+    "Effectsoundlooped": "ManaFlareLoop",
+    "Bufftip": "魔力之焰",
+    "Buffubertip": "\"该单位身上有魔力之焰的作用;周围任何敌方单位施放魔法都会受到伤害。\"",
+    "LightningEffect": "MFPB"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "aeff",
+  "field": "EfctID",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "stats",
+  "displayNameKey": "WESTRING_AEVAL_AEFF",
+  "displayName": "特效",
+  "sort": "g0a07",
+  "valueType": "effectList",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "aeff",
+    "field": "EfctID",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "stats",
+    "displayName": "WESTRING_AEVAL_AEFF",
+    "sort": "g0a07",
+    "type": "effectList",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "1",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtndevotion.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDevotion.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDevotion.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndevotion.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DevotionAura\\DevotionAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DevotionAura\\DevotionAura.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/devotionaura/devotionaura.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "A": "1.5",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHad"
         ],
@@ -72,6 +90,8 @@
           "A": "3",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHad"
         ],
@@ -97,6 +117,8 @@
           "A": "4.5",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHad"
         ],

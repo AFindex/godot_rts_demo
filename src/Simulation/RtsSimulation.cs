@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace RtsDemo.Simulation;
 
-public sealed class RtsSimulation : ICombatMovementDriver
+public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 {
     private const string ActiveConcealmentAbilityId = "active-concealment";
     private const string ActiveRevealAbilityId = "active-reveal";
@@ -102,6 +102,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Units = new UnitStore(capacity);
         Combat = new CombatStore(capacity);
         Concealment = new UnitConcealmentController(Units, Combat);
+        Abilities = new AbilitySystem(capacity);
         CombatEvents = new CombatEventStream();
         GameplayEvents = new GameplayEventStream();
         AbilityEvents = new AbilityEventStream();
@@ -137,7 +138,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         _chokeController = chokeController;
         _combatSystem = new CombatSystem(
             Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit,
-            Diplomacy.IsEnemy, CanUnitAttack);
+            Diplomacy.IsEnemy, CanUnitAttack, CanUnitTakeDamage);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _economyFinishDropOffMovement = FinishEconomyDropOffMovement;
@@ -154,6 +155,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public UnitStore Units { get; }
     public CombatStore Combat { get; }
     public UnitConcealmentController Concealment { get; }
+    public AbilitySystem Abilities { get; }
     public CombatProjectileSystem CombatProjectiles => _combatSystem.Projectiles;
     public CombatEventStream CombatEvents { get; }
     public GameplayEventStream GameplayEvents { get; }
@@ -195,6 +197,48 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         if (_pathProvider is GridPathProvider gridPathProvider)
             gridPathProvider.WarmConnectivitySnapshots();
+    }
+
+    /// <summary>
+    /// Captures the live grid-path connectivity layer for presentation-only
+    /// diagnostics. It can refresh incremental navigation data and should only
+    /// be called by an explicitly enabled navigation debugger.
+    /// </summary>
+    public NavigationConnectivitySnapshot?
+        GetNavigationConnectivitySnapshotForDiagnostics(
+            MovementClass movementClass) =>
+        _pathProvider is GridPathProvider gridPathProvider
+            ? gridPathProvider.GetConnectivitySnapshotForDiagnostics(
+                movementClass)
+            : null;
+
+    public PathRequest[] CapturePendingPathRequestsForDiagnostics() =>
+        _pathRequests.ToArray();
+
+    /// <summary>
+    /// Runs the authoritative low-level path provider without issuing a unit
+    /// order. Intended for explicit offline diagnostics and automated map
+    /// audits only.
+    /// </summary>
+    public Vector2[] FindNavigationPathForDiagnostics(
+        Vector2 start,
+        Vector2 goal,
+        float navigationRadius)
+    {
+        if (!float.IsFinite(start.X) || !float.IsFinite(start.Y) ||
+            !float.IsFinite(goal.X) || !float.IsFinite(goal.Y) ||
+            !float.IsFinite(navigationRadius) || navigationRadius <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(navigationRadius));
+        }
+        return _pathProvider.FindPath(start, goal, navigationRadius);
+    }
+
+    internal void RefreshNavigationAfterDiagnosticsBootstrap(
+        SimRect changedBounds)
+    {
+        if (_groupRoutePlanner is IGroupRouteNavigationChangeSink routeSink)
+            routeSink.OnNavigationChanged(changedBounds);
     }
 
     public ulong ComputeStateHash() => SimulationStateHasher.Compute(this);
@@ -344,6 +388,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             DynamicOccupancy = World.DynamicOccupancy.CaptureRuntimeState(),
             Units = units,
             Combat = combat,
+            Abilities = Abilities.CaptureRuntimeState(Units.Count),
             CombatProjectiles = CombatProjectiles.CaptureRuntimeState(),
             Economy = Economy.CaptureRuntimeState(Units.Count),
             Diplomacy = Diplomacy.CaptureRuntimeState(),
@@ -376,6 +421,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
         Units.CopyRuntimeStateFrom(snapshot.Units);
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
+        Abilities.RestoreRuntimeState(snapshot.Abilities, Units.Count);
         CombatProjectiles.RestoreRuntimeState(snapshot.CombatProjectiles);
         CombatEvents.Reset();
         GameplayEvents.Reset();
@@ -387,6 +433,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
             snapshot.Production, Construction, Economy, Units);
         Technology.RestoreRuntimeState(
             snapshot.Technology, Construction, Economy.Players);
+        Abilities.RefreshDerivedState(this, Units, Combat);
         Visibility.RestoreRuntimeState(snapshot.Visibility);
         Visibility.Update(Units, Combat, Construction);
         Match.RestoreRuntimeState(snapshot.Match, Economy.Players, Diplomacy);
@@ -594,6 +641,70 @@ public sealed class RtsSimulation : ICombatMovementDriver
             case UnitOrderKind.DeactivateConcealment:
                 IssueConcealment(command.Units, activate: false, command.Queued);
                 break;
+            case UnitOrderKind.CastAbility:
+            {
+                if (command.Units.Length != 1 ||
+                    (uint)command.TargetResourceNode >=
+                    (uint)Abilities.Catalog.Count)
+                    throw new InvalidOperationException(
+                        "Recorded ability command is invalid.");
+                var caster = command.Units[0];
+                var ability = Abilities.Catalog.Ability(
+                    command.TargetResourceNode);
+                var target = command.TargetUnit >= 0
+                    ? AbilityCastTarget.Unit(
+                        command.TargetUnit, command.TargetPosition)
+                    : command.TargetBuilding >= 0
+                        ? AbilityCastTarget.Building(
+                            new GameplayBuildingId(command.TargetBuilding),
+                            command.TargetPosition)
+                        : ability.Activation is AbilityActivationKind.Instant or
+                            AbilityActivationKind.Toggle
+                            ? AbilityCastTarget.Self(
+                                caster, Units.Positions[caster])
+                            : AbilityCastTarget.Point(command.TargetPosition);
+                var cast = IssueAbility(
+                    Combat.Teams[caster], caster,
+                    command.TargetResourceNode, target);
+                if (!cast.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Replay ability cast failed with {cast.Code}.");
+                break;
+            }
+            case UnitOrderKind.LearnAbility:
+            {
+                if (command.Units.Length != 1 ||
+                    (uint)command.TargetResourceNode >=
+                    (uint)Abilities.Catalog.Count)
+                    throw new InvalidOperationException(
+                        "Recorded ability learn command is invalid.");
+                var caster = command.Units[0];
+                var learned = IssueLearnAbility(
+                    Combat.Teams[caster], caster,
+                    command.TargetResourceNode);
+                if (!learned.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Replay ability learn failed with {learned.Code}.");
+                break;
+            }
+            case UnitOrderKind.SetAbilityAutoCast:
+            {
+                if (command.Units.Length != 1 ||
+                    (uint)command.TargetResourceNode >=
+                    (uint)Abilities.Catalog.Count ||
+                    command.TargetUnit is not (0 or 1))
+                    throw new InvalidOperationException(
+                        "Recorded ability auto-cast command is invalid.");
+                var caster = command.Units[0];
+                var changed = IssueSetAbilityAutoCast(
+                    Combat.Teams[caster], caster,
+                    command.TargetResourceNode,
+                    command.TargetUnit == 1);
+                if (!changed.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Replay auto-cast change failed with {changed.Code}.");
+                break;
+            }
             default:
                 throw new InvalidOperationException(
                     $"Unsupported recorded command {command.Kind}.");
@@ -1004,6 +1115,18 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Combat.Register(
             unit, team, position, combatProfile, perception,
             concealmentCapability);
+        Abilities.RegisterUnboundUnit(unit, Units, Combat);
+        return unit;
+    }
+
+    public int AddUnit(
+        Vector2 position,
+        UnitTypeProfile type,
+        int team)
+    {
+        var unit = AddUnit(
+            position, type.Movement, team, type.Combat, type.Perception);
+        Abilities.BindUnitType(unit, type.Id);
         return unit;
     }
 
@@ -1482,6 +1605,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
     public bool DamageUnit(int unit, float damage)
     {
         if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit] ||
+            Abilities.HasStatus(unit, AbilityStatusFlags.Invulnerable) ||
             !float.IsFinite(damage) || damage <= 0f)
             return false;
         Combat.Health[unit] = MathF.Max(0f, Combat.Health[unit] - damage);
@@ -1494,6 +1618,110 @@ public sealed class RtsSimulation : ICombatMovementDriver
         Combat.TargetKinds[unit] = CombatTargetKind.None;
         ((ICombatMovementDriver)this).Kill(unit);
         return true;
+    }
+
+    public AbilityCommandResult IssueAbility(
+        int playerId,
+        int caster,
+        int abilityId,
+        in AbilityCastTarget target)
+    {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new AbilityCommandResult(matchBlock switch
+            {
+                MatchCommandBlock.Completed => AbilityCommandCode.MatchCompleted,
+                MatchCommandBlock.NotParticipant => AbilityCommandCode.NotParticipant,
+                _ => AbilityCommandCode.PlayerDefeated
+            }, caster, abilityId);
+        }
+        var result = Abilities.Issue(
+            playerId, caster, abilityId, target, Metrics.Tick,
+            this, AbilityEvents);
+        if (result.Succeeded)
+        {
+            Span<int> unit = stackalloc int[1];
+            unit[0] = caster;
+            _commandRecorder?.Record(
+                Metrics.Tick,
+                unit,
+                new UnitOrder(
+                    UnitOrderKind.CastAbility,
+                    target.Position,
+                    target.Kind == AbilityTargetKind.Unit ? target.Id : -1,
+                    target.Kind == AbilityTargetKind.Building ? target.Id : -1,
+                    abilityId),
+                queued: false);
+        }
+        return result;
+    }
+
+    public AbilityCommandResult IssueLearnAbility(
+        int playerId,
+        int caster,
+        int abilityId)
+    {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new AbilityCommandResult(matchBlock switch
+            {
+                MatchCommandBlock.Completed => AbilityCommandCode.MatchCompleted,
+                MatchCommandBlock.NotParticipant => AbilityCommandCode.NotParticipant,
+                _ => AbilityCommandCode.PlayerDefeated
+            }, caster, abilityId);
+        }
+        var result = Abilities.Learn(playerId, caster, abilityId, this);
+        if (result.Succeeded)
+        {
+            Span<int> unit = stackalloc int[1];
+            unit[0] = caster;
+            _commandRecorder?.Record(
+                Metrics.Tick,
+                unit,
+                new UnitOrder(
+                    UnitOrderKind.LearnAbility,
+                    Vector2.Zero,
+                    TargetResourceNode: abilityId),
+                queued: false);
+        }
+        return result;
+    }
+
+    public AbilityCommandResult IssueSetAbilityAutoCast(
+        int playerId,
+        int caster,
+        int abilityId,
+        bool enabled)
+    {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new AbilityCommandResult(matchBlock switch
+            {
+                MatchCommandBlock.Completed => AbilityCommandCode.MatchCompleted,
+                MatchCommandBlock.NotParticipant => AbilityCommandCode.NotParticipant,
+                _ => AbilityCommandCode.PlayerDefeated
+            }, caster, abilityId);
+        }
+        var result = Abilities.SetAutoCast(
+            playerId, caster, abilityId, enabled, this);
+        if (result.Succeeded)
+        {
+            Span<int> unit = stackalloc int[1];
+            unit[0] = caster;
+            _commandRecorder?.Record(
+                Metrics.Tick,
+                unit,
+                new UnitOrder(
+                    UnitOrderKind.SetAbilityAutoCast,
+                    Vector2.Zero,
+                    TargetUnit: enabled ? 1 : 0,
+                    TargetResourceNode: abilityId),
+                queued: false);
+        }
+        return result;
     }
 
     public ProductionCommandResult IssueProduction(
@@ -2112,7 +2340,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         for (var index = 0; index < units.Length; index++)
         {
-            if (!Concealment.CanMove(units[index]))
+            if (!Concealment.CanMove(units[index]) ||
+                !Abilities.CanMove(units[index]))
                 return false;
         }
         return true;
@@ -2122,7 +2351,8 @@ public sealed class RtsSimulation : ICombatMovementDriver
     {
         for (var index = 0; index < units.Length; index++)
         {
-            if (!Concealment.CanAttack(units[index]))
+            if (!Concealment.CanAttack(units[index]) ||
+                !Abilities.CanAttack(units[index]))
                 return false;
         }
         return true;
@@ -2130,7 +2360,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     private bool CanUnitAttack(int unit)
     {
-        if (!Concealment.CanAttack(unit) ||
+        if (!Concealment.CanAttack(unit) || !Abilities.CanAttack(unit) ||
             Construction.SuppressesBuilderCombat(unit))
             return false;
         if (!Economy.IsGatherer(unit))
@@ -2138,6 +2368,11 @@ public sealed class RtsSimulation : ICombatMovementDriver
         return Economy.Worker(unit).State is
             WorkerEconomyState.None or WorkerEconomyState.Idle;
     }
+
+    private bool CanUnitTakeDamage(int unit) =>
+        !Abilities.HasStatus(
+            unit, AbilityStatusFlags.Invulnerable |
+                  AbilityStatusFlags.Banished);
 
     private MatchCommandBlock MatchCommandBlockFor(int playerId)
     {
@@ -2594,6 +2829,26 @@ public sealed class RtsSimulation : ICombatMovementDriver
         }
     }
 
+    private void FreezeAbilityRestrictedUnits()
+    {
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit] || Abilities.CanMove(unit)) continue;
+            Units.Paths[unit] = null;
+            Units.RouteWaypoints[unit] = [];
+            Units.PathPending[unit] = false;
+            Units.Modes[unit] = UnitMoveMode.Hold;
+            Units.Velocities[unit] = Vector2.Zero;
+            Units.PreferredVelocities[unit] = Vector2.Zero;
+            Units.NextVelocities[unit] = Vector2.Zero;
+            Units.SlotTargets[unit] = Units.Positions[unit];
+            Units.MoveGoals[unit] = Units.Positions[unit];
+            Units.ActiveChokeIds[unit] = -1;
+            Units.ChokePhases[unit] = ChokePhase.None;
+            Units.ChokeAdmitted[unit] = false;
+        }
+    }
+
     private void IssueOrder(
         ReadOnlySpan<int> unitIndices,
         UnitOrder order,
@@ -2612,6 +2867,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
         {
             ValidateUnitIndex(unitIndices[index]);
             ValidateLivingUnit(unitIndices[index]);
+            if (!_issuingSystemOrder)
+                Abilities.CancelCaster(
+                    unitIndices[index], Metrics.Tick,
+                    AbilityEndReason.Canceled, this, AbilityEvents);
         }
 
         if (!_issuingSystemOrder)
@@ -2992,7 +3251,10 @@ public sealed class RtsSimulation : ICombatMovementDriver
         phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         UpdateProducedUnitRallyFollowers();
         Concealment.Update(delta, _concealmentTransitionCompleted);
+        Abilities.Update(
+            delta, Metrics.Tick, this, Units, Combat, AbilityEvents);
         FreezeConcealmentRestrictedUnits();
+        FreezeAbilityRestrictedUnits();
         for (var unit = 0; unit < Units.Count; unit++)
             _unitCollisionSuppressed[unit] =
                 Economy.SuppressesUnitCollision(unit) ||
@@ -3013,9 +3275,12 @@ public sealed class RtsSimulation : ICombatMovementDriver
             Visibility.Update(Units, Combat, Construction);
         else
             Visibility.UpdateDetection(Units, Combat);
+        Abilities.ApplyVisibilitySources(Visibility);
         Metrics.VisibilityDetectionMilliseconds =
             ElapsedMilliseconds(detectionStart);
         _combatSystem.Update(delta, Metrics.Tick);
+        Abilities.ProcessCombatEvents(
+            Metrics.Tick, CombatEvents, this, AbilityEvents);
         Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.CombatAllocatedBytes =
             GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
@@ -3115,6 +3380,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         phaseStart = Stopwatch.GetTimestamp();
         phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         Visibility.Update(Units, Combat, Construction);
+        Abilities.ApplyVisibilitySources(Visibility);
         Metrics.VisibilityMilliseconds = ElapsedMilliseconds(phaseStart);
         if (_detailedProfilingEnabled)
         {
@@ -3152,8 +3418,7 @@ public sealed class RtsSimulation : ICombatMovementDriver
         int playerId,
         Vector2 position)
     {
-        var unit = AddUnit(
-            position, type.Movement, playerId, type.Combat, type.Perception);
+        var unit = AddUnit(position, type, playerId);
         if (type.IsWorker) Economy.RegisterWorker(unit, playerId);
         return unit;
     }
@@ -5779,6 +6044,9 @@ public sealed class RtsSimulation : ICombatMovementDriver
 
     void ICombatMovementDriver.Kill(int unit)
     {
+        Abilities.CancelCaster(
+            unit, Metrics.Tick, AbilityEndReason.CasterDied,
+            this, AbilityEvents);
         var concealmentPhase = Combat.ConcealmentPhases[unit];
         if (concealmentPhase is UnitConcealmentPhase.Activating or
             UnitConcealmentPhase.Deactivating)
@@ -5811,6 +6079,162 @@ public sealed class RtsSimulation : ICombatMovementDriver
         RejectPendingConstructionsForUnit(unit);
         CommandQueues.ClearPending(unit);
         CommandQueues.HasActiveOrders[unit] = false;
+    }
+
+    int IAbilityRuntimeWorld.AbilityUnitCount => Units.Count;
+
+    bool IAbilityRuntimeWorld.AbilityUnitExists(int unit) =>
+        (uint)unit < (uint)Units.Count;
+
+    bool IAbilityRuntimeWorld.AbilityUnitAlive(int unit) =>
+        (uint)unit < (uint)Units.Count && Units.Alive[unit];
+
+    int IAbilityRuntimeWorld.AbilityUnitOwner(int unit) => Combat.Teams[unit];
+
+    Vector2 IAbilityRuntimeWorld.AbilityUnitPosition(int unit) =>
+        Units.Positions[unit];
+
+    float IAbilityRuntimeWorld.AbilityUnitRadius(int unit) => Units.Radii[unit];
+
+    float IAbilityRuntimeWorld.AbilityUnitHealth(int unit) =>
+        Combat.Health[unit];
+
+    float IAbilityRuntimeWorld.AbilityUnitMaximumHealth(int unit) =>
+        Combat.MaximumHealth[unit];
+
+    CombatAttribute IAbilityRuntimeWorld.AbilityUnitAttributes(int unit) =>
+        Combat.Attributes[unit];
+
+    bool IAbilityRuntimeWorld.AbilityUnitIsAir(int unit) =>
+        Combat.TerrainVisionModes[unit] == TerrainVisionMode.Elevated;
+
+    bool IAbilityRuntimeWorld.AbilityCanSeeUnit(int playerId, int unit) =>
+        Visibility.IsUnitVisible(playerId, unit, Units, Combat);
+
+    PlayerEntityRelation IAbilityRuntimeWorld.AbilityRelation(
+        int playerId,
+        int otherPlayerId) => Diplomacy.Relation(playerId, otherPlayerId);
+
+    int IAbilityRuntimeWorld.AbilityTechnologyLevel(
+        int playerId,
+        int technologyId) => Technology.Level(playerId, technologyId);
+
+    int IAbilityRuntimeWorld.AbilityCompletedBuildingCount(
+        int playerId,
+        int buildingTypeId) => Construction.CountCompleted(
+        playerId, buildingTypeId);
+
+    bool IAbilityRuntimeWorld.AbilityBuildingAlive(
+        GameplayBuildingId building) => Construction.IsAlive(building);
+
+    int IAbilityRuntimeWorld.AbilityBuildingOwner(
+        GameplayBuildingId building) => Construction.Observe(building).PlayerId;
+
+    SimRect IAbilityRuntimeWorld.AbilityBuildingBounds(
+        GameplayBuildingId building) => Construction.Observe(building).Bounds;
+
+    bool IAbilityRuntimeWorld.AbilityCanSeePosition(
+        int playerId,
+        Vector2 position) => Visibility.IsVisible(playerId, position);
+
+    bool IAbilityRuntimeWorld.AbilityDamageUnit(
+        int sourceUnit,
+        int targetUnit,
+        float damage) => DamageUnit(targetUnit, damage);
+
+    bool IAbilityRuntimeWorld.AbilityHealUnit(int targetUnit, float amount)
+    {
+        if ((uint)targetUnit >= (uint)Units.Count || !Units.Alive[targetUnit] ||
+            !float.IsFinite(amount) || amount <= 0f)
+            return false;
+        Combat.Health[targetUnit] = MathF.Min(
+            Combat.MaximumHealth[targetUnit], Combat.Health[targetUnit] + amount);
+        return true;
+    }
+
+    bool IAbilityRuntimeWorld.AbilityDamageBuilding(
+        int sourceUnit,
+        GameplayBuildingId building,
+        float damage) => DamageBuilding(building, damage);
+
+    bool IAbilityRuntimeWorld.AbilityReviveUnit(int unit, float healthFraction)
+    {
+        if ((uint)unit >= (uint)Units.Count || Units.Alive[unit] ||
+            !float.IsFinite(healthFraction) || healthFraction <= 0f)
+            return false;
+        Units.Alive[unit] = true;
+        Combat.Health[unit] = MathF.Max(
+            1f, Combat.MaximumHealth[unit] * MathF.Min(1f, healthFraction));
+        Units.PreviousPositions[unit] = Units.Positions[unit];
+        Units.Modes[unit] = UnitMoveMode.Idle;
+        Combat.SetCommand(unit, UnitCommandIntent.Stop, Units.Positions[unit]);
+        return true;
+    }
+
+    void IAbilityRuntimeWorld.AbilitySetUnitOwner(int unit, int playerId)
+    {
+        if ((uint)unit < (uint)Units.Count && Units.Alive[unit])
+            Combat.Teams[unit] = playerId;
+    }
+
+    void IAbilityRuntimeWorld.AbilityTeleportUnit(int unit, Vector2 position)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit]) return;
+        var target = World.Bounds.Inset(Units.Radii[unit] + 2f).Clamp(position);
+        Units.Positions[unit] = target;
+        Units.PreviousPositions[unit] = target;
+        Units.SlotTargets[unit] = target;
+        Units.MoveGoals[unit] = target;
+        Units.Paths[unit] = null;
+        Units.RouteWaypoints[unit] = [];
+        Units.PathPending[unit] = false;
+        Units.Velocities[unit] = Vector2.Zero;
+        Units.PreferredVelocities[unit] = Vector2.Zero;
+        Units.NextVelocities[unit] = Vector2.Zero;
+        Units.CommandVersions[unit]++;
+    }
+
+    int IAbilityRuntimeWorld.AbilitySpawnSummon(
+        int sourceUnit,
+        int playerId,
+        Vector2 position,
+        in AbilitySummonProfile summon) => AddUnit(
+        World.Bounds.Inset(summon.Movement.PhysicalRadius + 2f).Clamp(position),
+        summon.Movement,
+        playerId,
+        summon.Combat,
+        summon.Perception);
+
+    void IAbilityRuntimeWorld.AbilityPrepareCaster(int unit)
+    {
+        Span<int> caster = stackalloc int[1];
+        caster[0] = unit;
+        _issuingSystemOrder = true;
+        try
+        {
+            ExecuteStop(caster);
+            Economy.Cancel(caster);
+            Construction.InterruptBuilders(caster);
+            CommandQueues.ClearPending(unit);
+            CommandQueues.HasActiveOrders[unit] = false;
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
+    }
+
+    void IAbilityRuntimeWorld.AbilityKillSummon(int unit)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit]) return;
+        Combat.Health[unit] = 0f;
+        Units.Alive[unit] = false;
+        Combat.CommandIntents[unit] = UnitCommandIntent.None;
+        Combat.Phases[unit] = CombatPhase.None;
+        Combat.TargetUnits[unit] = -1;
+        Combat.TargetBuildings[unit] = -1;
+        Combat.TargetKinds[unit] = CombatTargetKind.None;
+        ((ICombatMovementDriver)this).Kill(unit);
     }
 
     bool ICombatMovementDriver.IsBuildingTargetValid(

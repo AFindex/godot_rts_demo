@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnwispsplode.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/dispelmagic/dispelmagictarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Units\\NightElf\\Wisp\\WispExplode.mdl",
+        "resolvedPath": "Units\\NightElf\\Wisp\\WispExplode.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/units/nightelf/wisp/wispexplode.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +64,8 @@
           "A": "50",
           "B": "225"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

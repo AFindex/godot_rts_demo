@@ -39,6 +39,8 @@
           "A": "hpea",
           "B": "hmil"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

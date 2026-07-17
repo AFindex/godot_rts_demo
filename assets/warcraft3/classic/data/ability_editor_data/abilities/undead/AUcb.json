@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncarrionscarabson.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabs.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionScarabs.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncarrionscarabs.png"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "C": "ucs1",
           "E": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUcb"
         ],
@@ -71,6 +81,8 @@
           "C": "ucs2",
           "E": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUcb"
         ],
@@ -97,6 +109,8 @@
           "C": "ucs3",
           "E": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUcb"
         ],

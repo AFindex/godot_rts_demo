@@ -304,6 +304,34 @@ public sealed class PlayerVisibilitySystem
         _players.TryGetValue(playerId, out var grid) &&
         TryCell(position, out var cell) && grid.Detected[cell];
 
+    /// <summary>
+    /// Adds an elevated temporary vision source after the regular visibility
+    /// clear/update pass. AbilitySystem calls this every tick while the reveal
+    /// zone is alive, so no presentation state becomes authoritative.
+    /// </summary>
+    public void RevealAbilityArea(
+        int sourcePlayerId,
+        Vector2 center,
+        float radius,
+        bool detection)
+    {
+        if (sourcePlayerId <= 0 || sourcePlayerId >= MaximumPlayers ||
+            !float.IsFinite(center.X) || !float.IsFinite(center.Y) ||
+            !float.IsFinite(radius) || radius <= 0f)
+            return;
+        for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+        {
+            if (!_diplomacy.SharesVision(viewer, sourcePlayerId)) continue;
+            RevealCircle(
+                viewer, center, radius, detection: false,
+                DefaultGroundObservationHeight, TerrainVisionMode.Elevated);
+            if (detection)
+                RevealCircle(
+                    viewer, center, radius, detection: true,
+                    DefaultGroundObservationHeight, TerrainVisionMode.Elevated);
+        }
+    }
+
     public PlayerConcealmentState ConcealmentStateFor(
         int playerId,
         int unit,

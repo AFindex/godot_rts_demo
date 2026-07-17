@@ -1,0 +1,222 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BPSE",
+  "displayName": "BPSE",
+  "identity": {
+    "baseCode": "BPSE",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/thunderclap/thunderclaptarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStun.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStun.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstun.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHbh",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbh",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHbh",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHtb",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHtb",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHtb",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AOws",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOws",
+      "level": 2,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOws",
+      "level": 3,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ACbh",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACtb",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Awrs",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANsb",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANsb",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANsb",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANsb",
+      "level": 4,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AOw2",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOw2",
+      "level": 2,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOw2",
+      "level": 3,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOw2",
+      "level": 4,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ANbh",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANb2",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Awrg",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "Awrh",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIbx",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BPSE",
+    "code": "BPSE",
+    "comments": "Pause",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNStun.blp",
+    "Targetart": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "被击晕的",
+    "Buffubertip": "\"该单位不能移动。\"",
+    "EditorSuffix": "(暂停)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt"
+    ]
+  }
+}

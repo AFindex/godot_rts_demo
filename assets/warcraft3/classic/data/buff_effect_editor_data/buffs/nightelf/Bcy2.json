@@ -1,0 +1,100 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bcy2",
+  "displayName": "Bcy2",
+  "identity": {
+    "baseCode": "Bcy2",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Cyclone\\CycloneTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Cyclone\\CycloneTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/cyclone/cyclonetarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCyclone.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCyclone.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncyclone.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "CycloneLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Acyc",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "ACcy",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "SCc1",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIcy",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "Acny",
+      "level": 1,
+      "kind": "buff",
+      "race": "naga"
+    }
+  ],
+  "editorData": {
+    "alias": "Bcy2",
+    "code": "Bcy2",
+    "comments": "CycloneTwo             ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNCyclone.blp",
+    "Effectart": "Abilities\\Spells\\NightElf\\Cyclone\\CycloneTarget.mdl",
+    "Effectattach": "sprite,first",
+    "Effectsoundlooped": "CycloneLoop",
+    "Bufftip": "飓风",
+    "Buffubertip": "\"该单位处在飓风的作用之下，因此其不能移动，攻击和施放魔法。\"",
+    "EditorSuffix": "(额外的)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

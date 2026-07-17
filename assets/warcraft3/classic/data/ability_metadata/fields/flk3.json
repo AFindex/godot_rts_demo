@@ -1,0 +1,59 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "flk3",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 3,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_FLK3",
+  "displayName": "全体伤害数量",
+  "sort": "x0a003",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 99999,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Aflk",
+      "Afsh"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "flk3",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "3",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_FLK3",
+    "sort": "x0a003",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "99999",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Aflk,Afsh",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

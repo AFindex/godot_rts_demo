@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmarkoffire.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\PhoenixMissile\\Phoenix_Missile_mini.mdl",
+        "resolvedPath": "Abilities\\Weapons\\PhoenixMissile\\Phoenix_Missile_mini.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/phoenixmissile/phoenix_missile_mini.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "A": "20",
           "B": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

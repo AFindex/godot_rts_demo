@@ -27,6 +27,8 @@
         "data": {
           "A": "250"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

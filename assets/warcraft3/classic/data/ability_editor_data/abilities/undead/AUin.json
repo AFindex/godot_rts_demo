@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btninfernal.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNInfernal.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNInfernal.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btninfernal.png"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Units\\Demon\\Infernal\\InfernalBirth.mdl",
+        "resolvedPath": "Units\\Demon\\Infernal\\InfernalBirth.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/units/demon/infernal/infernalbirth.glb"
+      }
     ]
   },
   "summary": {
@@ -48,7 +64,11 @@
           "B": "180",
           "C": "1"
         },
+        "unitIds": [
+          "ninf"
+        ],
         "summonedUnitId": "ninf",
+        "requirements": [],
         "buffIds": [
           "BNin"
         ],

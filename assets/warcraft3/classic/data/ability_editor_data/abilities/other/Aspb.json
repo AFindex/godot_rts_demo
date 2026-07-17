@@ -40,6 +40,8 @@
           "D": "3",
           "E": "spellbook"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

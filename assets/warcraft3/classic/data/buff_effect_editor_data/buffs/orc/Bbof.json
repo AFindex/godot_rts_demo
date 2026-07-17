@@ -1,0 +1,72 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bbof",
+  "displayName": "Bbof",
+  "identity": {
+    "baseCode": "Bbof",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrikedamagetarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwalloffire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Abof",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    }
+  ],
+  "editorData": {
+    "alias": "Bbof",
+    "code": "Bbof",
+    "comments": "BallsOfFire            ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+    "Targetart": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdl",
+    "Bufftip": "\"燃烧之油\"",
+    "Buffubertip": "\"此单位已被燃烧之油烧着，它将不断的受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

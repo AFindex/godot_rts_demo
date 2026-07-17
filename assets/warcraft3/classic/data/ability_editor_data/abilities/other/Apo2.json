@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnpoisonsting.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenomMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbVenom\\OrbVenomMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbvenom/orbvenommissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "C": "0",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BIpb",
           "BIpd"

@@ -1,0 +1,70 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bchd",
+  "displayName": "Bchd",
+  "identity": {
+    "baseCode": "Bchd",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/stasistrap/stasistotemtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDizzy.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDizzy.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndizzy.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Bchd",
+    "code": "Bchd",
+    "comments": "CargoHoldDeath ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNDizzy.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "击晕",
+    "Buffubertip": "\"该单位被击晕了，因此其移动速度和攻击速度都减慢了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

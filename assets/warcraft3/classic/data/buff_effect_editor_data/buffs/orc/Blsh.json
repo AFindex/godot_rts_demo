@@ -1,0 +1,98 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Blsh",
+  "displayName": "Blsh",
+  "identity": {
+    "baseCode": "Blsh",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\LightningShield\\LightningShieldTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\LightningShield\\LightningShieldTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/lightningshield/lightningshieldtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\LightningShield\\LightningShieldBuff.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\LightningShield\\LightningShieldBuff.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/lightningshield/lightningshieldbuff.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLightningShield.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLightningShield.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlightningshield.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Alsh",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ACls",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIls",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Blsh",
+    "code": "Blsh",
+    "comments": "LightningShield        ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNLightningShield.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\LightningShield\\LightningShieldTarget.mdl",
+    "Targetattach": "origin",
+    "Specialart": "Abilities\\Spells\\Orc\\LightningShield\\LightningShieldBuff.mdl",
+    "Bufftip": "闪电护盾",
+    "Buffubertip": "\"该单位处在闪电护盾的作用之下，因此周围所有的单位都会受到一定的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

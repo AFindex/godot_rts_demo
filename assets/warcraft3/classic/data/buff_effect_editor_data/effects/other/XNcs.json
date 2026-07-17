@@ -1,0 +1,116 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XNcs",
+  "displayName": "Cluster Rockets (Effect)",
+  "identity": {
+    "baseCode": "XNcs",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANcs",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANcs",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANcs",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc1",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc1",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc1",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc2",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc2",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc2",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc3",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc3",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANc3",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XNcs",
+    "code": "XNcs",
+    "comments": "ClusterRockets",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "Cluster Rockets (Effect)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

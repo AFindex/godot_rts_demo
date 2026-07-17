@@ -1,0 +1,60 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Cri1",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 1,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_CRI1",
+  "displayName": "移动速度减少 (%)",
+  "sort": "x0a000",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 10,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Acri",
+      "Scri",
+      "ACcr"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Cri1",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "1",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_CRI1",
+    "sort": "x0a000",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "10",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Acri,Scri,ACcr",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

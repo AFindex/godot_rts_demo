@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btninfernalstone.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNInfernalStone.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNInfernalStone.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btninfernalstone.png"
+      }
     ]
   },
   "summary": {
@@ -41,6 +49,8 @@
           "A": "ANin",
           "B": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": [
           "XErc"
@@ -63,6 +73,8 @@
           "A": "ANin",
           "B": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": [
           "XErc"
@@ -85,6 +97,8 @@
           "A": "ANin",
           "B": "4"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": [
           "XErc"

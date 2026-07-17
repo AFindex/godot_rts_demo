@@ -1,0 +1,85 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNab",
+  "displayName": "BNab",
+  "identity": {
+    "baseCode": "BNab",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\AcidBomb\\BottleImpact.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\AcidBomb\\BottleImpact.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/acidbomb/bottleimpact.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAcidBomb.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAcidBomb.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnacidbomb.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANab",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANab",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANab",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNab",
+    "code": "BNab",
+    "comments": "AcidBomb",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNAcidBomb.blp",
+    "Targetart": "Abilities\\Spells\\Other\\AcidBomb\\BottleImpact.mdl",
+    "Targetattach": "chest",
+    "Bufftip": "酸性炸弹",
+    "Buffubertip": "\"这个单位遭到了酸性炸弹的攻击。 它的护甲被减弱，并会持续地受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

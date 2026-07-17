@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingsalve.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/heal/healtarget.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\HealingSalve\\HealingSalveTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\HealingSalve\\HealingSalveTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/healingsalve/healingsalvetarget.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +65,8 @@
           "D": "0",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BIrg",
           "BIrl",

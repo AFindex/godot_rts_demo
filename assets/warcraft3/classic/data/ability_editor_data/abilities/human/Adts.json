@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnmagicalsentry.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MagicSentry\\MagicSentryCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MagicSentry\\MagicSentryCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/magicsentry/magicsentrycaster.glb"
+      }
     ]
   },
   "summary": {
@@ -42,6 +50,11 @@
         "data": {
           "A": "3"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rhse"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

@@ -42,7 +42,11 @@
         "data": {
           "A": "3"
         },
+        "unitIds": [
+          "efon"
+        ],
         "summonedUnitId": "efon",
+        "requirements": [],
         "buffIds": [
           "BEfn"
         ],

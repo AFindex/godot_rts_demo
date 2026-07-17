@@ -1,0 +1,98 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xfhl",
+  "displayName": "建筑物伤害 – 人族  大",
+  "identity": {
+    "baseCode": "Xfhl",
+    "race": "human",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire0.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire0.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "sprite",
+      "first"
+    ],
+    "targetAttachmentCount": 6,
+    "specialAttachments": [],
+    "effectSoundLooped": "HumanFireLarge"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xfhl",
+    "code": "Xfhl",
+    "comments": "EFFECT_OnFireHumanLrg",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "TargetArt": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl,Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl,Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl,Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl,Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl,Environment\\SmallBuildingFire\\SmallBuildingFire0.mdl",
+    "Targetattachcount": "6",
+    "Targetattach": "sprite,first",
+    "Targetattach1": "sprite,second",
+    "Targetattach2": "sprite,fifth",
+    "Targetattach3": "sprite,third",
+    "Targetattach4": "sprite,fourth",
+    "Targetattach5": "sprite,sixth",
+    "Effectsoundlooped": "HumanFireLarge",
+    "EditorName": "建筑物伤害 – 人族  大"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

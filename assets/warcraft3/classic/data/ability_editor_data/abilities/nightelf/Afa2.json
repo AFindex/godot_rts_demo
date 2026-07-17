@@ -45,6 +45,11 @@
           "A": "4",
           "B": "1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Reec"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bfae"
         ],

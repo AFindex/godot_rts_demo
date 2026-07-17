@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnbigbadvoodoospell.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBigBadVoodooSpell.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBigBadVoodooSpell.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbigbadvoodoospell.png"
+      }
     ]
   },
   "summary": {
@@ -43,6 +51,8 @@
         "manaCost": 200,
         "area": 800,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOvd",
           "BOvc"

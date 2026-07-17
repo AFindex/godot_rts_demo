@@ -1,0 +1,63 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Brpl",
+  "displayName": "Brpl",
+  "identity": {
+    "baseCode": "Brpl",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNReplenishHealth.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNReplenishHealth.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnreplenishhealth.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Arpl",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    }
+  ],
+  "editorData": {
+    "alias": "Brpl",
+    "code": "Brpl",
+    "comments": "ReplenishLife          ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNReplenishHealth.blp",
+    "Bufftip": "枯萎精髓",
+    "Buffubertip": "\"此单位已被枯萎精髓击中；它的生命值已完全恢复。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

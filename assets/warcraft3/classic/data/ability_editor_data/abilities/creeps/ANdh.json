@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnstrongdrink.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStrongDrink.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstrongdrink.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\StrongDrink\\BrewmasterMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\StrongDrink\\BrewmasterMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/strongdrink/brewmastermissile.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +65,8 @@
           "C": "0.15",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNdh"
         ],
@@ -79,6 +97,8 @@
           "C": "0.3",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNdh"
         ],
@@ -109,6 +129,8 @@
           "C": "0.5",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNdh"
         ],

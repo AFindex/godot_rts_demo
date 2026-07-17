@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnfragmentationbombs.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\FlyingMachine\\FlyingMachineImpact.mdl",
+        "resolvedPath": "Abilities\\Weapons\\FlyingMachine\\FlyingMachineImpact.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/flyingmachine/flyingmachineimpact.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,11 @@
           "D": "18",
           "E": "12"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rhfs"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

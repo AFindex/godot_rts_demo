@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmurgultidewarrior.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
     ]
   },
   "summary": {
@@ -37,7 +45,11 @@
         "data": {
           "A": "2"
         },
+        "unitIds": [
+          "nmrr"
+        ],
         "summonedUnitId": "nmrr",
+        "requirements": [],
         "buffIds": [
           "BNwm"
         ],

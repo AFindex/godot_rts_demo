@@ -1,0 +1,56 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Nrc1",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 1,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_NRC1",
+  "displayName": "创造单位技能",
+  "sort": "x0a000",
+  "valueType": "abilCode",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "ANrc"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Nrc1",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "1",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_NRC1",
+    "sort": "x0a000",
+    "type": "abilCode",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "ANrc",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -42,7 +42,11 @@
           "C": "1",
           "D": "1"
         },
+        "unitIds": [
+          "nmdm"
+        ],
         "summonedUnitId": "nmdm",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

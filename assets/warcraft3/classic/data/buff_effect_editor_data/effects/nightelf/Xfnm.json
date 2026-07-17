@@ -1,0 +1,84 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xfnm",
+  "displayName": "建筑物伤害 - 暗夜精灵族 中",
+  "identity": {
+    "baseCode": "Xfnm",
+    "race": "nightelf",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Environment\\NightElfBuildingFire\\ElfLargeBuildingFire2.mdl",
+        "resolvedPath": "Environment\\NightElfBuildingFire\\ElfLargeBuildingFire2.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/nightelfbuildingfire/elflargebuildingfire2.glb"
+      },
+      {
+        "requestedPath": "Environment\\NightElfBuildingFire\\ElfSmallBuildingFire1.mdl",
+        "resolvedPath": "Environment\\NightElfBuildingFire\\ElfSmallBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/nightelfbuildingfire/elfsmallbuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\NightElfBuildingFire\\ElfLargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\NightElfBuildingFire\\ElfLargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/nightelfbuildingfire/elflargebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\NightElfBuildingFire\\ElfSmallBuildingFire2.mdl",
+        "resolvedPath": "Environment\\NightElfBuildingFire\\ElfSmallBuildingFire2.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/nightelfbuildingfire/elfsmallbuildingfire2.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "sprite",
+      "first"
+    ],
+    "targetAttachmentCount": 4,
+    "specialAttachments": [],
+    "effectSoundLooped": "NightElfFireMedium"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xfnm",
+    "code": "Xfnm",
+    "comments": "EFFECT_OnFireNightElfMed",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "TargetArt": "Environment\\NightElfBuildingFire\\ElfLargeBuildingFire2.mdl,Environment\\NightElfBuildingFire\\ElfSmallBuildingFire1.mdl,Environment\\NightElfBuildingFire\\ElfLargeBuildingFire0.mdl,Environment\\NightElfBuildingFire\\ElfSmallBuildingFire2.mdl",
+    "Targetattachcount": "4",
+    "Targetattach": "sprite,first",
+    "Targetattach1": "sprite,second",
+    "Targetattach2": "sprite,fourth",
+    "Targetattach3": "sprite,fifth",
+    "Effectsoundlooped": "NightElfFireMedium",
+    "EditorName": "建筑物伤害 - 暗夜精灵族 中"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

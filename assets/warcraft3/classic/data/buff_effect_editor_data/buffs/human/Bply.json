@@ -1,0 +1,81 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bply",
+  "displayName": "Bply",
+  "identity": {
+    "baseCode": "Bply",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/polymorph/polymorphdoneground.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPolymorph.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPolymorph.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpolymorph.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aply",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACpy",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bply",
+    "code": "Bply",
+    "comments": "Polymorph              ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNPolymorph.blp",
+    "Specialart": "",
+    "Effectart": "Abilities\\Spells\\Human\\Polymorph\\PolyMorphDoneGround.mdl",
+    "Bufftip": "变形术",
+    "Buffubertip": "\"该单位被施放了变形术，因此被变成了一头温顺的小绵羊。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

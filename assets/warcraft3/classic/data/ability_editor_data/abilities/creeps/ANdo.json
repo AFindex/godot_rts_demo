@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndoom.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDoom.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDoom.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndoom.png"
+      }
     ]
   },
   "summary": {
@@ -47,7 +55,11 @@
           "C": "120",
           "D": "5"
         },
+        "unitIds": [
+          "nba2"
+        ],
         "summonedUnitId": "nba2",
+        "requirements": [],
         "buffIds": [
           "BNdo",
           "BNdi"

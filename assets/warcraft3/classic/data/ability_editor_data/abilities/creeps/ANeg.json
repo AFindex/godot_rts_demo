@@ -20,6 +20,14 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/pasbtnengineeringupgrade.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEngineeringUpgrade.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEngineeringUpgrade.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnengineeringupgrade.png"
+      }
     ]
   },
   "summary": {
@@ -43,6 +51,8 @@
           "E": "ANrg,ANg1",
           "F": "ANde,ANd1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNeg"
         ],
@@ -67,6 +77,8 @@
           "E": "ANg1,ANg2",
           "F": "ANd1,ANd2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNeg"
         ],
@@ -91,6 +103,8 @@
           "E": "ANg2,ANg3",
           "F": "ANd2,ANd3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNeg"
         ],

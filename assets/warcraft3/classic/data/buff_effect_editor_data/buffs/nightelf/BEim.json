@@ -1,0 +1,105 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BEim",
+  "displayName": "BEim",
+  "identity": {
+    "baseCode": "BEim",
+    "race": "nightelf",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/immolation/immolationtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/immolation/immolationdamage.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImmolationOn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImmolationOn.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimmolationon.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [
+      "head"
+    ]
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AEim",
+      "level": 1,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEim",
+      "level": 2,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "AEim",
+      "level": 3,
+      "kind": "buff",
+      "race": "nightelf"
+    },
+    {
+      "abilityId": "ACim",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BEim",
+    "code": "BEim",
+    "comments": "Immolation             ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "nightelf",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNImmolationOn.blp",
+    "Targetart": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationTarget.mdl",
+    "Specialart": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdl",
+    "Specialartattach": "head",
+    "Bufftip": "献祭",
+    "Specialattach": "head",
+    "Buffubertip": "\"该单位有着献祭技能，因此其周围的地面单位会持续受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt"
+    ]
+  }
+}

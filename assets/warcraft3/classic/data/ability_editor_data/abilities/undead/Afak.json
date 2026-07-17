@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofdeathon.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\OrbOfDeath\\AnnihilationMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\OrbOfDeath\\AnnihilationMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/orbofdeath/annihilationmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +58,8 @@
           "D": "1",
           "E": "75"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

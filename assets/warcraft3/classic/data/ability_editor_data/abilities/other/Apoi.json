@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnpoisonsting.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\PoisonSting\\PoisonStingMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/poisonsting/poisonstingmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "C": "0",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bpoi",
           "Bpsd"

@@ -1,0 +1,70 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XOeq",
+  "displayName": "地震 (效果)",
+  "identity": {
+    "baseCode": "XOeq",
+    "race": "orc",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\EarthQuake\\EarthQuakeTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\EarthQuake\\EarthquakeTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/earthquake/earthquaketarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "EarthquakeLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOeq",
+      "level": 1,
+      "kind": "effect",
+      "race": "orc"
+    },
+    {
+      "abilityId": "SNeq",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XOeq",
+    "code": "XOeq",
+    "comments": "Earthquake           ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Orc\\EarthQuake\\EarthQuakeTarget.mdl",
+    "Effectsoundlooped": "EarthquakeLoop",
+    "EditorName": "地震 (效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XUdd",
+  "displayName": "死亡凋零(效果)",
+  "identity": {
+    "baseCode": "XUdd",
+    "race": "undead",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DeathandDecay\\DeathandDecayTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DeathandDecay\\DeathandDecayTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/deathanddecay/deathanddecaytarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "DeathAndDecayLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUdd",
+      "level": 1,
+      "kind": "effect",
+      "race": "undead"
+    },
+    {
+      "abilityId": "SNdd",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XUdd",
+    "code": "XUdd",
+    "comments": "DeathAndDecay        ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Undead\\DeathandDecay\\DeathandDecayTarget.mdl",
+    "Effectsoundlooped": "DeathAndDecayLoop",
+    "EditorName": "死亡凋零(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

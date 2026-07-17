@@ -1,0 +1,101 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BHds",
+  "displayName": "BHds",
+  "identity": {
+    "baseCode": "BHds",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DivineShield\\DivineShieldTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DivineShield\\DivineShieldTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/divineshield/divineshieldtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDivineIntervention.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDivineIntervention.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndivineintervention.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AHds",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHds",
+      "level": 2,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "AHds",
+      "level": 3,
+      "kind": "buff",
+      "race": "human"
+    },
+    {
+      "abilityId": "ACds",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIdv",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BHds",
+    "code": "BHds",
+    "comments": "DivineShield           ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNDivineIntervention.blp",
+    "Targetart": "Abilities\\Spells\\Human\\DivineShield\\DivineShieldTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "神圣护甲",
+    "Buffubertip": "\"该单位处于神圣护甲的保护之下，因此是无敌的。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

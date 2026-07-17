@@ -1,0 +1,64 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIpv",
+  "displayName": "吸血药水",
+  "identity": {
+    "baseCode": "BIpv",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionOfVampirism.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionOfVampirism.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpotionofvampirism.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIpv",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIpv",
+    "code": "BIpv",
+    "comments": "ItemVampirePotion      ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNPotionOfVampirism.blp",
+    "Name": "吸血药水",
+    "Bufftip": "吸血药水",
+    "Buffubertip": "\"该英雄使用了吸血药水;因此其攻击力得到了增加，而且攻击的同时也能增加自己的生命值。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

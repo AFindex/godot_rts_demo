@@ -20,6 +20,22 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btntransmute.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTransmute.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTransmute.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntransmute.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Transmute\\GoldBottleMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Transmute\\GoldBottleMissile.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/transmute/goldbottlemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +64,8 @@
           "C": "5",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNtm"
         ],

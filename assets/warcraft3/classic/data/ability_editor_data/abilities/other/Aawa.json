@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Awaken\\Awaken.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Awaken\\Awaken.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/awaken/awaken.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +34,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

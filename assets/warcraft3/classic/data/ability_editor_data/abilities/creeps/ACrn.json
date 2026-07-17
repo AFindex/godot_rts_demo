@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnreincarnation.png"
       }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Reincarnation\\ReincarnationTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Reincarnation\\ReincarnationTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/reincarnation/reincarnationtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -36,6 +44,8 @@
         "data": {
           "A": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": [
           "XOre"

@@ -46,6 +46,8 @@
           "B": "7",
           "C": "10"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BEim",
           "BEia"

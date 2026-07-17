@@ -1,0 +1,59 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Uts2",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 2,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_UTS2",
+  "displayName": "所受伤害因素",
+  "sort": "x0a002",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 100,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AUts",
+      "ANth"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Uts2",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "2",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_UTS2",
+    "sort": "x0a002",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "100",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AUts,ANth",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnunholyaura.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyAura.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUnholyAura.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnunholyaura.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\UnholyAura\\UnholyAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\UnholyAura\\UnholyAura.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/unholyaura/unholyaura.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "B": "0.5",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUau"
         ],
@@ -71,6 +89,8 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUau"
         ],
@@ -95,6 +115,8 @@
           "B": "1.5",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUau"
         ],

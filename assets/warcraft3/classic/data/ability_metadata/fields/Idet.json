@@ -1,0 +1,58 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Idet",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 1,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_IDET",
+  "displayName": "侦察范围",
+  "sort": "x0i033",
+  "valueType": "detectionType",
+  "minimum": 0,
+  "maximum": 99999,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AIta"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Idet",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "1",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_IDET",
+    "sort": "x0i033",
+    "type": "detectionType",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "99999",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AIta",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

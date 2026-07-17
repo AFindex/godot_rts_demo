@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnreveal.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\TempSpellArt\\TempSpellArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\TempSpellArt\\TempSpellArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/tempspellart/tempspellart.glb"
+      }
     ]
   },
   "summary": {
@@ -41,6 +49,8 @@
           "B": "0",
           "C": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": [
           "Xbdt"

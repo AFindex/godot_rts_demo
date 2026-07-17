@@ -1,0 +1,69 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Iatt",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 1,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_IATT",
+  "displayName": "攻击奖励",
+  "sort": "x0i004",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 99999,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AIat",
+      "AIt6",
+      "AIt9",
+      "AItc",
+      "AItf",
+      "AItg",
+      "AIth",
+      "AIti",
+      "AItj",
+      "AItk",
+      "AItl",
+      "AItn"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Iatt",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "1",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_IATT",
+    "sort": "x0i004",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "99999",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AIat,AIt6,AIt9,AItc,AItf,AItg,AIth,AIti,AItj,AItk,AItl,AItn",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

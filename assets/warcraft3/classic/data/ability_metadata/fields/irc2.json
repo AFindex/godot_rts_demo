@@ -1,0 +1,58 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "irc2",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 2,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_IRC2",
+  "displayName": "回复的生命值",
+  "sort": "x0a002",
+  "valueType": "int",
+  "minimum": 1,
+  "maximum": 1000000,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AIrc"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "irc2",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "2",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_IRC2",
+    "sort": "x0a002",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "minVal": "1",
+    "maxVal": "1000000",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AIrc",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnscout.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNScout.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNScout.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnscout.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Units\\NightElf\\Owl\\Owl.mdl",
+        "resolvedPath": "Units\\NightElf\\Owl\\Owl.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/nightelf/owl/owl.glb"
+      }
     ]
   },
   "summary": {
@@ -39,7 +55,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nowl"
+        ],
         "summonedUnitId": "nowl",
+        "requirements": [],
         "buffIds": [
           "BEst"
         ],
@@ -59,7 +79,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "now2"
+        ],
         "summonedUnitId": "now2",
+        "requirements": [],
         "buffIds": [
           "BEst"
         ],
@@ -79,7 +103,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "now3"
+        ],
         "summonedUnitId": "now3",
+        "requirements": [],
         "buffIds": [
           "BEst"
         ],

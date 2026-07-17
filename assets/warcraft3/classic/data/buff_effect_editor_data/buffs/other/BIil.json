@@ -1,0 +1,74 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIil",
+  "displayName": "BIil",
+  "identity": {
+    "baseCode": "BIil",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageDeathCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageDeathCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/mirrorimage/mirrorimagedeathcaster.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWand.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWand.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwand.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIil",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIil",
+    "code": "BIil",
+    "comments": "ItemIllusion           ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNWand.blp",
+    "Specialart": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageDeathCaster.mdl",
+    "Bufftip": "幻象物品",
+    "Buffubertip": "\"该单位是一个幻象，因此将从敌人那里得到额外的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

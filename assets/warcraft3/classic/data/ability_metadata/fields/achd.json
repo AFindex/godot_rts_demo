@@ -1,0 +1,53 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "achd",
+  "field": "checkDep",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "tech",
+  "displayNameKey": "WESTRING_AEVAL_ACHD",
+  "displayName": "检查所在地",
+  "sort": "e2b00",
+  "valueType": "bool",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "achd",
+    "field": "checkDep",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "tech",
+    "displayName": "WESTRING_AEVAL_ACHD",
+    "sort": "e2b00",
+    "type": "bool",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

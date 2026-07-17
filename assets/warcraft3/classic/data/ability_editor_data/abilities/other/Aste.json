@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnwandofmanasteal.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Drain\\ManaDrainCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Drain\\ManaDrainCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/drain/manadraincaster.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Drain\\ManaDrainTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Drain\\ManaDrainTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/drain/manadraintarget.glb"
+      }
     ]
   },
   "summary": {
@@ -43,6 +59,8 @@
           "D": "1",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

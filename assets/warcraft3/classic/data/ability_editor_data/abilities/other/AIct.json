@@ -37,6 +37,8 @@
           "A": "0",
           "B": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": [
           "XIct"

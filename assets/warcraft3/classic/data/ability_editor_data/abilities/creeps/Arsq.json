@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnquillbeast.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNQuillBeast.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNQuillBeast.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnquillbeast.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
     ]
   },
   "summary": {
@@ -39,7 +55,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nqb1"
+        ],
         "summonedUnitId": "nqb1",
+        "requirements": [],
         "buffIds": [
           "BNsq"
         ],
@@ -60,7 +80,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nqb2"
+        ],
         "summonedUnitId": "nqb2",
+        "requirements": [],
         "buffIds": [
           "BNsq"
         ],
@@ -81,7 +105,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nqb3"
+        ],
         "summonedUnitId": "nqb3",
+        "requirements": [],
         "buffIds": [
           "BNsq"
         ],
@@ -102,7 +130,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nqb4"
+        ],
         "summonedUnitId": "nqb4",
+        "requirements": [],
         "buffIds": [
           "BNsq"
         ],

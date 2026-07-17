@@ -1,0 +1,60 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Iob4",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 4,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_IOB4",
+  "displayName": "击中召唤物的几率 (%)",
+  "sort": "x0a004",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 100,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AIdf",
+      "AIll",
+      "AIsb"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Iob4",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "4",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_IOB4",
+    "sort": "x0a004",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "100",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AIdf,AIll,AIsb",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

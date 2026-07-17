@@ -1,0 +1,96 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNrd",
+  "displayName": "BNrd",
+  "identity": {
+    "baseCode": "BNrd",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrikedamagetarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFire.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANrf",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANrf",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANrf",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACrf",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACrg",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNrd",
+    "code": "BNrd",
+    "comments": "RainOfFire             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNFire.blp",
+    "Targetart": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeDamageTarget.mdl",
+    "Bufftip": "火焰雨",
+    "Buffubertip": "\"该单位受到火焰雨的攻击，它将不断受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

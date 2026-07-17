@@ -1,0 +1,65 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bpxf",
+  "displayName": "Bpxf",
+  "identity": {
+    "baseCode": "Bpxf",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireDamage.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/breathoffire/breathoffiredamage.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMarkOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMarkOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmarkoffire.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Bpxf",
+    "code": "Bpxf",
+    "comments": "PhoenixFire            ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNMarkOfFire.blp",
+    "Targetart": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireDamage.mdl",
+    "Bufftip": "凤凰火焰",
+    "Buffubertip": "\"该单位正受到凤凰火焰的灼伤，不断受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

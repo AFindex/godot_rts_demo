@@ -1,0 +1,42 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIwb",
+  "displayName": "物品网",
+  "identity": {
+    "baseCode": "BIwb",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "BIwb",
+    "code": "BIwb",
+    "comments": "ItemWeb                ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "物品网"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt"
+    ]
+  }
+}

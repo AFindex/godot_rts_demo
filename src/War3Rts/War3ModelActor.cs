@@ -372,6 +372,12 @@ public sealed partial class War3ModelActor : Node3D
         return true;
     }
 
+    public void Revive()
+    {
+        _deathLocked = false;
+        ReplayPreferred("Birth", "Stand");
+    }
+
     public override void _Process(double delta)
     {
         if (_metadata is null || _metadata.Sequences.Count == 0) return;

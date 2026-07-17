@@ -1,0 +1,100 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bblo",
+  "displayName": "Bblo",
+  "identity": {
+    "baseCode": "Bblo",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodlustTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodLustTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/bloodlust/bloodlusttarget.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodlustSpecial.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodLustSpecial.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/bloodlust/bloodlustspecial.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBloodLust.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBloodLust.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbloodlust.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "hand",
+      "left"
+    ],
+    "targetAttachmentCount": 2,
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Ablo",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ACbl",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACbb",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bblo",
+    "code": "Bblo",
+    "comments": "Bloodlust              ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBloodLust.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\Bloodlust\\BloodlustTarget.mdl,Abilities\\Spells\\Orc\\Bloodlust\\BloodlustSpecial.mdl",
+    "Targetattachcount": "2",
+    "Targetattach": "hand,left",
+    "Targetattach1": "hand,right",
+    "Bufftip": "嗜血术",
+    "Spelldetail": "1",
+    "Buffubertip": "\"该单位具有嗜血术，因此其攻击速度和移动速度都加快了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

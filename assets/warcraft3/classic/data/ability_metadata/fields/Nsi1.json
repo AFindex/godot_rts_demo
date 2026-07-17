@@ -1,0 +1,63 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Nsi1",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 1,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_NSI1",
+  "displayName": "攻击防止",
+  "sort": "x0a001",
+  "valueType": "silenceFlags",
+  "minimum": 0,
+  "maximum": 15,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "ANsi",
+      "ACsi",
+      "ANdh",
+      "Aclf",
+      "AIse",
+      "AIfg"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Nsi1",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "1",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_NSI1",
+    "sort": "x0a001",
+    "type": "silenceFlags",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "15",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "ANsi,ACsi,ANdh,Aclf,AIse,AIfg",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

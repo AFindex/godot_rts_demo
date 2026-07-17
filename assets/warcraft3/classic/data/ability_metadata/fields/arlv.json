@@ -1,0 +1,56 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "arlv",
+  "field": "reqLevel",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "stats",
+  "displayNameKey": "WESTRING_AEVAL_ARLV",
+  "displayName": "要求等级",
+  "sort": "f0a01",
+  "valueType": "int",
+  "minimum": 1,
+  "maximum": 10000,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": false,
+    "hero": true,
+    "item": false,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "arlv",
+    "field": "reqLevel",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "stats",
+    "displayName": "WESTRING_AEVAL_ARLV",
+    "sort": "f0a01",
+    "type": "int",
+    "changeFlags": "s",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "1",
+    "maxVal": "10000",
+    "forceNonNeg": "0",
+    "useUnit": "0",
+    "useHero": "1",
+    "useItem": "0",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

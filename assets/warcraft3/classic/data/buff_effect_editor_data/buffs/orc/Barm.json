@@ -1,0 +1,62 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Barm",
+  "displayName": "Barm",
+  "identity": {
+    "baseCode": "Barm",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/anrl/anrltarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "FountainOfLifeLoop"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Barm",
+    "code": "Barm",
+    "comments": "AuraRegenMana          ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "",
+    "Targetart": "Abilities\\Spells\\Other\\ANrl\\ANrlTarget.mdl",
+    "Effectsoundlooped": "FountainOfLifeLoop",
+    "Bufftip": "魔法恢复光环",
+    "Spelldetail": "1",
+    "Buffubertip": "\"该单位处于魔法恢复光环的作用之下，因此其魔法恢复速度得到了加快。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

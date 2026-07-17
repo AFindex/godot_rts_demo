@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnfireforthecannon.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFireForTheCannon.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFireForTheCannon.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfireforthecannon.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireDamage.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/breathoffire/breathoffiredamage.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/breathoffire/breathoffiremissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +71,8 @@
           "D": "150",
           "E": "21"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNbf"
         ],

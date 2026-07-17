@@ -92,8 +92,20 @@ public static class War3HumanContent
     public static War3ObjectDataCatalog UpgradeDataCatalog =>
         Runtime.Value.UpgradeDataCatalog;
 
+    public static War3ObjectDataCatalog BuffEffectDataCatalog =>
+        Runtime.Value.BuffEffectDataCatalog;
+
+    public static War3AbilityMetadataCatalog AbilityMetadataCatalog =>
+        Runtime.Value.AbilityMetadataCatalog;
+
     public static War3ObjectDataImportReport ObjectDataStatus =>
         Runtime.Value.ObjectDataStatus;
+
+    public static IReadOnlyList<War3AbilityDefinition> Abilities =>
+        Runtime.Value.Abilities;
+
+    public static War3AbilityImportResult AbilityImportStatus =>
+        Runtime.Value.AbilityImportStatus;
 
     public static IReadOnlyList<War3TechnologyDefinition> Technologies =>
         Runtime.Value.Technologies;
@@ -107,11 +119,29 @@ public static class War3HumanContent
     public static TechnologyCatalogSnapshot CreateTechnologyCatalog() =>
         Runtime.Value.TechnologyCatalog;
 
+    public static AbilityCatalogSnapshot CreateAbilityCatalog() =>
+        Runtime.Value.AbilityCatalog;
+
+    public static War3AbilityDefinition Ability(int id) =>
+        Runtime.Value.Abilities[id];
+
+    public static bool TryAbility(
+        string rawId,
+        out War3AbilityDefinition? definition)
+    {
+        definition = Runtime.Value.Abilities.FirstOrDefault(value =>
+            value.ObjectId.Equals(rawId, StringComparison.Ordinal));
+        return definition is not null;
+    }
+
     public static War3UnitDefinition ResolveUnit(
         RtsSimulation simulation,
         ProductionCatalogSnapshot catalog,
         int unit)
     {
+        if (simulation.Abilities.TrySummonedObjectId(unit, out var objectId) &&
+            Runtime.Value.SummonedUnits.TryGetValue(objectId, out var summoned))
+            return summoned;
         var isWorker = simulation.Economy.IsWorker(unit);
         var radius = simulation.Units.Radii[unit];
         var health = simulation.Combat.MaximumHealth[unit];
@@ -140,6 +170,10 @@ public static class War3HumanContent
             War3AssetPack.AbsolutePath("data/ability_editor_data"));
         var upgradeCatalog = War3ObjectDataCatalog.OpenUpgrade(
             War3AssetPack.AbsolutePath("data/upgrade_editor_data"));
+        var buffEffectCatalog = War3ObjectDataCatalog.OpenBuffEffect(
+            War3AssetPack.AbsolutePath("data/buff_effect_editor_data"));
+        var abilityMetadataCatalog = War3AbilityMetadataCatalog.Open(
+            War3AssetPack.AbsolutePath("data/ability_metadata"));
         var adapter = new War3GameplayDataAdapter(
             dataCatalog, War3GameplayImportPolicy.Default);
 
@@ -151,6 +185,7 @@ public static class War3HumanContent
             if (!dataCatalog.TryGet(units[index].ObjectId, out var unitData))
                 continue;
             var abilityNames = unitData.Summary.Abilities
+                .Concat(unitData.Summary.HeroAbilities)
                 .Where(abilityCatalog.Contains)
                 .Select(id => abilityCatalog.TryGet(id, out var ability)
                     ? ability.DisplayName
@@ -190,13 +225,48 @@ public static class War3HumanContent
 
         var buildingCatalog = CreateBuildingCatalog(buildingProfiles);
         var productionCatalog = CreateProductionCatalog(unitProfiles, recipes);
-        var fallbackTechnologies = CreateFallbackTechnologies();
-        var technologyBindings = new[]
+        var fallbackTechnologyValues = CreateFallbackTechnologies().ToList();
+        var technologyBindings = new List<(
+            string ObjectId, string Icon, int Researcher)>
         {
-            (ObjectId: "Rhme", Icon: Btn("SteelMelee")),
-            (ObjectId: "Rhar", Icon: Btn("HumanArmorUpOne")),
-            (ObjectId: "Rhac", Icon: Btn("ImbuedMasonry"))
+            ("Rhme", Btn("SteelMelee"), Blacksmith),
+            ("Rhar", Btn("HumanArmorUpOne"), Blacksmith),
+            ("Rhac", Btn("ImbuedMasonry"), Blacksmith),
+            ("Rhde", Btn("SelectHeroOn"), Barracks),
+            ("Rhgb", Btn("SelectHeroOn"), Workshop),
+            ("Rhfl", Btn("SelectHeroOn"), Workshop),
+            ("Rhrt", Btn("SelectHeroOn"), Workshop),
+            ("Rhfc", Btn("SelectHeroOn"), Workshop),
+            ("Rhfs", Btn("SelectHeroOn"), Workshop),
+            ("Rhpt", Btn("SelectHeroOn"), ArcaneSanctum),
+            ("Rhst", Btn("SelectHeroOn"), ArcaneSanctum),
+            ("Rhss", Btn("SelectHeroOn"), ArcaneSanctum),
+            ("Rhpm", Btn("SelectHeroOn"), TownHall),
+            ("Rhhb", Btn("SelectHeroOn"), GryphonAviary),
+            ("Rhcd", Btn("SelectHeroOn"), GryphonAviary)
         };
+        for (var index = fallbackTechnologyValues.Count;
+             index < technologyBindings.Count;
+             index++)
+        {
+            var binding = technologyBindings[index];
+            fallbackTechnologyValues.Add(new TechnologyProfile(
+                index,
+                binding.ObjectId,
+                binding.Researcher,
+                new EconomyCost(0, 0),
+                1f,
+                1,
+                0.75f,
+                -1)
+            {
+                Requirements = [new TechnologyRequirementProfile(
+                    TechnologyRequirementKind.CompletedBuilding,
+                    binding.Researcher,
+                    1)]
+            });
+        }
+        var fallbackTechnologies = fallbackTechnologyValues.ToArray();
         var technologyAdapter = new War3TechnologyDataAdapter(upgradeCatalog);
         var technologyDefinitions = new War3TechnologyDefinition[
             fallbackTechnologies.Length];
@@ -213,12 +283,26 @@ public static class War3HumanContent
             else fallbackTechnologyIds.Add(binding.ObjectId);
         }
         var technologyCatalog = CreateTechnologyCatalog(fallbackTechnologies);
+        var technologyIds = technologyDefinitions.ToDictionary(
+            value => value.ObjectId,
+            value => value.TechnologyId,
+            StringComparer.Ordinal);
+        var buildingIds = buildings.ToDictionary(
+            value => value.ObjectId,
+            value => value.TypeId,
+            StringComparer.Ordinal);
+        var abilityImport = new War3AbilityDataAdapter(
+            abilityCatalog, buffEffectCatalog, dataCatalog,
+            War3GameplayImportPolicy.Default,
+            technologyIds,
+            buildingIds)
+            .Build(units);
         var report = adapter.CreateReport(
             units.Select(value => value.ObjectId),
             buildings.Select(value => value.ObjectId));
         var referencedAbilities = units
             .Select(value => dataCatalog.TryGet(value.ObjectId, out var data)
-                ? data.Summary.Abilities
+                ? data.Summary.Abilities.Concat(data.Summary.HeroAbilities)
                 : [])
             .SelectMany(value => value)
             .Distinct(StringComparer.Ordinal)
@@ -243,6 +327,7 @@ public static class War3HumanContent
             referencedUpgrades.Where(id => !upgradeCatalog.Contains(id)).ToArray(),
             appliedTechnologies,
             fallbackTechnologyIds);
+        var summonedUnits = CreateSummonedUnitDefinitions(dataCatalog);
         return new War3HumanContentBundle(
             units,
             buildings,
@@ -250,11 +335,79 @@ public static class War3HumanContent
             report,
             abilityCatalog,
             upgradeCatalog,
+            buffEffectCatalog,
+            abilityMetadataCatalog,
             objectReport,
             technologyDefinitions,
+            abilityImport.Definitions,
+            abilityImport,
             buildingCatalog,
             productionCatalog,
-            technologyCatalog);
+            technologyCatalog,
+            abilityImport.Catalog,
+            summonedUnits);
+    }
+
+    private static IReadOnlyDictionary<string, War3UnitDefinition>
+        CreateSummonedUnitDefinitions(IWar3UnitDataCatalog catalog)
+    {
+        var result = new Dictionary<string, War3UnitDefinition>(
+            StringComparer.Ordinal);
+        foreach (var objectId in new[] { "hwat", "hwt2", "hwt3", "hphx" })
+        {
+            if (!catalog.TryGet(objectId, out var data)) continue;
+            var model = ModelAsset(data.Assets.Model, string.Empty);
+            if (model.Length == 0) continue;
+            var portrait = ModelAsset(data.Assets.Portrait, model);
+            var icon = PlainAsset(data.Assets.Icon, Btn("SelectHeroOn"));
+            var missile = ModelAsset(data.Assets.Missile, string.Empty);
+            var special = ModelAsset(data.Assets.SpecialEffect, string.Empty);
+            var attack = data.Summary.Combat.Attacks.FirstOrDefault(value =>
+                value.Enabled);
+            result.Add(objectId, new War3UnitDefinition(
+                -1,
+                objectId,
+                string.IsNullOrWhiteSpace(data.DisplayName)
+                    ? objectId
+                    : data.DisplayName,
+                "召唤单位",
+                model,
+                portrait,
+                icon,
+                data.Summary.Movement.FlyingHeight ?? 0f,
+                missile,
+                string.Empty,
+                special,
+                Math.Max(1, data.Summary.Level ?? 1),
+                attack?.AttackType ?? string.Empty,
+                data.Summary.Armor.Type ?? string.Empty));
+        }
+        return result;
+    }
+
+    private static string PlainAsset(
+        War3UnitAssetReference? asset,
+        string fallback)
+    {
+        var value = asset?.ResolvedPath;
+        if (string.IsNullOrWhiteSpace(value)) value = asset?.RequestedPath;
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        return value.Split(',', StringSplitOptions.TrimEntries |
+                                StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()?.Replace('/', '\\') ?? fallback;
+    }
+
+    private static string ModelAsset(
+        War3UnitAssetReference? asset,
+        string fallback)
+    {
+        var path = PlainAsset(asset, fallback);
+        if (path.Length == 0) return path;
+        var extension = Path.GetExtension(path);
+        if (extension.Length == 0) return path + ".mdx";
+        return extension.Equals(".mdl", StringComparison.OrdinalIgnoreCase)
+            ? Path.ChangeExtension(path, ".mdx")
+            : path;
     }
 
     private static BuildingTypeCatalogSnapshot CreateBuildingCatalog(
@@ -561,9 +714,15 @@ public static class War3HumanContent
         War3GameplayImportReport DataStatus,
         War3ObjectDataCatalog AbilityDataCatalog,
         War3ObjectDataCatalog UpgradeDataCatalog,
+        War3ObjectDataCatalog BuffEffectDataCatalog,
+        War3AbilityMetadataCatalog AbilityMetadataCatalog,
         War3ObjectDataImportReport ObjectDataStatus,
         IReadOnlyList<War3TechnologyDefinition> Technologies,
+        IReadOnlyList<War3AbilityDefinition> Abilities,
+        War3AbilityImportResult AbilityImportStatus,
         BuildingTypeCatalogSnapshot BuildingCatalog,
         ProductionCatalogSnapshot ProductionCatalog,
-        TechnologyCatalogSnapshot TechnologyCatalog);
+        TechnologyCatalogSnapshot TechnologyCatalog,
+        AbilityCatalogSnapshot AbilityCatalog,
+        IReadOnlyDictionary<string, War3UnitDefinition> SummonedUnits);
 }

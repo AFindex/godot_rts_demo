@@ -20,6 +20,38 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmirrorimage.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMirrorImage.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMirrorImage.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmirrorimage.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Levelup\\LevelupCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Levelup\\Levelupcaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/levelup/levelupcaster.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/mirrorimage/mirrorimagecaster.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\MirrorImage\\MirrorImageMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/mirrorimage/mirrorimagemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -43,6 +75,8 @@
           "C": "2",
           "D": "0.5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOmi"
         ],
@@ -66,6 +100,8 @@
           "C": "2",
           "D": "0.5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOmi"
         ],
@@ -89,6 +125,8 @@
           "C": "2",
           "D": "0.5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOmi"
         ],

@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnstatup.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStatUp.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStatUp.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstatup.png"
+      }
     ]
   },
   "summary": {
@@ -41,6 +49,8 @@
           "C": "3",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -61,6 +71,8 @@
           "C": "6",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -81,6 +93,8 @@
           "C": "9",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -101,6 +115,8 @@
           "C": "12",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

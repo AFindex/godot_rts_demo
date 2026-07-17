@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofdarkness.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbDarkness\\OrbDarkness.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbDarkness\\OrbDarkness.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbdarkness/orbdarkness.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\AvengerMissile\\AvengerMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\AvengerMissile\\AvengerMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/avengermissile/avengermissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,7 +60,11 @@
           "D": "100",
           "E": "2"
         },
+        "unitIds": [
+          "ANbs"
+        ],
         "summonedUnitId": "ANbs",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

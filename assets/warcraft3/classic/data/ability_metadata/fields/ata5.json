@@ -1,0 +1,54 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "ata5",
+  "field": "Targetattach5",
+  "storage": "Profile",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "art",
+  "displayNameKey": "WESTRING_AEVAL_ATA5",
+  "displayName": "目标附加点 6",
+  "sort": "c9a005",
+  "valueType": "stringList",
+  "minimum": null,
+  "maximum": 32,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "ata5",
+    "field": "Targetattach5",
+    "slk": "Profile",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "art",
+    "displayName": "WESTRING_AEVAL_ATA5",
+    "sort": "c9a005",
+    "type": "stringList",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "maxVal": "32",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

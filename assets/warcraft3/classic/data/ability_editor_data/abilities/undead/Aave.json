@@ -41,7 +41,14 @@
           "D": "0",
           "E": "8"
         },
+        "unitIds": [
+          "ubsp"
+        ],
         "summonedUnitId": "ubsp",
+        "requirements": [
+          "Rusp"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,56 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "spb5",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 5,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_SPB5",
+  "displayName": "基本顺序 ID",
+  "sort": "x0a005",
+  "valueType": "orderString",
+  "minimum": null,
+  "maximum": 32,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Aspb"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "spb5",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "5",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_SPB5",
+    "sort": "x0a005",
+    "type": "orderString",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "1",
+    "maxVal": "32",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Aspb",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

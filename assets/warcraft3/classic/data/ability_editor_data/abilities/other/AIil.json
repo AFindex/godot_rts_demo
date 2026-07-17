@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnwand.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIil\\AIilTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIil\\AIilTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aiil/aiiltarget.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "A": "0",
           "B": "2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BIil"
         ],

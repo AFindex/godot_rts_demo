@@ -1,0 +1,69 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xclf",
+  "displayName": "乌云 (效果)",
+  "identity": {
+    "baseCode": "Xclf",
+    "race": "human",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\CloudOfFog\\CloudOfFog.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\CloudOfFog\\CloudOfFog.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/cloudoffog/cloudoffog.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "CloudOfFogLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aclf",
+      "level": 1,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "AIfg",
+      "level": 1,
+      "kind": "effect",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Xclf",
+    "code": "Xclf",
+    "comments": "CloudOfFog           ",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Human\\CloudOfFog\\CloudOfFog.mdl",
+    "Effectsoundlooped": "CloudOfFogLoop",
+    "EditorName": "乌云 (效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

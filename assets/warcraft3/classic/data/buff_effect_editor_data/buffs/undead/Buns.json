@@ -1,0 +1,69 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Buns",
+  "displayName": "反召唤",
+  "identity": {
+    "baseCode": "Buns",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Unsummon\\UnsummonTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Unsummon\\UnsummonTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/unsummon/unsummontarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUnsummonBuilding.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUnsummonBuilding.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnunsummonbuilding.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "AcolyteUnsummonLoop"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Buns",
+    "code": "Buns",
+    "comments": "Unsummon               ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNUnsummonBuilding.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\Unsummon\\UnsummonTarget.mdl",
+    "Effectsoundlooped": "AcolyteUnsummonLoop",
+    "Name": "反召唤",
+    "Bufftip": "反召唤"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

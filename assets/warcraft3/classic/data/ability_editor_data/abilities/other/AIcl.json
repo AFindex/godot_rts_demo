@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnchainlightning.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\Bolt\\BoltImpact.mdl",
+        "resolvedPath": "Abilities\\Weapons\\Bolt\\BoltImpact.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/bolt/boltimpact.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\LightningBolt\\LightningBoltMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\LightningBolt\\LightningBoltMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/lightningbolt/lightningboltmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
           "B": "4",
           "C": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

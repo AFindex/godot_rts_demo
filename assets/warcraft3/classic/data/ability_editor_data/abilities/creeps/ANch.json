@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncharm.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCharm.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCharm.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncharm.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Charm\\CharmTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Charm\\CharmTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/charm/charmtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
         "data": {
           "A": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

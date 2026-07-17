@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnbash.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBash.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBash.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbash.png"
+      }
     ]
   },
   "summary": {
@@ -44,6 +52,8 @@
           "C": "25",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],
@@ -67,6 +77,8 @@
           "C": "25",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],
@@ -90,6 +102,8 @@
           "C": "25",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BPSE"
         ],

@@ -43,6 +43,8 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bcyc",
           "Bcy2"

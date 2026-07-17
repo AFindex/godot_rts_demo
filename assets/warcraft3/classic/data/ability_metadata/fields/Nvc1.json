@@ -1,0 +1,56 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Nvc1",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 1,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_NVC1",
+  "displayName": "岩石数",
+  "sort": "x0a001",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 10,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "ANvc"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Nvc1",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "1",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_NVC1",
+    "sort": "x0a001",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "10",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "ANvc"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

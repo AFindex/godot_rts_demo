@@ -5,6 +5,7 @@ namespace RtsDemo.Simulation;
 public sealed class StaticWorld
 {
     private readonly SimRect[] _obstacles;
+    private readonly DynamicOccupancyGrid _staticOccupancy;
 
     public StaticWorld(SimRect bounds, params SimRect[] obstacles)
         : this(bounds, terrain: null, obstacles)
@@ -24,6 +25,9 @@ public sealed class StaticWorld
         }
         Terrain = terrain;
         _obstacles = obstacles;
+        _staticOccupancy = new DynamicOccupancyGrid(bounds);
+        for (var index = 0; index < obstacles.Length; index++)
+            _staticOccupancy.Place(obstacles[index]);
         DynamicOccupancy = new DynamicOccupancyGrid(bounds);
     }
 
@@ -46,13 +50,7 @@ public sealed class StaticWorld
             return false;
         }
 
-        for (var i = 0; i < _obstacles.Length; i++)
-        {
-            if (_obstacles[i].OverlapsDisc(position, radius))
-            {
-                return false;
-            }
-        }
+        if (!_staticOccupancy.IsDiscFree(position, radius)) return false;
 
         return DynamicOccupancy.IsDiscFree(position, radius);
     }
@@ -70,13 +68,7 @@ public sealed class StaticWorld
             return false;
         }
 
-        for (var i = 0; i < _obstacles.Length; i++)
-        {
-            if (_obstacles[i].IntersectsSweptDisc(from, to, radius))
-            {
-                return false;
-            }
-        }
+        if (!_staticOccupancy.IsSegmentFree(from, to, radius)) return false;
 
         return DynamicOccupancy.IsSegmentFree(from, to, radius);
     }

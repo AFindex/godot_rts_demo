@@ -44,6 +44,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Redt"
+        ],
+        "requirementLevel": 2,
         "buffIds": [
           "Bcyc",
           "Bcy2"

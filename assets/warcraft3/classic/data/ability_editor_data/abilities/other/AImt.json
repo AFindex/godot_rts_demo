@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnstaffofteleportation.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleportcaster.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleporttarget.glb"
+      }
+    ],
+    "areaEffectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTo.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTo.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleportto.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +72,8 @@
           "B": "3",
           "C": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

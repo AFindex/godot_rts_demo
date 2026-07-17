@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnlifedrain.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLifeDrain.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLifeDrain.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlifedrain.png"
+      }
     ]
   },
   "summary": {
@@ -52,6 +60,8 @@
           "H": "0",
           "I": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bdcb",
           "Bdcl",
@@ -93,6 +103,8 @@
           "H": "0",
           "I": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bdcb",
           "Bdcl",
@@ -134,6 +146,8 @@
           "H": "0",
           "I": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bdcb",
           "Bdcl",

@@ -35,6 +35,8 @@
         "data": {
           "A": "10"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

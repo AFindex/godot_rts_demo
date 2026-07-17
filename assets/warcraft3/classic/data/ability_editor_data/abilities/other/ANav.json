@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnavataron.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAvatar.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAvatar.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnavatar.png"
+      }
     ]
   },
   "summary": {
@@ -41,6 +49,8 @@
           "C": "20",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

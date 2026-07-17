@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorccaptureflag.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\OrcCaptureFlag\\OrcCaptureFlag.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\OrcCaptureFlag\\OrcCaptureFlag.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/orccaptureflag/orccaptureflag.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

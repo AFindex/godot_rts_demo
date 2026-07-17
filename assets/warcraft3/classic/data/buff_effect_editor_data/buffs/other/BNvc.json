@@ -1,0 +1,73 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNvc",
+  "displayName": "BNvc",
+  "identity": {
+    "baseCode": "BNvc",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/thunderclap/thunderclaptarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNVolcano.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNVolcano.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnvolcano.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANvc",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNvc",
+    "code": "BNvc",
+    "comments": "Volcano",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNVolcano.blp",
+    "Targetart": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "火山爆发",
+    "Buffubertip": "\"火山爆发\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

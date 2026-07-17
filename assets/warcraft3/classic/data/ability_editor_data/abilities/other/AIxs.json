@@ -42,6 +42,8 @@
           "C": "0",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bams",
           "Bam2"

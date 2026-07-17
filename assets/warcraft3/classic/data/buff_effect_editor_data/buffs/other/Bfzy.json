@@ -1,0 +1,86 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bfzy",
+  "displayName": "Bfzy",
+  "identity": {
+    "baseCode": "Bfzy",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodlustTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodLustTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/bloodlust/bloodlusttarget.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodlustSpecial.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Bloodlust\\BloodLustSpecial.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/bloodlust/bloodlustspecial.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBloodLust.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBloodLust.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbloodlust.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "hand",
+      "left"
+    ],
+    "targetAttachmentCount": 2,
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Afzy",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "Bfzy",
+    "code": "Bfzy",
+    "comments": "Frenzy                 ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Spelldetail": "1",
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNBloodLust.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\Bloodlust\\BloodlustTarget.mdl,Abilities\\Spells\\Orc\\Bloodlust\\BloodlustSpecial.mdl",
+    "Targetattachcount": "2",
+    "Targetattach": "hand,left",
+    "Targetattach1": "hand,right",
+    "Bufftip": "狂热",
+    "Buffubertip": "\"该单位处于狂热中，其攻击速率和移动速度都增加了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

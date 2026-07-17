@@ -1,0 +1,74 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIsv",
+  "displayName": "BIsv",
+  "identity": {
+    "baseCode": "BIsv",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIso\\BIsvTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIso\\BIsvTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aiso/bisvtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnusedsoulgem.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Asou",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIsv",
+    "code": "BIsv",
+    "comments": "SoulTrapVision         ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+    "Targetart": "Abilities\\Spells\\Items\\AIso\\BIsvTarget.mdl",
+    "Bufftip": "盗取灵魂",
+    "Buffubertip": "\"这是一个英雄的灵魂。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

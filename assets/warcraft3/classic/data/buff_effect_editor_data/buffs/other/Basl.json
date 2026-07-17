@@ -1,0 +1,73 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Basl",
+  "displayName": "Basl",
+  "identity": {
+    "baseCode": "Basl",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Tornado\\Tornado_Target.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Tornado\\Tornado_Target.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/tornado/tornado_target.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntornado.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aasl",
+      "level": 1,
+      "kind": "buff",
+      "race": "naga"
+    }
+  ],
+  "editorData": {
+    "alias": "Basl",
+    "code": "Basl",
+    "comments": "AuraSlow               ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+    "Targetart": "Abilities\\Spells\\Other\\Tornado\\Tornado_Target.mdl",
+    "Bufftip": "龙卷风",
+    "Buffubertip": "\"该单位受到了龙卷风的袭击，它的移动速度被暂时降低了。\"",
+    "EditorSuffix": "(减速光环)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

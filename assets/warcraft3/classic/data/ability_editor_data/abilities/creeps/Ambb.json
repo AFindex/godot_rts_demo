@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmanaburn.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManaBurn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManaBurn.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanaburn.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\ManaBurn\\ManaBurnTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\ManaBurn\\ManaBurnTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/manaburn/manaburntarget.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
           "B": "0.25",
           "C": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

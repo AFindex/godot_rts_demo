@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnspellbreakermagicdefend.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Defend\\DefendCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Defend\\DefendCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/defend/defendcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -42,6 +50,8 @@
           "D": "0",
           "E": "0.33"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

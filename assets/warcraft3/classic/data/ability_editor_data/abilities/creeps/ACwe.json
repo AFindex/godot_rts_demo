@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnseaelemental.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSeaElemental.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSeaElemental.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnseaelemental.png"
+      }
     ]
   },
   "summary": {
@@ -39,7 +47,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nsel"
+        ],
         "summonedUnitId": "nsel",
+        "requirements": [],
         "buffIds": [
           "BHwe"
         ],

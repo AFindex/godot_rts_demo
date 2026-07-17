@@ -20,6 +20,42 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnwalloffire.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWallOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwalloffire.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrike1.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrike1.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrike1.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrike2.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrike2.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrike2.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrike.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrike.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestrike.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\FlameStrike\\FlameStrikeTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/flamestrike/flamestriketarget.glb"
+      }
     ]
   },
   "summary": {
@@ -54,6 +90,8 @@
           "E": "0.75",
           "F": "90"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHfs"
         ],
@@ -91,6 +129,8 @@
           "E": "0.75",
           "F": "160"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHfs"
         ],
@@ -128,6 +168,8 @@
           "E": "0.75",
           "F": "220"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHfs"
         ],

@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncleavingattack.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCleavingAttack.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCleavingAttack.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncleavingattack.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Cleave\\CleaveDamageTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Cleave\\CleaveDamageTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/cleave/cleavedamagetarget.glb"
+      }
     ]
   },
   "summary": {
@@ -43,6 +59,8 @@
         "data": {
           "A": "0.3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -65,6 +83,8 @@
         "data": {
           "A": "0.55"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -87,6 +107,8 @@
         "data": {
           "A": "0.8"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

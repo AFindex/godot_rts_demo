@@ -1,0 +1,60 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Nsy3",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 3,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_NSY3",
+  "displayName": "产生单位时间",
+  "sort": "x0a003",
+  "valueType": "unreal",
+  "minimum": 0.001,
+  "maximum": 300,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "ANsy",
+      "ANs1",
+      "ANs2",
+      "ANs3"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Nsy3",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "3",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_NSY3",
+    "sort": "x0a003",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0.001",
+    "maxVal": "300",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "ANsy,ANs1,ANs2,ANs3",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

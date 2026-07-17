@@ -1,0 +1,74 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XNvc",
+  "displayName": "Volcano (Effect)",
+  "identity": {
+    "baseCode": "XNvc",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Volcano\\VolcanoDeath.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Volcano\\VolcanoDeath.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/volcano/volcanodeath.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Volcano\\VolcanoMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Volcano\\VolcanoMissile.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/volcano/volcanomissile.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "VolcanoLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANvc",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XNvc",
+    "code": "XNvc",
+    "comments": "Volcano",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Specialart": "Abilities\\Spells\\Other\\Volcano\\VolcanoDeath.mdl",
+    "Effectsoundlooped": "VolcanoLoop",
+    "Missileart": "Abilities\\Spells\\Other\\Volcano\\VolcanoMissile.mdl",
+    "Missilespeed": "400",
+    "MissileHoming": "1",
+    "Missilearc": "0.8",
+    "EditorName": "Volcano (Effect)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

@@ -45,6 +45,8 @@
           "C": "150",
           "D": "250"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

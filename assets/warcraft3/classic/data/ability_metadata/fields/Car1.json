@@ -1,0 +1,64 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Car1",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 1,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_CAR1",
+  "displayName": "携带量",
+  "sort": "x0a000",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 8,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Abun",
+      "Advc",
+      "Sch2",
+      "Sch3",
+      "Sch4",
+      "Sch5",
+      "Aenc"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Car1",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "1",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_CAR1",
+    "sort": "x0a000",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "8",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Abun,Advc,Sch2,Sch3,Sch4,Sch5,Aenc",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

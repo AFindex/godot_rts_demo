@@ -1,0 +1,55 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "aut1",
+  "field": "Untip",
+  "storage": "Profile",
+  "index": 0,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "text",
+  "displayNameKey": "WESTRING_AEVAL_AUT1",
+  "displayName": "提示工具 - 关闭",
+  "sort": "y0b01",
+  "valueType": "string",
+  "minimum": null,
+  "maximum": null,
+  "canBeEmpty": true,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": false,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "aut1",
+    "field": "Untip",
+    "slk": "Profile",
+    "index": "0",
+    "repeat": "3",
+    "data": "0",
+    "category": "text",
+    "displayName": "WESTRING_AEVAL_AUT1",
+    "sort": "y0b01",
+    "type": "string",
+    "changeFlags": "t",
+    "stringExt": "1",
+    "caseSens": "1",
+    "canBeEmpty": "1",
+    "maxVal": "TTDesc",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "0",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

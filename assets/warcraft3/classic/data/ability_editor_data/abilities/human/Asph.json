@@ -12,7 +12,24 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Units\\Human\\HeroBloodElf\\BloodElfBall.mdl",
+        "resolvedPath": "Units\\Human\\HeroBloodElf\\BloodElfBall.MDX",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/human/herobloodelf/bloodelfball.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Units\\Human\\HeroBloodElf\\BloodElfBall.mdl",
+        "resolvedPath": "Units\\Human\\HeroBloodElf\\BloodElfBall.MDX",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/human/herobloodelf/bloodelfball.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +42,8 @@
         "cooldown": 1,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

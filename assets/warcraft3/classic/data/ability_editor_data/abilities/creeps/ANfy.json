@@ -40,7 +40,11 @@
           "A": "6",
           "B": "1100"
         },
+        "unitIds": [
+          "ncgb"
+        ],
         "summonedUnitId": "ncgb",
+        "requirements": [],
         "buffIds": [
           "BNcg"
         ],

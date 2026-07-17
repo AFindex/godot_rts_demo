@@ -1,0 +1,64 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Roa2",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 2,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_ROA2",
+  "displayName": "防御增加",
+  "sort": "x0a001",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 99999,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Aroa",
+      "Ara2",
+      "ACro",
+      "ACr1",
+      "AIrr",
+      "ANht",
+      "ANbr"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Roa2",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "2",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_ROA2",
+    "sort": "x0a001",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "99999",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Aroa,Ara2,ACro,ACr1,AIrr,ANht,ANbr",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btntomered.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIlm\\AIlmTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIlm\\AIlmTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/ailm/ailmtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -36,6 +44,8 @@
         "data": {
           "A": "20"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

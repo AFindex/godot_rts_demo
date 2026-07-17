@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofslowness.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\OrbSlow\\OrbSlow.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\OrbSlow\\OrbSlow.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/orbslow/orbslow.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\ProcMissile\\ProcMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\ProcMissile\\ProcMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/weapons/procmissile/procmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,7 +60,11 @@
           "D": "35",
           "E": "2"
         },
+        "unitIds": [
+          "AIos"
+        ],
         "summonedUnitId": "AIos",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

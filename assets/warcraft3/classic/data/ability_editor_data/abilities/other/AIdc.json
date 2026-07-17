@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnwandofneutralization.png"
       }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\WandOfNeutralization\\NeutralizationMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\WandOfNeutralization\\NeutralizationMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/wandofneutralization/neutralizationmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +56,8 @@
           "B": "0",
           "C": "8"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

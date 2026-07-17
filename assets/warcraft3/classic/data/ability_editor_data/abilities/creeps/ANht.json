@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnhowlofterror.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHowlOfTerror.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhowlofterror.png"
+      }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\HowlOfTerror\\HowlCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\HowlOfTerror\\HowlCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/howlofterror/howlcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +66,8 @@
           "F": "0",
           "G": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNht"
         ],
@@ -81,6 +99,8 @@
           "F": "0",
           "G": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNht"
         ],
@@ -112,6 +132,8 @@
           "F": "0",
           "G": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNht"
         ],

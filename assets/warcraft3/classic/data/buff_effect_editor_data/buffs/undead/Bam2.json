@@ -1,0 +1,92 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bam2",
+  "displayName": "Bam2",
+  "identity": {
+    "baseCode": "Bam2",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\AntiMagicShell\\AntiMagicShell.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\AntiMagicShell\\AntiMagicShell.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/antimagicshell/antimagicshell.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAntiMagicShell.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAntiMagicShell.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnantimagicshell.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aams",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "ACam",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIxs",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    },
+    {
+      "abilityId": "Aam2",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    }
+  ],
+  "editorData": {
+    "alias": "Bam2",
+    "code": "Bam2",
+    "comments": "AntiMagicShell (Matrix)",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNAntiMagicShell.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\AntiMagicShell\\AntiMagicShell.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "反魔法外壳",
+    "Buffubertip": "\"这个单位具有反魔法外壳，攻击魔法对于该单位的伤害效果将减少。\"",
+    "EditorSuffix": "(额外的)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt"
+    ]
+  }
+}

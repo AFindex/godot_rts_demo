@@ -1,0 +1,81 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bspl",
+  "displayName": "Bspl",
+  "identity": {
+    "baseCode": "Bspl",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\SpiritLink\\SpiritLinkTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\SpiritLink\\SpiritLinkTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/spiritlink/spiritlinktarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritLink.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritLink.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritlink.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aspl",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "Aspp",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Bspl",
+    "code": "Bspl",
+    "comments": "SpiritLink             ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSpiritLink.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\SpiritLink\\SpiritLinkTarget.mdl",
+    "Targetattach": "chest",
+    "Bufftip": "灵魂锁链",
+    "Buffubertip": "\"该单位处于灵魂锁链的作用之下，因此其遭到攻击的话会将其受到的伤害转移一部分到其他处于灵魂锁链作用之下的单位。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

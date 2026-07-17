@@ -1,0 +1,84 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xfhm",
+  "displayName": "建筑物伤害 – 人族  中",
+  "identity": {
+    "baseCode": "Xfhm",
+    "race": "human",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire2.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire2.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire2.glb"
+      },
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire2.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire2.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire2.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "sprite",
+      "first"
+    ],
+    "targetAttachmentCount": 4,
+    "specialAttachments": [],
+    "effectSoundLooped": "HumanFireMedium"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xfhm",
+    "code": "Xfhm",
+    "comments": "EFFECT_OnFireHumanMed",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "TargetArt": "Environment\\LargeBuildingFire\\LargeBuildingFire2.mdl,Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl,Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl,Environment\\SmallBuildingFire\\SmallBuildingFire2.mdl",
+    "Targetattachcount": "4",
+    "Targetattach": "sprite,first",
+    "Targetattach1": "sprite,second",
+    "Targetattach2": "sprite,fourth",
+    "Targetattach3": "sprite,fifth",
+    "Effectsoundlooped": "HumanFireMedium",
+    "EditorName": "建筑物伤害 – 人族  中"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

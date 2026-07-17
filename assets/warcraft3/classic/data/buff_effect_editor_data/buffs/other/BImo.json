@@ -1,0 +1,51 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BImo",
+  "displayName": "BImo",
+  "identity": {
+    "baseCode": "BImo",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AImo",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BImo",
+    "code": "BImo",
+    "comments": "ItemMonsterLure        ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Bufftip": "怪兽诱捕守卫",
+    "Buffubertip": "\"周围的中立单位都将受到诱惑而为你服务。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt"
+    ]
+  }
+}

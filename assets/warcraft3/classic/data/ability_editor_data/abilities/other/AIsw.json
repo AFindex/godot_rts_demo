@@ -36,7 +36,11 @@
         "manaCost": 0,
         "range": 500,
         "data": {},
+        "unitIds": [
+          "oeye"
+        ],
         "summonedUnitId": "oeye",
+        "requirements": [],
         "buffIds": [
           "Beye"
         ],

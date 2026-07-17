@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnlocustswarm.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLocustSwarm.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLocustSwarm.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlocustswarm.png"
+      }
     ]
   },
   "summary": {
@@ -49,7 +57,11 @@
           "D": "0.75",
           "E": "20"
         },
+        "unitIds": [
+          "uloc"
+        ],
         "summonedUnitId": "uloc",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -78,7 +90,11 @@
           "D": "1",
           "E": "25"
         },
+        "unitIds": [
+          "uloc"
+        ],
         "summonedUnitId": "uloc",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

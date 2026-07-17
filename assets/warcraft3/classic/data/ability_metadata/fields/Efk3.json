@@ -1,0 +1,59 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Efk3",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 3,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_EFK3",
+  "displayName": "最大目标数",
+  "sort": "x0a003",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 100,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AEfk",
+      "Aroc"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Efk3",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "3",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_EFK3",
+    "sort": "x0a003",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "100",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AEfk,Aroc",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

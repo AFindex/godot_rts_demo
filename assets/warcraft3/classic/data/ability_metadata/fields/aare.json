@@ -1,0 +1,55 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "aare",
+  "field": "Area",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "stats",
+  "displayNameKey": "WESTRING_AEVAL_AARE",
+  "displayName": "影响区域",
+  "sort": "g0a05",
+  "valueType": "unreal",
+  "minimum": 0,
+  "maximum": 99999,
+  "canBeEmpty": false,
+  "forceNonNegative": true,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "aare",
+    "field": "Area",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "stats",
+    "displayName": "WESTRING_AEVAL_AARE",
+    "sort": "g0a05",
+    "type": "unreal",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "99999",
+    "forceNonNeg": "1",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -42,6 +42,8 @@
         "area": 600,
         "range": 100,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

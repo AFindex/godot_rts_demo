@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncontrolmagic.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\ControlMagic\\ControlMagicTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\ControlMagic\\ControlMagicTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/controlmagic/controlmagictarget.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +56,11 @@
           "B": "0.45",
           "C": "1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rhss"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bcmg"
         ],

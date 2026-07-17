@@ -1,0 +1,73 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Btsp",
+  "displayName": "Btsp",
+  "identity": {
+    "baseCode": "Btsp",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Tornado\\TornadoElementalSmall.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Tornado\\TornadoElementalSmall.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/tornado/tornadoelementalsmall.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntornado.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Atsp",
+      "level": 1,
+      "kind": "buff",
+      "race": "naga"
+    }
+  ],
+  "editorData": {
+    "alias": "Btsp",
+    "code": "Btsp",
+    "comments": "TornadoSpin            ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNTornado.blp",
+    "Effectart": "Abilities\\Spells\\Other\\Tornado\\TornadoElementalSmall.mdl",
+    "Effectattach": "sprite,first",
+    "Bufftip": "龙卷旋风",
+    "Buffubertip": "\"该单位受到了龙卷风的袭击;因此被投掷到了空中。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

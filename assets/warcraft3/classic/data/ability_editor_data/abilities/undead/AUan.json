@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnanimatedead.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAnimateDead.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAnimateDead.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnanimatedead.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\AnimateDead\\AnimateDeadTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\AnimateDead\\AnimateDeadTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/animatedead/animatedeadtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUan"
         ],

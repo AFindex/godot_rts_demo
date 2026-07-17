@@ -1,0 +1,69 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bspa",
+  "displayName": "Bspa",
+  "identity": {
+    "baseCode": "Bspa",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\CryptFiendMissile\\CryptFiendMissileTarget.mdl",
+        "resolvedPath": "Abilities\\Weapons\\CryptFiendMissile\\CryptFiendMissileTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/cryptfiendmissile/cryptfiendmissiletarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpider.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpider.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnspider.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Bspa",
+    "code": "Bspa",
+    "comments": "SpiderAttack           ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSpider.blp",
+    "Targetart": "Abilities\\Weapons\\CryptFiendMissile\\CryptFiendMissileTarget.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "小蜘蛛"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

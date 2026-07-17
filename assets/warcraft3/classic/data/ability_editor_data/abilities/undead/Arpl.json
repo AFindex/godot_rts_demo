@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnreplenishhealthon.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ReplenishHealth\\ReplenishHealthCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ReplenishHealth\\ReplenishHealthCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/replenishhealth/replenishhealthcaster.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/heal/healtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ReplenishHealth\\ReplenishHealthCasterOverhead.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ReplenishHealth\\ReplenishHealthCasterOverhead.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/replenishhealth/replenishhealthcasteroverhead.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +74,8 @@
           "C": "0",
           "E": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Brpl"
         ],

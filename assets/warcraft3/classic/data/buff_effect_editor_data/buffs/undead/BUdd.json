@@ -1,0 +1,80 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BUdd",
+  "displayName": "BUdd",
+  "identity": {
+    "baseCode": "BUdd",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\DeathandDecay\\DeathandDecayDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\DeathandDecay\\DeathandDecayDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/deathanddecay/deathanddecaydamage.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDeathAndDecay.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDeathAndDecay.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndeathanddecay.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AUdd",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    },
+    {
+      "abilityId": "SNdd",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BUdd",
+    "code": "BUdd",
+    "comments": "DeathAndDecayAoe       ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNDeathAndDecay.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\DeathandDecay\\DeathandDecayDamage.mdl",
+    "Bufftip": "死亡凋零",
+    "Buffubertip": "\"该单位受到了死亡凋零的作用，因此会持续地受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

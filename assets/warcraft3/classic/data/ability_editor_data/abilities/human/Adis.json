@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btndispelmagic.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/dispelmagic/dispelmagictarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\DispelMagic\\DispelMagicTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/dispelmagic/dispelmagictarget.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,11 @@
           "A": "0",
           "B": "200"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rhpt"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

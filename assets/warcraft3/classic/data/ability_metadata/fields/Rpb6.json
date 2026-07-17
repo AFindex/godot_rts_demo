@@ -1,0 +1,59 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Rpb6",
+  "field": "Cast",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 0,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_RPB6",
+  "displayName": "最多可影响到的单位",
+  "sort": "x0a003",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 100,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "Arpb",
+      "Arpl",
+      "Arpm"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Rpb6",
+    "field": "Cast",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "0",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_RPB6",
+    "sort": "x0a003",
+    "type": "int",
+    "stringExt": "0",
+    "caseSens": "0",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "100",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "Arpb,Arpl,Arpm",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

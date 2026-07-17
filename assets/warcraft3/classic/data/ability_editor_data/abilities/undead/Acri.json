@@ -47,6 +47,11 @@
           "B": "0.5",
           "C": "0.5"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rune"
+        ],
+        "requirementLevel": 2,
         "buffIds": [
           "Bcri"
         ],

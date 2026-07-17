@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnblizzard.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBlizzard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBlizzard.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnblizzard.png"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "E": "0",
           "F": "150"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHbd",
           "BHbz"
@@ -74,6 +84,8 @@
           "E": "0",
           "F": "200"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHbd",
           "BHbz"
@@ -103,6 +115,8 @@
           "E": "0",
           "F": "250"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BHbd",
           "BHbz"

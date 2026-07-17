@@ -45,6 +45,11 @@
           "D": "1",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rehs"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

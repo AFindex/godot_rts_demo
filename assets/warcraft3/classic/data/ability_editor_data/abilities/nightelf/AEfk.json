@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnfanofknives.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFanOfKnives.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFanOfKnives.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfanofknives.png"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\FanOfKnives\\FanOfKnivesCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\FanOfKnives\\FanOfKnivesCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/fanofknives/fanofknivescaster.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\FanOfKnives\\FanOfKnivesMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\FanOfKnives\\FanOfKnivesMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/fanofknives/fanofknivesmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +71,8 @@
           "C": "0",
           "D": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -73,6 +99,8 @@
           "C": "0",
           "D": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -99,6 +127,8 @@
           "C": "0",
           "D": "100"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

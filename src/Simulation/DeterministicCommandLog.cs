@@ -38,7 +38,7 @@ public readonly record struct CommandLogValidationResult(
 public sealed class SimulationCommandLogSnapshot
 {
     private const uint Magic = 0x434D5452; // RTMC in little-endian bytes.
-    public const int CurrentFormatVersion = 5;
+    public const int CurrentFormatVersion = 7;
     private const int HeaderBytes = 12;
     private const int EntryFixedBytes = 34;
     private const int MaximumEntries = 1_000_000;
@@ -136,6 +136,9 @@ public sealed class SimulationCommandLogSnapshot
                 return false;
             }
             if (unitCount <= 0 || unitCount > ushort.MaxValue ||
+                kind is (UnitOrderKind.CastAbility or
+                    UnitOrderKind.LearnAbility or
+                    UnitOrderKind.SetAbilityAutoCast) && unitCount != 1 ||
                 payload.Length - offset < unitCount * sizeof(int))
             {
                 validation = new CommandLogValidationResult(

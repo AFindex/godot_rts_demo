@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnshadowstrike.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNShadowStrike.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnshadowstrike.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\shadowstrike\\ShadowStrikeMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\shadowstrike\\ShadowStrikeMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/shadowstrike/shadowstrikemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "D": "2",
           "E": "75"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BEsh"
         ],

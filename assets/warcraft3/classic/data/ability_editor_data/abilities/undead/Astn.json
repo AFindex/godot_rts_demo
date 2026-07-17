@@ -43,7 +43,14 @@
           "D": "0.5",
           "E": "8"
         },
+        "unitIds": [
+          "ugrm"
+        ],
         "summonedUnitId": "ugrm",
+        "requirements": [
+          "Rusf"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

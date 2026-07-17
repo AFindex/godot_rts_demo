@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnearthquake.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEarthquake.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEarthquake.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnearthquake.png"
+      }
     ]
   },
   "summary": {
@@ -48,6 +56,8 @@
           "C": "0.75",
           "D": "250"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOeq",
           "BOea"

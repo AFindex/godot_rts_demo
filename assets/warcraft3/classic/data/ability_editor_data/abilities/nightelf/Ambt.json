@@ -20,6 +20,54 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmanarechargeon.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellCasterArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellCasterArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/moonwell/moonwellcasterart.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/heal/healtarget.glb"
+      }
+    ],
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/moonwell/moonwelltarget.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/moonwell/moonwelltarget.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/moonwell/moonwelltarget.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\MoonWell\\MoonWellTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/moonwell/moonwelltarget.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\MoonWell\\CorruptedMoonWellTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\MoonWell\\CorruptedMoonWellTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/moonwell/corruptedmoonwelltarget.glb"
+      }
     ]
   },
   "summary": {
@@ -51,6 +99,8 @@
           "D": "30",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

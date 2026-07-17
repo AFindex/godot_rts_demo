@@ -42,7 +42,11 @@
         "manaCost": 0,
         "range": 99999,
         "data": {},
+        "unitIds": [
+          "ewsp"
+        ],
         "summonedUnitId": "ewsp",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

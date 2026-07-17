@@ -1,0 +1,70 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNtm",
+  "displayName": "BNtm",
+  "identity": {
+    "baseCode": "BNtm",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Transmute\\PileofGold.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Transmute\\PileofGold.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/transmute/pileofgold.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTransmute.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTransmute.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntransmute.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANtm",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNtm",
+    "code": "BNtm",
+    "comments": "Transmute",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNTransmute.blp",
+    "Specialart": "Abilities\\Spells\\Other\\Transmute\\PileofGold.mdl",
+    "Bufftip": "点金术",
+    "Buffubertip": "\"这个单位受到了点金术的作用。将会变成金币。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

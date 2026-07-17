@@ -83,6 +83,8 @@ public static class War3HumanScenario
         TechnologyCatalogSnapshot technologies,
         War3MapRuntime map)
     {
+        simulation.Abilities.ConfigureCatalog(
+            War3HumanContent.CreateAbilityCatalog(), simulation.Units.Count);
         simulation.Economy.Players.RegisterPlayer(
             PlayerId, minerals: 1_250, vespeneGas: 700,
             supplyCapacity: 24, supplyUsed: InitialWorkers);
@@ -125,6 +127,106 @@ public static class War3HumanScenario
                 simulation, buildings, production, technologies),
             playerHome, enemyHome, playerWorkers, enemyWorkers,
             resourceNodes.ToArray());
+    }
+
+    /// <summary>
+    /// Builds the same map navigation occupancy used by the skirmish without
+    /// replaying several thousand construction ticks. Only one real peasant
+    /// is spawned; the complete simulation pipeline remains active for the
+    /// navigation audit.
+    /// </summary>
+    internal static War3HumanRuntime PrepareNavigationAudit(
+        RtsSimulation simulation,
+        BuildingTypeCatalogSnapshot buildings,
+        ProductionCatalogSnapshot production,
+        TechnologyCatalogSnapshot technologies,
+        War3MapRuntime map)
+    {
+        War3NavigationMapAudit.TraceBootstrap("status=prepare_begin");
+        simulation.Abilities.ConfigureCatalog(
+            War3HumanContent.CreateAbilityCatalog(), simulation.Units.Count);
+        simulation.Economy.Players.RegisterPlayer(
+            PlayerId, minerals: 1_250, vespeneGas: 700,
+            supplyCapacity: 24, supplyUsed: 1);
+        simulation.Economy.Players.RegisterPlayer(
+            EnemyId, minerals: 1_250, vespeneGas: 700,
+            supplyCapacity: 24, supplyUsed: 0);
+
+        float direction = MathF.Sign(map.EnemySpawn.X - map.PlayerSpawn.X);
+        if (direction == 0f) direction = 1f;
+        var workerType = production.UnitType(War3HumanContent.Peasant);
+        var workerPosition = map.PlayerSpawn + new Vector2(
+            direction * 105f, -45f);
+        var worker = simulation.AddUnit(workerPosition, workerType, PlayerId);
+        simulation.Economy.RegisterWorker(worker, PlayerId);
+
+        var auditBuildings = new List<AuditBuilding>(18);
+        AddAuditBase(
+            buildings, auditBuildings,
+            PlayerId, map.PlayerSpawn, direction);
+        AddAuditBase(
+            buildings, auditBuildings,
+            EnemyId, map.EnemySpawn, -direction);
+        var footprintIds = simulation.World.DynamicOccupancy
+            .PlaceBatchForDiagnostics(
+                auditBuildings.Select(value => value.Bounds).ToArray());
+        War3NavigationMapAudit.TraceBootstrap(
+            $"status=footprints_placed count={footprintIds.Length} " +
+            $"revision={simulation.World.NavigationRevision}");
+        var entries = new ConstructionRuntimeEntry[auditBuildings.Count];
+        for (var index = 0; index < auditBuildings.Count; index++)
+        {
+            var value = auditBuildings[index];
+            entries[index] = new ConstructionRuntimeEntry(
+                new GameplayBuildingId(index),
+                value.Player,
+                value.Type,
+                value.Bounds,
+                default,
+                footprintIds[index],
+                BuildingLifecycleState.Completed,
+                -1,
+                value.Center,
+                1f,
+                value.Type.MaximumHealth,
+                new EconomyResourceNodeId(-1));
+        }
+        var changedBounds = new SimRect(
+            auditBuildings.Aggregate(
+                new Vector2(float.PositiveInfinity),
+                (minimum, value) => Vector2.Min(minimum, value.Bounds.Min)),
+            auditBuildings.Aggregate(
+                new Vector2(float.NegativeInfinity),
+                (maximum, value) => Vector2.Max(maximum, value.Bounds.Max)));
+        War3NavigationMapAudit.TraceBootstrap(
+            $"status=topology_refresh_begin bounds={changedBounds.Min}-" +
+            $"{changedBounds.Max}");
+        simulation.RefreshNavigationAfterDiagnosticsBootstrap(changedBounds);
+        War3NavigationMapAudit.TraceBootstrap("status=topology_refresh_complete");
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+                entries,
+                new ConstructionReservationRuntimeSnapshot(1, [])));
+        War3NavigationMapAudit.TraceBootstrap(
+            $"status=construction_restored count={entries.Length}");
+        foreach (var entry in entries)
+        {
+            if (entry.Type.Function == BuildingFunctionKind.TownHall)
+            {
+                simulation.Economy.RegisterTownHall(
+                    entry.PlayerId, entry.Id, entry.Bounds);
+            }
+        }
+        simulation.StartMatch([PlayerId, EnemyId]);
+        War3NavigationMapAudit.TraceBootstrap("status=prepare_complete");
+        return new War3HumanRuntime(
+            CreateAiDirector(
+                simulation, buildings, production, technologies),
+            map.PlayerSpawn,
+            map.EnemySpawn,
+            [worker],
+            [],
+            []);
     }
 
     internal static War3HumanRuntime RestoreRuntime(
@@ -403,9 +505,7 @@ public static class War3HumanScenario
             var position = home + new Vector2(
                 direction * (105f + (index / 4) * 26f),
                 (index % 4 - 1.5f) * 30f);
-            output[index] = simulation.AddUnit(
-                position, worker.Movement, player, worker.Combat,
-                worker.Perception);
+            output[index] = simulation.AddUnit(position, worker, player);
             simulation.Economy.RegisterWorker(output[index], player);
         }
         return output;
@@ -419,22 +519,41 @@ public static class War3HumanScenario
         float direction,
         int builder)
     {
-        (int Type, Vector2 Offset)[] layout =
-        [
-            (War3HumanContent.TownHall, Vector2.Zero),
-            (War3HumanContent.Farm, new Vector2(-direction * 115f, -205f)),
-            (War3HumanContent.Farm, new Vector2(-direction * 115f, 205f)),
-            (War3HumanContent.Barracks, new Vector2(-direction * 245f, -150f)),
-            (War3HumanContent.Blacksmith, new Vector2(-direction * 250f, 0f)),
-            (War3HumanContent.AltarOfKings, new Vector2(-direction * 245f, 150f)),
-            (War3HumanContent.ArcaneSanctum, new Vector2(-direction * 390f, -185f)),
-            (War3HumanContent.Workshop, new Vector2(-direction * 405f, -25f)),
-            (War3HumanContent.GryphonAviary, new Vector2(-direction * 390f, 155f))
-        ];
-        foreach (var item in layout)
+        foreach (var item in StartingBaseLayout(direction))
             CompleteBuilding(simulation, buildings.Type(item.Type), player,
                 home + item.Offset, builder);
     }
+
+    private static void AddAuditBase(
+        BuildingTypeCatalogSnapshot buildings,
+        List<AuditBuilding> entries,
+        int player,
+        Vector2 home,
+        float direction)
+    {
+        foreach (var item in StartingBaseLayout(direction))
+        {
+            var type = buildings.Type(item.Type);
+            var center = home + item.Offset;
+            var halfSize = type.Size * 0.5f;
+            var bounds = new SimRect(center - halfSize, center + halfSize);
+            entries.Add(new AuditBuilding(player, type, bounds, center));
+        }
+    }
+
+    private static (int Type, Vector2 Offset)[] StartingBaseLayout(
+        float direction) =>
+    [
+        (War3HumanContent.TownHall, Vector2.Zero),
+        (War3HumanContent.Farm, new Vector2(-direction * 115f, -205f)),
+        (War3HumanContent.Farm, new Vector2(-direction * 115f, 205f)),
+        (War3HumanContent.Barracks, new Vector2(-direction * 245f, -150f)),
+        (War3HumanContent.Blacksmith, new Vector2(-direction * 250f, 0f)),
+        (War3HumanContent.AltarOfKings, new Vector2(-direction * 245f, 150f)),
+        (War3HumanContent.ArcaneSanctum, new Vector2(-direction * 390f, -185f)),
+        (War3HumanContent.Workshop, new Vector2(-direction * 405f, -25f)),
+        (War3HumanContent.GryphonAviary, new Vector2(-direction * 390f, 155f))
+    ];
 
     private static void CompleteBuilding(
         RtsSimulation simulation,
@@ -489,4 +608,10 @@ public static class War3HumanScenario
     private readonly record struct ResourceCluster(
         EconomyResourceNodeId Gold,
         EconomyResourceNodeId[] Trees);
+
+    private readonly record struct AuditBuilding(
+        int Player,
+        BuildingTypeProfile Type,
+        SimRect Bounds,
+        Vector2 Center);
 }

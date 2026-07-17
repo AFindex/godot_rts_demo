@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSleep.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsleep.png"
+      }
     ]
   },
   "summary": {
@@ -42,7 +50,11 @@
         "manaCost": 0,
         "range": 1000,
         "data": {},
+        "unitIds": [
+          "nzom"
+        ],
         "summonedUnitId": "nzom",
+        "requirements": [],
         "buffIds": [
           "BNsl"
         ],

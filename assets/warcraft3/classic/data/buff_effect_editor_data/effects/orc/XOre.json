@@ -1,0 +1,85 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XOre",
+  "displayName": "重生(效果)",
+  "identity": {
+    "baseCode": "XOre",
+    "race": "orc",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOre",
+      "level": 1,
+      "kind": "effect",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ANrn",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACrn",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIrc",
+      "level": 1,
+      "kind": "effect",
+      "race": "other"
+    },
+    {
+      "abilityId": "AOr3",
+      "level": 1,
+      "kind": "effect",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOr3",
+      "level": 2,
+      "kind": "effect",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ANr2",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XOre",
+    "code": "XOre",
+    "comments": "Reincarnation        ",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "EditorName": "重生(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt"
+    ]
+  }
+}

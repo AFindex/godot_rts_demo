@@ -6,7 +6,8 @@ namespace War3Rts.Data;
 public enum War3ObjectDataKind : byte
 {
     Ability,
-    Upgrade
+    Upgrade,
+    BuffEffect
 }
 
 public sealed record War3ObjectDataIndexEntry(
@@ -27,6 +28,10 @@ public sealed class War3ObjectDataCatalog
     private const string UpgradeManifestSchema =
         "war3-upgrade-editor-manifest/v1";
     private const string UpgradeObjectSchema = "war3-upgrade-editor-data/v1";
+    private const string BuffEffectManifestSchema =
+        "war3-buff-effect-editor-manifest/v1";
+    private const string BuffEffectObjectSchema =
+        "war3-buff-effect-editor-data/v1";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -92,11 +97,17 @@ public sealed class War3ObjectDataCatalog
     public static War3ObjectDataCatalog OpenUpgrade(string rootPath) =>
         Open(War3ObjectDataKind.Upgrade, rootPath);
 
+    public static War3ObjectDataCatalog OpenBuffEffect(string rootPath) =>
+        Open(War3ObjectDataKind.BuffEffect, rootPath);
+
     public static War3ObjectDataCatalog LoadAbility(string rootPath) =>
         Load(War3ObjectDataKind.Ability, rootPath);
 
     public static War3ObjectDataCatalog LoadUpgrade(string rootPath) =>
         Load(War3ObjectDataKind.Upgrade, rootPath);
+
+    public static War3ObjectDataCatalog LoadBuffEffect(string rootPath) =>
+        Load(War3ObjectDataKind.BuffEffect, rootPath);
 
     public bool Contains(string objectId) =>
         IsAvailable && _index.ContainsKey(objectId);
@@ -201,15 +212,21 @@ public sealed class War3ObjectDataCatalog
             entries.ToArray());
     }
 
-    private static string ManifestSchema(War3ObjectDataKind kind) =>
-        kind == War3ObjectDataKind.Ability
-            ? AbilityManifestSchema
-            : UpgradeManifestSchema;
+    private static string ManifestSchema(War3ObjectDataKind kind) => kind switch
+    {
+        War3ObjectDataKind.Ability => AbilityManifestSchema,
+        War3ObjectDataKind.Upgrade => UpgradeManifestSchema,
+        War3ObjectDataKind.BuffEffect => BuffEffectManifestSchema,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 
-    private static string ObjectSchema(War3ObjectDataKind kind) =>
-        kind == War3ObjectDataKind.Ability
-            ? AbilityObjectSchema
-            : UpgradeObjectSchema;
+    private static string ObjectSchema(War3ObjectDataKind kind) => kind switch
+    {
+        War3ObjectDataKind.Ability => AbilityObjectSchema,
+        War3ObjectDataKind.Upgrade => UpgradeObjectSchema,
+        War3ObjectDataKind.BuffEffect => BuffEffectObjectSchema,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 
     private static string NormalizeRoot(string rootPath)
     {
@@ -272,6 +289,7 @@ public sealed class War3ObjectEditorData
     public War3ObjectIdentity Identity { get; init; } = new();
     public Dictionary<string, War3UnitAssetReference[]> Assets { get; init; } = [];
     public War3ObjectSummary Summary { get; init; } = new();
+    public War3BuffEffectPresentation Presentation { get; init; } = new();
     public Dictionary<string, string> EditorData { get; init; } = [];
     public Dictionary<string, string> Profile { get; init; } = [];
 }
@@ -283,9 +301,14 @@ public sealed class War3ObjectIdentity
     public string Class { get; init; } = string.Empty;
     public bool Hero { get; init; }
     public bool Item { get; init; }
+    public bool Effect { get; init; }
+    public bool ProfileOnly { get; init; }
+    public bool? EditorVisible { get; init; }
     public bool Used { get; init; }
     public bool Global { get; init; }
     public int Levels { get; init; }
+    public int RequiredHeroLevel { get; init; }
+    public int HeroLevelSkip { get; init; }
 }
 
 public sealed class War3ObjectSummary
@@ -315,8 +338,23 @@ public sealed class War3ObjectLevel
     public float? Area { get; init; }
     public float? Range { get; init; }
     public Dictionary<string, string> Data { get; init; } = [];
+    public string[] UnitIds { get; init; } = [];
+    public string? SummonedUnitId { get; init; }
     public string[] BuffIds { get; init; } = [];
     public string[] EffectIds { get; init; } = [];
+    public int? RequirementLevel { get; init; }
+}
+
+public sealed class War3BuffEffectPresentation
+{
+    public string[] CasterAttachments { get; init; } = [];
+    public int? CasterAttachmentCount { get; init; }
+    public string[] TargetAttachments { get; init; } = [];
+    public int? TargetAttachmentCount { get; init; }
+    public string[] SpecialAttachments { get; init; } = [];
+    public int? SpecialAttachmentCount { get; init; }
+    public string? EffectSound { get; init; }
+    public string? EffectSoundLooped { get; init; }
 }
 
 public sealed class War3UpgradeEffect

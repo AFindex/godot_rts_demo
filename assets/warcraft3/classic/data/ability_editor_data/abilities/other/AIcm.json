@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnspellsteal.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\SpellSteal\\SpellStealTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\SpellSteal\\SpellStealTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/spellsteal/spellstealtarget.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\SpellSteal\\SpellStealMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\SpellSteal\\SpellStealMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/spellsteal/spellstealmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +60,8 @@
           "A": "5",
           "B": "0.3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bcmg"
         ],

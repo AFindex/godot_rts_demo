@@ -1,0 +1,59 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Ocr5",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 5,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_OCR5",
+  "displayName": "不会漏掉",
+  "sort": "x0a005",
+  "valueType": "bool",
+  "minimum": 0,
+  "maximum": 1,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AOcr",
+      "ACct",
+      "ANdb"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Ocr5",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "5",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_OCR5",
+    "sort": "x0a005",
+    "type": "bool",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "1",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AOcr,ACct,ANdb",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

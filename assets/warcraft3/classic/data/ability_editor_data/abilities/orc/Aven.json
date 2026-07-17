@@ -45,6 +45,11 @@
           "C": "0",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [
+          "Rovs"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bpoi",
           "Bpsd"

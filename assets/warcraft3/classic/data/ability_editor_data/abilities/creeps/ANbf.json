@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnbreathoffire.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBreathOfFire.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbreathoffire.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\BreathOfFire\\BreathOfFireMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/breathoffire/breathoffiremissile.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +64,8 @@
           "D": "300",
           "E": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNbf"
         ],
@@ -76,6 +94,8 @@
           "D": "300",
           "E": "14"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNbf"
         ],
@@ -104,6 +124,8 @@
           "D": "300",
           "E": "21"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNbf"
         ],

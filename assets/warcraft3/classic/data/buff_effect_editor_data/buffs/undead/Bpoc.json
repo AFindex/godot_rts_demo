@@ -1,0 +1,63 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bpoc",
+  "displayName": "占据 (施法者)",
+  "identity": {
+    "baseCode": "Bpoc",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Possession\\PossessionCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Possession\\PossessionCaster.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/undead/possession/possessioncaster.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aps2",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    }
+  ],
+  "editorData": {
+    "alias": "Bpoc",
+    "code": "Bpoc",
+    "comments": "Possession",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Targetart": "Abilities\\Spells\\Undead\\Possession\\PossessionCaster.mdl",
+    "Targetattach": "overhead",
+    "EditorName": "占据 (施法者)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt"
+    ]
+  }
+}

@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmanual3.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIem\\AIemTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIem\\AIemTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aiem/aiemtarget.glb"
+      }
     ]
   },
   "summary": {
@@ -36,6 +44,8 @@
         "data": {
           "A": "500"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,98 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xfol",
+  "displayName": "建筑物伤害 – 兽族  大",
+  "identity": {
+    "baseCode": "Xfol",
+    "race": "orc",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire0.glb"
+      },
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl",
+        "resolvedPath": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/largebuildingfire/largebuildingfire1.glb"
+      },
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire0.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire0.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire0.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "sprite",
+      "first"
+    ],
+    "targetAttachmentCount": 6,
+    "specialAttachments": [],
+    "effectSoundLooped": "HumanFireLarge"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xfol",
+    "code": "Xfol",
+    "comments": "EFFECT_OnFireOrcLrg",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "TargetArt": "Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl,Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl,Environment\\LargeBuildingFire\\LargeBuildingFire0.mdl,Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl,Environment\\LargeBuildingFire\\LargeBuildingFire1.mdl,Environment\\SmallBuildingFire\\SmallBuildingFire0.mdl",
+    "Targetattachcount": "6",
+    "Targetattach": "sprite,first",
+    "Targetattach1": "sprite,second",
+    "Targetattach2": "sprite,fifth",
+    "Targetattach3": "sprite,third",
+    "Targetattach4": "sprite,fourth",
+    "Targetattach5": "sprite,sixth",
+    "Effectsoundlooped": "HumanFireLarge",
+    "EditorName": "建筑物伤害 – 兽族  大"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

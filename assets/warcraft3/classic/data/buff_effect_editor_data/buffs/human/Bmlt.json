@@ -1,0 +1,76 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bmlt",
+  "displayName": "Bmlt",
+  "identity": {
+    "baseCode": "Bmlt",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\AerialShackles\\AerialShacklesTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\AerialShackles\\AerialShacklesTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/aerialshackles/aerialshacklestarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicLariet.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMagicLariet.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmagiclariet.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest",
+      "mount"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Amls",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    }
+  ],
+  "editorData": {
+    "alias": "Bmlt",
+    "code": "Bmlt",
+    "comments": "MagicLeashTarget       ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNMagicLariet.blp",
+    "Targetart": "Abilities\\Spells\\Human\\AerialShackles\\AerialShacklesTarget.mdl",
+    "Bufftip": "空中锁镣",
+    "Buffubertip": "\"该单位已受空中锁镣禁锢，无法移动或攻击，并且不断受到伤害。\"",
+    "Targetattach": "chest,mount"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnorcbattlestandard.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\BattleStandard\\BattleStandard.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\BattleStandard\\BattleStandard.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/battlestandard/battlestandard.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

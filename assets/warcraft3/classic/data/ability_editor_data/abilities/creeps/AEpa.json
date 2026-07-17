@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnsearingarrowson.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSearingArrows.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSearingArrows.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsearingarrows.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\SearingArrow\\SearingArrowMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\SearingArrow\\SearingArrowMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/searingarrow/searingarrowmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +63,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bpoi",
           "Bpsd",
@@ -76,6 +94,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bpoi",
           "Bpsd",
@@ -105,6 +125,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bpoi",
           "Bpsd",

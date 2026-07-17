@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnstampede.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStampede.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStampede.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstampede.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Stampede\\MissileDeath.mdl",
+        "resolvedPath": null,
+        "sourceLayer": null,
+        "godotPath": null
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Stampede\\StampedeMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Stampede\\StampedeMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/stampede/stampedemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +73,8 @@
           "D": "275",
           "E": "0.2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNst"
         ],
@@ -79,6 +105,8 @@
           "D": "275",
           "E": "0.2"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNst"
         ],

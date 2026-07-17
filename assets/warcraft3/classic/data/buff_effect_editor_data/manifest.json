@@ -1,0 +1,2685 @@
+{
+  "schema": "war3-buff-effect-editor-manifest/v1",
+  "generatedAt": "2026-07-17T05:55:07.571Z",
+  "game": {
+    "edition": "Warcraft III Classic",
+    "localization": "zh-CN",
+    "overlayLayers": [
+      "roc",
+      "tft",
+      "tft-locale",
+      "patch"
+    ]
+  },
+  "statistics": {
+    "objectCount": 247,
+    "buffCount": 213,
+    "effectCount": 34,
+    "profileOnlyCount": 10,
+    "referencedBuffCount": 194,
+    "referencedEffectCount": 19,
+    "resolvedAssetReferenceCount": 385
+  },
+  "sources": [
+    {
+      "path": "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "sha256": "0eb61c1468b346769fd5d5d4bbe03852d70f0814bb9acbe974254437c54bedea"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/CampaignAbilityFunc.txt",
+      "sha256": "89f7450916a925a7b6db8f7c057b44eae41a3a862dfca462b3d0030f99ac3bc9"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/CampaignAbilityStrings.txt",
+      "sha256": "c3e9f14c5612a2f842a1f25b118df721dcc01f9a98c591bb62e1bdf9a490c3b6"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "sha256": "4cc1af07a127e4609a854f65ccf6870c7895f4a073419dc843957a0d9d575e50"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "sha256": "6feda91bbbf8b31bd3943c03ed004e8c382faa57efb68c722b5305bf8eab399c"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "sha256": "30339592565e7415441a18b23b9f5ec90fe3304393a26b1ea88c61871a509af6"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "sha256": "d16a33c8bfbf2941a210a762ccd605adf2f919342fb9b82c4ea57a3c1df792c0"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "sha256": "22752f520ac000f64c60da602d8abee3ffd4c7119418454acb40ac2c9712e55b"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "sha256": "2960b7b83a088b5e316eb1ad9b62ad34e73d09be4e3308ca1148a78fedfcfa72"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "sha256": "13efe3d8d9ea6d7ec1bb6ffbe166182f98619f88c676f0b3e4c4664e4227cd0e"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "sha256": "4d3dc78b3979b02747abb442a69d8b05cbafdcfc058e95a77be8246af505a647"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/NightElfAbilityFunc.txt",
+      "sha256": "20e3bf670536d1a17cfbac0f40fb0cf28d4fcd69a6805f036c2845723e8cf87a"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/NightElfAbilityStrings.txt",
+      "sha256": "ee56d6d8f1412f5e203b7e6cfb98dd50bfd1d5c02231322d14fe74c249f5d55c"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "sha256": "9480b5fe482c3df2e966db5203b37899bf5a3771c2c241fb2c77abe51615623b"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "sha256": "c5b56eedb803bafcb69ca3126a2d4ac114dc63542f7599cc513d599b96f5d4cb"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "sha256": "515103e7540e3c6718e69d20d591b0a9132ba798326a142139863764083df8dc"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "sha256": "c7188cbd296b1f2537a69c159467e66da3e8e884a05f5632c295a72a5c468289"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "sha256": "d8137d220cc6c9c55de49dac3a5e87a051684eeebe0a7abd5cb4937708f5b4f9"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/CommonAbilityStrings.txt",
+      "sha256": "fa175a28d57494362b1a8f308e9d80806aed6614ffee47cfb5db15c74a3e6260"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "sha256": "698a0abcb11cc53db9896fe6477848cbd0e6be256ce56ebccc61bb5cd9542931"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/HumanAbilityStrings.txt",
+      "sha256": "b8c1e4eff6f3e59a05f3a4e058c1ca10f080c1c4ec7be57c0b6a46e90937a5d8"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/ItemAbilityFunc.txt",
+      "sha256": "ac49c4e8787eae65fc33c8ee8d5d426f558b1f96dc541b3524609a02c491df6b"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/ItemAbilityStrings.txt",
+      "sha256": "d7141e5a7ef2899bd39df36ea614197f234a667c9e1126a08433fb6684ae590c"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/NeutralAbilityFunc.txt",
+      "sha256": "0ed9c8dd3ce1ad4fcb8603f965b04fa099b98f9387a9978151f0cc33963287da"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/NeutralAbilityStrings.txt",
+      "sha256": "181eb05300b1329f0eb6d75b78a7c181856e6ecae8fe8bc1380dff06261a1228"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/NightElfAbilityFunc.txt",
+      "sha256": "a41289ef26f2832a48b2b10f8e8f998002a42fa8038be64c8943557b8a740cfb"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/NightElfAbilityStrings.txt",
+      "sha256": "4bfbf7bf351330a7cebff812ce54e7ff2dfd6bf5039fb4b2e27635bcbf6dd491"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "sha256": "88eaa30b5cad9f2e12c02dd61cbf7142b941f2e4bcd0bc8f95fd3a415ad95983"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "sha256": "4e2b1c699d49427e72885d5b4161d9f0f41f3ed1e29b7c564df35e31d9d7939a"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "sha256": "11699a7c0244faecaa427c70b25fd36e5cf6544f9ea56a8817c2fb4241ed67f4"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "sha256": "4ed5f3578e0bc32770e6403ed38748741a2dd1e9d5a0b5e79159aa76b2915a92"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/CampaignAbilityStrings.txt",
+      "sha256": "c6d03de43c2cb62358c6acc0bd468a4be2e950d59fd815d6a9cb061aa9686296"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/CommonAbilityStrings.txt",
+      "sha256": "3b8a3dba50ea4e608e61132014fa4e51eaba2573090932657be863d4a4bac81f"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/HumanAbilityStrings.txt",
+      "sha256": "c036b6faa411b550194f308348f09a282c176895d432d3b703614592cd824f57"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "sha256": "2bde2caa4054c567ce6e225695653d106e0e775caa7da835a3ee9ee1ab504fd8"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "sha256": "cbe60a224b5fd26a43d39d6430607189f8178e496a477f95c278ac4e773d249c"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/NightElfAbilityStrings.txt",
+      "sha256": "b283a25bd4a3bf100f7113c882e1436674d632f514c1b125bf8ac47ae1c4ee5e"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "sha256": "fc352ef0cfdb1b1e923e6ad474dee75c60dfcc7872ff6787d3e6760aeb4680c7"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "sha256": "b50a23ce40ea7981c56153cdbb316ad930f2a356559e63d586cdc21e9dde1691"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/CampaignAbilityFunc.txt",
+      "sha256": "8e29b1032854b5e6342f19b69aa2afe405feaa168a8872946b543b48d5e2f0b3"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt",
+      "sha256": "09a8909526d6f65205f37b030e35d97fb88379f38cc5bfe18d53adc2e098f17b"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt",
+      "sha256": "c40ee88726d89176981445b47326e6cda2682388e00c0d3a6d5e57e3d96eddfe"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt",
+      "sha256": "f2362c277d8be669b1a62f4bd7ec1c297260326d6bccaa3c40d61a57cf0112ad"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt",
+      "sha256": "4f82c97a267053a5f174cfc8bac6538d26b32f6d22e010f1a74a38ac9ee0b2ba"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/NightElfAbilityFunc.txt",
+      "sha256": "e65b6f52a0f19a68dc521b4f339602496673bb87edb591e0f7d162f50cc6e7a3"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt",
+      "sha256": "ef58bd6433d78ce11c55a6e6ac8b51efc21ff6c8e0717b1ca759a5aa122e28bc"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt",
+      "sha256": "2c8b7504c45280f9ab2bbf3ee07dab497ca12aebf16c84ff38762d164a6b07c1"
+    }
+  ],
+  "objects": [
+    {
+      "id": "AEsd",
+      "displayName": "群星坠落(目标)",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/AEsd.json",
+      "bytes": 1769,
+      "sha256": "d572d53f76f8a0062a2d7f790aa3293f1e7d1c2b2aaafb123e5e8478956b5d8a"
+    },
+    {
+      "id": "AEtr",
+      "displayName": "宁静(目标)",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/AEtr.json",
+      "bytes": 1631,
+      "sha256": "4a679be06e05b9be9f77411fce0fe1ae3acc1720ade9f1ac4d307a380404002b"
+    },
+    {
+      "id": "ANmd",
+      "displayName": "季风",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/ANmd.json",
+      "bytes": 1873,
+      "sha256": "e62952d0b2c1d9697870b58587ccdf428629bed5d746d8afe9f64064418b5c5e"
+    },
+    {
+      "id": "Babr",
+      "displayName": "Babr",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Babr.json",
+      "bytes": 2234,
+      "sha256": "290a96ff7f79ca06afe91cee98d784e5d5536aac2cbe39f887f9138679154767"
+    },
+    {
+      "id": "Bakb",
+      "displayName": "Bakb",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bakb.json",
+      "bytes": 2264,
+      "sha256": "d539efc5745f5d23276723397401c91c5d9f31cb6a5cb81f20e93de03b0765e6"
+    },
+    {
+      "id": "Bam2",
+      "displayName": "Bam2",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bam2.json",
+      "bytes": 2399,
+      "sha256": "6a57f0ee5b12f6ad38292b1074b0b03762f1796718b12889b387a351f2af61a8"
+    },
+    {
+      "id": "Bams",
+      "displayName": "Bams",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bams.json",
+      "bytes": 2632,
+      "sha256": "cb9300b8a1e1558a0c082bc0fa4c22af0189011055fda83764c769bc531469b3"
+    },
+    {
+      "id": "Bapl",
+      "displayName": "Bapl",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bapl.json",
+      "bytes": 2578,
+      "sha256": "46e59b412841d22860be297d7fa83d56df409c4ea892193bf8ec9a512df3f48d"
+    },
+    {
+      "id": "Barm",
+      "displayName": "Barm",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Barm.json",
+      "bytes": 1839,
+      "sha256": "a96b41386a7dcf51c762525688b1fb464d51ea51f572851a569d1e6120366f8f"
+    },
+    {
+      "id": "Basl",
+      "displayName": "Basl",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Basl.json",
+      "bytes": 2098,
+      "sha256": "121827a17db29aa0bbd565f8149675b671cbea9d9cb74d7b43e753562349e934"
+    },
+    {
+      "id": "Bbar",
+      "displayName": "Bbar",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bbar.json",
+      "bytes": 2150,
+      "sha256": "461e10a5aff0d8caf6367de79dd78c810c331c35d90af8a272862aaf349c81c3"
+    },
+    {
+      "id": "Bblo",
+      "displayName": "Bblo",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bblo.json",
+      "bytes": 2918,
+      "sha256": "10d71e6d6531c27306f5da5796ca849021e8c2aa1c165bf0932989d9680726a7"
+    },
+    {
+      "id": "Bbof",
+      "displayName": "Bbof",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bbof.json",
+      "bytes": 2098,
+      "sha256": "70a393a238bebfc42fae1c6810dc13bac5df513b67ec9af2e081a10263ee2629"
+    },
+    {
+      "id": "Bbsk",
+      "displayName": "Bbsk",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bbsk.json",
+      "bytes": 2938,
+      "sha256": "502505f36904902527a0bff0c9ff22fb839a85b66defc5d479b8c4794ce931c0"
+    },
+    {
+      "id": "BCbf",
+      "displayName": "BCbf",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BCbf.json",
+      "bytes": 2154,
+      "sha256": "aa835ab5ae7115b39d8689ad440860ada2d9a2eec5e8e61018501de3bb929782"
+    },
+    {
+      "id": "Bchd",
+      "displayName": "Bchd",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bchd.json",
+      "bytes": 2136,
+      "sha256": "ccc9450e8ce4fa447edfb8ddf43aed6eae3fbc03c6a7897d600e0f68314e3ed8"
+    },
+    {
+      "id": "Bclf",
+      "displayName": "Bclf",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bclf.json",
+      "bytes": 1788,
+      "sha256": "424b4b90f626c107cdd042cab709f62f92a79bf73d80d2e421817abc6889a29b"
+    },
+    {
+      "id": "Bcmg",
+      "displayName": "Bcmg",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bcmg.json",
+      "bytes": 2170,
+      "sha256": "2830b346ca20dd43aee943dd14a8feb3df2da50d5d485a5eb19f496182ffac56"
+    },
+    {
+      "id": "Bcor",
+      "displayName": "Bcor",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bcor.json",
+      "bytes": 2255,
+      "sha256": "a360cac08388b887d75537a0e499938e185ffa673c2aaa2a5f9b5370e620e80e"
+    },
+    {
+      "id": "Bcri",
+      "displayName": "Bcri",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bcri.json",
+      "bytes": 2440,
+      "sha256": "1d16bd36c660728bf78ae577dc3a35c39c9363d9a851b5a1119040ea48b167db"
+    },
+    {
+      "id": "Bcrs",
+      "displayName": "Bcrs",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bcrs.json",
+      "bytes": 2355,
+      "sha256": "52103be76c8580d7c9cbe5ad762399f3927f988331cabede3060304ac947fa8d"
+    },
+    {
+      "id": "Bcsd",
+      "displayName": "Bcsd",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bcsd.json",
+      "bytes": 2365,
+      "sha256": "da8a44fb5949d705f335ebf63f65bb6461a3f8581feddadba0fe9a6ea268815b"
+    },
+    {
+      "id": "Bcsi",
+      "displayName": "冰冻冷箭",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bcsi.json",
+      "bytes": 1540,
+      "sha256": "38137a50c6b5ca712db95148c1469842a004a8f45a88f812e4593c4375eb08e0"
+    },
+    {
+      "id": "BCtc",
+      "displayName": "BCtc",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BCtc.json",
+      "bytes": 2289,
+      "sha256": "44f42052ec50c4e6fe7624b4ca94f7e996367774c16728ab38b9eba9e463e397"
+    },
+    {
+      "id": "Bcy2",
+      "displayName": "Bcy2",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bcy2.json",
+      "bytes": 2648,
+      "sha256": "86f1e03950b01f59399cd0221bcd8289a046d42d01d56f34b858470841a42f44"
+    },
+    {
+      "id": "Bcyc",
+      "displayName": "Bcyc",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bcyc.json",
+      "bytes": 2781,
+      "sha256": "981c5aae5fde8e9e3a1310531c816cb7458090325a3cf50e43441d48e1e2c165"
+    },
+    {
+      "id": "Bdbb",
+      "displayName": "吸取生命值和魔法值（附加）",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/other/Bdbb.json",
+      "bytes": 2108,
+      "sha256": "c913768d683ddb5b1fcc86e98f1cf620e6c2761425fe1ebe480ff59698f1c078"
+    },
+    {
+      "id": "Bdbl",
+      "displayName": "吸取生命（附加）",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/other/Bdbl.json",
+      "bytes": 2051,
+      "sha256": "73132ebf98896b37265bfc7d30b7d44556bed1d226a891fbc51c340192246999"
+    },
+    {
+      "id": "Bdbm",
+      "displayName": "吸取魔法（附加）",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/other/Bdbm.json",
+      "bytes": 2051,
+      "sha256": "dfb4a881072144fb0403a1b4e80d2b5762d2944579e9f1db49c6869ba6bae14a"
+    },
+    {
+      "id": "Bdcb",
+      "displayName": "汲取生命值和魔法值(施法者)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bdcb.json",
+      "bytes": 2308,
+      "sha256": "61924ce0694b2bb8d6995600e6f2b9c929910f44d18edfe35eb6e2c0fde4d365"
+    },
+    {
+      "id": "Bdcl",
+      "displayName": "汲取生命值(施法者)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bdcl.json",
+      "bytes": 2284,
+      "sha256": "24376e292893de79bece5c5b1bddf0ac883852245899a2b8bf5172293eb9ff16"
+    },
+    {
+      "id": "Bdcm",
+      "displayName": "汲取魔法值 (施法者)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bdcm.json",
+      "bytes": 2302,
+      "sha256": "20314b9a8241a05f64ec196906ae8160c02b3df960464a423980e75e34dc1e7b"
+    },
+    {
+      "id": "Bdef",
+      "displayName": "Bdef",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bdef.json",
+      "bytes": 2323,
+      "sha256": "2b0bb23bbf41b62daf51c9132516233b6d4ae9afea1b89df98024e78cb485659"
+    },
+    {
+      "id": "Bdet",
+      "displayName": "Bdet",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bdet.json",
+      "bytes": 2182,
+      "sha256": "4d046df169d82b97633426109c88b0e6279ecde192afde799e148ba87f2996be"
+    },
+    {
+      "id": "Bdig",
+      "displayName": "吞噬 (施法者)",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bdig.json",
+      "bytes": 1099,
+      "sha256": "fd488d01f775c304c34543872eaee61daa485c09767e66b905dc6cea83c5fc14"
+    },
+    {
+      "id": "Bdtb",
+      "displayName": "汲取生命值和魔法值(目标)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bdtb.json",
+      "bytes": 2302,
+      "sha256": "359ac98c0bf83936848e5af19cdf8fdfbe9b8010456cd72f28843da77b9e5a55"
+    },
+    {
+      "id": "Bdtl",
+      "displayName": "汲取生命值(目标)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bdtl.json",
+      "bytes": 2278,
+      "sha256": "5900281c378bd408c1ea66e672b46cbb0e704d47205a1f3ee5326db5df35dda2"
+    },
+    {
+      "id": "Bdtm",
+      "displayName": "汲取魔法值 (目标)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bdtm.json",
+      "bytes": 2296,
+      "sha256": "e71891278e503a605e0064b9f191763b9ad29b749cdbba6b30b95cf3090c04eb"
+    },
+    {
+      "id": "Bdvv",
+      "displayName": "Bdvv",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bdvv.json",
+      "bytes": 1848,
+      "sha256": "ea4690096799383da8a23681f244d724d26e46cd6e5ff2cb68e5c2f3224e5e1c"
+    },
+    {
+      "id": "BEah",
+      "displayName": "BEah",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEah.json",
+      "bytes": 3159,
+      "sha256": "ed4af978e60aa2d7aa7c6eb02f3ee2919b6ee8a59474f55559910ec82a155e9a"
+    },
+    {
+      "id": "BEar",
+      "displayName": "BEar",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEar.json",
+      "bytes": 2764,
+      "sha256": "9ecba32830a6ec2fa3ec3b435586f3fb0a20f0eac9c6cd7e898e3e862b30e97f"
+    },
+    {
+      "id": "Beat",
+      "displayName": "吃树",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Beat.json",
+      "bytes": 992,
+      "sha256": "d5a511d1b7ed0b2df2bd00ee0d3ce4df80d10bf44c53322ea5db3c6cb4e16b6a"
+    },
+    {
+      "id": "BEer",
+      "displayName": "BEer",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEer.json",
+      "bytes": 2810,
+      "sha256": "3d6ae2accb6fade2e6fc8f54d9f32078fbe074ca71fdee147ce1bcaa4fd1e28e"
+    },
+    {
+      "id": "BEfn",
+      "displayName": "BEfn",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEfn.json",
+      "bytes": 2094,
+      "sha256": "9e99aafcf09d1c58273bea852b9a885bafaa4ec27e9b5ef5293b7a431d5cb087"
+    },
+    {
+      "id": "BEia",
+      "displayName": "献祭(施法者)",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEia.json",
+      "bytes": 1327,
+      "sha256": "1c956a1f3a25adb500fcaeff151443c0a4be2555d69de66db4b9f36c4aa8b8b5"
+    },
+    {
+      "id": "BEim",
+      "displayName": "BEim",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEim.json",
+      "bytes": 3077,
+      "sha256": "c52c8df3120bdb425d695ee92f2ee64459faef9ba573bf54cab81a66a70314e4"
+    },
+    {
+      "id": "BEme",
+      "displayName": "BEme",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEme.json",
+      "bytes": 2057,
+      "sha256": "7bae19f848cc3e00fd3e5be9f7002ad0fa694e1c50ae8a97b8d9245e97ef5ef9"
+    },
+    {
+      "id": "Bena",
+      "displayName": "Bena",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bena.json",
+      "bytes": 2450,
+      "sha256": "dbf20c5a8be0b4c61e41212a64da842d14acd9aa2fbccbf380dbd69a9deb757e"
+    },
+    {
+      "id": "Beng",
+      "displayName": "Beng",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Beng.json",
+      "bytes": 2365,
+      "sha256": "a121812d9f6a1b300d9aeeba25a883ae6c948e1ae605bed4eb719431251af355"
+    },
+    {
+      "id": "Bens",
+      "displayName": "诱捕(一般的)",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bens.json",
+      "bytes": 1884,
+      "sha256": "2fb593c1d04ba1871f67b3a85b52fa6cb13b2ee48b9a5a3b26be7c556458a597"
+    },
+    {
+      "id": "BEsh",
+      "displayName": "BEsh",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEsh.json",
+      "bytes": 2499,
+      "sha256": "f5e12409ec1f6677a8f5356c6bbf1d3f4d460f294610e95f979a52da5ebdcd89"
+    },
+    {
+      "id": "BEst",
+      "displayName": "BEst",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEst.json",
+      "bytes": 1421,
+      "sha256": "41854b9b64b37fdb6095298ee74fea7ed22437098fe867ca0e99702eee82bc29"
+    },
+    {
+      "id": "BEsv",
+      "displayName": "BEsv",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/BEsv.json",
+      "bytes": 2075,
+      "sha256": "3a9478c5f46bcf91c8926086330042edaa0c5634c21faf987dfd34ca2b299a94"
+    },
+    {
+      "id": "Beye",
+      "displayName": "Beye",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Beye.json",
+      "bytes": 2353,
+      "sha256": "72f9af47c022c0bb036597ad5bf17908a45285bc9996194e89f88c55c0e661ae"
+    },
+    {
+      "id": "Bfae",
+      "displayName": "Bfae",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bfae.json",
+      "bytes": 2556,
+      "sha256": "c0576c6caad8f8a8b0075e9c59d2c40526fccd0fc5440445aa268e2c4f6c76be"
+    },
+    {
+      "id": "BFig",
+      "displayName": "BFig",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BFig.json",
+      "bytes": 2400,
+      "sha256": "376112ff64e3458afffa542fb7e5bba5ae3e21f4c14602cd8da88678c4910354"
+    },
+    {
+      "id": "Bfre",
+      "displayName": "冰冻",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bfre.json",
+      "bytes": 974,
+      "sha256": "eb4bf1f813ae5fed193d86fdb70b760a65d77575a36bcba41f5eaf5edbcd1071"
+    },
+    {
+      "id": "Bfro",
+      "displayName": "Bfro",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bfro.json",
+      "bytes": 3313,
+      "sha256": "411f4e78ba07633ca023ca965c3d106096483a9581d111c1f1d4d7243433124a"
+    },
+    {
+      "id": "Bfrz",
+      "displayName": "Bfrz",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bfrz.json",
+      "bytes": 2335,
+      "sha256": "21a8518259c2dc0dbc8a2694d05da89f8e0abd0110335f72b8700bfc3f10763b"
+    },
+    {
+      "id": "Bfzy",
+      "displayName": "Bfzy",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bfzy.json",
+      "bytes": 2603,
+      "sha256": "2b539edc6945b50ea98b5b179626a44e7878236bf263e877830a31377e8e1539"
+    },
+    {
+      "id": "Bgra",
+      "displayName": "拔树",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bgra.json",
+      "bytes": 992,
+      "sha256": "d6dd4118744988294736a40d882a8ba1fb5912c64f6d633b99100748695aa6eb"
+    },
+    {
+      "id": "BHab",
+      "displayName": "BHab",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHab.json",
+      "bytes": 2727,
+      "sha256": "b0081804ca8491733c4f47bacc41d3a792694d7be100dfc19774a2d6542b4ad5"
+    },
+    {
+      "id": "BHad",
+      "displayName": "BHad",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHad.json",
+      "bytes": 2713,
+      "sha256": "1d7083fb9844a4d6cf3a60c2f685ce6832e564499e95558ee0f9f4a9d87d7b64"
+    },
+    {
+      "id": "BHav",
+      "displayName": "BHav",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHav.json",
+      "bytes": 1761,
+      "sha256": "7bbdaebf431bf46d7c5d636a0ae62a644c587054364b67d3c84ee395c36f4c50"
+    },
+    {
+      "id": "BHbd",
+      "displayName": "BHbd",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHbd.json",
+      "bytes": 2335,
+      "sha256": "a10103357f37c5cee9e95eed274ef8b62dcbda783eec09b14357439da4a3e526"
+    },
+    {
+      "id": "BHbn",
+      "displayName": "BHbn",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHbn.json",
+      "bytes": 2506,
+      "sha256": "21f691b4cd5bf56b72ebdfd2abbb5773310f180ddff7f7e260fa64f8a560c191"
+    },
+    {
+      "id": "BHbz",
+      "displayName": "暴风雪 (施法者)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHbz.json",
+      "bytes": 1317,
+      "sha256": "3ea52e0e0d62feb875717b699680160c5e81ec263b657150bfba779d10db3fdf"
+    },
+    {
+      "id": "BHca",
+      "displayName": "BHca",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BHca.json",
+      "bytes": 2498,
+      "sha256": "c81bd71b2619540b7777927e53856020cb313cbfe6a40a921ffdf0261574be86"
+    },
+    {
+      "id": "BHds",
+      "displayName": "BHds",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHds.json",
+      "bytes": 2710,
+      "sha256": "2f1fc20834394f1a00847cf7a5587a64c4d6dafc57692788fa8ee52b2af0e783"
+    },
+    {
+      "id": "Bhea",
+      "displayName": "Bhea",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bhea.json",
+      "bytes": 2097,
+      "sha256": "6330f613d5898accf5fff97037bd9465b3a9707b66c2a0a57e9365599955908c"
+    },
+    {
+      "id": "BHfs",
+      "displayName": "BHfs",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHfs.json",
+      "bytes": 2545,
+      "sha256": "dbbf1ed212f63359229a3ab71edfdc344cc7f70ab15ca5c8bb5602108e1e872d"
+    },
+    {
+      "id": "BHtb",
+      "displayName": "BHtb",
+      "race": "creeps",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/creeps/BHtb.json",
+      "bytes": 1996,
+      "sha256": "4dad36903f4db47b675f9a232395be6d528bbaf5bea85438db422a1c66c6a93a"
+    },
+    {
+      "id": "BHtc",
+      "displayName": "BHtc",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHtc.json",
+      "bytes": 2482,
+      "sha256": "5669780a0408e11dd0ae0896ff9ad7a3896d1f5b15c6f437950ed6f887b28a16"
+    },
+    {
+      "id": "Bhwd",
+      "displayName": "Bhwd",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bhwd.json",
+      "bytes": 1967,
+      "sha256": "9480160054b5ed1c875ed5c381c1a146ed2ae89c8c52f084f4e550874e9353f1"
+    },
+    {
+      "id": "BHwe",
+      "displayName": "BHwe",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/BHwe.json",
+      "bytes": 2114,
+      "sha256": "c75dfc7bd01e46f9c39be29e8454744604bcf09a8a1b14f1fcf0db1c2b0b7390"
+    },
+    {
+      "id": "BIcb",
+      "displayName": "BIcb",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIcb.json",
+      "bytes": 1686,
+      "sha256": "902b008f7c97e68cda7803792b4a41f0a2a8594980ab7a03c89c4d2da2eee68b"
+    },
+    {
+      "id": "BIcf",
+      "displayName": "BIcf",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIcf.json",
+      "bytes": 2735,
+      "sha256": "39e0af39d507a0288491143dd2d37cdc694b0948f0823dcae2939da14cc8780f"
+    },
+    {
+      "id": "BIil",
+      "displayName": "BIil",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIil.json",
+      "bytes": 2204,
+      "sha256": "15a66e5b9bd6a94d8be242788932bfd34007d008e7b7b95943c5bf21aa268d36"
+    },
+    {
+      "id": "BImo",
+      "displayName": "BImo",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BImo.json",
+      "bytes": 1141,
+      "sha256": "b98789f827bc5ec3f16d9897d050eb63a6014a6ec10f6ddd556d455eb6122056"
+    },
+    {
+      "id": "Binf",
+      "displayName": "Binf",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Binf.json",
+      "bytes": 2446,
+      "sha256": "2d50ff45071cbd78da3c0a618b2f06eecb77ba9417b518b9544841c4569aab15"
+    },
+    {
+      "id": "Binv",
+      "displayName": "Binv",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Binv.json",
+      "bytes": 2080,
+      "sha256": "d585344785f93bb1f90c91b24753ffb275dd781da29f3e71be889841b35d3e03"
+    },
+    {
+      "id": "BIpb",
+      "displayName": "BIpb",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/other/BIpb.json",
+      "bytes": 1483,
+      "sha256": "f07ff8105409214229e3bfb87fac176888d7ca3bd5a79041966037add509bcfb"
+    },
+    {
+      "id": "BIpd",
+      "displayName": "BIpd",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/other/BIpd.json",
+      "bytes": 1483,
+      "sha256": "bc225c4ccfd156ca18e066eb56543b1dc4d5d990577c045172015a9e14101b59"
+    },
+    {
+      "id": "BIpv",
+      "displayName": "吸血药水",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIpv.json",
+      "bytes": 1782,
+      "sha256": "aeb2859c05eea81a280d37b9e3e95589e0234a993b99e17013f660ebd0a470f5"
+    },
+    {
+      "id": "BIrb",
+      "displayName": "BIrb",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIrb.json",
+      "bytes": 1992,
+      "sha256": "e29f38607b1bcc96563e416ce78921322a4814a45bee59042f6ad8d1a44843d0"
+    },
+    {
+      "id": "BIrg",
+      "displayName": "BIrg",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIrg.json",
+      "bytes": 3450,
+      "sha256": "cd8a026587e81db92ed0f03cd3c8a0ae126e876cc86cba790c8d9dec39e84b51"
+    },
+    {
+      "id": "BIrl",
+      "displayName": "BIrl",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIrl.json",
+      "bytes": 3012,
+      "sha256": "50b6d5b56057476ee03c601593518e55e92fa2813399df9da20bb0a075947ec5"
+    },
+    {
+      "id": "BIrm",
+      "displayName": "BIrm",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIrm.json",
+      "bytes": 3018,
+      "sha256": "e3b8ea4458efa748a2e278b042826de2fa5b44c2dc324687a9fba5e1d94b8ebe"
+    },
+    {
+      "id": "BIsh",
+      "displayName": "BIsh",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIsh.json",
+      "bytes": 1581,
+      "sha256": "e4b0f3d1f58b6ca8940dd9e88b59eb32464a4f6488386a9828bf2a9a65e3108a"
+    },
+    {
+      "id": "BIsv",
+      "displayName": "BIsv",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIsv.json",
+      "bytes": 2117,
+      "sha256": "96e1099fd8be2e5ef832b336470a748f34b6272f5f10553afb770af30e8a40a2"
+    },
+    {
+      "id": "Bivs",
+      "displayName": "隐形 (额外的)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bivs.json",
+      "bytes": 900,
+      "sha256": "f8963e8e77e83bd886d5be469b26f1297dc0935bf2690562f72e9f8907c10754"
+    },
+    {
+      "id": "BIwb",
+      "displayName": "物品网",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BIwb.json",
+      "bytes": 881,
+      "sha256": "d12b3bc518f987d391ee22238050ab6322fe910dad5e20af43a75a240d3976f0"
+    },
+    {
+      "id": "Bliq",
+      "displayName": "液体炸弹",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bliq.json",
+      "bytes": 1976,
+      "sha256": "a5bc4b753b5f4b62e8ed61e59139d528431314a1dc6cab84d3d6609c2d9b7b70"
+    },
+    {
+      "id": "Blsa",
+      "displayName": "闪电护盾(施法者)",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Blsa.json",
+      "bytes": 1211,
+      "sha256": "17db588545606283a3bf7f5d2bf5e9ccdb084caa0be96cd62ce960809300dc0d"
+    },
+    {
+      "id": "Blsh",
+      "displayName": "Blsh",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Blsh.json",
+      "bytes": 2963,
+      "sha256": "806a5126dbb2a5c4a4f11ea078f3a4f07e6d8a57031e1a6f930146e4cb8bb4ad"
+    },
+    {
+      "id": "Bmec",
+      "displayName": "Bmec",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bmec.json",
+      "bytes": 1141,
+      "sha256": "dd2592037f0d17511b09947e5810a188f8906912e5d3a4817d6901a2896ad110"
+    },
+    {
+      "id": "Bmfa",
+      "displayName": "Bmfa",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bmfa.json",
+      "bytes": 3085,
+      "sha256": "1eda7352fe156659b2283d649f60446c86cbf1dde1723f68c7a5bfcf9653dbf1"
+    },
+    {
+      "id": "Bmfl",
+      "displayName": "Bmfl",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bmfl.json",
+      "bytes": 2277,
+      "sha256": "9ac7725573f9a8bd3ad450b695214c378c13a0cdd4e014dc80f1602a2e3e7c16"
+    },
+    {
+      "id": "Bmil",
+      "displayName": "Bmil",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bmil.json",
+      "bytes": 1723,
+      "sha256": "d1652000036712a1b693df663d0cfd1a0ba3b9bc31f1055cefe4d508bae1181a"
+    },
+    {
+      "id": "Bmlc",
+      "displayName": "空中锁镣(施法者)",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bmlc.json",
+      "bytes": 1234,
+      "sha256": "6143c04bf8b836bdd3375ba3c9cec3c7a8a5387398781db64737a8b03a85e61b"
+    },
+    {
+      "id": "Bmlt",
+      "displayName": "Bmlt",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bmlt.json",
+      "bytes": 2202,
+      "sha256": "bcee3ec910feb3e50b09f4a853356d770ac51187f6dc57ce815c829660b4f911"
+    },
+    {
+      "id": "BNab",
+      "displayName": "BNab",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNab.json",
+      "bytes": 2192,
+      "sha256": "ffc7289835a78505bb8f61719acf7fa7290abe403fefba5f5a72d663cb24ebd2"
+    },
+    {
+      "id": "BNba",
+      "displayName": "BNba",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNba.json",
+      "bytes": 2135,
+      "sha256": "ae40048551a1135515357e681f5afa0c7ccae84e52313c72093d60b943c2ab45"
+    },
+    {
+      "id": "BNbf",
+      "displayName": "BNbf",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNbf.json",
+      "bytes": 2875,
+      "sha256": "0d4d5ec8a2a7bc5d44c7db1b0bcb337c4800587f2ac54d951d043af5a2331319"
+    },
+    {
+      "id": "BNbr",
+      "displayName": "BNbr",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNbr.json",
+      "bytes": 2467,
+      "sha256": "e5656fe7b577b664476ce000080a2a5bbe140952ae4b494f69a6423f4441440e"
+    },
+    {
+      "id": "BNcg",
+      "displayName": "BNcg",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNcg.json",
+      "bytes": 2322,
+      "sha256": "6285a89cb91d25ce7caba5490b77f627081dcc1659db56ca136be8ad47f1e924"
+    },
+    {
+      "id": "BNcr",
+      "displayName": "BNcr",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNcr.json",
+      "bytes": 1776,
+      "sha256": "08ac45aeafc055943afc29bc2d8eb2ecf46a216f8416059878c37807d355b9bd"
+    },
+    {
+      "id": "BNcs",
+      "displayName": "BNcs",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNcs.json",
+      "bytes": 3091,
+      "sha256": "43956f6003cc5c93398bef3bf38f912a1d5c492b93820766f5cfa14d5301ba62"
+    },
+    {
+      "id": "BNdc",
+      "displayName": "BNdc",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNdc.json",
+      "bytes": 2754,
+      "sha256": "2b36a39907820f89b08637f47d4ebd0cfc6e50c250d988a4161360ebad97c9a6"
+    },
+    {
+      "id": "BNdh",
+      "displayName": "BNdh",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNdh.json",
+      "bytes": 2825,
+      "sha256": "89d53fc4a42b45437b8016688fd9e070203fe3d2fc876566944869cd9d68b7e6"
+    },
+    {
+      "id": "BNdi",
+      "displayName": "BNdi",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNdi.json",
+      "bytes": 2132,
+      "sha256": "e69e56a4aadb6166d7d7a758bbdfa11bc46a7f3be0601a73231ca56b62427d4d"
+    },
+    {
+      "id": "BNdm",
+      "displayName": "BNdm",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNdm.json",
+      "bytes": 2087,
+      "sha256": "cedf5b89bdd9dc5c2b9a0d0924de29a7ecffb538496c365efb88b68fcbfc15f8"
+    },
+    {
+      "id": "BNdo",
+      "displayName": "BNdo",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNdo.json",
+      "bytes": 2142,
+      "sha256": "4f064a388b4034f147b2cf7016d22eb148839c345543ab51d5f467823db10c0f"
+    },
+    {
+      "id": "BNef",
+      "displayName": "BNef",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNef.json",
+      "bytes": 2749,
+      "sha256": "c423bcaacf7562c67ecd1f76cf4cca532deb82b0a98740cd489bc51f478bd3bc"
+    },
+    {
+      "id": "BNeg",
+      "displayName": "BNeg",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNeg.json",
+      "bytes": 3701,
+      "sha256": "b6638f1ddebf0729efacbebf3aca9dfa325ea7b3ceb9e74109a7eafe2c053f57"
+    },
+    {
+      "id": "BNfy",
+      "displayName": "BNfy",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNfy.json",
+      "bytes": 2212,
+      "sha256": "72a6a5509ed9914410b8f6b69a77dc61b871ecb3a4ec8efcb26bbd055e862aba"
+    },
+    {
+      "id": "BNhs",
+      "displayName": "BNhs",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNhs.json",
+      "bytes": 1725,
+      "sha256": "0ee36ef4a53235e35660b0047d91397757580d76f1072aa850ad5d05540172d6"
+    },
+    {
+      "id": "BNht",
+      "displayName": "BNht",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNht.json",
+      "bytes": 2431,
+      "sha256": "1680741fd46626e82d22957e871ad4a0839f536cb8d5a027c2e536053bdf036f"
+    },
+    {
+      "id": "BNic",
+      "displayName": "BNic",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNic.json",
+      "bytes": 2946,
+      "sha256": "0e4a4d463d8199ff0d0e395f0c14d79b88d1f3431f4ab9f042dac1832411c493"
+    },
+    {
+      "id": "BNin",
+      "displayName": "BNin",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNin.json",
+      "bytes": 1487,
+      "sha256": "71e54644a41bc5e0eb8a708dd251688577777b866a621f30aaac46a9ad7d43de"
+    },
+    {
+      "id": "BNlm",
+      "displayName": "BNlm",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNlm.json",
+      "bytes": 1785,
+      "sha256": "53b0fe48e372cfd77ab5fa34894404b024fec6e470a1c22c5490527a29bafc0c"
+    },
+    {
+      "id": "BNmr",
+      "displayName": "BNmr",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNmr.json",
+      "bytes": 1688,
+      "sha256": "315367fa6e333f3f8a2325c9375b0e37ba185bf765a267bd53d1b3b9d703bfe3"
+    },
+    {
+      "id": "BNms",
+      "displayName": "BNms",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNms.json",
+      "bytes": 2470,
+      "sha256": "709d7584e34e2785b2287e2cc5f561f0dcf7f77c92918f46cd556f6085cf2a94"
+    },
+    {
+      "id": "BNpa",
+      "displayName": "BNpa",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNpa.json",
+      "bytes": 2314,
+      "sha256": "d6c9765beaae0d91a86a2d40f30147ff32658b5727278fc4d4b86d6cca8cf87a"
+    },
+    {
+      "id": "BNpi",
+      "displayName": "永久的献祭",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNpi.json",
+      "bytes": 1881,
+      "sha256": "253592d4cfa0169cd8a9070677214c3e3e4a1b8c5fabb0a04f2cb647a092ec3e"
+    },
+    {
+      "id": "BNpm",
+      "displayName": "BNpm",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNpm.json",
+      "bytes": 1896,
+      "sha256": "92fa4533f1f16bad3c4b9e0defecea8dc6665cdec263c8ea14421eb75aaf2e80"
+    },
+    {
+      "id": "BNrd",
+      "displayName": "BNrd",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNrd.json",
+      "bytes": 2499,
+      "sha256": "47fd326350c3fee65c024dfc9ce2d1d54b07a15e4e775de3e539eefc3bb1bfde"
+    },
+    {
+      "id": "BNrf",
+      "displayName": "火焰雨(区域魔法)",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNrf.json",
+      "bytes": 1419,
+      "sha256": "800660d8d29a17af1dc2745623eff423070595a58d992a1ed69fe2fdf083ba25"
+    },
+    {
+      "id": "BNsa",
+      "displayName": "BNsa",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNsa.json",
+      "bytes": 2213,
+      "sha256": "97eb60b93457e5bea155c97b23267ff3f11ddb6204970582ac68f4b2214f936f"
+    },
+    {
+      "id": "BNsg",
+      "displayName": "BNsg",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNsg.json",
+      "bytes": 2233,
+      "sha256": "b449779f6254796919ed2f88ed3c0ffaec74311de4d3399ea9367b81ade228fe"
+    },
+    {
+      "id": "BNsi",
+      "displayName": "BNsi",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNsi.json",
+      "bytes": 2526,
+      "sha256": "2a4a07da1e19e8c33e2219f5db1685915990a25d559fdf410f6e7c287240ff68"
+    },
+    {
+      "id": "BNsl",
+      "displayName": "灵魂保存",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNsl.json",
+      "bytes": 1642,
+      "sha256": "ddc3fa07aa5130642a2c534d7c2859e85dbe823c33aabb95a822b9e6a666d4e6"
+    },
+    {
+      "id": "BNso",
+      "displayName": "BNso",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNso.json",
+      "bytes": 2227,
+      "sha256": "78fbbc387b0c2add778647007836a580232bf4ea95dc44958ad2d6852216a725"
+    },
+    {
+      "id": "BNsq",
+      "displayName": "BNsq",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNsq.json",
+      "bytes": 2647,
+      "sha256": "10d345509668277bed5608d40eb153b1f26997069f9ae238ffa42b85130be880"
+    },
+    {
+      "id": "BNss",
+      "displayName": "BNss",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNss.json",
+      "bytes": 1222,
+      "sha256": "9c85a6f3a6918a4fcdabb2af545e19de7379f189fce2ddaef607b5ea9bc91053"
+    },
+    {
+      "id": "BNst",
+      "displayName": "惊吓",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNst.json",
+      "bytes": 1189,
+      "sha256": "a5a366a74b870e44f0d14911ec446cc1378db286c75fb491c0b39155ef4dabd0"
+    },
+    {
+      "id": "BNsw",
+      "displayName": "BNsw",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNsw.json",
+      "bytes": 2216,
+      "sha256": "8f3c5d169c834cbb2cdad93a0c6676d9f588f6bda681d617bd2b3841714e8d6a"
+    },
+    {
+      "id": "BNtm",
+      "displayName": "BNtm",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNtm.json",
+      "bytes": 1901,
+      "sha256": "0912a6d3858c9678f663e24fadc982240b0ba6cd988e624f1735d1ea7721ce5b"
+    },
+    {
+      "id": "BNto",
+      "displayName": "BNto",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNto.json",
+      "bytes": 1306,
+      "sha256": "a2b1061eff87b46bf1b97f0636b85de72770a40150390542ced6e3781fa3775c"
+    },
+    {
+      "id": "BNva",
+      "displayName": "Volcano (Area)",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNva.json",
+      "bytes": 986,
+      "sha256": "cb8db08616082d18b51f34b4a4f6b02f3c075879b60521a83b67fc562a4b6f95"
+    },
+    {
+      "id": "BNvc",
+      "displayName": "BNvc",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNvc.json",
+      "bytes": 1929,
+      "sha256": "79bdda4c7bd15e1c0649d4e0112f14f9290e77eb527fc381cf1d044e750bf005"
+    },
+    {
+      "id": "BNwm",
+      "displayName": "BNwm",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BNwm.json",
+      "bytes": 2498,
+      "sha256": "5a9875930c29d604ee552120598dcac82c2453d1a51f0241f09fe6bd93564f9f"
+    },
+    {
+      "id": "BOac",
+      "displayName": "BOac",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOac.json",
+      "bytes": 2110,
+      "sha256": "f093a878f220fa4a94aad8a62aba48c5abc04f0e450722487f3de43541b2852d"
+    },
+    {
+      "id": "BOae",
+      "displayName": "BOae",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOae.json",
+      "bytes": 3114,
+      "sha256": "3c76559e814aee06740f5e6b7a08817056c9799152995a8d129f08951cc692d4"
+    },
+    {
+      "id": "Boar",
+      "displayName": "Boar",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Boar.json",
+      "bytes": 2331,
+      "sha256": "d154483e968edcb4a6c8f4ed3c66f0e70593dd4969b96bf02389d7075413ad42"
+    },
+    {
+      "id": "BOea",
+      "displayName": "地震 (施法者)",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOea.json",
+      "bytes": 996,
+      "sha256": "9ed8282cbe56f6fc8507505249159d583a8072cdc3a31fb3088b158a2faca52e"
+    },
+    {
+      "id": "BOeq",
+      "displayName": "BOeq",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOeq.json",
+      "bytes": 2341,
+      "sha256": "b7f57973fd283c111a19c40ff126ca1b0021bb94271572a44d9a741450fd03de"
+    },
+    {
+      "id": "BOhx",
+      "displayName": "BOhx",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOhx.json",
+      "bytes": 2745,
+      "sha256": "27e771898d82acf86cca068f83ecbeb2ebb9e86309f0382e93d129410fc62460"
+    },
+    {
+      "id": "BOmi",
+      "displayName": "BOmi",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOmi.json",
+      "bytes": 2363,
+      "sha256": "2a34289a33d51d66c4015722428680b039eff97e783637f9e1ec70f0e33bcf8a"
+    },
+    {
+      "id": "BOsf",
+      "displayName": "BOsf",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOsf.json",
+      "bytes": 3601,
+      "sha256": "d4fb1e36c76c9578c86b708c9445e2f37b8bf4928f9e9724ab6c41885cf332b0"
+    },
+    {
+      "id": "BOsh",
+      "displayName": "震荡波(施法者)",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOsh.json",
+      "bytes": 2112,
+      "sha256": "4ee4fd6ba293afbac9a1392c9c27cdd2c87e17be84cfd73ca097625a34410b36"
+    },
+    {
+      "id": "BOvc",
+      "displayName": "巫毒(施法者)",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOvc.json",
+      "bytes": 1479,
+      "sha256": "1cf1b224bb85b0868f7fef3bd9969dd36371911f8fd2a3e517f32996aa920366"
+    },
+    {
+      "id": "BOvd",
+      "displayName": "BOvd",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOvd.json",
+      "bytes": 2113,
+      "sha256": "0d05bbc632a68142f50dd894025bad65a26a7b6cfebd14e620c36a1e41fc4132"
+    },
+    {
+      "id": "BOwd",
+      "displayName": "BOwd",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOwd.json",
+      "bytes": 1821,
+      "sha256": "639028cfcb1c89947df11db1d92354954cc4b90e2200b70e0b4f1bcc80db3615"
+    },
+    {
+      "id": "BOwk",
+      "displayName": "BOwk",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOwk.json",
+      "bytes": 2167,
+      "sha256": "a69c034c2361f092b3cb657921d66afa270549b9c3fa2a3c0d78ae987786e87c"
+    },
+    {
+      "id": "BOww",
+      "displayName": "剑刃风暴(施法者)",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/BOww.json",
+      "bytes": 1006,
+      "sha256": "b4363acc3599aa2e35156a4302120194d95d4844b6ac538588c27a537ad69b6d"
+    },
+    {
+      "id": "Bphx",
+      "displayName": "Bphx",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bphx.json",
+      "bytes": 1129,
+      "sha256": "7e1300f2d40d7a370b14722dc0bc588c544c91b6f8ab004c738fed928dcbf989"
+    },
+    {
+      "id": "Bpig",
+      "displayName": "永久的献祭",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bpig.json",
+      "bytes": 2158,
+      "sha256": "ade8f476602aebba157fd4c265d6efa5b3dbea04d705a182b33381dc83d03d56"
+    },
+    {
+      "id": "Bplg",
+      "displayName": "疾病云雾",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bplg.json",
+      "bytes": 1202,
+      "sha256": "c6b9b0555bac88ee9eb1db076bb920f4341c1128cdc3937aeeed19daaacc4617"
+    },
+    {
+      "id": "Bply",
+      "displayName": "Bply",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bply.json",
+      "bytes": 2341,
+      "sha256": "82ab12224eb1240c7271e91503fcd3f40881aad44250640eb6e5ed3f0d06d7fb"
+    },
+    {
+      "id": "Bpoc",
+      "displayName": "占据 (施法者)",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bpoc.json",
+      "bytes": 1531,
+      "sha256": "6f9a78e64e424ce3bd5eb19c6a5e815c850c774cccbf200d4ce1b8d31cf49c53"
+    },
+    {
+      "id": "Bpoi",
+      "displayName": "Bpoi",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bpoi.json",
+      "bytes": 2742,
+      "sha256": "0384a358d8ae6925ab552a2f1547748a92215fe1cfff331f53d5138f1405dc54"
+    },
+    {
+      "id": "Bpos",
+      "displayName": "Bpos",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bpos.json",
+      "bytes": 1946,
+      "sha256": "b38ad9c3d3a1ad80fcf80f0fce1eb84e7a38302944debb1c40d6e35ec717947a"
+    },
+    {
+      "id": "Bprg",
+      "displayName": "Bprg",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bprg.json",
+      "bytes": 2739,
+      "sha256": "21379e06bf33a144ebeacccc04a97317faae4fcf4359a9a7c88b11e1d18afb17"
+    },
+    {
+      "id": "Bpsd",
+      "displayName": "Bpsd",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bpsd.json",
+      "bytes": 2619,
+      "sha256": "fb09cf83583c1e11bedf42ae089f2d699e00eedcaca0abbf9835b3e59342b8e2"
+    },
+    {
+      "id": "BPSE",
+      "displayName": "BPSE",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BPSE.json",
+      "bytes": 4664,
+      "sha256": "7e38cb56bccf072ed9fa4f4ec553612bf454bc0d5f704d50c7e5d15b86719129"
+    },
+    {
+      "id": "Bpsh",
+      "displayName": "Bpsh",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bpsh.json",
+      "bytes": 2168,
+      "sha256": "ec1056f39b4c7347499068a10bef7dc2961b41629138036b6732316bba444f46"
+    },
+    {
+      "id": "Bpsi",
+      "displayName": "毒药(信息)",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bpsi.json",
+      "bytes": 1199,
+      "sha256": "ebda5c14edae4bea41ffefbae5ed88791f6e4dec67a1b5b3b78c016d661416ba"
+    },
+    {
+      "id": "Bpxf",
+      "displayName": "Bpxf",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bpxf.json",
+      "bytes": 1985,
+      "sha256": "ec9041eb4018651d8190bd97ab784dcc9f4084af26723b16a46f0ea03ef2f196"
+    },
+    {
+      "id": "Brai",
+      "displayName": "Brai",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Brai.json",
+      "bytes": 2056,
+      "sha256": "bfc7e6888557a93fe1d2a4acae1a34ac6f5432777ab79fe22eb2fd81f9aad60a"
+    },
+    {
+      "id": "Brej",
+      "displayName": "Brej",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Brej.json",
+      "bytes": 2538,
+      "sha256": "34eb29ed50b63355250770b4cca76693905c29a8176cebc1d475bfa851535bd8"
+    },
+    {
+      "id": "Broa",
+      "displayName": "Broa",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Broa.json",
+      "bytes": 2804,
+      "sha256": "ef8ef5d697c61944257a4ae787f79fc9664a4a0b32b060c5c4152aeefc3aa84c"
+    },
+    {
+      "id": "Brpb",
+      "displayName": "Brpb",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Brpb.json",
+      "bytes": 1698,
+      "sha256": "7332a1cea653f5198c6fd917e840d4df5a89f4a0967e579321c130657f614541"
+    },
+    {
+      "id": "Brpl",
+      "displayName": "Brpl",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Brpl.json",
+      "bytes": 1697,
+      "sha256": "6e86a75d81b284d3eec60d5ced5519cc29aeb5c72e23bb5ca637b36205d65d7e"
+    },
+    {
+      "id": "Brpm",
+      "displayName": "Brpm",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Brpm.json",
+      "bytes": 1689,
+      "sha256": "29798926961751416707bdea69b20e4aa00f8763d7fdbbf0c1e35093d1b60ea5"
+    },
+    {
+      "id": "Bsha",
+      "displayName": "共享视野",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bsha.json",
+      "bytes": 882,
+      "sha256": "2b6a6b5703215dee7d9bc3108bd532363de54618ecc33969c8baa15032904411"
+    },
+    {
+      "id": "Bshs",
+      "displayName": "Bshs",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bshs.json",
+      "bytes": 1711,
+      "sha256": "79c08127c82b6050dfc10159395458818bc61b2dca4d430034efd5daffb995d6"
+    },
+    {
+      "id": "Bslo",
+      "displayName": "Bslo",
+      "race": "human",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/human/Bslo.json",
+      "bytes": 2357,
+      "sha256": "bf7f340c322231ef5d4ab83f9feeaf6e12acf80bfa5870a965259bc79229977a"
+    },
+    {
+      "id": "Bspa",
+      "displayName": "Bspa",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bspa.json",
+      "bytes": 2078,
+      "sha256": "2963787c5b00db5839aa4b02bb23152b5729c67b32fffd5d711cdb3571eb5a8e"
+    },
+    {
+      "id": "Bspe",
+      "displayName": "Bspe",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bspe.json",
+      "bytes": 2359,
+      "sha256": "0da8313e7180927ac96a34a1365e84ab37f01084910b44e1a3b428e16fe1f1f2"
+    },
+    {
+      "id": "Bspl",
+      "displayName": "Bspl",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bspl.json",
+      "bytes": 2300,
+      "sha256": "0984ccf094d049e6579fbff441432e67ca649a7d2bc6e3d98eb6ef68f3407b67"
+    },
+    {
+      "id": "Bspo",
+      "displayName": "Bspo",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bspo.json",
+      "bytes": 2457,
+      "sha256": "ba09fc1a47c67b59c6abdb60cd667022c33c66bf0cc2bdd832e7ed477f85b273"
+    },
+    {
+      "id": "Bssd",
+      "displayName": "Bssd",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bssd.json",
+      "bytes": 2328,
+      "sha256": "163ff2c3c366d0606b4760ca1d2224a679bf8940d80eca721dddb631bd4936f4"
+    },
+    {
+      "id": "Bssi",
+      "displayName": "慢性毒药(信息)",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bssi.json",
+      "bytes": 1017,
+      "sha256": "5c8b78735fc37a038102c521bfe7b9647fa14c39758d6e052e1930db500eb0f1"
+    },
+    {
+      "id": "Bsta",
+      "displayName": "Bsta",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/orc/Bsta.json",
+      "bytes": 1989,
+      "sha256": "f3a6ea2774776c16f67c32d3f3417f9cabcec6793a26f975664ae92ac5f0555b"
+    },
+    {
+      "id": "BSTN",
+      "displayName": "BSTN",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/BSTN.json",
+      "bytes": 2127,
+      "sha256": "549d8160516eb53fe6eda122d23688c7b23f50d1674fa2cfae1acdb5bd2075f9"
+    },
+    {
+      "id": "Bstt",
+      "displayName": "Bstt",
+      "race": "orc",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/orc/Bstt.json",
+      "bytes": 1674,
+      "sha256": "2c90727c2347ed487ccf06789477e054de381899692c8196e6dc929277db5a0d"
+    },
+    {
+      "id": "Btdg",
+      "displayName": "龙卷风伤害",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Btdg.json",
+      "bytes": 999,
+      "sha256": "3bc12d7f5ad2477c03b49144753100906a5e915f328fb982feac9ad2a83b1cdd"
+    },
+    {
+      "id": "Btrv",
+      "displayName": "传送 显示",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Btrv.json",
+      "bytes": 881,
+      "sha256": "a4233159d6e6ea4301f7d652349b7ef6efe09230b78d2aee8416bd73de9a3ab2"
+    },
+    {
+      "id": "Btsa",
+      "displayName": "龙卷风旋转 (区域魔法)",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Btsa.json",
+      "bytes": 1029,
+      "sha256": "9aa98c4f0143dcb93275fa1ff3406c13a05f4097f2fdc407873ed20532132b7e"
+    },
+    {
+      "id": "Btsp",
+      "displayName": "Btsp",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Btsp.json",
+      "bytes": 2116,
+      "sha256": "033c7951860b7e18ca619939b3d2f9bf632a1eb87093fc9791d28b0a9d6771d7"
+    },
+    {
+      "id": "BUad",
+      "displayName": "操纵死尸(额外的)",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUad.json",
+      "bytes": 913,
+      "sha256": "527afa6ae4eaaa6d74545205e82274804b59322d2793fd198d3f74c2809c4de4"
+    },
+    {
+      "id": "BUan",
+      "displayName": "BUan",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUan.json",
+      "bytes": 2609,
+      "sha256": "be0b980cf2e800ee62d426fce156326a2f734f795e3262e84d624fa52132a0fb"
+    },
+    {
+      "id": "BUau",
+      "displayName": "BUau",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUau.json",
+      "bytes": 2770,
+      "sha256": "698d1a83af1621a305e3cb706ca7cdb5800d86dff68601db1cdda637d7d81522"
+    },
+    {
+      "id": "BUav",
+      "displayName": "BUav",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUav.json",
+      "bytes": 3288,
+      "sha256": "f9d03e242e629ba7addcc8bedd2681df57178579c5ca14e1116734a4a389c913"
+    },
+    {
+      "id": "BUcb",
+      "displayName": "BUcb",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUcb.json",
+      "bytes": 1884,
+      "sha256": "d5ac863be3ff64e99be4490d7c3c633dbbf01c6d143964f5e7cb0f5280299d5e"
+    },
+    {
+      "id": "BUcs",
+      "displayName": "腐臭蜂群(施法者)",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUcs.json",
+      "bytes": 1636,
+      "sha256": "1023ea7ff97adb006aefe5aba7638dae72624a088edcf2dc2dac4ab5cdeb9b9b"
+    },
+    {
+      "id": "BUdd",
+      "displayName": "BUdd",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUdd.json",
+      "bytes": 2364,
+      "sha256": "81145e835737fd9eeee23ff9a8db2930e4fd3d3f9d321df53c83a556927c9e34"
+    },
+    {
+      "id": "BUfa",
+      "displayName": "BUfa",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUfa.json",
+      "bytes": 3654,
+      "sha256": "32dc252db0f8e5aef918112f49a5eba6eba9b07104408a60dbad9fea60c3adff"
+    },
+    {
+      "id": "Buhf",
+      "displayName": "Buhf",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Buhf.json",
+      "bytes": 2335,
+      "sha256": "0f3d875b745a4ded143f3f911e74f211360b9a614c2019d89af2056fff8bd901"
+    },
+    {
+      "id": "BUhf",
+      "displayName": "BUhf",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/other/BUhf.json",
+      "bytes": 809,
+      "sha256": "d2757a05d10c3374e96b934b1870328b71975537bb2023f6f66e1724b1c5cbfd"
+    },
+    {
+      "id": "BUim",
+      "displayName": "BUim",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUim.json",
+      "bytes": 2851,
+      "sha256": "450e0689e9099261a8022d278c6356ce7d1ee9cb95808450a4d4bd6a06a17c0a"
+    },
+    {
+      "id": "Bult",
+      "displayName": "夜视能力",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bult.json",
+      "bytes": 989,
+      "sha256": "e2ff9ba9630348c9013d659b59de0b2c571c9a7f0308cffbd39106fa1dd480fd"
+    },
+    {
+      "id": "Buns",
+      "displayName": "反召唤",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Buns.json",
+      "bytes": 2149,
+      "sha256": "89088dfa285291707bc0ea1b66312b921992e3da977f50731c8a003e401b123f"
+    },
+    {
+      "id": "BUsl",
+      "displayName": "BUsl",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUsl.json",
+      "bytes": 2663,
+      "sha256": "80e0f336f976f3f87c2eb3243d0e265fb4600df0d337fff5724ec49dcecb56f8"
+    },
+    {
+      "id": "BUsp",
+      "displayName": "睡眠 (暂停)",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUsp.json",
+      "bytes": 2203,
+      "sha256": "35694788c4e3105bede52da950999c6e79daeeea07e2bd859f3345bd104d0592"
+    },
+    {
+      "id": "Bust",
+      "displayName": "Bust",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": true,
+      "path": "buffs/other/Bust.json",
+      "bytes": 912,
+      "sha256": "1ddff546221211aa25d2521ae2cc6888f4472b1faa75e3ec769ef395465feb10"
+    },
+    {
+      "id": "BUst",
+      "displayName": "睡眠(震晕)",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUst.json",
+      "bytes": 1850,
+      "sha256": "2a124d36b39c6a97b29a188172bfe1984d39e7eb7ec3223d270596192d705c35"
+    },
+    {
+      "id": "BUts",
+      "displayName": "尖刺外壳",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/BUts.json",
+      "bytes": 3980,
+      "sha256": "8a925967c334407499b3ea2e4252e23693e6d130454b3ac80f7089fb88d17ede"
+    },
+    {
+      "id": "Bvng",
+      "displayName": "Bvng",
+      "race": "nightelf",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/nightelf/Bvng.json",
+      "bytes": 2064,
+      "sha256": "cee48c0374e5e74d7546d2e69b9332535b41c2cdc8d998209d3ce1480de00ace"
+    },
+    {
+      "id": "Bvul",
+      "displayName": "Bvul",
+      "race": "other",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/other/Bvul.json",
+      "bytes": 2380,
+      "sha256": "d2bd30bfd7d2c76139c6b3c151ab193b04099c5b2de9700f0204ff76f45b8813"
+    },
+    {
+      "id": "Bwea",
+      "displayName": "Bwea",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bwea.json",
+      "bytes": 2469,
+      "sha256": "6592abfdd83a642f556924e88f708a7021ba6f73d29f585ea075e37eb5ea898e"
+    },
+    {
+      "id": "Bweb",
+      "displayName": "Bweb",
+      "race": "undead",
+      "kind": "buff",
+      "profileOnly": false,
+      "path": "buffs/undead/Bweb.json",
+      "bytes": 2434,
+      "sha256": "872b0daf441337bccf433adbf6847cd31ae13502104b69e25b94356234d26551"
+    },
+    {
+      "id": "Xbdt",
+      "displayName": "显示 (效果)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/Xbdt.json",
+      "bytes": 2145,
+      "sha256": "ac49829424cf7a0b1b11237c1d753a409f1512ed37c240609e1e5b2e463da055"
+    },
+    {
+      "id": "Xbli",
+      "displayName": "荒芜之地(效果)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/Xbli.json",
+      "bytes": 894,
+      "sha256": "bd7ecc9133b9bd3165ded1f1ac2915c3bfbb47b5edc5b311c33bcbf078737b73"
+    },
+    {
+      "id": "Xbof",
+      "displayName": "燃烧之油(效果)",
+      "race": "orc",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/orc/Xbof.json",
+      "bytes": 1626,
+      "sha256": "cb61895272b85fdac8e0fbcfa6c861c14c199cf9142e8692c5d7be5840ed7587"
+    },
+    {
+      "id": "Xclf",
+      "displayName": "乌云 (效果)",
+      "race": "human",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/human/Xclf.json",
+      "bytes": 1700,
+      "sha256": "30b404047f60b000b398c8445af34a0310e259f7b8a1bdddc1d42eeeda421818"
+    },
+    {
+      "id": "Xdis",
+      "displayName": "英雄  驱散 (效果)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/Xdis.json",
+      "bytes": 907,
+      "sha256": "3b9d473919a95725bd4ee03c466f6b81a98d8a7c988bf33402bdad4d918eda61"
+    },
+    {
+      "id": "XErc",
+      "displayName": "混乱之雨(效果)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/XErc.json",
+      "bytes": 1535,
+      "sha256": "d8c1f5d7c13bb0e47cae874a387fc0baaef7e5019357e9413e5f7c300f45960c"
+    },
+    {
+      "id": "XErf",
+      "displayName": "火焰雨(效果)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/XErf.json",
+      "bytes": 2189,
+      "sha256": "b22384328043b53b1ad75ecf430b0f8780af3792f277b80133ee3362e28bc067"
+    },
+    {
+      "id": "XEsf",
+      "displayName": "群星坠落(效果)",
+      "race": "nightelf",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/nightelf/XEsf.json",
+      "bytes": 1728,
+      "sha256": "0713a9a30ce61a92a0300a6545d5f5e19f50666194d06904357ee5972cbf34c1"
+    },
+    {
+      "id": "Xesn",
+      "displayName": "Xesn",
+      "race": "nightelf",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/nightelf/Xesn.json",
+      "bytes": 780,
+      "sha256": "f28df297e3358f57295c2477945e52ddd26a6e3f37763e0f0b1488e0bbca17f8"
+    },
+    {
+      "id": "XEsn",
+      "displayName": "哨兵(效果)",
+      "race": "nightelf",
+      "kind": "effect",
+      "profileOnly": true,
+      "path": "effects/nightelf/XEsn.json",
+      "bytes": 1385,
+      "sha256": "30b46edd03574c944f4e99ec3191c6a7debb442c632f0b70a44c37732769c863"
+    },
+    {
+      "id": "XEtq",
+      "displayName": "宁静(效果)",
+      "race": "nightelf",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/nightelf/XEtq.json",
+      "bytes": 1699,
+      "sha256": "bd737fae68cd32e1230c44ffda23521d778e8537b44f06538760e34cf16de562"
+    },
+    {
+      "id": "Xfhl",
+      "displayName": "建筑物伤害 – 人族  大",
+      "race": "human",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/human/Xfhl.json",
+      "bytes": 3664,
+      "sha256": "cb86e7861ccdaa4932fbbdc25378d02cbec1452bf22b295a10fa0443b4837c81"
+    },
+    {
+      "id": "Xfhm",
+      "displayName": "建筑物伤害 – 人族  中",
+      "race": "human",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/human/Xfhm.json",
+      "bytes": 2892,
+      "sha256": "1ffc82dfe8826e8b7fc4314d0ef2f70fb9fa4e0400a14c7bdc2380a8d76e6fc2"
+    },
+    {
+      "id": "Xfhs",
+      "displayName": "建筑物伤害 – 人族  小",
+      "race": "human",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/human/Xfhs.json",
+      "bytes": 2115,
+      "sha256": "75dada0685fe900deeda78a568c9fa9a4d3959907264b814b607123ce98fda91"
+    },
+    {
+      "id": "Xfla",
+      "displayName": "照明弹(效果)",
+      "race": "human",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/human/Xfla.json",
+      "bytes": 1664,
+      "sha256": "e36b2115a8804f148bb92fe7c2e1ceb41c0857358cc54f3ca900bee0e2ade54d"
+    },
+    {
+      "id": "Xfnl",
+      "displayName": "建筑物伤害 - 暗夜精灵族 大",
+      "race": "nightelf",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/nightelf/Xfnl.json",
+      "bytes": 3847,
+      "sha256": "f873daae9d6b43df59fba972e8a5b0618595478c40d3aea7ebb0660407b7f4d9"
+    },
+    {
+      "id": "Xfnm",
+      "displayName": "建筑物伤害 - 暗夜精灵族 中",
+      "race": "nightelf",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/nightelf/Xfnm.json",
+      "bytes": 3027,
+      "sha256": "c728ef3838ae9a3f9d86d4eac5cff5a9f66ca8fb7e7af6da847770200a2af675"
+    },
+    {
+      "id": "Xfns",
+      "displayName": "建筑物伤害 - 暗夜精灵族 小",
+      "race": "nightelf",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/nightelf/Xfns.json",
+      "bytes": 2202,
+      "sha256": "a81e3a3027f2536214f1f68eca696c77c92de4f467e1a4564d86208f66a2028f"
+    },
+    {
+      "id": "Xfol",
+      "displayName": "建筑物伤害 – 兽族  大",
+      "race": "orc",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/orc/Xfol.json",
+      "bytes": 3650,
+      "sha256": "0d6fd82a830dd884a66d5895e66664f33272090d72c8ea4e33fe1f3af641e6d5"
+    },
+    {
+      "id": "Xfom",
+      "displayName": "建筑物伤害 – 兽族  中",
+      "race": "orc",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/orc/Xfom.json",
+      "bytes": 2878,
+      "sha256": "6a917297a439d65f37847f8cc2cab1fbf59fea51e0388f1df883e70e7a34ac65"
+    },
+    {
+      "id": "Xfos",
+      "displayName": "建筑物伤害 – 兽族  小",
+      "race": "orc",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/orc/Xfos.json",
+      "bytes": 2101,
+      "sha256": "a901db8eb50dc51aa0e50ac43cb0a349b79a07f02b4aa7e5fb2ec479c13a8dc9"
+    },
+    {
+      "id": "Xful",
+      "displayName": "建筑物伤害 – 不死族  大",
+      "race": "undead",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/undead/Xful.json",
+      "bytes": 3847,
+      "sha256": "c38389a1e14195409b3a4a4ac8c9678923ac584167965b65d0f0c497ec02941f"
+    },
+    {
+      "id": "Xfum",
+      "displayName": "建筑物伤害 – 不死族  中",
+      "race": "undead",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/undead/Xfum.json",
+      "bytes": 3019,
+      "sha256": "0c27c56b39f93235d86b3b77c37f3e516fd60de559049dcee9a1e9c229771ea8"
+    },
+    {
+      "id": "Xfus",
+      "displayName": "建筑物伤害 – 不死族 小",
+      "race": "undead",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/undead/Xfus.json",
+      "bytes": 2184,
+      "sha256": "57baa45959fc9e35f0349a365eda4c189f880a5fc832c5cd66a844b85794eb42"
+    },
+    {
+      "id": "XHbz",
+      "displayName": "暴风雪 (效果)",
+      "race": "human",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/human/XHbz.json",
+      "bytes": 2051,
+      "sha256": "5c977bd44635c27ae5cf1076f5c87360a6ac6131ef1b064ce3901a0c09308fbf"
+    },
+    {
+      "id": "XHfs",
+      "displayName": "烈焰风暴(效果)",
+      "race": "human",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/human/XHfs.json",
+      "bytes": 2056,
+      "sha256": "f958aa897e3114f41d8dcff18b9d2f1bedf7c82e2a9f300069559e41f373891b"
+    },
+    {
+      "id": "XIct",
+      "displayName": "能更改时间的物品",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/XIct.json",
+      "bytes": 1017,
+      "sha256": "cb4a702db2654d9950f4e09916a45891272d494189682bbec1159db54b772150"
+    },
+    {
+      "id": "XNcs",
+      "displayName": "Cluster Rockets (Effect)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/XNcs.json",
+      "bytes": 2232,
+      "sha256": "9735491f6407a5f1c73323394962e70b09303fc767b66f211fc976362ecad741"
+    },
+    {
+      "id": "XNhs",
+      "displayName": "Healing Spray (Effect)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/XNhs.json",
+      "bytes": 1646,
+      "sha256": "10f8d42a5a2153176ab1e959a12325b4371e352eb982fa8513e8f7165a00f419"
+    },
+    {
+      "id": "XNmo",
+      "displayName": "季风(效果)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/XNmo.json",
+      "bytes": 1902,
+      "sha256": "43895cd4f4b00fab39bff9c9fb387e83b76a5e40c6dcc17f7ac1067bd1b63cbc"
+    },
+    {
+      "id": "XNvc",
+      "displayName": "Volcano (Effect)",
+      "race": "other",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/other/XNvc.json",
+      "bytes": 1992,
+      "sha256": "93346e9b666095f4b2bf06bc943d99738b3beed0cc7506b7d5fe130664b6373f"
+    },
+    {
+      "id": "XOeq",
+      "displayName": "地震 (效果)",
+      "race": "orc",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/orc/XOeq.json",
+      "bytes": 1765,
+      "sha256": "f27dfac7e1f63eaed17d1471a353ab366651f14bfe26e27dfa6aabff0f0776db"
+    },
+    {
+      "id": "XOre",
+      "displayName": "重生(效果)",
+      "race": "orc",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/orc/XOre.json",
+      "bytes": 1610,
+      "sha256": "676f9e2c2ae1e6e238d3bdddeca32e54ba0d24faf05cb89be73e7638368fae9b"
+    },
+    {
+      "id": "XUdd",
+      "displayName": "死亡凋零(效果)",
+      "race": "undead",
+      "kind": "effect",
+      "profileOnly": false,
+      "path": "effects/undead/XUdd.json",
+      "bytes": 1838,
+      "sha256": "78c76d0ee33cf9017c969602b0bb847f1cd123e2b5172307008aeb3aa6972991"
+    }
+  ]
+}

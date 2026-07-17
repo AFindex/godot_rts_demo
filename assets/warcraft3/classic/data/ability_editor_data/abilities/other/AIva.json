@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmaskofdeath.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\VampiricAura\\VampiricAuraTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\VampiricAura\\VampiricAuraTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/vampiricaura/vampiricauratarget.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\WandOfNeutralization\\NeutralizationMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\WandOfNeutralization\\NeutralizationMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/wandofneutralization/neutralizationmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -40,6 +56,8 @@
         "data": {
           "A": "0.5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

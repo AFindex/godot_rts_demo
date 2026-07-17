@@ -40,7 +40,14 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [
+          "edcm"
+        ],
         "summonedUnitId": "edcm",
+        "requirements": [
+          "Redc"
+        ],
+        "requirementLevel": 2,
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,85 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNso",
+  "displayName": "BNso",
+  "identity": {
+    "baseCode": "BNso",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\SoulBurn\\SoulBurnbuff.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\SoulBurn\\SoulBurnbuff.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/soulburn/soulburnbuff.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsoulburn.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANso",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANso",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANso",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNso",
+    "code": "BNso",
+    "comments": "SoulBurn",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNSoulBurn.blp",
+    "Targetart": "Abilities\\Spells\\Other\\SoulBurn\\SoulBurnbuff.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "灵魂燃烧",
+    "Buffubertip": "\"该单位受到了灵魂燃烧的作用。不能施放魔法，攻击力会减小，并在一定时间内会持续受到伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\FrostWyrmMissile\\FrostWyrmMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\FrostWyrmMissile\\FrostWyrmMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/frostwyrmmissile/frostwyrmmissile.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -28,6 +37,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bfro"
         ],

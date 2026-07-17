@@ -20,6 +20,22 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnholybolt.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHolyBolt.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHolyBolt.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnholybolt.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\HolyBolt\\HolyBoltSpecialArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\HolyBolt\\HolyBoltSpecialArt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/holybolt/holyboltspecialart.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +62,8 @@
         "data": {
           "A": "200"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -68,6 +86,8 @@
         "data": {
           "A": "400"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -90,6 +110,8 @@
         "data": {
           "A": "600"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

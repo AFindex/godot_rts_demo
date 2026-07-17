@@ -1,0 +1,81 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XNmo",
+  "displayName": "季风(效果)",
+  "identity": {
+    "baseCode": "XNmo",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Monsoon\\MonsoonRain.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Monsoon\\MonsoonRain.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/monsoon/monsoonrain.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "MonsoonLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANmo",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANmo",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANmo",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACmo",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XNmo",
+    "code": "XNmo",
+    "comments": "Monsoon              ",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Other\\Monsoon\\MonsoonRain.mdl",
+    "Effectsoundlooped": "MonsoonLoop",
+    "EditorName": "季风(效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

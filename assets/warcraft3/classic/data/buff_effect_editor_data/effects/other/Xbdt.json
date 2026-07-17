@@ -1,0 +1,98 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xbdt",
+  "displayName": "显示 (效果)",
+  "identity": {
+    "baseCode": "Xbdt",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "effectArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Andt\\Andt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Andt\\Andt.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/andt/andt.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOfs",
+      "level": 1,
+      "kind": "effect",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOfs",
+      "level": 2,
+      "kind": "effect",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOfs",
+      "level": 3,
+      "kind": "effect",
+      "race": "orc"
+    },
+    {
+      "abilityId": "Andt",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "AIta",
+      "level": 1,
+      "kind": "effect",
+      "race": "other"
+    },
+    {
+      "abilityId": "AHta",
+      "level": 1,
+      "kind": "effect",
+      "race": "human"
+    },
+    {
+      "abilityId": "AIrv",
+      "level": 1,
+      "kind": "effect",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Xbdt",
+    "code": "Xbdt",
+    "comments": "EFFECT_BASEDETECTOR",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectart": "Abilities\\Spells\\Other\\Andt\\Andt.mdl",
+    "EditorName": "显示 (效果)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/CommonAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/CommonAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/CommonAbilityFunc.txt"
+    ]
+  }
+}

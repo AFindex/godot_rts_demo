@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnstaffofpreservation.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleportcaster.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleporttarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\MassTeleport\\MassTeleportTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/massteleport/massteleporttarget.glb"
+      }
     ]
   },
   "summary": {
@@ -44,6 +68,8 @@
         "data": {
           "A": "15"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

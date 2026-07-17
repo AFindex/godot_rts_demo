@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnpandataunt.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Taunt\\TauntCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Taunt\\TauntCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/taunt/tauntcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,8 @@
           "B": "0",
           "C": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

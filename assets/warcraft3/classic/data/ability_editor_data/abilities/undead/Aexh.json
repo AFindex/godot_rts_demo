@@ -38,7 +38,14 @@
         "data": {
           "A": "5"
         },
+        "unitIds": [
+          "ugho"
+        ],
         "summonedUnitId": "ugho",
+        "requirements": [
+          "Ruex"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

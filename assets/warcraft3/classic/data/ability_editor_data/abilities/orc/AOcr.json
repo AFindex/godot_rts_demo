@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncriticalstrike.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCriticalStrike.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCriticalStrike.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncriticalstrike.png"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -69,6 +79,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       },
@@ -91,6 +103,8 @@
           "D": "0",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -45,6 +45,8 @@
           "B": "0.25",
           "C": "0.3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bfzy"
         ],

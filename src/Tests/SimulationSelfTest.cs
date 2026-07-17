@@ -59,6 +59,7 @@ public static class SimulationSelfTest
             var combatDamageResult = CombatDamageSelfTest.Run();
             var combatProjectileResult = CombatProjectileSelfTest.Run();
             var combatPresentationResult = CombatPresentationSelfTest.Run();
+            var abilityResult = AbilitySystemSelfTest.Run();
             var testShowcaseResult = TestShowcaseCatalogSelfTest.Run();
             var playableSkirmishResult = PlayableSkirmishScenarioSelfTest.Run(
                 buildingTypes, productionCatalog, technologyCatalog);
@@ -85,7 +86,8 @@ public static class SimulationSelfTest
                       controlGroupResult.Passed &&
                       productionGroupResult.Passed && combatEventResult.Passed &&
                       combatDamageResult.Passed && combatProjectileResult.Passed &&
-                      combatPresentationResult.Passed && testShowcaseResult.Passed &&
+                      combatPresentationResult.Passed && abilityResult.Passed &&
+                      testShowcaseResult.Passed &&
                       playableSkirmishResult.Passed;
             var summaries = new List<string>(VisualTestCatalog.CaseIds.Length + 26)
             {
@@ -183,6 +185,9 @@ public static class SimulationSelfTest
                 $"combat-presentation=" +
                 $"{(combatPresentationResult.Passed ? "PASS" : "FAIL")}" +
                 $"({combatPresentationResult.Summary})",
+                $"ability-runtime=" +
+                $"{(abilityResult.Passed ? "PASS" : "FAIL")}" +
+                $"({abilityResult.Summary})",
                 $"test-showcase=" +
                 $"{(testShowcaseResult.Passed ? "PASS" : "FAIL")}" +
                 $"({testShowcaseResult.Summary})",

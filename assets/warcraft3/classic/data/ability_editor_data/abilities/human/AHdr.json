@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmanadrain.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManaDrain.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManaDrain.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanadrain.png"
+      }
     ]
   },
   "summary": {
@@ -53,6 +61,8 @@
           "H": "1",
           "I": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bdcb",
           "Bdcl",
@@ -95,6 +105,8 @@
           "H": "1",
           "I": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bdcb",
           "Bdcl",
@@ -137,6 +149,8 @@
           "H": "1",
           "I": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bdcb",
           "Bdcl",

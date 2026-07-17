@@ -40,6 +40,11 @@
           "A": "earc",
           "B": "ehip"
         },
+        "unitIds": [],
+        "requirements": [
+          "Reht"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

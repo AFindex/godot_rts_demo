@@ -47,6 +47,8 @@
           "A": "0.02",
           "B": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Boar"
         ],

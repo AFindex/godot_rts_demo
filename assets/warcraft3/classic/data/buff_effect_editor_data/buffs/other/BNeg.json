@@ -1,0 +1,108 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNeg",
+  "displayName": "BNeg",
+  "identity": {
+    "baseCode": "BNeg",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestLeft.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestLeft.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestleft.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestRight.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestRight.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestright.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountLeft.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountLeft.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestmountleft.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountRight.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountRight.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/thornyshield/thornyshieldtargetchestmountright.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEngineeringUpgrade.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEngineeringUpgrade.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnengineeringupgrade.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "chest",
+      "left"
+    ],
+    "targetAttachmentCount": 4,
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANeg",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANeg",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANeg",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNeg",
+    "code": "BNeg",
+    "comments": "EngineeringUpgrade",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNEngineeringUpgrade.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestLeft.mdl,Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestRight.mdl,Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountLeft.mdl,Abilities\\Spells\\Undead\\ThornyShield\\ThornyShieldTargetChestMountRight.mdl",
+    "Targetattachcount": "4",
+    "Targetattach": "chest,left",
+    "Targetattach1": "chest,right",
+    "Targetattach2": "chest,mount,left",
+    "Targetattach3": "chest,mount,right",
+    "Bufftip": "工程升级"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

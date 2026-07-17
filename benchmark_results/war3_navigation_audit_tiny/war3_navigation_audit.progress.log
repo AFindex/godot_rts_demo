@@ -1,0 +1,56 @@
+2026-07-17T05:59:55.5313203Z phase=map_bootstrap status=begin
+2026-07-17T05:59:55.5391364Z phase=map_bootstrap status=simulation_created
+2026-07-17T05:59:55.5399832Z phase=map_bootstrap status=prepare_begin
+2026-07-17T05:59:55.5453588Z phase=map_bootstrap status=footprints_placed count=18 revision=1
+2026-07-17T05:59:55.5469032Z phase=map_bootstrap status=topology_refresh_begin bounds=<819, 1687>-<5581, 2153>
+2026-07-17T05:59:55.5471264Z phase=map_bootstrap status=topology_refresh_complete
+2026-07-17T05:59:55.5489867Z phase=map_bootstrap status=construction_restored count=18
+2026-07-17T05:59:55.5501704Z phase=map_bootstrap status=prepare_complete
+2026-07-17T05:59:55.5520851Z phase=map_bootstrap status=audit_run_entered
+2026-07-17T05:59:55.9194404Z phase=simple completed=2/45 percent=4.4 elapsed_s=0
+2026-07-17T05:59:55.9196886Z phase=simple completed=4/45 percent=8.9 elapsed_s=0.001
+2026-07-17T05:59:55.9198078Z phase=simple completed=6/45 percent=13.3 elapsed_s=0.001
+2026-07-17T05:59:55.9199291Z phase=simple completed=8/45 percent=17.8 elapsed_s=0.001
+2026-07-17T05:59:55.9200081Z phase=simple completed=10/45 percent=22.2 elapsed_s=0.001
+2026-07-17T05:59:55.9201136Z phase=simple completed=12/45 percent=26.7 elapsed_s=0.001
+2026-07-17T05:59:55.9201952Z phase=simple completed=14/45 percent=31.1 elapsed_s=0.001
+2026-07-17T05:59:55.9202767Z phase=simple completed=16/45 percent=35.6 elapsed_s=0.001
+2026-07-17T05:59:55.9203835Z phase=simple completed=18/45 percent=40.0 elapsed_s=0.001
+2026-07-17T05:59:55.9205444Z phase=simple completed=20/45 percent=44.4 elapsed_s=0.001
+2026-07-17T05:59:55.9206481Z phase=simple completed=22/45 percent=48.9 elapsed_s=0.002
+2026-07-17T05:59:55.9207404Z phase=simple completed=24/45 percent=53.3 elapsed_s=0.002
+2026-07-17T05:59:55.9208406Z phase=simple completed=26/45 percent=57.8 elapsed_s=0.002
+2026-07-17T05:59:55.9210020Z phase=simple completed=28/45 percent=62.2 elapsed_s=0.002
+2026-07-17T05:59:55.9211357Z phase=simple completed=30/45 percent=66.7 elapsed_s=0.002
+2026-07-17T05:59:55.9212759Z phase=simple completed=32/45 percent=71.1 elapsed_s=0.002
+2026-07-17T05:59:55.9214353Z phase=simple completed=34/45 percent=75.6 elapsed_s=0.002
+2026-07-17T05:59:55.9216165Z phase=simple completed=36/45 percent=80.0 elapsed_s=0.003
+2026-07-17T05:59:55.9217382Z phase=simple completed=38/45 percent=84.4 elapsed_s=0.003
+2026-07-17T05:59:55.9218880Z phase=simple completed=40/45 percent=88.9 elapsed_s=0.003
+2026-07-17T05:59:55.9220026Z phase=simple completed=42/45 percent=93.3 elapsed_s=0.003
+2026-07-17T05:59:55.9220963Z phase=simple completed=44/45 percent=97.8 elapsed_s=0.003
+2026-07-17T05:59:55.9221732Z phase=simple completed=45/45 percent=100.0 elapsed_s=0.01
+2026-07-17T05:59:55.9733600Z phase=runtime completed=2/45 percent=4.4 elapsed_s=0.05
+2026-07-17T05:59:55.9933803Z phase=runtime completed=4/45 percent=8.9 elapsed_s=0.071
+2026-07-17T05:59:56.0108571Z phase=runtime completed=6/45 percent=13.3 elapsed_s=0.088
+2026-07-17T05:59:56.0506521Z phase=runtime completed=8/45 percent=17.8 elapsed_s=0.128
+2026-07-17T05:59:56.0913628Z phase=runtime completed=10/45 percent=22.2 elapsed_s=0.168
+2026-07-17T05:59:56.1143498Z phase=runtime completed=12/45 percent=26.7 elapsed_s=0.191
+2026-07-17T05:59:56.1290234Z phase=runtime completed=14/45 percent=31.1 elapsed_s=0.206
+2026-07-17T05:59:56.1600957Z phase=runtime completed=16/45 percent=35.6 elapsed_s=0.237
+2026-07-17T05:59:56.2042040Z phase=runtime completed=18/45 percent=40.0 elapsed_s=0.281
+2026-07-17T05:59:56.2203122Z phase=runtime completed=20/45 percent=44.4 elapsed_s=0.297
+2026-07-17T05:59:56.2289803Z phase=runtime completed=22/45 percent=48.9 elapsed_s=0.306
+2026-07-17T05:59:56.2350487Z phase=runtime completed=24/45 percent=53.3 elapsed_s=0.312
+2026-07-17T05:59:56.2573853Z phase=runtime completed=26/45 percent=57.8 elapsed_s=0.335
+2026-07-17T05:59:56.2864207Z phase=runtime completed=28/45 percent=62.2 elapsed_s=0.364
+2026-07-17T05:59:56.2941131Z phase=runtime completed=30/45 percent=66.7 elapsed_s=0.371
+2026-07-17T05:59:56.3084881Z phase=runtime completed=32/45 percent=71.1 elapsed_s=0.386
+2026-07-17T05:59:56.3315611Z phase=runtime completed=34/45 percent=75.6 elapsed_s=0.409
+2026-07-17T05:59:56.3477913Z phase=runtime completed=36/45 percent=80.0 elapsed_s=0.425
+2026-07-17T05:59:56.3663688Z phase=runtime completed=38/45 percent=84.4 elapsed_s=0.443
+2026-07-17T05:59:56.3814529Z phase=runtime completed=40/45 percent=88.9 elapsed_s=0.459
+2026-07-17T05:59:56.3989406Z phase=runtime completed=42/45 percent=93.3 elapsed_s=0.476
+2026-07-17T05:59:56.4362994Z phase=runtime completed=44/45 percent=97.8 elapsed_s=0.513
+2026-07-17T05:59:56.4579042Z phase=runtime completed=45/45 percent=100.0 elapsed_s=0.536
+2026-07-17T05:59:56.5197641Z phase=complete status=fail critical=36

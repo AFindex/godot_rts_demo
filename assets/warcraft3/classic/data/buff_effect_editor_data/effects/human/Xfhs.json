@@ -1,0 +1,70 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Xfhs",
+  "displayName": "建筑物伤害 – 人族  小",
+  "identity": {
+    "baseCode": "Xfhs",
+    "race": "human",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire2.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire2.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire2.glb"
+      },
+      {
+        "requestedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl",
+        "resolvedPath": "Environment\\SmallBuildingFire\\SmallBuildingFire1.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/environment/smallbuildingfire/smallbuildingfire1.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "sprite",
+      "first"
+    ],
+    "targetAttachmentCount": 2,
+    "specialAttachments": [],
+    "effectSoundLooped": "HumanFireSmall"
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Xfhs",
+    "code": "Xfhs",
+    "comments": "EFFECT_OnFireHumanSml",
+    "isEffect": "1",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "TargetArt": "Environment\\SmallBuildingFire\\SmallBuildingFire2.mdl,Environment\\SmallBuildingFire\\SmallBuildingFire1.mdl",
+    "Targetattachcount": "2",
+    "Targetattach": "sprite,first",
+    "Targetattach1": "sprite,fourth",
+    "Effectsoundlooped": "HumanFireSmall",
+    "EditorName": "建筑物伤害 – 人族  小"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

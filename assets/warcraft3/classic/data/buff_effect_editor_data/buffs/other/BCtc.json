@@ -1,0 +1,81 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BCtc",
+  "displayName": "BCtc",
+  "identity": {
+    "baseCode": "BCtc",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/stasistrap/stasistotemtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGolemThunderclap.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGolemThunderClap.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngolemthunderclap.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "overhead"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ACtc",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ACt2",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BCtc",
+    "code": "BCtc",
+    "comments": "CreepThunderClap       ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNGolemThunderclap.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\StasisTrap\\StasisTotemTarget.mdl",
+    "Targetattach": "overhead",
+    "Bufftip": "雷霆一击",
+    "Buffubertip": "\"该单位受到了雷霆一击的攻击，因此其移动速度和攻击速度都减慢了。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/NeutralAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/NeutralAbilityFunc.txt"
+    ]
+  }
+}

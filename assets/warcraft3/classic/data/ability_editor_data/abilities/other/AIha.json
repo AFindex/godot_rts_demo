@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnscrolloftownportal.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\AIhe\\AIheTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\AIhe\\AIheTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/items/aihe/aihetarget.glb"
+      }
     ]
   },
   "summary": {
@@ -46,6 +54,8 @@
         "data": {
           "A": "150"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

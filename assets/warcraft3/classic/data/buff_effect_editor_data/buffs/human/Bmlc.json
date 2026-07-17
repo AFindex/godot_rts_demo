@@ -1,0 +1,53 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bmlc",
+  "displayName": "空中锁镣(施法者)",
+  "identity": {
+    "baseCode": "Bmlc",
+    "race": "human",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "AerialShacklesLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Amls",
+      "level": 1,
+      "kind": "buff",
+      "race": "human"
+    }
+  ],
+  "editorData": {
+    "alias": "Bmlc",
+    "code": "Bmlc",
+    "comments": "MagicLeashCaster       ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "human",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Effectsoundlooped": "AerialShacklesLoop",
+    "EditorName": "空中锁镣(施法者)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/HumanAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/HumanAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/HumanAbilityFunc.txt"
+    ]
+  }
+}

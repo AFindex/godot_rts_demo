@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnpurge.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Purge\\PurgeBuffTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Purge\\PurgeBuffTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/purge/purgebufftarget.glb"
+      }
     ]
   },
   "summary": {
@@ -51,6 +59,8 @@
           "E": "1",
           "F": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bprg"
         ],

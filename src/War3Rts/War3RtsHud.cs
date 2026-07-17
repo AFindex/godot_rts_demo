@@ -74,6 +74,7 @@ public sealed partial class War3RtsHud : Control
     private War3ModelActor? _portraitActor;
     private TextureRect? _portraitMask;
     private ColorRect? _portraitHealthFill;
+    private ColorRect? _portraitManaFill;
     private string _portraitSource = string.Empty;
     private bool _portraitBuildingView;
     private string _commandSignature = string.Empty;
@@ -171,6 +172,16 @@ public sealed partial class War3RtsHud : Control
                 : 0f;
             _portraitHealthFill.Size = new Vector2(
                 PortraitBarWidth * healthRatio, PortraitBarHeight);
+        }
+        if (_portraitManaFill is not null)
+        {
+            var manaRatio = snapshot.Selection.MaximumMana > 0f
+                ? Math.Clamp(snapshot.Selection.Mana /
+                             snapshot.Selection.MaximumMana, 0f, 1f)
+                : 0f;
+            _portraitManaFill.Size = new Vector2(
+                PortraitBarWidth * manaRatio, PortraitBarHeight);
+            _portraitManaFill.Visible = snapshot.Selection.MaximumMana > 0f;
         }
         var queueVisible = snapshot.Selection.QueueItems.Length > 0;
         _selectionDetails!.Visible = !queueVisible;
@@ -452,7 +463,7 @@ public sealed partial class War3RtsHud : Control
             MouseFilter = MouseFilterEnum.Ignore
         };
         healthBack.AddChild(_portraitHealthFill);
-        _portraitSlot.AddChild(new ColorRect
+        var manaBack = new ColorRect
         {
             Position = new Vector2(
                 -PortraitMaskScale,
@@ -461,7 +472,15 @@ public sealed partial class War3RtsHud : Control
             Color = new Color("09203b"),
             MouseFilter = MouseFilterEnum.Ignore,
             ZIndex = 15
-        });
+        };
+        _portraitSlot.AddChild(manaBack);
+        _portraitManaFill = new ColorRect
+        {
+            Size = new Vector2(PortraitBarWidth, PortraitBarHeight),
+            Color = new Color("1766bb"),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        manaBack.AddChild(_portraitManaFill);
     }
 
     private void AddSelectionInfo(Control parent)
@@ -783,7 +802,8 @@ public sealed partial class War3RtsHud : Control
     private void RebuildCommands(IReadOnlyList<War3CommandSnapshot> commands)
     {
         var signature = string.Join(';', commands.Select(value =>
-            $"{value.Slot}:{value.Kind}:{value.DataId}:{value.Enabled}"));
+            $"{value.Slot}:{value.Kind}:{value.DataId}:{value.Enabled}:" +
+            $"{MathF.Ceiling(value.CooldownRemaining * 10f)}:{value.Toggled}"));
         if (signature == _commandSignature) return;
         _commandSignature = signature;
         _hotkeys.Clear();
@@ -801,6 +821,9 @@ public sealed partial class War3RtsHud : Control
             var button = _commandButtons[command.Slot];
             button.Visible = true;
             button.Disabled = !command.Enabled;
+            button.Modulate = command.Enabled
+                ? Colors.White
+                : new Color(0.55f, 0.55f, 0.55f, 0.82f);
             button.TooltipText = command.Tooltip;
             button.Icon = War3RuntimeAssets.LoadTexture(command.IconPath);
             _slotCommands[command.Slot] = command;
@@ -810,6 +833,28 @@ public sealed partial class War3RtsHud : Control
             hotkey.OffsetTop = 1f;
             hotkey.MouseFilter = MouseFilterEnum.Ignore;
             button.AddChild(hotkey);
+            if (command.CooldownRemaining > 0f)
+            {
+                var cooldown = LabelText(
+                    MathF.Ceiling(command.CooldownRemaining).ToString("0"),
+                    16, Text);
+                cooldown.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                cooldown.HorizontalAlignment = HorizontalAlignment.Center;
+                cooldown.VerticalAlignment = VerticalAlignment.Center;
+                cooldown.MouseFilter = MouseFilterEnum.Ignore;
+                button.AddChild(cooldown);
+            }
+            if (command.Toggled)
+            {
+                var active = new ColorRect
+                {
+                    Position = new Vector2(2f, 46f),
+                    Size = new Vector2(48f, 4f),
+                    Color = new Color("54f08b"),
+                    MouseFilter = MouseFilterEnum.Ignore
+                };
+                button.AddChild(active);
+            }
             if (TryParseHotkey(command.Hotkey, out var key)) _hotkeys[key] = command;
         }
     }

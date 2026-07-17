@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btngolemthunderclap.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderClapCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Thunderclap\\ThunderclapCaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/thunderclap/thunderclapcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "C": "0.25",
           "D": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BCtc"
         ],

@@ -1,0 +1,87 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BIcf",
+  "displayName": "BIcf",
+  "identity": {
+    "baseCode": "BIcf",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/immolation/immolationtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/nightelf/immolation/immolationdamage.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCloakOfFlames.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCloakOfFlames.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncloakofflames.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [
+      "head"
+    ]
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AIcf",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "BIcf",
+    "code": "BIcf",
+    "comments": "ItemCloakOfFlames      ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "item",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNCloakOfFlames.blp",
+    "Targetart": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationTarget.mdl",
+    "Specialart": "Abilities\\Spells\\NightElf\\Immolation\\ImmolationDamage.mdl",
+    "Specialartattach": "head",
+    "Bufftip": "火焰风衣",
+    "Specialattach": "head",
+    "Buffubertip": "\"该单位拥有火焰风衣，周围的地面单位会受到持续的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemAbilityFunc.txt"
+    ]
+  }
+}

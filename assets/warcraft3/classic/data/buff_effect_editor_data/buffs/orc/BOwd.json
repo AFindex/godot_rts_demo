@@ -1,0 +1,93 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BOwd",
+  "displayName": "BOwd",
+  "identity": {
+    "baseCode": "BOwd",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {},
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "AOsw",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOsw",
+      "level": 2,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AOsw",
+      "level": 3,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "Arsw",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "Arsw",
+      "level": 2,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "Arsw",
+      "level": 3,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "Arsw",
+      "level": 4,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "ACtn",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BOwd",
+    "code": "BOwd",
+    "comments": "Ward                   ",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Bufftip": "守卫",
+    "Buffubertip": "\"召唤出来的单位会受到驱逐魔法的伤害。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt"
+    ]
+  }
+}

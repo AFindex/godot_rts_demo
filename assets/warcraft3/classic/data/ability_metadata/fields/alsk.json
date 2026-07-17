@@ -1,0 +1,56 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "alsk",
+  "field": "levelSkip",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "stats",
+  "displayNameKey": "WESTRING_AEVAL_ALSK",
+  "displayName": "跳级要求",
+  "sort": "f0a01a",
+  "valueType": "int",
+  "minimum": 0,
+  "maximum": 10000,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": false,
+    "hero": true,
+    "item": false,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "alsk",
+    "field": "levelSkip",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "stats",
+    "displayName": "WESTRING_AEVAL_ALSK",
+    "sort": "f0a01a",
+    "type": "int",
+    "changeFlags": "s",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "10000",
+    "forceNonNeg": "0",
+    "useUnit": "0",
+    "useHero": "1",
+    "useItem": "0",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncleavingattack.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Cleave\\CleaveDamageTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Cleave\\CleaveDamageTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/other/cleave/cleavedamagetarget.glb"
+      }
     ]
   },
   "summary": {
@@ -43,6 +51,8 @@
         "data": {
           "A": "0.25"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

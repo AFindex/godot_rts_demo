@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnimpale.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNImpale.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnimpale.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\Impale\\ImpaleMissTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\Impale\\ImpaleMissTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/impale/impalemisstarget.glb"
+      }
     ]
   },
   "summary": {
@@ -48,6 +64,8 @@
           "C": "50",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUim"
         ],
@@ -77,6 +95,8 @@
           "C": "80",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUim"
         ],
@@ -106,6 +126,8 @@
           "C": "110",
           "D": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUim"
         ],

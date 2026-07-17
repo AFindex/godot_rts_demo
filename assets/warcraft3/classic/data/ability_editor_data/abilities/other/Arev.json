@@ -12,7 +12,40 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\ReviveHuman\\ReviveHuman.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\ReviveHuman\\ReviveHuman.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/revivehuman/revivehuman.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\ReviveOrc\\ReviveOrc.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\ReviveOrc\\ReviveOrc.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/reviveorc/reviveorc.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ReviveUndead\\ReviveUndead.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ReviveUndead\\ReviveUndead.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/reviveundead/reviveundead.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\ReviveNightElf\\ReviveNightElf.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\ReviveNightElf\\ReviveNightElf.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/revivenightelf/revivenightelf.glb"
+      },
+      {
+        "requestedPath": "Abilities\\Spells\\Demon\\ReviveDemon\\ReviveDemon.mdl",
+        "resolvedPath": "Abilities\\Spells\\Demon\\ReviveDemon\\ReviveDemon.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/demon/revivedemon/revivedemon.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +58,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

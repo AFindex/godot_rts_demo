@@ -44,7 +44,11 @@
         "data": {
           "B": "1"
         },
+        "unitIds": [
+          "ncpn"
+        ],
         "summonedUnitId": "ncpn",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

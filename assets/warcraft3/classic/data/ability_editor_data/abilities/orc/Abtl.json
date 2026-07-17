@@ -44,7 +44,11 @@
         "data": {
           "B": "1"
         },
+        "unitIds": [
+          "opeo"
+        ],
         "summonedUnitId": "opeo",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

@@ -1,0 +1,62 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "Ear4",
+  "field": "Data",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": true,
+  "dataIndex": 4,
+  "category": "data",
+  "displayNameKey": "WESTRING_AEVAL_EAR4",
+  "displayName": "一次性奖励",
+  "sort": "x0a003",
+  "valueType": "bool",
+  "minimum": 0,
+  "maximum": 1,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [
+      "AEar",
+      "AIar",
+      "ACat",
+      "ACac",
+      "AIcd",
+      "Aakb"
+    ],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "Ear4",
+    "field": "Data",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "4",
+    "data": "4",
+    "category": "data",
+    "displayName": "WESTRING_AEVAL_EAR4",
+    "sort": "x0a003",
+    "type": "bool",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "0",
+    "maxVal": "1",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "useSpecific": "AEar,AIar,ACat,ACac,AIcd,Aakb",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk"
+    ]
+  }
+}

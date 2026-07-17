@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritofvengeance.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritOfVengeance.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiritOfVengeance.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnspiritofvengeance.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceBirthMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\NightElf\\SpiritOfVengeance\\SpiritOfVengeanceBirthMissile.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/nightelf/spiritofvengeance/spiritofvengeancebirthmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -39,7 +63,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "espv"
+        ],
         "summonedUnitId": "espv",
+        "requirements": [],
         "buffIds": [
           "BEsv"
         ],

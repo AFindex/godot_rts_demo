@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\Levelup\\LevelupCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\Levelup\\Levelupcaster.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/levelup/levelupcaster.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -25,6 +34,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

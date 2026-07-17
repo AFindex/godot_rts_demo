@@ -20,6 +20,22 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingspray.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingSpray.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingSpray.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingspray.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\HealingSpray\\HealBottleMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\HealingSpray\\HealBottleMissile.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/healingspray/healbottlemissile.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +65,8 @@
           "E": "1",
           "F": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNhs"
         ],
@@ -81,6 +99,8 @@
           "E": "1",
           "F": "4"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNhs"
         ],
@@ -113,6 +133,8 @@
           "E": "1",
           "F": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNhs"
         ],

@@ -20,6 +20,14 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnchemicalrage.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNChemicalRage.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNChemicalRage.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnchemicalrage.png"
+      }
     ]
   },
   "summary": {
@@ -44,7 +52,11 @@
           "E": "0.5",
           "F": "0.25"
         },
+        "unitIds": [
+          "Nalm"
+        ],
         "summonedUnitId": "Nalm",
+        "requirements": [],
         "buffIds": [
           "BNcr"
         ],
@@ -68,7 +80,11 @@
           "E": "0.5",
           "F": "0.75"
         },
+        "unitIds": [
+          "Nal2"
+        ],
         "summonedUnitId": "Nal2",
+        "requirements": [],
         "buffIds": [
           "BNcr"
         ],
@@ -92,7 +108,11 @@
           "E": "0.5",
           "F": "1.25"
         },
+        "unitIds": [
+          "Nal3"
+        ],
         "summonedUnitId": "Nal3",
+        "requirements": [],
         "buffIds": [
           "BNcr"
         ],

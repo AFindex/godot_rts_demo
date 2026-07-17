@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnmonsoon.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\Bolt\\BoltImpact.mdl",
+        "resolvedPath": "Abilities\\Weapons\\Bolt\\BoltImpact.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/weapons/bolt/boltimpact.glb"
+      }
     ]
   },
   "summary": {
@@ -49,6 +57,8 @@
           "C": "900",
           "D": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

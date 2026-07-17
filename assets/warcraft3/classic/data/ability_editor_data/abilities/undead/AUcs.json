@@ -20,6 +20,30 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncarrionswarm.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionSwarm.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNCarrionSwarm.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btncarrionswarm.png"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\CarrionSwarm\\CarrionSwarmDamage.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\CarrionSwarm\\CarrionSwarmDamage.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/carrionswarm/carrionswarmdamage.glb"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\CarrionSwarm\\CarrionSwarmMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\CarrionSwarm\\CarrionSwarmMissile.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/undead/carrionswarm/carrionswarmmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +71,8 @@
           "C": "800",
           "D": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUcs"
         ],
@@ -73,6 +99,8 @@
           "C": "800",
           "D": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUcs"
         ],
@@ -99,6 +127,8 @@
           "C": "800",
           "D": "300"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUcs"
         ],

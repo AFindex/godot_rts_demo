@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnwareagle.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWarEagle.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWarEagle.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwareagle.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
     ]
   },
   "summary": {
@@ -39,7 +55,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nwe1"
+        ],
         "summonedUnitId": "nwe1",
+        "requirements": [],
         "buffIds": [
           "BNsw"
         ],
@@ -60,7 +80,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nwe2"
+        ],
         "summonedUnitId": "nwe2",
+        "requirements": [],
         "buffIds": [
           "BNsw"
         ],
@@ -81,7 +105,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "nwe3"
+        ],
         "summonedUnitId": "nwe3",
+        "requirements": [],
         "buffIds": [
           "BNsw"
         ],

@@ -35,7 +35,14 @@
         "manaCost": 0,
         "range": 100,
         "data": {},
+        "unitIds": [
+          "halt",
+          "halt",
+          "halt",
+          "halt"
+        ],
         "summonedUnitId": "halt,halt,halt,halt",
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

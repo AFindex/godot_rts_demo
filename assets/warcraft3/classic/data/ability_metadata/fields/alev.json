@@ -1,0 +1,56 @@
+{
+  "schema": "war3-ability-metadata-field/v1",
+  "id": "alev",
+  "field": "levels",
+  "storage": "AbilityData",
+  "index": -1,
+  "repeat": false,
+  "dataIndex": 0,
+  "category": "stats",
+  "displayNameKey": "WESTRING_AEVAL_ALEV",
+  "displayName": "等级",
+  "sort": "f0a10",
+  "valueType": "int",
+  "minimum": 1,
+  "maximum": 100,
+  "canBeEmpty": false,
+  "forceNonNegative": false,
+  "applicability": {
+    "unit": true,
+    "hero": true,
+    "item": true,
+    "creep": true,
+    "specific": [],
+    "excluded": []
+  },
+  "editorData": {
+    "ID": "alev",
+    "field": "levels",
+    "slk": "AbilityData",
+    "index": "-1",
+    "repeat": "0",
+    "data": "0",
+    "category": "stats",
+    "displayName": "WESTRING_AEVAL_ALEV",
+    "sort": "f0a10",
+    "type": "int",
+    "changeFlags": "s",
+    "stringExt": "0",
+    "caseSens": "1",
+    "canBeEmpty": "0",
+    "minVal": "1",
+    "maxVal": "100",
+    "forceNonNeg": "0",
+    "useUnit": "1",
+    "useHero": "1",
+    "useItem": "1",
+    "useCreep": "1",
+    "version": "1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityMetaData.slk",
+      "extracted/raw/classic/tft/Units/AbilityMetaData.slk"
+    ]
+  }
+}

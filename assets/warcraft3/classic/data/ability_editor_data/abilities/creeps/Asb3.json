@@ -40,7 +40,14 @@
           "B": "1",
           "C": "0"
         },
+        "unitIds": [
+          "nsbs"
+        ],
         "summonedUnitId": "nsbs",
+        "requirements": [
+          "Rnsb"
+        ],
+        "requirementLevel": 1,
         "buffIds": [],
         "effectIds": []
       }

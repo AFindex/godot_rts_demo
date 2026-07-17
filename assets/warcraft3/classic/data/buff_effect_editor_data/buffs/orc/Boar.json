@@ -1,0 +1,83 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Boar",
+  "displayName": "Boar",
+  "identity": {
+    "baseCode": "Boar",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/other/anrm/anrmtarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingWard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHealingWard.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhealingward.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": [],
+    "effectSoundLooped": "FountainOfLifeLoop"
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Aoar",
+      "level": 1,
+      "kind": "buff",
+      "race": "orc"
+    },
+    {
+      "abilityId": "AIgx",
+      "level": 1,
+      "kind": "buff",
+      "race": "other"
+    }
+  ],
+  "editorData": {
+    "alias": "Boar",
+    "code": "Boar",
+    "comments": "AuraRegenLife          ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNHealingWard.blp",
+    "Targetart": "Abilities\\Spells\\Other\\ANrm\\ANrmTarget.mdl",
+    "Effectsoundlooped": "FountainOfLifeLoop",
+    "Bufftip": "治疗守卫光环",
+    "Spelldetail": "2",
+    "Buffubertip": "\"加快生命值恢复速度。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

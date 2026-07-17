@@ -1,0 +1,77 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bfrz",
+  "displayName": "Bfrz",
+  "identity": {
+    "baseCode": "Bfrz",
+    "race": "undead",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\FreezingBreath\\FreezingBreathTargetArt.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\FreezingBreath\\FreezingBreathTargetArt.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/freezingbreath/freezingbreathtargetart.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfreezingbreath.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "Afrz",
+      "level": 1,
+      "kind": "buff",
+      "race": "undead"
+    }
+  ],
+  "editorData": {
+    "alias": "Bfrz",
+    "code": "Bfrz",
+    "comments": "FreezingBreath         ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "undead",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNFreezingBreath.blp",
+    "Targetart": "Abilities\\Spells\\Undead\\FreezingBreath\\FreezingBreathTargetArt.mdl",
+    "Targetattach": "origin",
+    "Bufftip": "冰冻喷吐",
+    "Buffubertip": "\"该单位被冻住了，因此失去了原有的功效并不能被修理。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityFunc.txt",
+      "extracted/raw/classic/roc/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/UndeadAbilityStrings.txt",
+      "extracted/raw/classic/tft/Units/UndeadAbilityFunc.txt"
+    ]
+  }
+}

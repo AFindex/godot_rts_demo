@@ -1,0 +1,76 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "BNlm",
+  "displayName": "BNlm",
+  "identity": {
+    "baseCode": "BNlm",
+    "race": "other",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Weapons\\LavaSpawnMissile\\LavaSpawnBirthMissile.mdl",
+        "resolvedPath": "Abilities\\Weapons\\LavaSpawnMissile\\LavaSpawnBirthMissile.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/weapons/lavaspawnmissile/lavaspawnbirthmissile.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANlm",
+      "level": 1,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANlm",
+      "level": 2,
+      "kind": "buff",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANlm",
+      "level": 3,
+      "kind": "buff",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "BNlm",
+    "code": "BNlm",
+    "comments": "LavaMonster",
+    "isEffect": "0",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Missileart": "Abilities\\Weapons\\LavaSpawnMissile\\LavaSpawnBirthMissile.mdl",
+    "Missilespeed": "200",
+    "MissileHoming": "1",
+    "Missilearc": ".99",
+    "Bufftip": "炎魔",
+    "Buffubertip": "\"炎魔\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

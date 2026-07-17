@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btntomeofretraining.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Items\\TomeOfRetraining\\TomeOfRetrainingCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Items\\TomeOfRetraining\\TomeOfRetrainingCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/items/tomeofretraining/tomeofretrainingcaster.glb"
+      }
     ]
   },
   "summary": {
@@ -34,6 +42,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

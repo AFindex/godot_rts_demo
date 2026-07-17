@@ -1,0 +1,67 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "Bens",
+  "displayName": "诱捕(一般的)",
+  "identity": {
+    "baseCode": "Bens",
+    "race": "orc",
+    "effect": false,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\Ensnare\\ensnareTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\Ensnare\\ensnareTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/ensnare/ensnaretarget.glb"
+      }
+    ],
+    "buffArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnensnare.png"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [
+      "origin"
+    ],
+    "specialAttachments": []
+  },
+  "referencedBy": [],
+  "editorData": {
+    "alias": "Bens",
+    "code": "Bens",
+    "comments": "Ensnare                ",
+    "isEffect": "0",
+    "version": "0",
+    "useInEditor": "1",
+    "sort": "unit",
+    "race": "orc",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Buffart": "ReplaceableTextures\\CommandButtons\\BTNEnsnare.blp",
+    "Targetart": "Abilities\\Spells\\Orc\\Ensnare\\ensnareTarget.mdl",
+    "Targetattach": "origin",
+    "EditorName": "诱捕(一般的)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/OrcAbilityStrings.txt",
+      "extracted/raw/classic/roc/Units/OrcAbilityFunc.txt",
+      "extracted/raw/classic/tft/Units/OrcAbilityFunc.txt"
+    ]
+  }
+}

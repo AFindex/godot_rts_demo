@@ -45,6 +45,8 @@
           "D": "3",
           "E": "1"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bprg"
         ],

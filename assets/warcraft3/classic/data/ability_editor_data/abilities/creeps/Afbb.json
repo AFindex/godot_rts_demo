@@ -20,6 +20,14 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtnfeedback.png"
       }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Feedback\\SpellBreakerAttack.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Feedback\\SpellBreakerAttack.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/human/feedback/spellbreakerattack.glb"
+      }
     ]
   },
   "summary": {
@@ -47,6 +55,8 @@
           "D": "1",
           "E": "0"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

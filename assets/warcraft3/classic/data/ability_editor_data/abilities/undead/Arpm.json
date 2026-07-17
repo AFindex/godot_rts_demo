@@ -20,6 +20,30 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnreplenishmanaon.png"
       }
+    ],
+    "casterArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\ReplenishManaCaster.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\ReplenishManaCaster.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/replenishmana/replenishmanacaster.glb"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\SpiritTouchTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\SpiritTouchTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/replenishmana/spirittouchtarget.glb"
+      }
+    ],
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\ReplenishManaCasterOverhead.mdl",
+        "resolvedPath": "Abilities\\Spells\\Undead\\ReplenishMana\\ReplenishManaCasterOverhead.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/undead/replenishmana/replenishmanacasteroverhead.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +74,8 @@
           "D": "0",
           "E": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Brpm"
         ],

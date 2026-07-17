@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btncorpseexplode.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Demon\\DemonBoltImpact\\DemonBoltImpact.mdl",
+        "resolvedPath": "Abilities\\Spells\\Demon\\DemonBoltImpact\\DemonBoltImpact.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/demon/demonboltimpact/demonboltimpact.glb"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "B": "1",
           "C": "250"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

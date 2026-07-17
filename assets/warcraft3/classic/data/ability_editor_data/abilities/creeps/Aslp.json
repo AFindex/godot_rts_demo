@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnlobstrokkred.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLobstrokkRed.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLobstrokkRed.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlobstrokkred.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
     ]
   },
   "summary": {
@@ -39,7 +55,11 @@
         "data": {
           "A": "2"
         },
+        "unitIds": [
+          "nlps"
+        ],
         "summonedUnitId": "nlps",
+        "requirements": [],
         "buffIds": [
           "BNwm"
         ],

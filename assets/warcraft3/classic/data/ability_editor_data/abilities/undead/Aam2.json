@@ -49,6 +49,11 @@
           "C": "300",
           "D": "0"
         },
+        "unitIds": [],
+        "requirements": [
+          "Ruba"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bams",
           "Bam2"

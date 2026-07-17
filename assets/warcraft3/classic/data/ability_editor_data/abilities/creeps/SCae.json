@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/passivebuttons/pasbtncommand.png"
       }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\CommandAura\\CommandAura.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\CommandAura\\CommandAura.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/commandaura/commandaura.glb"
+      }
     ]
   },
   "summary": {
@@ -45,6 +53,8 @@
           "A": "0.1",
           "B": "0.05"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BOae"
         ],

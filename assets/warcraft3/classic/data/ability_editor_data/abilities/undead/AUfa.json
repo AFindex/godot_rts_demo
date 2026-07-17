@@ -20,6 +20,14 @@
         "sourceLayer": "roc",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnfrostarmor.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFrostArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFrostArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnfrostarmor.png"
+      }
     ]
   },
   "summary": {
@@ -46,6 +54,8 @@
           "A": "45",
           "B": "3"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUfa"
         ],
@@ -72,6 +82,8 @@
           "A": "45",
           "B": "5"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUfa"
         ],
@@ -98,6 +110,8 @@
           "A": "45",
           "B": "7"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BUfa"
         ],

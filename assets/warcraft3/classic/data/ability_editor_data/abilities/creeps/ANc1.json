@@ -20,6 +20,22 @@
         "sourceLayer": "patch",
         "godotPath": "textures/replaceabletextures/commandbuttons/btnclusterrockets.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNClusterRockets.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNClusterRockets.blp",
+        "sourceLayer": "patch",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnclusterrockets.png"
+      }
+    ],
+    "missileArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Other\\TinkerRocket\\TinkerRocketMissile.mdl",
+        "resolvedPath": "Abilities\\Spells\\Other\\TinkerRocket\\TinkerRocketMissile.mdx",
+        "sourceLayer": "patch",
+        "godotPath": "models/abilities/spells/other/tinkerrocket/tinkerrocketmissile.glb"
+      }
     ]
   },
   "summary": {
@@ -50,6 +66,8 @@
           "E": "1",
           "F": "1.01"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNcs"
         ],
@@ -83,6 +101,8 @@
           "E": "1",
           "F": "1.01"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNcs"
         ],
@@ -116,6 +136,8 @@
           "E": "1",
           "F": "1.01"
         },
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "BNcs"
         ],

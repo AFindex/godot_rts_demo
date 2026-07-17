@@ -1,0 +1,72 @@
+{
+  "schema": "war3-buff-effect-editor-data/v1",
+  "id": "XNhs",
+  "displayName": "Healing Spray (Effect)",
+  "identity": {
+    "baseCode": "XNhs",
+    "race": "other",
+    "effect": true,
+    "editorVisible": true,
+    "profileOnly": false
+  },
+  "assets": {
+    "specialArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/human/heal/healtarget.glb"
+      }
+    ]
+  },
+  "summary": {
+    "levels": []
+  },
+  "presentation": {
+    "casterAttachments": [],
+    "targetAttachments": [],
+    "specialAttachments": []
+  },
+  "referencedBy": [
+    {
+      "abilityId": "ANhs",
+      "level": 1,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANhs",
+      "level": 2,
+      "kind": "effect",
+      "race": "creeps"
+    },
+    {
+      "abilityId": "ANhs",
+      "level": 3,
+      "kind": "effect",
+      "race": "creeps"
+    }
+  ],
+  "editorData": {
+    "alias": "XNhs",
+    "code": "XNhs",
+    "comments": "HealingSpray",
+    "isEffect": "1",
+    "version": "1",
+    "useInEditor": "1",
+    "sort": "hero",
+    "race": "other",
+    "InBeta": "1"
+  },
+  "profile": {
+    "Specialart": "Abilities\\Spells\\Human\\Heal\\HealTarget.mdl",
+    "EditorName": "Healing Spray (Effect)"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/AbilityBuffData.slk",
+      "extracted/raw/classic/patch/Units/NeutralAbilityFunc.txt",
+      "extracted/raw/classic/patch/Units/NeutralAbilityStrings.txt"
+    ]
+  }
+}

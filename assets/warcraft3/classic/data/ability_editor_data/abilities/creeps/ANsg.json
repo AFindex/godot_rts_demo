@@ -20,6 +20,22 @@
         "sourceLayer": "tft",
         "godotPath": "textures/replaceabletextures/commandbuttons/btngrizzlybear.png"
       }
+    ],
+    "researchArt": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGrizzlyBear.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGrizzlyBear.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngrizzlybear.png"
+      }
+    ],
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\FeralSpirit\\feralspiritdone.mdx",
+        "sourceLayer": "roc",
+        "godotPath": "models/abilities/spells/orc/feralspirit/feralspiritdone.glb"
+      }
     ]
   },
   "summary": {
@@ -39,7 +55,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "ngz1"
+        ],
         "summonedUnitId": "ngz1",
+        "requirements": [],
         "buffIds": [
           "BNsg"
         ],
@@ -60,7 +80,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "ngz2"
+        ],
         "summonedUnitId": "ngz2",
+        "requirements": [],
         "buffIds": [
           "BNsg"
         ],
@@ -81,7 +105,11 @@
         "data": {
           "A": "1"
         },
+        "unitIds": [
+          "ngz3"
+        ],
         "summonedUnitId": "ngz3",
+        "requirements": [],
         "buffIds": [
           "BNsg"
         ],

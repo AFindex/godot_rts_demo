@@ -12,7 +12,16 @@
     "requiredHeroLevel": 0,
     "heroLevelSkip": 0
   },
-  "assets": {},
+  "assets": {
+    "targetArt": [
+      {
+        "requestedPath": "Abilities\\Spells\\Orc\\ReinforcedTrollBurrow\\ReinforcedTrollBurrowTarget.mdl",
+        "resolvedPath": "Abilities\\Spells\\Orc\\ReinforcedTrollBurrow\\ReinforcedTrollBurrowTarget.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/abilities/spells/orc/reinforcedtrollburrow/reinforcedtrollburrowtarget.glb"
+      }
+    ]
+  },
   "summary": {
     "levels": [
       {
@@ -27,6 +36,8 @@
         "cooldown": 0,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [],
         "effectIds": []
       }

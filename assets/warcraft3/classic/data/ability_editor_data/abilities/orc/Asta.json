@@ -46,7 +46,14 @@
           "C": "400",
           "D": "6"
         },
+        "unitIds": [
+          "otot"
+        ],
         "summonedUnitId": "otot",
+        "requirements": [
+          "Rowd"
+        ],
+        "requirementLevel": 1,
         "buffIds": [
           "Bsta"
         ],

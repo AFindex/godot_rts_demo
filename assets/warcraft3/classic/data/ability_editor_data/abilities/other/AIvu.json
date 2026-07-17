@@ -37,6 +37,8 @@
         "cooldown": 45,
         "manaCost": 0,
         "data": {},
+        "unitIds": [],
+        "requirements": [],
         "buffIds": [
           "Bvul"
         ],
