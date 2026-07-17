@@ -60,6 +60,7 @@ public sealed partial class War3Rts : Node3D
     private bool _capture;
     private bool _terrainCapture;
     private bool _pcgCapture;
+    private bool _heroCapture;
     private bool _offlineBakeRequested;
     private bool _rightClickInputSmoke;
     private int _earlyExitCode;
@@ -90,6 +91,7 @@ public sealed partial class War3Rts : Node3D
         _smoke = arguments.Contains("--war3-rts-smoke");
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
         _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
+        _heroCapture = arguments.Contains("--war3-rts-hero-capture");
         _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
         _rightClickInputSmoke = arguments.Contains(
             "--war3-right-click-input-smoke");
@@ -115,7 +117,7 @@ public sealed partial class War3Rts : Node3D
             _cursor.Initialize(War3CursorCatalog.ParseRace(arguments));
         }
         _capture = arguments.Contains("--war3-rts-capture") ||
-                   _terrainCapture || _pcgCapture;
+                   _terrainCapture || _pcgCapture || _heroCapture;
         if (navigationAuditRequested)
             War3NavigationMapAudit.TraceBootstrap("status=catalog_begin");
         var catalog = War3MapCatalog.Enumerate();
@@ -382,6 +384,17 @@ public sealed partial class War3Rts : Node3D
         _selectedUnits.Add(_runtime.PlayerWorkers[0]);
         RefreshSelection();
         _cameraController!.FocusAt(map.PlayerSpawn, immediate: true);
+        if (_heroCapture)
+        {
+            var hero = _simulation.AddUnit(
+                map.PlayerSpawn + new NVector2(190f, 95f),
+                _production.UnitType(War3HumanContent.Archmage),
+                War3HumanScenario.PlayerId);
+            _selectedUnits.Clear();
+            _selectedBuildings.Clear();
+            _selectedUnits.Add(hero);
+            RefreshSelection();
+        }
         if (_pcgCapture)
         {
             _hud!.Visible = false;
@@ -1281,9 +1294,14 @@ public sealed partial class War3Rts : Node3D
             var attack = target.Kind is SmartCommandTargetKind.EnemyUnit or
                 SmartCommandTargetKind.EnemyBuilding;
             PlayCommandAudio(attack, queued);
-            _presenter?.ShowCommandConfirmation(
-                target.Position,
-                War3CommandFeedbackCatalog.ForSmartTarget(target.Kind));
+            if (target.Kind != SmartCommandTargetKind.ResourceNode ||
+                _presenter?.FlashResourceTarget(
+                    new EconomyResourceNodeId(target.ResourceNode)) != true)
+            {
+                _presenter?.ShowCommandConfirmation(
+                    target.Position,
+                    War3CommandFeedbackCatalog.ForSmartTarget(target.Kind));
+            }
         }
     }
 
@@ -3112,7 +3130,10 @@ public sealed partial class War3Rts : Node3D
             _presenter.SawProgressiveLumberCargo && treeHealthReduced &&
             !_presenter.GoldGatherUsedAttackAnimation &&
             _presenter.SawGoldMinerHidden &&
-            _presenter.SawRepeatedLumberCycle;
+            _presenter.SawRepeatedLumberCycle &&
+            _presenter.SawTreeHitAnimation &&
+            _presenter.TreeHarvestFeedbackCount > 0 &&
+            _audioTreeHarvestPlayed > 0;
         var buildingAnimationsValid =
             !_presenter.CompletedBuildingUsedLifecycleAnimation;
         var buildingEffectsValid = _presenter.SawConstructionEffect &&
@@ -3186,7 +3207,9 @@ public sealed partial class War3Rts : Node3D
                       _presenter.PresentedResourceCount >= 30 &&
                       _hud.PortraitReady &&
                       _hud.ConsoleLayoutReady &&
+                      _hud.InventoryLayoutReady &&
                       _hud.MinimapAspectFitReady &&
+                      _presenter.UnitSelectionAgentFitReady &&
                       player.Minerals > 1_250 &&
                       player.VespeneGas > 700 &&
                       enemyArmy > 0 &&
@@ -3199,8 +3222,9 @@ public sealed partial class War3Rts : Node3D
                       harvestingSynchronized && buildingAnimationsValid &&
                       buildingEffectsValid && _presenter.SawBlendedTransition &&
                       _presenter.RallyMarkerUsesWar3Model && attackFacingValid &&
-                      _presenter.SawMoveCommandConfirmation &&
-                      _presenter.SawAttackCommandConfirmation &&
+                       _presenter.SawMoveCommandConfirmation &&
+                       _presenter.SawAttackCommandConfirmation &&
+                       _presenter.SawTreeTargetConfirmation &&
                       constructionPresentationValid && terrainReady &&
                       dataIntegrationReady && mapLoadingValid &&
                       abilityIntegrationReady &&
@@ -3213,7 +3237,9 @@ public sealed partial class War3Rts : Node3D
              $"effects={_presenter.ActiveEffectCount} peak_effects={_presenter.PeakEffectCount} " +
              $"projectile_next={_simulation.CombatProjectiles.NextId} " +
             $"portrait={_hud.PortraitReady} hud_layout={_hud.ConsoleLayoutReady} " +
+            $"inventory_layout={_hud.InventoryLayoutReady} " +
             $"minimap_fit={_hud.MinimapAspectFitReady} " +
+            $"selection_agent_fit={_presenter.UnitSelectionAgentFitReady} " +
             $"gold={player.Minerals} lumber={player.VespeneGas} enemy_army={enemyArmy} " +
             $"gold_anim={_presenter.SawGoldGatherAnimation}/{_presenter.SawCarriedGoldAnimation} " +
             $"lumber_anim={_presenter.SawLumberGatherAnimation}/{_presenter.SawCarriedLumberAnimation} " +
@@ -3234,7 +3260,11 @@ public sealed partial class War3Rts : Node3D
              $"animation_blend={_presenter.SawBlendedTransition} " +
             $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
              $"command_confirmation={_presenter.SawMoveCommandConfirmation}/" +
-             $"{_presenter.SawAttackCommandConfirmation} " +
+             $"{_presenter.SawAttackCommandConfirmation}/" +
+             $"tree:{_presenter.SawTreeTargetConfirmation} " +
+             $"tree_feedback={_presenter.SawTreeHitAnimation}/" +
+             $"{_presenter.TreeHarvestFeedbackCount}/" +
+             $"audio:{_audioTreeHarvestPlayed}/{_audioTreeHarvestEvents} " +
              $"attack_facing={attackFacingValid} terrain={terrainReady} " +
              $"data_integration={dataIntegrationReady} " +
              $"ability_integration={abilityIntegrationReady}/" +
@@ -3264,7 +3294,11 @@ public sealed partial class War3Rts : Node3D
                 War3CommandFeedbackKind.Move) ||
             !_presenter.ShowCommandConfirmation(
                 home + new NVector2(175f, 30f),
-                War3CommandFeedbackKind.Attack))
+                War3CommandFeedbackKind.Attack) ||
+            !_presenter.FlashResourceTarget(
+                _runtime!.ResourceNodes.First(id =>
+                    _simulation.Economy.ObserveResourceNode(id).Kind ==
+                    EconomyResourceKind.VespeneGas)))
             throw new InvalidOperationException(
                 "Smoke command confirmation setup failed.");
         _smokeRallyPosition = home + new NVector2(330f, 210f);
@@ -3422,7 +3456,9 @@ public sealed partial class War3Rts : Node3D
                 ? "user://war3_rts_pcg_capture.png"
                 : _terrainCapture
                     ? "user://war3_rts_terrain_capture.png"
-                    : "user://war3_rts_capture.png");
+                    : _heroCapture
+                        ? "user://war3_rts_hero_capture.png"
+                        : "user://war3_rts_capture.png");
         var result = image.SavePng(path);
         GD.Print($"WAR3_RTS_CAPTURE {result}: {path}");
         if (!_smoke) GetTree().Quit(result == Error.Ok ? 0 : 1);

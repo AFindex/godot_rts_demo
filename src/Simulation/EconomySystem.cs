@@ -287,6 +287,7 @@ public readonly record struct EconomyResourceNodeSnapshot(
     bool Operational,
     Vector2 InteractionHalfExtents,
     float InteractionRadius,
+    float HarvestSeconds,
     EconomyHarvestMode HarvestMode)
 {
     public int ActiveHarvesters => ActiveNormal + ActiveMules;
@@ -1192,6 +1193,7 @@ public sealed class EconomySystem
             node.ActiveMules, node.AssignedMules,
             node.RequiresRefinery, node.Operational,
             node.InteractionHalfExtents, NodeArrivalPadding,
+            node.HarvestSeconds,
             node.HarvestMode);
     }
 

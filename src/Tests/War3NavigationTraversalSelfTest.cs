@@ -101,6 +101,14 @@ public static class War3NavigationTraversalSelfTest
                     : LegResult.NotRun("no surviving workers")
                 : LegResult.NotRun("outbound failed");
 
+            var playerTownHall = simulation.CreateGameplayBuildingOverview()
+                .First(value => value.PlayerId == War3HumanScenario.PlayerId &&
+                                value.Type.Id == War3HumanContent.TownHall);
+            var workerPhysicalRadius = simulation.Units.Radii[
+                runtime.PlayerWorkers[0]];
+            var workerNavigationRadius = simulation.Units.NavigationRadii[
+                runtime.PlayerWorkers[0]];
+
             // A peasant can finish a town-hall surface interaction in a point
             // that is valid for its physical body but lies inside navigation
             // clearance. It must be able to leave that surface on the next
@@ -109,7 +117,12 @@ public static class War3NavigationTraversalSelfTest
                 simulation,
                 runtime.PlayerWorkers[0],
                 new EconomyResourceNodeId(5),
-                new Vector2(1201.6f, 1990.3f));
+                SurfaceClearanceStart(
+                    playerTownHall.Bounds,
+                    workerPhysicalRadius,
+                    workerNavigationRadius,
+                    top: false,
+                    axialFactor: -0.25f));
             // Same building, top edge: the body is fully valid here, but the
             // navigation-clearance disc overlaps the town hall by 0.5 pixels.
             // The nearest grid anchor must be reachable from the escape point,
@@ -120,7 +133,12 @@ public static class War3NavigationTraversalSelfTest
                     unit != runtime.PlayerWorkers[0] &&
                     simulation.Units.Alive[unit]),
                 new EconomyResourceNodeId(1),
-                new Vector2(1253.9f, 1848.5f));
+                SurfaceClearanceStart(
+                    playerTownHall.Bounds,
+                    workerPhysicalRadius,
+                    workerNavigationRadius,
+                    top: true,
+                    axialFactor: 0.25f));
 
             // Reproduce the player report against the authored tree at
             // 1329,1583: its physical interaction point used to be accepted
@@ -424,6 +442,20 @@ public static class War3NavigationTraversalSelfTest
             $"start={Point(start)}/p{physicalFree}/n{navigationFree},timeout," +
             $"state={simulation.Economy.Worker(worker).State}",
             simulation.Units.Positions[worker]);
+    }
+
+    private static Vector2 SurfaceClearanceStart(
+        SimRect bounds,
+        float physicalRadius,
+        float navigationRadius,
+        bool top,
+        float axialFactor)
+    {
+        var center = (bounds.Min + bounds.Max) * 0.5f;
+        var edgeOffset = (physicalRadius + navigationRadius) * 0.5f;
+        return new Vector2(
+            center.X + bounds.Width * axialFactor,
+            top ? bounds.Min.Y - edgeOffset : bounds.Max.Y + edgeOffset);
     }
 
     private static string DescribeBlockingGeometry(

@@ -20,6 +20,8 @@ public sealed partial class War3Rts
     private long _audioAnimationEvents;
     private long _audioAnimationPlayed;
     private long _audioAbilityEvents;
+    private long _audioTreeHarvestEvents;
+    private long _audioTreeHarvestPlayed;
     private readonly Dictionary<AbilityAudioKey, War3AbilityAudioSession>
         _activeAbilityAudio = [];
 
@@ -45,7 +47,10 @@ public sealed partial class War3Rts
         _worldAudio = new War3WorldAudioController(
             catalog, _audioPlayback, War3HumanScenario.PlayerId);
         if (_presenter is not null)
+        {
             _presenter.AnimationAudioEvent += OnAnimationAudioEvent;
+            _presenter.TreeHarvestFeedback += OnTreeHarvestFeedback;
+        }
         var musicCount = 0;
         try
         {
@@ -98,6 +103,11 @@ public sealed partial class War3Rts
                         "MetalMediumSlice", StringComparison.OrdinalIgnoreCase)))
                 errors.Add("hfoo weapon sound family is missing");
         }
+        if (!catalog.TryGetUnitBinding("hpea", out var peasant) ||
+            !peasant.Weapons.Any(value => value.Slot == 1 &&
+                value.ImpactPrefix.Equals(
+                    "AxeMediumChop", StringComparison.OrdinalIgnoreCase)))
+            errors.Add("hpea tree-harvest weapon sound family is missing");
         if (!catalog.TryGetAbilityBinding("Ainf", out var innerFire) ||
             !innerFire.EffectCue.Equals(
                 "InnerFireCast", StringComparison.OrdinalIgnoreCase))
@@ -127,6 +137,8 @@ public sealed partial class War3Rts
             ("SiphonManaLoop", War3AudioSemantic.Ability,
                 (NVector2?)NVector2.Zero),
             ("MetalMediumSliceMetal", War3AudioSemantic.Impact,
+                (NVector2?)NVector2.Zero),
+            ("AxeMediumChopWood", War3AudioSemantic.Impact,
                 (NVector2?)NVector2.Zero),
             ("RallyPointPlace", War3AudioSemantic.Notification,
                 (NVector2?)null),
@@ -206,6 +218,12 @@ public sealed partial class War3Rts
         abilityController.StopAbility(siphonSession, 0.1f);
         if (recordingPlayback.LoopsStopped != 1)
             errors.Add("looped ability audio lifecycle did not stop");
+        var playedBeforeTreeHarvest = recordingPlayback.Played;
+        if (!abilityController.PlayImpactMaterial(
+                "hpea", "Wood", 0, NVector2.Zero, 23, 12,
+                weaponSlot: 1) ||
+            recordingPlayback.Played != playedBeforeTreeHarvest + 1)
+            errors.Add("data-driven hpea tree-harvest impact did not play");
 
         var abilityEvents = new AbilityEventStream(4);
         abilityEvents.Publish(
@@ -557,6 +575,26 @@ public sealed partial class War3Rts
                 $"WAR3_AUDIO animation_timeline=active " +
                 $"event={value.EventCode} sequence={value.SequenceName} " +
                 $"received={_audioAnimationEvents}");
+    }
+
+    private void OnTreeHarvestFeedback(War3TreeHarvestFeedbackEvent value)
+    {
+        if (_worldAudio is null) return;
+        _audioTreeHarvestEvents++;
+        if (!_worldAudio.PlayImpactMaterial(
+                value.WorkerObjectId,
+                "Wood",
+                value.SourcePlayerId,
+                value.WorldPosition,
+                value.WorkerUnit,
+                value.Sequence,
+                value.WeaponSlot))
+            return;
+        _audioTreeHarvestPlayed++;
+        if (_audioTreeHarvestPlayed == 1)
+            GD.Print(
+                $"WAR3_AUDIO tree_harvest=active worker={value.WorkerObjectId} " +
+                $"weapon_slot={value.WeaponSlot} family={value.SoundFamily}");
     }
 
     private static bool IsDeathTimeline(string sequenceName) =>

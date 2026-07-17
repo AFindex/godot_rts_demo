@@ -14,10 +14,12 @@ public sealed record War3GameplayImportPolicy
     public static War3GameplayImportPolicy Default { get; } = new();
 
     public float WorldDistanceScale { get; init; } = 4f / 15f;
+    public float UnitCollisionRadiusScale { get; init; } = 1f / 3f;
+    public float PathingCellSize { get; init; } = 8f;
     public float MovementSpeedScale { get; init; } = 4f / 9f;
     public float AccelerationMultiplier { get; init; } = 5.5f;
     public float VisualHeightScale { get; init; } = 0.0075f;
-    public float MinimumUnitRadius { get; init; } = 5.5f;
+    public float MinimumUnitRadius { get; init; } = 7f;
     public float MinimumMovementSpeed { get; init; } = 32f;
     public float LeashRangeMultiplier { get; init; } = 1.75f;
     public float DefaultProjectileSpeed { get; init; } = 430f;
@@ -54,6 +56,9 @@ public sealed class War3GameplayDataAdapter(
     IWar3UnitDataCatalog catalog,
     War3GameplayImportPolicy policy)
 {
+    private readonly Dictionary<string, System.Numerics.Vector2?>
+        _pathingFootprints = new(StringComparer.OrdinalIgnoreCase);
+
     public IWar3UnitDataCatalog Catalog { get; } = catalog;
     public War3GameplayImportPolicy Policy { get; } = policy;
     public IReadOnlyDictionary<string, int> WeaponUnlockTechnologies { get; init; } =
@@ -139,9 +144,11 @@ public sealed class War3GameplayDataAdapter(
                 summary.Cost.Gold!.Value,
                 summary.Cost.Lumber!.Value,
                 fallback.Cost.Supply);
+        var footprint = ReadPathingFootprint(data) ?? fallback.Size;
         return fallback with
         {
             Name = Text(data.DisplayName, fallback.Name),
+            Size = footprint,
             Cost = cost,
             BuildSeconds = Positive(summary.Cost.BuildTime)
                 ? summary.Cost.BuildTime!.Value * Policy.BuildTimeScale
@@ -271,7 +278,8 @@ public sealed class War3GameplayDataAdapter(
         var radius = Positive(data.Summary.Movement.CollisionSize)
             ? MathF.Max(
                 Policy.MinimumUnitRadius,
-                data.Summary.Movement.CollisionSize!.Value * Policy.WorldDistanceScale)
+                data.Summary.Movement.CollisionSize!.Value *
+                Policy.UnitCollisionRadiusScale)
             : fallback.PhysicalRadius;
         var speed = Positive(data.Summary.Movement.Speed)
             ? MathF.Max(
@@ -653,6 +661,87 @@ public sealed class War3GameplayDataAdapter(
                 return value.Value?.Trim() ?? string.Empty;
         }
         return string.Empty;
+    }
+
+    private System.Numerics.Vector2? ReadPathingFootprint(War3UnitData data)
+    {
+        var virtualPath = EditorValue(data, "pathTex");
+        if (virtualPath.Length == 0 || virtualPath is "_" or "-") return null;
+        if (_pathingFootprints.TryGetValue(virtualPath, out var cached))
+            return cached;
+
+        System.Numerics.Vector2? result = null;
+        try
+        {
+            var assetRoot = Directory.GetParent(Catalog.RootPath)?.Parent?.FullName;
+            if (!string.IsNullOrWhiteSpace(assetRoot))
+            {
+                var textureRoot = Path.GetFullPath(Path.Combine(assetRoot, "textures"));
+                var relative = virtualPath.Replace('/', Path.DirectorySeparatorChar)
+                    .Replace('\\', Path.DirectorySeparatorChar);
+                var absolute = Path.GetFullPath(Path.Combine(textureRoot, relative));
+                var rootPrefix = textureRoot.TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                if (absolute.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) &&
+                    File.Exists(absolute) &&
+                    TryReadUnwalkableTgaBounds(
+                        absolute, out var width, out var height))
+                    result = new System.Numerics.Vector2(
+                        width * Policy.PathingCellSize,
+                        height * Policy.PathingCellSize);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or
+                                          UnauthorizedAccessException or
+                                          ArgumentException)
+        {
+            // A missing optional source texture keeps the curated fallback.
+        }
+        _pathingFootprints[virtualPath] = result;
+        return result;
+    }
+
+    private static bool TryReadUnwalkableTgaBounds(
+        string path,
+        out int blockedWidth,
+        out int blockedHeight)
+    {
+        blockedWidth = 0;
+        blockedHeight = 0;
+        var bytes = File.ReadAllBytes(path);
+        if (bytes.Length < 18 || bytes[1] != 0 || bytes[2] != 2)
+            return false;
+        var width = (int)BitConverter.ToUInt16(bytes, 12);
+        var height = (int)BitConverter.ToUInt16(bytes, 14);
+        var bytesPerPixel = bytes[16] / 8;
+        if (width == 0 || height == 0 || bytesPerPixel is not (3 or 4))
+            return false;
+        var offset = 18 + bytes[0];
+        var pixelBytes = (long)width * height * bytesPerPixel;
+        if (offset < 18 || offset + pixelBytes > bytes.Length) return false;
+
+        var minX = width;
+        var minY = height;
+        var maxX = -1;
+        var maxY = -1;
+        for (var pixel = 0; pixel < width * height; pixel++)
+        {
+            // Warcraft pathing TGAs are BGR. A set red channel means that the
+            // cell blocks ground movement; blue-only cells only block building.
+            var red = bytes[offset + pixel * bytesPerPixel + 2];
+            if (red < 128) continue;
+            var x = pixel % width;
+            var y = pixel / width;
+            minX = Math.Min(minX, x);
+            minY = Math.Min(minY, y);
+            maxX = Math.Max(maxX, x);
+            maxY = Math.Max(maxY, y);
+        }
+        if (maxX < minX || maxY < minY) return false;
+        blockedWidth = maxX - minX + 1;
+        blockedHeight = maxY - minY + 1;
+        return true;
     }
 
     private static IEnumerable<string> EditorList(

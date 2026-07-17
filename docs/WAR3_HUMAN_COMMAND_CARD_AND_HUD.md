@@ -59,6 +59,16 @@
 
 当前物品系统尚未实现拾取、丢弃和物品技能，因此这里只接入资格与空槽表现，不生成虚假物品状态。
 
+底部界面布局直接使用原始 1600×512 Human console atlas 的像素坐标，再统一按 `320 / 512` 缩放。Command Card 的原始格距为 87 像素，不能按近似的 58 屏幕像素累加；物品栏使用原始两列三行边界。无物品栏资格时，`HumanUITile-InventoryCover` 以与底图完全相同的缩放和纵向原点覆盖六格，并放置在底图之上。英雄可使用 `--war3-rts-hero-capture` 生成专用布局验收截图。
+
+## 寻路占地与选中圈
+
+- 建筑不再使用手工估算矩形。运行时读取对象数据的 `UnitData.pathTex`，解析对应 TGA 中红色的不可行走像素边界；一个 Warcraft pathing cell 映射为 8 个模拟单位。
+- 蓝色但没有红色的 pathing cell 只限制建造，不会被误算成单位不可行走的硬占地。
+- 单位碰撞半径独立于攻击距离等世界距离换算，按原始 `collisionSize / 3` 导入，最小半径为 7。
+- 选中圈的外半径直接等于运行时 `NavigationRadius`，不再用模型无关的 `radius × 2.8` 放大。
+- 建筑升级前后的硬占地必须一致；哨塔三种分支以及城镇大厅的两级升级均由专项测试校验。
+
 ## 小地图
 
 HUD 每次快照会把可见世界区域投影成 `CameraViewBounds`，小地图用双描边矩形显示当前镜头范围。正常模式使用普通箭头光标；只有 `MinimapSignalMode` 为真时才使用瞄准光标。当前玩法尚未开放信号模式，因此正常小地图不会再一直显示瞄准样式。
@@ -67,8 +77,9 @@ HUD 每次快照会把可见世界区域投影成 `CameraViewBounds`，小地图
 
 ```powershell
 godot --headless --path . -- --war3-human-ui-self-test
+godot --headless --path . -- --war3-spatial-sizing-self-test
+godot --headless --path . -- --war3-navigation-traversal-self-test
 godot --headless --path . -- --building-upgrade-self-test
 godot --headless --path . -- --ability-self-test
 godot --headless --path . res://war3_rts/War3Rts.tscn -- --war3-rts-smoke
 ```
-

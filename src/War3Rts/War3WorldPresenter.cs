@@ -25,6 +25,16 @@ public readonly record struct War3AnimationAudioEvent(
     int SourcePlayerId,
     ulong Sequence);
 
+public readonly record struct War3TreeHarvestFeedbackEvent(
+    string WorkerObjectId,
+    int WorkerUnit,
+    int ResourceNode,
+    int WeaponSlot,
+    string SoundFamily,
+    NVector2 WorldPosition,
+    int SourcePlayerId,
+    ulong Sequence);
+
 /// <summary>Read-only Warcraft presentation of the authoritative RTS state.</summary>
 public sealed partial class War3WorldPresenter : Node3D
 {
@@ -43,6 +53,8 @@ public sealed partial class War3WorldPresenter : Node3D
     private readonly HashSet<int> _seenProjectiles = [];
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
+    private readonly Dictionary<string, War3TreeHarvestFeedbackProfile>
+        _treeHarvestProfiles = new(StringComparer.Ordinal);
     private RtsSimulation? _simulation;
     private ProductionCatalogSnapshot? _production;
     private ITerrainMapQuery? _terrain;
@@ -81,13 +93,24 @@ public sealed partial class War3WorldPresenter : Node3D
     private bool _foundationAppearedAfterApproach;
     private bool _sawMoveCommandConfirmation;
     private bool _sawAttackCommandConfirmation;
+    private bool _sawTreeTargetConfirmation;
+    private bool _sawTreeHitAnimation;
+    private int _treeHarvestFeedbackCount;
     private int _nextTransientAudioEmitterId = 1_500_000_000;
     private ulong _animationAudioSequence;
+    private ulong _treeHarvestFeedbackSequence;
     private ulong _abilityEventCursor;
 
     public event Action<War3AnimationAudioEvent>? AnimationAudioEvent;
+    public event Action<War3TreeHarvestFeedbackEvent>? TreeHarvestFeedback;
 
     public int PresentedUnitCount => _units.Values.Count(value => !value.Dying);
+    public bool UnitSelectionAgentFitReady => _simulation is not null &&
+        _units.Where(pair => !pair.Value.Dying).All(pair =>
+            pair.Key >= 0 && pair.Key < _simulation.Units.Count &&
+            MathF.Abs(pair.Value.Selection.Scale.X -
+                UnitSelectionWorldRadius(
+                    _simulation.Units.NavigationRadii[pair.Key])) < 0.001f);
     public int PresentedBuildingCount => _buildings.Values.Count(value => !value.Dying);
     public int PresentedResourceCount => _resources.Count;
     public int ActiveEffectCount =>
@@ -114,6 +137,9 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool FoundationAppearedAfterApproach => _foundationAppearedAfterApproach;
     public bool SawMoveCommandConfirmation => _sawMoveCommandConfirmation;
     public bool SawAttackCommandConfirmation => _sawAttackCommandConfirmation;
+    public bool SawTreeTargetConfirmation => _sawTreeTargetConfirmation;
+    public bool SawTreeHitAnimation => _sawTreeHitAnimation;
+    public int TreeHarvestFeedbackCount => _treeHarvestFeedbackCount;
     public int ActiveCommandConfirmationCount =>
         _transients.Count(value => value.CommandConfirmation);
     public bool PointerPreviewUsesWar3Model => _pointerGhost?.Loaded == true;
@@ -463,6 +489,8 @@ public sealed partial class War3WorldPresenter : Node3D
             _sawGoldMinerHidden |= hiddenInsideGoldMine;
             visual.Selection.Position = new Vector3(
                 world.X, world.Y + SelectionHeight, world.Z);
+            visual.Selection.Scale = Vector3.One * UnitSelectionWorldRadius(
+                simulation.Units.NavigationRadii[unit]);
             visual.Selection.Visible = _selectedUnits.Contains(unit) &&
                                        !hiddenInsideGoldMine;
             UpdateUnitAnimation(simulation, unit, visual);
@@ -505,6 +533,7 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             if (simulation.Construction.IsAssignedBuilder(unit))
             {
+                ResetTreeHarvestFeedback(visual);
                 if (moving)
                     visual.Actor.PlayPreferred(true, "Walk", "Stand");
                 else
@@ -529,9 +558,12 @@ public sealed partial class War3WorldPresenter : Node3D
                         visual.Actor.RepeatedSequenceRestartCount > 0;
                     _sawProgressiveLumberCargo |= worker.CargoAmount > 0 &&
                         worker.CargoAmount < War3HumanScenario.LumberPerTrip;
+                    UpdateTreeHarvestFeedback(
+                        simulation, unit, visual, worker, resource);
                 }
                 else
                 {
+                    ResetTreeHarvestFeedback(visual);
                     visual.Actor.PlayPreferred(true,
                         "Stand Gold", "Stand");
                     _sawGoldGatherAnimation |= visual.Actor.CurrentSequence.Contains(
@@ -542,6 +574,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 }
                 return;
             }
+            ResetTreeHarvestFeedback(visual);
             if (worker.State is not WorkerEconomyState.None and
                 not WorkerEconomyState.Idle)
             {
@@ -918,6 +951,7 @@ public sealed partial class War3WorldPresenter : Node3D
 
     private void SyncResources(RtsSimulation simulation, Camera3D camera)
     {
+        var now = Time.GetTicksMsec();
         for (var id = 0; id < simulation.Economy.ResourceNodeCount; id++)
         {
             var snapshot = simulation.Economy.ObserveResourceNode(
@@ -954,6 +988,9 @@ public sealed partial class War3WorldPresenter : Node3D
                 }
                 continue;
             }
+            var isTree = snapshot.Kind == EconomyResourceKind.VespeneGas;
+            if (isTree && snapshot.ActiveHarvesters > 0)
+                PromoteResourceActor(id, visual, snapshot.Position, camera);
             var working = snapshot.ActiveHarvesters > 0 &&
                           snapshot.Kind == EconomyResourceKind.Minerals;
             if (!visual.AnimationInitialized || visual.Working != working)
@@ -963,7 +1000,89 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual.Working = working;
                 visual.AnimationInitialized = true;
             }
+            if (isTree && snapshot.ActiveHarvesters == 0 &&
+                visual.Actor is not null && visual.StaticBatch is not null &&
+                now >= visual.LastHitAt + 500)
+                DemoteResourceActor(visual);
         }
+    }
+
+    private void UpdateTreeHarvestFeedback(
+        RtsSimulation simulation,
+        int unit,
+        UnitVisual unitVisual,
+        in WorkerEconomySnapshot worker,
+        in EconomyResourceNodeSnapshot resource)
+    {
+        var objectId = unitVisual.Definition.ObjectId;
+        if (!_treeHarvestProfiles.TryGetValue(objectId, out var profile))
+        {
+            profile = War3TreeHarvestFeedbackCatalog.Resolve(
+                War3HumanContent.DataCatalog, objectId);
+            _treeHarvestProfiles.Add(objectId, profile);
+        }
+
+        var node = worker.TargetNode.Value;
+        if (unitVisual.TreeHarvestResourceNode != node)
+        {
+            unitVisual.TreeHarvestResourceNode = node;
+            unitVisual.LastTreeHarvestStrike = -1;
+        }
+        var strike = War3TreeHarvestFeedbackCatalog.StrikeIndex(
+            profile, resource.HarvestSeconds, worker.WorkRemaining);
+        if (strike <= unitVisual.LastTreeHarvestStrike) return;
+        // A render frame can cover more than one simulation step. Emit every
+        // authored strike crossed so audio/animation do not depend on FPS.
+        for (var index = unitVisual.LastTreeHarvestStrike + 1;
+             index <= strike;
+             index++)
+        {
+            TriggerTreeHarvestFeedback(
+                unit,
+                simulation.Combat.Teams[unit],
+                node,
+                objectId,
+                profile,
+                resource.Position);
+        }
+        unitVisual.LastTreeHarvestStrike = strike;
+    }
+
+    private static void ResetTreeHarvestFeedback(UnitVisual visual)
+    {
+        visual.TreeHarvestResourceNode = -1;
+        visual.LastTreeHarvestStrike = -1;
+    }
+
+    private void TriggerTreeHarvestFeedback(
+        int workerUnit,
+        int sourcePlayerId,
+        int resourceNode,
+        string workerObjectId,
+        in War3TreeHarvestFeedbackProfile profile,
+        NVector2 position)
+    {
+        if (_camera is not null &&
+            _resources.TryGetValue(resourceNode, out var visual))
+        {
+            var actor = PromoteResourceActor(
+                resourceNode, visual, position, _camera);
+            visual.LastHitAt = Time.GetTicksMsec();
+            if (actor.ReplayPreferred("Stand Hit", "Hit", "Stand"))
+                _sawTreeHitAnimation |= actor.CurrentSequence.Contains(
+                    "Hit", StringComparison.OrdinalIgnoreCase);
+        }
+
+        _treeHarvestFeedbackCount++;
+        TreeHarvestFeedback?.Invoke(new War3TreeHarvestFeedbackEvent(
+            workerObjectId,
+            workerUnit,
+            resourceNode,
+            profile.WeaponSlot,
+            profile.SoundFamily,
+            position,
+            sourcePlayerId,
+            ++_treeHarvestFeedbackSequence));
     }
 
     private void SyncProjectiles(
@@ -1023,7 +1142,7 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         var root = new Node3D { Name = $"Unit{id}_{definition.ObjectId}" };
         var actor = new War3ModelActor { Name = "Actor" };
-        var selection = SelectionRing($"UnitSelection{id}", 0.034f,
+        var selection = SelectionRing($"UnitSelection{id}", 0.075f,
             team == War3HumanScenario.PlayerId ? new Color("46d8ff") : new Color("ff5c58"));
         AddChild(root);
         root.AddChild(actor);
@@ -1031,9 +1150,8 @@ public sealed partial class War3WorldPresenter : Node3D
         actor.SoundTimelineEvent += value =>
             PublishUnitAnimationAudio(id, team, value);
         actor.Load(definition.ModelSource, camera, team);
-        var diameter = SimPlane3DTransform.ToWorldLength(
-            MathF.Max(18f, _simulation!.Units.Radii[id] * 2.8f));
-        selection.Scale = Vector3.One * diameter;
+        selection.Scale = Vector3.One * UnitSelectionWorldRadius(
+            _simulation!.Units.NavigationRadii[id]);
         selection.Visible = _selectedUnits.Contains(id);
         return new UnitVisual(root, actor, selection, definition);
     }
@@ -1108,6 +1226,34 @@ public sealed partial class War3WorldPresenter : Node3D
             source, camera, 0,
             includeEffects: kind == EconomyResourceKind.Minerals);
         return actor;
+    }
+
+    private War3ModelActor PromoteResourceActor(
+        int id,
+        ResourceVisual visual,
+        NVector2 position,
+        Camera3D camera)
+    {
+        if (visual.Actor is not null) return visual.Actor;
+        visual.StaticBatch?.SetInstanceVisible(visual.StaticBatchIndex, false);
+        var actor = CreateResourceActor(id, visual.Kind, visual.Source, camera);
+        actor.Position = ToWorldAtGround(position);
+        actor.SetShadowCastingEnabled(false);
+        actor.PlayPreferred(true, "Stand");
+        visual.Actor = actor;
+        visual.Positioned = true;
+        visual.AnimationInitialized = true;
+        return actor;
+    }
+
+    private static void DemoteResourceActor(ResourceVisual visual)
+    {
+        if (visual.Actor is null || visual.StaticBatch is null) return;
+        visual.Actor.QueueFree();
+        visual.Actor = null;
+        visual.StaticBatch.SetInstanceVisible(visual.StaticBatchIndex, true);
+        visual.AnimationInitialized = true;
+        visual.Working = false;
     }
 
     private void CreateStaticResourceBatches(RtsSimulation simulation)
@@ -1239,6 +1385,37 @@ public sealed partial class War3WorldPresenter : Node3D
             _sawAttackCommandConfirmation = true;
         else
             _sawMoveCommandConfirmation = true;
+        return true;
+    }
+
+    public bool FlashResourceTarget(EconomyResourceNodeId resourceNode)
+    {
+        if (_simulation is null ||
+            (uint)resourceNode.Value >= (uint)_simulation.Economy.ResourceNodeCount)
+            return false;
+        var snapshot = _simulation.Economy.ObserveResourceNode(resourceNode);
+        if (snapshot.Remaining <= 0 ||
+            snapshot.Kind != EconomyResourceKind.VespeneGas)
+            return false;
+
+        RetireOldestCommandConfirmationAtCapacity();
+        var ring = SelectionRing(
+            $"TreeTargetConfirmation{resourceNode.Value}",
+            0.075f,
+            War3CommandFeedbackCatalog.ResourceTargetTint);
+        var radius = SimPlane3DTransform.ToWorldLength(
+            MathF.Max(snapshot.InteractionHalfExtents.X,
+                snapshot.InteractionHalfExtents.Y) + 10f);
+        ring.Position = ToWorldAtGround(snapshot.Position, SelectionHeight);
+        ring.Scale = Vector3.One * MathF.Max(0.55f, radius);
+        ring.Visible = true;
+        AddChild(ring);
+        _transients.Add(new TransientVisual(
+            ring,
+            Time.GetTicksMsec() +
+            War3CommandFeedbackCatalog.ResourceTargetLifetimeMilliseconds,
+            CommandConfirmation: true));
+        _sawTreeTargetConfirmation = true;
         return true;
     }
 
@@ -1422,6 +1599,9 @@ public sealed partial class War3WorldPresenter : Node3D
         };
     }
 
+    private static float UnitSelectionWorldRadius(float navigationRadius) =>
+        SimPlane3DTransform.ToWorldLength(navigationRadius);
+
     private static StandardMaterial3D Emissive(Color color) => new()
     {
         AlbedoColor = color,
@@ -1484,6 +1664,8 @@ public sealed partial class War3WorldPresenter : Node3D
         public bool Dying { get; set; }
         public ulong RemoveAt { get; set; }
         public ulong AbilityAnimationUntil { get; set; }
+        public int TreeHarvestResourceNode { get; set; } = -1;
+        public int LastTreeHarvestStrike { get; set; } = -1;
     }
 
     private sealed class BuildingVisual(
@@ -1527,6 +1709,7 @@ public sealed partial class War3WorldPresenter : Node3D
         public bool Positioned { get; set; }
         public bool Working { get; set; }
         public bool AnimationInitialized { get; set; }
+        public ulong LastHitAt { get; set; }
     }
 
     private sealed record ProjectileVisual(

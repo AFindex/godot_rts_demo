@@ -498,6 +498,24 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--war3-spatial-sizing-self-test"))
+        {
+            var result = War3SpatialSizingSelfTest.Run();
+            GD.Print($"WAR3_SPATIAL_SIZING_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--war3-tree-harvest-feedback-self-test"))
+        {
+            var result = War3TreeHarvestFeedbackSelfTest.Run();
+            GD.Print($"WAR3_TREE_HARVEST_FEEDBACK_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--war3-ability-data-self-test"))
         {
             var result = War3AbilityDataClosureSelfTest.Run();

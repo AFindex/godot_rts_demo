@@ -30,6 +30,9 @@ public static class SimulationSelfTest
             var war3PointerTargetingResult = War3PointerTargetingSelfTest.Run();
             var war3CursorResult = War3CursorCatalogSelfTest.Run();
             var war3HumanUiResult = War3HumanUiDataSelfTest.Run();
+            var war3SpatialSizingResult = War3SpatialSizingSelfTest.Run();
+            var war3TreeHarvestFeedbackResult =
+                War3TreeHarvestFeedbackSelfTest.Run();
             var fallbackPathResult = PathProviderFallbackSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
@@ -83,6 +86,8 @@ public static class SimulationSelfTest
                          war3PointerTargetingResult.Passed &&
                          war3CursorResult.Passed &&
                          war3HumanUiResult.Passed &&
+                         war3SpatialSizingResult.Passed &&
+                         war3TreeHarvestFeedbackResult.Passed &&
                          fallbackPathResult.Passed &&
                          profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
@@ -141,6 +146,12 @@ public static class SimulationSelfTest
                 $"war3-human-ui=" +
                 $"{(war3HumanUiResult.Passed ? "PASS" : "FAIL")}" +
                 $"({war3HumanUiResult.Summary})",
+                $"war3-spatial-sizing=" +
+                $"{(war3SpatialSizingResult.Passed ? "PASS" : "FAIL")}" +
+                $"({war3SpatialSizingResult.Summary})",
+                $"war3-tree-harvest-feedback=" +
+                $"{(war3TreeHarvestFeedbackResult.Passed ? "PASS" : "FAIL")}" +
+                $"({war3TreeHarvestFeedbackResult.Summary})",
                 $"path-provider-fallback=" +
                 $"{(fallbackPathResult.Passed ? "PASS" : "FAIL")}" +
                 $"({fallbackPathResult.Summary})",

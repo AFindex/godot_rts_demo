@@ -12,7 +12,9 @@ public static class War3CommandFeedbackCatalog
     public const string ConfirmationSource =
         @"UI\Feedback\Confirmation\Confirmation.mdx";
     public const ulong VisibleLifetimeMilliseconds = 1_150;
+    public const ulong ResourceTargetLifetimeMilliseconds = 480;
     public const int MaximumSimultaneousConfirmations = 12;
+    public static Color ResourceTargetTint { get; } = new("45f05a");
 
     public static Color Tint(War3CommandFeedbackKind kind) => kind switch
     {

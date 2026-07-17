@@ -54,11 +54,20 @@ Godot Runtime Pack（实际 WAV/MP3）
 | 人族科技完成 | `UpgradeCompleteHuman` | 2D |
 | 单位死亡 | `{voiceSet}Death` | 3D |
 | 攻击命中 | `{weaponSoundFamily}{targetImpactMaterial}` | 3D |
+| 伐木斧头命中 | 工人 `tree` 专用攻击槽 × `Wood`（农民为 `AxeMediumChopWood`） | 3D |
 | 模型 `SNDX` 时间轴 | `eventCode → animation_event_map.json → Cue` | 3D |
 | 技能开始 | `abilityId → Effectsound` | 3D |
 | 技能持续/结束 | `Effectsoundlooped` → loop handle → stop | 3D |
 
 选择音只在用户实际选择入口触发，不挂在通用的 `RefreshSelection` 上；命令语音只在模拟接受命令后触发。战斗和玩法事件使用音频层自己的 sequence cursor，不会夺走 HUD、特效或诊断模块的事件。
+
+### 树木采集反馈
+
+树木采集没有复用普通战斗伤害事件，因为经济系统按更细的粒度逐步增加木材，而一次斧头挥砍并不等于一点木材。表现层会从单位编辑器数据中寻找目标列表包含 `tree` 的专用攻击槽，并读取该槽的 `cooldown` 与 `damagePoint`。以人族农民 `hpea` 为例，使用第二攻击槽：`AxeMediumChop`、冷却 `1.1s`、命中点 `0.433s`。
+
+命中时，树模型按自身导出元数据播放 `Stand Hit`；音频桥只发布工人对象 ID、武器槽、树位置和阵营，`War3WorldAudioController` 再通过单位音频绑定解析出 `AxeMediumChopWood`。该 Cue 原始 SoundInfo 配置为 `WANT3D`，距离参数 `600 / 10000 / 2100` 会继续经过统一的 `0.025` 世界比例和空间衰减策略。附近敌方伐木属于可听的世界事件，远处则在占用播放器前被裁剪。
+
+为了保留大森林的批渲染性能，静止树木仍由 `War3StaticModelBatch` 绘制；只有正在被采集的树临时提升为 `War3ModelActor`，结束后等待命中动画收尾再回到静态批。右键成功指定树木时，表现器另行创建一个短暂的绿色选择环，不再把资源目标误画成普通地面移动箭头。
 
 ## 受众与所有权策略
 
@@ -179,8 +188,16 @@ godot --headless --path . .\war3_rts\War3Rts.tscn -- --war3-audio-smoke
 通过标志：
 
 ```text
-WAR3_AUDIO_SMOKE PASS cues=4352 units=837 abilities=801 animation_events=607 checked=15 runtime=424 runtime_abilities=50 runtime_animation_events=27 music=4
+WAR3_AUDIO_SMOKE PASS cues=4352 units=837 abilities=801 animation_events=607 checked=16 runtime=424 runtime_abilities=50 runtime_animation_events=27 music=4
 ```
+
+树木反馈的数据闭环可单独验证：
+
+```powershell
+godot --headless --path . -- --war3-tree-harvest-feedback-self-test
+```
+
+它会检查 `hpea` 的 tree 专用攻击槽、命中时钟、Lordaeron 树的 `Stand Hit` 序列以及 `AxeMediumChopWood` 音频绑定。完整可玩场景的 `--war3-rts-smoke` 还会实际跑采集循环，要求目标闪圈、树受击动画和 3D 砍伐音全部至少触发一次。
 
 ## 后续接入边界
 

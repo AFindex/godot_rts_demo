@@ -11,6 +11,7 @@ public sealed partial class War3RtsHud : Control
     private const float ConsoleChromeWidth = 1000f;
     private const float ConsoleTextureSize = 320f;
     private const float ConsoleTextureTop = -112f;
+    private const float ConsoleAtlasScale = ConsoleTextureSize / 512f;
     private const float PortraitMaskScale = 0.98f;
     private const float PortraitBarWidth = 98f * PortraitMaskScale;
     private const float PortraitBarHeight = 14f * PortraitMaskScale;
@@ -23,6 +24,32 @@ public sealed partial class War3RtsHud : Control
         (256f * PortraitMaskScale);
     private static readonly Vector2 MinimapSlotPosition = new(12f, 61f);
     private static readonly Vector2 MinimapSlotSize = new(173f, 138f);
+    // Coordinates below are measured in the original 1600x512 Human console
+    // atlas, then converted by the same 0.625 scale as the four base tiles.
+    private static readonly Vector2 InventoryCoverPosition = new(
+        944f * ConsoleAtlasScale,
+        ConsoleTextureTop);
+    private static readonly Vector2 InventoryCoverSize = new(
+        256f * ConsoleAtlasScale,
+        512f * ConsoleAtlasScale);
+    private static readonly Vector2 InventoryGridPosition = new(
+        (1024f + 4f) * ConsoleAtlasScale,
+        ConsoleTextureTop + 284f * ConsoleAtlasScale);
+    private static readonly Vector2 InventorySlotSize = new(
+        67f * ConsoleAtlasScale,
+        67f * ConsoleAtlasScale);
+    private static readonly Vector2 InventorySlotStride = new(
+        80f * ConsoleAtlasScale,
+        77f * ConsoleAtlasScale);
+    private static readonly Vector2 CommandGridPosition = new(
+        (1024f + 204f) * ConsoleAtlasScale,
+        ConsoleTextureTop + 243f * ConsoleAtlasScale);
+    private static readonly Vector2 CommandButtonSize = new(
+        83f * ConsoleAtlasScale,
+        83f * ConsoleAtlasScale);
+    private static readonly Vector2 CommandButtonStride = new(
+        87f * ConsoleAtlasScale,
+        87f * ConsoleAtlasScale);
     private static readonly Vector2 QueueBackdropPosition = new(0f, 8f);
     private static readonly Vector2 QueueBackdropSize = new(256f, 128f);
     private static readonly Vector2 ActiveQueueIconPosition = new(13f, 31f);
@@ -135,8 +162,20 @@ public sealed partial class War3RtsHud : Control
         _portraitOpening.Size.IsEqualApprox(PortraitSlotSize) &&
         _portraitMask?.Position.IsEqualApprox(PortraitMaskPosition) == true &&
         _portraitMask.Size.IsEqualApprox(PortraitMaskSize) &&
-        _commandGrid?.Position.IsEqualApprox(new Vector2(766f, 38f)) == true &&
-        _commandButtons[11].Position.IsEqualApprox(new Vector2(174f, 116f));
+        InventoryLayoutReady &&
+        _commandGrid?.Position.IsEqualApprox(CommandGridPosition) == true &&
+        _commandButtons[11].Position.IsEqualApprox(new Vector2(
+            CommandButtonStride.X * 3f,
+            CommandButtonStride.Y * 2f));
+
+    public bool InventoryLayoutReady =>
+        _inventoryCover?.Position.IsEqualApprox(InventoryCoverPosition) == true &&
+        _inventoryCover.Size.IsEqualApprox(InventoryCoverSize) &&
+        _inventoryCover.ZIndex > 10 &&
+        _inventoryPanel?.Position.IsEqualApprox(InventoryGridPosition) == true &&
+        _inventoryPanel.Size.IsEqualApprox(new Vector2(
+            InventorySlotStride.X + InventorySlotSize.X,
+            InventorySlotStride.Y * 2f + InventorySlotSize.Y));
 
     public void SetDragSelection(Vector2 start, Vector2 end, bool visible) =>
         _selectionOverlay?.SetSelection(start, end, visible);
@@ -620,22 +659,24 @@ public sealed partial class War3RtsHud : Control
         _inventoryCover = new TextureRect
         {
             Name = "InventoryCover",
-            Position = new Vector2(634f, 33f),
-            Size = new Vector2(125f, 175f),
+            Position = InventoryCoverPosition,
+            Size = InventoryCoverSize,
             Texture = War3RuntimeAssets.LoadTexture(
                 @"UI\Console\Human\HumanUITile-InventoryCover.blp"),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.Scale,
             MouseFilter = MouseFilterEnum.Ignore,
             TextureFilter = CanvasItem.TextureFilterEnum.Linear,
-            ZIndex = 6
+            ZIndex = 15
         };
         parent.AddChild(_inventoryCover);
         _inventoryPanel = new Control
         {
             Name = "InventorySlots",
-            Position = new Vector2(638f, 38f),
-            Size = new Vector2(116f, 168f),
+            Position = InventoryGridPosition,
+            Size = new Vector2(
+                InventorySlotStride.X + InventorySlotSize.X,
+                InventorySlotStride.Y * 2f + InventorySlotSize.Y),
             MouseFilter = MouseFilterEnum.Ignore,
             Visible = false,
             ZIndex = 20
@@ -646,8 +687,10 @@ public sealed partial class War3RtsHud : Control
             var frame = new Panel
             {
                 Name = $"InventorySlot{slot + 1}",
-                Position = new Vector2(slot % 2 * 58f, slot / 2 * 56f),
-                Size = new Vector2(52f, 50f),
+                Position = new Vector2(
+                    slot % 2 * InventorySlotStride.X,
+                    slot / 2 * InventorySlotStride.Y),
+                Size = InventorySlotSize,
                 MouseFilter = MouseFilterEnum.Ignore
             };
             frame.AddThemeStyleboxOverride("panel", Box(
@@ -763,8 +806,10 @@ public sealed partial class War3RtsHud : Control
         });
         _commandGrid = new Control
         {
-            Position = new Vector2(766f, 38f),
-            Size = new Vector2(226f, 168f),
+            Position = CommandGridPosition,
+            Size = new Vector2(
+                CommandButtonStride.X * 3f + CommandButtonSize.X,
+                CommandButtonStride.Y * 2f + CommandButtonSize.Y),
             MouseFilter = MouseFilterEnum.Pass,
             ZIndex = 20
         };
@@ -773,9 +818,9 @@ public sealed partial class War3RtsHud : Control
         {
             var button = CommandButton();
             button.Position = new Vector2(
-                index % 4 * 58f,
-                index / 4 * 58f);
-            button.Size = new Vector2(52f, 52f);
+                index % 4 * CommandButtonStride.X,
+                index / 4 * CommandButtonStride.Y);
+            button.Size = CommandButtonSize;
             _commandButtons[index] = button;
             var slot = index;
             button.Pressed += () =>
