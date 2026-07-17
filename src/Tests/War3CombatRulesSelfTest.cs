@@ -31,6 +31,7 @@ public static class War3CombatRulesSelfTest
             var buildings = War3HumanContent.CreateBuildingCatalog();
             var technologies = War3HumanContent.CreateTechnologyCatalog();
             var footman = production.UnitType(War3HumanContent.Footman);
+            var peasant = production.UnitType(War3HumanContent.Peasant);
             var rifleman = production.UnitType(War3HumanContent.Rifleman);
             var mortar = production.UnitType(War3HumanContent.MortarTeam);
             var gryphon = production.UnitType(War3HumanContent.GryphonRider);
@@ -54,6 +55,14 @@ public static class War3CombatRulesSelfTest
                 footman.Combat.Weapons[0].AttackType ==
                     CombatAttackType.Normal &&
                 footman.Combat.Weapons[0].DamageUpgradeTechnologyId == 0 &&
+                footman.Combat.Weapons[0].TargetLayers ==
+                    (CombatTargetLayer.GroundUnit |
+                     CombatTargetLayer.Building |
+                     CombatTargetLayer.Debris |
+                     CombatTargetLayer.Item |
+                     CombatTargetLayer.Ward) &&
+                peasant.Combat.Weapons.Any(value =>
+                    value.TargetLayers == CombatTargetLayer.Tree) &&
                 rifleman.Combat.ArmorType == CombatArmorType.Medium &&
                 rifleman.Combat.ArmorUpgradeTechnologyId == 15 &&
                 rifleman.Combat.Weapons[0].AttackType ==
@@ -65,9 +74,19 @@ public static class War3CombatRulesSelfTest
                 Nearly(mortarGround.Area.FullDamageRadius, 25f * 4f / 15f) &&
                 Nearly(mortarGround.Area.HalfDamageRadius, 150f * 4f / 15f) &&
                 Nearly(mortarGround.Area.QuarterDamageRadius, 250f * 4f / 15f) &&
+                mortarGround.TargetLayers ==
+                    (CombatTargetLayer.GroundUnit |
+                     CombatTargetLayer.Debris |
+                     CombatTargetLayer.Tree |
+                     CombatTargetLayer.Wall |
+                     CombatTargetLayer.Item |
+                     CombatTargetLayer.Ward) &&
                 mortarGround.Area.TargetLayers ==
                     (CombatTargetLayer.GroundUnit |
-                     CombatTargetLayer.Building) &&
+                     CombatTargetLayer.Building |
+                     CombatTargetLayer.Debris |
+                     CombatTargetLayer.Tree |
+                     CombatTargetLayer.Wall) &&
                 gryphonGround.Propagation.Kind ==
                     CombatWeaponPropagationKind.Line &&
                 Nearly(gryphonGround.Propagation.LineDistance, 0f) &&
@@ -94,6 +113,8 @@ public static class War3CombatRulesSelfTest
             var hotRoundTrip = VerifyHotRoundTrip(
                 gryphon, technologies.Technology(13));
             var facing = VerifyFacingRules();
+            var combatObjects = VerifyCombatObjects();
+            var combatObjectReplay = VerifyCombatObjectReplay();
             var matrix = Nearly(normalMedium, 15f) &&
                          Nearly(pierceSmall, 20f) &&
                          Nearly(siegeFort, 15f / 1.3f) &&
@@ -103,7 +124,8 @@ public static class War3CombatRulesSelfTest
             var passed = matrix && dataMapped && Nearly(effectiveArmor, 6f) &&
                          area.Passed && minimumRange.Passed &&
                          propagation.Passed && stormHammers.Passed &&
-                         facing.Passed;
+                         facing.Passed && combatObjects.Passed &&
+                         combatObjectReplay.Passed;
             passed &= hotRoundTrip;
             return new SelfTestResult(
                 passed,
@@ -114,6 +136,8 @@ public static class War3CombatRulesSelfTest
                 $"area={area.Summary}, minimum={minimumRange.Summary}, " +
                 $"propagation={propagation.Summary}, " +
                 $"storm={stormHammers.Summary}, facing={facing.Summary}, " +
+                $"objects={combatObjects.Summary}, " +
+                $"objectReplay={combatObjectReplay.Summary}, " +
                 $"hot={hotRoundTrip}");
         }
         catch (Exception exception)
@@ -442,6 +466,249 @@ public static class War3CombatRulesSelfTest
             $"error={error:0.###}");
     }
 
+    private static (bool Passed, string Summary) VerifyCombatObjects()
+    {
+        var direct = CreateSimulation();
+        var treeWeapon = ActiveProfile(
+            0f, default, 0f,
+            targetLayers: CombatTargetLayer.Tree);
+        var attacker = Add(
+            direct, new Vector2(100f, 100f), 1, treeWeapon);
+        var resource = direct.Economy.AddResourceNode(
+            EconomyResourceKind.VespeneGas,
+            new Vector2(220f, 100f),
+            20, 10, 4f, 1,
+            activeHarvesterSlots: 1,
+            harvestMode: EconomyHarvestMode.Progressive);
+        var treeBounds = new SimRect(
+            new Vector2(210f, 90f), new Vector2(230f, 110f));
+        direct.Economy.SetResourceInteractionBounds(resource, treeBounds);
+        var treeFootprint = direct.PlaceBuilding(treeBounds);
+        var tree = direct.AddCombatObject(new CombatObjectProfile(
+            CombatObjectKind.Tree,
+            treeBounds,
+            20f,
+            LinkedResourceNodeId: resource.Value,
+            LinkedDynamicFootprintId: treeFootprint.Value));
+        direct.IssueAttackObject([attacker], tree);
+        var hit = TickUntil(direct, 30,
+            () => !direct.ObserveCombatObject(tree).Alive);
+        var linked = direct.Economy.ResourceNodeRemaining(resource) ==
+                     direct.ObserveCombatObject(tree).Health;
+        var pathingOpened = direct.World.DynamicOccupancy.Snapshot().All(
+            value => value.Id != treeFootprint);
+        var objectImpact = direct.CombatEvents.ReadAfter(0).Events.Any(value =>
+            value.Kind == CombatEventKind.Impact &&
+            value.TargetKind == CombatTargetKind.Object &&
+            value.TargetId == tree.Value);
+
+        var state = direct.CaptureRuntimeState();
+        var payload = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion, 0UL, state);
+        var hot = RuntimeHotSnapshotCodec.TryDeserialize(
+                      payload,
+                      SimulationHotSnapshot.CurrentFormatVersion,
+                      out _, out var restored, out var validation) &&
+                  validation == HotSnapshotValidationCode.Success &&
+                  restored is not null &&
+                  restored.CombatObjects.Objects.Length == 1 &&
+                  Nearly(
+                      restored.CombatObjects.Objects[0].Health,
+                      direct.ObserveCombatObject(tree).Health);
+
+        var wrongLayer = CreateSimulation();
+        var wrongAttacker = Add(
+            wrongLayer, new Vector2(100f, 180f), 1, treeWeapon);
+        var wall = wrongLayer.AddCombatObject(new CombatObjectProfile(
+            CombatObjectKind.Wall,
+            new SimRect(
+                new Vector2(210f, 170f), new Vector2(230f, 190f)),
+            80f));
+        wrongLayer.IssueAttackObject([wrongAttacker], wall);
+        for (var tick = 0; tick < 10; tick++) wrongLayer.Tick(Delta);
+        var filtered = Nearly(
+            wrongLayer.ObserveCombatObject(wall).Health, 80f);
+
+        var splash = CreateSimulation();
+        var area = new CombatWeaponAreaSnapshot(
+            35f, 35f, 35f, CombatTargetLayer.Tree);
+        var splashAttacker = Add(
+            splash, new Vector2(100f, 280f), 1,
+            ActiveProfile(0f, area, 0f));
+        var primary = Add(
+            splash, new Vector2(220f, 280f), 2, PassiveProfile());
+        var splashTree = splash.AddCombatObject(new CombatObjectProfile(
+            CombatObjectKind.Tree,
+            new SimRect(
+                new Vector2(235f, 270f), new Vector2(255f, 290f)),
+            80f));
+        var debris = splash.AddCombatObject(new CombatObjectProfile(
+            CombatObjectKind.Debris,
+            new SimRect(
+                new Vector2(250f, 270f), new Vector2(270f, 290f)),
+            80f));
+        splash.IssueAttackTarget([splashAttacker], primary);
+        TickUntil(splash, 30,
+            () => splash.Combat.Health[primary] < 100f);
+        var layerSplash = splash.ObserveCombatObject(splashTree).Health < 80f &&
+                          Nearly(splash.ObserveCombatObject(debris).Health, 80f);
+
+        var wards = CreateSimulation();
+        wards.Abilities.ConfigureCatalog(
+            new AbilityCatalogSnapshot(
+                [],
+                [new UnitAbilityBindingProfile(
+                    0,
+                    false,
+                    UnitManaProfile.None,
+                    [],
+                    AbilityUnitTraits.Ward)]));
+        var wardAttacker = Add(
+            wards, new Vector2(100f, 380f), 1,
+            ActiveProfile(
+                0f, default, 0f,
+                targetLayers: CombatTargetLayer.Ward));
+        var wardTarget = Add(
+            wards, new Vector2(220f, 380f), 2, PassiveProfile());
+        var wardBound = wards.Abilities.BindUnitType(wardTarget, 0);
+        wards.IssueAttackTarget([wardAttacker], wardTarget);
+        var wardHit = TickUntil(wards, 30,
+            () => wards.Combat.Health[wardTarget] < 100f);
+
+        var projectileSimulation = CreateSimulation();
+        var projectileAttacker = Add(
+            projectileSimulation, new Vector2(100f, 460f), 1,
+            ActiveProfile(
+                0f, default, 90f,
+                targetLayers: CombatTargetLayer.Tree));
+        var projectileTree = projectileSimulation.AddCombatObject(
+            new CombatObjectProfile(
+                CombatObjectKind.Tree,
+                new SimRect(
+                    new Vector2(250f, 450f),
+                    new Vector2(270f, 470f)),
+                80f));
+        projectileSimulation.IssueAttackObject(
+            [projectileAttacker], projectileTree);
+        var projectileLaunched = TickUntil(
+            projectileSimulation, 30,
+            () => projectileSimulation.CombatProjectiles.ActiveCount > 0);
+        var projectileState = projectileSimulation.CaptureRuntimeState();
+        var projectilePayload = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion,
+            0UL,
+            projectileState);
+        var projectileHot = RuntimeHotSnapshotCodec.TryDeserialize(
+                                projectilePayload,
+                                SimulationHotSnapshot.CurrentFormatVersion,
+                                out _, out var projectileRestored,
+                                out var projectileValidation) &&
+                            projectileValidation ==
+                            HotSnapshotValidationCode.Success &&
+                            projectileRestored is not null &&
+                            projectileRestored.CombatProjectiles.Active.Length ==
+                            1 &&
+                            projectileRestored.CombatProjectiles.Active[0]
+                                .TargetKind == CombatTargetKind.Object;
+        var projectileHit = TickUntil(
+            projectileSimulation, 90,
+            () => projectileSimulation.ObserveCombatObject(projectileTree)
+                .Health < 80f);
+        return (
+            hit && linked && pathingOpened && objectImpact && hot && filtered &&
+            layerSplash && wardBound && wardHit && projectileLaunched &&
+            projectileHot && projectileHit,
+            $"hit={hit} linked={linked} path={pathingOpened} " +
+            $"event={objectImpact} hot={hot} " +
+            $"filter={filtered} splash={layerSplash} ward={wardBound}/{wardHit} " +
+            $"projectile={projectileLaunched}/{projectileHot}/{projectileHit}");
+    }
+
+    private static (bool Passed, string Summary) VerifyCombatObjectReplay()
+    {
+        var bounds = new SimRect(
+            Vector2.Zero, new Vector2(800f, 600f));
+        if (!NavigationMapSnapshot.TryCreate(
+                NavigationMapSnapshot.CurrentFormatVersion,
+                bounds,
+                [], [], [], [],
+                out var navigation,
+                out _) || navigation is null)
+            return (false, "navigation");
+        var world = navigation.CreateWorld();
+        var simulation = new RtsSimulation(
+            world,
+            new GridPathProvider(world),
+            capacity: 32,
+            navigation.CreateRoutePlanner(world),
+            navigation.CreateChokeController());
+        simulation.Economy.Players.RegisterPlayer(1, 0, 0, 200);
+        simulation.Economy.Players.RegisterPlayer(2, 0, 0, 200);
+        var attacker = Add(
+            simulation, new Vector2(100f, 100f), 1,
+            ActiveProfile(
+                0f, default, 0f,
+                targetLayers: CombatTargetLayer.Tree));
+        var treeBounds = new SimRect(
+            new Vector2(210f, 90f), new Vector2(230f, 110f));
+        var resource = simulation.Economy.AddResourceNode(
+            EconomyResourceKind.VespeneGas,
+            new Vector2(220f, 100f),
+            20, 10, 4f, 1,
+            activeHarvesterSlots: 1,
+            harvestMode: EconomyHarvestMode.Progressive);
+        simulation.Economy.SetResourceInteractionBounds(resource, treeBounds);
+        var footprint = simulation.PlaceBuilding(treeBounds);
+        var tree = simulation.AddCombatObject(new CombatObjectProfile(
+            CombatObjectKind.Tree,
+            treeBounds,
+            20f,
+            LinkedResourceNodeId: resource.Value,
+            LinkedDynamicFootprintId: footprint.Value));
+        var gameplay = DemoGameplayProfiles.CreateSnapshot();
+        simulation.StartReplayPackageRecording(
+            ReplayResourceManifest.Create(navigation, gameplay, null));
+        simulation.IssueAttackObject([attacker], tree);
+        if (!TickUntil(simulation, 30,
+                () => !simulation.ObserveCombatObject(tree).Alive))
+            return (false, "no-destruction");
+        var targetTick = simulation.Metrics.Tick;
+        var expectedHash = simulation.ComputeStateHash();
+        var source = simulation.CaptureReplayPackage();
+        if (source.WorldCommands.Length != 0 ||
+            source.CommandLog.Entries.Length != 1 ||
+            source.CommandLog.Entries[0].Kind != UnitOrderKind.AttackObject)
+            return (false,
+                $"manifest={source.WorldCommands.Length}/" +
+                $"{source.CommandLog.Entries.Length}");
+        if (!SimulationReplayPackageSnapshot.TryDeserialize(
+                source.CanonicalBytes,
+                out var package,
+                out var validation) || package is null || !validation.Succeeded)
+            return (false, $"deserialize={validation.Code}");
+        if (!SimulationReplayPackageFactory.TryCreateSimulation(
+                package,
+                navigation,
+                gameplay,
+                null,
+                out var replay,
+                out validation) || replay is null || !validation.Succeeded)
+            return (false, $"factory={validation.Code}");
+        var runner = new SimulationReplayPackageRunner(package);
+        while (replay.Metrics.Tick < targetTick)
+        {
+            runner.ApplyForCurrentTick(replay);
+            replay.Tick(Delta);
+        }
+        var exact = replay.ComputeStateHash() == expectedHash;
+        var dead = !replay.ObserveCombatObject(tree).Alive;
+        var opened = replay.World.DynamicOccupancy.Snapshot().All(
+            value => value.Id != footprint);
+        return (
+            runner.Completed && exact && dead && opened,
+            $"run={runner.Completed}/{exact}/{dead}/{opened}");
+    }
+
     private static RtsSimulation CreateSimulation()
     {
         var world = new StaticWorld(new SimRect(
@@ -466,12 +733,13 @@ public static class War3CombatRulesSelfTest
         float minimumRange,
         CombatWeaponAreaSnapshot area,
         float speed,
-        CombatWeaponPropagationSnapshot propagation = default)
+        CombatWeaponPropagationSnapshot propagation = default,
+        CombatTargetLayer targetLayers = CombatTargetLayer.GroundUnit)
     {
         var weapon = new CombatWeaponProfileSnapshot(
-            0, CombatTargetLayer.GroundUnit, true, -1,
+            0, targetLayers, true, -1,
             20f, 250f, 10f, 0f, CombatPositioningKind.Ranged,
-            1, CombatAttribute.None, 0f, 0f, 0f, 0f, false, false,
+            1, CombatAttribute.None, 0f, 0f, 0f, speed, false, false,
             CombatAttackType.Normal, -1, minimumRange, area, propagation);
         return new CombatProfileSnapshot(
             100f, 20f, 250f, 280f, 10f, 0f, 500f,

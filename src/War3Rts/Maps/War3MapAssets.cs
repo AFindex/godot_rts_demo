@@ -120,7 +120,6 @@ public sealed class War3MapRuntime
     {
         var obstacles = Objects
             .Where(value => value.Kind is War3MapObjectKind.GoldMine or
-                                           War3MapObjectKind.Tree or
                                            War3MapObjectKind.PathingBlocker)
             .Select(value => value.Bounds)
             .ToArray();

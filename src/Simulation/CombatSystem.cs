@@ -42,6 +42,13 @@ public interface ICombatMovementDriver
     CombatBuildingDamageResult DamageBuilding(
         GameplayBuildingId building, CombatWeaponDamageSnapshot weapon);
     GameplayBuildingSnapshot[] CombatBuildingOverview();
+    bool IsCombatObjectTargetValid(int attacker, CombatObjectId target);
+    CombatObjectSnapshot CombatObject(CombatObjectId target);
+    bool TryResolveCombatObjectChaseTarget(
+        int attacker, CombatObjectId target, out Vector2 position);
+    CombatObjectDamageResult DamageCombatObject(
+        CombatObjectId target, CombatWeaponDamageSnapshot weapon);
+    CombatObjectSnapshot[] CombatObjectOverview();
     int WeaponUpgradeLevel(int team);
     int TechnologyLevel(int team, int technologyId);
 }
@@ -71,6 +78,7 @@ public sealed class CombatSystem
     private readonly Func<int, int, bool> _isHostileTarget;
     private readonly Func<int, bool> _canAttack;
     private readonly Func<int, bool> _canTakeDamage;
+    private readonly Func<int, CombatTargetLayer> _unitTargetLayer;
     private double _targetSearchMilliseconds;
     private int _targetSearches;
     public CombatProjectileSystem Projectiles { get; } = new();
@@ -86,7 +94,8 @@ public sealed class CombatSystem
         Func<int, int, bool> canPerceiveTarget,
         Func<int, int, bool> isHostileTarget,
         Func<int, bool> canAttack,
-        Func<int, bool> canTakeDamage)
+        Func<int, bool> canTakeDamage,
+        Func<int, CombatTargetLayer> unitTargetLayer)
     {
         _units = units;
         _combat = combat;
@@ -97,6 +106,7 @@ public sealed class CombatSystem
         _isHostileTarget = isHostileTarget;
         _canAttack = canAttack;
         _canTakeDamage = canTakeDamage;
+        _unitTargetLayer = unitTargetLayer;
     }
 
     public void Update(float delta, long tick)
@@ -154,6 +164,11 @@ public sealed class CombatSystem
             if (_combat.TargetKinds[unit] == CombatTargetKind.Building)
             {
                 UpdateBuildingTarget(unit, intent, delta, tick);
+                continue;
+            }
+            if (_combat.TargetKinds[unit] == CombatTargetKind.Object)
+            {
+                UpdateCombatObjectTarget(unit, intent, delta, tick);
                 continue;
             }
 
@@ -750,6 +765,164 @@ public sealed class CombatSystem
         ApplyBuildingWeapon(attacker, building, weapon, tick, -1);
     }
 
+    private void UpdateCombatObjectTarget(
+        int unit,
+        UnitCommandIntent intent,
+        float delta,
+        long tick)
+    {
+        var target = new CombatObjectId(_combat.TargetBuildings[unit]);
+        if (!_movement.IsCombatObjectTargetValid(unit, target))
+        {
+            Disengage(unit);
+            return;
+        }
+        var snapshot = _movement.CombatObject(target);
+        if (!_combat.TrySelectWeapon(
+                unit, snapshot.TargetLayer,
+                technologyId => HasTechnology(unit, technologyId)))
+        {
+            Disengage(unit);
+            return;
+        }
+        var nearest = snapshot.Bounds.Clamp(_units.Positions[unit]);
+        var distance = Vector2.Distance(_units.Positions[unit], nearest);
+        var range = _combat.AttackRanges[unit] + _units.Radii[unit] +
+                    InteractionGeometry.NumericTolerance(
+                        _units.Positions[unit], snapshot.Bounds);
+        var minimumRange = _combat.MinimumAttackRanges[unit] +
+                           _units.Radii[unit];
+        if (minimumRange > 0f && distance < minimumRange)
+        {
+            if (intent == UnitCommandIntent.Hold) Disengage(unit);
+            else RetreatFromPoint(unit, nearest, minimumRange - distance);
+            return;
+        }
+        if (distance <= range)
+        {
+            UpdateCombatObjectAttack(unit, target, intent, delta, tick);
+            return;
+        }
+        if (intent == UnitCommandIntent.Hold)
+        {
+            Disengage(unit);
+            return;
+        }
+        _combat.Phases[unit] = CombatPhase.Chasing;
+        _combat.WindupRemaining[unit] = 0f;
+        if (!_movement.TryResolveCombatObjectChaseTarget(
+                unit, target, out var chaseTarget))
+        {
+            Disengage(unit);
+            return;
+        }
+        var stayedLocal = Vector2.DistanceSquared(
+            chaseTarget, _combat.LastChaseTargets[unit]) <=
+            ChaseRetargetDistance * ChaseRetargetDistance;
+        if (stayedLocal && _units.Modes[unit] is
+                UnitMoveMode.Moving or UnitMoveMode.WaitingForPath)
+            return;
+        if (_combat.ChaseRepathRemaining[unit] > 0f && stayedLocal) return;
+        _combat.LastChaseTargets[unit] = chaseTarget;
+        _combat.ChaseRepathRemaining[unit] = ChaseRepathSeconds;
+        _movement.Chase(unit, chaseTarget);
+    }
+
+    private void UpdateCombatObjectAttack(
+        int unit,
+        CombatObjectId target,
+        UnitCommandIntent intent,
+        float delta,
+        long tick)
+    {
+        _combat.Phases[unit] = CombatPhase.Attacking;
+        if (_combat.WindupRemaining[unit] > 0f)
+        {
+            ApplyAttackMovement(
+                unit, intent, _combat.CanMoveDuringWindup[unit]);
+            _combat.WindupRemaining[unit] -= delta;
+            if (_combat.WindupRemaining[unit] <= 0f &&
+                _movement.IsCombatObjectTargetValid(unit, target))
+                FireAtCombatObject(unit, target, tick);
+            return;
+        }
+        if (_combat.CooldownRemaining[unit] > 0f)
+        {
+            ApplyAttackMovement(
+                unit, intent, _combat.CanMoveDuringCooldown[unit]);
+            return;
+        }
+        var position = _movement.CombatObject(target).Position;
+        if (!UnitFacing.IsWithin(
+                _units.Facings[unit], position - _units.Positions[unit],
+                _combat.AttackHalfAngles[unit]))
+        {
+            _combat.Phases[unit] = CombatPhase.Chasing;
+            _movement.StopForAttack(unit);
+            return;
+        }
+        var windup = _combat.AttackWindupDurations[unit];
+        ApplyAttackMovement(unit, intent, _combat.CanMoveDuringWindup[unit]);
+        PublishAttackStarted(
+            unit, CombatTargetKind.Object, target.Value, tick);
+        if (windup <= 0f) FireAtCombatObject(unit, target, tick);
+        else _combat.WindupRemaining[unit] = windup;
+    }
+
+    private void FireAtCombatObject(
+        int attacker,
+        CombatObjectId target,
+        long tick)
+    {
+        _combat.CooldownRemaining[attacker] =
+            _combat.AttackCooldownDurations[attacker];
+        var weapon = Weapon(attacker);
+        if (_combat.ProjectileSpeed[attacker] > 0f)
+        {
+            if (Projectiles.Launch(
+                    attacker, CombatTargetKind.Object, target.Value,
+                    _units.Positions[attacker],
+                    _combat.ProjectileSpeed[attacker], weapon,
+                    out var projectileId))
+                _events.Publish(
+                    tick, CombatEventKind.ProjectileLaunched, attacker,
+                    CombatTargetKind.Object, target.Value,
+                    projectileId: projectileId,
+                    worldPosition: _units.Positions[attacker]);
+            return;
+        }
+        ApplyCombatObjectWeapon(attacker, target, weapon, tick, -1);
+    }
+
+    private void ApplyCombatObjectWeapon(
+        int attacker,
+        CombatObjectId target,
+        CombatWeaponDamageSnapshot weapon,
+        long tick,
+        int projectileId,
+        Vector2? impactPosition = null)
+    {
+        if (!_movement.IsCombatObjectTargetValid(attacker, target)) return;
+        var position = impactPosition ?? _movement.CombatObject(target).Position;
+        var result = _movement.DamageCombatObject(target, weapon);
+        if (!result.Applied) return;
+        _events.Publish(
+            tick, CombatEventKind.Impact, attacker, CombatTargetKind.Object,
+            target.Value, result.AppliedDamage, result.RemainingHealth,
+            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied,
+            projectileId, position);
+        ApplyAreaDamage(attacker, CombatTargetKind.Object, target.Value,
+            position, weapon, tick, projectileId);
+        ApplyWeaponPropagation(attacker, CombatTargetKind.Object, target.Value,
+            position, weapon, tick, projectileId);
+        if (!result.Destroyed) return;
+        _events.Publish(
+            tick, CombatEventKind.TargetDestroyed, attacker,
+            CombatTargetKind.Object, target.Value, result.AppliedDamage, 0f,
+            worldPosition: position);
+        Disengage(attacker);
+    }
+
     private void ApplyBuildingWeapon(
         int attacker,
         GameplayBuildingId building,
@@ -855,9 +1028,7 @@ public sealed class CombatSystem
     }
 
     private CombatTargetLayer TargetLayer(int target) =>
-        _combat.TerrainVisionModes[target] == TerrainVisionMode.Elevated
-            ? CombatTargetLayer.AirUnit
-            : CombatTargetLayer.GroundUnit;
+        _unitTargetLayer(target);
 
     private bool CanTargetLayer(int unit, CombatTargetLayer layer) =>
         _combat.CanTarget(
@@ -946,19 +1117,36 @@ public sealed class CombatSystem
                 tick, projectileId);
         }
 
-        if ((weapon.Area.TargetLayers & CombatTargetLayer.Building) == 0)
-            return;
-        foreach (var building in _movement.CombatBuildingOverview())
+        if ((weapon.Area.TargetLayers & CombatTargetLayer.Building) != 0)
         {
-            if (primaryKind == CombatTargetKind.Building &&
-                    building.Id.Value == primaryId ||
-                !_movement.IsBuildingTargetValid(attacker, building.Id))
+            foreach (var building in _movement.CombatBuildingOverview())
+            {
+                if (primaryKind == CombatTargetKind.Building &&
+                        building.Id.Value == primaryId ||
+                    !_movement.IsBuildingTargetValid(attacker, building.Id))
+                    continue;
+                var fraction = weapon.Area.DamageFraction(
+                    Vector2.Distance(center, Center(building.Bounds)));
+                if (fraction <= 0f) continue;
+                ApplyAreaBuildingDamage(attacker, building.Id, center,
+                    Scale(scaled, fraction), tick, projectileId);
+            }
+        }
+
+        foreach (var target in _movement.CombatObjectOverview())
+        {
+            if (!target.Alive ||
+                primaryKind == CombatTargetKind.Object &&
+                    target.Id.Value == primaryId ||
+                (weapon.Area.TargetLayers & target.TargetLayer) == 0 ||
+                !_movement.IsCombatObjectTargetValid(attacker, target.Id))
                 continue;
             var fraction = weapon.Area.DamageFraction(
-                Vector2.Distance(center, Center(building.Bounds)));
+                Vector2.Distance(center, target.Position));
             if (fraction <= 0f) continue;
-            ApplyAreaBuildingDamage(attacker, building.Id, center,
-                Scale(scaled, fraction), tick, projectileId);
+            ApplyAreaCombatObjectDamage(
+                attacker, target.Id, center, Scale(scaled, fraction),
+                tick, projectileId);
         }
     }
 
@@ -999,6 +1187,28 @@ public sealed class CombatSystem
         if (result.Destroyed)
             _events.Publish(tick, CombatEventKind.TargetDestroyed, attacker,
                 CombatTargetKind.Building, building.Value,
+                result.AppliedDamage, 0f, worldPosition: center);
+    }
+
+    private void ApplyAreaCombatObjectDamage(
+        int attacker,
+        CombatObjectId target,
+        Vector2 center,
+        CombatWeaponDamageSnapshot weapon,
+        long tick,
+        int projectileId)
+    {
+        var result = _movement.DamageCombatObject(target, weapon);
+        if (!result.Applied) return;
+        _events.Publish(
+            tick, CombatEventKind.Impact, attacker, CombatTargetKind.Object,
+            target.Value, result.AppliedDamage, result.RemainingHealth,
+            result.DamagePerAttack, result.AttacksApplied, result.BonusApplied,
+            projectileId, center);
+        if (result.Destroyed)
+            _events.Publish(
+                tick, CombatEventKind.TargetDestroyed, attacker,
+                CombatTargetKind.Object, target.Value,
                 result.AppliedDamage, 0f, worldPosition: center);
     }
 
@@ -1066,6 +1276,18 @@ public sealed class CombatSystem
                     direction, propagation);
             }
         }
+        foreach (var target in _movement.CombatObjectOverview())
+        {
+            if (!target.Alive ||
+                primaryKind == CombatTargetKind.Object &&
+                    target.Id.Value == primaryId ||
+                (propagation.TargetLayers & target.TargetLayer) == 0 ||
+                !_movement.IsCombatObjectTargetValid(attacker, target.Id))
+                continue;
+            AppendLineCandidate(
+                candidates, CombatTargetKind.Object, target.Id.Value,
+                target.Position, center, direction, propagation);
+        }
 
         candidates.Sort(PropagationTargetComparer.Instance);
         var count = Math.Min(
@@ -1111,19 +1333,25 @@ public sealed class CombatSystem
     {
         var visitedUnits = new HashSet<int>();
         var visitedBuildings = new HashSet<int>();
+        var visitedObjects = new HashSet<int>();
         if (primaryKind == CombatTargetKind.Unit) visitedUnits.Add(primaryId);
-        else visitedBuildings.Add(primaryId);
+        else if (primaryKind == CombatTargetKind.Building)
+            visitedBuildings.Add(primaryId);
+        else if (primaryKind == CombatTargetKind.Object)
+            visitedObjects.Add(primaryId);
         var current = center;
         for (var index = 1; index < propagation.MaximumTargets; index++)
         {
             var candidate = FindBounceTarget(
                 attacker, current, propagation, visitedUnits,
-                visitedBuildings);
+                visitedBuildings, visitedObjects);
             if (candidate.Kind == CombatTargetKind.None) break;
             if (candidate.Kind == CombatTargetKind.Unit)
                 visitedUnits.Add(candidate.Id);
-            else
+            else if (candidate.Kind == CombatTargetKind.Building)
                 visitedBuildings.Add(candidate.Id);
+            else
+                visitedObjects.Add(candidate.Id);
             var fraction = propagation.DamageFraction(index);
             if (fraction <= 0f) break;
             ApplyPropagationTarget(attacker, candidate, candidate.Position,
@@ -1138,7 +1366,8 @@ public sealed class CombatSystem
         Vector2 center,
         CombatWeaponPropagationSnapshot propagation,
         HashSet<int> visitedUnits,
-        HashSet<int> visitedBuildings)
+        HashSet<int> visitedBuildings,
+        HashSet<int> visitedObjects)
     {
         var best = default(PropagationTarget);
         var radiusSquared = propagation.Radius * propagation.Radius;
@@ -1156,19 +1385,33 @@ public sealed class CombatSystem
                 distance);
             if (Better(candidate, best)) best = candidate;
         }
-        if ((propagation.TargetLayers & CombatTargetLayer.Building) == 0)
-            return best;
-        foreach (var building in _movement.CombatBuildingOverview())
+        if ((propagation.TargetLayers & CombatTargetLayer.Building) != 0)
         {
-            if (visitedBuildings.Contains(building.Id.Value) ||
-                !_movement.IsBuildingTargetValid(attacker, building.Id))
+            foreach (var building in _movement.CombatBuildingOverview())
+            {
+                if (visitedBuildings.Contains(building.Id.Value) ||
+                    !_movement.IsBuildingTargetValid(attacker, building.Id))
+                    continue;
+                var position = Center(building.Bounds);
+                var distance = Vector2.DistanceSquared(center, position);
+                if (distance > radiusSquared) continue;
+                var candidate = new PropagationTarget(
+                    CombatTargetKind.Building, building.Id.Value, position,
+                    distance);
+                if (Better(candidate, best)) best = candidate;
+            }
+        }
+        foreach (var target in _movement.CombatObjectOverview())
+        {
+            if (!target.Alive || visitedObjects.Contains(target.Id.Value) ||
+                (propagation.TargetLayers & target.TargetLayer) == 0 ||
+                !_movement.IsCombatObjectTargetValid(attacker, target.Id))
                 continue;
-            var position = Center(building.Bounds);
-            var distance = Vector2.DistanceSquared(center, position);
+            var distance = Vector2.DistanceSquared(center, target.Position);
             if (distance > radiusSquared) continue;
             var candidate = new PropagationTarget(
-                CombatTargetKind.Building, building.Id.Value, position,
-                distance);
+                CombatTargetKind.Object, target.Id.Value,
+                target.Position, distance);
             if (Better(candidate, best)) best = candidate;
         }
         return best;
@@ -1194,10 +1437,14 @@ public sealed class CombatSystem
         if (target.Kind == CombatTargetKind.Unit)
             ApplyAreaUnitDamage(
                 attacker, target.Id, center, weapon, tick, projectileId);
-        else
+        else if (target.Kind == CombatTargetKind.Building)
             ApplyAreaBuildingDamage(attacker,
                 new GameplayBuildingId(target.Id), center, weapon, tick,
                 projectileId);
+        else
+            ApplyAreaCombatObjectDamage(
+                attacker, new CombatObjectId(target.Id), center, weapon,
+                tick, projectileId);
     }
 
     private void KillUnit(
@@ -1257,6 +1504,10 @@ public sealed class CombatSystem
             new GameplayBuildingId(targetId)) =>
             (true, Center(_movement.BuildingTargetBounds(
                 new GameplayBuildingId(targetId)))),
+        CombatTargetKind.Object when _movement.IsCombatObjectTargetValid(
+            -1, new CombatObjectId(targetId)) =>
+            (true, _movement.CombatObject(
+                new CombatObjectId(targetId)).Position),
         _ => (false, default)
     };
 
@@ -1270,6 +1521,11 @@ public sealed class CombatSystem
         else if (projectile.TargetKind == CombatTargetKind.Building)
             ApplyBuildingWeapon(projectile.AttackerUnit,
                 new GameplayBuildingId(projectile.TargetId),
+                projectile.Weapon, tick, projectile.Id, projectile.Position);
+        else if (projectile.TargetKind == CombatTargetKind.Object)
+            ApplyCombatObjectWeapon(
+                projectile.AttackerUnit,
+                new CombatObjectId(projectile.TargetId),
                 projectile.Weapon, tick, projectile.Id, projectile.Position);
     }
 

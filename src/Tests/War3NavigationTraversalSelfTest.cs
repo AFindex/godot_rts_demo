@@ -101,6 +101,42 @@ public static class War3NavigationTraversalSelfTest
                     : LegResult.NotRun("no surviving workers")
                 : LegResult.NotRun("outbound failed");
 
+            // A peasant can finish a town-hall surface interaction in a point
+            // that is valid for its physical body but lies inside navigation
+            // clearance. It must be able to leave that surface on the next
+            // ordinary/resource order.
+            var blockedStartEscape = RunBlockedStartEscapeRegression(
+                simulation,
+                runtime.PlayerWorkers[0],
+                new EconomyResourceNodeId(5),
+                new Vector2(1201.6f, 1990.3f));
+            // Same building, top edge: the body is fully valid here, but the
+            // navigation-clearance disc overlaps the town hall by 0.5 pixels.
+            // The nearest grid anchor must be reachable from the escape point,
+            // not merely be an empty cell on the other side of the footprint.
+            var surfaceStartEscape = RunBlockedStartEscapeRegression(
+                simulation,
+                runtime.PlayerWorkers[4],
+                new EconomyResourceNodeId(1),
+                new Vector2(1253.9f, 1848.5f));
+
+            // Reproduce the player report against the authored tree at
+            // 1329,1583: its physical interaction point used to be accepted
+            // even though the peasant's navigation clearance rejected it.
+            var resourceApproach = RunResourceApproachRegression(
+                simulation,
+                runtime.PlayerWorkers[5],
+                new EconomyResourceNodeId(5),
+                new Vector2(1308f, 1657.1f));
+            // Reproduce the intermittent right-click case: a peasant already
+            // carrying lumber must first return it, so the apparent tree order
+            // actually targets the town-hall boundary.
+            var dropOffApproach = RunCarriedResourceDropOffRegression(
+                simulation,
+                runtime.PlayerWorkers[5],
+                new EconomyResourceNodeId(14),
+                new Vector2(1360.9f, 1999f));
+
             var combatResults = new List<string>();
             var combatPassed = true;
             var combatTypeIds = new[]
@@ -159,13 +195,20 @@ public static class War3NavigationTraversalSelfTest
                     $"{typeOutbound}>{typeReturn}");
             }
 
-            var passed = outbound.Arrived && returnLeg.Arrived && combatPassed;
+            var passed = outbound.Arrived && returnLeg.Arrived &&
+                         blockedStartEscape.Arrived &&
+                         surfaceStartEscape.Arrived &&
+                         resourceApproach.Arrived &&
+                         dropOffApproach.Arrived && combatPassed;
             return new SelfTestResult(
                 passed,
                 $"bootstrap={bootstrapMode}, high={Point(highGround)}, " +
                 $"farHigh={Point(farHighGround)}, " +
                 $"workers={returningWorkers.Length}/{workers.Length}:" +
-                $"{outbound}>{returnLeg}, " +
+                $"{outbound}>{returnLeg}, escape={blockedStartEscape}, " +
+                $"surfaceEscape={surfaceStartEscape}, " +
+                $"resource={resourceApproach}, " +
+                $"dropoff={dropOffApproach}, " +
                 $"combat=[{string.Join(";", combatResults)}]");
         }
         catch (Exception exception)
@@ -242,6 +285,246 @@ public static class War3NavigationTraversalSelfTest
             $"path={simulation.Units.Paths[first]?.Cursor ?? -1}/" +
             $"{simulation.Units.Paths[first]?.Points.Length ?? 0}",
             simulation.Units.Positions[units[0]]);
+    }
+
+    private static LegResult RunResourceApproachRegression(
+        RtsSimulation simulation,
+        int worker,
+        EconomyResourceNodeId resource,
+        Vector2 start)
+    {
+        simulation.IssuePlayerStop(War3HumanScenario.PlayerId, [worker]);
+        simulation.Tick(TickSeconds);
+        simulation.Units.Positions[worker] = start;
+        simulation.Units.SlotTargets[worker] = start;
+        simulation.Units.MoveGoals[worker] = start;
+
+        var command = simulation.IssueGather(
+            War3HumanScenario.PlayerId, worker, resource);
+        var slot = simulation.Units.SlotTargets[worker];
+        var slotFree = simulation.World.IsDiscFree(
+            slot, simulation.Units.NavigationRadii[worker]);
+        if (!command.Succeeded)
+        {
+            return new LegResult(
+                false, 0, 0, $"command={command.Code}", start);
+        }
+
+        for (var tick = 1; tick <= 600; tick++)
+        {
+            simulation.Tick(TickSeconds);
+            var state = simulation.Economy.Worker(worker).State;
+            if (state is WorkerEconomyState.Gathering or
+                WorkerEconomyState.WaitingForResource)
+            {
+                return new LegResult(
+                    slotFree, tick, 0,
+                    $"slot={Point(slot)},slotFree={slotFree},state={state}",
+                    simulation.Units.Positions[worker]);
+            }
+            if (simulation.Units.MovementLegResults[worker] ==
+                    UnitMovementLegResult.Unreachable ||
+                simulation.Units.RecoveryStages[worker] ==
+                    RecoveryStage.Unreachable)
+            {
+                return new LegResult(
+                    false, tick, 0,
+                    $"slot={Point(slot)},slotFree={slotFree}," +
+                    $"state={state},leg=" +
+                    $"{simulation.Units.MovementLegResults[worker]}",
+                    simulation.Units.Positions[worker]);
+            }
+        }
+        return new LegResult(
+            false, 600, 0,
+            $"slot={Point(slot)},slotFree={slotFree},timeout," +
+            $"state={simulation.Economy.Worker(worker).State}",
+            simulation.Units.Positions[worker]);
+    }
+
+    private static LegResult RunBlockedStartEscapeRegression(
+        RtsSimulation simulation,
+        int worker,
+        EconomyResourceNodeId resource,
+        Vector2 start)
+    {
+        simulation.IssuePlayerStop(War3HumanScenario.PlayerId, [worker]);
+        simulation.Tick(TickSeconds);
+        simulation.Units.Positions[worker] = start;
+        simulation.Units.SlotTargets[worker] = start;
+        simulation.Units.MoveGoals[worker] = start;
+        var physicalFree = simulation.World.IsDiscFree(
+            start, simulation.Units.Radii[worker]);
+        var navigationFree = simulation.World.IsDiscFree(
+            start, simulation.Units.NavigationRadii[worker]);
+        var physicalRepair = simulation.World.ConstrainDisc(
+            start, start, simulation.Units.Radii[worker] + 0.05f);
+        var navigationRepair = simulation.World.ConstrainDisc(
+            physicalRepair, physicalRepair,
+            simulation.Units.NavigationRadii[worker] + 2f);
+        var physicalRepairFree = simulation.World.IsDiscFree(
+            physicalRepair, simulation.Units.Radii[worker]);
+        var navigationRepairFree = simulation.World.IsDiscFree(
+            navigationRepair, simulation.Units.NavigationRadii[worker]);
+        var repairSegmentFree = simulation.World.IsSegmentFree(
+            physicalRepair, navigationRepair,
+            simulation.Units.Radii[worker]);
+        var command = simulation.IssueGather(
+            War3HumanScenario.PlayerId, worker, resource);
+        var slot = simulation.Units.SlotTargets[worker];
+        var slotFree = simulation.World.IsDiscFree(
+            slot, simulation.Units.NavigationRadii[worker]);
+        if (!command.Succeeded)
+        {
+            return new LegResult(
+                false, 0, 0, $"command={command.Code}", start);
+        }
+
+        for (var tick = 1; tick <= 600; tick++)
+        {
+            simulation.Tick(TickSeconds);
+            var state = simulation.Economy.Worker(worker).State;
+            if (state is WorkerEconomyState.Gathering or
+                WorkerEconomyState.WaitingForResource)
+            {
+                var end = simulation.Units.Positions[worker];
+                simulation.IssuePlayerStop(
+                    War3HumanScenario.PlayerId, [worker]);
+                simulation.Tick(TickSeconds);
+                return new LegResult(
+                    !navigationFree && slotFree,
+                    tick, 0,
+                    $"start={Point(start)}/p{physicalFree}/n{navigationFree}," +
+                    $"slot={Point(slot)}/free{slotFree},state={state}",
+                    end);
+            }
+            if (simulation.Units.MovementLegResults[worker] ==
+                    UnitMovementLegResult.Unreachable ||
+                simulation.Units.RecoveryStages[worker] ==
+                    RecoveryStage.Unreachable)
+            {
+                var blockers = DescribeBlockingGeometry(
+                    simulation, start, simulation.Units.Radii[worker]);
+                return new LegResult(
+                    false, tick, 0,
+                    $"start={Point(start)}/p{physicalFree}/n{navigationFree}," +
+                    $"slot={Point(slot)}/free{slotFree},state={state}," +
+                    $"leg={simulation.Units.MovementLegResults[worker]}," +
+                    $"repair={Point(physicalRepair)}/p{physicalRepairFree}>" +
+                    $"{Point(navigationRepair)}/n{navigationRepairFree}/" +
+                    $"edge{repairSegmentFree}," +
+                    $"blockers={blockers}",
+                    simulation.Units.Positions[worker]);
+            }
+        }
+        return new LegResult(
+            false, 600, 0,
+            $"start={Point(start)}/p{physicalFree}/n{navigationFree},timeout," +
+            $"state={simulation.Economy.Worker(worker).State}",
+            simulation.Units.Positions[worker]);
+    }
+
+    private static string DescribeBlockingGeometry(
+        RtsSimulation simulation,
+        Vector2 position,
+        float radius)
+    {
+        var staticBlockers = simulation.World.Obstacles
+            .ToArray()
+            .Select((bounds, index) => (bounds, index))
+            .Where(value => value.bounds.OverlapsDisc(position, radius))
+            .Select(value => $"s{value.index}:{Rect(value.bounds)}");
+        var dynamicBlockers = simulation.World.DynamicOccupancy.Snapshot()
+            .Where(value => value.Bounds.OverlapsDisc(position, radius))
+            .Select(value => $"d{value.Id.Value}:{Rect(value.Bounds)}");
+        var terrainBlocked = simulation.World.Terrain is not null &&
+                             !simulation.World.Terrain.IsDiscTraversable(
+                                 position, radius);
+        return $"[{string.Join('|', staticBlockers.Concat(dynamicBlockers))}]" +
+               $"/terrain={terrainBlocked}";
+    }
+
+    private static string Rect(SimRect value) =>
+        $"{Point(value.Min)}-{Point(value.Max)}";
+
+    private static LegResult RunCarriedResourceDropOffRegression(
+        RtsSimulation simulation,
+        int worker,
+        EconomyResourceNodeId nextResource,
+        Vector2 start)
+    {
+        const int maximumTicks = 600;
+        var cargoPreparationTicks = 0;
+        while (simulation.Economy.Worker(worker).CargoAmount <= 0 &&
+               cargoPreparationTicks < 120)
+        {
+            simulation.Tick(TickSeconds);
+            cargoPreparationTicks++;
+        }
+        var cargoBefore = simulation.Economy.Worker(worker).CargoAmount;
+        if (cargoBefore <= 0)
+        {
+            return new LegResult(
+                false, cargoPreparationTicks, 0,
+                "could not prepare progressive lumber cargo",
+                simulation.Units.Positions[worker]);
+        }
+
+        simulation.Units.Positions[worker] = start;
+        simulation.Units.SlotTargets[worker] = start;
+        simulation.Units.MoveGoals[worker] = start;
+        var command = simulation.IssueGather(
+            War3HumanScenario.PlayerId, worker, nextResource);
+        var slot = simulation.Units.SlotTargets[worker];
+        var slotFree = simulation.World.IsDiscFree(
+            slot, simulation.Units.NavigationRadii[worker]);
+        var initialVersion = simulation.Units.CommandVersions[worker];
+        var initialState = simulation.Economy.Worker(worker).State;
+        var initialGoal = simulation.Units.MovementGoalKinds[worker];
+        if (!command.Succeeded ||
+            initialState != WorkerEconomyState.ReturningCargo ||
+            initialGoal != UnitMovementGoalKind.DropOffBoundary)
+        {
+            return new LegResult(
+                false, 0, 0,
+                $"command={command.Code},cargo={cargoBefore}," +
+                $"state={initialState},goal={initialGoal}", start);
+        }
+
+        for (var tick = 1; tick <= maximumTicks; tick++)
+        {
+            simulation.Tick(TickSeconds);
+            var state = simulation.Economy.Worker(worker);
+            var commandDelta =
+                simulation.Units.CommandVersions[worker] - initialVersion;
+            if (commandDelta > 8)
+            {
+                return new LegResult(
+                    false, tick, 0,
+                    $"slot={Point(slot)},slotFree={slotFree}," +
+                    $"command-reissue-loop={commandDelta},state={state.State}," +
+                    $"leg={simulation.Units.MovementLegResults[worker]}",
+                    simulation.Units.Positions[worker]);
+            }
+            if (state.CargoAmount == 0 &&
+                state.State != WorkerEconomyState.ReturningCargo)
+            {
+                return new LegResult(
+                    slotFree, tick, 0,
+                    $"slot={Point(slot)},slotFree={slotFree}," +
+                    $"cargo={cargoBefore}->0,commands={commandDelta}," +
+                    $"state={state.State}",
+                    simulation.Units.Positions[worker]);
+            }
+        }
+        var finalState = simulation.Economy.Worker(worker);
+        return new LegResult(
+            false, maximumTicks, 0,
+            $"slot={Point(slot)},slotFree={slotFree},timeout," +
+            $"cargo={finalState.CargoAmount},state={finalState.State}," +
+            $"commands=" +
+            $"{simulation.Units.CommandVersions[worker] - initialVersion}",
+            simulation.Units.Positions[worker]);
     }
 
     private static string Point(Vector2 value) =>

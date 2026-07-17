@@ -54,6 +54,9 @@ public static class War3HumanContent
     public const int GuardTower = 10;
     public const int Keep = 11;
     public const int Castle = 12;
+    public const int CannonTower = 13;
+    public const int ArcaneTower = 14;
+    public const int ScoutTower = 15;
 
     public const int Footman = 0;
     public const int Rifleman = 1;
@@ -189,7 +192,7 @@ public static class War3HumanContent
         {
             ("Rhme", Btn("SteelMelee"), Blacksmith),
             ("Rhar", Btn("HumanArmorUpOne"), Blacksmith),
-            ("Rhac", Btn("ImbuedMasonry"), Blacksmith),
+            ("Rhac", Btn("ImbuedMasonry"), LumberMill),
             ("Rhde", Btn("SelectHeroOn"), Barracks),
             ("Rhgb", Btn("SelectHeroOn"), Workshop),
             ("Rhfl", Btn("SelectHeroOn"), Workshop),
@@ -203,7 +206,11 @@ public static class War3HumanContent
             ("Rhhb", Btn("SelectHeroOn"), GryphonAviary),
             ("Rhcd", Btn("SelectHeroOn"), GryphonAviary),
             ("Rhla", Btn("LeatherUpgradeOne"), Blacksmith),
-            ("Rhra", Btn("HumanMissileUpOne"), Blacksmith)
+            ("Rhra", Btn("HumanMissileUpOne"), Blacksmith),
+            ("Rhan", Btn("AnimalWarTraining"), Barracks),
+            ("Rhri", Btn("LongRifles"), Barracks),
+            ("Rhlh", Btn("ImprovedLumberHarvesting"), LumberMill),
+            ("Rhse", Btn("MagicSentry"), ArcaneSanctum)
         };
         var technologyIdMap = technologyBindings
             .Select((value, index) => (value.ObjectId, Index: index))
@@ -529,13 +536,22 @@ public static class War3HumanContent
         new(ArcaneVault, "hvlt", "神秘藏宝室", "人族物品商店",
             @"Buildings\Human\ArcaneVault\ArcaneVault.mdx", Btn("ArcaneVault")),
         new(GuardTower, "hgtw", "防御塔", "基地防御建筑",
-            @"Buildings\Human\HumanTower\HumanTower.mdx", Btn("GuardTower")),
+            @"Buildings\Human\HumanTower\HumanTower.mdx", Btn("GuardTower"),
+            Constructible: false),
         new(Keep, "hkee", "主城", "二级城镇大厅，可使用战斗号召",
             @"Buildings\Human\TownHall\TownHall.mdx", Btn("Keep"),
             Constructible: false),
         new(Castle, "hcas", "城堡", "三级城镇大厅，可使用战斗号召",
             @"Buildings\Human\TownHall\TownHall.mdx", Btn("Castle"),
-            Constructible: false)
+            Constructible: false),
+        new(CannonTower, "hctw", "炮塔", "对地攻城防御塔",
+            @"Buildings\Human\HumanTower\HumanTower.mdx", Btn("CannonTower"),
+            Constructible: false),
+        new(ArcaneTower, "hatw", "神秘之塔", "反魔法防御塔",
+            @"Buildings\Human\HumanTower\HumanTower.mdx", Btn("HumanArcaneTower"),
+            Constructible: false),
+        new(ScoutTower, "hwtw", "哨塔", "可升级为三种防御塔",
+            @"Buildings\Human\HumanTower\HumanTower.mdx", Btn("HumanWatchTower"))
     ];
 
     private static War3UnitDefinition[] CreateFallbackUnitDefinitions() =>
@@ -616,7 +632,13 @@ public static class War3HumanContent
         Building(Keep, "主城", BuildingFunctionKind.TownHall, 150, 132,
             0, 0, 12f, 3000, 12),
         Building(Castle, "城堡", BuildingFunctionKind.TownHall, 150, 132,
-            0, 0, 12f, 3500, 12)
+            0, 0, 12f, 3500, 12),
+        Building(CannonTower, "炮塔", BuildingFunctionKind.Research, 58, 58,
+            200, 120, 7.5f, 600),
+        Building(ArcaneTower, "神秘之塔", BuildingFunctionKind.Research, 58, 58,
+            100, 70, 5f, 500),
+        Building(ScoutTower, "哨塔", BuildingFunctionKind.Research, 58, 58,
+            30, 20, 2.5f, 300)
     ];
 
     private static UnitTypeProfile[] CreateFallbackUnitProfiles() =>
@@ -665,7 +687,7 @@ public static class War3HumanContent
     [
         Technology(0, "钢铁武器", 100, 75, 3),
         Technology(1, "铁甲升级", 125, 75, 3),
-        Technology(2, "加强型石工技术", 150, 100, 3)
+        Technology(2, "加强型石工技术", 150, 100, 3, LumberMill)
     ];
 
     private static UnitTypeProfile Profile(
@@ -753,12 +775,13 @@ public static class War3HumanContent
         string name,
         int gold,
         int lumber,
-        int maximumLevel) => new(
-            id, name, Blacksmith, new EconomyCost(gold, lumber),
+        int maximumLevel,
+        int researcher = Blacksmith) => new(
+            id, name, researcher, new EconomyCost(gold, lumber),
             5f, maximumLevel, 0.75f, -1)
         {
             Requirements = [new TechnologyRequirementProfile(
-                TechnologyRequirementKind.CompletedBuilding, Blacksmith, 1)]
+                    TechnologyRequirementKind.CompletedBuilding, researcher, 1)]
         };
 
     private static War3UnitDefinition Unit(

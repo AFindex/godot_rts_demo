@@ -37,7 +37,9 @@ public static class War3MapAssetSelfTest
                 defaultMap.PlayerSpawn == War3HumanScenario.PlayerHome &&
                 defaultMap.EnemySpawn == War3HumanScenario.EnemyHome &&
                 resources.Length == War3HumanScenario.ExpectedResourceNodeCount &&
-                navigation.Obstacles.Length == resources.Length;
+                navigation.Obstacles.Length == defaultMap.Objects.Count(value =>
+                    value.Kind is War3MapObjectKind.GoldMine or
+                        War3MapObjectKind.PathingBlocker);
 
             var asset = War3MapCodec.CreateNew(
                 "roundtrip_self_test", "Round-trip Self Test", 48, 32);

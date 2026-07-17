@@ -17,7 +17,27 @@ public static class BuildingUpgradeSelfTest
             var production = War3HumanContent.CreateProductionCatalog();
             var technologies = War3HumanContent.CreateTechnologyCatalog();
             var profiles = upgrades.Profiles.ToArray();
-            var catalogValid = profiles.Length == 2 &&
+            var towerUpgrades = upgrades.ForSource(
+                War3HumanContent.ScoutTower).ToArray();
+            var towerBranchesValid = towerUpgrades.Length == 3 &&
+                towerUpgrades.Select(value => value.TargetType.Id)
+                    .Order().SequenceEqual(new[]
+                    {
+                        War3HumanContent.GuardTower,
+                        War3HumanContent.CannonTower,
+                        War3HumanContent.ArcaneTower
+                    }.Order()) &&
+                towerUpgrades.Single(value => value.TargetType.Id ==
+                    War3HumanContent.GuardTower).Requirements.Any(value =>
+                    value.Kind == TechnologyRequirementKind.CompletedBuilding &&
+                    value.TargetId == War3HumanContent.LumberMill) &&
+                towerUpgrades.Single(value => value.TargetType.Id ==
+                    War3HumanContent.CannonTower).Requirements.Any(value =>
+                    value.Kind == TechnologyRequirementKind.CompletedBuilding &&
+                    value.TargetId == War3HumanContent.Workshop) &&
+                towerUpgrades.Single(value => value.TargetType.Id ==
+                    War3HumanContent.ArcaneTower).Requirements.Length == 0;
+            var catalogValid = profiles.Length == 5 && towerBranchesValid &&
                 profiles[0].SourceBuildingTypeId == War3HumanContent.TownHall &&
                 profiles[0].TargetType.Id == War3HumanContent.Keep &&
                 profiles[0].Cost == new EconomyCost(320, 210) &&
@@ -65,7 +85,7 @@ public static class BuildingUpgradeSelfTest
                 restoredHot is not null && packageHash == 0UL &&
                 hotValidation == HotSnapshotValidationCode.Success &&
                 restoredHot.BuildingUpgrades.Orders.Length == 1 &&
-                restoredHot.BuildingUpgrades.CatalogProfiles.Length == 2 &&
+                restoredHot.BuildingUpgrades.CatalogProfiles.Length == 5 &&
                 MathF.Abs(
                     restoredHot.BuildingUpgrades.Orders[0].Progress - 0.5f) <
                     0.0001f;
@@ -179,11 +199,18 @@ public static class BuildingUpgradeSelfTest
                          commandRoundTrip && replayValid && exclusivityRejected;
             return new SelfTestResult(
                 passed,
-                $"catalog={profiles.Length}/{catalogValid}, " +
+                $"catalog={profiles.Length}/{catalogValid}, towers=" +
+                $"{towerUpgrades.Length}/{towerBranchesValid}[" +
+                string.Join(';', towerUpgrades.Select(value =>
+                    $"{value.Id}:{value.SourceBuildingTypeId}>" +
+                    $"{value.TargetType.Id}:" +
+                    string.Join(',', value.Requirements.Select(requirement =>
+                        $"{requirement.Kind}/{requirement.TargetId}")))) + "], " +
                 $"cost={profiles[0].Cost.Minerals}/{profiles[0].Cost.VespeneGas}-" +
                 $"{profiles[1].Cost.Minerals}/{profiles[1].Cost.VespeneGas}, " +
                 $"blocked={blockedProduction.Code}/" +
-                $"{blockedBuildingAbility.Code}, hot={hotRoundTrip}, " +
+                $"{blockedBuildingAbility.Code}, hot={hotRoundTrip}/" +
+                $"{hotValidation}/{restoredHot?.BuildingUpgrades.CatalogProfiles.Length}, " +
                 $"refund={refundValid}, forms={keepValid}/{castleValid}, " +
                 $"inherit={inheritedCanceled}/{inheritedResearch}, " +
                 $"commands={commandRoundTrip}, replay={replayValid}, " +

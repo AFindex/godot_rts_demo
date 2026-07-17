@@ -39,7 +39,8 @@ public sealed class CombatProjectileSystem
         projectileId = 0;
         if (ActiveCount >= MaximumProjectiles || _nextId == int.MaxValue ||
             attacker < 0 || targetId < 0 ||
-            targetKind is not (CombatTargetKind.Unit or CombatTargetKind.Building) ||
+            targetKind is not (CombatTargetKind.Unit or
+                CombatTargetKind.Building or CombatTargetKind.Object) ||
             !float.IsFinite(speed) || speed <= 0f ||
             !float.IsFinite(position.X) || !float.IsFinite(position.Y) ||
             !ValidWeapon(weapon))
@@ -154,7 +155,8 @@ public sealed class CombatProjectileSystem
     {
         var slot = value.Id % MaximumProjectiles;
         if (_active[slot] || value.AttackerUnit < 0 || value.TargetId < 0 ||
-            value.TargetKind is not (CombatTargetKind.Unit or CombatTargetKind.Building) ||
+            value.TargetKind is not (CombatTargetKind.Unit or
+                CombatTargetKind.Building or CombatTargetKind.Object) ||
             value.Speed <= 0f || !float.IsFinite(value.Speed) ||
             !float.IsFinite(value.Position.X) ||
             !float.IsFinite(value.Position.Y) || !ValidWeapon(value.Weapon))

@@ -62,7 +62,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 11;
+    public const int CurrentFormatVersion = 12;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;

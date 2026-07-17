@@ -269,6 +269,9 @@ public sealed class TechnologySystem
                 : 0
             : 0;
 
+    public bool IsQueued(int playerId, int technologyId) =>
+        QueuedCount(playerId, technologyId) > 0;
+
     public ResearchCommandResult Enqueue(
         int playerId,
         GameplayBuildingId researcher,

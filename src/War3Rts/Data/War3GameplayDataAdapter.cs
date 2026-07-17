@@ -201,41 +201,42 @@ public sealed class War3GameplayDataAdapter(
         foreach (var source in buildings.OrderBy(value => value.TypeId))
         {
             if (!Catalog.TryGet(source.ObjectId, out var sourceData)) continue;
-            var targetObjectId = EditorValue(sourceData, "Upgrade");
-            if (string.IsNullOrWhiteSpace(targetObjectId) ||
-                !buildingIds.TryGetValue(targetObjectId, out var targetId))
-                continue;
             var sourceProfile = profiles[source.TypeId];
-            var targetProfile = profiles[targetId];
-            var requirements = ImmutableArray<TechnologyRequirementProfile>.Empty;
-            if (Catalog.TryGet(targetObjectId, out var targetData))
+            foreach (var targetObjectId in EditorList(sourceData, "Upgrade"))
             {
-                requirements = EditorList(targetData, "Requires")
-                    .Where(buildingIds.ContainsKey)
-                    .Select(value => new TechnologyRequirementProfile(
-                        TechnologyRequirementKind.CompletedBuilding,
-                        buildingIds[value],
-                        1))
-                    .Distinct()
-                    .ToImmutableArray();
+                if (!buildingIds.TryGetValue(targetObjectId, out var targetId))
+                    continue;
+                var targetProfile = profiles[targetId];
+                var requirements = ImmutableArray<TechnologyRequirementProfile>.Empty;
+                if (Catalog.TryGet(targetObjectId, out var targetData))
+                {
+                    requirements = EditorList(targetData, "Requires")
+                        .Where(buildingIds.ContainsKey)
+                        .Select(value => new TechnologyRequirementProfile(
+                            TechnologyRequirementKind.CompletedBuilding,
+                            buildingIds[value],
+                            1))
+                        .Distinct()
+                        .ToImmutableArray();
+                }
+                result.Add(new BuildingUpgradeProfile(
+                    result.Count,
+                    $"升级为{targetProfile.Name}",
+                    source.TypeId,
+                    targetProfile,
+                    new EconomyCost(
+                        Math.Max(0,
+                            targetProfile.Cost.Minerals -
+                            sourceProfile.Cost.Minerals),
+                        Math.Max(0,
+                            targetProfile.Cost.VespeneGas -
+                            sourceProfile.Cost.VespeneGas)),
+                    targetProfile.BuildSeconds,
+                    targetProfile.CancelRefundFraction)
+                {
+                    Requirements = requirements
+                });
             }
-            result.Add(new BuildingUpgradeProfile(
-                result.Count,
-                $"升级为{targetProfile.Name}",
-                source.TypeId,
-                targetProfile,
-                new EconomyCost(
-                    Math.Max(0,
-                        targetProfile.Cost.Minerals -
-                        sourceProfile.Cost.Minerals),
-                    Math.Max(0,
-                        targetProfile.Cost.VespeneGas -
-                        sourceProfile.Cost.VespeneGas)),
-                targetProfile.BuildSeconds,
-                targetProfile.CancelRefundFraction)
-            {
-                Requirements = requirements
-            });
         }
         return result.ToArray();
     }
@@ -449,6 +450,11 @@ public sealed class War3GameplayDataAdapter(
                 "air" => CombatTargetLayer.AirUnit,
                 "ground" => CombatTargetLayer.GroundUnit,
                 "structure" => CombatTargetLayer.Building,
+                "tree" => CombatTargetLayer.Tree,
+                "debris" => CombatTargetLayer.Debris,
+                "item" => CombatTargetLayer.Item,
+                "wall" => CombatTargetLayer.Wall,
+                "ward" => CombatTargetLayer.Ward,
                 _ => CombatTargetLayer.None
             };
         }
@@ -565,6 +571,11 @@ public sealed class War3GameplayDataAdapter(
                 "air" => CombatTargetLayer.AirUnit,
                 "ground" => CombatTargetLayer.GroundUnit,
                 "structure" => CombatTargetLayer.Building,
+                "tree" => CombatTargetLayer.Tree,
+                "debris" => CombatTargetLayer.Debris,
+                "item" => CombatTargetLayer.Item,
+                "wall" => CombatTargetLayer.Wall,
+                "ward" => CombatTargetLayer.Ward,
                 _ => CombatTargetLayer.None
             };
         }

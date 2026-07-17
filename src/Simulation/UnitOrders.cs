@@ -20,7 +20,8 @@ public enum UnitOrderKind : byte
     CastAbility,
     LearnAbility,
     SetAbilityAutoCast,
-    CastBuildingAbility
+    CastBuildingAbility,
+    AttackObject
 }
 
 public readonly record struct UnitOrder(
@@ -54,6 +55,7 @@ public static class UnitOrderContract
                 ? order.TargetBuilding >= -1
                 : order.TargetBuilding == -1) &&
         (order.Kind is UnitOrderKind.GatherResource or
+            UnitOrderKind.AttackObject or
             UnitOrderKind.CastAbility or UnitOrderKind.LearnAbility or
             UnitOrderKind.SetAbilityAutoCast or
             UnitOrderKind.CastBuildingAbility

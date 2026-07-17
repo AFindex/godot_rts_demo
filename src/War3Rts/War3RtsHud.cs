@@ -54,6 +54,14 @@ public sealed partial class War3RtsHud : Control
     private Label? _armorValue;
     private Label? _levelValue;
     private Label? _combatTypeValue;
+    private TextureRect? _attackIcon;
+    private TextureRect? _armorIcon;
+    private Control? _heroProgressPanel;
+    private Label? _heroLevelLabel;
+    private ProgressBar? _heroExperienceBar;
+    private Label? _heroExperienceLabel;
+    private Control? _inventoryPanel;
+    private TextureRect? _inventoryCover;
     private Control? _selectionDetails;
     private Control? _queuePanel;
     private TextureRect? _queueBackdrop;
@@ -75,6 +83,8 @@ public sealed partial class War3RtsHud : Control
     private TextureRect? _portraitMask;
     private ColorRect? _portraitHealthFill;
     private ColorRect? _portraitManaFill;
+    private Label? _portraitHealthValue;
+    private Label? _portraitManaValue;
     private string _portraitSource = string.Empty;
     private bool _portraitBuildingView;
     private string _commandSignature = string.Empty;
@@ -172,6 +182,19 @@ public sealed partial class War3RtsHud : Control
                   ? $" · {snapshot.Selection.WeaponTargetLabel}"
                   : string.Empty)
             : "—";
+        if (_attackIcon is not null)
+        {
+            _attackIcon.Texture = snapshot.Selection.AttackIconPath.Length > 0
+                ? War3RuntimeAssets.LoadTexture(snapshot.Selection.AttackIconPath)
+                : null;
+            _attackIcon.Modulate = snapshot.Selection.AttackDamage > 0f
+                ? Colors.White
+                : new Color(1f, 1f, 1f, 0.35f);
+        }
+        if (_armorIcon is not null)
+            _armorIcon.Texture = snapshot.Selection.ArmorIconPath.Length > 0
+                ? War3RuntimeAssets.LoadTexture(snapshot.Selection.ArmorIconPath)
+                : null;
         if (_portraitHealthFill is not null)
         {
             var healthRatio = snapshot.Selection.MaximumHealth > 0f
@@ -181,6 +204,11 @@ public sealed partial class War3RtsHud : Control
             _portraitHealthFill.Size = new Vector2(
                 PortraitBarWidth * healthRatio, PortraitBarHeight);
         }
+        if (_portraitHealthValue is not null)
+            _portraitHealthValue.Text = snapshot.Selection.MaximumHealth > 0f
+                ? $"{MathF.Ceiling(snapshot.Selection.Health):0} / " +
+                  $"{MathF.Ceiling(snapshot.Selection.MaximumHealth):0}"
+                : string.Empty;
         if (_portraitManaFill is not null)
         {
             var manaRatio = snapshot.Selection.MaximumMana > 0f
@@ -191,6 +219,15 @@ public sealed partial class War3RtsHud : Control
                 PortraitBarWidth * manaRatio, PortraitBarHeight);
             _portraitManaFill.Visible = snapshot.Selection.MaximumMana > 0f;
         }
+        if (_portraitManaValue is not null)
+        {
+            _portraitManaValue.Visible = snapshot.Selection.MaximumMana > 0f;
+            _portraitManaValue.Text = snapshot.Selection.MaximumMana > 0f
+                ? $"{MathF.Ceiling(snapshot.Selection.Mana):0} / " +
+                  $"{MathF.Ceiling(snapshot.Selection.MaximumMana):0}"
+                : string.Empty;
+        }
+        UpdateHeroAndInventory(snapshot.Selection);
         var queueVisible = snapshot.Selection.QueueItems.Length > 0;
         _selectionDetails!.Visible = !queueVisible;
         _selectionDetails.ProcessMode = queueVisible
@@ -209,7 +246,8 @@ public sealed partial class War3RtsHud : Control
         UpdatePortrait(snapshot.Selection);
         RebuildCommands(snapshot.Commands);
         _minimap!.SetSnapshot(
-            snapshot.WorldBounds, snapshot.Entities, snapshot.Resources);
+            snapshot.WorldBounds, snapshot.CameraViewBounds,
+            snapshot.Entities, snapshot.Resources, snapshot.MinimapSignalMode);
     }
 
     public bool TryInvokeHotkey(Key key)
@@ -344,6 +382,7 @@ public sealed partial class War3RtsHud : Control
         AddMinimap(chrome);
         AddPortrait(chrome);
         AddSelectionInfo(chrome);
+        AddInventory(chrome);
         AddCommandCard(chrome);
         UpdateConsoleScale();
     }
@@ -471,6 +510,8 @@ public sealed partial class War3RtsHud : Control
             MouseFilter = MouseFilterEnum.Ignore
         };
         healthBack.AddChild(_portraitHealthFill);
+        _portraitHealthValue = PortraitBarLabel();
+        healthBack.AddChild(_portraitHealthValue);
         var manaBack = new ColorRect
         {
             Position = new Vector2(
@@ -489,6 +530,8 @@ public sealed partial class War3RtsHud : Control
             MouseFilter = MouseFilterEnum.Ignore
         };
         manaBack.AddChild(_portraitManaFill);
+        _portraitManaValue = PortraitBarLabel();
+        manaBack.AddChild(_portraitManaValue);
     }
 
     private void AddSelectionInfo(Control parent)
@@ -534,11 +577,81 @@ public sealed partial class War3RtsHud : Control
         stats.AddThemeConstantOverride("h_separation", 6);
         stats.AddThemeConstantOverride("v_separation", 1);
         column.AddChild(stats);
-        AddStat(stats, "攻击", out _attackValue);
-        AddStat(stats, "护甲", out _armorValue);
+        AddIconStat(stats, "攻击", out _attackIcon, out _attackValue);
+        AddIconStat(stats, "护甲", out _armorIcon, out _armorValue);
         AddStat(stats, "等级", out _levelValue);
         AddStat(stats, "攻防", out _combatTypeValue, true);
+        _heroProgressPanel = new HBoxContainer
+        {
+            CustomMinimumSize = new Vector2(234f, 22f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            Visible = false
+        };
+        _heroProgressPanel.AddThemeConstantOverride("separation", 5);
+        column.AddChild(_heroProgressPanel);
+        _heroLevelLabel = LabelText("英雄 1", 11, Gold);
+        _heroLevelLabel.CustomMinimumSize = new Vector2(48f, 20f);
+        _heroProgressPanel.AddChild(_heroLevelLabel);
+        _heroExperienceBar = new ProgressBar
+        {
+            MinValue = 0d,
+            MaxValue = 100d,
+            ShowPercentage = false,
+            CustomMinimumSize = new Vector2(112f, 13f),
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        _heroExperienceBar.AddThemeStyleboxOverride("background", Box(
+            new Color("071019"), new Color("5b4825"), 2, 1));
+        _heroExperienceBar.AddThemeStyleboxOverride("fill", Box(
+            new Color("d7a938"), new Color("ffe17a"), 2, 1));
+        _heroProgressPanel.AddChild(_heroExperienceBar);
+        _heroExperienceLabel = LabelText("0/0", 10, Text);
+        _heroExperienceLabel.CustomMinimumSize = new Vector2(60f, 20f);
+        _heroExperienceLabel.HorizontalAlignment = HorizontalAlignment.Right;
+        _heroProgressPanel.AddChild(_heroExperienceLabel);
         AddBuildQueuePanel(content);
+    }
+
+    private void AddInventory(Control parent)
+    {
+        _inventoryCover = new TextureRect
+        {
+            Name = "InventoryCover",
+            Position = new Vector2(634f, 33f),
+            Size = new Vector2(125f, 175f),
+            Texture = War3RuntimeAssets.LoadTexture(
+                @"UI\Console\Human\HumanUITile-InventoryCover.blp"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            MouseFilter = MouseFilterEnum.Ignore,
+            TextureFilter = CanvasItem.TextureFilterEnum.Linear,
+            ZIndex = 6
+        };
+        parent.AddChild(_inventoryCover);
+        _inventoryPanel = new Control
+        {
+            Name = "InventorySlots",
+            Position = new Vector2(638f, 38f),
+            Size = new Vector2(116f, 168f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            Visible = false,
+            ZIndex = 20
+        };
+        parent.AddChild(_inventoryPanel);
+        for (var slot = 0; slot < 6; slot++)
+        {
+            var frame = new Panel
+            {
+                Name = $"InventorySlot{slot + 1}",
+                Position = new Vector2(slot % 2 * 58f, slot / 2 * 56f),
+                Size = new Vector2(52f, 50f),
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            frame.AddThemeStyleboxOverride("panel", Box(
+                new Color("05080ccf"), new Color("806329"), 2, 1));
+            _inventoryPanel.AddChild(frame);
+        }
     }
 
     private void AddBuildQueuePanel(Control parent)
@@ -751,6 +864,81 @@ public sealed partial class War3RtsHud : Control
         parent.AddChild(value);
     }
 
+    private static void AddIconStat(
+        GridContainer parent,
+        string caption,
+        out TextureRect icon,
+        out Label value)
+    {
+        var cell = new HBoxContainer
+        {
+            CustomMinimumSize = new Vector2(62f, 20f),
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        cell.AddThemeConstantOverride("separation", 3);
+        icon = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(18f, 18f),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        cell.AddChild(icon);
+        var label = LabelText(caption, 10, Muted);
+        label.VerticalAlignment = VerticalAlignment.Center;
+        cell.AddChild(label);
+        parent.AddChild(cell);
+        value = LabelText("—", 12, Text);
+        value.CustomMinimumSize = new Vector2(38f, 18f);
+        value.VerticalAlignment = VerticalAlignment.Center;
+        parent.AddChild(value);
+    }
+
+    private static Label PortraitBarLabel()
+    {
+        var label = LabelText(string.Empty, 9, Colors.White);
+        label.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.MouseFilter = MouseFilterEnum.Ignore;
+        label.ZIndex = 2;
+        label.AddThemeColorOverride("font_shadow_color", Colors.Black);
+        label.AddThemeConstantOverride("shadow_offset_x", 1);
+        label.AddThemeConstantOverride("shadow_offset_y", 1);
+        return label;
+    }
+
+    private void UpdateHeroAndInventory(War3SelectionSnapshot selection)
+    {
+        if (_heroProgressPanel is not null && _heroLevelLabel is not null &&
+            _heroExperienceBar is not null && _heroExperienceLabel is not null)
+        {
+            _heroProgressPanel.Visible = selection.IsHero;
+            _heroLevelLabel.Text = selection.IsHero
+                ? $"英雄 {selection.Level}"
+                : string.Empty;
+            var next = Math.Max(0, selection.ExperienceForNextLevel);
+            var experience = Math.Max(0, selection.HeroExperience);
+            _heroExperienceBar.Value = next > 0
+                ? Math.Clamp(experience / (double)next, 0d, 1d) * 100d
+                : 100d;
+            _heroExperienceLabel.Text = selection.IsHero
+                ? next > 0
+                    ? $"{experience}/{next}"
+                    : "最高等级"
+                : string.Empty;
+        }
+        if (_inventoryPanel is not null)
+        {
+            _inventoryPanel.Visible = selection.SupportsInventory;
+            var slots = _inventoryPanel.GetChildren().OfType<Control>().ToArray();
+            for (var index = 0; index < slots.Length; index++)
+                slots[index].Visible = index < selection.InventorySlotCount;
+        }
+        if (_inventoryCover is not null)
+            _inventoryCover.Visible = !selection.SupportsInventory;
+    }
+
     private void UpdateQueue(War3SelectionSnapshot selection)
     {
         if (_queueActionLabel is null || _queueProgress is null ||
@@ -811,7 +999,8 @@ public sealed partial class War3RtsHud : Control
     {
         var signature = string.Join(';', commands.Select(value =>
             $"{value.Slot}:{value.Kind}:{value.DataId}:{value.Enabled}:" +
-            $"{MathF.Ceiling(value.CooldownRemaining * 10f)}:{value.Toggled}"));
+            $"{MathF.Ceiling(value.CooldownRemaining * 10f)}:{value.Toggled}:" +
+            $"{value.State}:{value.Badge}:{value.IconPath}:{value.Hotkey}"));
         if (signature == _commandSignature) return;
         _commandSignature = signature;
         _hotkeys.Clear();
@@ -829,9 +1018,22 @@ public sealed partial class War3RtsHud : Control
             var button = _commandButtons[command.Slot];
             button.Visible = true;
             button.Disabled = !command.Enabled;
-            button.Modulate = command.Enabled
-                ? Colors.White
-                : new Color(0.55f, 0.55f, 0.55f, 0.82f);
+            button.Modulate = command.State switch
+            {
+                War3CommandVisualState.Unavailable =>
+                    new Color(0.5f, 0.5f, 0.5f, 0.78f),
+                War3CommandVisualState.Completed =>
+                    new Color("8fd7c9"),
+                War3CommandVisualState.Queued =>
+                    new Color("d8bd72"),
+                War3CommandVisualState.Learn =>
+                    new Color("fff0a2"),
+                War3CommandVisualState.Passive =>
+                    new Color("d6e9ff"),
+                _ => command.Enabled
+                    ? Colors.White
+                    : new Color(0.55f, 0.55f, 0.55f, 0.82f)
+            };
             button.TooltipText = command.Tooltip;
             button.Icon = War3RuntimeAssets.LoadTexture(command.IconPath);
             _slotCommands[command.Slot] = command;
@@ -862,6 +1064,43 @@ public sealed partial class War3RtsHud : Control
                     MouseFilter = MouseFilterEnum.Ignore
                 };
                 button.AddChild(active);
+            }
+            if (command.Badge.Length > 0)
+            {
+                var badge = LabelText(command.Badge, 9,
+                    command.State == War3CommandVisualState.Completed
+                        ? new Color("d6fff3")
+                        : Gold);
+                badge.SetAnchorsPreset(LayoutPreset.BottomRight);
+                badge.OffsetLeft = -35f;
+                badge.OffsetTop = -16f;
+                badge.OffsetRight = -2f;
+                badge.OffsetBottom = -2f;
+                badge.HorizontalAlignment = HorizontalAlignment.Right;
+                badge.VerticalAlignment = VerticalAlignment.Center;
+                badge.MouseFilter = MouseFilterEnum.Ignore;
+                badge.AddThemeColorOverride("font_shadow_color", Colors.Black);
+                badge.AddThemeConstantOverride("shadow_offset_x", 1);
+                badge.AddThemeConstantOverride("shadow_offset_y", 1);
+                button.AddChild(badge);
+            }
+            if (command.State is War3CommandVisualState.Completed or
+                War3CommandVisualState.Queued or War3CommandVisualState.Learn)
+            {
+                var color = command.State switch
+                {
+                    War3CommandVisualState.Completed => new Color("62d7b0"),
+                    War3CommandVisualState.Queued => new Color("e0ad45"),
+                    _ => new Color("ffe46c")
+                };
+                var marker = new ColorRect
+                {
+                    Position = new Vector2(1f, 1f),
+                    Size = new Vector2(50f, 2f),
+                    Color = color,
+                    MouseFilter = MouseFilterEnum.Ignore
+                };
+                button.AddChild(marker);
             }
             if (TryParseHotkey(command.Hotkey, out var key)) _hotkeys[key] = command;
         }
@@ -1022,6 +1261,7 @@ public sealed partial class War3RtsHud : Control
     {
         private const float ContentInset = 4f;
         private SimRect _bounds;
+        private SimRect _cameraBounds;
         private War3MinimapEntity[] _entities = [];
         private War3MinimapResource[] _resources = [];
 
@@ -1055,17 +1295,23 @@ public sealed partial class War3RtsHud : Control
             // AddMinimap owns the exact opening in the Human console artwork.
             // Expanding to FullRect here would silently turn the minimap into
             // a 1000x208 overlay across the entire bottom console.
-            MouseDefaultCursorShape = CursorShape.Cross;
+            MouseDefaultCursorShape = CursorShape.Arrow;
         }
 
         public void SetSnapshot(
             SimRect bounds,
+            SimRect cameraBounds,
             War3MinimapEntity[] entities,
-            War3MinimapResource[] resources)
+            War3MinimapResource[] resources,
+            bool signalMode)
         {
             _bounds = bounds;
+            _cameraBounds = cameraBounds;
             _entities = entities;
             _resources = resources;
+            MouseDefaultCursorShape = signalMode
+                ? CursorShape.Cross
+                : CursorShape.Arrow;
             QueueRedraw();
         }
 
@@ -1138,6 +1384,19 @@ public sealed partial class War3RtsHud : Control
                         new Vector2(5.6f, 5.6f)), color, true);
                 else
                     DrawCircle(point, 2f, color);
+            }
+            if (_cameraBounds.Width > 0f && _cameraBounds.Height > 0f)
+            {
+                var minimum = ToMap(_cameraBounds.Min);
+                var maximum = ToMap(_cameraBounds.Max);
+                var cameraRect = new Rect2(minimum, maximum - minimum)
+                    .Intersection(mapRect);
+                if (cameraRect.Size.X > 1f && cameraRect.Size.Y > 1f)
+                {
+                    DrawRect(cameraRect, new Color("f6eee0d9"), false, 1.4f);
+                    DrawRect(cameraRect.Grow(-1.4f),
+                        new Color("08110ca0"), false, 1f);
+                }
             }
         }
 

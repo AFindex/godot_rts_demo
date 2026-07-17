@@ -46,7 +46,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 14;
+    public const int CurrentFormatVersion = 15;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {

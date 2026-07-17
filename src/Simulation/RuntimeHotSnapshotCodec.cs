@@ -25,6 +25,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteDynamic(writer, state.DynamicOccupancy);
         WriteUnits(writer, state.Units);
         WriteCombat(writer, state.Combat, state.Units.Count);
+        WriteCombatObjects(writer, state.CombatObjects);
         AbilitySerialization.WriteRuntime(writer, state.Abilities);
         WriteProjectiles(writer, state.CombatProjectiles);
         WriteEconomy(writer, state.Economy, state.Units.Count);
@@ -88,9 +89,12 @@ internal static class RuntimeHotSnapshotCodec
             var dynamic = ReadDynamic(reader);
             var units = ReadUnits(reader, capacity);
             var combat = ReadCombat(reader, capacity, units.Count);
+            var combatObjects = ReadCombatObjects(reader);
             var abilities = AbilitySerialization.ReadRuntime(reader, units.Count);
-            var projectiles = ReadProjectiles(reader, units.Count);
+            var projectiles = ReadProjectiles(
+                reader, units.Count, combatObjects.Objects.Length);
             var economy = ReadEconomy(reader, units.Count);
+            ValidateCombatObjects(combatObjects, economy, dynamic);
             var diplomacy = ReadDiplomacy(reader);
             var diplomacySystem = new PlayerDiplomacySystem();
             diplomacySystem.RestoreRuntimeState(diplomacy);
@@ -103,9 +107,11 @@ internal static class RuntimeHotSnapshotCodec
             var production = ReadProduction(
                 reader, units.Count, construction, economy);
             var technology = ReadTechnology(reader, construction, economy);
-            ValidateCombatTargets(combat, units.Count, construction);
+            ValidateCombatTargets(
+                combat, units.Count, construction, combatObjects);
             var queues = ReadQueues(
-                reader, capacity, units.Count, construction.Buildings.Length);
+                reader, capacity, units.Count, construction.Buildings.Length,
+                combatObjects.Objects.Length);
             var choke = ReadChoke(reader);
             var privateState = ReadPrivate(reader);
             if (stream.Position != stream.Length)
@@ -120,6 +126,7 @@ internal static class RuntimeHotSnapshotCodec
                 DynamicOccupancy = dynamic,
                 Units = units,
                 Combat = combat,
+                CombatObjects = combatObjects,
                 Abilities = abilities,
                 CombatProjectiles = projectiles,
                 Economy = economy,
@@ -574,6 +581,58 @@ internal static class RuntimeHotSnapshotCodec
         return combat;
     }
 
+    internal static void WriteCombatObjects(
+        BinaryWriter writer,
+        CombatObjectRuntimeSnapshot snapshot)
+    {
+        writer.Write(snapshot.Objects.Length);
+        foreach (var value in snapshot.Objects)
+        {
+            writer.Write(value.Id.Value);
+            writer.Write((byte)value.Profile.Kind);
+            WriteRect(writer, value.Profile.Bounds);
+            writer.Write(value.Profile.MaximumHealth);
+            writer.Write(value.Profile.Armor);
+            writer.Write((byte)value.Profile.ArmorType);
+            writer.Write((ushort)value.Profile.Attributes);
+            writer.Write(value.Profile.OwnerTeam);
+            writer.Write(value.Profile.LinkedResourceNodeId);
+            writer.Write(value.Profile.LinkedDynamicFootprintId);
+            writer.Write(value.Health);
+            writer.Write(value.Alive);
+        }
+    }
+
+    internal static CombatObjectRuntimeSnapshot ReadCombatObjects(
+        BinaryReader reader)
+    {
+        var count = ReadCount(reader, MaximumPoints);
+        var values = new CombatObjectRuntimeEntry[count];
+        for (var index = 0; index < count; index++)
+        {
+            var id = new CombatObjectId(reader.ReadInt32());
+            var profile = new CombatObjectProfile(
+                (CombatObjectKind)reader.ReadByte(),
+                ReadRect(reader),
+                reader.ReadSingle(),
+                reader.ReadSingle(),
+                (CombatArmorType)reader.ReadByte(),
+                (CombatAttribute)reader.ReadUInt16(),
+                reader.ReadInt32(),
+                reader.ReadInt32(),
+                reader.ReadInt32());
+            var health = reader.ReadSingle();
+            var alive = reader.ReadBoolean();
+            profile.Validate();
+            if (id.Value != index || !float.IsFinite(health) || health < 0f ||
+                health > profile.MaximumHealth || alive != (health > 0f))
+                throw new InvalidDataException();
+            values[index] = new CombatObjectRuntimeEntry(
+                id, profile, health, alive);
+        }
+        return new CombatObjectRuntimeSnapshot(values);
+    }
+
     private static void WriteWeaponProfile(
         BinaryWriter writer, in CombatWeaponProfileSnapshot weapon)
     {
@@ -726,7 +785,8 @@ internal static class RuntimeHotSnapshotCodec
 
     private static CombatProjectileRuntimeSnapshot ReadProjectiles(
         BinaryReader reader,
-        int unitCount)
+        int unitCount,
+        int combatObjectCount)
     {
         var nextId = reader.ReadInt32();
         var count = ReadCount(reader, CombatProjectileSystem.MaximumProjectiles);
@@ -741,8 +801,13 @@ internal static class RuntimeHotSnapshotCodec
             if (value.Id <= previous || value.Id >= nextId ||
                 (uint)value.AttackerUnit >= (uint)unitCount ||
                 value.TargetKind is not (CombatTargetKind.Unit or
-                    CombatTargetKind.Building) ||
-                value.TargetId < 0 || value.Speed <= 0f ||
+                    CombatTargetKind.Building or CombatTargetKind.Object) ||
+                value.TargetId < 0 ||
+                value.TargetKind == CombatTargetKind.Unit &&
+                    value.TargetId >= unitCount ||
+                value.TargetKind == CombatTargetKind.Object &&
+                    value.TargetId >= combatObjectCount ||
+                value.Speed <= 0f ||
                 !float.IsFinite(value.Speed) ||
                 !CombatProjectileSystem.ValidWeapon(value.Weapon))
                 throw new InvalidDataException();
@@ -1466,8 +1531,7 @@ internal static class RuntimeHotSnapshotCodec
                     BuildingLifecycleState.Completed ||
                 construction.Buildings[value.Building.Value].Type.Id !=
                     value.Profile.SourceBuildingTypeId ||
-                !catalog.TryForSource(
-                    value.Profile.SourceBuildingTypeId, out var canonical) ||
+                !catalog.TryGet(value.Profile.Id, out var canonical) ||
                 !BuildingUpgradeCatalogSnapshot.ProfileEquals(
                     value.Profile, canonical) ||
                 !float.IsFinite(value.Progress) ||
@@ -1726,7 +1790,8 @@ internal static class RuntimeHotSnapshotCodec
     private static void ValidateCombatTargets(
         CombatStore combat,
         int unitCount,
-        ConstructionRuntimeSnapshot construction)
+        ConstructionRuntimeSnapshot construction,
+        CombatObjectRuntimeSnapshot combatObjects)
     {
         for (var unit = 0; unit < unitCount; unit++)
         {
@@ -1740,15 +1805,47 @@ internal static class RuntimeHotSnapshotCodec
                     ((uint)unitTarget >= (uint)unitCount || buildingTarget != -1) ||
                 kind == CombatTargetKind.Building &&
                     (unitTarget != -1 ||
-                     (uint)buildingTarget >= (uint)construction.Buildings.Length))
+                     (uint)buildingTarget >= (uint)construction.Buildings.Length) ||
+                kind == CombatTargetKind.Object &&
+                    (unitTarget != -1 ||
+                     (uint)buildingTarget >= (uint)combatObjects.Objects.Length))
             {
                 throw new InvalidDataException();
             }
         }
     }
 
+    private static void ValidateCombatObjects(
+        CombatObjectRuntimeSnapshot combatObjects,
+        EconomyRuntimeSnapshot economy,
+        DynamicOccupancyRuntimeSnapshot dynamic)
+    {
+        for (var index = 0; index < combatObjects.Objects.Length; index++)
+        {
+            var value = combatObjects.Objects[index];
+            var resource = value.Profile.LinkedResourceNodeId;
+            if (resource < -1 || resource >= economy.ResourceNodes.Length ||
+                resource >= 0 &&
+                    value.Health != economy.ResourceNodes[resource].Remaining)
+                throw new InvalidDataException();
+            var footprint = value.Profile.LinkedDynamicFootprintId;
+            if (footprint == 0) continue;
+            var linked = dynamic.Footprints.FirstOrDefault(candidate =>
+                candidate.Id.Value == footprint);
+            if (value.Alive
+                    ? linked.Id.Value != footprint ||
+                      linked.Bounds != value.Profile.Bounds
+                    : linked.Id.Value == footprint)
+                throw new InvalidDataException();
+        }
+    }
+
     private static UnitCommandQueueStore ReadQueues(
-        BinaryReader reader, int capacity, int count, int buildingCount)
+        BinaryReader reader,
+        int capacity,
+        int count,
+        int buildingCount,
+        int combatObjectCount)
     {
         var queues = new UnitCommandQueueStore(capacity);
         for (var unit = 0; unit < count; unit++)
@@ -1802,13 +1899,13 @@ internal static class RuntimeHotSnapshotCodec
                 throw new InvalidDataException();
             }
             if (queues.HasActiveOrders[unit] &&
-                !UnitOrderContract.IsStructurallyValid(new UnitOrder(
+                !ValidQueuedTarget(new UnitOrder(
                     queues.ActiveKinds[unit],
                     queues.ActivePositions[unit],
                     queues.ActiveTargetUnits[unit],
                     queues.ActiveTargetBuildings[unit],
                     queues.ActiveTargetResourceNodes[unit],
-                    queues.ActiveSequenceIds[unit])))
+                    queues.ActiveSequenceIds[unit]), combatObjectCount))
             {
                 throw new InvalidDataException();
             }
@@ -1827,7 +1924,7 @@ internal static class RuntimeHotSnapshotCodec
                     reader.ReadInt32(),
                     reader.ReadInt32());
                 if (order.Kind == UnitOrderKind.FollowFriendly ||
-                    !UnitOrderContract.IsStructurallyValid(order) ||
+                    !ValidQueuedTarget(order, combatObjectCount) ||
                     !queues.TryEnqueue(unit, order))
                 {
                     throw new InvalidDataException();
@@ -1836,6 +1933,13 @@ internal static class RuntimeHotSnapshotCodec
         }
         return queues;
     }
+
+    private static bool ValidQueuedTarget(
+        UnitOrder order,
+        int combatObjectCount) =>
+        UnitOrderContract.IsStructurallyValid(order) &&
+        (order.Kind != UnitOrderKind.AttackObject ||
+         (uint)order.TargetResourceNode < (uint)combatObjectCount);
 
     private static void WriteChoke(
         BinaryWriter writer, ChokeTrafficRuntimeSnapshot? choke)

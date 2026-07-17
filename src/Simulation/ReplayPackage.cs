@@ -77,7 +77,8 @@ public enum ReplayPackageValidationCode : byte
     TrailingBytes,
     ResourceMismatch,
     InitialStateMismatch,
-    InvalidBuildingUpgradeManifest
+    InvalidBuildingUpgradeManifest,
+    InvalidCombatObjectManifest
 }
 
 public readonly record struct ReplayPackageValidationResult(
@@ -95,7 +96,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 40;
+    public const int CurrentFormatVersion = 41;
 
     internal SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -104,6 +105,7 @@ public sealed class SimulationReplayPackageSnapshot
         ReplayInitialUnit[] units,
         ReplayInitialBuilding[] buildings,
         EconomyRuntimeSnapshot economy,
+        CombatObjectRuntimeSnapshot combatObjects,
         PlayerDiplomacyRuntimeSnapshot diplomacy,
         ConstructionRuntimeSnapshot construction,
         BuildingUpgradeRuntimeSnapshot buildingUpgrades,
@@ -123,6 +125,7 @@ public sealed class SimulationReplayPackageSnapshot
         Units = units;
         Buildings = buildings;
         Economy = economy;
+        CombatObjects = combatObjects;
         Diplomacy = diplomacy;
         Construction = construction;
         BuildingUpgrades = buildingUpgrades;
@@ -146,6 +149,7 @@ public sealed class SimulationReplayPackageSnapshot
     public ReplayInitialUnit[] Units { get; }
     public ReplayInitialBuilding[] Buildings { get; }
     public EconomyRuntimeSnapshot Economy { get; }
+    public CombatObjectRuntimeSnapshot CombatObjects { get; }
     public PlayerDiplomacyRuntimeSnapshot Diplomacy { get; }
     public ConstructionRuntimeSnapshot Construction { get; }
     public BuildingUpgradeRuntimeSnapshot BuildingUpgrades { get; }
@@ -270,6 +274,22 @@ public sealed class SimulationReplayPackageSnapshot
             {
                 validation = new ReplayPackageValidationResult(
                     ReplayPackageValidationCode.InvalidEconomyManifest);
+                return false;
+            }
+
+            CombatObjectRuntimeSnapshot combatObjects;
+            try
+            {
+                combatObjects =
+                    RuntimeHotSnapshotCodec.ReadCombatObjects(reader);
+                if (!ValidCombatObjects(combatObjects, economy, buildings))
+                    throw new InvalidDataException();
+            }
+            catch (Exception exception) when (
+                exception is InvalidDataException or ArgumentException)
+            {
+                validation = new ReplayPackageValidationResult(
+                    ReplayPackageValidationCode.InvalidCombatObjectManifest);
                 return false;
             }
 
@@ -473,6 +493,18 @@ public sealed class SimulationReplayPackageSnapshot
                     ReplayPackageValidationCode.InvalidCommandLog);
                 return false;
             }
+            for (var index = 0; index < commandLog!.Entries.Length; index++)
+            {
+                var command = commandLog.Entries[index];
+                if (command.Kind == UnitOrderKind.AttackObject &&
+                    (uint)command.TargetResourceNode >=
+                        (uint)combatObjects.Objects.Length)
+                {
+                    validation = new ReplayPackageValidationResult(
+                        ReplayPackageValidationCode.InvalidCommandLog, index);
+                    return false;
+                }
+            }
             if (stream.Position != stream.Length)
             {
                 validation = new ReplayPackageValidationResult(
@@ -487,6 +519,7 @@ public sealed class SimulationReplayPackageSnapshot
                 units,
                 buildings,
                 economy,
+                combatObjects,
                 diplomacy,
                 construction,
                 buildingUpgrades,
@@ -538,6 +571,7 @@ public sealed class SimulationReplayPackageSnapshot
         }
         RuntimeHotSnapshotCodec.WriteEconomy(
             writer, Economy, Units.Length);
+        RuntimeHotSnapshotCodec.WriteCombatObjects(writer, CombatObjects);
         RuntimeHotSnapshotCodec.WriteDiplomacy(writer, Diplomacy);
         RuntimeHotSnapshotCodec.WriteConstruction(writer, Construction);
         RuntimeHotSnapshotCodec.WriteBuildingUpgrades(
@@ -833,6 +867,32 @@ public sealed class SimulationReplayPackageSnapshot
     private static SimRect ReadRect(BinaryReader reader) =>
         new(ReadVector(reader), ReadVector(reader));
 
+    private static bool ValidCombatObjects(
+        CombatObjectRuntimeSnapshot combatObjects,
+        EconomyRuntimeSnapshot economy,
+        ReplayInitialBuilding[] buildings)
+    {
+        for (var index = 0; index < combatObjects.Objects.Length; index++)
+        {
+            var value = combatObjects.Objects[index];
+            var resource = value.Profile.LinkedResourceNodeId;
+            if (resource < -1 || resource >= economy.ResourceNodes.Length ||
+                resource >= 0 &&
+                    value.Health != economy.ResourceNodes[resource].Remaining)
+                return false;
+            var footprint = value.Profile.LinkedDynamicFootprintId;
+            if (footprint == 0) continue;
+            var linked = buildings.FirstOrDefault(candidate =>
+                candidate.Id.Value == footprint);
+            if (value.Alive
+                    ? linked.Id.Value != footprint ||
+                      linked.Bounds != value.Profile.Bounds
+                    : linked.Id.Value == footprint)
+                return false;
+        }
+        return true;
+    }
+
     private static void WriteRect(BinaryWriter writer, SimRect value)
     {
         WriteVector(writer, value.Min);
@@ -848,6 +908,7 @@ public sealed class SimulationReplayPackageRecorder
     private readonly ReplayInitialUnit[] _units;
     private readonly ReplayInitialBuilding[] _buildings;
     private readonly EconomyRuntimeSnapshot _economy;
+    private readonly CombatObjectRuntimeSnapshot _combatObjects;
     private readonly PlayerDiplomacyRuntimeSnapshot _diplomacy;
     private readonly ConstructionRuntimeSnapshot _construction;
     private readonly BuildingUpgradeRuntimeSnapshot _buildingUpgrades;
@@ -872,6 +933,7 @@ public sealed class SimulationReplayPackageRecorder
         _units = CaptureUnits(simulation);
         _economy = simulation.Economy.CaptureRuntimeState(
             simulation.Units.Count);
+        _combatObjects = simulation.CombatObjects.CaptureRuntimeState();
         _diplomacy = simulation.Diplomacy.CaptureRuntimeState();
         _construction = simulation.Construction.CaptureRuntimeState();
         _buildingUpgrades = simulation.BuildingUpgrades.CaptureRuntimeState();
@@ -914,6 +976,7 @@ public sealed class SimulationReplayPackageRecorder
         _units.ToArray(),
         _buildings.ToArray(),
         _economy,
+        _combatObjects,
         _diplomacy,
         _construction,
         _buildingUpgrades,
@@ -1052,6 +1115,18 @@ public static class SimulationReplayPackageFactory
             simulation = null;
             validation = new ReplayPackageValidationResult(
                 ReplayPackageValidationCode.InvalidEconomyManifest);
+            return false;
+        }
+        try
+        {
+            simulation.CombatObjects.RestoreRuntimeState(
+                package.CombatObjects);
+        }
+        catch (InvalidOperationException)
+        {
+            simulation = null;
+            validation = new ReplayPackageValidationResult(
+                ReplayPackageValidationCode.InvalidCombatObjectManifest);
             return false;
         }
         try

@@ -340,13 +340,29 @@ public sealed partial class War3Rts
             {
                 case CombatEventKind.Impact:
                     if (TryUnitObjectId(value.AttackerUnit, out var attacker) &&
-                        TryUnitPlayerId(value.AttackerUnit, out var attackerPlayer) &&
-                        TryTargetObjectId(
-                            value.TargetKind, value.TargetId, out var target))
+                        TryUnitPlayerId(
+                            value.AttackerUnit, out var attackerPlayer))
                     {
-                        _worldAudio.PlayImpact(
-                            attacker, target, attackerPlayer, value.WorldPosition,
-                            value.AttackerUnit, value.Sequence);
+                        if (TryTargetObjectId(
+                                value.TargetKind,
+                                value.TargetId,
+                                out var target))
+                        {
+                            _worldAudio.PlayImpact(
+                                attacker, target, attackerPlayer,
+                                value.WorldPosition,
+                                value.AttackerUnit, value.Sequence);
+                        }
+                        else if (TryCombatObjectImpactMaterial(
+                                     value.TargetKind,
+                                     value.TargetId,
+                                     out var material))
+                        {
+                            _worldAudio.PlayImpactMaterial(
+                                attacker, material, attackerPlayer,
+                                value.WorldPosition,
+                                value.AttackerUnit, value.Sequence);
+                        }
                     }
                     break;
                 case CombatEventKind.TargetDestroyed
@@ -598,6 +614,25 @@ public sealed partial class War3Rts
         }
         objectId = string.Empty;
         return false;
+    }
+
+    private bool TryCombatObjectImpactMaterial(
+        CombatTargetKind kind,
+        int id,
+        out string material)
+    {
+        material = string.Empty;
+        if (kind != CombatTargetKind.Object || _simulation is null ||
+            (uint)id >= (uint)_simulation.CombatObjects.Count)
+            return false;
+        material = _simulation.ObserveCombatObject(new CombatObjectId(id))
+            .Profile.Kind switch
+        {
+            CombatObjectKind.Tree => "Wood",
+            CombatObjectKind.Wall => "Stone",
+            _ => string.Empty
+        };
+        return material.Length > 0;
     }
 
     private bool TryUnitObjectId(int unit, out string objectId)

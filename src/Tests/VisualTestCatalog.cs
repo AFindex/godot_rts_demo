@@ -6485,9 +6485,14 @@ public static partial class VisualTestCatalog
                         var assigned = runtime.ObserveMovement(
                             worker.Unit).NavigationTarget;
                         var unit = runtime.Observe(worker.Unit);
-                        var gap = IndependentRectangleGap(
+                        var physicalGap = IndependentRectangleGap(
                             assigned,
                             unit.Radius,
+                            expected.Center,
+                            expected.HalfExtents * 2f);
+                        var navigationGap = IndependentRectangleGap(
+                            assigned,
+                            unit.NavigationRadius,
                             expected.Center,
                             expected.HalfExtents * 2f);
                         var tolerance = IndependentNumericTolerance(
@@ -6497,7 +6502,8 @@ public static partial class VisualTestCatalog
                         if (!expected.Found ||
                             expected.HalfExtents.X <= 0f ||
                             expected.HalfExtents.Y <= 0f ||
-                            gap > tolerance || gap < -tolerance)
+                            MathF.Abs(physicalGap) > tolerance &&
+                            MathF.Abs(navigationGap) > tolerance)
                             invalidApproaches++;
                     }
                     if (hadPrevious &&

@@ -35,7 +35,8 @@ public static class War3BattlefieldPcgSelfTest
             var densityLayered = first.DenseTreeCount >= trees.Length / 3 &&
                                  first.SparseTreeCount >= trees.Length / 4;
             var terrain = War3HumanScenario.CreateTerrain();
-            var navigation = War3HumanScenario.CreateNavigation();
+            var map = War3HumanScenario.LoadDefaultMap();
+            var navigation = map.CreateNavigation();
             var terrainReady = terrain.Columns == 200 && terrain.Rows == 120 &&
                                terrain.Cells.ToArray().Count(
                                    static cell => cell.IsRamp) == 20 &&
@@ -43,8 +44,9 @@ public static class War3BattlefieldPcgSelfTest
                                terrain.HeightAt(
                                    (War3HumanScenario.PlayerHome +
                                     War3HumanScenario.EnemyHome) * 0.5f) + 32f;
-            var sharedLayout = navigation.Obstacles.Length ==
-                               War3HumanScenario.ExpectedResourceNodeCount;
+            var sharedLayout = navigation.Obstacles.Length == map.Objects.Count(
+                value => value.Kind is War3Rts.Maps.War3MapObjectKind.GoldMine or
+                    War3Rts.Maps.War3MapObjectKind.PathingBlocker);
             var passed = deterministic && mirrored && densityLayered &&
                          terrainReady && sharedLayout &&
                          trees.Length == War3BattlefieldPcg.ForestTreeCount;

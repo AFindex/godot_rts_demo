@@ -205,6 +205,8 @@ internal sealed partial class War3NavigationDebugger : Node3D
                 $"targetIds={target.Unit}/{target.Building}/{target.ResourceNode} " +
                 $"pos={Point(position)} physical={store.Radii[unit]:0.##} " +
                 $"navigation={navigationRadius:0.##} " +
+                $"startPhysicalFree=" +
+                $"{_simulation.World.IsDiscFree(position, store.Radii[unit])} " +
                 $"startFree={_simulation.World.IsDiscFree(position, navigationRadius)} " +
                 $"goal={Point(store.MoveGoals[unit])} slot={Point(slot)} " +
                 $"slotFree={_simulation.World.IsDiscFree(slot, navigationRadius)} " +

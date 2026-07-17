@@ -164,6 +164,12 @@ public static class War3HumanScenario
         var worker = simulation.AddUnit(workerPosition, workerType, PlayerId);
         simulation.Economy.RegisterWorker(worker, PlayerId);
 
+        var treeBounds = map.Objects
+            .Where(value => value.Kind == War3MapObjectKind.Tree)
+            .Select(value => value.Bounds)
+            .ToArray();
+        simulation.World.DynamicOccupancy.PlaceBatchForDiagnostics(treeBounds);
+
         var auditBuildings = new List<AuditBuilding>(18);
         AddAuditBase(
             buildings, auditBuildings,
@@ -372,6 +378,14 @@ public static class War3HumanScenario
                     trees[resource.OwnerSlot].Add(id);
             }
             simulation.Economy.SetResourceInteractionBounds(id, resource.Bounds);
+            if (resource.Kind == War3MapObjectKind.Tree)
+            {
+                RegisterTreeCombatObject(
+                    simulation,
+                    id,
+                    resource.Bounds,
+                    resource.Amount > 0 ? resource.Amount : TreeHealth);
+            }
             all.Add(id);
         }
         foreach (var player in new[] { PlayerId, EnemyId })
@@ -416,6 +430,11 @@ public static class War3HumanScenario
                 harvestMode: EconomyHarvestMode.Progressive);
             simulation.Economy.SetResourceInteractionBounds(
                 trees[index], ResourceBounds(position, TreeHalfExtents));
+            RegisterTreeCombatObject(
+                simulation,
+                trees[index],
+                ResourceBounds(position, TreeHalfExtents),
+                TreeHealth);
             all.Add(trees[index]);
         }
         return new ResourceCluster(gold, trees);
@@ -449,8 +468,28 @@ public static class War3HumanScenario
                 harvestMode: EconomyHarvestMode.Progressive);
             simulation.Economy.SetResourceInteractionBounds(
                 tree, ResourceBounds(position, TreeHalfExtents));
+            RegisterTreeCombatObject(
+                simulation,
+                tree,
+                ResourceBounds(position, TreeHalfExtents),
+                TreeHealth);
             all.Add(tree);
         }
+    }
+
+    private static void RegisterTreeCombatObject(
+        RtsSimulation simulation,
+        EconomyResourceNodeId resource,
+        SimRect bounds,
+        int maximumHealth)
+    {
+        var footprint = simulation.PlaceBuilding(bounds);
+        simulation.AddCombatObject(new CombatObjectProfile(
+            CombatObjectKind.Tree,
+            bounds,
+            maximumHealth,
+            LinkedResourceNodeId: resource.Value,
+            LinkedDynamicFootprintId: footprint.Value));
     }
 
     private static void AddBaseResourceObstacles(

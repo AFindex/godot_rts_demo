@@ -195,8 +195,9 @@ M1 已完成：导出、严格加载、引用闭包、MetaData、Buff/Effect 和
    和科技前置的确定性语义；上述状态均进入目录、热快照、哈希和二进制存档。
 
 最新进度：27 种原始目标 token 已全部进入配置，`notself`、`ward`、`player`、
-`ancient/nonancient`、`nonsapper` 已进入运行时校验；只剩树木、残骸、桥、物品、
-墙 5 种必须由独立世界实体承载的 token，影响 57 条逐对象记录。当前 15 条带前置的人族
+`ancient/nonancient`、`nonsapper` 已进入运行时校验；普通武器侧的树木、残骸、物品、
+墙已进入独立 Combat Object 边界，Ward 保持单位 trait。桥仍需地图/地形实体所有权，
+而 Item 的库存/拾取语义仍归 M5 物品系统。当前 15 条带前置的人族
 技能所依赖的 12 个科技已全部进入稠密科技目录和施法/被动/攻击触发校验，
 `requirement_missing=0`。英雄技能初始未学习、等级/技能点、学习门槛、学习命令、
 自动施法开关命令、命令日志、热快照和 HUD 学习按钮已经落地；单位等级编译为
@@ -205,7 +206,7 @@ M1 已完成：导出、严格加载、引用闭包、MetaData、Buff/Effect 和
 驱散类别和刷新/替换/独立叠加规则。
 
 M2 基础语义已完成，下一批按覆盖报告进入 M3 人族正确性，不再新增不可审计的
-临时分支。5 种独立世界实体 token 在 M3 的采集/修理链路和 M5 物品系统中分别闭环。
+临时分支。独立世界实体 token 按普通武器、地图桥梁和 M5 物品系统分别闭环。
 
 M3 第一批已开始：
 
@@ -358,8 +359,27 @@ M3 第九批已完成确定性朝向与攻击起手闭环：
    `0.6 / 0.03 = 20 rad/s`、资源/命令序列化与热恢复；真实 War3 smoke 继续
    `success=True attack_facing=True`。
 
-下一批继续把 tree/wall/debris/item/ward 接入统一普通武器目标查询边界，并评估技能侧
-攻击附伤是否迁入同一区域求解器。建筑升级实现细节见
+M3 第十批已完成非单位普通武器目标闭环：
+
+1. `CombatTargetLayer` 扩展 Tree/Debris/Item/Wall/Ward；Footman、Peasant、Mortar
+   等对象的 `targets/areaTargets` 由 1.27a JSON 直接编译，不以单位名称写特例。
+2. 新增内容中立 `CombatObjectStore`。Tree/Debris/Item/Wall 保存稳定对象 ID、矩形、
+   生命、护甲、关系、资源节点和动态导航 footprint；Ward 继续使用 UnitStore 与
+   `AbilityUnitTraits.Ward`，避免同一守卫同时成为单位和场景物件。
+3. 显式 `AttackObject` 已贯通玩家命令、队列、普通武器选槽、追击、朝向、直接/弹道
+   命中、三段区域、Line/Bounce、战斗事件和 War3 Attack 点击树木。普通右键树木仍
+   使用采集 Smart Command，不改变既有操作语义。
+4. Lordaeron Crossroads 的 280 棵树链接 Economy 剩余量；攻击和采伐共享生命。
+   树木改用动态导航 footprint，归零时派生移除并刷新局部拓扑，模型消失后不留空气墙。
+5. Combat Object 初态/生命/链接、对象订单与对象弹道进入 Simulation Command Log 9、
+   Production Catalog 12、Production Command Log 15、Ability Catalog 17、State Hash
+   40、Replay Package 41、Hot Snapshot 42；离线地图缓存已按新导航身份重建。
+6. 专项门禁覆盖 Footman/Peasant/Mortar 原始层映射、错误层拒绝、树木溅射、Ward
+   命中、资源同步、导航移除、对象事件、热恢复与完整回放 Hash；真实 War3 smoke
+   以新 Clearance `565A80D439624EB7` 命中缓存并保持 `success=True`。
+
+下一批评估技能侧攻击附伤和区域 effect 是否复用同一 Combat Object 查询边界，并为
+地图桥梁与 M5 Item 实体补齐各自所有权。建筑升级实现细节见
 `docs/BUILDING_UPGRADE_RUNTIME.md`，战斗规则见 `docs/WAR3_COMBAT_RULES.md`。
 
 本批半径语义参考：Blizzard 经典站点的

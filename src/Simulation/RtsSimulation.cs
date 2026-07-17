@@ -101,6 +101,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _pathProvider = pathProvider;
         Units = new UnitStore(capacity);
         Combat = new CombatStore(capacity);
+        CombatObjects = new CombatObjectStore();
         Concealment = new UnitConcealmentController(Units, Combat);
         Abilities = new AbilitySystem(capacity);
         CombatEvents = new CombatEventStream();
@@ -139,7 +140,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _chokeController = chokeController;
         _combatSystem = new CombatSystem(
             Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit,
-            Diplomacy.IsEnemy, CanUnitAttack, CanUnitTakeDamage);
+            Diplomacy.IsEnemy, CanUnitAttack, CanUnitTakeDamage,
+            CombatTargetLayerForUnit);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _economyFinishDropOffMovement = FinishEconomyDropOffMovement;
@@ -155,6 +157,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     public StaticWorld World { get; }
     public UnitStore Units { get; }
     public CombatStore Combat { get; }
+    public CombatObjectStore CombatObjects { get; }
     public UnitConcealmentController Concealment { get; }
     public AbilitySystem Abilities { get; }
     public CombatProjectileSystem CombatProjectiles => _combatSystem.Projectiles;
@@ -271,6 +274,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     public CombatAutoTargetScore PreviewAutoTargetScore(
         int attacker,
         int target) => _combatSystem.PreviewAutoTargetScore(attacker, target);
+
+    public CombatObjectId AddCombatObject(in CombatObjectProfile profile) =>
+        CombatObjects.Add(profile);
+
+    public CombatObjectSnapshot ObserveCombatObject(CombatObjectId id) =>
+        CombatObjects.Observe(id);
 
     public CombatContactSnapshot PreviewCombatContact(int unit)
     {
@@ -397,6 +406,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             DynamicOccupancy = World.DynamicOccupancy.CaptureRuntimeState(),
             Units = units,
             Combat = combat,
+            CombatObjects = CombatObjects.CaptureRuntimeState(),
             Abilities = Abilities.CaptureRuntimeState(Units.Count),
             CombatProjectiles = CombatProjectiles.CaptureRuntimeState(),
             Economy = Economy.CaptureRuntimeState(Units.Count),
@@ -431,12 +441,14 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
         Units.CopyRuntimeStateFrom(snapshot.Units);
         Combat.CopyRuntimeStateFrom(snapshot.Combat);
+        CombatObjects.RestoreRuntimeState(snapshot.CombatObjects);
         Abilities.RestoreRuntimeState(snapshot.Abilities, Units.Count);
         CombatProjectiles.RestoreRuntimeState(snapshot.CombatProjectiles);
         CombatEvents.Reset();
         GameplayEvents.Reset();
         AbilityEvents.Reset();
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
+        SyncLinkedCombatObjects();
         Diplomacy.RestoreRuntimeState(snapshot.Diplomacy);
         Construction.RestoreRuntimeState(snapshot.Construction);
         Production.RestoreRuntimeState(
@@ -616,6 +628,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 IssueAttackBuilding(
                     command.Units,
                     new GameplayBuildingId(command.TargetBuilding),
+                    command.Queued);
+                break;
+            case UnitOrderKind.AttackObject:
+                IssueAttackObject(
+                    command.Units,
+                    new CombatObjectId(command.TargetResourceNode),
                     command.Queued);
                 break;
             case UnitOrderKind.GatherResource:
@@ -2120,6 +2138,28 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         return validation;
     }
 
+    public PlayerOrderCommandResult IssuePlayerAttackObject(
+        int playerId,
+        ReadOnlySpan<int> units,
+        CombatObjectId target,
+        bool queued = false)
+    {
+        var validation = ValidatePlayerSelection(playerId, units);
+        if (!validation.Succeeded) return validation;
+        if (!UnitsAllowAttack(units))
+            return new(PlayerOrderCommandCode.ContextActionUnavailable);
+        if (!CombatObjects.IsAlive(target))
+            return new(PlayerOrderCommandCode.InvalidTarget);
+        var value = CombatObjects.Observe(target);
+        if (value.Profile.OwnerTeam >= 0 &&
+            !Diplomacy.IsEnemy(playerId, value.Profile.OwnerTeam))
+            return new(PlayerOrderCommandCode.FriendlyTarget);
+        if (!Visibility.IsVisible(playerId, value.Position))
+            return new(PlayerOrderCommandCode.TargetNotVisible);
+        IssueAttackObject(units, target, queued);
+        return validation;
+    }
+
     public PlayerOrderCommandResult IssuePlayerStop(
         int playerId,
         ReadOnlySpan<int> units)
@@ -2680,6 +2720,37 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             queued);
     }
 
+    public void IssueAttackObject(
+        ReadOnlySpan<int> unitIndices,
+        CombatObjectId targetObject,
+        bool queued = false)
+    {
+        if (!CombatObjects.IsAlive(targetObject))
+            throw new ArgumentOutOfRangeException(nameof(targetObject));
+        var target = CombatObjects.Observe(targetObject);
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            ValidateUnitIndex(unitIndices[index]);
+            ValidateLivingUnit(unitIndices[index]);
+            if (target.Profile.OwnerTeam >= 0 &&
+                !Diplomacy.IsEnemy(
+                    Combat.Teams[unitIndices[index]],
+                    target.Profile.OwnerTeam))
+            {
+                throw new InvalidOperationException(
+                    $"Combat object {targetObject.Value} is friendly to " +
+                    $"attacker {unitIndices[index]}.");
+            }
+        }
+        IssueOrder(
+            unitIndices,
+            new UnitOrder(
+                UnitOrderKind.AttackObject,
+                target.Position,
+                TargetResourceNode: targetObject.Value),
+            queued);
+    }
+
     public void IssueSmartCommand(
         ReadOnlySpan<int> unitIndices,
         SmartCommandTarget target,
@@ -3152,6 +3223,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             case UnitOrderKind.AttackBuilding:
                 ExecuteAttackBuilding(unitIndices, order.TargetBuilding);
                 break;
+            case UnitOrderKind.AttackObject:
+                ExecuteAttackObject(unitIndices, order.TargetResourceNode);
+                break;
             case UnitOrderKind.GatherResource:
                 ExecuteGatherResourceTask(
                     unitIndices, order.TargetResourceNode);
@@ -3348,6 +3422,33 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
     }
 
+    private void ExecuteAttackObject(
+        ReadOnlySpan<int> unitIndices,
+        int targetObject)
+    {
+        ExecuteStop(unitIndices);
+        var objectId = new CombatObjectId(targetObject);
+        if (!CombatObjects.IsAlive(objectId)) return;
+        var target = CombatObjects.Observe(objectId);
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            if (target.Profile.OwnerTeam >= 0 &&
+                !Diplomacy.IsEnemy(
+                    Combat.Teams[unit], target.Profile.OwnerTeam))
+            {
+                throw new InvalidOperationException(
+                    $"Combat object {targetObject} is friendly to attacker " +
+                    $"{unit}.");
+            }
+            Combat.SetCommand(
+                unit,
+                UnitCommandIntent.AttackTarget,
+                target.Position,
+                targetObject: targetObject);
+        }
+    }
+
     public void Tick(float delta)
     {
         if (delta <= 0f || !float.IsFinite(delta))
@@ -3447,6 +3548,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             _economyMoveWorker,
             _economyStopWorker,
             _economyFinishDropOffMovement);
+        SyncLinkedCombatObjects();
         Metrics.EconomySystemMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.EconomySystemAllocatedBytes =
             GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
@@ -3910,7 +4012,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
             Units.PathPending[unit] = false;
             if (points.Length == 0 ||
-                !MovementGoalAcceptsPathEndpoint(unit, points[^1], goal))
+                !MovementGoalAcceptsNavigationEndpoint(
+                    unit, points[^1], goal))
             {
                 Units.Paths[unit] = null;
                 Metrics.PathsFailed++;
@@ -3939,6 +4042,20 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         var route = Units.RouteWaypoints[unit];
         var navigationRadius = Units.NavigationRadii[unit];
 
+        if (!World.IsDiscFree(start, navigationRadius))
+        {
+            if (!TryResolveNavigationStartEscape(
+                    unit, start, finalGoal, out var escape))
+            {
+                return [];
+            }
+            if (Vector2.DistanceSquared(start, escape) > 0.0001f)
+            {
+                result.Add(escape);
+                current = escape;
+            }
+        }
+
         for (var waypointIndex = 0; waypointIndex <= route.Length; waypointIndex++)
         {
             var finalSegment = waypointIndex == route.Length;
@@ -3946,7 +4063,19 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 ? ResolveUnitRouteWaypoint(unit, route[waypointIndex])
                 : finalGoal;
             Vector2[] segment;
-            if (World.IsSegmentFree(current, segmentGoal, navigationRadius))
+            var surfaceEntryDistance = MathF.Max(
+                1f,
+                navigationRadius - Units.Radii[unit] + 0.5f);
+            var directSurfaceEntry = finalSegment &&
+                IsSurfaceInteractionGoal(unit) &&
+                MovementGoalAcceptsNavigationEndpoint(
+                    unit, segmentGoal, finalGoal) &&
+                Vector2.DistanceSquared(current, segmentGoal) <=
+                surfaceEntryDistance * surfaceEntryDistance &&
+                World.IsSegmentFree(
+                    current, segmentGoal, Units.Radii[unit]);
+            if (directSurfaceEntry ||
+                World.IsSegmentFree(current, segmentGoal, navigationRadius))
             {
                 segment = [current, segmentGoal];
             }
@@ -3976,7 +4105,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
             var endpointAccepted = segment.Length > 0 &&
                 (finalSegment
-                    ? MovementGoalAcceptsPathEndpoint(
+                    ? MovementGoalAcceptsNavigationEndpoint(
                         unit, segment[^1], segmentGoal)
                     : Vector2.DistanceSquared(segment[^1], segmentGoal) <=
                       24f * 24f);
@@ -3999,7 +4128,13 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
             for (var pointIndex = 1; pointIndex < segment.Length; pointIndex++)
             {
-                if (Vector2.DistanceSquared(result[^1], segment[pointIndex]) > 0.5f * 0.5f)
+                var minimumSeparationSquared = finalSegment &&
+                    IsSurfaceInteractionGoal(unit)
+                        ? 0f
+                        : 0.5f * 0.5f;
+                if (Vector2.DistanceSquared(
+                        result[^1], segment[pointIndex]) >
+                    minimumSeparationSquared)
                 {
                     result.Add(segment[pointIndex]);
                 }
@@ -4009,8 +4144,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
 
         if (IsSurfaceInteractionGoal(unit) &&
-            !MovementGoalAcceptsPathEndpoint(unit, result[^1], finalGoal) &&
-            MovementGoalAcceptsPathEndpoint(unit, current, finalGoal) &&
+            !MovementGoalAcceptsNavigationEndpoint(
+                unit, result[^1], finalGoal) &&
+            MovementGoalAcceptsNavigationEndpoint(
+                unit, current, finalGoal) &&
             Vector2.DistanceSquared(result[^1], current) > 0f)
         {
             result.Add(current);
@@ -4018,6 +4155,109 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
         return result.ToArray();
     }
+
+    private bool TryResolveNavigationStartEscape(
+        int unit,
+        Vector2 start,
+        Vector2 goal,
+        out Vector2 escape)
+    {
+        const float physicalProjectionMargin = 0.05f;
+        const float navigationProjectionMargin = 2f;
+        escape = default;
+        var physicalRadius = Units.Radii[unit];
+        var navigationRadius = Units.NavigationRadii[unit];
+        var physicalOrigin = start;
+        if (!World.IsDiscFree(physicalOrigin, physicalRadius))
+        {
+            physicalOrigin = World.ConstrainDisc(
+                physicalOrigin, physicalOrigin,
+                physicalRadius + physicalProjectionMargin);
+            var maximumRepair = MathF.Max(
+                0.25f, navigationRadius - physicalRadius + 0.25f);
+            if (!World.IsDiscFree(physicalOrigin, physicalRadius) ||
+                Vector2.DistanceSquared(start, physicalOrigin) >
+                maximumRepair * maximumRepair)
+            {
+                // Do not turn a genuinely embedded unit into an implicit
+                // teleport. Construction/production evacuation owns those
+                // larger corrections; this path only repairs surface drift.
+                return false;
+            }
+        }
+
+        if (World.IsDiscFree(physicalOrigin, navigationRadius))
+        {
+            escape = physicalOrigin;
+            return true;
+        }
+
+        var projected = World.ConstrainDisc(
+            physicalOrigin, physicalOrigin,
+            navigationRadius + navigationProjectionMargin);
+        if (NavigationEscapeCandidateIsValid(
+                physicalOrigin, projected,
+                physicalRadius, navigationRadius))
+        {
+            escape = projected;
+            return true;
+        }
+
+        // Terrain corners and overlapping footprints may not have a useful
+        // single projection. Search the smallest local ring and prefer the
+        // point that continues toward the requested destination.
+        var direction = goal - physicalOrigin;
+        var baseAngle = direction.LengthSquared() > 0.0001f
+            ? MathF.Atan2(direction.Y, direction.X)
+            : 0f;
+        const int directionCount = 32;
+        const float ringStep = 0.5f;
+        var maximumDistance = MathF.Max(8f, navigationRadius * 2f);
+        for (var distance = ringStep;
+             distance <= maximumDistance + 0.0001f;
+             distance += ringStep)
+        {
+            var best = default(Vector2);
+            var bestGoalDistance = float.PositiveInfinity;
+            var bestIndex = int.MaxValue;
+            for (var index = 0; index < directionCount; index++)
+            {
+                var angle = baseAngle + MathF.Tau * index / directionCount;
+                var candidate = physicalOrigin + new Vector2(
+                    MathF.Cos(angle), MathF.Sin(angle)) * distance;
+                if (!NavigationEscapeCandidateIsValid(
+                        physicalOrigin, candidate,
+                        physicalRadius, navigationRadius))
+                {
+                    continue;
+                }
+                var goalDistance = Vector2.DistanceSquared(candidate, goal);
+                if (goalDistance > bestGoalDistance ||
+                    goalDistance == bestGoalDistance && index >= bestIndex)
+                {
+                    continue;
+                }
+                best = candidate;
+                bestGoalDistance = goalDistance;
+                bestIndex = index;
+            }
+            if (float.IsFinite(bestGoalDistance))
+            {
+                escape = best;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool NavigationEscapeCandidateIsValid(
+        Vector2 physicalOrigin,
+        Vector2 candidate,
+        float physicalRadius,
+        float navigationRadius) =>
+        World.IsDiscFree(candidate, navigationRadius) &&
+        (Vector2.DistanceSquared(physicalOrigin, candidate) <= 0.0001f ||
+         World.IsSegmentFree(physicalOrigin, candidate, physicalRadius));
 
     private bool MovementGoalAcceptsPathEndpoint(
         int unit,
@@ -4075,6 +4315,32 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 return Vector2.DistanceSquared(endpoint, requestedPoint) <=
                        24f * 24f;
         }
+    }
+
+    private bool MovementGoalAcceptsNavigationEndpoint(
+        int unit,
+        Vector2 endpoint,
+        Vector2 requestedPoint)
+    {
+        if (Units.MovementGoalKinds[unit] is not
+            (UnitMovementGoalKind.ResourceBoundary or
+             UnitMovementGoalKind.DropOffBoundary))
+        {
+            return MovementGoalAcceptsPathEndpoint(
+                unit, endpoint, requestedPoint);
+        }
+
+        var bounds = Units.MovementGoalBounds[unit];
+        if (bounds.Width > 0f || bounds.Height > 0f)
+        {
+            return InteractionGeometry.DiscTouchesRectangle(
+                endpoint, Units.NavigationRadii[unit], bounds);
+        }
+        var center = bounds.Min;
+        var allowed = Units.NavigationRadii[unit] +
+                      Units.MovementGoalRadii[unit] +
+                      InteractionGeometry.NumericTolerance(endpoint, bounds);
+        return Vector2.DistanceSquared(endpoint, center) <= allowed * allowed;
     }
 
     private bool IsSurfaceInteractionGoal(int unit) =>
@@ -4501,6 +4767,51 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         return World.IsSegmentFree(position, path.Points[nextIndex], radius);
     }
 
+    private void SyncLinkedCombatObjects()
+    {
+        for (var index = 0; index < CombatObjects.Count; index++)
+        {
+            var id = new CombatObjectId(index);
+            var value = CombatObjects.Observe(id);
+            var resource = value.Profile.LinkedResourceNodeId;
+            if (resource < 0) continue;
+            if ((uint)resource >= (uint)Economy.ResourceNodeCount)
+                throw new InvalidOperationException(
+                    $"Combat object {index} links missing resource {resource}.");
+            var remaining = Economy.ResourceNodeRemaining(
+                new EconomyResourceNodeId(resource));
+            if (value.Health == remaining) continue;
+            CombatObjects.SetHealth(id, remaining);
+            if (value.Alive && remaining <= 0)
+                RemoveCombatObjectFootprint(value.Profile);
+        }
+    }
+
+    private void RemoveCombatObjectFootprint(
+        in CombatObjectProfile profile)
+    {
+        if (profile.LinkedDynamicFootprintId <= 0) return;
+        _issuingConstructionWorldMutation = true;
+        try
+        {
+            RemoveDynamicFootprint(
+                new DynamicFootprintId(profile.LinkedDynamicFootprintId));
+        }
+        finally
+        {
+            _issuingConstructionWorldMutation = false;
+        }
+    }
+
+    private CombatTargetLayer CombatTargetLayerForUnit(int unit)
+    {
+        if ((Abilities.UnitTraits(unit) & AbilityUnitTraits.Ward) != 0)
+            return CombatTargetLayer.Ward;
+        return Combat.TerrainVisionModes[unit] == TerrainVisionMode.Elevated
+            ? CombatTargetLayer.AirUnit
+            : CombatTargetLayer.GroundUnit;
+    }
+
     private void UpdateUnitFacings(float delta)
     {
         for (var unit = 0; unit < Units.Count; unit++)
@@ -4526,6 +4837,17 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                     {
                         var bounds = Construction.Observe(target).Bounds;
                         desired = (bounds.Min + bounds.Max) * 0.5f -
+                                  Units.Positions[unit];
+                    }
+                    break;
+                }
+                case CombatTargetKind.Object:
+                {
+                    var target = new CombatObjectId(
+                        Combat.TargetBuildings[unit]);
+                    if (CombatObjects.IsAlive(target))
+                    {
+                        desired = CombatObjects.Observe(target).Position -
                                   Units.Positions[unit];
                     }
                     break;
@@ -6041,6 +6363,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                     CommandQueues.ActiveTargetBuildings[unit])) ||
                 Units.MovementLegResults[unit] ==
                     UnitMovementLegResult.Unreachable,
+            UnitOrderKind.AttackObject =>
+                !CombatObjects.IsAlive(new CombatObjectId(
+                    CommandQueues.ActiveTargetResourceNodes[unit])) ||
+                Units.MovementLegResults[unit] ==
+                    UnitMovementLegResult.Unreachable,
             UnitOrderKind.GatherResource =>
                 IsGatherResourceOrderComplete(unit),
             UnitOrderKind.ReturnCargo =>
@@ -6755,6 +7082,93 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         ICombatMovementDriver.CombatBuildingOverview() =>
         Construction.CreateOverview();
 
+    bool ICombatMovementDriver.IsCombatObjectTargetValid(
+        int attacker,
+        CombatObjectId target)
+    {
+        if (!CombatObjects.IsAlive(target)) return false;
+        if (attacker < 0) return true;
+        if ((uint)attacker >= (uint)Units.Count || !Units.Alive[attacker])
+            return false;
+        var value = CombatObjects.Observe(target);
+        if (value.Profile.OwnerTeam >= 0 &&
+            !Diplomacy.IsEnemy(
+                Combat.Teams[attacker], value.Profile.OwnerTeam))
+            return false;
+        return Visibility.IsVisible(
+            Combat.Teams[attacker], value.Position);
+    }
+
+    CombatObjectSnapshot ICombatMovementDriver.CombatObject(
+        CombatObjectId target) => CombatObjects.Observe(target);
+
+    bool ICombatMovementDriver.TryResolveCombatObjectChaseTarget(
+        int attacker,
+        CombatObjectId target,
+        out Vector2 position)
+    {
+        position = default;
+        if (!CombatObjects.IsAlive(target)) return false;
+        var value = CombatObjects.Observe(target);
+        var approach = ConstructionAccessPointResolver.Resolve(
+            World,
+            _pathProvider,
+            value.Bounds,
+            Units.Positions[attacker],
+            Units.Radii[attacker],
+            Units.NavigationRadii[attacker],
+            Combat.AttackRanges[attacker]);
+        position = approach.Target;
+        return approach.Found;
+    }
+
+    CombatObjectDamageResult ICombatMovementDriver.DamageCombatObject(
+        CombatObjectId target,
+        CombatWeaponDamageSnapshot weapon)
+    {
+        if (!CombatObjects.IsAlive(target)) return default;
+        var value = CombatObjects.Observe(target);
+        if (value.Profile.LinkedResourceNodeId < 0)
+        {
+            var result = CombatObjects.ApplyDamage(target, weapon);
+            if (result.Destroyed)
+                RemoveCombatObjectFootprint(value.Profile);
+            return result;
+        }
+
+        var resolved = CombatDamageResolver.Resolve(
+            weapon,
+            new CombatDefenseSnapshot(
+                value.Profile.Armor,
+                value.Profile.Attributes,
+                value.Profile.ArmorType),
+            value.Health);
+        var requested = Math.Max(
+            1,
+            (int)MathF.Round(
+                resolved.TotalDamage,
+                MidpointRounding.AwayFromZero));
+        var applied = Economy.ApplyResourceNodeDamage(
+            new EconomyResourceNodeId(value.Profile.LinkedResourceNodeId),
+            requested);
+        var remaining = Economy.ResourceNodeRemaining(
+            new EconomyResourceNodeId(value.Profile.LinkedResourceNodeId));
+        CombatObjects.SetHealth(target, remaining);
+        if (remaining <= 0)
+            RemoveCombatObjectFootprint(value.Profile);
+        return new CombatObjectDamageResult(
+            applied > 0,
+            applied,
+            remaining,
+            resolved.DamagePerAttack,
+            resolved.AttacksApplied,
+            resolved.BonusApplied,
+            remaining <= 0);
+    }
+
+    CombatObjectSnapshot[] ICombatMovementDriver.CombatObjectOverview() =>
+        CombatObjects.CreateOverview();
+
     int ICombatMovementDriver.WeaponUpgradeLevel(int team) =>
         CombatWeaponUpgradeTechnologyId < 0
             ? 0
@@ -6800,15 +7214,22 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Units.SlotTargets[unit] = clamped;
         Units.MoveGoals[unit] = clamped;
         var targetKind = Combat.TargetKinds[unit];
-        var targetBounds = targetKind == CombatTargetKind.Building &&
-                           Construction.IsAlive(new GameplayBuildingId(
-                               Combat.TargetBuildings[unit]))
-            ? Construction.Observe(new GameplayBuildingId(
-                Combat.TargetBuildings[unit])).Bounds
-            : default;
+        var targetBounds = targetKind switch
+        {
+            CombatTargetKind.Building when Construction.IsAlive(
+                new GameplayBuildingId(Combat.TargetBuildings[unit])) =>
+                Construction.Observe(new GameplayBuildingId(
+                    Combat.TargetBuildings[unit])).Bounds,
+            CombatTargetKind.Object when CombatObjects.IsAlive(
+                new CombatObjectId(Combat.TargetBuildings[unit])) =>
+                CombatObjects.Observe(new CombatObjectId(
+                    Combat.TargetBuildings[unit])).Bounds,
+            _ => default
+        };
         var movementGoalKind = targetKind switch
         {
-            CombatTargetKind.Building => UnitMovementGoalKind.AttackRange,
+            CombatTargetKind.Building or CombatTargetKind.Object =>
+                UnitMovementGoalKind.AttackRange,
             CombatTargetKind.Unit => UnitMovementGoalKind.UnitBody,
             _ => UnitMovementGoalKind.GroundPoint
         };
@@ -6819,7 +7240,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             targetKind == CombatTargetKind.None
                 ? 0f
                 : Combat.AttackRanges[unit],
-            targetKind == CombatTargetKind.Building
+            targetKind is CombatTargetKind.Building or CombatTargetKind.Object
                 ? Combat.TargetBuildings[unit]
                 : targetKind == CombatTargetKind.Unit
                     ? Combat.TargetUnits[unit]
@@ -6937,21 +7358,49 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 state.TargetNode.Value >= 0)
             {
                 var node = Economy.ObserveResourceNode(state.TargetNode);
-                var approach = node.InteractionHalfExtents != Vector2.Zero
+                var navigationApproach = node.InteractionHalfExtents != Vector2.Zero
                     ? ConstructionAccessPointResolver.ResolveAvailableEndpoint(
                         World,
                         new SimRect(
                             node.Position - node.InteractionHalfExtents,
                             node.Position + node.InteractionHalfExtents),
                         Units.Positions[unit],
-                        Units.Radii[unit],
+                        Units.NavigationRadii[unit],
                         interactionPadding: 0f)
                     : ConstructionAccessPointResolver.ResolveAvailableCircleEndpoint(
                         World,
                         node.Position,
                         node.InteractionRadius,
                         Units.Positions[unit],
-                        Units.Radii[unit]);
+                        Units.NavigationRadii[unit]);
+                var approach = navigationApproach;
+                var surfaceEntryDistance = MathF.Max(
+                    1f,
+                    Units.NavigationRadii[unit] - Units.Radii[unit] + 0.5f);
+                if (navigationApproach.Found &&
+                    Vector2.DistanceSquared(
+                        Units.Positions[unit], navigationApproach.Target) <=
+                    surfaceEntryDistance * surfaceEntryDistance)
+                {
+                    // The ordinary route ends at navigation clearance. The
+                    // final sub-leg deliberately uses the physical body radius
+                    // so gathering still begins only at real geometry contact.
+                    approach = node.InteractionHalfExtents != Vector2.Zero
+                        ? ConstructionAccessPointResolver.ResolveAvailableEndpoint(
+                            World,
+                            new SimRect(
+                                node.Position - node.InteractionHalfExtents,
+                                node.Position + node.InteractionHalfExtents),
+                            Units.Positions[unit],
+                            Units.Radii[unit],
+                            interactionPadding: 0f)
+                        : ConstructionAccessPointResolver.ResolveAvailableCircleEndpoint(
+                            World,
+                            node.Position,
+                            node.InteractionRadius,
+                            Units.Positions[unit],
+                            Units.Radii[unit]);
+                }
                 goalKind = UnitMovementGoalKind.ResourceBoundary;
                 goalBounds = node.InteractionHalfExtents != Vector2.Zero
                     ? new SimRect(
@@ -6982,13 +7431,34 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 var excludedTarget = retryDropOff >= 0
                     ? Units.MoveGoals[unit]
                     : (Vector2?)null;
-                var approach = ResolveReachableDropOff(
+                var navigationApproach = ResolveReachableDropOff(
                     state.PlayerId,
                     state.CargoKind,
                     Units.Positions[unit],
-                    Units.Radii[unit],
+                    Units.NavigationRadii[unit],
                     retryDropOff,
                     excludedTarget);
+                var approach = navigationApproach;
+                var surfaceEntryDistance = MathF.Max(
+                    1f,
+                    Units.NavigationRadii[unit] - Units.Radii[unit] + 0.5f);
+                if (navigationApproach.Found &&
+                    Vector2.DistanceSquared(
+                        Units.Positions[unit], navigationApproach.Target) <=
+                    surfaceEntryDistance * surfaceEntryDistance)
+                {
+                    // Keep ordinary pathfinding outside the building's
+                    // navigation clearance. Only the final short sub-leg uses
+                    // the physical body radius so delivery still requires real
+                    // contact with the drop-off geometry.
+                    approach = ResolveReachableDropOff(
+                        state.PlayerId,
+                        state.CargoKind,
+                        Units.Positions[unit],
+                        Units.Radii[unit],
+                        navigationApproach.Id.Value,
+                        excludedTarget: null);
+                }
                 goalKind = UnitMovementGoalKind.DropOffBoundary;
                 goalBounds = approach.Found
                     ? approach.HalfExtents != Vector2.Zero
@@ -7041,7 +7511,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     {
         var candidates = Economy.CreateDropOffApproaches(
             playerId, kind, origin, unitRadius);
-        var best = new EconomyDropOffApproachSnapshot(
+        var missing = new EconomyDropOffApproachSnapshot(
             new EconomyDropOffId(-1),
             default,
             default,
@@ -7049,55 +7519,63 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             0f,
             default,
             float.PositiveInfinity);
-        for (var index = 0; index < candidates.Length; index++)
+        Span<bool> tried = candidates.Length <= 64
+            ? stackalloc bool[candidates.Length]
+            : new bool[candidates.Length];
+        for (var attempt = 0; attempt < candidates.Length; attempt++)
         {
-            var candidate = candidates[index];
-            if (candidate.Id.Value == preferredDropOff)
+            var selected = -1;
+            for (var index = 0; index < candidates.Length; index++)
             {
-                best = candidate;
-                break;
+                if (tried[index]) continue;
+                if (selected < 0 ||
+                    DropOffCandidatePrecedes(
+                        candidates[index], candidates[selected],
+                        preferredDropOff))
+                {
+                    selected = index;
+                }
             }
-            if (candidate.DistanceSquared > best.DistanceSquared ||
-                candidate.DistanceSquared == best.DistanceSquared &&
-                candidate.Id.Value >= best.Id.Value)
-                continue;
-            best = candidate;
+            if (selected < 0) break;
+            tried[selected] = true;
+            var candidate = candidates[selected];
+            var endpoint = candidate.HalfExtents != Vector2.Zero
+                ? ConstructionAccessPointResolver.ResolveAvailableEndpoint(
+                    World,
+                    new SimRect(
+                        candidate.Center - candidate.HalfExtents,
+                        candidate.Center + candidate.HalfExtents),
+                    origin,
+                    unitRadius,
+                    excludedTarget: excludedTarget)
+                : ConstructionAccessPointResolver.ResolveAvailableCircleEndpoint(
+                    World,
+                    candidate.Center,
+                    candidate.InteractionRadius,
+                    origin,
+                    unitRadius,
+                    excludedTarget);
+            if (endpoint.Found)
+                return candidate with { Target = endpoint.Target };
         }
-        if (!best.Found)
-            return best;
-        var endpoint = best.HalfExtents != Vector2.Zero
-            ? ConstructionAccessPointResolver.ResolveAvailableEndpoint(
-                World,
-                new SimRect(
-                    best.Center - best.HalfExtents,
-                    best.Center + best.HalfExtents),
-                origin,
-                unitRadius,
-                excludedTarget: excludedTarget)
-            : ConstructionAccessPointResolver.ResolveAvailableCircleEndpoint(
-                World,
-                best.Center,
-                best.InteractionRadius,
-                origin,
-                unitRadius,
-                excludedTarget);
-        if (endpoint.Found)
-            return best with { Target = endpoint.Target };
+        // Returning an obstructed projection here used to turn one invalid
+        // boundary point into an endless path-failure/reissue loop. No endpoint
+        // is preferable: the worker waits for a genuinely reachable drop-off.
+        return missing;
+    }
 
-        if (best.HalfExtents != Vector2.Zero)
-        {
-            var bounds = new SimRect(
-                best.Center - best.HalfExtents,
-                best.Center + best.HalfExtents);
-            var clearance = unitRadius +
-                InteractionGeometry.NumericTolerance(origin, bounds) * 0.25f;
-            return best with
-            {
-                Target = ConstructionAccessPointResolver.ProjectFromCenter(
-                    bounds, origin, clearance)
-            };
-        }
-        return best;
+    private static bool DropOffCandidatePrecedes(
+        EconomyDropOffApproachSnapshot candidate,
+        EconomyDropOffApproachSnapshot current,
+        int preferredDropOff)
+    {
+        var candidatePriority = candidate.Id.Value == preferredDropOff ? 0 : 1;
+        var currentPriority = current.Id.Value == preferredDropOff ? 0 : 1;
+        return candidatePriority < currentPriority ||
+               candidatePriority == currentPriority &&
+               (candidate.DistanceSquared < current.DistanceSquared ||
+                candidate.DistanceSquared == current.DistanceSquared &&
+                candidate.Id.Value < current.Id.Value);
     }
 
     private void StopEconomyWorker(int unit)

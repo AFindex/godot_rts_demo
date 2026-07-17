@@ -512,7 +512,7 @@ public readonly record struct BuildingAbilityBindingProfile(
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 16;
+    public const int CurrentFormatVersion = 17;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
     private readonly Dictionary<int, BuildingAbilityBindingProfile>

@@ -25,7 +25,8 @@ public enum CombatTargetKind : byte
 {
     None,
     Unit,
-    Building
+    Building,
+    Object
 }
 
 [Flags]
@@ -35,7 +36,12 @@ public enum CombatTargetLayer : byte
     GroundUnit = 1 << 0,
     AirUnit = 1 << 1,
     Building = 1 << 2,
-    All = GroundUnit | AirUnit | Building
+    Tree = 1 << 3,
+    Debris = 1 << 4,
+    Item = 1 << 5,
+    Wall = 1 << 6,
+    Ward = 1 << 7,
+    All = GroundUnit | AirUnit | Building | Tree | Debris | Item | Wall | Ward
 }
 
 public enum CombatPositioningKind : byte
@@ -759,7 +765,8 @@ public sealed class CombatStore
         UnitCommandIntent intent,
         Vector2 goal,
         int targetUnit = -1,
-        int targetBuilding = -1)
+        int targetBuilding = -1,
+        int targetObject = -1)
     {
         CommandIntents[unit] = intent;
         Phases[unit] = intent is UnitCommandIntent.AttackMove or
@@ -772,14 +779,16 @@ public sealed class CombatStore
             ? targetUnit
             : -1;
         TargetBuildings[unit] = intent == UnitCommandIntent.AttackTarget
-            && targetBuilding >= 0
-            ? targetBuilding
+            && (targetBuilding >= 0 || targetObject >= 0)
+            ? targetBuilding >= 0 ? targetBuilding : targetObject
             : -1;
         TargetKinds[unit] = TargetUnits[unit] >= 0
             ? CombatTargetKind.Unit
-            : TargetBuildings[unit] >= 0
-                ? CombatTargetKind.Building
-                : CombatTargetKind.None;
+            : targetObject >= 0
+                ? CombatTargetKind.Object
+                : TargetBuildings[unit] >= 0
+                    ? CombatTargetKind.Building
+                    : CombatTargetKind.None;
         HasAttackSlots[unit] = false;
         WindupRemaining[unit] = 0f;
         ChaseRepathRemaining[unit] = 0f;

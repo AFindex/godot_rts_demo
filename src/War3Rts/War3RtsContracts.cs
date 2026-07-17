@@ -18,9 +18,21 @@ public enum War3CommandKind : byte
     Rally,
     Ability,
     BuildingAbility,
+    OpenLearnMenu,
     LearnAbility,
     Cancel,
     Upgrade
+}
+
+public enum War3CommandVisualState : byte
+{
+    Ready,
+    Unavailable,
+    Queued,
+    Completed,
+    Active,
+    Passive,
+    Learn
 }
 
 public enum War3CommandFeedbackKind : byte
@@ -40,7 +52,9 @@ public readonly record struct War3CommandSnapshot(
     bool Enabled = true,
     float CooldownRemaining = 0f,
     float ManaCost = 0f,
-    bool Toggled = false);
+    bool Toggled = false,
+    War3CommandVisualState State = War3CommandVisualState.Ready,
+    string Badge = "");
 
 public enum War3QueueItemKind : byte
 {
@@ -91,6 +105,11 @@ public sealed record War3SelectionSnapshot(
     public int ActiveWeaponSlot { get; init; } = -1;
     public int WeaponCount { get; init; }
     public string WeaponTargetLabel { get; init; } = string.Empty;
+    public string AttackIconPath { get; init; } = string.Empty;
+    public string ArmorIconPath { get; init; } = string.Empty;
+    public bool IsHero { get; init; }
+    public bool SupportsInventory { get; init; }
+    public int InventorySlotCount { get; init; }
 
     public static War3SelectionSnapshot Empty { get; } = new(
         "未选择单位", "左键选择，拖动框选", 0f, 0f,
@@ -122,10 +141,17 @@ public sealed record War3HudSnapshot(
     string Mode,
     string Status)
 {
+    public SimRect CameraViewBounds { get; init; }
+    public bool MinimapSignalMode { get; init; }
+
     public static War3HudSnapshot Empty { get; } = new(
         0, 0, 0, 0, 0d, War3SelectionSnapshot.Empty, [], [], [],
         new SimRect(System.Numerics.Vector2.Zero, System.Numerics.Vector2.One),
-        "普通选择", "正在载入人族对战…");
+        "普通选择", "正在载入人族对战…")
+    {
+        CameraViewBounds = new SimRect(
+            System.Numerics.Vector2.Zero, System.Numerics.Vector2.One)
+    };
 }
 
 internal static class War3PointerTargeting

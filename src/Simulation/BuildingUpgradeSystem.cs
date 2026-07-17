@@ -24,7 +24,8 @@ public sealed class BuildingUpgradeCatalogSnapshot
 {
     public const int CurrentFormatVersion = 2;
     private readonly BuildingUpgradeProfile[] _profiles;
-    private readonly Dictionary<int, BuildingUpgradeProfile> _bySource;
+    private readonly Dictionary<int, BuildingUpgradeProfile[]> _bySource;
+    private readonly Dictionary<int, BuildingUpgradeProfile> _byId;
     private readonly Dictionary<int, int> _parentByTarget;
 
     private BuildingUpgradeCatalogSnapshot(
@@ -33,7 +34,12 @@ public sealed class BuildingUpgradeCatalogSnapshot
     {
         FormatVersion = formatVersion;
         _profiles = profiles;
-        _bySource = profiles.ToDictionary(value => value.SourceBuildingTypeId);
+        _bySource = profiles
+            .GroupBy(value => value.SourceBuildingTypeId)
+            .ToDictionary(
+                value => value.Key,
+                value => value.OrderBy(profile => profile.Id).ToArray());
+        _byId = profiles.ToDictionary(value => value.Id);
         _parentByTarget = profiles.ToDictionary(
             value => value.TargetType.Id,
             value => value.SourceBuildingTypeId);
@@ -49,8 +55,24 @@ public sealed class BuildingUpgradeCatalogSnapshot
 
     public bool TryForSource(
         int sourceBuildingTypeId,
-        out BuildingUpgradeProfile profile) =>
-        _bySource.TryGetValue(sourceBuildingTypeId, out profile);
+        out BuildingUpgradeProfile profile)
+    {
+        profile = default;
+        if (!_bySource.TryGetValue(sourceBuildingTypeId, out var profiles) ||
+            profiles.Length == 0)
+            return false;
+        profile = profiles[0];
+        return true;
+    }
+
+    public ReadOnlySpan<BuildingUpgradeProfile> ForSource(
+        int sourceBuildingTypeId) =>
+        _bySource.TryGetValue(sourceBuildingTypeId, out var profiles)
+            ? profiles
+            : [];
+
+    public bool TryGet(int profileId, out BuildingUpgradeProfile profile) =>
+        _byId.TryGetValue(profileId, out profile);
 
     /// <summary>
     /// Upgraded buildings retain the production/research capabilities of
@@ -87,34 +109,40 @@ public sealed class BuildingUpgradeCatalogSnapshot
         }
         var copy = profiles.ToArray();
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var sources = new HashSet<int>();
         var targets = new HashSet<int>();
         for (var index = 0; index < copy.Length; index++)
         {
             var value = copy[index];
             if (value.Id != index || !ValidProfile(value) ||
                 !names.Add(value.Name) ||
-                !sources.Add(value.SourceBuildingTypeId) ||
                 !targets.Add(value.TargetType.Id))
             {
                 error = $"Building upgrade {index} is invalid or duplicated.";
                 return false;
             }
         }
-        var sourceToTarget = copy.ToDictionary(
-            value => value.SourceBuildingTypeId,
-            value => value.TargetType.Id);
-        foreach (var source in sourceToTarget.Keys)
+        var sourceToTargets = copy
+            .GroupBy(value => value.SourceBuildingTypeId)
+            .ToDictionary(
+                value => value.Key,
+                value => value.Select(profile => profile.TargetType.Id).ToArray());
+        foreach (var source in sourceToTargets.Keys)
         {
-            var cursor = source;
-            var visited = new HashSet<int>();
-            while (sourceToTarget.TryGetValue(cursor, out cursor))
+            var visiting = new HashSet<int>();
+            if (HasCycle(source))
             {
-                if (!visited.Add(cursor))
-                {
-                    error = "Building upgrade catalog contains a cycle.";
-                    return false;
-                }
+                error = "Building upgrade catalog contains a cycle.";
+                return false;
+            }
+
+            bool HasCycle(int cursor)
+            {
+                if (!visiting.Add(cursor)) return true;
+                if (sourceToTargets.TryGetValue(cursor, out var next))
+                    foreach (var target in next)
+                        if (HasCycle(target)) return true;
+                visiting.Remove(cursor);
+                return false;
             }
         }
         snapshot = new BuildingUpgradeCatalogSnapshot(formatVersion, copy);
@@ -324,7 +352,7 @@ public sealed class BuildingUpgradeSystem
         if (!economy.IsRegistered(playerId))
             return Failure(BuildingUpgradeCommandCode.InvalidPlayer);
         if (!BuildingUpgradeCatalogSnapshot.ValidProfile(profile) ||
-            !_catalog.TryForSource(profile.SourceBuildingTypeId, out var canonical) ||
+            !_catalog.TryGet(profile.Id, out var canonical) ||
             !BuildingUpgradeCatalogSnapshot.ProfileEquals(profile, canonical))
             return Failure(BuildingUpgradeCommandCode.InvalidProfile);
         if (!construction.IsAlive(building))
@@ -496,8 +524,7 @@ public sealed class BuildingUpgradeSystem
                     BuildingLifecycleState.Completed ||
                 construction.Observe(value.Building).Type.Id !=
                     value.Profile.SourceBuildingTypeId ||
-                !_catalog.TryForSource(
-                    value.Profile.SourceBuildingTypeId, out var canonical) ||
+                !_catalog.TryGet(value.Profile.Id, out var canonical) ||
                 !BuildingUpgradeCatalogSnapshot.ProfileEquals(
                     value.Profile, canonical) ||
                 !float.IsFinite(value.Progress) ||

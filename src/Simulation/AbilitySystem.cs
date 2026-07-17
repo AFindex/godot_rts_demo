@@ -391,6 +391,11 @@ public sealed class AbilitySystem
     public int ActiveUnitFormCount => _unitForms.Count;
     public int ActiveBuildingToggleCount => _buildingToggles.Count;
 
+    internal AbilityUnitTraits UnitTraits(int unit) =>
+        (uint)unit < (uint)_traits.Length
+            ? _traits[unit]
+            : AbilityUnitTraits.None;
+
     public void ConfigureCatalog(AbilityCatalogSnapshot catalog, int unitCount = 0)
     {
         ArgumentNullException.ThrowIfNull(catalog);

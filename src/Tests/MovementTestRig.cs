@@ -1351,6 +1351,7 @@ public readonly record struct TestUnitSnapshot(
     Vector2 Velocity,
     Vector2 AssignedTarget,
     float Radius,
+    float NavigationRadius,
     TestUnitState State);
 
 public readonly record struct TestMovementSnapshot(
@@ -3093,6 +3094,7 @@ public sealed partial class MovementTestRig
             source.Units.ToArray(),
             source.Buildings.ToArray(),
             source.Economy,
+            source.CombatObjects,
             source.Diplomacy,
             source.Construction,
             source.BuildingUpgrades,
@@ -3254,6 +3256,7 @@ public sealed partial class MovementTestRig
             source.Units.ToArray(),
             source.Buildings.ToArray(),
             source.Economy,
+            source.CombatObjects,
             source.Diplomacy,
             source.Construction,
             source.BuildingUpgrades,
@@ -3351,6 +3354,7 @@ public sealed partial class MovementTestRig
             _simulation.Units.Velocities[index],
             _simulation.Units.SlotTargets[index],
             _simulation.Units.Radii[index],
+            _simulation.Units.NavigationRadii[index],
             ToTestState(_simulation.Units.Modes[index]));
     }
 

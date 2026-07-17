@@ -200,8 +200,10 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
         var snapshot = GetConnectivitySnapshot(clearance);
         var edgeValidation = GetEdgeValidationCache(clearance, snapshot);
         var searchStart = Stopwatch.GetTimestamp();
-        var startNode = FindNearestFreeNode(start, snapshot);
-        var goalNode = FindNearestFreeNode(goal, snapshot);
+        var startNode = FindNearestFreeNode(
+            start, snapshot, navigationRadius);
+        var goalNode = FindNearestFreeNode(
+            goal, snapshot, navigationRadius);
         if (startNode < 0 || goalNode < 0 ||
             snapshot.ComponentAt(startNode) != snapshot.ComponentAt(goalNode))
         {
@@ -381,7 +383,8 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
 
     private int FindNearestFreeNode(
         Vector2 point,
-        NavigationConnectivitySnapshot snapshot)
+        NavigationConnectivitySnapshot snapshot,
+        float navigationRadius)
     {
         var baseColumn = Math.Clamp(
             (int)MathF.Floor(
@@ -393,8 +396,12 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
                 (point.Y - snapshot.WorldBounds.Min.Y) / snapshot.CellSize),
             0,
             snapshot.Rows - 1);
+        var requiresDirectConnection =
+            _world.IsDiscFree(point, navigationRadius);
         for (var ring = 0; ring <= 4; ring++)
         {
+            var bestNode = -1;
+            var bestDistanceSquared = float.PositiveInfinity;
             for (var row = baseRow - ring; row <= baseRow + ring; row++)
             {
                 for (var column = baseColumn - ring; column <= baseColumn + ring; column++)
@@ -408,11 +415,35 @@ public sealed class GridPathProvider : IPathProvider, IClearanceBakeReloadTarget
                     }
 
                     var node = row * snapshot.Columns + column;
-                    if (IsNodeFree(snapshot, node))
+                    if (!IsNodeFree(snapshot, node))
                     {
-                        return node;
+                        continue;
                     }
+                    var center = snapshot.CellCenter(node);
+                    if (requiresDirectConnection &&
+                        !_world.IsSegmentFree(
+                            point, center, navigationRadius))
+                    {
+                        // A free cell on the opposite side of a nearby wall is
+                        // not a valid endpoint anchor. Returning it makes A*
+                        // produce a valid grid route with an impossible first
+                        // or final segment.
+                        continue;
+                    }
+                    var distanceSquared = Vector2.DistanceSquared(point, center);
+                    if (distanceSquared > bestDistanceSquared ||
+                        distanceSquared == bestDistanceSquared &&
+                        node >= bestNode)
+                    {
+                        continue;
+                    }
+                    bestNode = node;
+                    bestDistanceSquared = distanceSquared;
                 }
+            }
+            if (bestNode >= 0)
+            {
+                return bestNode;
             }
         }
 

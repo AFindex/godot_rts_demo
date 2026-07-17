@@ -147,13 +147,34 @@ public sealed class War3WorldAudioController
         if (!_catalog.TryGetUnitBinding(attackerObjectId, out var attacker) ||
             !_catalog.TryGetUnitBinding(targetObjectId, out var target))
             return false;
+        return PlayImpactMaterial(
+            attackerObjectId,
+            target.ArmorMaterial,
+            sourcePlayerId,
+            worldPosition,
+            emitterId,
+            eventSequence,
+            weaponSlot);
+    }
+
+    public bool PlayImpactMaterial(
+        string attackerObjectId,
+        string armorMaterial,
+        int sourcePlayerId,
+        Vector2 worldPosition,
+        int emitterId,
+        ulong eventSequence,
+        int weaponSlot = 0)
+    {
+        if (!_catalog.TryGetUnitBinding(attackerObjectId, out var attacker))
+            return false;
         var weapon = attacker.Weapons.FirstOrDefault(value =>
             value.Slot == weaponSlot);
         if (weapon is null || string.IsNullOrWhiteSpace(weapon.ImpactPrefix) ||
-            string.IsNullOrWhiteSpace(target.ArmorMaterial))
+            string.IsNullOrWhiteSpace(armorMaterial))
             return false;
         return Play(
-            weapon.ImpactPrefix + target.ArmorMaterial,
+            weapon.ImpactPrefix + armorMaterial,
             War3AudioSemantic.Impact,
             sourcePlayerId,
             worldPosition,

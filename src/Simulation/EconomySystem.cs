@@ -599,6 +599,20 @@ public sealed class EconomySystem
 
     public Vector2 ResourceNodePosition(EconomyResourceNodeId id) => Node(id).Position;
 
+    public int ResourceNodeRemaining(EconomyResourceNodeId id) =>
+        Node(id).Remaining;
+
+    internal int ApplyResourceNodeDamage(
+        EconomyResourceNodeId id,
+        int damage)
+    {
+        if (damage <= 0) throw new ArgumentOutOfRangeException(nameof(damage));
+        var node = Node(id);
+        var applied = Math.Min(node.Remaining, damage);
+        node.Remaining -= applied;
+        return applied;
+    }
+
     public bool IsDiscClearOfResources(
         Vector2 center,
         float radius,
@@ -1530,7 +1544,14 @@ public sealed class EconomySystem
                 allowReassignment: true);
             return;
         }
-        if (units.MovementLegResults[unit] is
+        if (units.MovementLegResults[unit] == UnitMovementLegResult.Reached)
+        {
+            // Navigation clearance stops just outside physical contact. Ask
+            // the movement layer for the short surface-entry leg once the
+            // worker reaches that staging point.
+            moveWorker(unit, node.Position);
+        }
+        else if (units.MovementLegResults[unit] is
                 UnitMovementLegResult.Unreachable or
                 UnitMovementLegResult.SettledShort)
             TransitionWorker(unit, WorkerEconomyState.Idle, -1);
@@ -1758,6 +1779,7 @@ public sealed class EconomySystem
                 Vector2.DistanceSquared(
                     units.MoveGoals[unit], approach.Target) > 16f * 16f ||
                 units.MovementLegResults[unit] is
+                    UnitMovementLegResult.Reached or
                     UnitMovementLegResult.Unreachable or
                     UnitMovementLegResult.SettledShort)
             {
