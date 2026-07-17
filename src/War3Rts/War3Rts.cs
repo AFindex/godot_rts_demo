@@ -57,6 +57,7 @@ public sealed partial class War3Rts : Node3D
     private bool _pcgCapture;
     private bool _offlineBakeRequested;
     private War3RuntimeProfiler? _runtimeProfiler;
+    private War3StressTestMode? _stressTest;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
@@ -75,6 +76,7 @@ public sealed partial class War3Rts : Node3D
         _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
         _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
         _runtimeProfiler = War3RuntimeProfiler.TryCreate(arguments);
+        _stressTest = War3StressTestMode.TryCreate(arguments);
         if (arguments.Contains("--war3-audio-smoke"))
         {
             RunAudioSmoke();
@@ -87,7 +89,7 @@ public sealed partial class War3Rts : Node3D
             .FirstOrDefault(value => value.StartsWith(
                 "--war3-map=", StringComparison.OrdinalIgnoreCase))?
             .Split('=', 2)[1];
-        if (_smoke || _capture || _offlineBakeRequested ||
+        if (_smoke || _capture || _offlineBakeRequested || _stressTest is not null ||
             !string.IsNullOrWhiteSpace(requestedId))
         {
             var id = string.IsNullOrWhiteSpace(requestedId)
@@ -274,6 +276,8 @@ public sealed partial class War3Rts : Node3D
         };
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
+        _simulation.DetailedProfilingEnabled =
+            _runtimeProfiler is not null || _stressTest is not null;
         CreateHud();
         InitializeAudio();
         ApplyRuntimeProfileVariant();
@@ -320,6 +324,16 @@ public sealed partial class War3Rts : Node3D
             // gather-and-return cycle at the data-driven movement speed.
             _smokeEndTick = _simulation.Metrics.Tick + 900;
             _status = "自动回归：验证采集、AI、动画、肖像与特效";
+        }
+        if (_stressTest is not null)
+        {
+            _stressTest.Initialize(
+                _simulation, _production, _buildings, _runtime);
+            _selectedUnits.Clear();
+            _selectedBuildings.Clear();
+            RefreshSelection();
+            _cameraController!.FocusAt(_stressTest.FocusPoint, immediate: true);
+            _status = "War3 压测：自动战斗、补兵、免费建造与定时自毁";
         }
         if (_capture) _ = CaptureAsync();
         UpdateHud();
@@ -570,6 +584,8 @@ public sealed partial class War3Rts : Node3D
         var profileStart = System.Diagnostics.Stopwatch.GetTimestamp();
         var allocationStart = GC.GetAllocatedBytesForCurrentThread();
         var frame = (float)Math.Min(delta, 0.05d);
+        _stressTest?.Update();
+        var stressEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         _runtime.AiDirector.Update(_simulation.Metrics.Tick);
         var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         _simulation.Tick(frame);
@@ -589,12 +605,14 @@ public sealed partial class War3Rts : Node3D
         var profileEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         _runtimeProfiler?.RecordPhysics(
             ElapsedMilliseconds(profileStart, profileEnd),
-            ElapsedMilliseconds(profileStart, aiEnd),
+            ElapsedMilliseconds(profileStart, stressEnd),
+            ElapsedMilliseconds(stressEnd, aiEnd),
             ElapsedMilliseconds(aiEnd, simulationEnd),
             ElapsedMilliseconds(simulationEnd, profileEnd),
             GC.GetAllocatedBytesForCurrentThread() - allocationStart,
             _simulation.Metrics,
-            _runtime.AiDirector.LastUpdateProfile);
+            _runtime.AiDirector.LastUpdateProfile,
+            _stressTest?.LastUpdateProfile ?? default);
     }
 
     public override void _Process(double delta)
@@ -611,7 +629,10 @@ public sealed partial class War3Rts : Node3D
                 ElapsedMilliseconds(previewStart, presenterStart),
                 GC.GetAllocatedBytesForCurrentThread() - allocationStart,
                 _presenter?.LastSyncProfile ?? default) == true)
+        {
+            _stressTest?.PrintSummary();
             GetTree().Quit(0);
+        }
     }
 
     private static double ElapsedMilliseconds(long start, long end) =>
@@ -778,14 +799,14 @@ public sealed partial class War3Rts : Node3D
             var result = _simulation.IssuePlayerMove(
                 War3HumanScenario.PlayerId, SelectedUnits(), point, queued);
             Report(result.Succeeded ? "已下达移动命令" : $"移动失败：{result.Code}");
-            if (result.Succeeded) PlayCommandAudio(attack: false);
+            if (result.Succeeded) PlayCommandAudio(attack: false, queued);
         }
         else if (_attackMovePending)
         {
             var result = _simulation.IssuePlayerAttackMove(
                 War3HumanScenario.PlayerId, SelectedUnits(), point, queued);
             Report(result.Succeeded ? "已下达攻击移动" : $"攻击移动失败：{result.Code}");
-            if (result.Succeeded) PlayCommandAudio(attack: true);
+            if (result.Succeeded) PlayCommandAudio(attack: true, queued);
         }
         else if (_rallyPending)
         {
@@ -840,7 +861,7 @@ public sealed partial class War3Rts : Node3D
         {
             var attack = target.Kind is SmartCommandTargetKind.EnemyUnit or
                 SmartCommandTargetKind.EnemyBuilding;
-            PlayCommandAudio(attack);
+            PlayCommandAudio(attack, queued);
         }
     }
 
@@ -912,6 +933,10 @@ public sealed partial class War3Rts : Node3D
         Report(result.Succeeded
             ? $"开始建造 {profile.Name}"
             : $"建造失败：{result.Code}/{result.PlacementCode}");
+        if (result.Succeeded)
+            _worldAudio?.PlayBuildingPlaced(War3HumanScenario.PlayerId);
+        else
+            _worldAudio?.PlayInterfaceError();
         if (result.Succeeded && !queued) CancelMode();
     }
 

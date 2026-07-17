@@ -4718,11 +4718,13 @@ public static partial class VisualTestCatalog
         var rejected = rig.TryPlaceBuilding(
             new Vector2(400f, 250f),
             TestBuildingFootprintClass.Large,
-            TestMovementClass.Large);
+            TestMovementClass.Large,
+            preserveConnectivity: true);
         var accepted = rig.TryPlaceBuilding(
             new Vector2(650f, 100f),
             TestBuildingFootprintClass.Small,
-            TestMovementClass.Large);
+            TestMovementClass.Large,
+            preserveConnectivity: true);
         var units = rig.SpawnGrid(
             new Vector2(100f, 225f), 2, 4, 18f, 7.5f);
         rig.Move(units, new Vector2(680f, 250f));
@@ -7221,10 +7223,28 @@ public static partial class VisualTestCatalog
             acceleration: 1600f,
             perception: new TestPerceptionProfile(
                 TestUnitConcealmentKind.None, 110f));
+        var interruptedBurrower = rig.SpawnCombat(
+            new Vector2(1080f, 150f), 2, harmless,
+            concealmentCapability: TestConcealmentCapability.StandardBurrow);
+        var interrupter = rig.SpawnCombat(
+            new Vector2(850f, 150f), 1,
+            TestCombatProfile.Standard with
+            {
+                AttackDamage = 1_000f,
+                AttackRange = 96f,
+                AcquisitionRange = 100f,
+                AttackWindupSeconds = 0.1f
+            },
+            maximumSpeed: 600f,
+            acceleration: 3_000f,
+            perception: new TestPerceptionProfile(
+                TestUnitConcealmentKind.None,
+                DetectionRange: 0f,
+                VisionRange: 500f));
         rig.StartReplayPackageRecording();
         rig.Hold(
             [burrower, queuedBurrower, contactBurrower, passer, sightProbe,
-                detector]);
+                detector, interruptedBurrower]);
 
         var visibleBefore = false;
         var activatingExposed = false;
@@ -7247,7 +7267,8 @@ public static partial class VisualTestCatalog
             "Active Burrow lifecycle, detection and queued orders",
             480,
             rig,
-            [burrower, queuedBurrower, contactBurrower, passer, sightProbe, detector],
+            [burrower, queuedBurrower, contactBurrower, passer, sightProbe,
+                detector, interruptedBurrower, interrupter],
             runtime =>
             {
                 var final = runtime.ObserveConcealment(burrower);
@@ -7265,6 +7286,44 @@ public static partial class VisualTestCatalog
                     package, decodedHot!, runtime.Tick);
                 var exact = replay.FinalHash == runtime.StateHash &&
                             resumed.FinalHash == runtime.StateHash;
+                var abilityEvents = runtime.ObserveAbilityEvents().Events
+                    .Where(value => value.Caster == burrower)
+                    .ToArray();
+                var abilityLifecycle =
+                    abilityEvents.Any(value =>
+                        value.AbilityId == "active-concealment" &&
+                        value.Kind == AbilityEventKind.Started) &&
+                    abilityEvents.Any(value =>
+                        value.AbilityId == "active-concealment" &&
+                        value.Kind == AbilityEventKind.Impact) &&
+                    abilityEvents.Any(value =>
+                        value.AbilityId == "active-concealment" &&
+                        value.Kind == AbilityEventKind.Ended &&
+                        value.EndReason == AbilityEndReason.Completed) &&
+                    abilityEvents.Any(value =>
+                        value.AbilityId == "active-reveal" &&
+                        value.Kind == AbilityEventKind.Started) &&
+                    abilityEvents.Any(value =>
+                        value.AbilityId == "active-reveal" &&
+                        value.Kind == AbilityEventKind.Impact) &&
+                    abilityEvents.Any(value =>
+                        value.AbilityId == "active-reveal" &&
+                        value.Kind == AbilityEventKind.Ended &&
+                        value.EndReason == AbilityEndReason.Completed);
+                var interruptedEvents = runtime.ObserveAbilityEvents().Events
+                    .Where(value => value.Caster == interruptedBurrower)
+                    .ToArray();
+                var interruptLifecycle =
+                    interruptedEvents.Any(value =>
+                        value.AbilityId == "active-concealment" &&
+                        value.Kind == AbilityEventKind.Started) &&
+                    interruptedEvents.Any(value =>
+                        value.AbilityId == "active-concealment" &&
+                        value.Kind == AbilityEventKind.Interrupted &&
+                        value.EndReason == AbilityEndReason.CasterDied) &&
+                    interruptedEvents.All(value =>
+                        value.Kind is not AbilityEventKind.Impact and
+                            not AbilityEventKind.Ended);
                 var passed = visibleBefore && activatingExposed &&
                              invalidToggleRejected &&
                              hotCapturedDuringTransition &&
@@ -7277,7 +7336,8 @@ public static partial class VisualTestCatalog
                              queuedFinal.Phase ==
                                  TestUnitConcealmentPhase.Visible &&
                              Vector2.Distance(
-                                 moved, new Vector2(800f, 300f)) > 20f &&
+                             moved, new Vector2(800f, 300f)) > 20f &&
+                             abilityLifecycle && interruptLifecycle &&
                              packageRoundTrip && hotRoundTrip &&
                              exact && package.FormatVersion ==
                                  SimulationReplayPackageSnapshot.CurrentFormatVersion &&
@@ -7296,6 +7356,10 @@ public static partial class VisualTestCatalog
                     $"unit={finalUnit.State}/{finalUnit.AssignedTarget}, " +
                     $"order={(byte)finalOrder.ActiveOrder}/" +
                     $"pending{finalOrder.PendingOrders}, " +
+                    $"abilityEvents={abilityEvents.Length}/" +
+                    $"lifecycle={abilityLifecycle}, " +
+                    $"interrupt={interruptedEvents.Length}/" +
+                    $"{interruptLifecycle}, " +
                     $"roundTrip={packageRoundTrip}/{hotRoundTrip}, " +
                     $"versions=package{package.FormatVersion}/hot{hot.FormatVersion}, " +
                     $"exact={exact}");
@@ -7335,11 +7399,21 @@ public static partial class VisualTestCatalog
                     2, [contactBurrower], activate: true) !=
                     TestPlayerOrderCommandCode.Success ||
                 runtime.PlayerConcealment(
+                    2, [interruptedBurrower], activate: true) !=
+                    TestPlayerOrderCommandCode.Success ||
+                runtime.PlayerConcealment(
                     2, [queuedBurrower], activate: false, queued: true) !=
                     TestPlayerOrderCommandCode.Success)
             {
                 throw new InvalidOperationException(
                     "Active Burrow commands were not accepted.");
+            }
+            if (runtime.PlayerAttackUnit(
+                    1, [interrupter], interruptedBurrower) !=
+                TestPlayerOrderCommandCode.Success)
+            {
+                throw new InvalidOperationException(
+                    "Burrow interruption attack was not accepted.");
             }
             invalidToggleRejected &= runtime.PlayerConcealment(
                 2, [queuedBurrower], activate: false, queued: true) ==
@@ -10551,6 +10625,16 @@ public static partial class VisualTestCatalog
                                friendlyRally.Kind ==
                                    TestRallyTargetKind.Ground &&
                                friendlyProtocolObserved && groundSet;
+                var rallyEvents = runtime.ObserveGameplayEvents().Events
+                    .Where(value =>
+                        value.Kind == GameplayEventKind.ProductionRallyChanged)
+                    .ToArray();
+                var rallyEventProtocol = rallyEvents.Length == 3 &&
+                    rallyEvents.All(value => value.Player == 1) &&
+                    rallyEvents.Count(value =>
+                        value.Building == townHall.BuildingId) == 1 &&
+                    rallyEvents.Count(value =>
+                        value.Building == barracks.BuildingId) == 2;
                 var rejected = log.RejectsUnsupportedVersion() &&
                                log.RejectsTruncatedPayload() &&
                                package.RejectsUnsupportedVersion() &&
@@ -10559,6 +10643,7 @@ public static partial class VisualTestCatalog
                                hot.RejectsTruncatedPayload();
                 var passed = townHall.Succeeded && barracks.Succeeded && issued &&
                              produced && protocol && gatherStarted &&
+                             rallyEventProtocol &&
                              resolvedFriendlyTarget &&
                              packageRoundTrip && logRoundTrip && hotRoundTrip &&
                              decodedLog!.StableHash == log.StableHash &&
@@ -10577,6 +10662,8 @@ public static partial class VisualTestCatalog
                     $"{marineMovement.TargetId}/{marineMovement.Result}, " +
                     $"gap={bodyGap:0.######}, " +
                     $"protocol={protocol}, " +
+                    $"rallyEvents={rallyEvents.Length}/" +
+                    $"protocol={rallyEventProtocol}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
                     $"versions=log{ProductionCommandLogSnapshot.CurrentFormatVersion}/" +
                     $"package{package.FormatVersion}/hot{hot.FormatVersion}, " +
@@ -10830,6 +10917,17 @@ public static partial class VisualTestCatalog
                     1, academy.BuildingId, assault);
                 var upgradedDamage = runtime.PreviewCombatDamage(
                     upgradedAttacker, upgradedTarget);
+                var researchEvents = runtime.ObserveGameplayEvents().Events
+                    .Where(value =>
+                        value.Kind == GameplayEventKind.ResearchCompleted &&
+                        value.Building == academy.BuildingId)
+                    .ToArray();
+                var researchEventProtocol = researchEvents.Length == 3 &&
+                    researchEvents.All(value => value.Player == 1) &&
+                    researchEvents.Count(value =>
+                        value.Technology == weapon.Id) == 2 &&
+                    researchEvents.Count(value =>
+                        value.Technology == assault.Id) == 1;
                 var rejected = log.RejectsUnsupportedVersion() &&
                                log.RejectsTruncatedPayload() &&
                                package.RejectsUnsupportedVersion() &&
@@ -10844,6 +10942,7 @@ public static partial class VisualTestCatalog
                              runtime.TechnologyLevel(1, assault.Id) == 1 &&
                              runtime.TechnologyLevel(1, fortification.Id) == 0 &&
                              runtime.ResearchQueueCount(academy.BuildingId) == 0 &&
+                             researchEventProtocol &&
                              assaultAvailability.Code ==
                                  TestResearchCommandCode.MaximumLevel &&
                              economy.Minerals == 2475 &&
@@ -10870,6 +10969,8 @@ public static partial class VisualTestCatalog
                     $"{maximumRejected}, cancel={cancelRefunded}, " +
                     $"resources={economy.Minerals}/{economy.VespeneGas}, " +
                     $"upgradedDamage={upgradedDamage.TotalDamage}, " +
+                    $"researchEvents={researchEvents.Length}/" +
+                    $"protocol={researchEventProtocol}, " +
                     $"persistence={packageRoundTrip}/{hotRoundTrip}/{exact}, " +
                     $"versions=log{ProductionCommandLogSnapshot.CurrentFormatVersion}/" +
                     $"package{package.FormatVersion}/hot{hot.FormatVersion}");

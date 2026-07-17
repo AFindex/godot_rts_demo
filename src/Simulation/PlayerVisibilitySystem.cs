@@ -104,8 +104,17 @@ public sealed record PlayerVisibilityRuntimeSnapshot(
     int Rows,
     PlayerVisibilityRuntimeEntry[] Players);
 
+internal readonly record struct PlayerVisibilityUpdateProfile(
+    double ClearMilliseconds,
+    double UnitVisionMilliseconds,
+    double BuildingVisionMilliseconds,
+    int UnitCacheHits,
+    int UnitCacheRebuilds,
+    int CandidateCells);
+
 public sealed class PlayerVisibilitySystem
 {
+    private const float VisionUpdateCellScale = 0.25f;
     public const int MaximumPlayers = 16;
     public const float DefaultCellSize = 32f;
     public const float UnitVisionRadius = 224f;
@@ -115,12 +124,18 @@ public sealed class PlayerVisibilitySystem
     private readonly SimRect _bounds;
     private readonly PlayerDiplomacySystem _diplomacy;
     private readonly ITerrainMapQuery? _terrain;
+    private readonly float _visionUpdateCellSize;
+    private readonly int _visionUpdateColumns;
+    private readonly int _visionUpdateRows;
     private readonly Dictionary<int, VisibilityGrid> _players = [];
     private readonly Dictionary<StaticVisionSourceKey, int[]>
         _staticVisionCells = [];
     private readonly List<int> _visionCellScratch = new(512);
     private readonly Action<int, Vector2, BuildingFunctionKind> _revealBuilding;
     private VisionFootprintCache[] _unitVisionCaches = [];
+    private int _profileUnitCacheHits;
+    private int _profileUnitCacheRebuilds;
+    private int _profileCandidateCells;
 
     public PlayerVisibilitySystem(
         SimRect bounds,
@@ -143,6 +158,17 @@ public sealed class PlayerVisibilitySystem
         CellSize = cellSize;
         Columns = (int)MathF.Ceiling(bounds.Width / cellSize);
         Rows = (int)MathF.Ceiling(bounds.Height / cellSize);
+        var authorityCellSize = terrain is null
+            ? cellSize
+            : MathF.Min(cellSize, terrain.CellSize);
+        // Fog is authoritative at a grid resolution. Sampling LOS four times
+        // per terrain/fog cell keeps cliff transitions precise while allowing
+        // ordinary movement to reuse most previous-tick visibility work.
+        _visionUpdateCellSize = authorityCellSize * VisionUpdateCellScale;
+        _visionUpdateColumns =
+            (int)MathF.Ceiling(bounds.Width / _visionUpdateCellSize);
+        _visionUpdateRows =
+            (int)MathF.Ceiling(bounds.Height / _visionUpdateCellSize);
         _revealBuilding = RevealBuilding;
     }
 
@@ -151,12 +177,20 @@ public sealed class PlayerVisibilitySystem
     public int Rows { get; }
     public bool HasExploredState =>
         _players.Values.Any(value => value.Explored.Any(cell => cell));
+    internal bool ProfilingEnabled { get; set; }
+    internal PlayerVisibilityUpdateProfile LastUpdateProfile { get; private set; }
 
     public void Update(
         UnitStore units,
         CombatStore combat,
         ConstructionSystem construction)
     {
+        var updateStart = ProfilingEnabled
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
+        _profileUnitCacheHits = 0;
+        _profileUnitCacheRebuilds = 0;
+        _profileCandidateCells = 0;
         if (_unitVisionCaches.Length < units.Count)
             Array.Resize(ref _unitVisionCaches, units.Count);
         foreach (var grid in _players.Values)
@@ -164,6 +198,9 @@ public sealed class PlayerVisibilitySystem
             Array.Clear(grid.Visible);
             Array.Clear(grid.Detected);
         }
+        var clearEnd = ProfilingEnabled
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
 
         for (var unit = 0; unit < units.Count; unit++)
         {
@@ -187,7 +224,22 @@ public sealed class PlayerVisibilitySystem
             }
         }
 
+        var unitsEnd = ProfilingEnabled
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
+
         construction.VisitVisionSources(_revealBuilding);
+        if (ProfilingEnabled)
+        {
+            var buildingsEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+            LastUpdateProfile = new PlayerVisibilityUpdateProfile(
+                ElapsedMilliseconds(updateStart, clearEnd),
+                ElapsedMilliseconds(clearEnd, unitsEnd),
+                ElapsedMilliseconds(unitsEnd, buildingsEnd),
+                _profileUnitCacheHits,
+                _profileUnitCacheRebuilds,
+                _profileCandidateCells);
+        }
     }
 
     public void UpdateDetection(UnitStore units, CombatStore combat)
@@ -354,28 +406,30 @@ public sealed class PlayerVisibilitySystem
         TerrainVisionMode terrainVisionMode = TerrainVisionMode.Ground)
     {
         ref var cache = ref _unitVisionCaches[unit];
+        var sourceCell = VisionUpdateCell(center);
         var matches = cache.Matches(
-            center, radius, observationHeight, terrainVisionMode);
-        if (matches && cache.Cells is not null)
+            sourceCell, radius, observationHeight, terrainVisionMode);
+        if (matches)
         {
-            ApplyVisionCells(sourcePlayerId, cache.Cells);
+            if (ProfilingEnabled) _profileUnitCacheHits++;
+            ApplyVisionCells(sourcePlayerId, cache.Cells!);
             return;
         }
-        _visionCellScratch.Clear();
+        if (ProfilingEnabled) _profileUnitCacheRebuilds++;
+        cache.Cells ??= new List<int>(512);
+        cache.Cells.Clear();
         CollectVisionCells(
-            center,
+            VisionUpdateCellCenter(sourceCell),
             radius,
             observationHeight,
             terrainVisionMode,
-            _visionCellScratch);
-        ApplyVisionCells(sourcePlayerId, _visionCellScratch);
-        cache = new VisionFootprintCache(
-            true,
-            center,
-            radius,
-            observationHeight,
-            terrainVisionMode,
-            matches ? _visionCellScratch.ToArray() : null);
+            cache.Cells);
+        ApplyVisionCells(sourcePlayerId, cache.Cells);
+        cache.Valid = true;
+        cache.SourceCell = sourceCell;
+        cache.Radius = radius;
+        cache.ObservationHeight = observationHeight;
+        cache.TerrainVisionMode = terrainVisionMode;
     }
 
     private void ApplyVisionCells(
@@ -418,6 +472,12 @@ public sealed class PlayerVisibilitySystem
         var maximumRow = Math.Clamp(
             (int)MathF.Floor((center.Y + radius - _bounds.Min.Y) / CellSize),
             0, Rows - 1);
+        if (ProfilingEnabled)
+        {
+            _profileCandidateCells +=
+                (maximumColumn - minimumColumn + 1) *
+                (maximumRow - minimumRow + 1);
+        }
         var paddedRadius = radius + CellSize * 0.70710678f;
         var radiusSquared = paddedRadius * paddedRadius;
         for (var row = minimumRow; row <= maximumRow; row++)
@@ -553,6 +613,34 @@ public sealed class PlayerVisibilitySystem
         return true;
     }
 
+    private int VisionUpdateCell(Vector2 position)
+    {
+        var column = Math.Clamp(
+            (int)MathF.Floor(
+                (position.X - _bounds.Min.X) / _visionUpdateCellSize),
+            0,
+            _visionUpdateColumns - 1);
+        var row = Math.Clamp(
+            (int)MathF.Floor(
+                (position.Y - _bounds.Min.Y) / _visionUpdateCellSize),
+            0,
+            _visionUpdateRows - 1);
+        return row * _visionUpdateColumns + column;
+    }
+
+    private Vector2 VisionUpdateCellCenter(int cell)
+    {
+        var column = cell % _visionUpdateColumns;
+        var row = cell / _visionUpdateColumns;
+        var minimum = _bounds.Min + new Vector2(
+            column * _visionUpdateCellSize,
+            row * _visionUpdateCellSize);
+        var maximum = Vector2.Min(
+            minimum + new Vector2(_visionUpdateCellSize),
+            _bounds.Max);
+        return (minimum + maximum) * 0.5f;
+    }
+
     private static byte[] PackBits(bool[] source)
     {
         var result = new byte[(source.Length + 7) / 8];
@@ -585,26 +673,30 @@ public sealed class PlayerVisibilitySystem
         public bool[] Detected { get; } = new bool[cells];
     }
 
+    private static double ElapsedMilliseconds(long start, long end) =>
+        (end - start) * 1_000d / System.Diagnostics.Stopwatch.Frequency;
+
     private readonly record struct StaticVisionSourceKey(
         Vector2 Center,
         float Radius,
         float ObservationHeight,
         TerrainVisionMode TerrainVisionMode);
 
-    private readonly record struct VisionFootprintCache(
-        bool Valid,
-        Vector2 Center,
-        float Radius,
-        float ObservationHeight,
-        TerrainVisionMode TerrainVisionMode,
-        int[]? Cells)
+    private struct VisionFootprintCache
     {
+        public bool Valid;
+        public int SourceCell;
+        public float Radius;
+        public float ObservationHeight;
+        public TerrainVisionMode TerrainVisionMode;
+        public List<int>? Cells;
+
         public bool Matches(
-            Vector2 center,
+            int sourceCell,
             float radius,
             float observationHeight,
             TerrainVisionMode terrainVisionMode) =>
-            Valid && Center == center && Radius == radius &&
+            Valid && SourceCell == sourceCell && Radius == radius &&
             ObservationHeight == observationHeight &&
             TerrainVisionMode == terrainVisionMode;
     }

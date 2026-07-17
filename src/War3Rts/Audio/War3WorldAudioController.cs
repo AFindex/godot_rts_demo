@@ -37,6 +37,68 @@ public sealed class War3WorldAudioController
         ["InterfaceClick", "MouseClick1"],
         War3AudioSemantic.Interface);
 
+    public bool PlayInterfaceError() => PlayFirst(
+        ["InterfaceError", "ErrorMessage"],
+        War3AudioSemantic.Interface);
+
+    public bool PlayRallyPoint(int sourcePlayerId, ulong eventSequence) =>
+        Play(
+            "RallyPointPlace",
+            War3AudioSemantic.Notification,
+            sourcePlayerId,
+            null,
+            -1,
+            eventSequence);
+
+    public bool PlayWaypoint(int sourcePlayerId) => Play(
+        "WayPoint",
+        War3AudioSemantic.Notification,
+        sourcePlayerId,
+        null,
+        -1,
+        NextSequence());
+
+    public bool PlayBuildingPlaced(int sourcePlayerId) => Play(
+        "PlaceBuildingDefault",
+        War3AudioSemantic.Notification,
+        sourcePlayerId,
+        null,
+        -1,
+        NextSequence());
+
+    public bool PlayConstructionStarted(
+        int sourcePlayerId,
+        Vector2 worldPosition,
+        int emitterId,
+        ulong eventSequence) => Play(
+        "ConstructingBuildingDefault",
+        War3AudioSemantic.Ambient,
+        sourcePlayerId,
+        worldPosition,
+        emitterId,
+        eventSequence);
+
+    public bool PlayConstructionCompleted(
+        int sourcePlayerId,
+        ulong eventSequence) => Play(
+        "JobDoneSoundHuman",
+        War3AudioSemantic.Notification,
+        sourcePlayerId,
+        null,
+        -1,
+        eventSequence);
+
+    public bool PlayResearchComplete(
+        int sourcePlayerId,
+        ulong eventSequence,
+        bool upgrade = false) => Play(
+        upgrade ? "UpgradeCompleteHuman" : "ResearchCompleteHuman",
+        War3AudioSemantic.Notification,
+        sourcePlayerId,
+        null,
+        -1,
+        eventSequence);
+
     public bool PlayUnitSelection(
         string objectId,
         int sourcePlayerId,

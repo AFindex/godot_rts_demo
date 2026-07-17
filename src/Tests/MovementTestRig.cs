@@ -1094,10 +1094,28 @@ public readonly record struct TestGameplayEvent(
     float Value,
     UnitMovementGoalKind MovementGoalKind,
     UnitMovementLegResult MovementResult,
-    Vector2 WorldPosition);
+    Vector2 WorldPosition,
+    int Player,
+    int Technology);
 
 public readonly record struct TestGameplayEventBatch(
     TestGameplayEvent[] Events,
+    ulong LatestSequence,
+    int LostEvents);
+
+public readonly record struct TestAbilityEvent(
+    long Tick,
+    ulong Sequence,
+    AbilityEventKind Kind,
+    string AbilityId,
+    TestUnitId Caster,
+    AbilityTargetKind TargetKind,
+    int TargetId,
+    Vector2 WorldPosition,
+    AbilityEndReason EndReason);
+
+public readonly record struct TestAbilityEventBatch(
+    TestAbilityEvent[] Events,
     ulong LatestSequence,
     int LostEvents);
 
@@ -2674,14 +2692,17 @@ public sealed partial class MovementTestRig
     public TestBuildingPlacementResult TryPlaceBuilding(
         Vector2 center,
         TestBuildingFootprintClass footprintClass,
-        TestMovementClass minimumPassageClass)
+        TestMovementClass minimumPassageClass,
+        bool preserveConnectivity = false)
     {
         var backendFootprintClass = (BuildingFootprintClass)footprintClass;
         var profile = BuildingFootprintProfile.For(backendFootprintClass);
         var halfSize = profile.Size * 0.5f;
         var result = _simulation.TryPlaceBuilding(
             new SimRect(center - halfSize, center + halfSize),
-            new BuildingPlacementRules((MovementClass)minimumPassageClass));
+            new BuildingPlacementRules(
+                (MovementClass)minimumPassageClass,
+                PreserveConnectivity: preserveConnectivity));
         return new TestBuildingPlacementResult(
             (TestBuildingPlacementCode)result.Code,
             new TestBuildingId(result.FootprintId.Value),
@@ -3397,7 +3418,28 @@ public sealed partial class MovementTestRig
                 value.Value,
                 value.MovementGoalKind,
                 value.MovementResult,
-                value.WorldPosition)).ToArray(),
+                value.WorldPosition,
+                value.Player,
+                value.Technology)).ToArray(),
+            batch.LatestSequence,
+            batch.LostEvents);
+    }
+
+    public TestAbilityEventBatch ObserveAbilityEvents(
+        ulong afterSequence = 0)
+    {
+        var batch = _simulation.AbilityEvents.ReadAfter(afterSequence);
+        return new TestAbilityEventBatch(
+            batch.Events.Select(value => new TestAbilityEvent(
+                value.Tick,
+                value.Sequence,
+                value.Kind,
+                value.AbilityId,
+                new TestUnitId(value.CasterUnit),
+                value.TargetKind,
+                value.TargetId,
+                value.WorldPosition,
+                value.EndReason)).ToArray(),
             batch.LatestSequence,
             batch.LostEvents);
     }

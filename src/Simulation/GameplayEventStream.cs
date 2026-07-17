@@ -16,7 +16,9 @@ public enum GameplayEventKind : byte
     ConstructionDisplacementFinished,
     ProductionDisplacementStarted,
     ProductionDisplacementFinished,
-    BuildingAttackChaseRetargeted
+    BuildingAttackChaseRetargeted,
+    ProductionRallyChanged,
+    ResearchCompleted
 }
 
 public readonly record struct GameplayEvent(
@@ -31,7 +33,9 @@ public readonly record struct GameplayEvent(
     float Value,
     UnitMovementGoalKind MovementGoalKind,
     UnitMovementLegResult MovementResult,
-    Vector2 WorldPosition);
+    Vector2 WorldPosition,
+    int Player,
+    int Technology);
 
 public readonly record struct GameplayEventBatch(
     GameplayEvent[] Events,
@@ -67,14 +71,16 @@ public sealed class GameplayEventStream
         float value = 0f,
         UnitMovementGoalKind movementGoalKind = UnitMovementGoalKind.None,
         UnitMovementLegResult movementResult = UnitMovementLegResult.None,
-        Vector2 worldPosition = default)
+        Vector2 worldPosition = default,
+        int player = -1,
+        int technology = -1)
     {
         var sequence = _nextSequence++;
         _events[(int)((sequence - 1) % (ulong)_events.Length)] =
             new GameplayEvent(
                 tick, sequence, kind, unit, building, resourceNode,
                 resourceKind, amount, value, movementGoalKind, movementResult,
-                worldPosition);
+                worldPosition, player, technology);
         if (_count < _events.Length) _count++;
     }
 

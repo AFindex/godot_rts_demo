@@ -19,6 +19,12 @@ public readonly record struct CombatAutoTargetScore(
     bool ArmedThreat,
     float TotalScore);
 
+internal readonly record struct CombatUpdateProfile(
+    double ProjectileMilliseconds,
+    double UnitLoopMilliseconds,
+    double TargetSearchMilliseconds,
+    int TargetSearches);
+
 public interface ICombatMovementDriver
 {
     void Chase(int unit, Vector2 target);
@@ -61,7 +67,11 @@ public sealed class CombatSystem
     private readonly Func<int, int, bool> _canPerceiveTarget;
     private readonly Func<int, int, bool> _isHostileTarget;
     private readonly Func<int, bool> _canAttack;
+    private double _targetSearchMilliseconds;
+    private int _targetSearches;
     public CombatProjectileSystem Projectiles { get; } = new();
+    internal bool ProfilingEnabled { get; set; }
+    internal CombatUpdateProfile LastUpdateProfile { get; private set; }
 
     public CombatSystem(
         UnitStore units,
@@ -85,6 +95,11 @@ public sealed class CombatSystem
 
     public void Update(float delta, long tick)
     {
+        var updateStart = ProfilingEnabled
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
+        _targetSearchMilliseconds = 0d;
+        _targetSearches = 0;
         Projectiles.Update(delta, ResolveProjectileTarget,
             value => ApplyProjectileImpact(value, tick),
             value => _events.Publish(
@@ -92,6 +107,9 @@ public sealed class CombatSystem
                 value.AttackerUnit, value.TargetKind, value.TargetId,
                 projectileId: value.Id,
                 worldPosition: value.Position));
+        var projectileEnd = ProfilingEnabled
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
         for (var unit = 0; unit < _units.Count; unit++)
         {
             if (!_units.Alive[unit])
@@ -148,7 +166,7 @@ public sealed class CombatSystem
 
                 if ((tick + unit) % AcquisitionTickStride == 0)
                 {
-                    target = FindBestTarget(unit);
+                    target = ProfiledFindBestTarget(unit);
                     if (target >= 0)
                     {
                         BeginEngagement(unit, target);
@@ -172,7 +190,7 @@ public sealed class CombatSystem
                 _combat.TargetLockRemaining[unit] <= 0f &&
                 (tick + unit) % RetargetTickStride == 0)
             {
-                var candidate = FindBestTarget(unit);
+                var candidate = ProfiledFindBestTarget(unit);
                 var candidateScore = candidate >= 0 && candidate != target
                     ? TargetScore(unit, candidate)
                     : default;
@@ -227,7 +245,31 @@ public sealed class CombatSystem
                 UpdateChase(unit, target);
             }
         }
+        if (ProfilingEnabled)
+        {
+            var updateEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+            LastUpdateProfile = new CombatUpdateProfile(
+                ElapsedMilliseconds(updateStart, projectileEnd),
+                ElapsedMilliseconds(projectileEnd, updateEnd),
+                _targetSearchMilliseconds,
+                _targetSearches);
+        }
     }
+
+    private int ProfiledFindBestTarget(int unit)
+    {
+        if (!ProfilingEnabled)
+            return FindBestTarget(unit);
+        var start = System.Diagnostics.Stopwatch.GetTimestamp();
+        var target = FindBestTarget(unit);
+        _targetSearchMilliseconds += ElapsedMilliseconds(
+            start, System.Diagnostics.Stopwatch.GetTimestamp());
+        _targetSearches++;
+        return target;
+    }
+
+    private static double ElapsedMilliseconds(long start, long end) =>
+        (end - start) * 1_000d / System.Diagnostics.Stopwatch.Frequency;
 
     private void BeginBuildingEngagement(
         int unit,

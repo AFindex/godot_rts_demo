@@ -37,6 +37,7 @@
 - 战斗系统通过能力查询决定能否攻击；不复制潜地枚举判断。
 - 单位碰撞继续只读取当前 `ConcealmentKind`：普通地面单位与 Burrowed 异层穿行，Burrowed/Burrowed 仍接触，建筑和地形始终阻挡。
 - PlayerKnown 施工与 Authority 重验继续使用既有感知和占位合同；主动潜地没有专用施工分支。
+- `AbilityEventStream` 发布内容中立的 `active-concealment` / `active-reveal` 生命周期：命令正式开始为 `Started`，过渡完成同 Tick 发布 `Impact` 与 `Ended(Completed)`，过渡中死亡发布 `Interrupted(CasterDied)`。音频、特效和 UI 只消费事件，不反查本控制器的内部计时。
 
 ## 4. 持久化与黑盒门禁
 
@@ -47,7 +48,7 @@
 - Hot Snapshot v28。
 - State Hash v29。
 
-`active-burrow-detection-lifecycle` 只通过稳定业务门面验证激活过程、隐藏、视野缩减、行动限制、无效队列拒绝、异层穿行、侦测授权、解除过程、Shift 切换和中途热恢复。专项录像位于 `test_videos/20260713_223815/`。
+`active-burrow-detection-lifecycle` 只通过稳定业务门面验证激活过程、隐藏、视野缩减、行动限制、无效队列拒绝、异层穿行、侦测授权、解除过程、Shift 切换、中途热恢复，以及完整技能生命周期和施法者死亡中断。专项录像位于 `test_videos/20260713_223815/`。
 
 ## 5. 明确后置内容
 

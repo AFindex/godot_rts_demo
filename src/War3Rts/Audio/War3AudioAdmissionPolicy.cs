@@ -36,7 +36,8 @@ public sealed class War3AudioAdmissionPolicy
 
     public static int ConcurrentLimit(War3AudioSemantic semantic) => semantic switch
     {
-        War3AudioSemantic.Interface => 6,
+        War3AudioSemantic.Interface or
+            War3AudioSemantic.Notification => 6,
         War3AudioSemantic.Selection or
             War3AudioSemantic.Command or
             War3AudioSemantic.AttackCommand or
@@ -51,7 +52,8 @@ public sealed class War3AudioAdmissionPolicy
     public static ulong CooldownMilliseconds(War3AudioSemantic semantic) =>
         semantic switch
         {
-            War3AudioSemantic.Interface => 40,
+            War3AudioSemantic.Interface or
+                War3AudioSemantic.Notification => 40,
             War3AudioSemantic.Selection or
                 War3AudioSemantic.Command or
                 War3AudioSemantic.AttackCommand or

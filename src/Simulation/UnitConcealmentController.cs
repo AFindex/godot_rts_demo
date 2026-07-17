@@ -84,7 +84,9 @@ public sealed class UnitConcealmentController
             UnitConcealmentTransitionCode.Success);
     }
 
-    public void Update(float delta)
+    public void Update(
+        float delta,
+        Action<int, bool>? transitionCompleted = null)
     {
         for (var unit = 0; unit < _units.Count; unit++)
         {
@@ -110,6 +112,7 @@ public sealed class UnitConcealmentController
                     UnitConcealmentPhase.Concealed;
                 _combat.ConcealmentKinds[unit] = capability.Kind;
                 _combat.VisionRanges[unit] = capability.ConcealedVisionRange;
+                transitionCompleted?.Invoke(unit, true);
             }
             else
             {
@@ -117,6 +120,7 @@ public sealed class UnitConcealmentController
                     UnitConcealmentPhase.Visible;
                 _combat.ConcealmentKinds[unit] = UnitConcealmentKind.None;
                 _combat.VisionRanges[unit] = _combat.BaseVisionRanges[unit];
+                transitionCompleted?.Invoke(unit, false);
             }
         }
     }

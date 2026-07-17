@@ -24,6 +24,7 @@ public sealed class War3AudioAudiencePolicy : IWar3AudioAudiencePolicy
         if (sourcePlayerId < 0) return true;
         return semantic switch
         {
+            War3AudioSemantic.Notification or
             War3AudioSemantic.Selection or
             War3AudioSemantic.Command or
             War3AudioSemantic.AttackCommand or

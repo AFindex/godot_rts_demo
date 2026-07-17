@@ -2,12 +2,15 @@
 param(
     [string]$SourceCatalog = "D:\Godot\war3_assets\exports\audio_catalog",
     [string]$SourceAudio = "D:\Godot\war3_assets\godot_export\audio",
-    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
+    [string]$ProjectRoot = "",
     [ValidateSet("human-core")]
     [string]$Profile = "human-core"
 )
 
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+}
 $CatalogOutput = Join-Path $ProjectRoot "assets\warcraft3\classic\data\audio_catalog"
 $RuntimeOutput = Join-Path $ProjectRoot "assets\generated\warcraft3_audio"
 
@@ -128,9 +131,22 @@ foreach ($objectId in $humanCoreObjectIds) {
         $unitData = Get-Content -LiteralPath (
             Join-Path $unitDataRoot $unitDataById[$objectId].path) -Raw |
             ConvertFrom-Json
-        foreach ($abilityId in $unitData.gameplay.abilities) {
+        foreach ($abilityId in $unitData.summary.abilities) {
             if (-not [string]::IsNullOrWhiteSpace($abilityId)) {
                 [void]$playableAbilityIds.Add($abilityId)
+            }
+        }
+        foreach ($section in $unitData.editor.PSObject.Properties) {
+            foreach ($fieldName in @("abilList", "heroAbilList")) {
+                $field = $section.Value.PSObject.Properties[$fieldName]
+                if ($null -eq $field) { continue }
+                foreach ($abilityId in ([string]$field.Value).Split(',')) {
+                    $abilityId = $abilityId.Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($abilityId) -and
+                        $abilityId -ne "_") {
+                        [void]$playableAbilityIds.Add($abilityId)
+                    }
+                }
             }
         }
         foreach ($asset in $unitData.assets.PSObject.Properties) {
@@ -204,7 +220,13 @@ foreach ($relativeMetadata in ($modelMetadataPaths | Sort-Object)) {
     }
 }
 
-foreach ($cueId in @("InterfaceClick", "QuestNew", "Hint", "Warning")) {
+foreach ($cueId in @(
+    "InterfaceClick", "InterfaceError", "ErrorMessage",
+    "RallyPointPlace", "WayPoint",
+    "PlaceBuildingDefault", "ConstructingBuildingDefault",
+    "JobDoneSoundHuman",
+    "ResearchCompleteHuman", "UpgradeCompleteHuman",
+    "QuestNew", "Hint", "Warning")) {
     if ($cueIndex.ContainsKey($cueId)) { [void]$selectedCueIds.Add($cueId) }
 }
 

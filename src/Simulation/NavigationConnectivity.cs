@@ -579,17 +579,61 @@ public sealed class BuildingConnectivityGuard
 
     internal ulong ClearanceBakeHash => _staticBake?.StableHash ?? 0UL;
 
+    internal bool ProfilingEnabled { get; set; }
+    internal long EvaluationSequence { get; private set; }
+    internal BuildingConnectivityEvaluationProfile LastEvaluationProfile { get; private set; }
+
     public ConnectivityPreservationReport Evaluate(
         SimRect footprint,
         MovementClass movementClass)
     {
+        if (!ProfilingEnabled)
+        {
+            var baseline = ResolveBaseline(movementClass, out _);
+            var clearance = MovementClearance.ForClass(movementClass);
+            var candidate = _analyzer.Analyze(
+                clearance.NavigationRadius, footprint);
+            return NavigationConnectivityComparer.Compare(baseline, candidate);
+        }
+
+        var allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var baselineStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        var profiledBaseline = ResolveBaseline(
+            movementClass, out var baselineRebuilt);
+        var baselineEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        var profiledClearance = MovementClearance.ForClass(movementClass);
+        var candidateStart = baselineEnd;
+        var profiledCandidate = _analyzer.Analyze(
+            profiledClearance.NavigationRadius, footprint);
+        var candidateEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        var report = NavigationConnectivityComparer.Compare(
+            profiledBaseline, profiledCandidate);
+        var compareEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        EvaluationSequence++;
+        LastEvaluationProfile = new BuildingConnectivityEvaluationProfile(
+            ElapsedMilliseconds(baselineStart, baselineEnd),
+            ElapsedMilliseconds(candidateStart, candidateEnd),
+            ElapsedMilliseconds(candidateEnd, compareEnd),
+            GC.GetAllocatedBytesForCurrentThread() - allocationStart,
+            baselineRebuilt,
+            profiledBaseline.NodeCount,
+            profiledCandidate.NodeCount);
+        return report;
+    }
+
+    private NavigationConnectivitySnapshot ResolveBaseline(
+        MovementClass movementClass,
+        out bool rebuilt)
+    {
         var clearance = MovementClearance.ForClass(movementClass);
         var classIndex = (int)movementClass;
         var baseline = _baselineByClass[classIndex];
-        if (baseline is null ||
-            baseline.WorldRevision != _world.NavigationRevision ||
-            MathF.Abs(
-                baseline.NavigationRadius - clearance.NavigationRadius) > 0.0001f)
+        rebuilt = baseline is null ||
+                  baseline.WorldRevision != _world.NavigationRevision ||
+                  MathF.Abs(
+                      baseline.NavigationRadius - clearance.NavigationRadius) >
+                  0.0001f;
+        if (rebuilt)
         {
             baseline = _staticBake is not null &&
                        _staticBake.IsCompatible(
@@ -600,11 +644,11 @@ public sealed class BuildingConnectivityGuard
                 : _analyzer.Analyze(clearance.NavigationRadius);
             _baselineByClass[classIndex] = baseline;
         }
-
-        var candidate = _analyzer.Analyze(
-            clearance.NavigationRadius, footprint);
-        return NavigationConnectivityComparer.Compare(baseline, candidate);
+        return baseline!;
     }
+
+    private static double ElapsedMilliseconds(long start, long end) =>
+        (end - start) * 1_000d / System.Diagnostics.Stopwatch.Frequency;
 
     internal ClearanceBakeCommitValidation ValidateClearanceBake(
         ClearanceBakeSnapshot candidate) =>
@@ -620,3 +664,12 @@ public sealed class BuildingConnectivityGuard
         Array.Clear(_baselineByClass);
     }
 }
+
+internal readonly record struct BuildingConnectivityEvaluationProfile(
+    double BaselineMilliseconds,
+    double CandidateMilliseconds,
+    double CompareMilliseconds,
+    long AllocatedBytes,
+    bool BaselineRebuilt,
+    int BaselineNodes,
+    int CandidateNodes);

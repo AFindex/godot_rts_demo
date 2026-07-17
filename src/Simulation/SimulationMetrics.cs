@@ -41,12 +41,30 @@ public sealed class SimulationMetrics
     public double TotalMilliseconds { get; internal set; }
     public double EconomyMilliseconds { get; internal set; }
     public double ConstructionMilliseconds { get; internal set; }
+    public int ConstructionCommitAttempts { get; internal set; }
+    public int ConstructionCommitSuccesses { get; internal set; }
+    public double ConstructionPlacementValidationMilliseconds { get; internal set; }
+    public double ConstructionConnectivityBaselineMilliseconds { get; internal set; }
+    public double ConstructionConnectivityCandidateMilliseconds { get; internal set; }
+    public double ConstructionConnectivityCompareMilliseconds { get; internal set; }
+    public long ConstructionConnectivityAllocatedBytes { get; internal set; }
+    public int ConstructionConnectivityEvaluations { get; internal set; }
+    public int ConstructionConnectivityBaselineRebuilds { get; internal set; }
+    public double ConstructionOccupancyPlaceMilliseconds { get; internal set; }
+    public double ConstructionRouteTopologyMilliseconds { get; internal set; }
+    public double ConstructionPathInvalidationMilliseconds { get; internal set; }
     public double ProductionMilliseconds { get; internal set; }
     public double TechnologyMilliseconds { get; internal set; }
     public double EconomySystemMilliseconds { get; internal set; }
     public double LifecycleFinalizeMilliseconds { get; internal set; }
     public double CombatMilliseconds { get; internal set; }
+    public long CombatAllocatedBytes { get; internal set; }
+    public double CombatProjectileMilliseconds { get; internal set; }
+    public double CombatUnitLoopMilliseconds { get; internal set; }
+    public double CombatTargetSearchMilliseconds { get; internal set; }
+    public int CombatTargetSearches { get; internal set; }
     public double PathMilliseconds { get; internal set; }
+    public long PathAllocatedBytes { get; internal set; }
     public int PathFullConnectivityRebuilds { get; internal set; }
     public int PathIncrementalConnectivityUpdates { get; internal set; }
     public double PathConnectivityRefreshMilliseconds { get; internal set; }
@@ -60,11 +78,19 @@ public sealed class SimulationMetrics
     public double ChokeMilliseconds { get; internal set; }
     public double SpatialHashMilliseconds { get; internal set; }
     public double SteeringMilliseconds { get; internal set; }
+    public long SteeringAllocatedBytes { get; internal set; }
     public double IntegrateMilliseconds { get; internal set; }
     public double CollisionMilliseconds { get; internal set; }
     public double RecoveryMilliseconds { get; internal set; }
     public double QueueMilliseconds { get; internal set; }
     public double VisibilityMilliseconds { get; internal set; }
+    public double VisibilityDetectionMilliseconds { get; internal set; }
+    public double VisibilityClearMilliseconds { get; internal set; }
+    public double VisibilityUnitVisionMilliseconds { get; internal set; }
+    public double VisibilityBuildingVisionMilliseconds { get; internal set; }
+    public int VisibilityUnitCacheHits { get; internal set; }
+    public int VisibilityUnitCacheRebuilds { get; internal set; }
+    public int VisibilityCandidateCells { get; internal set; }
     public double MatchMilliseconds { get; internal set; }
     public double CommandMilliseconds { get; internal set; }
     public long QueueAllocatedBytes { get; internal set; }

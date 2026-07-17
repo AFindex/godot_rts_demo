@@ -376,6 +376,8 @@ public sealed class TechnologySystem
 
     public void Update(
         float delta,
+        long tick,
+        GameplayEventStream events,
         ConstructionSystem construction,
         PlayerEconomyStore economy)
     {
@@ -407,6 +409,16 @@ public sealed class TechnologySystem
                 : 0;
             levels[active.Technology.Id] = new CompletedTechnology(
                 active.Technology, current + 1);
+            var researcher = construction.Observe(queue.Researcher);
+            events.Publish(
+                tick,
+                GameplayEventKind.ResearchCompleted,
+                building: queue.Researcher.Value,
+                value: current + 1,
+                worldPosition:
+                    (researcher.Bounds.Min + researcher.Bounds.Max) * 0.5f,
+                player: active.PlayerId,
+                technology: active.Technology.Id);
             queue.Orders.RemoveAt(0);
         }
         if (retired is not null)

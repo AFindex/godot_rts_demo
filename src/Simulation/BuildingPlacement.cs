@@ -28,7 +28,9 @@ public readonly record struct BuildingFootprintProfile(
 public readonly record struct BuildingPlacementRules(
     MovementClass MinimumPassageClass,
     float UnitPadding = 2f,
-    bool PreserveConnectivity = true);
+    // Full-world connectivity preservation is a specialized anti-block rule.
+    // Standard RTS construction intentionally allows walls and sealed routes.
+    bool PreserveConnectivity = false);
 
 public enum BuildingPlacementCode : byte
 {

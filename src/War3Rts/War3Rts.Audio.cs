@@ -15,7 +15,13 @@ public sealed partial class War3Rts
     private GodotWar3MusicPlayer? _musicPlayer;
     private ulong _audioCombatCursor;
     private ulong _audioGameplayCursor;
+    private ulong _audioAbilityCursor;
     private long _audioLostEvents;
+    private long _audioAnimationEvents;
+    private long _audioAnimationPlayed;
+    private long _audioAbilityEvents;
+    private readonly Dictionary<AbilityAudioKey, War3AbilityAudioSession>
+        _activeAbilityAudio = [];
 
     private void InitializeAudio()
     {
@@ -60,6 +66,7 @@ public sealed partial class War3Rts
         }
         _audioCombatCursor = _simulation.CombatEvents.LatestSequence;
         _audioGameplayCursor = _simulation.GameplayEvents.LatestSequence;
+        _audioAbilityCursor = _simulation.AbilityEvents.LatestSequence;
         GD.Print(
             $"WAR3_AUDIO ready cues={catalog.CueCount} " +
             $"units={catalog.UnitBindingCount} " +
@@ -117,8 +124,24 @@ public sealed partial class War3Rts
             ("FootmanDeath", War3AudioSemantic.Death, (NVector2?)NVector2.Zero),
             ("InnerFireCast", War3AudioSemantic.Ability,
                 (NVector2?)NVector2.Zero),
+            ("SiphonManaLoop", War3AudioSemantic.Ability,
+                (NVector2?)NVector2.Zero),
             ("MetalMediumSliceMetal", War3AudioSemantic.Impact,
-                (NVector2?)NVector2.Zero)
+                (NVector2?)NVector2.Zero),
+            ("RallyPointPlace", War3AudioSemantic.Notification,
+                (NVector2?)null),
+            ("WayPoint", War3AudioSemantic.Notification, (NVector2?)null),
+            ("PlaceBuildingDefault", War3AudioSemantic.Notification,
+                (NVector2?)null),
+            ("ConstructingBuildingDefault", War3AudioSemantic.Ambient,
+                (NVector2?)NVector2.Zero),
+            ("JobDoneSoundHuman", War3AudioSemantic.Notification,
+                (NVector2?)null),
+            ("ResearchCompleteHuman", War3AudioSemantic.Notification,
+                (NVector2?)null),
+            ("UpgradeCompleteHuman", War3AudioSemantic.Notification,
+                (NVector2?)null),
+            ("InterfaceError", War3AudioSemantic.Interface, (NVector2?)null)
         };
         ulong sequence = 1;
         foreach (var (cueId, semantic, position) in checks)
@@ -148,7 +171,9 @@ public sealed partial class War3Rts
         var audience = War3AudioAudiencePolicy.Default;
         if (audience.CanHear(War3AudioSemantic.UnitReady, 0, 1) ||
             audience.CanHear(War3AudioSemantic.Command, 0, 1) ||
+            audience.CanHear(War3AudioSemantic.Notification, 0, 1) ||
             !audience.CanHear(War3AudioSemantic.UnitReady, 0, 0) ||
+            !audience.CanHear(War3AudioSemantic.Notification, 0, 0) ||
             !audience.CanHear(War3AudioSemantic.Impact, 0, 1))
             errors.Add("audio audience policy rejected an ownership boundary");
         if (!War3AudioRangePolicy.IsAudible(99f, 10f) ||
@@ -167,9 +192,44 @@ public sealed partial class War3Rts
                     War3AudioSemantic.Animation),
                 2_000))
             errors.Add("audio admission policy rejected cooldown/concurrency");
+        var recordingPlayback = new RecordingAudioPlayback();
+        var abilityController = new War3WorldAudioController(
+            catalog, recordingPlayback, 0);
+        if (!abilityController.StartAbility(
+                "Ainf", 0, NVector2.Zero, 17, 10, out var innerFireSession) ||
+            innerFireSession.HasLoop || recordingPlayback.Played != 1)
+            errors.Add("one-shot ability audio lifecycle is invalid");
+        if (!abilityController.StartAbility(
+                "AHdr", 0, NVector2.Zero, 17, 11, out var siphonSession) ||
+            !siphonSession.HasLoop || recordingPlayback.LoopsStarted != 1)
+            errors.Add("looped ability audio lifecycle did not start");
+        abilityController.StopAbility(siphonSession, 0.1f);
+        if (recordingPlayback.LoopsStopped != 1)
+            errors.Add("looped ability audio lifecycle did not stop");
+
+        var abilityEvents = new AbilityEventStream(4);
+        abilityEvents.Publish(
+            10, AbilityEventKind.Started, "AHdr", 7,
+            AbilityTargetKind.Unit, 8, NVector2.Zero);
+        abilityEvents.Publish(
+            11, AbilityEventKind.Impact, "AHdr", 7,
+            AbilityTargetKind.Unit, 8, NVector2.One);
+        abilityEvents.Publish(
+            12, AbilityEventKind.Interrupted, "AHdr", 7,
+            AbilityTargetKind.Unit, 8, NVector2.One,
+            AbilityEndReason.TargetInvalid);
+        var abilityBatch = abilityEvents.ReadAfter(0);
+        if (abilityBatch.LostEvents != 0 || abilityBatch.Events.Length != 3 ||
+            abilityBatch.Events[0].Kind != AbilityEventKind.Started ||
+            abilityBatch.Events[1].Kind != AbilityEventKind.Impact ||
+            abilityBatch.Events[2].Kind != AbilityEventKind.Interrupted ||
+            abilityBatch.Events[2].EndReason != AbilityEndReason.TargetInvalid)
+            errors.Add("authoritative ability event lifecycle is invalid");
 
         var runtimeResourceCount = 0;
         var runtimeMusicCount = 0;
+        var runtimeAbilityCount = 0;
+        var runtimeAnimationEventCount = 0;
         try
         {
             using var runtime = JsonDocument.Parse(File.ReadAllText(
@@ -195,6 +255,39 @@ public sealed partial class War3Rts
                     runtimeMusicCount++;
                     resources.Add(relative);
                 }
+            }
+            if (runtime.RootElement.TryGetProperty("abilities", out var abilities))
+            {
+                var hasInnerFire = false;
+                var hasSiphonMana = false;
+                foreach (var ability in abilities.EnumerateArray())
+                {
+                    runtimeAbilityCount++;
+                    var id = ability.GetProperty("id").GetString();
+                    hasInnerFire |= id == "Ainf" &&
+                        ability.GetProperty("effect").GetString() == "InnerFireCast";
+                    hasSiphonMana |= id == "AHdr" &&
+                        ability.GetProperty("loopedEffect").GetString() ==
+                        "SiphonManaLoop";
+                }
+                if (!hasInnerFire || !hasSiphonMana)
+                    errors.Add("runtime ability audio bindings are incomplete");
+            }
+            if (runtime.RootElement.TryGetProperty(
+                    "animationEvents", out var animationEvents))
+            {
+                var hasFootmanDeath = false;
+                foreach (var animationEvent in animationEvents.EnumerateArray())
+                {
+                    runtimeAnimationEventCount++;
+                    hasFootmanDeath |=
+                        animationEvent.GetProperty("eventCode").GetString() ==
+                        "DFOO" &&
+                        animationEvent.GetProperty("cue").GetString() ==
+                        "FootmanDeath";
+                }
+                if (!hasFootmanDeath)
+                    errors.Add("runtime animation event bindings are incomplete");
             }
             runtimeResourceCount = resources.Count;
             foreach (var relative in resources)
@@ -223,7 +316,10 @@ public sealed partial class War3Rts
                 $"abilities={catalog.AbilityBindingCount} " +
                 $"animation_events={catalog.AnimationEventBindingCount} " +
                 $"checked={checks.Length} " +
-                $"runtime={runtimeResourceCount} music={runtimeMusicCount}");
+                $"runtime={runtimeResourceCount} " +
+                $"runtime_abilities={runtimeAbilityCount} " +
+                $"runtime_animation_events={runtimeAnimationEventCount} " +
+                $"music={runtimeMusicCount}");
         else
             GD.PushError("WAR3_AUDIO_SMOKE FAIL " + string.Join("; ", errors));
         GetTree().Quit(errors.Count == 0 ? 0 : 1);
@@ -258,6 +354,8 @@ public sealed partial class War3Rts
                     if (TryUnitObjectId(value.TargetId, out var destroyed) &&
                         TryUnitPlayerId(value.TargetId, out var destroyedPlayer))
                     {
+                        StopAbilityAudioForCaster(value.TargetId);
+                        _worldAudio.StopEmitter(value.TargetId, 0.1f);
                         _worldAudio.PlayUnitDeath(
                             destroyed, destroyedPlayer, value.WorldPosition,
                             value.TargetId, value.Sequence);
@@ -266,19 +364,130 @@ public sealed partial class War3Rts
             }
         }
 
+        var abilities = _simulation.AbilityEvents.ReadAfter(_audioAbilityCursor);
+        _audioAbilityCursor = abilities.LatestSequence;
+        if (abilities.LostEvents > 0) ReportLostAudioEvents(abilities.LostEvents);
+        foreach (var value in abilities.Events)
+            ConsumeAbilityAudioEvent(value);
+
         var gameplay = _simulation.GameplayEvents.ReadAfter(_audioGameplayCursor);
         _audioGameplayCursor = gameplay.LatestSequence;
         if (gameplay.LostEvents > 0) ReportLostAudioEvents(gameplay.LostEvents);
         foreach (var value in gameplay.Events)
         {
-            if (value.Kind != GameplayEventKind.UnitProduced ||
-                !TryUnitObjectId(value.Unit, out var objectId) ||
-                !TryUnitPlayerId(value.Unit, out var sourcePlayer))
-                continue;
-            _worldAudio.PlayUnitReady(
-                objectId, sourcePlayer, value.WorldPosition,
-                value.Unit, value.Sequence);
+            switch (value.Kind)
+            {
+                case GameplayEventKind.UnitProduced
+                    when TryUnitObjectId(value.Unit, out var objectId) &&
+                         TryUnitPlayerId(value.Unit, out var sourcePlayer):
+                    _worldAudio.PlayUnitReady(
+                        objectId, sourcePlayer, value.WorldPosition,
+                        value.Unit, value.Sequence);
+                    break;
+                case GameplayEventKind.ProductionRallyChanged:
+                    _worldAudio.PlayRallyPoint(value.Player, value.Sequence);
+                    break;
+                case GameplayEventKind.ConstructionStarted or
+                    GameplayEventKind.ConstructionResumed
+                    when TryUnitPlayerId(value.Unit, out var builderPlayer):
+                    _worldAudio.PlayConstructionStarted(
+                        builderPlayer,
+                        value.WorldPosition,
+                        BuildingAudioEmitter(value.Building),
+                        value.Sequence);
+                    break;
+                case GameplayEventKind.ConstructionCompleted
+                    when TryGameplayEventPlayer(value, out var ownerPlayer):
+                    _worldAudio.PlayConstructionCompleted(
+                        ownerPlayer, value.Sequence);
+                    break;
+                case GameplayEventKind.ResearchCompleted:
+                    _worldAudio.PlayResearchComplete(
+                        value.Player, value.Sequence, upgrade: true);
+                    break;
+            }
         }
+    }
+
+    private void ConsumeAbilityAudioEvent(in AbilityEvent value)
+    {
+        if (_worldAudio is null || !TryUnitPlayerId(
+                value.CasterUnit, out var sourcePlayer))
+            return;
+
+        _audioAbilityEvents++;
+        var key = new AbilityAudioKey(value.CasterUnit, value.AbilityId);
+        switch (value.Kind)
+        {
+            case AbilityEventKind.Started:
+                StopAbilityAudio(key, 0.05f);
+                if (_worldAudio.StartAbility(
+                        value.AbilityId,
+                        sourcePlayer,
+                        value.WorldPosition,
+                        value.CasterUnit,
+                        value.Sequence,
+                        out var session) && session.HasLoop)
+                {
+                    _activeAbilityAudio[key] = session;
+                }
+                break;
+            case AbilityEventKind.Ended:
+                StopAbilityAudio(key, 0.12f);
+                break;
+            case AbilityEventKind.Interrupted:
+                StopAbilityAudio(key, 0.05f);
+                break;
+        }
+
+        if (_audioAbilityEvents == 1)
+        {
+            GD.Print(
+                $"WAR3_AUDIO ability_events=active ability={value.AbilityId} " +
+                $"kind={value.Kind}");
+        }
+    }
+
+    private void StopAbilityAudio(AbilityAudioKey key, float fadeSeconds)
+    {
+        if (_worldAudio is null ||
+            !_activeAbilityAudio.Remove(key, out var session))
+            return;
+        _worldAudio.StopAbility(session, fadeSeconds);
+    }
+
+    private void StopAbilityAudioForCaster(int casterUnit)
+    {
+        foreach (var key in _activeAbilityAudio.Keys
+                     .Where(value => value.CasterUnit == casterUnit)
+                     .ToArray())
+            StopAbilityAudio(key, 0.05f);
+    }
+
+    private static int BuildingAudioEmitter(int building) =>
+        building < 0 ? -1 : 1_000_000 + building;
+
+    private bool TryGameplayEventPlayer(
+        in GameplayEvent value,
+        out int playerId)
+    {
+        if (value.Player >= 0)
+        {
+            playerId = value.Player;
+            return true;
+        }
+        if (TryUnitPlayerId(value.Unit, out playerId)) return true;
+        if (_simulation is not null && value.Building >= 0)
+        {
+            var building = new GameplayBuildingId(value.Building);
+            if (_simulation.Construction.IsAlive(building))
+            {
+                playerId = _simulation.Construction.Observe(building).PlayerId;
+                return true;
+            }
+        }
+        playerId = -1;
+        return false;
     }
 
     private void PlayInterfaceAudio() => _worldAudio?.PlayInterfaceClick();
@@ -286,12 +495,20 @@ public sealed partial class War3Rts
     private void OnAnimationAudioEvent(War3AnimationAudioEvent value)
     {
         if (_worldAudio is null || IsDeathTimeline(value.SequenceName)) return;
-        _worldAudio.PlayAnimationEvent(
+        _audioAnimationEvents++;
+        if (!_worldAudio.PlayAnimationEvent(
             value.EventCode,
             value.SourcePlayerId,
             value.WorldPosition,
             value.EmitterId,
-            value.Sequence);
+            value.Sequence))
+            return;
+        _audioAnimationPlayed++;
+        if (_audioAnimationPlayed == 1)
+            GD.Print(
+                $"WAR3_AUDIO animation_timeline=active " +
+                $"event={value.EventCode} sequence={value.SequenceName} " +
+                $"received={_audioAnimationEvents}");
     }
 
     private static bool IsDeathTimeline(string sequenceName) =>
@@ -313,7 +530,7 @@ public sealed partial class War3Rts
             _simulation.Units.Positions[unit], unit);
     }
 
-    private void PlayCommandAudio(bool attack)
+    private void PlayCommandAudio(bool attack, bool queued = false)
     {
         if (_simulation is null || _worldAudio is null) return;
         var unit = _selectedUnits
@@ -325,6 +542,8 @@ public sealed partial class War3Rts
         _worldAudio.PlayUnitCommand(
             objectId, _simulation.Combat.Teams[unit], attack,
             _simulation.Units.Positions[unit], unit);
+        if (queued)
+            _worldAudio.PlayWaypoint(_simulation.Combat.Teams[unit]);
     }
 
     private bool TryTargetObjectId(
@@ -376,4 +595,41 @@ public sealed partial class War3Rts
         GD.PushWarning(
             $"WAR3_AUDIO event_overflow lost={count} total={_audioLostEvents}");
     }
+
+    private sealed class RecordingAudioPlayback : IWar3AudioPlayback
+    {
+        public int Played { get; private set; }
+        public int LoopsStarted { get; private set; }
+        public int LoopsStopped { get; private set; }
+
+        public bool Play(
+            in War3ResolvedAudioCue cue,
+            in War3AudioCueRequest request)
+        {
+            Played++;
+            return true;
+        }
+
+        public bool StartLoop(
+            in War3ResolvedAudioCue cue,
+            in War3AudioCueRequest request,
+            out War3AudioLoopHandle handle)
+        {
+            handle = new War3AudioLoopHandle(request.EmitterId, request.CueId);
+            LoopsStarted++;
+            return handle.IsValid;
+        }
+
+        public void StopLoop(
+            War3AudioLoopHandle handle,
+            float fadeSeconds = 0f) => LoopsStopped++;
+
+        public void StopEmitter(int emitterId, float fadeSeconds = 0f) { }
+        public void StopAll() { }
+        public War3AudioRuntimeSnapshot Snapshot() => default;
+    }
+
+    private readonly record struct AbilityAudioKey(
+        int CasterUnit,
+        string AbilityId);
 }
