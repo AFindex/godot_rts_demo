@@ -696,14 +696,12 @@ public sealed class AbilitySystem
                          AbilityStatusFlags.Polymorphed |
                          AbilityStatusFlags.Banished);
 
-    internal AbilityCommandResult Issue(
+    internal AbilityCommandResult Preview(
         int playerId,
         int caster,
         int abilityId,
         in AbilityCastTarget target,
-        long tick,
-        IAbilityRuntimeWorld world,
-        AbilityEventStream events)
+        IAbilityRuntimeWorld world)
     {
         if (playerId <= 0) return new(AbilityCommandCode.InvalidPlayer);
         if (!world.AbilityUnitExists(caster) || !world.AbilityUnitAlive(caster))
@@ -715,22 +713,39 @@ public sealed class AbilitySystem
         if ((uint)abilityId >= (uint)_catalog.Count)
             return new(AbilityCommandCode.UnknownAbility);
         var slot = Array.IndexOf(_abilityIds[caster], abilityId);
-        if (slot < 0) return new(AbilityCommandCode.AbilityNotLearned);
-        if (_levels[caster][slot] <= 0)
+        if (slot < 0 || _levels[caster][slot] <= 0)
             return new(AbilityCommandCode.AbilityNotLearned, caster, abilityId);
         var ability = _catalog.Ability(abilityId);
-        if (ability.IsPassive) return new(AbilityCommandCode.PassiveAbility);
+        if (ability.IsPassive)
+            return new(AbilityCommandCode.PassiveAbility, caster, abilityId);
         var level = ability.Levels[_levels[caster][slot] - 1];
         if (!RequirementsMet(playerId, level, world))
             return new(AbilityCommandCode.RequirementsNotMet, caster, abilityId);
-        var validation = ValidateTarget(
+        var targetCode = ValidateTarget(
             playerId, caster, ability, level, target, world);
-        if (validation != AbilityCommandCode.Success)
-            return new(validation, caster, abilityId);
+        if (targetCode != AbilityCommandCode.Success)
+            return new(targetCode, caster, abilityId);
         if (_cooldowns[caster][slot] > 0f)
             return new(AbilityCommandCode.Cooldown, caster, abilityId);
         if (_mana[caster] + 0.0001f < level.ManaCost)
             return new(AbilityCommandCode.InsufficientMana, caster, abilityId);
+        return new(AbilityCommandCode.Success, caster, abilityId);
+    }
+
+    internal AbilityCommandResult Issue(
+        int playerId,
+        int caster,
+        int abilityId,
+        in AbilityCastTarget target,
+        long tick,
+        IAbilityRuntimeWorld world,
+        AbilityEventStream events)
+    {
+        var preview = Preview(playerId, caster, abilityId, target, world);
+        if (!preview.Succeeded) return preview;
+        var slot = Array.IndexOf(_abilityIds[caster], abilityId);
+        var ability = _catalog.Ability(abilityId);
+        var level = ability.Levels[_levels[caster][slot] - 1];
 
         CancelCast(caster, tick, AbilityEndReason.Canceled, world, events);
         _mana[caster] = MathF.Max(0f, _mana[caster] - level.ManaCost);

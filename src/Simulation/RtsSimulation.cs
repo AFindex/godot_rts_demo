@@ -1677,6 +1677,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         return result;
     }
 
+    public AbilityCommandResult PreviewAbility(
+        int playerId,
+        int caster,
+        int abilityId,
+        in AbilityCastTarget target)
+    {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new AbilityCommandResult(matchBlock switch
+            {
+                MatchCommandBlock.Completed => AbilityCommandCode.MatchCompleted,
+                MatchCommandBlock.NotParticipant => AbilityCommandCode.NotParticipant,
+                _ => AbilityCommandCode.PlayerDefeated
+            }, caster, abilityId);
+        }
+        return Abilities.Preview(playerId, caster, abilityId, target, this);
+    }
+
     public AbilityCommandResult IssueBuildingAbility(
         int playerId,
         GameplayBuildingId caster,

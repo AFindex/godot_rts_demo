@@ -28,6 +28,7 @@ public static class SimulationSelfTest
             var war3PcgResult = War3BattlefieldPcgSelfTest.Run();
             var war3MapResult = War3MapAssetSelfTest.Run();
             var war3PointerTargetingResult = War3PointerTargetingSelfTest.Run();
+            var war3CursorResult = War3CursorCatalogSelfTest.Run();
             var fallbackPathResult = PathProviderFallbackSelfTest.Run();
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
@@ -73,6 +74,7 @@ public static class SimulationSelfTest
                          war3PcgResult.Passed &&
                          war3MapResult.Passed &&
                          war3PointerTargetingResult.Passed &&
+                         war3CursorResult.Passed &&
                          fallbackPathResult.Passed &&
                          profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
@@ -121,6 +123,8 @@ public static class SimulationSelfTest
                 $"war3-pointer-targeting=" +
                 $"{(war3PointerTargetingResult.Passed ? "PASS" : "FAIL")}" +
                 $"({war3PointerTargetingResult.Summary})",
+                $"war3-cursors={(war3CursorResult.Passed ? "PASS" : "FAIL")}" +
+                $"({war3CursorResult.Summary})",
                 $"path-provider-fallback=" +
                 $"{(fallbackPathResult.Passed ? "PASS" : "FAIL")}" +
                 $"({fallbackPathResult.Summary})",

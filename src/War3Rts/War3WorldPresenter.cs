@@ -50,11 +50,16 @@ public sealed partial class War3WorldPresenter : Node3D
     private MeshInstance3D? _pointerPreview;
     private War3ModelActor? _pointerGhost;
     private string _pointerGhostSource = string.Empty;
+    private MeshInstance3D? _abilityTargetPreview;
+    private MeshInstance3D? _abilityRangePreview;
     private War3ModelActor? _rallyMarker;
     private bool _rallyMarkerActive;
     private NVector2 _rallyMarkerPosition;
     private StandardMaterial3D? _validPreview;
     private StandardMaterial3D? _invalidPreview;
+    private StandardMaterial3D? _abilityValidPreview;
+    private StandardMaterial3D? _abilityInvalidPreview;
+    private StandardMaterial3D? _abilityRangeMaterial;
     private int _peakEffectCount;
     private bool _sawGoldGatherAnimation;
     private bool _sawLumberGatherAnimation;
@@ -106,6 +111,10 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool SawConstructionGhost => _sawConstructionGhost;
     public bool FoundationAppearedAfterApproach => _foundationAppearedAfterApproach;
     public bool PointerPreviewUsesWar3Model => _pointerGhost?.Loaded == true;
+    public bool AbilityPointerPreviewVisible =>
+        _abilityTargetPreview?.Visible == true;
+    public bool AbilityRangePreviewVisible =>
+        _abilityRangePreview?.Visible == true;
     public bool RallyMarkerUsesWar3Model => _rallyMarker?.Loaded == true &&
         _rallyMarker.Source.Equals(
             "UI\\Feedback\\RallyPoint\\RallyPoint.mdx",
@@ -201,6 +210,7 @@ public sealed partial class War3WorldPresenter : Node3D
         _terrain = simulation.World.Terrain;
         _camera = camera;
         EnsurePointerPreview();
+        EnsureAbilityPointerPreview();
         EnsureRallyMarker();
         CreateStaticResourceBatches(simulation);
         Sync(1f);
@@ -260,6 +270,46 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         if (_pointerPreview is not null) _pointerPreview.Visible = false;
         if (_pointerGhost is not null) _pointerGhost.Visible = false;
+    }
+
+    public void SetAbilityPointerPreview(
+        NVector2 target,
+        NVector2 caster,
+        float castRange,
+        float targetRadius,
+        bool valid)
+    {
+        EnsureAbilityPointerPreview();
+        var worldRadius = SimPlane3DTransform.ToWorldLength(
+            MathF.Max(12f, targetRadius));
+        _abilityTargetPreview!.Position = ToWorldAtGround(target, 0.055f);
+        _abilityTargetPreview.Scale = new Vector3(
+            worldRadius, 1f, worldRadius);
+        _abilityTargetPreview.MaterialOverride = valid
+            ? _abilityValidPreview
+            : _abilityInvalidPreview;
+        _abilityTargetPreview.Visible = true;
+
+        if (castRange > 0f)
+        {
+            var worldRange = SimPlane3DTransform.ToWorldLength(castRange);
+            _abilityRangePreview!.Position = ToWorldAtGround(caster, 0.045f);
+            _abilityRangePreview.Scale = new Vector3(
+                worldRange, 1f, worldRange);
+            _abilityRangePreview.Visible = true;
+        }
+        else if (_abilityRangePreview is not null)
+        {
+            _abilityRangePreview.Visible = false;
+        }
+    }
+
+    public void HideAbilityPointerPreview()
+    {
+        if (_abilityTargetPreview is not null)
+            _abilityTargetPreview.Visible = false;
+        if (_abilityRangePreview is not null)
+            _abilityRangePreview.Visible = false;
     }
 
     public void Sync(float interpolation)
@@ -1227,6 +1277,20 @@ public sealed partial class War3WorldPresenter : Node3D
         AddChild(_pointerPreview);
     }
 
+    private void EnsureAbilityPointerPreview()
+    {
+        if (_abilityTargetPreview is not null) return;
+        _abilityValidPreview = PreviewRingMaterial(new Color("45e7d6d8"));
+        _abilityInvalidPreview = PreviewRingMaterial(new Color("ff4f63dc"));
+        _abilityRangeMaterial = PreviewRingMaterial(new Color("72a9ff78"));
+        _abilityTargetPreview = AbilityRing(
+            "AbilityTargetPreview", 0.12f, _abilityValidPreview);
+        _abilityRangePreview = AbilityRing(
+            "AbilityRangePreview", 0.035f, _abilityRangeMaterial);
+        AddChild(_abilityTargetPreview);
+        AddChild(_abilityRangePreview);
+    }
+
     private void EnsureRallyMarker()
     {
         if (_rallyMarker is not null) return;
@@ -1318,6 +1382,35 @@ public sealed partial class War3WorldPresenter : Node3D
         Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
         ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
         NoDepthTest = false
+    };
+
+    private static StandardMaterial3D PreviewRingMaterial(Color color) => new()
+    {
+        AlbedoColor = color,
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        NoDepthTest = false,
+        EmissionEnabled = true,
+        Emission = new Color(color.R, color.G, color.B, 1f),
+        EmissionEnergyMultiplier = 1.15f
+    };
+
+    private static MeshInstance3D AbilityRing(
+        string name,
+        float width,
+        Material material) => new()
+    {
+        Name = name,
+        Mesh = new TorusMesh
+        {
+            InnerRadius = MathF.Max(0.05f, 1f - width),
+            OuterRadius = 1f,
+            Rings = 64,
+            RingSegments = 8
+        },
+        MaterialOverride = material,
+        Visible = false,
+        CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
     };
 
     private sealed class UnitVisual(

@@ -109,6 +109,18 @@ public static class AbilitySystemSelfTest
         var autoHealWorked = simulation.Combat.Health[ally] == 85f &&
                              simulation.Abilities.Observe(caster).Mana == 90f;
 
+        var previewMana = simulation.Abilities.Observe(caster).Mana;
+        var previewHealth = simulation.Combat.Health[enemy];
+        var firePreview = simulation.PreviewAbility(
+            1, caster, 0,
+            AbilityCastTarget.Unit(enemy, simulation.Units.Positions[enemy]));
+        var invalidPreview = simulation.PreviewAbility(
+            1, caster, 0,
+            AbilityCastTarget.Unit(ally, simulation.Units.Positions[ally]));
+        var previewWorked = firePreview.Succeeded &&
+            invalidPreview.Code == AbilityCommandCode.EnemyTargetRequired &&
+            simulation.Abilities.Observe(caster).Mana == previewMana &&
+            simulation.Combat.Health[enemy] == previewHealth;
         var fire = simulation.IssueAbility(
             1, caster, 0,
             AbilityCastTarget.Unit(enemy, simulation.Units.Positions[enemy]));
@@ -429,7 +441,7 @@ public static class AbilitySystemSelfTest
                                   value.Kind == AbilityEventKind.Impact &&
                                   value.AbilityId == "T001");
 
-        var passed = catalog.Count == 29 && autoHealWorked &&
+        var passed = catalog.Count == 29 && autoHealWorked && previewWorked &&
                      directDamageWorked && shieldApplied && blocked && expired &&
                      lifecycleWorked && snapshotWorked && requirementGateWorked &&
                      heroLearningWorked && damageClassificationWorked &&
@@ -449,6 +461,7 @@ public static class AbilitySystemSelfTest
         return new SelfTestResult(
             passed,
             $"catalog={catalog.Count}, auto_heal={autoHealWorked}, " +
+            $"preview={previewWorked}/{firePreview.Code}/{invalidPreview.Code}, " +
             $"damage={directDamageWorked}, shield={shieldApplied && blocked}, " +
             $"expiry={expired}, requirement={requirementGateWorked}, " +
             $"hero_learn={heroLearningWorked}, " +

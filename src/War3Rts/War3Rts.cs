@@ -16,6 +16,7 @@ namespace War3Rts;
 public sealed partial class War3Rts : Node3D
 {
     private const float MinimumDragPixels = 7f;
+    private const float CursorEdgePixels = 10f;
     private RtsSimulation? _simulation;
     private War3HumanRuntime? _runtime;
     private TerrainMapSnapshot? _terrain;
@@ -62,6 +63,7 @@ public sealed partial class War3Rts : Node3D
     private War3RuntimeProfiler? _runtimeProfiler;
     private War3StressTestMode? _stressTest;
     private War3NavigationDebugger? _navigationDebugger;
+    private War3CursorController? _cursor;
     private int _smokeRallyBuilding = -1;
     private NVector2 _smokeRallyPosition;
     private int _smokeConstructionBuilding = -1;
@@ -96,6 +98,12 @@ public sealed partial class War3Rts : Node3D
         {
             RunAudioSmoke();
             return;
+        }
+        if (!navigationAuditRequested && !_offlineBakeRequested)
+        {
+            _cursor = new War3CursorController { Name = "War3Cursor" };
+            AddChild(_cursor);
+            _cursor.Initialize(War3CursorCatalog.ParseRace(arguments));
         }
         _capture = arguments.Contains("--war3-rts-capture") ||
                    _terrainCapture || _pcgCapture;
@@ -704,7 +712,7 @@ public sealed partial class War3Rts : Node3D
         if (_mapLoadInProgress || _simulation is null) return;
         var allocationStart = GC.GetAllocatedBytesForCurrentThread();
         var previewStart = System.Diagnostics.Stopwatch.GetTimestamp();
-        UpdateBuildPreview();
+        UpdatePointerFeedback();
         var presenterStart = System.Diagnostics.Stopwatch.GetTimestamp();
         _presenter?.Sync((float)Engine.GetPhysicsInterpolationFraction());
         var presenterEnd = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -1340,15 +1348,86 @@ public sealed partial class War3Rts : Node3D
         if (changed) RefreshSelection();
     }
 
-    private void UpdateBuildPreview()
+    private void UpdatePointerFeedback()
     {
         if (_simulation is null || _buildings is null || _camera is null ||
-            _presenter is null || _pendingBuilding < 0)
+            _presenter is null)
         {
             _presenter?.HidePointerPreview();
+            _presenter?.HideAbilityPointerPreview();
+            _cursor?.SetMode(War3CursorMode.Normal);
             return;
         }
-        if (!TryGroundPoint(GetViewport().GetMousePosition(), out var point)) return;
+
+        var screen = GetViewport().GetMousePosition();
+        if (_hud?.BlocksWorldPointer(screen) == true ||
+            _navigationDebugger?.BlocksWorldPointer(screen) == true)
+        {
+            _presenter.HidePointerPreview();
+            _presenter.HideAbilityPointerPreview();
+            _cursor?.SetMode(War3CursorMode.Normal);
+            return;
+        }
+
+        if (!HasTargetMode() && !_dragging &&
+            TryResolveEdgeCursor(screen, out var edgeMode))
+        {
+            _presenter.HidePointerPreview();
+            _presenter.HideAbilityPointerPreview();
+            _cursor?.SetMode(edgeMode);
+            return;
+        }
+
+        if (!TryGroundPoint(screen, out var point))
+        {
+            _presenter.HidePointerPreview();
+            _presenter.HideAbilityPointerPreview();
+            _cursor?.SetMode(HasTargetMode()
+                ? War3CursorMode.InvalidTarget
+                : War3CursorMode.Normal);
+            return;
+        }
+
+        if (_pendingBuilding >= 0)
+        {
+            UpdateBuildingPointer(point);
+            return;
+        }
+
+        _presenter.HidePointerPreview();
+        if (_pendingAbilityId >= 0)
+        {
+            UpdateAbilityPointer(point);
+            return;
+        }
+
+        _presenter.HideAbilityPointerPreview();
+        if (_movePending)
+        {
+            _cursor?.SetMode(War3CursorMode.Target);
+            return;
+        }
+        if (_attackMovePending || _rallyPending)
+        {
+            _cursor?.SetMode(War3CursorMode.TargetSelect);
+            return;
+        }
+        if (_dragging)
+        {
+            _cursor?.SetMode(War3CursorMode.Select);
+            return;
+        }
+        _cursor?.SetMode(ResolveSmartTarget(point).Kind ==
+                         SmartCommandTargetKind.Ground
+            ? War3CursorMode.Normal
+            : War3CursorMode.Select);
+    }
+
+    private void UpdateBuildingPointer(NVector2 point)
+    {
+        if (_simulation is null || _buildings is null || _presenter is null)
+            return;
+        _presenter.HideAbilityPointerPreview();
         var builder = _selectedUnits.FirstOrDefault(unit =>
             _simulation.Economy.IsWorkerOwnedBy(unit, War3HumanScenario.PlayerId), -1);
         var profile = _buildings.Type(_pendingBuilding);
@@ -1356,6 +1435,137 @@ public sealed partial class War3Rts : Node3D
         var valid = builder >= 0 && _simulation.PreviewConstruction(
             War3HumanScenario.PlayerId, builder, profile, point, default, false).Succeeded;
         _presenter.SetPointerPreview(point, profile.Size, definition.ModelSource, valid);
+        _cursor?.SetMode(valid
+            ? War3CursorMode.HoldItem
+            : War3CursorMode.InvalidTarget);
+    }
+
+    private void UpdateAbilityPointer(NVector2 point)
+    {
+        if (_simulation is null || _presenter is null ||
+            _pendingAbilityCaster < 0 ||
+            !_simulation.Units.Alive[_pendingAbilityCaster] ||
+            (uint)_pendingAbilityId >= (uint)_simulation.Abilities.Catalog.Count)
+        {
+            _presenter?.HideAbilityPointerPreview();
+            _cursor?.SetMode(War3CursorMode.InvalidTarget);
+            return;
+        }
+
+        var ability = _simulation.Abilities.Catalog.Ability(_pendingAbilityId);
+        var state = _simulation.Abilities.Observe(_pendingAbilityCaster);
+        var slot = state.Abilities.FirstOrDefault(value =>
+            value.AbilityId == _pendingAbilityId);
+        if (slot.Level <= 0 || slot.Level > ability.Levels.Length)
+        {
+            _presenter.HideAbilityPointerPreview();
+            _cursor?.SetMode(War3CursorMode.InvalidTarget);
+            return;
+        }
+
+        var level = ability.Levels[slot.Level - 1];
+        var smart = ResolveSmartTarget(point);
+        var targetPosition = point;
+        AbilityCastTarget target;
+        var unitTarget = ability.Activation is AbilityActivationKind.TargetUnit or
+            AbilityActivationKind.ChannelUnit;
+        if (unitTarget)
+        {
+            target = smart.Kind switch
+            {
+                SmartCommandTargetKind.FriendlyUnit or
+                    SmartCommandTargetKind.EnemyUnit =>
+                    AbilityCastTarget.Unit(smart.Unit, smart.Position),
+                SmartCommandTargetKind.FriendlyBuilding or
+                    SmartCommandTargetKind.EnemyBuilding =>
+                    AbilityCastTarget.Building(
+                        new GameplayBuildingId(smart.Building), smart.Position),
+                _ => default
+            };
+            if (target.Kind != AbilityTargetKind.None)
+                targetPosition = target.Position;
+        }
+        else
+        {
+            target = AbilityCastTarget.Point(point);
+        }
+
+        var preview = target.Kind == AbilityTargetKind.None
+            ? new AbilityCommandResult(
+                AbilityCommandCode.InvalidTarget,
+                _pendingAbilityCaster,
+                _pendingAbilityId)
+            : _simulation.PreviewAbility(
+                War3HumanScenario.PlayerId,
+                _pendingAbilityCaster,
+                _pendingAbilityId,
+                target);
+        var targetRadius = AbilityPointerRadius(
+            level.Area, unitTarget ? smart : default);
+        var castRange = level.Range <= 0f
+            ? 0f
+            : level.Range + _simulation.Units.Radii[_pendingAbilityCaster];
+        _presenter.SetAbilityPointerPreview(
+            targetPosition,
+            _simulation.Units.Positions[_pendingAbilityCaster],
+            castRange,
+            targetRadius,
+            preview.Succeeded);
+        _cursor?.SetMode(preview.Succeeded
+            ? War3CursorMode.TargetSelect
+            : War3CursorMode.InvalidTarget);
+    }
+
+    private float AbilityPointerRadius(
+        float area,
+        in SmartCommandTarget target)
+    {
+        if (area > 0f) return area;
+        if (_simulation is null) return 16f;
+        if ((target.Kind is SmartCommandTargetKind.FriendlyUnit or
+             SmartCommandTargetKind.EnemyUnit) &&
+            (uint)target.Unit < (uint)_simulation.Units.Count)
+            return _simulation.Units.Radii[target.Unit] + 4f;
+        if (target.Kind is SmartCommandTargetKind.FriendlyBuilding or
+            SmartCommandTargetKind.EnemyBuilding)
+        {
+            var id = new GameplayBuildingId(target.Building);
+            if (_simulation.Construction.IsAlive(id))
+            {
+                var bounds = _simulation.Construction.Observe(id).Bounds;
+                return MathF.Min(bounds.Width, bounds.Height) * 0.5f;
+            }
+        }
+        return 16f;
+    }
+
+    private bool TryResolveEdgeCursor(
+        Vector2 screen,
+        out War3CursorMode mode)
+    {
+        mode = War3CursorMode.Normal;
+        var size = GetViewport().GetVisibleRect().Size;
+        if (size.X <= 0f || size.Y <= 0f ||
+            screen.X < 0f || screen.Y < 0f ||
+            screen.X > size.X || screen.Y > size.Y)
+            return false;
+        var left = screen.X <= CursorEdgePixels;
+        var right = screen.X >= size.X - CursorEdgePixels;
+        var up = screen.Y <= CursorEdgePixels;
+        var down = screen.Y >= size.Y - CursorEdgePixels;
+        mode = (left, right, up, down) switch
+        {
+            (true, _, true, _) => War3CursorMode.ScrollUpLeft,
+            (_, true, true, _) => War3CursorMode.ScrollUpRight,
+            (true, _, _, true) => War3CursorMode.ScrollDownLeft,
+            (_, true, _, true) => War3CursorMode.ScrollDownRight,
+            (true, _, _, _) => War3CursorMode.ScrollLeft,
+            (_, true, _, _) => War3CursorMode.ScrollRight,
+            (_, _, true, _) => War3CursorMode.ScrollUp,
+            (_, _, _, true) => War3CursorMode.ScrollDown,
+            _ => War3CursorMode.Normal
+        };
+        return left || right || up || down;
     }
 
     private void UpdateHud()
@@ -2005,6 +2215,8 @@ public sealed partial class War3Rts : Node3D
         _buildMenu = false;
         _mode = "普通选择";
         _presenter?.HidePointerPreview();
+        _presenter?.HideAbilityPointerPreview();
+        _cursor?.SetMode(War3CursorMode.Normal);
     }
 
     private void Report(string value)
