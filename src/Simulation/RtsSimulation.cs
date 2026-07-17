@@ -705,6 +705,26 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                         $"Replay auto-cast change failed with {changed.Code}.");
                 break;
             }
+            case UnitOrderKind.CastBuildingAbility:
+            {
+                if (command.Units.Length != 0 ||
+                    (uint)command.TargetResourceNode >=
+                    (uint)Abilities.Catalog.Count)
+                    throw new InvalidOperationException(
+                        "Recorded building ability command is invalid.");
+                var building = new GameplayBuildingId(command.TargetBuilding);
+                if (!Construction.IsAlive(building))
+                    throw new InvalidOperationException(
+                        "Recorded building ability caster is invalid.");
+                var cast = IssueBuildingAbility(
+                    Construction.Observe(building).PlayerId,
+                    building,
+                    command.TargetResourceNode);
+                if (!cast.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Replay building ability cast failed with {cast.Code}.");
+                break;
+            }
             default:
                 throw new InvalidOperationException(
                     $"Unsupported recorded command {command.Kind}.");
@@ -1652,6 +1672,45 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                     target.Kind == AbilityTargetKind.Unit ? target.Id : -1,
                     target.Kind == AbilityTargetKind.Building ? target.Id : -1,
                     abilityId),
+                queued: false);
+        }
+        return result;
+    }
+
+    public AbilityCommandResult IssueBuildingAbility(
+        int playerId,
+        GameplayBuildingId caster,
+        int abilityId)
+    {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new AbilityCommandResult(matchBlock switch
+            {
+                MatchCommandBlock.Completed => AbilityCommandCode.MatchCompleted,
+                MatchCommandBlock.NotParticipant => AbilityCommandCode.NotParticipant,
+                _ => AbilityCommandCode.PlayerDefeated
+            }, AbilityId: abilityId, CasterBuilding: caster.Value);
+        }
+        if (!Construction.IsAlive(caster))
+            return new AbilityCommandResult(
+                AbilityCommandCode.InvalidCaster,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        var building = Construction.Observe(caster);
+        var result = Abilities.IssueBuilding(
+            playerId, caster, building.Type.Id, abilityId, Metrics.Tick,
+            this, AbilityEvents);
+        if (result.Succeeded)
+        {
+            _commandRecorder?.Record(
+                Metrics.Tick,
+                ReadOnlySpan<int>.Empty,
+                new UnitOrder(
+                    UnitOrderKind.CastBuildingAbility,
+                    (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                    TargetBuilding: caster.Value,
+                    TargetResourceNode: abilityId),
                 queued: false);
         }
         return result;
@@ -6083,6 +6142,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     int IAbilityRuntimeWorld.AbilityUnitCount => Units.Count;
 
+    int IAbilityRuntimeWorld.AbilityBuildingCount => Construction.SlotCount;
+
     bool IAbilityRuntimeWorld.AbilityUnitExists(int unit) =>
         (uint)unit < (uint)Units.Count;
 
@@ -6127,6 +6188,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     bool IAbilityRuntimeWorld.AbilityBuildingAlive(
         GameplayBuildingId building) => Construction.IsAlive(building);
 
+    bool IAbilityRuntimeWorld.AbilityBuildingCompleted(
+        GameplayBuildingId building) =>
+        Construction.IsAlive(building) &&
+        Construction.Observe(building).State ==
+        BuildingLifecycleState.Completed;
+
     int IAbilityRuntimeWorld.AbilityBuildingOwner(
         GameplayBuildingId building) => Construction.Observe(building).PlayerId;
 
@@ -6140,7 +6207,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     bool IAbilityRuntimeWorld.AbilityDamageUnit(
         int sourceUnit,
         int targetUnit,
-        float damage) => DamageUnit(targetUnit, damage);
+        float damage,
+        AbilityDamageKind damageKind)
+    {
+        if (damageKind == AbilityDamageKind.None ||
+            damageKind == AbilityDamageKind.Magic &&
+            Abilities.HasStatus(targetUnit, AbilityStatusFlags.MagicImmune))
+            return false;
+        if (damageKind == AbilityDamageKind.Physical &&
+            (uint)targetUnit < (uint)Units.Count && Units.Alive[targetUnit])
+        {
+            damage = CombatDamageResolver.Resolve(
+                new CombatWeaponDamageSnapshot(
+                    damage, 1, CombatAttribute.None, 0f, 0, 0f, 0f),
+                new CombatDefenseSnapshot(
+                    Combat.Armor[targetUnit], Combat.Attributes[targetUnit]),
+                Combat.Health[targetUnit]).TotalDamage;
+        }
+        return DamageUnit(targetUnit, damage);
+    }
 
     bool IAbilityRuntimeWorld.AbilityHealUnit(int targetUnit, float amount)
     {
@@ -6155,7 +6240,24 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     bool IAbilityRuntimeWorld.AbilityDamageBuilding(
         int sourceUnit,
         GameplayBuildingId building,
-        float damage) => DamageBuilding(building, damage);
+        float damage,
+        AbilityDamageKind damageKind)
+    {
+        if (damageKind == AbilityDamageKind.None ||
+            !Construction.IsAlive(building))
+            return false;
+        if (damageKind == AbilityDamageKind.Physical)
+        {
+            var snapshot = Construction.Observe(building);
+            damage = CombatDamageResolver.Resolve(
+                new CombatWeaponDamageSnapshot(
+                    damage, 1, CombatAttribute.None, 0f, 0, 0f, 0f),
+                new CombatDefenseSnapshot(
+                    EffectiveBuildingArmor(snapshot), snapshot.Type.Attributes),
+                snapshot.Health).TotalDamage;
+        }
+        return DamageBuilding(building, damage);
+    }
 
     bool IAbilityRuntimeWorld.AbilityReviveUnit(int unit, float healthFraction)
     {
@@ -6194,6 +6296,31 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Units.CommandVersions[unit]++;
     }
 
+    void IAbilityRuntimeWorld.AbilityTeleportUnits(
+        int[] units,
+        Vector2 position)
+    {
+        if (units.Length == 0) return;
+        var valid = units.Where(unit =>
+                (uint)unit < (uint)Units.Count && Units.Alive[unit])
+            .Distinct()
+            .Order()
+            .ToArray();
+        if (valid.Length == 0) return;
+        Dictionary<int, Vector2> slots;
+        try
+        {
+            slots = _slotAllocator.Allocate(Units, valid, position);
+        }
+        catch (InvalidOperationException)
+        {
+            slots = valid.ToDictionary(unit => unit, _ => position);
+        }
+        foreach (var unit in valid)
+            ((IAbilityRuntimeWorld)this).AbilityTeleportUnit(
+                unit, slots[unit]);
+    }
+
     int IAbilityRuntimeWorld.AbilitySpawnSummon(
         int sourceUnit,
         int playerId,
@@ -6204,6 +6331,103 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         playerId,
         summon.Combat,
         summon.Perception);
+
+    bool IAbilityRuntimeWorld.AbilityTryFindNearestOwnedBuilding(
+        int unit,
+        BuildingFunctionKind function,
+        out GameplayBuildingId building)
+    {
+        building = new GameplayBuildingId(-1);
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
+            return false;
+        var owner = Combat.Teams[unit];
+        var bestDistance = float.PositiveInfinity;
+        for (var index = 0; index < Construction.SlotCount; index++)
+        {
+            var candidateId = new GameplayBuildingId(index);
+            if (!Construction.IsAlive(candidateId)) continue;
+            var candidate = Construction.Observe(candidateId);
+            if (candidate.PlayerId != owner ||
+                candidate.State != BuildingLifecycleState.Completed ||
+                candidate.Type.Function != function)
+                continue;
+            var closest = candidate.Bounds.Clamp(Units.Positions[unit]);
+            var distance = Vector2.DistanceSquared(
+                Units.Positions[unit], closest);
+            if (distance < bestDistance ||
+                distance == bestDistance && candidateId.Value < building.Value)
+            {
+                building = candidateId;
+                bestDistance = distance;
+            }
+        }
+        return building.Value >= 0;
+    }
+
+    void IAbilityRuntimeWorld.AbilityMoveUnitToBuilding(
+        int unit,
+        GameplayBuildingId building)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit] ||
+            !Construction.IsAlive(building))
+            return;
+        Span<int> single = stackalloc int[1];
+        single[0] = unit;
+        _issuingSystemOrder = true;
+        try
+        {
+            Economy.Cancel(single);
+            Construction.InterruptBuilders(single);
+            CommandQueues.ClearPending(unit);
+            CommandQueues.HasActiveOrders[unit] = false;
+            ExecuteBuildingBoundaryMove(single, building.Value);
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
+    }
+
+    bool IAbilityRuntimeWorld.AbilityUnitTouchesBuilding(
+        int unit,
+        GameplayBuildingId building) =>
+        (uint)unit < (uint)Units.Count && Units.Alive[unit] &&
+        Construction.IsAlive(building) &&
+        InteractionGeometry.DiscTouchesRectangle(
+            Units.Positions[unit], Units.Radii[unit],
+            Construction.Observe(building).Bounds);
+
+    bool IAbilityRuntimeWorld.AbilityUnitMovingToBuilding(
+        int unit,
+        GameplayBuildingId building) =>
+        (uint)unit < (uint)Units.Count && Units.Alive[unit] &&
+        Units.MovementGoalKinds[unit] == UnitMovementGoalKind.BuildingBoundary &&
+        Units.MovementGoalTargetIds[unit] == building.Value &&
+        Units.MovementLegResults[unit] == UnitMovementLegResult.InProgress;
+
+    bool IAbilityRuntimeWorld.AbilityApplyUnitProfile(
+        int unit,
+        in UnitTypeProfile profile)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit]) return false;
+        if (!Economy.SetNormalWorkerEnabled(unit, profile.IsWorker)) return false;
+        Units.ApplyMovementProfile(unit, profile.Movement);
+        Combat.ApplyProfile(unit, profile.Combat, profile.Perception);
+        Span<int> single = stackalloc int[1];
+        single[0] = unit;
+        _issuingSystemOrder = true;
+        try
+        {
+            ExecuteStop(single);
+            CommandQueues.ClearPending(unit);
+            CommandQueues.HasActiveOrders[unit] = false;
+        }
+        finally
+        {
+            _issuingSystemOrder = false;
+        }
+        return true;
+    }
 
     void IAbilityRuntimeWorld.AbilityPrepareCaster(int unit)
     {
@@ -6335,6 +6559,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         CombatWeaponUpgradeTechnologyId < 0
             ? 0
             : Technology.Level(team, CombatWeaponUpgradeTechnologyId);
+
+    int ICombatMovementDriver.TechnologyLevel(int team, int technologyId) =>
+        technologyId < 0 ? 0 : Technology.Level(team, technologyId);
 
     private CombatWeaponDamageSnapshot CombatWeapon(int attacker) => new(
         Combat.AttackDamage[attacker], Combat.AttacksPerVolley[attacker],

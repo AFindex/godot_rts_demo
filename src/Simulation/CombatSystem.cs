@@ -41,6 +41,7 @@ public interface ICombatMovementDriver
     CombatBuildingDamageResult DamageBuilding(
         GameplayBuildingId building, CombatWeaponDamageSnapshot weapon);
     int WeaponUpgradeLevel(int team);
+    int TechnologyLevel(int team, int technologyId);
 }
 
 /// <summary>
@@ -179,12 +180,20 @@ public sealed class CombatSystem
                         var acquisition = intent == UnitCommandIntent.Hold
                             ? _combat.AttackRanges[unit] + _units.Radii[unit]
                             : _combat.AcquisitionRanges[unit];
-                        var building = _movement.FindAutoBuildingTarget(
-                            unit, acquisition);
+                        var building = CanTargetLayer(
+                                unit, CombatTargetLayer.Building)
+                            ? _movement.FindAutoBuildingTarget(unit, acquisition)
+                            : new GameplayBuildingId(-1);
                         if (building.Value >= 0)
                             BeginBuildingEngagement(unit, building, tick);
                     }
                 }
+                continue;
+            }
+
+            if (!TrySelectTargetWeapon(unit, target))
+            {
+                Disengage(unit);
                 continue;
             }
 
@@ -279,6 +288,10 @@ public sealed class CombatSystem
         GameplayBuildingId building,
         long tick)
     {
+        if (!_combat.TrySelectWeapon(
+                unit, CombatTargetLayer.Building,
+                technologyId => HasTechnology(unit, technologyId)))
+            return;
         _slots.Release(unit);
         _combat.TargetUnits[unit] = -1;
         _combat.TargetBuildings[unit] = building.Value;
@@ -297,6 +310,7 @@ public sealed class CombatSystem
 
     private void BeginEngagement(int unit, int target)
     {
+        if (!TrySelectTargetWeapon(unit, target)) return;
         _slots.Release(unit);
         _combat.TargetUnits[unit] = target;
         _combat.TargetBuildings[unit] = -1;
@@ -521,8 +535,14 @@ public sealed class CombatSystem
         var distanceSquared = Vector2.DistanceSquared(
             _units.Positions[attacker], _units.Positions[target]);
         var priority = _combat.AutoTargetPriority[target];
-        var bonusMatch = _combat.BonusVs[attacker] != CombatAttribute.None &&
-                         (_combat.BonusVs[attacker] &
+        var bonusVs = _combat.TryResolveWeapon(
+            attacker, TargetLayer(target),
+            technologyId => HasTechnology(attacker, technologyId),
+            out var weapon)
+            ? weapon.BonusVs
+            : CombatAttribute.None;
+        var bonusMatch = bonusVs != CombatAttribute.None &&
+                         (bonusVs &
                           _combat.Attributes[target]) != 0;
         var armedThreat = _combat.AttackDamage[target] > 0f;
         var total = distanceSquared - priority * PriorityScoreWeight -
@@ -541,6 +561,7 @@ public sealed class CombatSystem
 
     private bool IsValidTarget(int unit, int target) =>
         IsDamageableTarget(unit, target) &&
+        CanTargetLayer(unit, TargetLayer(target)) &&
         _canPerceiveTarget(_combat.Teams[unit], target);
 
     private bool IsDamageableTarget(int unit, int target) =>
@@ -557,7 +578,10 @@ public sealed class CombatSystem
         long tick)
     {
         var building = new GameplayBuildingId(_combat.TargetBuildings[unit]);
-        if (!_movement.IsBuildingTargetValid(unit, building))
+        if (!_combat.TrySelectWeapon(
+                unit, CombatTargetLayer.Building,
+                technologyId => HasTechnology(unit, technologyId)) ||
+            !_movement.IsBuildingTargetValid(unit, building))
         {
             Disengage(unit);
             return;
@@ -761,6 +785,24 @@ public sealed class CombatSystem
         _movement.WeaponUpgradeLevel(_combat.Teams[attacker]),
         _combat.BaseUpgradeDamage[attacker],
         _combat.BonusUpgradeDamage[attacker]);
+
+    private CombatTargetLayer TargetLayer(int target) =>
+        _combat.TerrainVisionModes[target] == TerrainVisionMode.Elevated
+            ? CombatTargetLayer.AirUnit
+            : CombatTargetLayer.GroundUnit;
+
+    private bool CanTargetLayer(int unit, CombatTargetLayer layer) =>
+        _combat.CanTarget(
+            unit, layer,
+            technologyId => HasTechnology(unit, technologyId));
+
+    private bool TrySelectTargetWeapon(int unit, int target) =>
+        _combat.TrySelectWeapon(
+            unit, TargetLayer(target),
+            technologyId => HasTechnology(unit, technologyId));
+
+    private bool HasTechnology(int unit, int technologyId) =>
+        _movement.TechnologyLevel(_combat.Teams[unit], technologyId) > 0;
 
     internal CombatDamageResult PreviewDamage(int attacker, int target)
     {

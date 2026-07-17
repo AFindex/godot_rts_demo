@@ -1,4 +1,5 @@
 using RtsDemo.Simulation;
+using System.Collections.Immutable;
 
 namespace War3Rts.Data;
 
@@ -62,6 +63,10 @@ public sealed class War3TechnologyDataAdapter(
     War3ObjectDataCatalog upgradeCatalog)
 {
     public War3ObjectDataCatalog Catalog { get; } = upgradeCatalog;
+    public IReadOnlyDictionary<string, int> BuildingTypeIds { get; init; } =
+        new Dictionary<string, int>(StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, int> TechnologyIds { get; init; } =
+        new Dictionary<string, int>(StringComparer.Ordinal);
 
     public (TechnologyProfile Profile, War3TechnologyDefinition Definition,
         bool Applied) Apply(
@@ -81,6 +86,12 @@ public sealed class War3TechnologyDataAdapter(
         var first = data.Summary.Levels[0];
         var name = Text(first.Name, Text(data.DisplayName, fallback.Name));
         var icon = AssetPath(first.Icon, fallbackIcon);
+        var requirements = first.Requirements
+            .Distinct(StringComparer.Ordinal)
+            .Select(value => Requirement(value, first.RequirementLevel ?? 1))
+            .Where(value => value.HasValue)
+            .Select(value => value!.Value)
+            .ToImmutableArray();
         var profile = fallback with
         {
             Name = name,
@@ -94,7 +105,10 @@ public sealed class War3TechnologyDataAdapter(
                 : fallback.ResearchSeconds,
             MaximumLevel = data.Identity.Levels > 0
                 ? data.Identity.Levels
-                : fallback.MaximumLevel
+                : fallback.MaximumLevel,
+            Requirements = requirements.IsDefaultOrEmpty
+                ? fallback.Requirements
+                : requirements
         };
         return (
             profile,
@@ -107,6 +121,21 @@ public sealed class War3TechnologyDataAdapter(
                 data.Summary.Levels,
                 data.Summary.Effects),
             true);
+    }
+
+    private TechnologyRequirementProfile? Requirement(
+        string objectId,
+        int level)
+    {
+        if (BuildingTypeIds.TryGetValue(objectId, out var buildingTypeId))
+            return new TechnologyRequirementProfile(
+                TechnologyRequirementKind.CompletedBuilding,
+                buildingTypeId, 1);
+        if (TechnologyIds.TryGetValue(objectId, out var technologyId))
+            return new TechnologyRequirementProfile(
+                TechnologyRequirementKind.TechnologyLevel,
+                technologyId, Math.Max(1, level));
+        return null;
     }
 
     private static string AssetPath(

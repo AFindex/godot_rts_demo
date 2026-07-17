@@ -1,4 +1,5 @@
 using Godot;
+using Godot.Collections;
 using RtsDemo.Simulation;
 
 namespace RtsDemo.GodotRuntime.Resources;
@@ -49,6 +50,7 @@ public partial class UnitTypeProfileResource : Resource
     [Export] public bool CanMoveDuringCooldown { get; set; }
     [Export(PropertyHint.Range, "0,10,1")]
     public int AutoTargetPriority { get; set; }
+    [Export] public Array<CombatWeaponProfileResource> Weapons { get; set; } = new();
     [Export] public UnitConcealmentKind Concealment { get; set; }
     [Export(PropertyHint.Range, "0,5000,1,or_greater")]
     public float DetectionRange { get; set; }

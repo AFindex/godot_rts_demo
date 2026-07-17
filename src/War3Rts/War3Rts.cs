@@ -853,6 +853,9 @@ public sealed partial class War3Rts : Node3D
             case War3CommandKind.Ability:
                 BeginAbility(command.DataId);
                 break;
+            case War3CommandKind.BuildingAbility:
+                UseBuildingAbility(command.DataId);
+                break;
             case War3CommandKind.LearnAbility:
                 LearnAbility(command.DataId);
                 break;
@@ -921,6 +924,22 @@ public sealed partial class War3Rts : Node3D
             AbilityActivationKind.ChannelUnit
             ? $"{ability.Name}：选择目标单位"
             : $"{ability.Name}：选择目标位置";
+    }
+
+    private void UseBuildingAbility(int abilityId)
+    {
+        if (_simulation is null || _selectedBuildings.Count == 0) return;
+        var building = new GameplayBuildingId(
+            _selectedBuildings.Order().First());
+        var result = _simulation.IssueBuildingAbility(
+            War3HumanScenario.PlayerId, building, abilityId);
+        if ((uint)abilityId < (uint)_simulation.Abilities.Catalog.Count)
+        {
+            var ability = _simulation.Abilities.Catalog.Ability(abilityId);
+            Report(result.Succeeded
+                ? $"已执行 {ability.Name}"
+                : $"{ability.Name} 执行失败：{result.Code}");
+        }
     }
 
     private void LearnAbility(int abilityId)
@@ -1382,8 +1401,17 @@ public sealed partial class War3Rts : Node3D
                     _simulation.Combat.Teams[first],
                     _simulation.CombatWeaponUpgradeTechnologyId);
             var attack = _simulation.Combat.AttackDamage[first];
+            var weapons = _simulation.Combat.WeaponProfiles[first];
+            var activeWeaponSlot = _simulation.Combat.ActiveWeaponSlots[first];
+            var activeWeapon = weapons.FirstOrDefault(value =>
+                value.Slot == activeWeaponSlot);
             var abilityState = _simulation.Abilities.Observe(first);
             var abilityStatus = AbilityStatusLabel(first, abilityState);
+            var heroProgress = abilityState.Hero
+                ? $"经验 {abilityState.HeroExperience}/" +
+                  $"{abilityState.ExperienceForNextLevel} · " +
+                  $"技能点 {abilityState.UnspentSkillPoints}"
+                : string.Empty;
             var attackClass = definition.AttackClass.Length > 0
                 ? definition.AttackClass
                 : attack <= 0f
@@ -1400,7 +1428,8 @@ public sealed partial class War3Rts : Node3D
                     {
                         definition.Role,
                         definition.AbilitySummary,
-                        abilityStatus
+                        abilityStatus,
+                        heroProgress
                     }.Where(value => value.Length > 0))
                     : $"混合编队 · {living.Length} 个单位",
                 health, maximum,
@@ -1413,7 +1442,7 @@ public sealed partial class War3Rts : Node3D
                 string.Empty,
                 attack,
                 _simulation.Combat.Armor[first],
-                definition.Level,
+                abilityState.Hero ? abilityState.HeroLevel : definition.Level,
                 weaponLevel,
                 attackClass,
                 definition.ArmorClass.Length > 0
@@ -1429,8 +1458,15 @@ public sealed partial class War3Rts : Node3D
                         _simulation.Abilities.Observe(unit).MaximumMana)
                     : abilityState.MaximumMana,
                 ManaRegeneration = abilityState.ManaRegeneration,
+                HeroExperience = abilityState.HeroExperience,
+                ExperienceForNextLevel =
+                    abilityState.ExperienceForNextLevel,
+                UnspentSkillPoints = abilityState.UnspentSkillPoints,
                 AbilityStatuses = abilityState.Statuses,
-                Buffs = _simulation.Abilities.ObserveBuffs(first)
+                Buffs = _simulation.Abilities.ObserveBuffs(first),
+                ActiveWeaponSlot = activeWeaponSlot,
+                WeaponCount = weapons.Length,
+                WeaponTargetLabel = WeaponTargetLabel(activeWeapon.TargetLayers)
             };
         }
         if (_selectedBuildings.Count > 0)
@@ -1471,6 +1507,17 @@ public sealed partial class War3Rts : Node3D
             };
         }
         return War3SelectionSnapshot.Empty;
+    }
+
+    private static string WeaponTargetLabel(CombatTargetLayer layers)
+    {
+        if (layers == CombatTargetLayer.None) return string.Empty;
+        if (layers == CombatTargetLayer.All) return "全目标";
+        var labels = new List<string>(3);
+        if ((layers & CombatTargetLayer.GroundUnit) != 0) labels.Add("对地");
+        if ((layers & CombatTargetLayer.AirUnit) != 0) labels.Add("对空");
+        if ((layers & CombatTargetLayer.Building) != 0) labels.Add("对建筑");
+        return string.Join('、', labels);
     }
 
     private War3QueueItemSnapshot[] CreateQueueItems(GameplayBuildingId building)
@@ -1641,6 +1688,8 @@ public sealed partial class War3Rts : Node3D
         foreach (var ability in War3HumanContent.Abilities)
         {
             if (ability.IconPath.Length > 0) Texture(ability.IconPath);
+            if (ability.AlternateIconPath.Length > 0)
+                Texture(ability.AlternateIconPath);
             foreach (var model in ability.CasterModels
                          .Concat(ability.TargetModels)
                          .Concat(ability.EffectModels)
@@ -1690,7 +1739,9 @@ public sealed partial class War3Rts : Node3D
     {
         if (_buildMenu)
         {
-            var commands = War3HumanContent.Buildings.Select((definition, index) =>
+            var commands = War3HumanContent.Buildings
+                .Where(definition => definition.Constructible)
+                .Select((definition, index) =>
                 new War3CommandSnapshot(
                     index, War3CommandKind.Build, definition.TypeId,
                     definition.Name,
@@ -1758,17 +1809,45 @@ public sealed partial class War3Rts : Node3D
                         var cooldown = learned.CooldownRemaining > 0f
                             ? $"\n剩余冷却 {learned.CooldownRemaining:0.0} 秒"
                             : string.Empty;
+                        var formEffect = level.Effects.FirstOrDefault(value =>
+                            value.Kind == AbilityEffectKind.TransformUnit);
+                        var alternateForm = formEffect.Kind ==
+                                                AbilityEffectKind.TransformUnit &&
+                                            state.UnitTypeId ==
+                                                formEffect.UnitForm.Alternate.Id;
+                        War3HumanContent.TryAbility(
+                            ability.RawId, out var presentation);
+                        var label = alternateForm &&
+                                    !string.IsNullOrWhiteSpace(
+                                        presentation?.AlternateName)
+                            ? presentation.AlternateName
+                            : ability.Name;
+                        var description = alternateForm &&
+                                          !string.IsNullOrWhiteSpace(
+                                              presentation?.AlternateDescription)
+                            ? presentation.AlternateDescription
+                            : ability.Description;
+                        var icon = alternateForm &&
+                                   !string.IsNullOrWhiteSpace(
+                                       presentation?.AlternateIconPath)
+                            ? presentation.AlternateIconPath
+                            : ability.IconPath;
+                        var hotkey = alternateForm &&
+                                     !string.IsNullOrWhiteSpace(
+                                         presentation?.AlternateHotkey)
+                            ? presentation.AlternateHotkey
+                            : ability.Hotkey;
                         commands.Add(new War3CommandSnapshot(
                             abilitySlots[commandSlot++],
                             War3CommandKind.Ability,
                             ability.Id,
-                            ability.Name,
-                            $"{ability.Description}\n等级 {learned.Level} · " +
+                            label,
+                            $"{description}\n等级 {learned.Level} · " +
                             $"法力 {level.ManaCost:0} · 冷却 " +
                             $"{level.CooldownSeconds:0.#} 秒{range}{cooldown}",
-                            ability.IconPath,
-                            ability.Hotkey.Length > 0
-                                ? ability.Hotkey
+                            icon,
+                            hotkey.Length > 0
+                                ? hotkey
                                 : Hotkey(commandSlot),
                             ready,
                             learned.CooldownRemaining,
@@ -1792,6 +1871,43 @@ public sealed partial class War3Rts : Node3D
             var building = _simulation.Construction.Observe(id);
             var result = new List<War3CommandSnapshot>();
             var slot = 0;
+            foreach (var learned in _simulation.Abilities.ObserveBuilding(
+                         id, building.Type.Id))
+            {
+                var ability = _simulation.Abilities.Catalog.Ability(
+                    learned.AbilityId);
+                War3HumanContent.TryAbility(
+                    ability.RawId, out var presentation);
+                var label = learned.Toggled &&
+                            !string.IsNullOrWhiteSpace(
+                                presentation?.AlternateName)
+                    ? presentation.AlternateName
+                    : ability.Name;
+                var description = learned.Toggled &&
+                                  !string.IsNullOrWhiteSpace(
+                                      presentation?.AlternateDescription)
+                    ? presentation.AlternateDescription
+                    : ability.Description;
+                var icon = learned.Toggled &&
+                           !string.IsNullOrWhiteSpace(
+                               presentation?.AlternateIconPath)
+                    ? presentation.AlternateIconPath
+                    : ability.IconPath;
+                var hotkey = learned.Toggled &&
+                             !string.IsNullOrWhiteSpace(
+                                 presentation?.AlternateHotkey)
+                    ? presentation.AlternateHotkey
+                    : ability.Hotkey;
+                result.Add(new War3CommandSnapshot(
+                    learned.Toggled ? 10 : 9,
+                    War3CommandKind.BuildingAbility,
+                    ability.Id,
+                    label,
+                    description,
+                    icon,
+                    hotkey,
+                    Toggled: learned.Toggled));
+            }
             foreach (var recipe in _production.Recipes.ToArray().Where(value =>
                          value.ProducerBuildingTypeId == building.Type.Id).Take(8))
             {
@@ -2254,7 +2370,7 @@ public sealed partial class War3Rts : Node3D
             _simulation.CombatBuildingArmorTechnologyId == 2 &&
             War3HumanContent.Technologies.Count == 15;
         var abilityIntegrationReady =
-            War3HumanContent.AbilityImportStatus.Catalog.Count == 43 &&
+            War3HumanContent.AbilityImportStatus.Catalog.Count == 44 &&
             War3HumanContent.AbilityImportStatus.MissingObjectIds.Length == 0 &&
             _smokeAbilityCastsIssued && _smokeAbilityDamageApplied &&
             _smokeSummonedUnit >= 0 &&

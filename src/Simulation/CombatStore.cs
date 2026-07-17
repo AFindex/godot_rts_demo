@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Collections.Immutable;
 
 namespace RtsDemo.Simulation;
 
@@ -25,6 +26,16 @@ public enum CombatTargetKind : byte
     None,
     Unit,
     Building
+}
+
+[Flags]
+public enum CombatTargetLayer : byte
+{
+    None = 0,
+    GroundUnit = 1 << 0,
+    AirUnit = 1 << 1,
+    Building = 1 << 2,
+    All = GroundUnit | AirUnit | Building
 }
 
 public enum CombatPositioningKind : byte
@@ -152,6 +163,8 @@ public readonly record struct CombatProfileSnapshot(
     bool CanMoveDuringCooldown = false,
     int AutoTargetPriority = 0)
 {
+    public ImmutableArray<CombatWeaponProfileSnapshot> Weapons { get; init; } = [];
+
     public static CombatProfileSnapshot Standard => new(
         MaximumHealth: 45f,
         AttackDamage: 8f,
@@ -189,6 +202,73 @@ public readonly record struct CombatProfileSnapshot(
                 $"windup={AttackWindupSeconds}, leash={LeashDistance}, " +
                 $"positioning={Positioning}, armor={Armor}, " +
                 $"attacks={AttacksPerVolley}, priority={AutoTargetPriority}.");
+        }
+        if (Weapons.IsDefault || Weapons.Length > 8)
+            throw new ArgumentOutOfRangeException(
+                nameof(Weapons), "Combat weapon groups must contain at most eight weapons.");
+        var slots = new HashSet<int>();
+        foreach (var weapon in Weapons)
+        {
+            weapon.Validate();
+            if (!slots.Add(weapon.Slot))
+                throw new ArgumentException(
+                    $"Combat weapon slot {weapon.Slot} is duplicated.", nameof(Weapons));
+        }
+    }
+}
+
+public readonly record struct CombatWeaponProfileSnapshot(
+    int Slot,
+    CombatTargetLayer TargetLayers,
+    bool EnabledByDefault,
+    int RequiredTechnologyId,
+    float AttackDamage,
+    float AttackRange,
+    float AttackCooldownSeconds,
+    float AttackWindupSeconds,
+    CombatPositioningKind Positioning,
+    int AttacksPerVolley = 1,
+    CombatAttribute BonusVs = CombatAttribute.None,
+    float BonusDamage = 0f,
+    float BaseUpgradeDamage = 0f,
+    float BonusUpgradeDamage = 0f,
+    float ProjectileSpeed = 0f,
+    bool CanMoveDuringWindup = false,
+    bool CanMoveDuringCooldown = false)
+{
+    public static CombatWeaponProfileSnapshot FromLegacy(
+        in CombatProfileSnapshot profile) => new(
+        0, CombatTargetLayer.All, true, -1,
+        profile.AttackDamage, profile.AttackRange,
+        profile.AttackCooldownSeconds, profile.AttackWindupSeconds,
+        profile.Positioning, profile.AttacksPerVolley, profile.BonusVs,
+        profile.BonusDamage, profile.BaseUpgradeDamage,
+        profile.BonusUpgradeDamage, profile.ProjectileSpeed,
+        profile.CanMoveDuringWindup, profile.CanMoveDuringCooldown);
+
+    public void Validate()
+    {
+        if (Slot is < 0 or > 7 ||
+            TargetLayers == CombatTargetLayer.None ||
+            (TargetLayers & ~CombatTargetLayer.All) != 0 ||
+            !EnabledByDefault && RequiredTechnologyId < 0 ||
+            RequiredTechnologyId < -1 ||
+            !float.IsFinite(AttackDamage) || AttackDamage < 0f ||
+            !float.IsFinite(AttackRange) || AttackRange < 0f ||
+            !float.IsFinite(AttackCooldownSeconds) ||
+            AttackCooldownSeconds <= 0f ||
+            !float.IsFinite(AttackWindupSeconds) || AttackWindupSeconds < 0f ||
+            AttackWindupSeconds > AttackCooldownSeconds ||
+            !Enum.IsDefined(Positioning) || AttacksPerVolley is < 1 or > 32 ||
+            (BonusVs & ~CombatAttribute.All) != 0 ||
+            !float.IsFinite(BonusDamage) || BonusDamage < 0f ||
+            !float.IsFinite(BaseUpgradeDamage) || BaseUpgradeDamage < 0f ||
+            !float.IsFinite(BonusUpgradeDamage) || BonusUpgradeDamage < 0f ||
+            !float.IsFinite(ProjectileSpeed) || ProjectileSpeed < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(CombatWeaponProfileSnapshot),
+                $"Combat weapon slot {Slot} is invalid.");
         }
     }
 }
@@ -248,8 +328,16 @@ public sealed class CombatStore
         WindupRemaining = new float[capacity];
         ChaseRepathRemaining = new float[capacity];
         TargetLockRemaining = new float[capacity];
+        WeaponProfiles = new ImmutableArray<CombatWeaponProfileSnapshot>[capacity];
+        ActiveWeaponSlots = new int[capacity];
+        AttackDamageMultipliers = new float[capacity];
+        AttackDamageAdds = new float[capacity];
+        AttackCooldownMultipliers = new float[capacity];
         Array.Fill(TargetUnits, -1);
         Array.Fill(TargetBuildings, -1);
+        Array.Fill(ActiveWeaponSlots, -1);
+        Array.Fill(AttackDamageMultipliers, 1f);
+        Array.Fill(AttackCooldownMultipliers, 1f);
     }
 
     public int[] Teams { get; }
@@ -298,6 +386,11 @@ public sealed class CombatStore
     public float[] WindupRemaining { get; }
     public float[] ChaseRepathRemaining { get; }
     public float[] TargetLockRemaining { get; }
+    public ImmutableArray<CombatWeaponProfileSnapshot>[] WeaponProfiles { get; }
+    public int[] ActiveWeaponSlots { get; }
+    public float[] AttackDamageMultipliers { get; }
+    public float[] AttackDamageAdds { get; }
+    public float[] AttackCooldownMultipliers { get; }
 
     public void Register(
         int unit,
@@ -367,6 +460,59 @@ public sealed class CombatStore
         EngagementOrigins[unit] = position;
         LastChaseTargets[unit] = position;
         AttackSlotTargets[unit] = position;
+        ConfigureWeapons(unit, profile);
+    }
+
+    internal void ApplyProfile(
+        int unit,
+        in CombatProfileSnapshot profile,
+        in UnitPerceptionProfileSnapshot perception)
+    {
+        profile.Validate();
+        perception.Validate();
+        if ((uint)unit >= (uint)Teams.Length)
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        var healthFraction = MaximumHealth[unit] > 0f
+            ? Math.Clamp(Health[unit] / MaximumHealth[unit], 0f, 1f)
+            : 1f;
+        MaximumHealth[unit] = profile.MaximumHealth;
+        Health[unit] = MathF.Max(
+            1f, profile.MaximumHealth * healthFraction);
+        AttackDamage[unit] = profile.AttackDamage;
+        Armor[unit] = profile.Armor;
+        Attributes[unit] = profile.Attributes;
+        AttacksPerVolley[unit] = profile.AttacksPerVolley;
+        BonusVs[unit] = profile.BonusVs;
+        BonusDamage[unit] = profile.BonusDamage;
+        BaseUpgradeDamage[unit] = profile.BaseUpgradeDamage;
+        BonusUpgradeDamage[unit] = profile.BonusUpgradeDamage;
+        ProjectileSpeed[unit] = profile.ProjectileSpeed;
+        CanMoveDuringWindup[unit] = profile.CanMoveDuringWindup;
+        CanMoveDuringCooldown[unit] = profile.CanMoveDuringCooldown;
+        AutoTargetPriority[unit] = profile.AutoTargetPriority;
+        AttackRanges[unit] = profile.AttackRange;
+        AcquisitionRanges[unit] = profile.AcquisitionRange;
+        AttackCooldownDurations[unit] = profile.AttackCooldownSeconds;
+        AttackWindupDurations[unit] = profile.AttackWindupSeconds;
+        LeashDistances[unit] = profile.LeashDistance;
+        PositioningKinds[unit] = profile.Positioning;
+        ConfigureWeapons(unit, profile);
+        ConcealmentKinds[unit] = perception.Concealment;
+        ConcealmentCapabilities[unit] =
+            UnitConcealmentCapabilitySnapshot.None;
+        ConcealmentPhases[unit] = perception.Concealment ==
+                                  UnitConcealmentKind.None
+            ? UnitConcealmentPhase.Visible
+            : UnitConcealmentPhase.Concealed;
+        ConcealmentTransitionRemaining[unit] = 0f;
+        DetectionRanges[unit] = perception.DetectionRange;
+        BaseVisionRanges[unit] = perception.VisionRange;
+        VisionRanges[unit] = perception.VisionRange;
+        ObservationHeights[unit] = perception.ObservationHeight;
+        TerrainVisionModes[unit] = perception.TerrainVisionMode;
+        SetCommand(unit, UnitCommandIntent.Stop, AttackMoveGoals[unit]);
+        CooldownRemaining[unit] = 0f;
+        WindupRemaining[unit] = 0f;
     }
 
     internal void CopyRuntimeStateFrom(CombatStore source)
@@ -422,6 +568,114 @@ public sealed class CombatStore
         Copy(source.WindupRemaining, WindupRemaining);
         Copy(source.ChaseRepathRemaining, ChaseRepathRemaining);
         Copy(source.TargetLockRemaining, TargetLockRemaining);
+        Copy(source.WeaponProfiles, WeaponProfiles);
+        Copy(source.ActiveWeaponSlots, ActiveWeaponSlots);
+        Copy(source.AttackDamageMultipliers, AttackDamageMultipliers);
+        Copy(source.AttackDamageAdds, AttackDamageAdds);
+        Copy(source.AttackCooldownMultipliers, AttackCooldownMultipliers);
+    }
+
+    public bool CanTarget(
+        int unit,
+        CombatTargetLayer layer,
+        Func<int, bool> hasTechnology) =>
+        TryResolveWeapon(unit, layer, hasTechnology, out _);
+
+    public bool TrySelectWeapon(
+        int unit,
+        CombatTargetLayer layer,
+        Func<int, bool> hasTechnology)
+    {
+        if (!TryResolveWeapon(unit, layer, hasTechnology, out var weapon))
+            return false;
+        ActivateWeapon(unit, weapon);
+        return true;
+    }
+
+    public bool TryResolveWeapon(
+        int unit,
+        CombatTargetLayer layer,
+        Func<int, bool> hasTechnology,
+        out CombatWeaponProfileSnapshot weapon)
+    {
+        if ((uint)unit >= (uint)WeaponProfiles.Length ||
+            layer == CombatTargetLayer.None)
+        {
+            weapon = default;
+            return false;
+        }
+        var profiles = WeaponProfiles[unit];
+        for (var index = 0; index < profiles.Length; index++)
+        {
+            var candidate = profiles[index];
+            if ((candidate.TargetLayers & layer) == 0 ||
+                !candidate.EnabledByDefault &&
+                (candidate.RequiredTechnologyId < 0 ||
+                 !hasTechnology(candidate.RequiredTechnologyId)))
+                continue;
+            weapon = candidate;
+            return true;
+        }
+        weapon = default;
+        return false;
+    }
+
+    public void SetAttackModifiers(
+        int unit,
+        float damageMultiplier,
+        float damageAdd,
+        float cooldownMultiplier)
+    {
+        AttackDamageMultipliers[unit] = MathF.Max(0f, damageMultiplier);
+        AttackDamageAdds[unit] = damageAdd;
+        AttackCooldownMultipliers[unit] = MathF.Max(0.001f, cooldownMultiplier);
+        var profiles = WeaponProfiles[unit];
+        var slot = ActiveWeaponSlots[unit];
+        for (var index = 0; index < profiles.Length; index++)
+        {
+            if (profiles[index].Slot != slot) continue;
+            ActivateWeapon(unit, profiles[index]);
+            return;
+        }
+    }
+
+    private void ConfigureWeapons(
+        int unit,
+        in CombatProfileSnapshot profile)
+    {
+        var weapons = profile.Weapons.IsDefaultOrEmpty
+            ? ImmutableArray.Create(CombatWeaponProfileSnapshot.FromLegacy(profile))
+            : profile.Weapons;
+        WeaponProfiles[unit] = weapons;
+        AttackDamageMultipliers[unit] = 1f;
+        AttackDamageAdds[unit] = 0f;
+        AttackCooldownMultipliers[unit] = 1f;
+        ActivateWeapon(unit, weapons[0]);
+    }
+
+    private void ActivateWeapon(
+        int unit,
+        in CombatWeaponProfileSnapshot weapon)
+    {
+        ActiveWeaponSlots[unit] = weapon.Slot;
+        AttackDamage[unit] = MathF.Max(
+            0f, weapon.AttackDamage * AttackDamageMultipliers[unit] +
+                AttackDamageAdds[unit]);
+        AttackRanges[unit] = weapon.AttackRange;
+        AttackCooldownDurations[unit] = MathF.Max(
+            0.05f,
+            weapon.AttackCooldownSeconds * AttackCooldownMultipliers[unit]);
+        AttackWindupDurations[unit] = MathF.Min(
+            weapon.AttackWindupSeconds, AttackCooldownDurations[unit]);
+        PositioningKinds[unit] = weapon.Positioning;
+        AttacksPerVolley[unit] = weapon.AttacksPerVolley;
+        BonusVs[unit] = weapon.BonusVs;
+        BonusDamage[unit] = weapon.BonusDamage;
+        BaseUpgradeDamage[unit] = weapon.BaseUpgradeDamage;
+        BonusUpgradeDamage[unit] = weapon.BonusUpgradeDamage;
+        ProjectileSpeed[unit] = weapon.ProjectileSpeed;
+        CanMoveDuringWindup[unit] = weapon.CanMoveDuringWindup;
+        CanMoveDuringCooldown[unit] = weapon.CanMoveDuringCooldown;
     }
 
     private static void Copy<T>(T[] source, T[] destination) =>

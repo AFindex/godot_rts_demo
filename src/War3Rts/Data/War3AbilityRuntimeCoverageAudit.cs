@@ -131,8 +131,7 @@ public static class War3AbilityRuntimeCoverageAudit
 
     private static readonly HashSet<string> UnsupportedTargetTokens = new(
         [
-            "ward", "tree", "debris", "player", "ancient", "nonancient",
-            "nonsapper", "bridge", "item", "wall"
+            "tree", "debris", "bridge", "item", "wall"
         ],
         StringComparer.Ordinal);
 
@@ -166,8 +165,9 @@ public static class War3AbilityRuntimeCoverageAudit
                 ? ability.Id
                 : ability.Identity.BaseCode;
             var registered = War3AbilityBehaviorRegistry.TryGet(
-                baseCode, out var behavior);
-            behavior ??= War3AbilityBehaviorRegistry.Resolve(baseCode);
+                baseCode, out _);
+            var behavior = War3AbilityBehaviorRegistry.Resolve(
+                baseCode, ability.Id);
             var referencedBy = references.TryGetValue(ability.Id, out var refs)
                 ? refs.ToArray()
                 : [];

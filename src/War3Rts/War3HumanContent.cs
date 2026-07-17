@@ -30,7 +30,8 @@ public sealed record War3BuildingDefinition(
     string ModelSource,
     string IconPath,
     string SpecialEffectSource = "",
-    string ArmorClass = "");
+    string ArmorClass = "",
+    bool Constructible = true);
 
 /// <summary>
 /// Human-faction composition boundary. Stable dense IDs remain in the core
@@ -51,6 +52,8 @@ public static class War3HumanContent
     public const int GryphonAviary = 8;
     public const int ArcaneVault = 9;
     public const int GuardTower = 10;
+    public const int Keep = 11;
+    public const int Castle = 12;
 
     public const int Footman = 0;
     public const int Rifleman = 1;
@@ -68,6 +71,7 @@ public static class War3HumanContent
     public const int MountainKing = 13;
     public const int Paladin = 14;
     public const int BloodMage = 15;
+    public const int Militia = 16;
 
     private static readonly Lazy<War3HumanContentBundle> Runtime =
         new(BuildRuntime, LazyThreadSafetyMode.ExecutionAndPublication);
@@ -142,6 +146,9 @@ public static class War3HumanContent
         if (simulation.Abilities.TrySummonedObjectId(unit, out var objectId) &&
             Runtime.Value.SummonedUnits.TryGetValue(objectId, out var summoned))
             return summoned;
+        var unitTypeId = simulation.Abilities.Observe(unit).UnitTypeId;
+        if ((uint)unitTypeId < (uint)Units.Count)
+            return Units[unitTypeId];
         var isWorker = simulation.Economy.IsWorker(unit);
         var radius = simulation.Units.Radii[unit];
         var health = simulation.Combat.MaximumHealth[unit];
@@ -175,7 +182,15 @@ public static class War3HumanContent
         var abilityMetadataCatalog = War3AbilityMetadataCatalog.Open(
             War3AssetPack.AbsolutePath("data/ability_metadata"));
         var adapter = new War3GameplayDataAdapter(
-            dataCatalog, War3GameplayImportPolicy.Default);
+            dataCatalog, War3GameplayImportPolicy.Default)
+        {
+            WeaponUnlockTechnologies = new Dictionary<string, int>(
+                StringComparer.Ordinal)
+            {
+                [War3GameplayDataAdapter.WeaponUnlockKey("hgyr", 1)] = 4,
+                [War3GameplayDataAdapter.WeaponUnlockKey("hmtt", 1)] = 6
+            }
+        };
 
         var units = fallbackUnits
             .Select(adapter.ApplyPresentation)
@@ -267,7 +282,21 @@ public static class War3HumanContent
             });
         }
         var fallbackTechnologies = fallbackTechnologyValues.ToArray();
-        var technologyAdapter = new War3TechnologyDataAdapter(upgradeCatalog);
+        var technologyIdMap = technologyBindings
+            .Select((value, index) => (value.ObjectId, Index: index))
+            .ToDictionary(
+                value => value.ObjectId,
+                value => value.Index,
+                StringComparer.Ordinal);
+        var buildingTypeIdMap = buildings.ToDictionary(
+            value => value.ObjectId,
+            value => value.TypeId,
+            StringComparer.Ordinal);
+        var technologyAdapter = new War3TechnologyDataAdapter(upgradeCatalog)
+        {
+            BuildingTypeIds = buildingTypeIdMap,
+            TechnologyIds = technologyIdMap
+        };
         var technologyDefinitions = new War3TechnologyDefinition[
             fallbackTechnologies.Length];
         var appliedTechnologies = 0;
@@ -291,12 +320,17 @@ public static class War3HumanContent
             value => value.ObjectId,
             value => value.TypeId,
             StringComparer.Ordinal);
+        var unitTypes = units.ToDictionary(
+            value => value.ObjectId,
+            value => unitProfiles[value.TypeId],
+            StringComparer.Ordinal);
         var abilityImport = new War3AbilityDataAdapter(
             abilityCatalog, buffEffectCatalog, dataCatalog,
             War3GameplayImportPolicy.Default,
             technologyIds,
-            buildingIds)
-            .Build(units);
+            buildingIds,
+            unitTypes)
+            .Build(units, buildings);
         var report = adapter.CreateReport(
             units.Select(value => value.ObjectId),
             buildings.Select(value => value.ObjectId));
@@ -467,7 +501,13 @@ public static class War3HumanContent
         new(ArcaneVault, "hvlt", "神秘藏宝室", "人族物品商店",
             @"Buildings\Human\ArcaneVault\ArcaneVault.mdx", Btn("ArcaneVault")),
         new(GuardTower, "hgtw", "防御塔", "基地防御建筑",
-            @"Buildings\Human\HumanTower\HumanTower.mdx", Btn("GuardTower"))
+            @"Buildings\Human\HumanTower\HumanTower.mdx", Btn("GuardTower")),
+        new(Keep, "hkee", "主城", "二级城镇大厅，可使用战斗号召",
+            @"Buildings\Human\TownHall\TownHall.mdx", Btn("Keep"),
+            Constructible: false),
+        new(Castle, "hcas", "城堡", "三级城镇大厅，可使用战斗号召",
+            @"Buildings\Human\TownHall\TownHall.mdx", Btn("Castle"),
+            Constructible: false)
     ];
 
     private static War3UnitDefinition[] CreateFallbackUnitDefinitions() =>
@@ -516,7 +556,9 @@ public static class War3HumanContent
             "HeroPaladin", "HeroPaladin", "HeroPaladin"),
         Unit(BloodMage, "Hblm", "血魔法师", "远程智力英雄",
             "HeroBloodElf", "HeroBloodElf", "HeroBloodElfPrince",
-            projectile: @"Abilities\Weapons\BloodElfMissile\BloodElfMissile.mdx")
+            projectile: @"Abilities\Weapons\BloodElfMissile\BloodElfMissile.mdx"),
+        Unit(Militia, "hmil", "民兵", "战斗号召临时形态",
+            "Militia", "Militia", "Militia")
     ];
 
     private static BuildingTypeProfile[] CreateFallbackBuildingProfiles() =>
@@ -542,7 +584,11 @@ public static class War3HumanContent
         Building(ArcaneVault, "神秘藏宝室", BuildingFunctionKind.Research, 80, 72,
             130, 30, 6f, 900),
         Building(GuardTower, "防御塔", BuildingFunctionKind.Research, 58, 58,
-            125, 80, 6f, 950)
+            125, 80, 6f, 950),
+        Building(Keep, "主城", BuildingFunctionKind.TownHall, 150, 132,
+            0, 0, 12f, 3000, 12),
+        Building(Castle, "城堡", BuildingFunctionKind.TownHall, 150, 132,
+            0, 0, 12f, 3500, 12)
     ];
 
     private static UnitTypeProfile[] CreateFallbackUnitProfiles() =>
@@ -562,7 +608,8 @@ public static class War3HumanContent
         Profile(Archmage, "大魔法师", 10.5f, 125, 900, 75, 38, 165, 1.55f, true, false, 3),
         Profile(MountainKing, "山丘之王", 11.5f, 118, 1125, 80, 44, 34, 1.35f, false, true, 5),
         Profile(Paladin, "圣骑士", 11f, 122, 1025, 80, 39, 34, 1.4f, false, true, 5),
-        Profile(BloodMage, "血魔法师", 10.2f, 128, 875, 72, 37, 165, 1.5f, true, false, 2)
+        Profile(BloodMage, "血魔法师", 10.2f, 128, 875, 72, 37, 165, 1.5f, true, false, 2),
+        Profile(Militia, "民兵", 7.7f, 120, 300, 45, 12, 28, 1.2f, false, false, 4)
     ];
 
     private static ProductionRecipeProfile[] CreateFallbackRecipes(

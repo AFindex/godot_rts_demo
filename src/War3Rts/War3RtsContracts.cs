@@ -15,6 +15,7 @@ public enum War3CommandKind : byte
     Research,
     Rally,
     Ability,
+    BuildingAbility,
     LearnAbility,
     Cancel
 }
@@ -72,8 +73,14 @@ public sealed record War3SelectionSnapshot(
     public float Mana { get; init; }
     public float MaximumMana { get; init; }
     public float ManaRegeneration { get; init; }
+    public int HeroExperience { get; init; }
+    public int ExperienceForNextLevel { get; init; }
+    public int UnspentSkillPoints { get; init; }
     public AbilityStatusFlags AbilityStatuses { get; init; }
     public AbilityBuffSnapshot[] Buffs { get; init; } = [];
+    public int ActiveWeaponSlot { get; init; } = -1;
+    public int WeaponCount { get; init; }
+    public string WeaponTargetLabel { get; init; } = string.Empty;
 
     public static War3SelectionSnapshot Empty { get; } = new(
         "未选择单位", "左键选择，拖动框选", 0f, 0f,

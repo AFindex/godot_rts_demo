@@ -62,7 +62,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 7;
+    public const int CurrentFormatVersion = 8;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;
@@ -154,7 +154,7 @@ public sealed class ProductionCatalogSnapshot
                 return Failure(ProductionCatalogErrorCode.InvalidRecipe, index,
                     "Recipe requirements must be unique completed-building counts.");
             if ((uint)recipe.UnitType.Id >= (uint)units.Length ||
-                recipe.UnitType != units[recipe.UnitType.Id])
+                !UnitTypeEquals(recipe.UnitType, units[recipe.UnitType.Id]))
                 return Failure(ProductionCatalogErrorCode.RecipeUnitMismatch, index,
                     "Recipe unit must exactly match a catalog unit type.");
             if (!names.Add(recipe.Name))
@@ -222,6 +222,31 @@ public sealed class ProductionCatalogSnapshot
         writer.Write(unit.Combat.CanMoveDuringWindup);
         writer.Write(unit.Combat.CanMoveDuringCooldown);
         writer.Write(unit.Combat.AutoTargetPriority);
+        writer.Write(unit.Combat.Weapons.Length);
+        foreach (var weapon in unit.Combat.Weapons)
+        {
+            writer.Write(weapon.Slot);
+            writer.Write((byte)weapon.TargetLayers);
+            writer.Write(weapon.EnabledByDefault);
+            writer.Write(weapon.RequiredTechnologyId);
+            writer.Write(BitConverter.SingleToInt32Bits(weapon.AttackDamage));
+            writer.Write(BitConverter.SingleToInt32Bits(weapon.AttackRange));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.AttackCooldownSeconds));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.AttackWindupSeconds));
+            writer.Write((byte)weapon.Positioning);
+            writer.Write(weapon.AttacksPerVolley);
+            writer.Write((ushort)weapon.BonusVs);
+            writer.Write(BitConverter.SingleToInt32Bits(weapon.BonusDamage));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.BaseUpgradeDamage));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.BonusUpgradeDamage));
+            writer.Write(BitConverter.SingleToInt32Bits(weapon.ProjectileSpeed));
+            writer.Write(weapon.CanMoveDuringWindup);
+            writer.Write(weapon.CanMoveDuringCooldown);
+        }
         writer.Write((byte)unit.Perception.Concealment);
         writer.Write(BitConverter.SingleToInt32Bits(
             unit.Perception.DetectionRange));
@@ -269,7 +294,28 @@ public sealed class ProductionCatalogSnapshot
         float.IsFinite(unit.Combat.BonusUpgradeDamage) &&
         unit.Combat.ProjectileSpeed >= 0f &&
         float.IsFinite(unit.Combat.ProjectileSpeed) &&
+        ValidWeapons(unit.Combat.Weapons) &&
         ValidPerception(unit.Perception);
+
+    private static bool ValidWeapons(
+        ImmutableArray<CombatWeaponProfileSnapshot> weapons)
+    {
+        if (weapons.IsDefault || weapons.Length > 8) return false;
+        var slots = new HashSet<int>();
+        try
+        {
+            foreach (var weapon in weapons)
+            {
+                weapon.Validate();
+                if (!slots.Add(weapon.Slot)) return false;
+            }
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
 
     private static bool ValidPerception(UnitPerceptionProfileSnapshot value) =>
         Enum.IsDefined(value.Concealment) &&
@@ -296,9 +342,23 @@ public sealed class ProductionCatalogSnapshot
     public static bool RecipeEquals(
         ProductionRecipeProfile left,
         ProductionRecipeProfile right) =>
-        left with { Requirements = default } ==
-            right with { Requirements = default } &&
+        left with { Requirements = default, UnitType = default } ==
+            right with { Requirements = default, UnitType = default } &&
+        UnitTypeEquals(left.UnitType, right.UnitType) &&
         left.Requirements.AsSpan().SequenceEqual(right.Requirements.AsSpan());
+
+    public static bool UnitTypeEquals(
+        UnitTypeProfile left,
+        UnitTypeProfile right) =>
+        left with
+        {
+            Combat = left.Combat with { Weapons = default }
+        } == right with
+        {
+            Combat = right.Combat with { Weapons = default }
+        } &&
+        left.Combat.Weapons.AsSpan().SequenceEqual(
+            right.Combat.Weapons.AsSpan());
 
     private static bool Positive(float value) => float.IsFinite(value) && value > 0f;
     private static void WriteString(BinaryWriter writer, string value)
@@ -321,7 +381,7 @@ public readonly record struct ProductionCatalogDiff(
         ProductionCatalogSnapshot current,
         ProductionCatalogSnapshot candidate) => new(
         current.StableHash != candidate.StableHash,
-        CountChanged(current.UnitTypes, candidate.UnitTypes),
+        CountChangedUnitTypes(current.UnitTypes, candidate.UnitTypes),
         CountChangedRecipes(current.Recipes, candidate.Recipes));
 
     private static int CountChanged<T>(ReadOnlySpan<T> current, ReadOnlySpan<T> candidate)
@@ -331,6 +391,18 @@ public readonly record struct ProductionCatalogDiff(
         var changed = Math.Abs(current.Length - candidate.Length);
         for (var index = 0; index < shared; index++)
             changed += current[index].Equals(candidate[index]) ? 0 : 1;
+        return changed;
+    }
+
+    private static int CountChangedUnitTypes(
+        ReadOnlySpan<UnitTypeProfile> current,
+        ReadOnlySpan<UnitTypeProfile> candidate)
+    {
+        var shared = Math.Min(current.Length, candidate.Length);
+        var changed = Math.Abs(current.Length - candidate.Length);
+        for (var index = 0; index < shared; index++)
+            changed += ProductionCatalogSnapshot.UnitTypeEquals(
+                current[index], candidate[index]) ? 0 : 1;
         return changed;
     }
 

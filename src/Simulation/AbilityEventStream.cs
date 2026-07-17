@@ -37,7 +37,8 @@ public readonly record struct AbilityEvent(
     AbilityTargetKind TargetKind,
     int TargetId,
     Vector2 WorldPosition,
-    AbilityEndReason EndReason);
+    AbilityEndReason EndReason,
+    int CasterBuilding = -1);
 
 public readonly record struct AbilityEventBatch(
     AbilityEvent[] Events,
@@ -74,12 +75,14 @@ public sealed class AbilityEventStream
         AbilityTargetKind targetKind = AbilityTargetKind.None,
         int targetId = -1,
         Vector2 worldPosition = default,
-        AbilityEndReason endReason = AbilityEndReason.None)
+        AbilityEndReason endReason = AbilityEndReason.None,
+        int casterBuilding = -1)
     {
         if (string.IsNullOrWhiteSpace(abilityId))
             throw new ArgumentException(
                 "Ability event id must be non-empty.", nameof(abilityId));
-        if (casterUnit < 0)
+        if ((casterUnit < 0 && casterBuilding < 0) ||
+            (casterUnit >= 0 && casterBuilding >= 0))
             throw new ArgumentOutOfRangeException(nameof(casterUnit));
         if (!Enum.IsDefined(kind) || !Enum.IsDefined(targetKind) ||
             !Enum.IsDefined(endReason))
@@ -89,7 +92,7 @@ public sealed class AbilityEventStream
         _events[(int)((sequence - 1) % (ulong)_events.Length)] =
             new AbilityEvent(
                 tick, sequence, kind, abilityId, casterUnit, targetKind,
-                targetId, worldPosition, endReason);
+                targetId, worldPosition, endReason, casterBuilding);
         if (_count < _events.Length) _count++;
     }
 

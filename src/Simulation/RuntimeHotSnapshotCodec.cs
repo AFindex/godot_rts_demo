@@ -409,6 +409,14 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.WindupRemaining[unit]);
             writer.Write(combat.ChaseRepathRemaining[unit]);
             writer.Write(combat.TargetLockRemaining[unit]);
+            writer.Write(combat.ActiveWeaponSlots[unit]);
+            writer.Write(combat.AttackDamageMultipliers[unit]);
+            writer.Write(combat.AttackDamageAdds[unit]);
+            writer.Write(combat.AttackCooldownMultipliers[unit]);
+            var weapons = combat.WeaponProfiles[unit];
+            writer.Write(weapons.Length);
+            foreach (var weapon in weapons)
+                WriteWeaponProfile(writer, weapon);
         }
     }
 
@@ -471,6 +479,21 @@ internal static class RuntimeHotSnapshotCodec
             combat.WindupRemaining[unit] = reader.ReadSingle();
             combat.ChaseRepathRemaining[unit] = reader.ReadSingle();
             combat.TargetLockRemaining[unit] = reader.ReadSingle();
+            combat.ActiveWeaponSlots[unit] = reader.ReadInt32();
+            combat.AttackDamageMultipliers[unit] = reader.ReadSingle();
+            combat.AttackDamageAdds[unit] = reader.ReadSingle();
+            combat.AttackCooldownMultipliers[unit] = reader.ReadSingle();
+            var weaponCount = reader.ReadInt32();
+            if (weaponCount is < 1 or > 8) throw new InvalidDataException();
+            var weapons = System.Collections.Immutable.ImmutableArray
+                .CreateBuilder<CombatWeaponProfileSnapshot>(weaponCount);
+            for (var index = 0; index < weaponCount; index++)
+            {
+                var weapon = ReadWeaponProfile(reader);
+                weapon.Validate();
+                weapons.Add(weapon);
+            }
+            combat.WeaponProfiles[unit] = weapons.MoveToImmutable();
             if (combat.AutoTargetPriority[unit] is < 0 or > 10 ||
                 !Enum.IsDefined(combat.ConcealmentKinds[unit]) ||
                 !Enum.IsDefined(combat.ConcealmentPhases[unit]) ||
@@ -487,11 +510,51 @@ internal static class RuntimeHotSnapshotCodec
                 !Enum.IsDefined(combat.TerrainVisionModes[unit]) ||
                 !ValidConcealmentState(combat, unit) ||
                 !float.IsFinite(combat.TargetLockRemaining[unit]) ||
-                combat.TargetLockRemaining[unit] < 0f)
+                combat.TargetLockRemaining[unit] < 0f ||
+                combat.ActiveWeaponSlots[unit] is < 0 or > 7 ||
+                !float.IsFinite(combat.AttackDamageMultipliers[unit]) ||
+                combat.AttackDamageMultipliers[unit] < 0f ||
+                !float.IsFinite(combat.AttackDamageAdds[unit]) ||
+                !float.IsFinite(combat.AttackCooldownMultipliers[unit]) ||
+                combat.AttackCooldownMultipliers[unit] <= 0f ||
+                !combat.WeaponProfiles[unit].Any(value =>
+                    value.Slot == combat.ActiveWeaponSlots[unit]))
                 throw new InvalidDataException();
         }
         return combat;
     }
+
+    private static void WriteWeaponProfile(
+        BinaryWriter writer, in CombatWeaponProfileSnapshot weapon)
+    {
+        writer.Write(weapon.Slot);
+        writer.Write((byte)weapon.TargetLayers);
+        writer.Write(weapon.EnabledByDefault);
+        writer.Write(weapon.RequiredTechnologyId);
+        writer.Write(weapon.AttackDamage);
+        writer.Write(weapon.AttackRange);
+        writer.Write(weapon.AttackCooldownSeconds);
+        writer.Write(weapon.AttackWindupSeconds);
+        writer.Write((byte)weapon.Positioning);
+        writer.Write(weapon.AttacksPerVolley);
+        writer.Write((ushort)weapon.BonusVs);
+        writer.Write(weapon.BonusDamage);
+        writer.Write(weapon.BaseUpgradeDamage);
+        writer.Write(weapon.BonusUpgradeDamage);
+        writer.Write(weapon.ProjectileSpeed);
+        writer.Write(weapon.CanMoveDuringWindup);
+        writer.Write(weapon.CanMoveDuringCooldown);
+    }
+
+    private static CombatWeaponProfileSnapshot ReadWeaponProfile(BinaryReader reader) =>
+        new(
+            reader.ReadInt32(), (CombatTargetLayer)reader.ReadByte(),
+            reader.ReadBoolean(), reader.ReadInt32(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            (CombatPositioningKind)reader.ReadByte(), reader.ReadInt32(),
+            (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadBoolean(), reader.ReadBoolean());
 
     private static bool ValidConcealmentState(CombatStore combat, int unit)
     {
@@ -798,8 +861,11 @@ internal static class RuntimeHotSnapshotCodec
                 reader.ReadSingle());
             if (value.UnitId != unit || !Enum.IsDefined(value.State) ||
                 !Enum.IsDefined(value.Capability) ||
-                value.Registered && value.Capability == GathererCapability.None ||
                 !value.Registered && value.Capability != GathererCapability.None ||
+                value.Registered &&
+                    value.Capability == GathererCapability.None &&
+                    (value.State != WorkerEconomyState.Idle ||
+                     value.TargetNodeId != -1) ||
                 !Enum.IsDefined(value.CargoKind) || value.CargoAmount < 0 ||
                 !float.IsFinite(value.WorkRemaining) || value.WorkRemaining < 0f ||
                 value.Registered &&

@@ -411,12 +411,18 @@ public sealed partial class War3Rts
 
     private void ConsumeAbilityAudioEvent(in AbilityEvent value)
     {
-        if (_worldAudio is null || !TryUnitPlayerId(
-                value.CasterUnit, out var sourcePlayer))
+        if (_worldAudio is null)
             return;
+        var emitter = value.CasterUnit >= 0
+            ? value.CasterUnit
+            : BuildingAudioEmitter(value.CasterBuilding);
+        var hasPlayer = value.CasterUnit >= 0
+            ? TryUnitPlayerId(value.CasterUnit, out var sourcePlayer)
+            : TryBuildingPlayerId(value.CasterBuilding, out sourcePlayer);
+        if (!hasPlayer) return;
 
         _audioAbilityEvents++;
-        var key = new AbilityAudioKey(value.CasterUnit, value.AbilityId);
+        var key = new AbilityAudioKey(emitter, value.AbilityId);
         switch (value.Kind)
         {
             case AbilityEventKind.Started:
@@ -425,7 +431,7 @@ public sealed partial class War3Rts
                         value.AbilityId,
                         sourcePlayer,
                         value.WorldPosition,
-                        value.CasterUnit,
+                        emitter,
                         value.Sequence,
                         out var session) && session.HasLoop)
                 {
@@ -480,6 +486,21 @@ public sealed partial class War3Rts
         if (_simulation is not null && value.Building >= 0)
         {
             var building = new GameplayBuildingId(value.Building);
+            if (_simulation.Construction.IsAlive(building))
+            {
+                playerId = _simulation.Construction.Observe(building).PlayerId;
+                return true;
+            }
+        }
+        playerId = -1;
+        return false;
+    }
+
+    private bool TryBuildingPlayerId(int buildingId, out int playerId)
+    {
+        if (_simulation is not null && buildingId >= 0)
+        {
+            var building = new GameplayBuildingId(buildingId);
             if (_simulation.Construction.IsAlive(building))
             {
                 playerId = _simulation.Construction.Observe(building).PlayerId;

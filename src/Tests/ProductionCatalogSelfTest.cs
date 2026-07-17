@@ -79,7 +79,9 @@ public static class ProductionCatalogSelfTest
                      roundTrip.StableHash == loaded.StableHash &&
                      roundTrip.CanonicalBytes.Span.SequenceEqual(
                          loaded.CanonicalBytes.Span) &&
-                     loaded.UnitTypes.SequenceEqual(catalog.UnitTypes) &&
+                     loaded.UnitTypes.ToArray().Zip(catalog.UnitTypes.ToArray())
+                         .All(pair => ProductionCatalogSnapshot.UnitTypeEquals(
+                             pair.First, pair.Second)) &&
                      loaded.Recipes.Length == catalog.Recipes.Length &&
                      loaded.Recipes.ToArray().Zip(catalog.Recipes.ToArray())
                          .All(pair => ProductionCatalogSnapshot.RecipeEquals(

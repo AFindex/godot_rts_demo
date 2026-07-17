@@ -38,7 +38,7 @@ public readonly record struct CommandLogValidationResult(
 public sealed class SimulationCommandLogSnapshot
 {
     private const uint Magic = 0x434D5452; // RTMC in little-endian bytes.
-    public const int CurrentFormatVersion = 7;
+    public const int CurrentFormatVersion = 8;
     private const int HeaderBytes = 12;
     private const int EntryFixedBytes = 34;
     private const int MaximumEntries = 1_000_000;
@@ -125,6 +125,7 @@ public sealed class SimulationCommandLogSnapshot
                 targetBuilding,
                 targetResourceNode);
             if (kind == UnitOrderKind.FollowFriendly ||
+                kind == UnitOrderKind.CastBuildingAbility && queued ||
                 !UnitOrderContract.IsStructurallyValid(order))
             {
                 validation = new CommandLogValidationResult(
@@ -135,7 +136,10 @@ public sealed class SimulationCommandLogSnapshot
                     entryIndex);
                 return false;
             }
-            if (unitCount <= 0 || unitCount > ushort.MaxValue ||
+            var buildingAbility = kind == UnitOrderKind.CastBuildingAbility;
+            if (unitCount < 0 || unitCount > ushort.MaxValue ||
+                buildingAbility && unitCount != 0 ||
+                !buildingAbility && unitCount == 0 ||
                 kind is (UnitOrderKind.CastAbility or
                     UnitOrderKind.LearnAbility or
                     UnitOrderKind.SetAbilityAutoCast) && unitCount != 1 ||

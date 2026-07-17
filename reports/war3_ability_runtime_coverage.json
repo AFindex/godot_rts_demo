@@ -2,39 +2,39 @@
   "schema": "war3-ability-runtime-coverage/v1",
   "abilitySourceGeneratedAt": "2026-07-17T05:55:03.686+00:00",
   "unitSourceGeneratedAt": "2026-07-17T06:30:05.359+00:00",
-  "registryBaseFamilyCount": 42,
+  "registryBaseFamilyCount": 43,
   "all": {
     "abilityCount": 801,
     "baseFamilyCount": 415,
-    "classifiedAbilityCount": 102,
-    "classifiedBaseFamilyCount": 42,
-    "prototypeAbilityCount": 74,
-    "prototypeBaseFamilyCount": 34,
+    "classifiedAbilityCount": 103,
+    "classifiedBaseFamilyCount": 43,
+    "prototypeAbilityCount": 76,
+    "prototypeBaseFamilyCount": 36,
     "statusCounts": {
       "implemented": 0,
-      "implemented_gameplay": 0,
-      "delegated": 2,
+      "implemented_gameplay": 11,
+      "delegated": 4,
       "presentation_only": 7,
       "not_applicable": 0,
-      "blocked": 93,
-      "unclassified": 699
+      "blocked": 81,
+      "unclassified": 698
     }
   },
   "unitReferenced": {
     "abilityCount": 461,
     "baseFamilyCount": 285,
-    "classifiedAbilityCount": 73,
-    "classifiedBaseFamilyCount": 42,
-    "prototypeAbilityCount": 56,
-    "prototypeBaseFamilyCount": 34,
+    "classifiedAbilityCount": 74,
+    "classifiedBaseFamilyCount": 43,
+    "prototypeAbilityCount": 58,
+    "prototypeBaseFamilyCount": 36,
     "statusCounts": {
       "implemented": 0,
-      "implemented_gameplay": 0,
-      "delegated": 2,
+      "implemented_gameplay": 8,
+      "delegated": 4,
       "presentation_only": 2,
       "not_applicable": 0,
-      "blocked": 69,
-      "unclassified": 388
+      "blocked": 60,
+      "unclassified": 387
     }
   },
   "items": {
@@ -46,28 +46,28 @@
     "prototypeBaseFamilyCount": 11,
     "statusCounts": {
       "implemented": 0,
-      "implemented_gameplay": 0,
+      "implemented_gameplay": 1,
       "delegated": 0,
       "presentation_only": 0,
       "not_applicable": 0,
-      "blocked": 13,
+      "blocked": 12,
       "unclassified": 221
     }
   },
   "currentRuntime": {
-    "abilityCount": 43,
-    "baseFamilyCount": 42,
-    "classifiedAbilityCount": 43,
-    "classifiedBaseFamilyCount": 42,
-    "prototypeAbilityCount": 34,
-    "prototypeBaseFamilyCount": 34,
+    "abilityCount": 44,
+    "baseFamilyCount": 43,
+    "classifiedAbilityCount": 44,
+    "classifiedBaseFamilyCount": 43,
+    "prototypeAbilityCount": 36,
+    "prototypeBaseFamilyCount": 36,
     "statusCounts": {
       "implemented": 0,
-      "implemented_gameplay": 0,
-      "delegated": 1,
+      "implemented_gameplay": 7,
+      "delegated": 3,
       "presentation_only": 1,
       "not_applicable": 0,
-      "blocked": 41,
+      "blocked": 33,
       "unclassified": 0
     }
   },
@@ -103,18 +103,13 @@
     ],
     "unrecognizedTokens": [],
     "runtimeUnsupportedTokens": [
-      "ancient",
       "bridge",
       "debris",
       "item",
-      "nonancient",
-      "nonsapper",
-      "player",
       "tree",
-      "wall",
-      "ward"
+      "wall"
     ],
-    "abilitiesWithUnsupportedTokens": 119
+    "abilitiesWithUnsupportedTokens": 57
   },
   "technologyRequirements": {
     "abilitiesWithRequirements": 93,
@@ -388,7 +383,6 @@
     "Amel",
     "Amfl",
     "Amgl",
-    "Amic",
     "Amin",
     "Amtc",
     "Andt",
@@ -459,12 +453,9 @@
     "AHav",
     "AHbh",
     "AHbn",
-    "AHbz",
     "AHdr",
     "AHds",
-    "AHfs",
     "AHhb",
-    "AHmt",
     "AHpx",
     "AHre",
     "AHtb",
@@ -478,19 +469,15 @@
     "Adis",
     "Afbk",
     "Afla",
-    "Aflk",
     "Afsh",
-    "Agyb",
     "Agyv",
     "Ahea",
     "Ainf",
     "Aivs",
-    "Amil",
     "Amim",
     "Amls",
     "Aply",
     "Arep",
-    "Aroc",
     "Aslo",
     "Asps",
     "Asth"
@@ -1224,9 +1211,7 @@
         "nonsapper",
         "organic"
       ],
-      "unsupportedTargetTokens": [
-        "nonsapper"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -1246,8 +1231,8 @@
       "compiler": "blizzard",
       "activation": "channel_point",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u6CE2\u6570\u3001\u788E\u7247\u8868\u73B0\u6570\u91CF\u3001\u5173\u7CFB\u5206\u7EC4\u4F24\u5BB3\u4E0A\u9650\u3001\u5EFA\u7B51\u6298\u51CF\u548C\u53EF\u6253\u65AD\u5F15\u5BFC\u5DF2\u6570\u636E\u5316\u3002\u8868\u73B0\u4ECD\u7531\u4E8B\u4EF6\u5C42\u6D88\u8D39\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [],
@@ -1999,8 +1984,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [
         "Resi"
@@ -2101,8 +2085,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -2149,8 +2132,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [
         "Resi"
@@ -2721,10 +2703,7 @@
         "nonhero",
         "structure"
       ],
-      "unsupportedTargetTokens": [
-        "ancient",
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -2842,10 +2821,7 @@
         "nonhero",
         "structure"
       ],
-      "unsupportedTargetTokens": [
-        "ancient",
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -3058,10 +3034,10 @@
       "familyRegistered": true,
       "hasPrototypeCompiler": true,
       "compiler": "flame_strike",
-      "activation": "channel_point",
+      "activation": "target_point",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u5168\u4F24\u4E0E\u90E8\u5206\u4F24\u5BB3\u9636\u6BB5\u3001\u95F4\u9694\u3001\u5173\u7CFB\u5206\u7EC4\u4F24\u5BB3\u4E0A\u9650\u548C\u5EFA\u7B51\u6298\u51CF\u5DF2\u6570\u636E\u5316\u3002",
       "targetTokens": [
         "enemy",
         "friend",
@@ -3962,8 +3938,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -7011,9 +6986,7 @@
         "nonsapper",
         "organic"
       ],
-      "unsupportedTargetTokens": [
-        "nonsapper"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -7071,8 +7044,8 @@
       "compiler": "blizzard",
       "activation": "channel_point",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u6CE2\u6570\u3001\u788E\u7247\u8868\u73B0\u6570\u91CF\u3001\u5173\u7CFB\u5206\u7EC4\u4F24\u5BB3\u4E0A\u9650\u3001\u5EFA\u7B51\u6298\u51CF\u548C\u53EF\u6253\u65AD\u5F15\u5BFC\u5DF2\u6570\u636E\u5316\u3002\u8868\u73B0\u4ECD\u7531\u4E8B\u4EF6\u5C42\u6D88\u8D39\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [],
@@ -7357,10 +7330,10 @@
       "familyRegistered": true,
       "hasPrototypeCompiler": true,
       "compiler": "flame_strike",
-      "activation": "channel_point",
+      "activation": "target_point",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u5168\u4F24\u4E0E\u90E8\u5206\u4F24\u5BB3\u9636\u6BB5\u3001\u95F4\u9694\u3001\u5173\u7CFB\u5206\u7EC4\u4F24\u5BB3\u4E0A\u9650\u548C\u5EFA\u7B51\u6298\u51CF\u5DF2\u6570\u636E\u5316\u3002",
       "targetTokens": [
         "debris",
         "enemy",
@@ -7420,9 +7393,7 @@
         "organic",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -7511,10 +7482,10 @@
       "familyRegistered": true,
       "hasPrototypeCompiler": true,
       "compiler": "mass_teleport",
-      "activation": "target_point",
+      "activation": "target_unit",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u53CB\u519B\u5730\u9762\u5355\u4F4D/\u5EFA\u7B51\u76EE\u6807\u3001\u65BD\u6CD5\u5EF6\u8FDF\u3001\u9644\u8FD1\u5355\u4F4D\u4E0A\u9650\u548C\u65E0\u91CD\u53E0\u7FA4\u7EC4\u843D\u70B9\u5DF2\u843D\u5730\u3002",
       "targetTokens": [
         "ally",
         "ground",
@@ -7524,9 +7495,7 @@
         "structure",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -8571,9 +8540,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -8688,9 +8655,7 @@
         "neutral",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -9125,9 +9090,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -9158,8 +9121,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": []
@@ -9210,9 +9172,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -9242,9 +9202,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -9275,8 +9233,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": []
@@ -9422,9 +9379,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -9707,9 +9662,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -9758,9 +9711,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -9839,9 +9790,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -10127,9 +10076,7 @@
         "organic",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -10445,9 +10392,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -10497,9 +10442,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -10549,9 +10492,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -10628,9 +10569,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -10840,10 +10779,10 @@
       "familyRegistered": true,
       "hasPrototypeCompiler": true,
       "compiler": "mass_teleport",
-      "activation": "target_point",
+      "activation": "target_unit",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u53CB\u519B\u5730\u9762\u5355\u4F4D/\u5EFA\u7B51\u76EE\u6807\u3001\u65BD\u6CD5\u5EF6\u8FDF\u3001\u9644\u8FD1\u5355\u4F4D\u4E0A\u9650\u548C\u65E0\u91CD\u53E0\u7FA4\u7EC4\u843D\u70B9\u5DF2\u843D\u5730\u3002",
       "targetTokens": [
         "ally",
         "ground",
@@ -10853,9 +10792,7 @@
         "structure",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -11634,9 +11571,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -11663,9 +11598,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -11873,9 +11806,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -11971,9 +11902,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -12362,10 +12291,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient",
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -12588,9 +12514,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -12964,9 +12888,7 @@
         "vuln",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -13708,9 +13630,7 @@
         "ground",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -15002,10 +14922,7 @@
         "nonhero",
         "structure"
       ],
-      "unsupportedTargetTokens": [
-        "ancient",
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -15082,10 +14999,10 @@
       "familyRegistered": true,
       "hasPrototypeCompiler": true,
       "compiler": "flame_strike",
-      "activation": "channel_point",
+      "activation": "target_point",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u5168\u4F24\u4E0E\u90E8\u5206\u4F24\u5BB3\u9636\u6BB5\u3001\u95F4\u9694\u3001\u5173\u7CFB\u5206\u7EC4\u4F24\u5BB3\u4E0A\u9650\u548C\u5EFA\u7B51\u6298\u51CF\u5DF2\u6570\u636E\u5316\u3002",
       "targetTokens": [
         "enemy",
         "friend",
@@ -15426,9 +15343,7 @@
         "nonancient",
         "organic"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -15464,9 +15379,7 @@
         "nonancient",
         "organic"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -15534,9 +15447,7 @@
         "neutral",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -15747,9 +15658,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -16113,9 +16022,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -17970,8 +17877,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": []
@@ -18616,9 +18522,7 @@
         "organic",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -18661,9 +18565,7 @@
         "structure",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -18722,9 +18624,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -18769,9 +18669,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -18822,9 +18720,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -19261,9 +19157,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -19302,8 +19196,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [
         "Resi"
@@ -19815,9 +19708,7 @@
         "ground",
         "player"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [
         "Rowt"
       ],
@@ -20786,9 +20677,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -20938,9 +20827,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -21160,9 +21047,7 @@
         "vuln",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -21344,9 +21229,7 @@
         "organic",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [
         "Rhss"
       ],
@@ -21791,9 +21674,7 @@
         "vuln",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [
         "Rowt"
       ],
@@ -21826,8 +21707,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [
         "Rowt"
@@ -21875,8 +21755,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "debris",
-        "ward"
+        "debris"
       ],
       "requirementIds": [],
       "referencedBy": []
@@ -21944,8 +21823,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "debris",
-        "ward"
+        "debris"
       ],
       "requirementIds": [
         "Rhde"
@@ -22045,8 +21923,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [
         "Rhpt"
@@ -22164,8 +22041,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -22322,8 +22198,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -22534,8 +22409,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -22756,9 +22630,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -23597,8 +23469,8 @@
       "compiler": "flak_cannons",
       "activation": "passive",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u9AD8\u5C04\u706B\u70AE\u6309\u7A7A\u4E2D\u653B\u51FB\u547D\u4E2D\u3001Rhfc \u524D\u7F6E\u548C\u4E92\u65A5 7/6/5 \u4F24\u5BB3\u73AF\u89E6\u53D1\u3002",
       "targetTokens": [
         "air",
         "enemy",
@@ -23644,10 +23516,7 @@
         "nonhero",
         "structure"
       ],
-      "unsupportedTargetTokens": [
-        "ancient",
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -24016,8 +23885,8 @@
       "compiler": "none",
       "activation": "passive",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u7F3A\u5C11\u6309\u79D1\u6280\u5207\u6362\u6B66\u5668\u76EE\u6807\u5C42\u548C\u542F\u7528\u5BF9\u5730\u653B\u51FB\u7684\u80FD\u529B\u3002",
+      "runtimeStatus": "delegated",
+      "reason": "\u98DE\u884C\u673A\u5668\u70B8\u5F39\u7531 CombatStore \u6B66\u5668\u7EC4\u627F\u8F7D\uFF1BRhgb \u89E3\u9501\u7B2C\u4E8C\u6B66\u5668\u7684\u5BF9\u5730/\u5EFA\u7B51\u76EE\u6807\u5C42\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -24206,9 +24075,7 @@
         "self",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -24426,8 +24293,7 @@
         "vuln"
       ],
       "unsupportedTargetTokens": [
-        "bridge",
-        "nonancient"
+        "bridge"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -24934,9 +24800,7 @@
         "nonsapper",
         "organic"
       ],
-      "unsupportedTargetTokens": [
-        "nonsapper"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [
         "Rhst"
       ],
@@ -24972,9 +24836,7 @@
         "player",
         "structure"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [
         "usap"
       ],
@@ -25053,8 +24915,7 @@
       ],
       "unsupportedTargetTokens": [
         "debris",
-        "item",
-        "ward"
+        "item"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -25623,14 +25484,14 @@
       "editorVisible": true,
       "levelCount": 1,
       "unitReferenced": true,
-      "currentRuntimeCompiled": false,
-      "familyRegistered": false,
-      "hasPrototypeCompiler": false,
-      "compiler": "none",
-      "activation": "passive",
+      "currentRuntimeCompiled": true,
+      "familyRegistered": true,
+      "hasPrototypeCompiler": true,
+      "compiler": "building_militia_call",
+      "activation": "toggle",
       "autoCastDefault": false,
-      "runtimeStatus": "unclassified",
-      "reason": "\u5C1A\u672A\u5EFA\u7ACB\u884C\u4E3A\u5BB6\u65CF\u5206\u7C7B\u3002\u539F\u59CB\u6570\u636E\u4ECD\u4FDD\u7559\uFF0C\u4E0D\u751F\u6210\u81C6\u6D4B\u6548\u679C\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u4E3B\u57CE/\u57CE\u5821\u6309\u539F\u59CB 2000 \u8303\u56F4\u53F7\u53EC\u519C\u6C11\u3001\u6307\u5B9A\u65BD\u4EE4\u5EFA\u7B51\u63A5\u89E6\u3001\u5173\u95ED\u65F6\u63D0\u524D\u590D\u5DE5\u4E0E\u5EFA\u7B51\u547D\u4EE4\u56DE\u653E\u5DF2\u843D\u5730\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [],
@@ -25663,12 +25524,12 @@
       "unitReferenced": true,
       "currentRuntimeCompiled": true,
       "familyRegistered": true,
-      "hasPrototypeCompiler": false,
-      "compiler": "none",
-      "activation": "passive",
+      "hasPrototypeCompiler": true,
+      "compiler": "militia_transform",
+      "activation": "toggle",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u7F3A\u5C11\u519C\u6C11\u5BFB\u8DEF\u5230\u5927\u5385\u3001\u6C11\u5175\u53D8\u8EAB\u548C\u5230\u671F\u8FD8\u539F\u884C\u4E3A\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u519C\u6C11/\u6C11\u5175\u53CC\u5411\u5F62\u6001\u3001\u6700\u8FD1\u5DF1\u65B9\u57CE\u9547\u5927\u5385\u63A5\u89E6\u300145 \u79D2\u5230\u671F\u8FD8\u539F\u548C\u5DE5\u4EBA\u6743\u9650\u5207\u6362\u5DF2\u843D\u5730\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [],
@@ -25991,8 +25852,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [
         "Rnsi"
@@ -26332,9 +26192,7 @@
         "self",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -26417,9 +26275,7 @@
         "self",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -26481,9 +26337,7 @@
         "self",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonancient"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -26643,8 +26497,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -27036,8 +26889,7 @@
         "ward"
       ],
       "unsupportedTargetTokens": [
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": []
@@ -27496,8 +27348,7 @@
         "vuln"
       ],
       "unsupportedTargetTokens": [
-        "bridge",
-        "nonancient"
+        "bridge"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -28012,8 +27863,8 @@
       "compiler": "barrage",
       "activation": "passive",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "\u5DF2\u5177\u5907\u786E\u5B9A\u6027\u73A9\u6CD5\u539F\u578B\uFF1B\u4ECD\u9700\u5B8C\u6210\u539F\u59CB\u8BED\u4E49\u3001\u76EE\u6807\u3001\u79D1\u6280\u4E0E\u8868\u73B0\u4E00\u81F4\u6027\u9A8C\u6536\u3002",
+      "runtimeStatus": "implemented_gameplay",
+      "reason": "\u5F39\u5E55\u653B\u51FB\u7531 Rhrt \u89E3\u9501\u5BF9\u7A7A\u6B66\u5668\uFF0C\u5E76\u53EA\u5728\u7A7A\u4E2D\u76EE\u6807\u547D\u4E2D\u540E\u89E6\u53D1 9 \u76EE\u6807\u8303\u56F4\u4F24\u5BB3\u3002",
       "targetTokens": [
         "air",
         "enemy"
@@ -28311,8 +28162,7 @@
         "vuln"
       ],
       "unsupportedTargetTokens": [
-        "bridge",
-        "nonancient"
+        "bridge"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -28380,9 +28230,7 @@
         "organic",
         "player"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -28749,8 +28597,7 @@
       ],
       "unsupportedTargetTokens": [
         "debris",
-        "tree",
-        "ward"
+        "tree"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -29274,8 +29121,7 @@
       ],
       "unsupportedTargetTokens": [
         "debris",
-        "item",
-        "ward"
+        "item"
       ],
       "requirementIds": [],
       "referencedBy": [
@@ -30180,9 +30026,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [
         "hcas"
       ],
@@ -30734,9 +30578,7 @@
         "player",
         "structure"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -31866,9 +31708,7 @@
         "structure",
         "ward"
       ],
-      "unsupportedTargetTokens": [
-        "ward"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": []
     },
@@ -31951,7 +31791,7 @@
       "activation": "passive",
       "autoCastDefault": false,
       "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "reason": "\u901A\u7528 Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u5DF2\u901A\u8FC7\u9010 rawcode \u59D4\u6258\u8986\u76D6\u6392\u9664\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -31991,9 +31831,7 @@
         "player",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "player"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -32022,7 +31860,7 @@
       "activation": "passive",
       "autoCastDefault": false,
       "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "reason": "\u901A\u7528 Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u5DF2\u901A\u8FC7\u9010 rawcode \u59D4\u6258\u8986\u76D6\u6392\u9664\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -32047,7 +31885,7 @@
       "activation": "passive",
       "autoCastDefault": false,
       "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "reason": "\u901A\u7528 Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u5DF2\u901A\u8FC7\u9010 rawcode \u59D4\u6258\u8986\u76D6\u6392\u9664\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -32072,7 +31910,7 @@
       "activation": "passive",
       "autoCastDefault": false,
       "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "reason": "\u901A\u7528 Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u5DF2\u901A\u8FC7\u9010 rawcode \u59D4\u6258\u8986\u76D6\u6392\u9664\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -32097,7 +31935,7 @@
       "activation": "passive",
       "autoCastDefault": false,
       "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "reason": "\u901A\u7528 Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u5DF2\u901A\u8FC7\u9010 rawcode \u59D4\u6258\u8986\u76D6\u6392\u9664\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -32122,7 +31960,7 @@
       "activation": "passive",
       "autoCastDefault": false,
       "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "reason": "\u901A\u7528 Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u5DF2\u901A\u8FC7\u9010 rawcode \u59D4\u6258\u8986\u76D6\u6392\u9664\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -32147,7 +31985,7 @@
       "activation": "passive",
       "autoCastDefault": false,
       "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "reason": "\u901A\u7528 Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u5DF2\u901A\u8FC7\u9010 rawcode \u59D4\u6258\u8986\u76D6\u6392\u9664\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -32213,9 +32051,7 @@
         "nonsapper",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonsapper"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -32287,9 +32123,7 @@
         "nonsapper",
         "vuln"
       ],
-      "unsupportedTargetTokens": [
-        "nonsapper"
-      ],
+      "unsupportedTargetTokens": [],
       "requirementIds": [],
       "referencedBy": [
         {
@@ -32569,8 +32403,8 @@
       "compiler": "none",
       "activation": "passive",
       "autoCastDefault": false,
-      "runtimeStatus": "blocked",
-      "reason": "Channel \u57FA\u7840\u5BB6\u65CF\u7F3A\u5C11\u6570\u636E\u5316\u547D\u4EE4\u5206\u6D3E\uFF1BSrtt \u4ECD\u9700\u84B8\u6C7D\u673A\u8F66\u5F62\u6001\u548C\u6B66\u5668\u7EC4\u5207\u6362\u3002",
+      "runtimeStatus": "delegated",
+      "reason": "\u84B8\u6C7D\u673A\u8F66\u7684 Srtt \u53D8\u4F53\u6807\u8BB0\u7531 CombatStore \u6B66\u5668\u7EC4\u548C Rhrt \u79D1\u6280\u5207\u6362\u627F\u8F7D\uFF1B\u4E0D\u6267\u884C\u901A\u7528 Channel \u884C\u4E3A\u3002",
       "targetTokens": [],
       "unsupportedTargetTokens": [],
       "requirementIds": [
@@ -32691,5 +32525,5 @@
       ]
     }
   ],
-  "summary": "all=801/415 classified=102/42 unit=461/285 unit_unclassified=243 target_unsupported=10/119 tech_unresolved=0 runtime=43/42 registry=42"
+  "summary": "all=801/415 classified=103/43 unit=461/285 unit_unclassified=242 target_unsupported=5/57 tech_unresolved=0 runtime=44/43 registry=43"
 }

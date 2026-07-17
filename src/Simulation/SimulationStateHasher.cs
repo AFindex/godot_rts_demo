@@ -6,7 +6,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public static class SimulationStateHasher
 {
-    public const int CurrentFormatVersion = 33;
+    public const int CurrentFormatVersion = 35;
 
     public static ulong Compute(RtsSimulation simulation)
     {
@@ -190,6 +190,32 @@ public static class SimulationStateHasher
             hash.Add(combat.WindupRemaining[unit]);
             hash.Add(combat.ChaseRepathRemaining[unit]);
             hash.Add(combat.TargetLockRemaining[unit]);
+            hash.Add(combat.ActiveWeaponSlots[unit]);
+            hash.Add(combat.AttackDamageMultipliers[unit]);
+            hash.Add(combat.AttackDamageAdds[unit]);
+            hash.Add(combat.AttackCooldownMultipliers[unit]);
+            var weapons = combat.WeaponProfiles[unit];
+            hash.Add(weapons.Length);
+            foreach (var weapon in weapons)
+            {
+                hash.Add(weapon.Slot);
+                hash.Add((byte)weapon.TargetLayers);
+                hash.Add(weapon.EnabledByDefault);
+                hash.Add(weapon.RequiredTechnologyId);
+                hash.Add(weapon.AttackDamage);
+                hash.Add(weapon.AttackRange);
+                hash.Add(weapon.AttackCooldownSeconds);
+                hash.Add(weapon.AttackWindupSeconds);
+                hash.Add((byte)weapon.Positioning);
+                hash.Add(weapon.AttacksPerVolley);
+                hash.Add((ushort)weapon.BonusVs);
+                hash.Add(weapon.BonusDamage);
+                hash.Add(weapon.BaseUpgradeDamage);
+                hash.Add(weapon.BonusUpgradeDamage);
+                hash.Add(weapon.ProjectileSpeed);
+                hash.Add(weapon.CanMoveDuringWindup);
+                hash.Add(weapon.CanMoveDuringCooldown);
+            }
         }
     }
 

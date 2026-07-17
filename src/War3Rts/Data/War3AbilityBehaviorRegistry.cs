@@ -49,7 +49,9 @@ public enum War3AbilityCompilerKind : byte
     FlameStrike,
     Banish,
     DrainMana,
-    SummonPhoenix
+    SummonPhoenix,
+    MilitiaTransform,
+    BuildingMilitiaCall
 }
 
 public sealed record War3AbilityBehaviorDescriptor(
@@ -77,6 +79,8 @@ public static class War3AbilityBehaviorRegistry
 
     private static readonly Dictionary<string, War3AbilityBehaviorDescriptor>
         Values = Create();
+    private static readonly Dictionary<string, War3AbilityBehaviorDescriptor>
+        RawOverrides = CreateRawOverrides();
 
     public static IReadOnlyCollection<War3AbilityBehaviorDescriptor> All =>
         Values.Values;
@@ -96,6 +100,13 @@ public static class War3AbilityBehaviorRegistry
                 War3AbilityCompilerKind.None,
                 War3AbilityRuntimeSupportStatus.Unclassified,
                 "尚未建立行为家族分类。原始数据仍保留，不生成臆测效果。");
+
+    public static War3AbilityBehaviorDescriptor Resolve(
+        string baseCode,
+        string rawId) =>
+        RawOverrides.TryGetValue(rawId, out var descriptor)
+            ? descriptor
+            : Resolve(baseCode);
 
     public static string StatusText(War3AbilityRuntimeSupportStatus status) =>
         status switch
@@ -137,6 +148,17 @@ public static class War3AbilityBehaviorRegistry
                 War3AbilityRuntimeSupportStatus.Blocked,
                 reason));
 
+        void Gameplay(
+            string id,
+            AbilityActivationKind activation,
+            War3AbilityCompilerKind compiler,
+            string reason) => result.Add(
+            id,
+            new War3AbilityBehaviorDescriptor(
+                id, activation, false, compiler,
+                War3AbilityRuntimeSupportStatus.ImplementedGameplay,
+                reason));
+
         Prototype("Adef", AbilityActivationKind.Toggle,
             War3AbilityCompilerKind.Defend);
         Pending("AInv", AbilityActivationKind.Passive,
@@ -146,8 +168,12 @@ public static class War3AbilityBehaviorRegistry
             War3AbilityCompilerKind.None,
             War3AbilityRuntimeSupportStatus.Delegated,
             "采集由 EconomySystem 承载；仍需建立 rawcode 到委托测试的覆盖链接。"));
-        Pending("Amil", AbilityActivationKind.Passive,
-            "缺少农民寻路到大厅、民兵变身和到期还原行为。");
+        Gameplay("Amil", AbilityActivationKind.Toggle,
+            War3AbilityCompilerKind.MilitiaTransform,
+            "农民/民兵双向形态、最近己方城镇大厅接触、45 秒到期还原和工人权限切换已落地。");
+        Gameplay("Amic", AbilityActivationKind.Toggle,
+            War3AbilityCompilerKind.BuildingMilitiaCall,
+            "主城/城堡按原始 2000 范围号召农民、指定施令建筑接触、关闭时提前复工与建筑命令回放已落地。");
         Pending("Arep", AbilityActivationKind.Passive,
             "缺少消耗资源的建筑/机械单位修理命令与自动施法行为。");
         Prototype("Ahea", AbilityActivationKind.TargetUnit,
@@ -174,16 +200,21 @@ public static class War3AbilityBehaviorRegistry
             War3AbilityCompilerKind.Flare);
         Prototype("Afsh", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.FragmentationShards);
-        Pending("Agyb", AbilityActivationKind.Passive,
-            "缺少按科技切换武器目标层和启用对地攻击的能力。");
+        result.Add("Agyb", new War3AbilityBehaviorDescriptor(
+            "Agyb", AbilityActivationKind.Passive, false,
+            War3AbilityCompilerKind.None,
+            War3AbilityRuntimeSupportStatus.Delegated,
+            "飞行机器炸弹由 CombatStore 武器组承载；Rhgb 解锁第二武器的对地/建筑目标层。"));
         Prototype("Agyv", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.DetectionAura);
-        Prototype("Aflk", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.FlakCannons);
+        Gameplay("Aflk", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.FlakCannons,
+            "高射火炮按空中攻击命中、Rhfc 前置和互斥 7/6/5 伤害环触发。");
         Pending("Acha", AbilityActivationKind.Passive,
-            "Channel 基础家族缺少数据化命令分派；Srtt 仍需蒸汽机车形态和武器组切换。");
-        Prototype("Aroc", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.Barrage);
+            "通用 Channel 基础家族缺少数据化命令分派；Srtt 已通过逐 rawcode 委托覆盖排除。");
+        Gameplay("Aroc", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.Barrage,
+            "弹幕攻击由 Rhrt 解锁对空武器，并只在空中目标命中后触发 9 目标范围伤害。");
         Pending("Asth", AbilityActivationKind.Passive,
             "缺少攻击弹射目标选择、次数和伤害衰减。");
         Prototype("Aclf", AbilityActivationKind.TargetPoint,
@@ -196,14 +227,16 @@ public static class War3AbilityBehaviorRegistry
             War3AbilityRuntimeSupportStatus.PresentationOnly,
             "血魔法师球体挂件；需要 attachment point/count 表现实例。"));
 
-        Prototype("AHbz", AbilityActivationKind.ChannelPoint,
-            War3AbilityCompilerKind.Blizzard);
+        Gameplay("AHbz", AbilityActivationKind.ChannelPoint,
+            War3AbilityCompilerKind.Blizzard,
+            "波数、碎片表现数量、关系分组伤害上限、建筑折减和可打断引导已数据化。表现仍由事件层消费。");
         Prototype("AHwe", AbilityActivationKind.Instant,
             War3AbilityCompilerKind.SummonWaterElemental);
         Prototype("AHab", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.BrillianceAura);
-        Prototype("AHmt", AbilityActivationKind.TargetPoint,
-            War3AbilityCompilerKind.MassTeleport);
+        Gameplay("AHmt", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.MassTeleport,
+            "友军地面单位/建筑目标、施法延迟、附近单位上限和无重叠群组落点已落地。");
         Prototype("AHtb", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.StormBolt);
         Prototype("AHtc", AbilityActivationKind.Instant,
@@ -220,8 +253,9 @@ public static class War3AbilityBehaviorRegistry
             War3AbilityCompilerKind.DevotionAura);
         Prototype("AHre", AbilityActivationKind.Instant,
             War3AbilityCompilerKind.Resurrection);
-        Prototype("AHfs", AbilityActivationKind.ChannelPoint,
-            War3AbilityCompilerKind.FlameStrike);
+        Gameplay("AHfs", AbilityActivationKind.TargetPoint,
+            War3AbilityCompilerKind.FlameStrike,
+            "全伤与部分伤害阶段、间隔、关系分组伤害上限和建筑折减已数据化。");
         Prototype("AHbn", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.Banish);
         Prototype("AHdr", AbilityActivationKind.ChannelUnit,
@@ -230,4 +264,14 @@ public static class War3AbilityBehaviorRegistry
             War3AbilityCompilerKind.SummonPhoenix);
         return result;
     }
+
+    private static Dictionary<string, War3AbilityBehaviorDescriptor>
+        CreateRawOverrides() => new(StringComparer.Ordinal)
+        {
+            ["Srtt"] = new War3AbilityBehaviorDescriptor(
+                "Acha", AbilityActivationKind.Passive, false,
+                War3AbilityCompilerKind.None,
+                War3AbilityRuntimeSupportStatus.Delegated,
+                "蒸汽机车的 Srtt 变体标记由 CombatStore 武器组和 Rhrt 科技切换承载；不执行通用 Channel 行为。")
+        };
 }

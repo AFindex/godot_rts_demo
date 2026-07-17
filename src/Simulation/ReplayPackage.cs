@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Collections.Immutable;
 
 namespace RtsDemo.Simulation;
 
@@ -91,7 +92,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 31;
+    public const int CurrentFormatVersion = 36;
 
     internal SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -617,15 +618,7 @@ public sealed class SimulationReplayPackageSnapshot
         reader.ReadSingle(),
         reader.ReadSingle(),
         reader.ReadInt32(),
-        new CombatProfileSnapshot(
-            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte(),
-            reader.ReadSingle(), (CombatAttribute)reader.ReadUInt16(),
-            reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
-            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
-            reader.ReadInt32()),
+        ReadCombatProfile(reader),
         new UnitPerceptionProfileSnapshot(
             (UnitConcealmentKind)reader.ReadByte(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(),
@@ -642,25 +635,7 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(unit.MaximumSpeed);
         writer.Write(unit.Acceleration);
         writer.Write(unit.Team);
-        writer.Write(unit.CombatProfile.MaximumHealth);
-        writer.Write(unit.CombatProfile.AttackDamage);
-        writer.Write(unit.CombatProfile.AttackRange);
-        writer.Write(unit.CombatProfile.AcquisitionRange);
-        writer.Write(unit.CombatProfile.AttackCooldownSeconds);
-        writer.Write(unit.CombatProfile.AttackWindupSeconds);
-        writer.Write(unit.CombatProfile.LeashDistance);
-        writer.Write((byte)unit.CombatProfile.Positioning);
-        writer.Write(unit.CombatProfile.Armor);
-        writer.Write((ushort)unit.CombatProfile.Attributes);
-        writer.Write(unit.CombatProfile.AttacksPerVolley);
-        writer.Write((ushort)unit.CombatProfile.BonusVs);
-        writer.Write(unit.CombatProfile.BonusDamage);
-        writer.Write(unit.CombatProfile.BaseUpgradeDamage);
-        writer.Write(unit.CombatProfile.BonusUpgradeDamage);
-        writer.Write(unit.CombatProfile.ProjectileSpeed);
-        writer.Write(unit.CombatProfile.CanMoveDuringWindup);
-        writer.Write(unit.CombatProfile.CanMoveDuringCooldown);
-        writer.Write(unit.CombatProfile.AutoTargetPriority);
+        WriteCombatProfile(writer, unit.CombatProfile);
         writer.Write((byte)unit.PerceptionProfile.Concealment);
         writer.Write(unit.PerceptionProfile.DetectionRange);
         writer.Write(unit.PerceptionProfile.VisionRange);
@@ -673,6 +648,84 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(unit.ConcealmentCapability.CanMoveWhileConcealed);
         writer.Write(unit.ConcealmentCapability.CanAttackWhileConcealed);
     }
+
+    private static void WriteCombatProfile(
+        BinaryWriter writer, in CombatProfileSnapshot profile)
+    {
+        writer.Write(profile.MaximumHealth);
+        writer.Write(profile.AttackDamage);
+        writer.Write(profile.AttackRange);
+        writer.Write(profile.AcquisitionRange);
+        writer.Write(profile.AttackCooldownSeconds);
+        writer.Write(profile.AttackWindupSeconds);
+        writer.Write(profile.LeashDistance);
+        writer.Write((byte)profile.Positioning);
+        writer.Write(profile.Armor);
+        writer.Write((ushort)profile.Attributes);
+        writer.Write(profile.AttacksPerVolley);
+        writer.Write((ushort)profile.BonusVs);
+        writer.Write(profile.BonusDamage);
+        writer.Write(profile.BaseUpgradeDamage);
+        writer.Write(profile.BonusUpgradeDamage);
+        writer.Write(profile.ProjectileSpeed);
+        writer.Write(profile.CanMoveDuringWindup);
+        writer.Write(profile.CanMoveDuringCooldown);
+        writer.Write(profile.AutoTargetPriority);
+        writer.Write(profile.Weapons.Length);
+        foreach (var weapon in profile.Weapons)
+            WriteWeapon(writer, weapon);
+    }
+
+    private static CombatProfileSnapshot ReadCombatProfile(BinaryReader reader)
+    {
+        var profile = new CombatProfileSnapshot(
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte(),
+            reader.ReadSingle(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
+            reader.ReadInt32());
+        var count = reader.ReadInt32();
+        if (count is < 0 or > 8) throw new InvalidDataException();
+        var weapons = ImmutableArray.CreateBuilder<CombatWeaponProfileSnapshot>(count);
+        for (var index = 0; index < count; index++)
+            weapons.Add(ReadWeapon(reader));
+        return profile with { Weapons = weapons.MoveToImmutable() };
+    }
+
+    private static void WriteWeapon(
+        BinaryWriter writer, in CombatWeaponProfileSnapshot weapon)
+    {
+        writer.Write(weapon.Slot);
+        writer.Write((byte)weapon.TargetLayers);
+        writer.Write(weapon.EnabledByDefault);
+        writer.Write(weapon.RequiredTechnologyId);
+        writer.Write(weapon.AttackDamage);
+        writer.Write(weapon.AttackRange);
+        writer.Write(weapon.AttackCooldownSeconds);
+        writer.Write(weapon.AttackWindupSeconds);
+        writer.Write((byte)weapon.Positioning);
+        writer.Write(weapon.AttacksPerVolley);
+        writer.Write((ushort)weapon.BonusVs);
+        writer.Write(weapon.BonusDamage);
+        writer.Write(weapon.BaseUpgradeDamage);
+        writer.Write(weapon.BonusUpgradeDamage);
+        writer.Write(weapon.ProjectileSpeed);
+        writer.Write(weapon.CanMoveDuringWindup);
+        writer.Write(weapon.CanMoveDuringCooldown);
+    }
+
+    private static CombatWeaponProfileSnapshot ReadWeapon(BinaryReader reader) =>
+        new(
+            reader.ReadInt32(), (CombatTargetLayer)reader.ReadByte(),
+            reader.ReadBoolean(), reader.ReadInt32(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            (CombatPositioningKind)reader.ReadByte(), reader.ReadInt32(),
+            (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadBoolean(), reader.ReadBoolean());
 
     private static ReplayInitialBuilding ReadBuilding(BinaryReader reader) => new(
         new DynamicFootprintId(reader.ReadInt32()),
@@ -840,7 +893,10 @@ public sealed class SimulationReplayPackageRecorder
                     simulation.Combat.ProjectileSpeed[unit],
                     simulation.Combat.CanMoveDuringWindup[unit],
                     simulation.Combat.CanMoveDuringCooldown[unit],
-                    simulation.Combat.AutoTargetPriority[unit]),
+                    simulation.Combat.AutoTargetPriority[unit])
+                {
+                    Weapons = simulation.Combat.WeaponProfiles[unit]
+                },
                 new UnitPerceptionProfileSnapshot(
                     simulation.Combat.ConcealmentKinds[unit],
                     simulation.Combat.DetectionRanges[unit],

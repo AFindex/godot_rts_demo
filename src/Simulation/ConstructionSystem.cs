@@ -236,6 +236,7 @@ public sealed class ConstructionSystem
     public ConstructionReservationStore Reservations { get; } = new();
 
     public int Count => _buildings.Count(value => !value.IsTerminal);
+    public int SlotCount => _buildings.Count;
     public bool HasRuntimeState => _buildings.Count > 0;
 
     public bool TryFindReservationOverlap(

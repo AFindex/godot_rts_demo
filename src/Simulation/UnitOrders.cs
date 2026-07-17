@@ -19,7 +19,8 @@ public enum UnitOrderKind : byte
     DeactivateConcealment,
     CastAbility,
     LearnAbility,
-    SetAbilityAutoCast
+    SetAbilityAutoCast,
+    CastBuildingAbility
 }
 
 public readonly record struct UnitOrder(
@@ -48,16 +49,20 @@ public static class UnitOrderContract
             ? order.TargetBuilding >= 0
                 || order.Kind == UnitOrderKind.Move &&
                    order.TargetBuilding == -1
-            : order.Kind == UnitOrderKind.CastAbility
+            : order.Kind is UnitOrderKind.CastAbility or
+                UnitOrderKind.CastBuildingAbility
                 ? order.TargetBuilding >= -1
                 : order.TargetBuilding == -1) &&
         (order.Kind is UnitOrderKind.GatherResource or
             UnitOrderKind.CastAbility or UnitOrderKind.LearnAbility or
-            UnitOrderKind.SetAbilityAutoCast
+            UnitOrderKind.SetAbilityAutoCast or
+            UnitOrderKind.CastBuildingAbility
             ? order.TargetResourceNode >= 0
             : order.TargetResourceNode == -1) &&
         (order.Kind != UnitOrderKind.CastAbility ||
          order.TargetUnit == -1 || order.TargetBuilding == -1) &&
+        (order.Kind != UnitOrderKind.CastBuildingAbility ||
+         order.TargetUnit == -1 && order.TargetBuilding >= 0) &&
         order.SequenceId >= 0;
 }
 

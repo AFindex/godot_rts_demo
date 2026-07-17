@@ -901,6 +901,20 @@ public sealed class EconomySystem
         _workerNodes[unit] = -1;
     }
 
+    internal bool SetNormalWorkerEnabled(int unit, bool enabled)
+    {
+        ValidateUnit(unit);
+        if (!_workers[unit]) return !enabled;
+        if (_gathererCapabilities[unit] == GathererCapability.Mule)
+            return false;
+        TransitionWorker(unit, WorkerEconomyState.Idle, -1);
+        _workRemaining[unit] = 0f;
+        _gathererCapabilities[unit] = enabled
+            ? GathererCapability.NormalWorker
+            : GathererCapability.None;
+        return true;
+    }
+
     public void SetRefineryOperational(
         EconomyResourceNodeId nodeId,
         bool value,
@@ -932,6 +946,11 @@ public sealed class EconomySystem
         if (!_workers[unit])
         {
             return Failure(GatherCommandCode.UnitNotWorker, unit, nodeId);
+        }
+        if (_gathererCapabilities[unit] == GathererCapability.None)
+        {
+            return Failure(
+                GatherCommandCode.CapabilityUnavailable, unit, nodeId);
         }
         if (_workerPlayers[unit] != issuingPlayerId)
         {
@@ -1035,6 +1054,8 @@ public sealed class EconomySystem
         if ((uint)unit >= (uint)_workers.Length)
             return ReturnCargoFailure(ReturnCargoCommandCode.InvalidUnit, unit);
         if (!_workers[unit])
+            return ReturnCargoFailure(ReturnCargoCommandCode.UnitNotWorker, unit);
+        if (_gathererCapabilities[unit] == GathererCapability.None)
             return ReturnCargoFailure(ReturnCargoCommandCode.UnitNotWorker, unit);
         if (_workerPlayers[unit] != issuingPlayerId)
             return ReturnCargoFailure(ReturnCargoCommandCode.WrongOwner, unit);

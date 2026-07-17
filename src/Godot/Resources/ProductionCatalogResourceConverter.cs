@@ -15,7 +15,7 @@ public static class ProductionCatalogResourceConverter
         };
         foreach (var type in snapshot.UnitTypes)
         {
-            resource.UnitTypes.Add(new UnitTypeProfileResource
+            var unitResource = new UnitTypeProfileResource
             {
                 Id = type.Id,
                 DisplayName = type.Name,
@@ -47,7 +47,31 @@ public static class ProductionCatalogResourceConverter
                 ObservationHeight = type.Perception.ObservationHeight,
                 TerrainVisionMode = type.Perception.TerrainVisionMode,
                 IsWorker = type.IsWorker
-            });
+            };
+            foreach (var weapon in type.Combat.Weapons)
+            {
+                unitResource.Weapons.Add(new CombatWeaponProfileResource
+                {
+                    Slot = weapon.Slot,
+                    TargetLayers = weapon.TargetLayers,
+                    EnabledByDefault = weapon.EnabledByDefault,
+                    RequiredTechnologyId = weapon.RequiredTechnologyId,
+                    AttackDamage = weapon.AttackDamage,
+                    AttackRange = weapon.AttackRange,
+                    AttackCooldownSeconds = weapon.AttackCooldownSeconds,
+                    AttackWindupSeconds = weapon.AttackWindupSeconds,
+                    Positioning = weapon.Positioning,
+                    AttacksPerVolley = weapon.AttacksPerVolley,
+                    BonusVs = weapon.BonusVs,
+                    BonusDamage = weapon.BonusDamage,
+                    BaseUpgradeDamage = weapon.BaseUpgradeDamage,
+                    BonusUpgradeDamage = weapon.BonusUpgradeDamage,
+                    ProjectileSpeed = weapon.ProjectileSpeed,
+                    CanMoveDuringWindup = weapon.CanMoveDuringWindup,
+                    CanMoveDuringCooldown = weapon.CanMoveDuringCooldown
+                });
+            }
+            resource.UnitTypes.Add(unitResource);
         }
         foreach (var recipe in snapshot.Recipes)
         {
@@ -114,6 +138,35 @@ public static class ProductionCatalogResourceConverter
                 source.Id, source.DisplayName ?? string.Empty,
                 source.PhysicalRadius, source.MaximumSpeed, source.Acceleration,
                 clearance.Class, clearance.NavigationRadius);
+            var weaponProfiles = ImmutableArray
+                .CreateBuilder<CombatWeaponProfileSnapshot>(source.Weapons.Count);
+            for (var weaponIndex = 0;
+                 weaponIndex < source.Weapons.Count;
+                 weaponIndex++)
+            {
+                var weapon = source.Weapons[weaponIndex];
+                if (weapon is null)
+                    return NullElement(
+                        "combat weapon", index, out snapshot, out validation);
+                weaponProfiles.Add(new CombatWeaponProfileSnapshot(
+                    weapon.Slot,
+                    weapon.TargetLayers,
+                    weapon.EnabledByDefault,
+                    weapon.RequiredTechnologyId,
+                    weapon.AttackDamage,
+                    weapon.AttackRange,
+                    weapon.AttackCooldownSeconds,
+                    weapon.AttackWindupSeconds,
+                    weapon.Positioning,
+                    weapon.AttacksPerVolley,
+                    weapon.BonusVs,
+                    weapon.BonusDamage,
+                    weapon.BaseUpgradeDamage,
+                    weapon.BonusUpgradeDamage,
+                    weapon.ProjectileSpeed,
+                    weapon.CanMoveDuringWindup,
+                    weapon.CanMoveDuringCooldown));
+            }
             var combat = new CombatProfileSnapshot(
                 source.MaximumHealth, source.AttackDamage, source.AttackRange,
                 source.AcquisitionRange, source.AttackCooldownSeconds,
@@ -124,7 +177,10 @@ public static class ProductionCatalogResourceConverter
                 source.ProjectileSpeed,
                 source.CanMoveDuringWindup,
                 source.CanMoveDuringCooldown,
-                source.AutoTargetPriority);
+                source.AutoTargetPriority)
+            {
+                Weapons = weaponProfiles.MoveToImmutable()
+            };
 
             units[index] = new UnitTypeProfile(
                 source.Id, source.DisplayName ?? string.Empty,

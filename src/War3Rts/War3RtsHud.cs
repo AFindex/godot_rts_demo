@@ -152,6 +152,10 @@ public sealed partial class War3RtsHud : Control
                 ? $"{snapshot.Selection.AttackDamage:0.#}" +
                   (snapshot.Selection.WeaponUpgradeLevel > 0
                       ? $"  +{snapshot.Selection.WeaponUpgradeLevel}"
+                      : string.Empty) +
+                  (snapshot.Selection.WeaponCount > 1
+                      ? $"  武器{snapshot.Selection.ActiveWeaponSlot + 1}/" +
+                        $"{snapshot.Selection.WeaponCount}"
                       : string.Empty)
                 : "—"
             : "—";
@@ -162,7 +166,11 @@ public sealed partial class War3RtsHud : Control
             ? snapshot.Selection.Level.ToString()
             : "—";
         _combatTypeValue!.Text = snapshot.Selection.Count > 0
-            ? $"{snapshot.Selection.AttackClass} / {snapshot.Selection.ArmorClass}"
+            ? $"{snapshot.Selection.AttackClass} / " +
+              $"{snapshot.Selection.ArmorClass}" +
+              (snapshot.Selection.WeaponTargetLabel.Length > 0
+                  ? $" · {snapshot.Selection.WeaponTargetLabel}"
+                  : string.Empty)
             : "—";
         if (_portraitHealthFill is not null)
         {

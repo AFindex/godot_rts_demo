@@ -358,14 +358,24 @@ public sealed partial class War3WorldPresenter : Node3D
                 }
                 continue;
             }
+            var resolvedDefinition = War3HumanContent.ResolveUnit(
+                simulation, production, unit);
             if (!_units.TryGetValue(unit, out var visual))
             {
-                var resolvedDefinition = War3HumanContent.ResolveUnit(
-                    simulation, production, unit);
                 visual = CreateUnit(
                     unit, resolvedDefinition,
                     simulation.Combat.Teams[unit], camera);
                 _units.Add(unit, visual);
+            }
+            else if (!visual.Definition.ObjectId.Equals(
+                         resolvedDefinition.ObjectId,
+                         StringComparison.Ordinal))
+            {
+                visual.Root.QueueFree();
+                visual = CreateUnit(
+                    unit, resolvedDefinition,
+                    simulation.Combat.Teams[unit], camera);
+                _units[unit] = visual;
             }
             else if (visual.Dying)
             {
@@ -612,7 +622,12 @@ public sealed partial class War3WorldPresenter : Node3D
             var sourcePlayerId = (uint)value.CasterUnit <
                                  (uint)simulation.Units.Count
                 ? simulation.Combat.Teams[value.CasterUnit]
-                : -1;
+                : value.CasterBuilding >= 0 &&
+                  simulation.Construction.IsAlive(
+                      new GameplayBuildingId(value.CasterBuilding))
+                    ? simulation.Construction.Observe(
+                        new GameplayBuildingId(value.CasterBuilding)).PlayerId
+                    : -1;
             if (value.Kind == AbilityEventKind.Started)
             {
                 if (_units.TryGetValue(value.CasterUnit, out var caster))
@@ -706,7 +721,15 @@ public sealed partial class War3WorldPresenter : Node3D
         in AbilityEvent value) =>
         (uint)value.CasterUnit < (uint)simulation.Units.Count
             ? simulation.Units.Positions[value.CasterUnit]
-            : value.WorldPosition;
+            : value.CasterBuilding >= 0 &&
+              simulation.Construction.IsAlive(
+                  new GameplayBuildingId(value.CasterBuilding))
+                ? Center(simulation.Construction.Observe(
+                    new GameplayBuildingId(value.CasterBuilding)).Bounds)
+                : value.WorldPosition;
+
+    private static NVector2 Center(in SimRect bounds) =>
+        (bounds.Min + bounds.Max) * 0.5f;
 
     private static NVector2 AbilityTargetPosition(
         RtsSimulation simulation,

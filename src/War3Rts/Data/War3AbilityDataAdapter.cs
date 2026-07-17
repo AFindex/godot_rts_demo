@@ -18,7 +18,11 @@ public sealed record War3AbilityDefinition(
     string[] BuffIds,
     string[] EffectIds,
     int RequiredHeroLevel,
-    int HeroLevelSkip);
+    int HeroLevelSkip,
+    string AlternateName = "",
+    string AlternateDescription = "",
+    string AlternateIconPath = "",
+    string AlternateHotkey = "");
 
 public sealed record War3AbilityImportResult(
     AbilityCatalogSnapshot Catalog,
@@ -32,7 +36,9 @@ public sealed record War3AbilityImportResult(
 {
     public string LogLine =>
         $"ability_runtime={Catalog.Count}/{RequestedCount} " +
-        $"bindings={Catalog.Bindings.Length} families={BehaviorFamilyCount} " +
+        $"unit_bindings={Catalog.Bindings.Length} " +
+        $"building_bindings={Catalog.BuildingBindings.Length} " +
+        $"families={BehaviorFamilyCount} " +
         $"prototype={PrototypeCount} missing={MissingObjectIds.Length} " +
         $"requirement_missing={UnresolvedRequirementIds.Length} " +
         $"unclassified={UnclassifiedBaseCodes.Length} " +
@@ -50,12 +56,15 @@ public sealed class War3AbilityDataAdapter(
     IWar3UnitDataCatalog units,
     War3GameplayImportPolicy policy,
     IReadOnlyDictionary<string, int> technologyIds,
-    IReadOnlyDictionary<string, int> buildingIds)
+    IReadOnlyDictionary<string, int> buildingIds,
+    IReadOnlyDictionary<string, UnitTypeProfile> unitTypes)
 {
     public War3AbilityImportResult Build(
-        IReadOnlyList<War3UnitDefinition> definitions)
+        IReadOnlyList<War3UnitDefinition> definitions,
+        IReadOnlyList<War3BuildingDefinition>? buildingDefinitions = null)
     {
-        var requestedIds = CollectReferencedAbilityIds(definitions);
+        var requestedIds = CollectReferencedAbilityIds(
+            definitions, buildingDefinitions ?? []);
         var profiles = new List<AbilityProfile>();
         var presentations = new List<War3AbilityDefinition>();
         var rawToDense = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -84,7 +93,7 @@ public sealed class War3AbilityDataAdapter(
                     unresolvedRequirements.Add(requirement);
             }
             families.Add(baseCode);
-            var behavior = War3AbilityBehaviorRegistry.Resolve(baseCode);
+            var behavior = War3AbilityBehaviorRegistry.Resolve(baseCode, data.Id);
             if (behavior.HasPrototypeCompiler) prototypeCount++;
             if (behavior.Status == War3AbilityRuntimeSupportStatus.Unclassified)
                 unclassified.Add(baseCode);
@@ -121,11 +130,33 @@ public sealed class War3AbilityDataAdapter(
                 definition.TypeId,
                 unitData.Identity.IsHero,
                 ManaProfile(definition.ObjectId, unitData),
-                entries));
+                entries,
+                AdaptUnitTraits(unitData),
+                Math.Max(1, unitData.Summary.Level ?? 1),
+                ExperienceBountyForUnitLevel(unitData.Summary.Level ?? 1),
+                HeroMaximumLevel: 10));
+        }
+
+        var buildingBindings = new List<BuildingAbilityBindingProfile>();
+        foreach (var definition in (buildingDefinitions ?? [])
+                     .OrderBy(value => value.TypeId))
+        {
+            if (!units.TryGet(definition.ObjectId, out var buildingData))
+                continue;
+            var abilityIds = buildingData.Summary.Abilities
+                .Where(rawToDense.ContainsKey)
+                .Select(rawId => rawToDense[rawId])
+                .Distinct()
+                .ToImmutableArray();
+            if (!abilityIds.IsEmpty)
+                buildingBindings.Add(new BuildingAbilityBindingProfile(
+                    definition.TypeId, abilityIds));
         }
 
         return new War3AbilityImportResult(
-            new AbilityCatalogSnapshot(profiles.ToArray(), bindings.ToArray()),
+            new AbilityCatalogSnapshot(
+                profiles.ToArray(), bindings.ToArray(),
+                buildingBindings.ToArray()),
             presentations.ToArray(), requestedIds.Length,
             missing.ToArray(),
             unresolvedRequirements.Order(StringComparer.Ordinal).ToArray(),
@@ -134,21 +165,40 @@ public sealed class War3AbilityDataAdapter(
     }
 
     private string[] CollectReferencedAbilityIds(
-        IEnumerable<War3UnitDefinition> definitions) => definitions
-        .SelectMany(definition =>
+        IEnumerable<War3UnitDefinition> definitions,
+        IEnumerable<War3BuildingDefinition> buildingDefinitions)
+    {
+        var unitAbilityIds = definitions.SelectMany(definition =>
             units.TryGet(definition.ObjectId, out var data)
                 ? data.Summary.Abilities.Concat(data.Summary.HeroAbilities)
-                : [])
-        .Distinct(StringComparer.Ordinal)
-        .Order(StringComparer.Ordinal)
-        .ToArray();
+                : []);
+        var buildingAbilityIds = buildingDefinitions.SelectMany(definition =>
+                units.TryGet(definition.ObjectId, out var data)
+                    ? data.Summary.Abilities
+                    : [])
+            .Where(IsRuntimeBuildingAbility);
+        return unitAbilityIds.Concat(buildingAbilityIds)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private bool IsRuntimeBuildingAbility(string rawId)
+    {
+        if (!abilities.TryGet(rawId, out var data)) return false;
+        var baseCode = string.IsNullOrWhiteSpace(data.Identity.BaseCode)
+            ? data.Id
+            : data.Identity.BaseCode;
+        return War3AbilityBehaviorRegistry.Resolve(baseCode, data.Id).Compiler ==
+               War3AbilityCompilerKind.BuildingMilitiaCall;
+    }
 
     private AbilityProfile AdaptProfile(int id, War3ObjectEditorData data)
     {
         var behaviorId = string.IsNullOrWhiteSpace(data.Identity.BaseCode)
             ? data.Id
             : data.Identity.BaseCode;
-        var behavior = War3AbilityBehaviorRegistry.Resolve(behaviorId);
+        var behavior = War3AbilityBehaviorRegistry.Resolve(behaviorId, data.Id);
         var activation = behavior.Activation;
         var levelValues = data.Summary.Levels.Length == 0
             ? [new War3ObjectLevel { Level = 1 }]
@@ -183,17 +233,21 @@ public sealed class War3AbilityDataAdapter(
         var duration = MathF.Max(0f, level.Duration ?? 0f);
         var heroDuration = MathF.Max(0f, level.HeroDuration ?? duration);
         var channel = ChannelSeconds(behavior.Compiler, level, duration);
+        var effects = DecorateEffects(
+            behavior.Compiler,
+            level,
+            Effects(behavior.Compiler, level, duration, heroDuration));
         return new AbilityLevelProfile(
             Math.Max(1, level.Level),
             MathF.Max(0f, level.ManaCost ?? 0f),
             MathF.Max(0f, level.Cooldown ?? 0f),
-            MathF.Max(0f, level.CastTime ?? 0f),
+            CastSeconds(behavior.Compiler, level),
             channel,
             Distance(level.Range),
             Distance(level.Area),
             duration,
             heroDuration,
-            Effects(behavior.Compiler, level, duration, heroDuration),
+            effects,
             Requirements(level));
     }
 
@@ -231,6 +285,7 @@ public sealed class War3AbilityDataAdapter(
         var b = Data(level, "B");
         var c = Data(level, "C");
         var d = Data(level, "D");
+        var e = Data(level, "E");
         return compiler switch
         {
             War3AbilityCompilerKind.Defend => One(new AbilityEffectProfile(
@@ -250,7 +305,10 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.Dispel => One(new AbilityEffectProfile(
                 AbilityEffectKind.Dispel, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Any,
-                Radius: Distance(level.Area), MaximumTargets: 32)),
+                SecondaryValue: MathF.Max(0f, b),
+                Radius: Distance(level.Area), MaximumTargets: 32,
+                DamageKind: AbilityDamageKind.Magic,
+                BuffDispelKind: AbilityBuffDispelKind.Magic)),
             War3AbilityCompilerKind.Invisibility => One(Status(
                 AbilityEffectSelector.Primary,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
@@ -271,7 +329,8 @@ public sealed class War3AbilityDataAdapter(
                         : 1f))),
             War3AbilityCompilerKind.SpellSteal => One(new AbilityEffectProfile(
                 AbilityEffectKind.TransferBuff, AbilityEffectTiming.Impact,
-                AbilityEffectSelector.Primary, AbilityRelationFilter.Any)),
+                AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
+                BuffDispelKind: AbilityBuffDispelKind.Magic)),
             War3AbilityCompilerKind.Charm => One(new AbilityEffectProfile(
                 AbilityEffectKind.TransferControl, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy)),
@@ -282,19 +341,28 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectKind.Mana, AbilityEffectTiming.AttackHit,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 Value: -(a > 0f ? a : 20f),
-                SecondaryValue: MathF.Max(0f, b))),
+                SecondaryValue: MathF.Max(0f, b),
+                DamageKind: AbilityDamageKind.Magic,
+                HeroValue: -(c > 0f ? c : a > 0f ? a : 20f),
+                HeroSecondaryValue: d > 0f ? d : MathF.Max(0f, b))),
             War3AbilityCompilerKind.Flare => One(new AbilityEffectProfile(
                 AbilityEffectKind.Reveal, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Self,
                 Radius: Distance(level.Area), Duration: duration)),
-            War3AbilityCompilerKind.FragmentationShards => One(AttackSplash(
-                d > 0f ? d : 18f, Distance(level.Area), 8)),
+            War3AbilityCompilerKind.FragmentationShards => AttackBands(
+                Distance(level.Area), Distance(a), Distance(b),
+                c > 0f ? c : 25f,
+                d > 0f ? d : 18f,
+                e > 0f ? e : 12f),
             War3AbilityCompilerKind.DetectionAura => One(Aura(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
                 modifier: new AbilityStatModifier(
                     DetectionRangeAdd: Distance(level.Range ?? 900f)))),
-            War3AbilityCompilerKind.FlakCannons => One(AttackSplash(
-                c > 0f ? c : 7f, Distance(level.Area), 6)),
+            War3AbilityCompilerKind.FlakCannons => AttackBands(
+                Distance(level.Area), Distance(a), Distance(b),
+                c > 0f ? c : 7f,
+                d > 0f ? d : 6f,
+                e > 0f ? e : 5f),
             War3AbilityCompilerKind.Barrage => One(AttackSplash(
                 a > 0f ? a : 25f,
                 Distance(level.Area ?? 500f),
@@ -306,15 +374,22 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.SiphonMana => One(new AbilityEffectProfile(
                 AbilityEffectKind.Damage, AbilityEffectTiming.ChannelPulse,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                Value: a > 0f ? a : 30f, Interval: 1f)),
+                Value: a > 0f ? a : 30f, Interval: 1f,
+                DamageKind: AbilityDamageKind.Magic)),
             War3AbilityCompilerKind.Blizzard => One(new AbilityEffectProfile(
                 AbilityEffectKind.Damage, AbilityEffectTiming.ChannelPulse,
                 AbilityEffectSelector.AreaAtTarget,
-                AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
+                AbilityRelationFilter.Any,
                 Value: b > 0f ? b : 30f,
                 Radius: Distance(level.Area),
-                Interval: d > 0f ? d : 0.5f,
-                MaximumTargets: Math.Max(1, (int)MathF.Round(c > 0f ? c : 6f)))),
+                Interval: 1f,
+                DamageKind: AbilityDamageKind.Magic,
+                PulseCount: Math.Max(
+                    1, (int)MathF.Round(a > 0f ? a : 6f)),
+                MaximumTotalValue: MathF.Max(0f, Data(level, "F")),
+                BuildingValueMultiplier: Math.Clamp(d, 0f, 1f),
+                VisualCount: Math.Max(
+                    1, (int)MathF.Round(c > 0f ? c : 6f)))),
             War3AbilityCompilerKind.SummonWaterElemental => One(new AbilityEffectProfile(
                 AbilityEffectKind.Summon, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtCaster, AbilityRelationFilter.Self,
@@ -330,11 +405,16 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectSelector.AreaAtCaster,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Radius: Distance(level.Area),
-                MaximumTargets: Math.Max(1, (int)MathF.Round(a > 0f ? a : 24f)))),
+                MaximumTargets: Math.Max(
+                    1, (int)MathF.Round(a > 0f ? a : 24f)),
+                VisualCount: Math.Max(
+                    1, (int)MathF.Round(a > 0f ? a : 24f)),
+                ClusteredPlacement: c >= 0.5f)),
             War3AbilityCompilerKind.StormBolt => One(Status(
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 duration, AbilityStatusFlags.Stunned,
-                value: a > 0f ? a : 100f)),
+                value: a > 0f ? a : 100f,
+                damageKind: AbilityDamageKind.Magic)),
             War3AbilityCompilerKind.ThunderClap => One(Status(
                 AbilityEffectSelector.AreaAtCaster,
                 AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
@@ -343,14 +423,16 @@ public sealed class War3AbilityDataAdapter(
                     MovementSpeedMultiplier: c > 0f ? c : 0.5f,
                     AttackCooldownMultiplier: d > 0f ? 1f / d : 2f),
                 value: a > 0f ? a : 60f,
-                radius: Distance(level.Area), maximumTargets: 32)),
+                radius: Distance(level.Area), maximumTargets: 32,
+                damageKind: AbilityDamageKind.Magic)),
             War3AbilityCompilerKind.Bash => One(new AbilityEffectProfile(
                 AbilityEffectKind.ApplyStatus, AbilityEffectTiming.AttackHit,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 Value: c > 0f ? c : 25f,
                 Duration: duration,
                 Interval: a > 0f ? a : 20f,
-                Status: AbilityStatusFlags.Stunned)),
+                Status: AbilityStatusFlags.Stunned,
+                DamageKind: AbilityDamageKind.Physical)),
             War3AbilityCompilerKind.Avatar => One(Status(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
                 duration,
@@ -361,11 +443,16 @@ public sealed class War3AbilityDataAdapter(
                     MaximumHealthAdd: b > 0f ? b : 500f))),
             War3AbilityCompilerKind.HolyLight =>
             [
-                Heal(a > 0f ? a : 200f),
+                Heal(a > 0f ? a : 200f) with
+                {
+                    ExcludedUnitTraits = AbilityUnitTraits.Undead
+                },
                 new AbilityEffectProfile(
                     AbilityEffectKind.Damage, AbilityEffectTiming.Impact,
                     AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                    Value: (a > 0f ? a : 200f) * 0.5f)
+                    Value: (a > 0f ? a : 200f) * 0.5f,
+                    DamageKind: AbilityDamageKind.Magic,
+                    RequiredUnitTraits: AbilityUnitTraits.Undead)
             ],
             War3AbilityCompilerKind.DivineShield => One(Status(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
@@ -381,13 +468,8 @@ public sealed class War3AbilityDataAdapter(
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Value: 1f, Radius: Distance(level.Area),
                 MaximumTargets: Math.Max(1, (int)MathF.Round(a > 0f ? a : 6f)))),
-            War3AbilityCompilerKind.FlameStrike => One(new AbilityEffectProfile(
-                AbilityEffectKind.Damage, AbilityEffectTiming.ChannelPulse,
-                AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Any,
-                Value: a > 0f ? a : 15f,
-                Radius: Distance(level.Area),
-                Interval: b > 0f ? b : 0.33f,
-                MaximumTargets: 32)),
+            War3AbilityCompilerKind.FlameStrike => FlameStrikeEffects(
+                level, duration, heroDuration),
             War3AbilityCompilerKind.Banish => One(Status(
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
                 duration,
@@ -396,23 +478,62 @@ public sealed class War3AbilityDataAdapter(
                 new AbilityStatModifier(
                     MovementSpeedMultiplier: a > 0f ? a : 0.5f))),
             War3AbilityCompilerKind.DrainMana =>
-            [
-                new AbilityEffectProfile(
-                    AbilityEffectKind.Mana, AbilityEffectTiming.ChannelPulse,
+                One(new AbilityEffectProfile(
+                    AbilityEffectKind.TransferMana,
+                    AbilityEffectTiming.ChannelPulse,
                     AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
-                    Value: -(b > 0f ? b : 15f), Interval: 1f),
-                new AbilityEffectProfile(
-                    AbilityEffectKind.Mana, AbilityEffectTiming.ChannelPulse,
-                    AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
-                    Value: b > 0f ? b : 15f, Interval: 1f)
-            ],
+                    Value: e > 0f ? e : b > 0f ? b : 15f,
+                    Interval: c > 0f ? c : 1f)),
             War3AbilityCompilerKind.SummonPhoenix => One(new AbilityEffectProfile(
                 AbilityEffectKind.Summon, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtCaster, AbilityRelationFilter.Self,
                 MaximumTargets: Math.Max(1, (int)MathF.Round(a > 0f ? a : 1f)),
                 Summon: Phoenix(level))),
+            War3AbilityCompilerKind.MilitiaTransform => One(
+                new AbilityEffectProfile(
+                    AbilityEffectKind.TransformUnit,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Caster,
+                    AbilityRelationFilter.Self,
+                    UnitForm: MilitiaForm(level, duration))),
+            War3AbilityCompilerKind.BuildingMilitiaCall => One(
+                new AbilityEffectProfile(
+                    AbilityEffectKind.TransformUnit,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.AreaAtCaster,
+                    AbilityRelationFilter.Self |
+                    AbilityRelationFilter.Friendly,
+                    Radius: Distance(level.Area),
+                    UnitForm: MilitiaForm(
+                        level, duration > 0f
+                            ? duration
+                            : MilitiaDurationSeconds()))),
             _ => ImmutableArray<AbilityEffectProfile>.Empty
         };
+    }
+
+    private float MilitiaDurationSeconds()
+    {
+        if (abilities.TryGet("Amil", out var militia) &&
+            militia.Summary.Levels.FirstOrDefault() is { } level &&
+            level.Duration is > 0f and var duration)
+            return duration;
+        return 45f;
+    }
+
+    private AbilityUnitFormProfile MilitiaForm(
+        War3ObjectLevel level,
+        float duration)
+    {
+        var normalId = DataText(level, "A", "hpea");
+        var alternateId = DataText(level, "B", "hmil");
+        if (!unitTypes.TryGetValue(normalId, out var normal) ||
+            !unitTypes.TryGetValue(alternateId, out var alternate))
+            throw new InvalidOperationException(
+                $"Militia form units {normalId}/{alternateId} are not bound.");
+        return new AbilityUnitFormProfile(
+            normal, alternate, MathF.Max(0.1f, duration),
+            BuildingFunctionKind.TownHall);
     }
 
     private static AbilityEffectProfile Heal(float value) => new(
@@ -429,10 +550,12 @@ public sealed class War3AbilityDataAdapter(
         AbilityStatModifier modifier = default,
         float value = 0f,
         float radius = 0f,
-        int maximumTargets = 0) => new(
+        int maximumTargets = 0,
+        AbilityDamageKind damageKind = AbilityDamageKind.None) => new(
         AbilityEffectKind.ApplyStatus, AbilityEffectTiming.Impact,
         selector, relations, value, Radius: radius, Duration: duration,
-        MaximumTargets: maximumTargets, Status: status, Modifier: modifier);
+        MaximumTargets: maximumTargets, Status: status, Modifier: modifier,
+        DamageKind: damageKind);
 
     private static AbilityEffectProfile Aura(
         AbilityEffectSelector selector,
@@ -450,7 +573,151 @@ public sealed class War3AbilityDataAdapter(
         AbilityEffectKind.Damage, AbilityEffectTiming.AttackHit,
         AbilityEffectSelector.AreaAtTarget,
         AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
-        Value: damage, Radius: radius, MaximumTargets: maximumTargets);
+        Value: damage, Radius: radius, MaximumTargets: maximumTargets,
+        DamageKind: AbilityDamageKind.Physical);
+
+    private static ImmutableArray<AbilityEffectProfile> AttackBands(
+        float fullRadius,
+        float mediumRadius,
+        float smallRadius,
+        float fullDamage,
+        float mediumDamage,
+        float smallDamage)
+    {
+        var output = ImmutableArray.CreateBuilder<AbilityEffectProfile>(3);
+        AddBand(0f, fullRadius, fullDamage);
+        AddBand(fullRadius, mediumRadius, mediumDamage);
+        // Classic 1.27 Fragmentation Shards has quarter radius 250 below
+        // half radius 275. Damage priority makes that quarter band empty.
+        AddBand(MathF.Max(fullRadius, mediumRadius), smallRadius, smallDamage);
+        return output.ToImmutable();
+
+        void AddBand(float inner, float outer, float damage)
+        {
+            if (damage <= 0f || outer <= inner) return;
+            output.Add(new AbilityEffectProfile(
+                AbilityEffectKind.Damage, AbilityEffectTiming.AttackHit,
+                AbilityEffectSelector.AreaAtTarget,
+                AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
+                Value: damage, Radius: outer,
+                DamageKind: AbilityDamageKind.Physical,
+                InnerRadius: inner));
+        }
+    }
+
+    private ImmutableArray<AbilityEffectProfile> FlameStrikeEffects(
+        War3ObjectLevel level,
+        float duration,
+        float fullDuration)
+    {
+        var fullDamage = Data(level, "A");
+        if (fullDamage <= 0f) fullDamage = 15f;
+        var fullInterval = Data(level, "B");
+        if (fullInterval <= 0f) fullInterval = 0.33f;
+        var partialDamage = Data(level, "C");
+        var partialInterval = Data(level, "D");
+        if (partialInterval <= 0f) partialInterval = 1f;
+        var buildingMultiplier = Math.Clamp(Data(level, "E"), 0f, 1f);
+        var maximumDamage = MathF.Max(0f, Data(level, "F"));
+        fullDuration = Math.Clamp(
+            fullDuration > 0f ? fullDuration : 2.67f,
+            fullInterval,
+            MathF.Max(fullInterval, duration));
+        var partialDuration = MathF.Max(0f, duration - fullDuration);
+        var fullPulses = Math.Max(
+            1, (int)MathF.Floor(fullDuration / fullInterval) + 1);
+        var partialPulses = partialDamage > 0f && partialDuration > 0f
+            ? Math.Max(
+                1, (int)MathF.Floor(partialDuration / partialInterval))
+            : 0;
+        var targetCap = maximumDamage > 0f
+            ? MathF.Max(1f, MathF.Round(maximumDamage / fullDamage))
+            : 0f;
+        var output = ImmutableArray.CreateBuilder<AbilityEffectProfile>(2);
+        output.Add(new AbilityEffectProfile(
+            AbilityEffectKind.Damage, AbilityEffectTiming.PersistentPulse,
+            AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Any,
+            Value: fullDamage, Radius: Distance(level.Area),
+            Duration: fullDuration, Interval: fullInterval,
+            DamageKind: AbilityDamageKind.Magic,
+            PulseCount: fullPulses,
+            MaximumTotalValue: maximumDamage,
+            BuildingValueMultiplier: buildingMultiplier,
+            VisualCount: 1));
+        if (partialPulses > 0)
+        {
+            output.Add(new AbilityEffectProfile(
+                AbilityEffectKind.Damage,
+                AbilityEffectTiming.PersistentPulse,
+                AbilityEffectSelector.AreaAtTarget,
+                AbilityRelationFilter.Any,
+                Value: partialDamage, Radius: Distance(level.Area),
+                Duration: partialDuration, Interval: partialInterval,
+                DamageKind: AbilityDamageKind.Magic,
+                PulseCount: partialPulses,
+                StartDelay: fullDuration,
+                MaximumTotalValue: targetCap > 0f
+                    ? partialDamage * targetCap
+                    : 0f,
+                BuildingValueMultiplier: buildingMultiplier,
+                VisualCount: 1));
+        }
+        return output.ToImmutable();
+    }
+
+    private static ImmutableArray<AbilityEffectProfile> DecorateEffects(
+        War3AbilityCompilerKind compiler,
+        War3ObjectLevel level,
+        ImmutableArray<AbilityEffectProfile> effects)
+    {
+        if (effects.IsDefaultOrEmpty) return effects;
+        var buffId = level.BuffIds.FirstOrDefault() ?? string.Empty;
+        var output = effects.ToArray();
+        for (var index = 0; index < output.Length; index++)
+        {
+            var effect = output[index];
+            if (effect.Kind is not (AbilityEffectKind.ApplyStatus or
+                    AbilityEffectKind.ToggleStatus))
+                continue;
+            var identity = string.IsNullOrWhiteSpace(buffId)
+                ? $"{compiler}:{level.Level}"
+                : buffId;
+            output[index] = effect with
+            {
+                BuffId = identity,
+                BuffPolarity = Polarity(effect.Relations),
+                BuffDispelKind = IsNonDispellable(compiler, effect)
+                    ? AbilityBuffDispelKind.None
+                    : compiler == War3AbilityCompilerKind.Bash
+                        ? AbilityBuffDispelKind.Physical
+                        : AbilityBuffDispelKind.Magic,
+                BuffStacking = AbilityBuffStackingKind.Refresh
+            };
+        }
+        return output.ToImmutableArray();
+    }
+
+    private static AbilityBuffPolarity Polarity(
+        AbilityRelationFilter relations)
+    {
+        var friendly = (relations & (AbilityRelationFilter.Self |
+                                     AbilityRelationFilter.Friendly)) != 0;
+        var hostile = (relations & (AbilityRelationFilter.Enemy |
+                                    AbilityRelationFilter.Neutral)) != 0;
+        return friendly == hostile
+            ? AbilityBuffPolarity.Neutral
+            : friendly
+                ? AbilityBuffPolarity.Beneficial
+                : AbilityBuffPolarity.Harmful;
+    }
+
+    private static bool IsNonDispellable(
+        War3AbilityCompilerKind compiler,
+        in AbilityEffectProfile effect) =>
+        effect.Timing == AbilityEffectTiming.Aura ||
+        compiler is War3AbilityCompilerKind.Defend or
+            War3AbilityCompilerKind.Avatar or
+            War3AbilityCompilerKind.DivineShield;
 
     private static ImmutableArray<AbilityEffectProfile> One(
         AbilityEffectProfile effect) => [effect];
@@ -460,10 +727,17 @@ public sealed class War3AbilityDataAdapter(
         AbilityActivationKind activation,
         IEnumerable<string> values)
     {
-        if (activation == AbilityActivationKind.Passive)
+        var tokens = values.Select(value => value.ToLowerInvariant()).ToArray();
+        if (activation == AbilityActivationKind.Passive && tokens.Length == 0)
             return AbilityTargetFlags.None;
         if (compiler == War3AbilityCompilerKind.Resurrection)
             return AbilityTargetFlags.Self | AbilityTargetFlags.Dead;
+        if (compiler == War3AbilityCompilerKind.MassTeleport)
+            return AbilityTargetFlags.Unit | AbilityTargetFlags.Building |
+                   AbilityTargetFlags.Friendly | AbilityTargetFlags.Alive |
+                   AbilityTargetFlags.Ground | AbilityTargetFlags.Vulnerable |
+                   AbilityTargetFlags.Invulnerable |
+                   AbilityTargetFlags.NotSelf;
         if (activation is AbilityActivationKind.Instant or AbilityActivationKind.Toggle)
             return AbilityTargetFlags.Self | AbilityTargetFlags.Alive;
         if (activation is AbilityActivationKind.TargetPoint or
@@ -471,7 +745,7 @@ public sealed class War3AbilityDataAdapter(
             return AbilityTargetFlags.Point;
 
         var flags = AbilityTargetFlags.Unit | AbilityTargetFlags.Alive;
-        foreach (var token in values.Select(value => value.ToLowerInvariant()))
+        foreach (var token in tokens)
         {
             flags |= token switch
             {
@@ -519,14 +793,19 @@ public sealed class War3AbilityDataAdapter(
         float duration) => compiler switch
     {
         War3AbilityCompilerKind.SiphonMana or
-            War3AbilityCompilerKind.DrainMana or
-            War3AbilityCompilerKind.FlameStrike =>
+            War3AbilityCompilerKind.DrainMana =>
             MathF.Max(0.1f, duration),
-        War3AbilityCompilerKind.Blizzard => MathF.Max(
-            0.1f,
-            Data(level, "A") * MathF.Max(0.05f, Data(level, "D"))),
+        War3AbilityCompilerKind.Blizzard => MathF.Max(1f, Data(level, "A")),
         _ => 0f
     };
+
+    private static float CastSeconds(
+        War3AbilityCompilerKind compiler,
+        War3ObjectLevel level) => compiler ==
+            War3AbilityCompilerKind.MassTeleport
+        ? MathF.Max(
+            MathF.Max(0f, level.CastTime ?? 0f), Data(level, "B"))
+        : MathF.Max(0f, level.CastTime ?? 0f);
 
     private float Distance(float? value) =>
         MathF.Max(0f, value ?? 0f) * policy.WorldDistanceScale;
@@ -540,6 +819,15 @@ public sealed class War3AbilityDataAdapter(
             return 0f;
         return result;
     }
+
+    private static string DataText(
+        War3ObjectLevel level,
+        string key,
+        string fallback) =>
+        level.Data.TryGetValue(key, out var value) &&
+        !string.IsNullOrWhiteSpace(value)
+            ? value.Trim()
+            : fallback;
 
     private static UnitManaProfile ManaProfile(
         string objectId,
@@ -567,6 +855,40 @@ public sealed class War3AbilityDataAdapter(
             initial = maximum * 0.7f;
         return new UnitManaProfile(
             initial, maximum, MathF.Max(0f, mana.Regeneration ?? 0f));
+    }
+
+    internal static AbilityUnitTraits AdaptUnitTraits(War3UnitData data)
+    {
+        var table = data.Editor.FirstOrDefault(pair =>
+            pair.Key.Equals(
+                "UnitBalance", StringComparison.OrdinalIgnoreCase)).Value;
+        if (table is null) return AbilityUnitTraits.None;
+        var value = table.FirstOrDefault(pair =>
+            pair.Key.Equals("type", StringComparison.OrdinalIgnoreCase)).Value;
+        if (string.IsNullOrWhiteSpace(value)) return AbilityUnitTraits.None;
+        var traits = AbilityUnitTraits.None;
+        foreach (var token in value.Split(
+                     ',', StringSplitOptions.RemoveEmptyEntries |
+                          StringSplitOptions.TrimEntries))
+        {
+            traits |= token.ToLowerInvariant() switch
+            {
+                "ancient" => AbilityUnitTraits.Ancient,
+                "sapper" => AbilityUnitTraits.Sapper,
+                "ward" => AbilityUnitTraits.Ward,
+                "undead" => AbilityUnitTraits.Undead,
+                _ => AbilityUnitTraits.None
+            };
+        }
+        return traits;
+    }
+
+    internal static int ExperienceBountyForUnitLevel(int level)
+    {
+        level = Math.Clamp(level, 1, 100);
+        // Warcraft's standard unit experience progression starts at 25 and
+        // increases its per-level delta by five (25, 40, 60, 85, ...).
+        return checked((5 * level * level + 15 * level + 30) / 2);
     }
 
     private AbilitySummonProfile WaterElemental(War3ObjectLevel level)
@@ -663,7 +985,11 @@ public sealed class War3AbilityDataAdapter(
                 RelatedModels(buffs.Concat(effects), "Missileart")),
             buffs, effects,
             data.Identity.RequiredHeroLevel,
-            data.Identity.HeroLevelSkip);
+            data.Identity.HeroLevelSkip,
+            CleanTooltip(Value(data.Profile, "Untip") ?? string.Empty),
+            CleanTooltip(Value(data.Profile, "Unubertip") ?? string.Empty),
+            Value(data.Profile, "Unart") ?? string.Empty,
+            NormalizeHotkey(Value(data.Profile, "Unhotkey")));
     }
 
     private string[] RelatedModels(

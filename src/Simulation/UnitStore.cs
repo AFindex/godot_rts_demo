@@ -228,6 +228,34 @@ public sealed class UnitStore
         return index;
     }
 
+    internal void ApplyMovementProfile(
+        int unit,
+        in UnitMovementProfileSnapshot profile)
+    {
+        if ((uint)unit >= (uint)Count ||
+            !float.IsFinite(profile.PhysicalRadius) ||
+            profile.PhysicalRadius <= 0f ||
+            !float.IsFinite(profile.MaximumSpeed) ||
+            profile.MaximumSpeed <= 0f ||
+            !float.IsFinite(profile.Acceleration) ||
+            profile.Acceleration <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        var clearance = MovementClearance.FromPhysicalRadius(
+            profile.PhysicalRadius);
+        Radii[unit] = profile.PhysicalRadius;
+        MovementClasses[unit] = clearance.Class;
+        NavigationRadii[unit] = clearance.NavigationRadius;
+        MaxSpeeds[unit] = profile.MaximumSpeed;
+        Accelerations[unit] = profile.Acceleration;
+        Paths[unit] = null;
+        RouteWaypoints[unit] = [];
+        PathPending[unit] = false;
+        Velocities[unit] = Vector2.Zero;
+        PreferredVelocities[unit] = Vector2.Zero;
+        NextVelocities[unit] = Vector2.Zero;
+        CommandVersions[unit]++;
+    }
+
     internal void CopyRuntimeStateFrom(UnitStore source)
     {
         if (source.Capacity != Capacity)

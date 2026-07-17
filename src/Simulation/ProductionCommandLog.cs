@@ -40,7 +40,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 9;
+    public const int CurrentFormatVersion = 10;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {
@@ -328,6 +328,9 @@ internal static class ProductionSerialization
         writer.Write(value.Combat.CanMoveDuringWindup);
         writer.Write(value.Combat.CanMoveDuringCooldown);
         writer.Write(value.Combat.AutoTargetPriority);
+        writer.Write(value.Combat.Weapons.Length);
+        foreach (var weapon in value.Combat.Weapons)
+            WriteWeapon(writer, weapon);
         writer.Write((byte)value.Perception.Concealment);
         writer.Write(value.Perception.DetectionRange);
         writer.Write(value.Perception.VisionRange);
@@ -353,6 +356,13 @@ internal static class ProductionSerialization
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
             reader.ReadInt32());
+        var weaponCount = reader.ReadInt32();
+        if (weaponCount is < 0 or > 8) throw new InvalidDataException();
+        var weapons = ImmutableArray.CreateBuilder<CombatWeaponProfileSnapshot>(
+            weaponCount);
+        for (var index = 0; index < weaponCount; index++)
+            weapons.Add(ReadWeapon(reader));
+        combat = combat with { Weapons = weapons.MoveToImmutable() };
         var perception = new UnitPerceptionProfileSnapshot(
             (UnitConcealmentKind)reader.ReadByte(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
@@ -363,6 +373,38 @@ internal static class ProductionSerialization
             Perception = perception
         };
     }
+
+    private static void WriteWeapon(
+        BinaryWriter writer, in CombatWeaponProfileSnapshot weapon)
+    {
+        writer.Write(weapon.Slot);
+        writer.Write((byte)weapon.TargetLayers);
+        writer.Write(weapon.EnabledByDefault);
+        writer.Write(weapon.RequiredTechnologyId);
+        writer.Write(weapon.AttackDamage);
+        writer.Write(weapon.AttackRange);
+        writer.Write(weapon.AttackCooldownSeconds);
+        writer.Write(weapon.AttackWindupSeconds);
+        writer.Write((byte)weapon.Positioning);
+        writer.Write(weapon.AttacksPerVolley);
+        writer.Write((ushort)weapon.BonusVs);
+        writer.Write(weapon.BonusDamage);
+        writer.Write(weapon.BaseUpgradeDamage);
+        writer.Write(weapon.BonusUpgradeDamage);
+        writer.Write(weapon.ProjectileSpeed);
+        writer.Write(weapon.CanMoveDuringWindup);
+        writer.Write(weapon.CanMoveDuringCooldown);
+    }
+
+    private static CombatWeaponProfileSnapshot ReadWeapon(BinaryReader reader) =>
+        new(
+            reader.ReadInt32(), (CombatTargetLayer)reader.ReadByte(),
+            reader.ReadBoolean(), reader.ReadInt32(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            (CombatPositioningKind)reader.ReadByte(), reader.ReadInt32(),
+            (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadBoolean(), reader.ReadBoolean());
 
     private static void WriteString(BinaryWriter writer, string value)
     {

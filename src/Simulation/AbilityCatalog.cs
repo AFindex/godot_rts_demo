@@ -62,7 +62,9 @@ public enum AbilityEffectKind : byte
     Revive,
     TransferControl,
     TransferBuff,
-    ToggleStatus
+    ToggleStatus,
+    TransferMana,
+    TransformUnit
 }
 
 public enum AbilityEffectTiming : byte
@@ -70,7 +72,8 @@ public enum AbilityEffectTiming : byte
     Impact,
     ChannelPulse,
     Aura,
-    AttackHit
+    AttackHit,
+    PersistentPulse
 }
 
 public enum AbilityEffectSelector : byte
@@ -79,6 +82,41 @@ public enum AbilityEffectSelector : byte
     Primary,
     AreaAtTarget,
     AreaAtCaster
+}
+
+/// <summary>
+/// Warcraft distinguishes spell damage from physical attack-derived damage
+/// and universal damage. None is valid for non-damaging effects only.
+/// </summary>
+public enum AbilityDamageKind : byte
+{
+    None,
+    Physical,
+    Magic,
+    Universal
+}
+
+public enum AbilityBuffPolarity : byte
+{
+    Neutral,
+    Beneficial,
+    Harmful
+}
+
+[Flags]
+public enum AbilityBuffDispelKind : byte
+{
+    None = 0,
+    Magic = 1 << 0,
+    Physical = 1 << 1,
+    Both = Magic | Physical
+}
+
+public enum AbilityBuffStackingKind : byte
+{
+    Refresh,
+    Replace,
+    Stack
 }
 
 [Flags]
@@ -167,6 +205,53 @@ public readonly record struct AbilitySummonProfile(
     }
 }
 
+/// <summary>
+/// Complete, content-neutral description of a reversible unit form. Both
+/// profiles live in the ability catalog so replay and hot-snapshot restoration
+/// never need to reopen Warcraft JSON or a presentation-side catalog.
+/// </summary>
+public readonly record struct AbilityUnitFormProfile(
+    UnitTypeProfile Normal,
+    UnitTypeProfile Alternate,
+    float AlternateDurationSeconds,
+    BuildingFunctionKind RequiredBuildingFunction)
+{
+    public bool IsValid
+    {
+        get
+        {
+            if (Normal.Id < 0 || Alternate.Id < 0 || Normal.Id == Alternate.Id ||
+                !float.IsFinite(AlternateDurationSeconds) ||
+                AlternateDurationSeconds <= 0f ||
+                !Enum.IsDefined(RequiredBuildingFunction))
+                return false;
+            try
+            {
+                Normal.Combat.Validate();
+                Alternate.Combat.Validate();
+                Normal.Perception.Validate();
+                Alternate.Perception.Validate();
+                return !string.IsNullOrWhiteSpace(Normal.Name) &&
+                       !string.IsNullOrWhiteSpace(Alternate.Name) &&
+                       ValidMovement(Normal.Movement) &&
+                       ValidMovement(Alternate.Movement);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
+        }
+    }
+
+    private static bool ValidMovement(UnitMovementProfileSnapshot value) =>
+        value.Id >= 0 && !string.IsNullOrWhiteSpace(value.Name) &&
+        float.IsFinite(value.PhysicalRadius) && value.PhysicalRadius > 0f &&
+        float.IsFinite(value.MaximumSpeed) && value.MaximumSpeed > 0f &&
+        float.IsFinite(value.Acceleration) && value.Acceleration > 0f &&
+        Enum.IsDefined(value.MovementClass) &&
+        float.IsFinite(value.NavigationRadius) && value.NavigationRadius > 0f;
+}
+
 public readonly record struct AbilityEffectProfile(
     AbilityEffectKind Kind,
     AbilityEffectTiming Timing,
@@ -180,7 +265,24 @@ public readonly record struct AbilityEffectProfile(
     int MaximumTargets = 0,
     AbilityStatusFlags Status = AbilityStatusFlags.None,
     AbilityStatModifier Modifier = default,
-    AbilitySummonProfile Summon = default)
+    AbilitySummonProfile Summon = default,
+    AbilityDamageKind DamageKind = AbilityDamageKind.None,
+    string BuffId = "",
+    AbilityBuffPolarity BuffPolarity = AbilityBuffPolarity.Neutral,
+    AbilityBuffDispelKind BuffDispelKind = AbilityBuffDispelKind.None,
+    AbilityBuffStackingKind BuffStacking = AbilityBuffStackingKind.Refresh,
+    float HeroValue = 0f,
+    float HeroSecondaryValue = 0f,
+    AbilityUnitTraits RequiredUnitTraits = AbilityUnitTraits.None,
+    AbilityUnitTraits ExcludedUnitTraits = AbilityUnitTraits.None,
+    float InnerRadius = 0f,
+    int PulseCount = 0,
+    float StartDelay = 0f,
+    float MaximumTotalValue = 0f,
+    float BuildingValueMultiplier = 0f,
+    int VisualCount = 0,
+    bool ClusteredPlacement = false,
+    AbilityUnitFormProfile UnitForm = default)
 {
     public bool IsValid =>
         Enum.IsDefined(Kind) && Enum.IsDefined(Timing) &&
@@ -188,6 +290,8 @@ public readonly record struct AbilityEffectProfile(
         (Relations & ~AbilityRelationFilter.Any) == 0 &&
         float.IsFinite(Value) && float.IsFinite(SecondaryValue) &&
         float.IsFinite(Radius) && Radius >= 0f &&
+        float.IsFinite(InnerRadius) && InnerRadius >= 0f &&
+        InnerRadius <= Radius &&
         float.IsFinite(Duration) && Duration >= 0f &&
         float.IsFinite(Interval) && Interval >= 0f &&
         MaximumTargets is >= 0 and <= 256 &&
@@ -200,7 +304,32 @@ public readonly record struct AbilityEffectProfile(
                     AbilityStatusFlags.AttackDisabled |
                     AbilityStatusFlags.MovementDisabled)) == 0 &&
         Modifier.IsValid &&
-        (Kind != AbilityEffectKind.Summon || Summon.IsValid);
+        (Kind != AbilityEffectKind.Summon || Summon.IsValid) &&
+        Enum.IsDefined(DamageKind) &&
+        (Kind != AbilityEffectKind.Damage ||
+         DamageKind != AbilityDamageKind.None) &&
+        BuffId is not null && BuffId.Length <= 64 &&
+        Enum.IsDefined(BuffPolarity) &&
+        (BuffDispelKind & ~AbilityBuffDispelKind.Both) == 0 &&
+        Enum.IsDefined(BuffStacking) &&
+        float.IsFinite(HeroValue) && float.IsFinite(HeroSecondaryValue) &&
+        (RequiredUnitTraits & ~AbilityUnitTraits.All) == 0 &&
+        (ExcludedUnitTraits & ~AbilityUnitTraits.All) == 0 &&
+        (RequiredUnitTraits & ExcludedUnitTraits) == 0 &&
+        PulseCount is >= 0 and <= 100_000 &&
+        float.IsFinite(StartDelay) && StartDelay >= 0f &&
+        float.IsFinite(MaximumTotalValue) && MaximumTotalValue >= 0f &&
+        float.IsFinite(BuildingValueMultiplier) &&
+        BuildingValueMultiplier is >= 0f and <= 10f &&
+        VisualCount is >= 0 and <= 100_000 &&
+        (Timing != AbilityEffectTiming.PersistentPulse ||
+         Kind == AbilityEffectKind.Damage && Duration > 0f &&
+         Interval > 0f && PulseCount > 0) &&
+        (MaximumTotalValue <= 0f || Kind == AbilityEffectKind.Damage) &&
+        (BuildingValueMultiplier <= 0f || Kind == AbilityEffectKind.Damage) &&
+        (!ClusteredPlacement || Kind == AbilityEffectKind.Teleport) &&
+        (Kind != AbilityEffectKind.TransformUnit || UnitForm.IsValid) &&
+        (Kind == AbilityEffectKind.TransformUnit || UnitForm == default);
 }
 
 public enum AbilityRequirementKind : byte
@@ -308,15 +437,34 @@ public readonly record struct UnitAbilityEntryProfile(
     int Level,
     bool AutoCastEnabled = false);
 
+[Flags]
+public enum AbilityUnitTraits : byte
+{
+    None = 0,
+    Ancient = 1 << 0,
+    Sapper = 1 << 1,
+    Ward = 1 << 2,
+    Undead = 1 << 3,
+    All = Ancient | Sapper | Ward | Undead
+}
+
 public readonly record struct UnitAbilityBindingProfile(
     int UnitTypeId,
     bool Hero,
     UnitManaProfile Mana,
-    ImmutableArray<UnitAbilityEntryProfile> Abilities)
+    ImmutableArray<UnitAbilityEntryProfile> Abilities,
+    AbilityUnitTraits Traits = AbilityUnitTraits.None,
+    int UnitLevel = 1,
+    int ExperienceBounty = 0,
+    int HeroMaximumLevel = 10)
 {
     public bool IsValid(AbilityProfile[] profiles)
     {
         if (UnitTypeId < 0 || !Mana.IsValid || Abilities.IsDefault ||
+            (Traits & ~AbilityUnitTraits.All) != 0 ||
+            UnitLevel is < 0 or > 100 ||
+            ExperienceBounty is < 0 or > 1_000_000 ||
+            HeroMaximumLevel is < 1 or > 100 ||
             Abilities.Length > 32)
             return false;
         var seen = new HashSet<int>();
@@ -334,32 +482,60 @@ public readonly record struct UnitAbilityBindingProfile(
 }
 
 /// <summary>
+/// Building loadouts deliberately contain only ability IDs. Buildings do not
+/// share unit mana, hero-level or auto-cast state; the authoritative runtime
+/// stores their toggle state against the concrete GameplayBuildingId.
+/// </summary>
+public readonly record struct BuildingAbilityBindingProfile(
+    int BuildingTypeId,
+    ImmutableArray<int> Abilities)
+{
+    public bool IsValid(AbilityProfile[] profiles)
+    {
+        if (BuildingTypeId < 0 || Abilities.IsDefault ||
+            Abilities.Length > 32)
+            return false;
+        var seen = new HashSet<int>();
+        return Abilities.All(id =>
+            (uint)id < (uint)profiles.Length && seen.Add(id));
+    }
+}
+
+/// <summary>
 /// Immutable, deterministic ability definitions and unit-type loadouts. The
 /// simulation consumes dense integer IDs; content adapters retain Warcraft
 /// rawcodes and presentation strings at this boundary.
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 13;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
+    private readonly Dictionary<int, BuildingAbilityBindingProfile>
+        _buildingBindings;
 
     public AbilityCatalogSnapshot(
         AbilityProfile[] abilities,
-        UnitAbilityBindingProfile[] bindings)
+        UnitAbilityBindingProfile[] bindings,
+        BuildingAbilityBindingProfile[]? buildingBindings = null)
     {
         Abilities = abilities.ToArray();
         Bindings = bindings.OrderBy(value => value.UnitTypeId).ToArray();
+        BuildingBindings = (buildingBindings ?? [])
+            .OrderBy(value => value.BuildingTypeId).ToArray();
         Validate();
         _rawIds = Abilities.ToDictionary(
             value => value.RawId, value => value.Id, StringComparer.Ordinal);
         _bindings = Bindings.ToDictionary(value => value.UnitTypeId);
+        _buildingBindings = BuildingBindings.ToDictionary(
+            value => value.BuildingTypeId);
         CanonicalBytes = AbilitySerialization.SerializeCatalog(this);
         StableHash = StableHash64.Compute(CanonicalBytes);
     }
 
     public AbilityProfile[] Abilities { get; }
     public UnitAbilityBindingProfile[] Bindings { get; }
+    public BuildingAbilityBindingProfile[] BuildingBindings { get; }
     public byte[] CanonicalBytes { get; }
     public ulong StableHash { get; }
     public string StableHashText => StableHash.ToString("X16");
@@ -383,11 +559,17 @@ public sealed class AbilityCatalogSnapshot
         out UnitAbilityBindingProfile binding) =>
         _bindings.TryGetValue(unitTypeId, out binding);
 
+    public bool TryBuildingBinding(
+        int buildingTypeId,
+        out BuildingAbilityBindingProfile binding) =>
+        _buildingBindings.TryGetValue(buildingTypeId, out binding);
+
     public static AbilityCatalogSnapshot Empty { get; } = new([], []);
 
     private void Validate()
     {
-        if (Abilities.Length > 4096 || Bindings.Length > 4096)
+        if (Abilities.Length > 4096 || Bindings.Length > 4096 ||
+            BuildingBindings.Length > 4096)
             throw new ArgumentOutOfRangeException(nameof(Abilities));
         var rawIds = new HashSet<string>(StringComparer.Ordinal);
         for (var index = 0; index < Abilities.Length; index++)
@@ -404,6 +586,14 @@ public sealed class AbilityCatalogSnapshot
                 !binding.IsValid(Abilities))
                 throw new ArgumentException(
                     $"Ability binding {binding.UnitTypeId} is invalid.");
+        }
+        var buildingTypes = new HashSet<int>();
+        foreach (var binding in BuildingBindings)
+        {
+            if (!buildingTypes.Add(binding.BuildingTypeId) ||
+                !binding.IsValid(Abilities))
+                throw new ArgumentException(
+                    $"Building ability binding {binding.BuildingTypeId} is invalid.");
         }
     }
 }
@@ -431,6 +621,9 @@ internal static partial class AbilitySerialization
         foreach (var ability in catalog.Abilities) WriteAbility(writer, ability);
         writer.Write(catalog.Bindings.Length);
         foreach (var binding in catalog.Bindings) WriteBinding(writer, binding);
+        writer.Write(catalog.BuildingBindings.Length);
+        foreach (var binding in catalog.BuildingBindings)
+            WriteBuildingBinding(writer, binding);
     }
 
     public static AbilityCatalogSnapshot ReadCatalog(BinaryReader reader)
@@ -445,7 +638,12 @@ internal static partial class AbilitySerialization
         var bindings = new UnitAbilityBindingProfile[bindingCount];
         for (var index = 0; index < bindingCount; index++)
             bindings[index] = ReadBinding(reader);
-        return new AbilityCatalogSnapshot(abilities, bindings);
+        var buildingBindingCount = ReadCount(reader, 4096);
+        var buildingBindings =
+            new BuildingAbilityBindingProfile[buildingBindingCount];
+        for (var index = 0; index < buildingBindingCount; index++)
+            buildingBindings[index] = ReadBuildingBinding(reader);
+        return new AbilityCatalogSnapshot(abilities, bindings, buildingBindings);
     }
 
     private static void WriteAbility(BinaryWriter writer, AbilityProfile value)
@@ -560,6 +758,25 @@ internal static partial class AbilitySerialization
         var hasSummon = value.Kind == AbilityEffectKind.Summon;
         writer.Write(hasSummon);
         if (hasSummon) WriteSummon(writer, value.Summon);
+        writer.Write((byte)value.DamageKind);
+        WriteString(writer, value.BuffId);
+        writer.Write((byte)value.BuffPolarity);
+        writer.Write((byte)value.BuffDispelKind);
+        writer.Write((byte)value.BuffStacking);
+        writer.Write(value.HeroValue);
+        writer.Write(value.HeroSecondaryValue);
+        writer.Write((byte)value.RequiredUnitTraits);
+        writer.Write((byte)value.ExcludedUnitTraits);
+        writer.Write(value.InnerRadius);
+        writer.Write(value.PulseCount);
+        writer.Write(value.StartDelay);
+        writer.Write(value.MaximumTotalValue);
+        writer.Write(value.BuildingValueMultiplier);
+        writer.Write(value.VisualCount);
+        writer.Write(value.ClusteredPlacement);
+        var hasUnitForm = value.Kind == AbilityEffectKind.TransformUnit;
+        writer.Write(hasUnitForm);
+        if (hasUnitForm) WriteUnitForm(writer, value.UnitForm);
     }
 
     private static AbilityEffectProfile ReadEffect(BinaryReader reader)
@@ -577,9 +794,87 @@ internal static partial class AbilitySerialization
         var status = (AbilityStatusFlags)reader.ReadUInt16();
         var modifier = ReadModifier(reader);
         var summon = reader.ReadBoolean() ? ReadSummon(reader) : default;
+        var damageKind = (AbilityDamageKind)reader.ReadByte();
+        var buffId = ReadString(reader);
+        var buffPolarity = (AbilityBuffPolarity)reader.ReadByte();
+        var buffDispelKind = (AbilityBuffDispelKind)reader.ReadByte();
+        var buffStacking = (AbilityBuffStackingKind)reader.ReadByte();
+        var heroValue = reader.ReadSingle();
+        var heroSecondaryValue = reader.ReadSingle();
+        var requiredUnitTraits = (AbilityUnitTraits)reader.ReadByte();
+        var excludedUnitTraits = (AbilityUnitTraits)reader.ReadByte();
+        var innerRadius = reader.ReadSingle();
+        var pulseCount = reader.ReadInt32();
+        var startDelay = reader.ReadSingle();
+        var maximumTotalValue = reader.ReadSingle();
+        var buildingValueMultiplier = reader.ReadSingle();
+        var visualCount = reader.ReadInt32();
+        var clusteredPlacement = reader.ReadBoolean();
+        var unitForm = reader.ReadBoolean() ? ReadUnitForm(reader) : default;
         return new AbilityEffectProfile(
             kind, timing, selector, relations, value, secondary, radius,
-            duration, interval, maximumTargets, status, modifier, summon);
+            duration, interval, maximumTargets, status, modifier, summon,
+            damageKind, buffId, buffPolarity, buffDispelKind, buffStacking,
+            heroValue, heroSecondaryValue, requiredUnitTraits,
+            excludedUnitTraits, innerRadius, pulseCount, startDelay,
+            maximumTotalValue, buildingValueMultiplier, visualCount,
+            clusteredPlacement, unitForm);
+    }
+
+    private static void WriteUnitForm(
+        BinaryWriter writer,
+        AbilityUnitFormProfile value)
+    {
+        WriteUnitType(writer, value.Normal);
+        WriteUnitType(writer, value.Alternate);
+        writer.Write(value.AlternateDurationSeconds);
+        writer.Write((byte)value.RequiredBuildingFunction);
+    }
+
+    private static AbilityUnitFormProfile ReadUnitForm(BinaryReader reader) => new(
+        ReadUnitType(reader),
+        ReadUnitType(reader),
+        reader.ReadSingle(),
+        (BuildingFunctionKind)reader.ReadByte());
+
+    private static void WriteUnitType(BinaryWriter writer, UnitTypeProfile value)
+    {
+        writer.Write(value.Id);
+        WriteString(writer, value.Name);
+        writer.Write(value.Movement.Id);
+        WriteString(writer, value.Movement.Name);
+        writer.Write(value.Movement.PhysicalRadius);
+        writer.Write(value.Movement.MaximumSpeed);
+        writer.Write(value.Movement.Acceleration);
+        writer.Write((byte)value.Movement.MovementClass);
+        writer.Write(value.Movement.NavigationRadius);
+        WriteCombat(writer, value.Combat);
+        writer.Write(value.IsWorker);
+        writer.Write((byte)value.Perception.Concealment);
+        writer.Write(value.Perception.DetectionRange);
+        writer.Write(value.Perception.VisionRange);
+        writer.Write(value.Perception.ObservationHeight);
+        writer.Write((byte)value.Perception.TerrainVisionMode);
+    }
+
+    private static UnitTypeProfile ReadUnitType(BinaryReader reader)
+    {
+        var id = reader.ReadInt32();
+        var name = ReadString(reader);
+        var movement = new UnitMovementProfileSnapshot(
+            reader.ReadInt32(), ReadString(reader), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(),
+            (MovementClass)reader.ReadByte(), reader.ReadSingle());
+        var combat = ReadCombat(reader);
+        var worker = reader.ReadBoolean();
+        var perception = new UnitPerceptionProfileSnapshot(
+            (UnitConcealmentKind)reader.ReadByte(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(),
+            (TerrainVisionMode)reader.ReadByte());
+        return new UnitTypeProfile(id, name, movement, combat, worker)
+        {
+            Perception = perception
+        };
     }
 
     private static void WriteModifier(BinaryWriter writer, AbilityStatModifier value)
@@ -655,17 +950,61 @@ internal static partial class AbilitySerialization
         writer.Write(value.CanMoveDuringWindup);
         writer.Write(value.CanMoveDuringCooldown);
         writer.Write(value.AutoTargetPriority);
+        writer.Write(value.Weapons.Length);
+        foreach (var weapon in value.Weapons)
+            WriteWeapon(writer, weapon);
     }
 
-    private static CombatProfileSnapshot ReadCombat(BinaryReader reader) => new(
-        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-        reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte(),
-        reader.ReadSingle(), (CombatAttribute)reader.ReadUInt16(),
-        reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
-        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-        reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
-        reader.ReadInt32());
+    private static CombatProfileSnapshot ReadCombat(BinaryReader reader)
+    {
+        var value = new CombatProfileSnapshot(
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadSingle(), (CombatPositioningKind)reader.ReadByte(),
+            reader.ReadSingle(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
+            reader.ReadInt32());
+        var count = reader.ReadInt32();
+        if (count is < 0 or > 8) throw new InvalidDataException();
+        var weapons = ImmutableArray.CreateBuilder<CombatWeaponProfileSnapshot>(count);
+        for (var index = 0; index < count; index++)
+            weapons.Add(ReadWeapon(reader));
+        return value with { Weapons = weapons.MoveToImmutable() };
+    }
+
+    private static void WriteWeapon(
+        BinaryWriter writer, in CombatWeaponProfileSnapshot value)
+    {
+        writer.Write(value.Slot);
+        writer.Write((byte)value.TargetLayers);
+        writer.Write(value.EnabledByDefault);
+        writer.Write(value.RequiredTechnologyId);
+        writer.Write(value.AttackDamage);
+        writer.Write(value.AttackRange);
+        writer.Write(value.AttackCooldownSeconds);
+        writer.Write(value.AttackWindupSeconds);
+        writer.Write((byte)value.Positioning);
+        writer.Write(value.AttacksPerVolley);
+        writer.Write((ushort)value.BonusVs);
+        writer.Write(value.BonusDamage);
+        writer.Write(value.BaseUpgradeDamage);
+        writer.Write(value.BonusUpgradeDamage);
+        writer.Write(value.ProjectileSpeed);
+        writer.Write(value.CanMoveDuringWindup);
+        writer.Write(value.CanMoveDuringCooldown);
+    }
+
+    private static CombatWeaponProfileSnapshot ReadWeapon(BinaryReader reader) =>
+        new(
+            reader.ReadInt32(), (CombatTargetLayer)reader.ReadByte(),
+            reader.ReadBoolean(), reader.ReadInt32(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            (CombatPositioningKind)reader.ReadByte(), reader.ReadInt32(),
+            (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            reader.ReadBoolean(), reader.ReadBoolean());
 
     private static void WriteBinding(
         BinaryWriter writer,
@@ -676,6 +1015,10 @@ internal static partial class AbilitySerialization
         writer.Write(value.Mana.Initial);
         writer.Write(value.Mana.Maximum);
         writer.Write(value.Mana.RegenerationPerSecond);
+        writer.Write((byte)value.Traits);
+        writer.Write(value.UnitLevel);
+        writer.Write(value.ExperienceBounty);
+        writer.Write(value.HeroMaximumLevel);
         writer.Write(value.Abilities.Length);
         foreach (var ability in value.Abilities)
         {
@@ -691,13 +1034,39 @@ internal static partial class AbilitySerialization
         var hero = reader.ReadBoolean();
         var mana = new UnitManaProfile(
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+        var traits = (AbilityUnitTraits)reader.ReadByte();
+        var unitLevel = reader.ReadInt32();
+        var experienceBounty = reader.ReadInt32();
+        var heroMaximumLevel = reader.ReadInt32();
         var count = ReadCount(reader, 32);
         var abilities = new UnitAbilityEntryProfile[count];
         for (var index = 0; index < count; index++)
             abilities[index] = new UnitAbilityEntryProfile(
                 reader.ReadInt32(), reader.ReadInt32(), reader.ReadBoolean());
         return new UnitAbilityBindingProfile(
-            unitType, hero, mana, abilities.ToImmutableArray());
+            unitType, hero, mana, abilities.ToImmutableArray(), traits,
+            unitLevel, experienceBounty, heroMaximumLevel);
+    }
+
+    private static void WriteBuildingBinding(
+        BinaryWriter writer,
+        BuildingAbilityBindingProfile value)
+    {
+        writer.Write(value.BuildingTypeId);
+        writer.Write(value.Abilities.Length);
+        foreach (var ability in value.Abilities) writer.Write(ability);
+    }
+
+    private static BuildingAbilityBindingProfile ReadBuildingBinding(
+        BinaryReader reader)
+    {
+        var buildingType = reader.ReadInt32();
+        var count = ReadCount(reader, 32);
+        var abilities = new int[count];
+        for (var index = 0; index < count; index++)
+            abilities[index] = reader.ReadInt32();
+        return new BuildingAbilityBindingProfile(
+            buildingType, abilities.ToImmutableArray());
     }
 
     private static int ReadCount(BinaryReader reader, int maximum)

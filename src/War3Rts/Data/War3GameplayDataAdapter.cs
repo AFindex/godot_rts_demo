@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Collections.Immutable;
 using RtsDemo.Simulation;
 
 namespace War3Rts.Data;
@@ -53,6 +54,8 @@ public sealed class War3GameplayDataAdapter(
 {
     public IWar3UnitDataCatalog Catalog { get; } = catalog;
     public War3GameplayImportPolicy Policy { get; } = policy;
+    public IReadOnlyDictionary<string, int> WeaponUnlockTechnologies { get; init; } =
+        new Dictionary<string, int>(StringComparer.Ordinal);
 
     public War3UnitDefinition ApplyPresentation(War3UnitDefinition fallback)
     {
@@ -107,7 +110,7 @@ public sealed class War3GameplayDataAdapter(
     {
         if (!Catalog.TryGet(binding.ObjectId, out var data)) return fallback;
         var movement = ApplyMovement(data, fallback.Movement);
-        var combat = ApplyCombat(data, fallback.Combat);
+        var combat = ApplyCombat(binding, data, fallback.Combat);
         var perception = ApplyPerception(data, fallback.Perception);
         return fallback with
         {
@@ -229,6 +232,7 @@ public sealed class War3GameplayDataAdapter(
     }
 
     private CombatProfileSnapshot ApplyCombat(
+        War3UnitDefinition binding,
         War3UnitData data,
         CombatProfileSnapshot fallback)
     {
@@ -242,20 +246,72 @@ public sealed class War3GameplayDataAdapter(
         if (attack is null)
             return fallback with { MaximumHealth = maximumHealth, Armor = armor };
 
-        var range = NonNegative(attack.Range)
-            ? attack.Range!.Value * Policy.WorldDistanceScale
-            : fallback.AttackRange;
+        var weaponValues = data.Summary.Combat.Attacks
+            .Select((value, slot) => new
+            {
+                Attack = value,
+                Slot = slot,
+                RequiredTechnology = WeaponUnlockTechnologies.TryGetValue(
+                    WeaponUnlockKey(binding.ObjectId, slot), out var technology)
+                    ? technology
+                    : -1
+            })
+            .Where(value => value.Attack.Enabled || value.RequiredTechnology >= 0)
+            .Select(value => ApplyWeapon(
+                data, value.Attack, value.Slot,
+                value.RequiredTechnology, fallback))
+            .OrderBy(value => value.Slot)
+            .ToImmutableArray();
+        var primary = weaponValues.First(value => value.EnabledByDefault);
+        var range = primary.AttackRange;
         var acquisition = NonNegative(data.Summary.Combat.AcquisitionRange)
             ? data.Summary.Combat.AcquisitionRange!.Value * Policy.WorldDistanceScale
             : fallback.AcquisitionRange;
-        acquisition = MathF.Max(acquisition, range);
+        acquisition = MathF.Max(
+            acquisition,
+            weaponValues.Select(value => value.AttackRange).DefaultIfEmpty(range).Max());
+        return fallback with
+        {
+            MaximumHealth = maximumHealth,
+            AttackDamage = primary.AttackDamage,
+            AttackRange = range,
+            AcquisitionRange = acquisition,
+            AttackCooldownSeconds = primary.AttackCooldownSeconds,
+            AttackWindupSeconds = primary.AttackWindupSeconds,
+            LeashDistance = MathF.Max(
+                acquisition * Policy.LeashRangeMultiplier,
+                acquisition + MathF.Max(20f, range * 0.25f)),
+            Positioning = primary.Positioning,
+            Armor = armor,
+            AttacksPerVolley = primary.AttacksPerVolley,
+            BonusVs = primary.BonusVs,
+            BonusDamage = primary.BonusDamage,
+            BaseUpgradeDamage = primary.BaseUpgradeDamage,
+            BonusUpgradeDamage = primary.BonusUpgradeDamage,
+            ProjectileSpeed = primary.ProjectileSpeed,
+            CanMoveDuringWindup = primary.CanMoveDuringWindup,
+            CanMoveDuringCooldown = primary.CanMoveDuringCooldown,
+            Weapons = weaponValues
+        };
+    }
+
+    private CombatWeaponProfileSnapshot ApplyWeapon(
+        War3UnitData data,
+        War3AttackSummary attack,
+        int slot,
+        int requiredTechnology,
+        in CombatProfileSnapshot fallback)
+    {
+        var range = NonNegative(attack.Range)
+            ? attack.Range!.Value * Policy.WorldDistanceScale
+            : fallback.AttackRange;
         var cooldown = Positive(attack.Cooldown)
             ? attack.Cooldown!.Value
             : fallback.AttackCooldownSeconds;
         var windup = NonNegative(attack.Timing.DamagePoint)
             ? Math.Clamp(attack.Timing.DamagePoint!.Value, 0f, cooldown)
             : MathF.Min(fallback.AttackWindupSeconds, cooldown);
-        var attackDamage = NonNegative(attack.Damage.Average)
+        var damage = NonNegative(attack.Damage.Average)
             ? attack.Damage.Average!.Value + PrimaryHeroDamage(data)
             : fallback.AttackDamage;
         var projectile = IsProjectileWeapon(attack.WeaponType);
@@ -264,27 +320,47 @@ public sealed class War3GameplayDataAdapter(
             : 0f;
         if (projectile && projectileSpeed <= 0f)
             projectileSpeed = Policy.DefaultProjectileSpeed;
-        var upgradeDamage = NonNegative(attack.Damage.UpgradeAmount)
-            ? attack.Damage.UpgradeAmount!.Value
-            : fallback.BaseUpgradeDamage;
-        return fallback with
-        {
-            MaximumHealth = maximumHealth,
-            AttackDamage = attackDamage,
-            AttackRange = range,
-            AcquisitionRange = acquisition,
-            AttackCooldownSeconds = cooldown,
-            AttackWindupSeconds = windup,
-            LeashDistance = MathF.Max(
-                acquisition * Policy.LeashRangeMultiplier,
-                acquisition + MathF.Max(20f, range * 0.25f)),
-            Positioning = projectile || range > 45f
+        return new CombatWeaponProfileSnapshot(
+            slot,
+            TargetLayers(attack.Targets),
+            attack.Enabled,
+            requiredTechnology,
+            damage,
+            range,
+            cooldown,
+            windup,
+            projectile || range > 45f
                 ? CombatPositioningKind.Ranged
                 : CombatPositioningKind.Melee,
-            Armor = armor,
-            BaseUpgradeDamage = upgradeDamage,
-            ProjectileSpeed = projectileSpeed
-        };
+            fallback.AttacksPerVolley,
+            fallback.BonusVs,
+            fallback.BonusDamage,
+            NonNegative(attack.Damage.UpgradeAmount)
+                ? attack.Damage.UpgradeAmount!.Value
+                : fallback.BaseUpgradeDamage,
+            fallback.BonusUpgradeDamage,
+            projectileSpeed,
+            fallback.CanMoveDuringWindup,
+            fallback.CanMoveDuringCooldown);
+    }
+
+    public static string WeaponUnlockKey(string objectId, int slot) =>
+        $"{objectId}:{slot}";
+
+    private static CombatTargetLayer TargetLayers(IEnumerable<string> values)
+    {
+        var result = CombatTargetLayer.None;
+        foreach (var value in values)
+        {
+            result |= value.ToLowerInvariant() switch
+            {
+                "air" => CombatTargetLayer.AirUnit,
+                "ground" => CombatTargetLayer.GroundUnit,
+                "structure" => CombatTargetLayer.Building,
+                _ => CombatTargetLayer.None
+            };
+        }
+        return result == CombatTargetLayer.None ? CombatTargetLayer.All : result;
     }
 
     private UnitPerceptionProfileSnapshot ApplyPerception(

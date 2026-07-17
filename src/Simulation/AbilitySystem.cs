@@ -35,7 +35,8 @@ public enum AbilityCommandCode : byte
 public readonly record struct AbilityCommandResult(
     AbilityCommandCode Code,
     int CasterUnit = -1,
-    int AbilityId = -1)
+    int AbilityId = -1,
+    int CasterBuilding = -1)
 {
     public bool Succeeded => Code == AbilityCommandCode.Success;
 }
@@ -71,7 +72,11 @@ public readonly record struct UnitAbilitySnapshot(
     int Unit,
     int UnitTypeId,
     bool Hero,
+    AbilityUnitTraits Traits,
     int HeroLevel,
+    int HeroMaximumLevel,
+    int HeroExperience,
+    int ExperienceForNextLevel,
     int UnspentSkillPoints,
     float Mana,
     float MaximumMana,
@@ -89,13 +94,21 @@ public readonly record struct UnitAbilitySlotSnapshot(
     bool Toggled,
     bool AutoCastEnabled);
 
+public readonly record struct BuildingAbilitySlotSnapshot(
+    int AbilityId,
+    bool Toggled);
+
 public readonly record struct AbilityBuffSnapshot(
     int InstanceId,
     int AbilityId,
     int SourceUnit,
     int TargetUnit,
+    string BuffId,
     float RemainingSeconds,
     bool Beneficial,
+    AbilityBuffPolarity Polarity,
+    AbilityBuffDispelKind DispelKind,
+    AbilityBuffStackingKind Stacking,
     AbilityStatusFlags Status,
     AbilityStatModifier Modifier);
 
@@ -108,6 +121,7 @@ public readonly record struct AbilitySummonedUnitSnapshot(
 internal interface IAbilityRuntimeWorld
 {
     int AbilityUnitCount { get; }
+    int AbilityBuildingCount => 0;
     bool AbilityUnitExists(int unit);
     bool AbilityUnitAlive(int unit);
     int AbilityUnitOwner(int unit);
@@ -122,23 +136,41 @@ internal interface IAbilityRuntimeWorld
     int AbilityTechnologyLevel(int playerId, int technologyId);
     int AbilityCompletedBuildingCount(int playerId, int buildingTypeId);
     bool AbilityBuildingAlive(GameplayBuildingId building);
+    bool AbilityBuildingCompleted(GameplayBuildingId building);
     int AbilityBuildingOwner(GameplayBuildingId building);
     SimRect AbilityBuildingBounds(GameplayBuildingId building);
     bool AbilityCanSeePosition(int playerId, Vector2 position);
-    bool AbilityDamageUnit(int sourceUnit, int targetUnit, float damage);
+    bool AbilityDamageUnit(
+        int sourceUnit,
+        int targetUnit,
+        float damage,
+        AbilityDamageKind damageKind);
     bool AbilityHealUnit(int targetUnit, float amount);
     bool AbilityDamageBuilding(
         int sourceUnit,
         GameplayBuildingId building,
-        float damage);
+        float damage,
+        AbilityDamageKind damageKind);
     bool AbilityReviveUnit(int unit, float healthFraction);
     void AbilitySetUnitOwner(int unit, int playerId);
     void AbilityTeleportUnit(int unit, Vector2 position);
+    void AbilityTeleportUnits(int[] units, Vector2 position)
+    {
+        foreach (var unit in units) AbilityTeleportUnit(unit, position);
+    }
     int AbilitySpawnSummon(
         int sourceUnit,
         int playerId,
         Vector2 position,
         in AbilitySummonProfile summon);
+    bool AbilityTryFindNearestOwnedBuilding(
+        int unit,
+        BuildingFunctionKind function,
+        out GameplayBuildingId building);
+    void AbilityMoveUnitToBuilding(int unit, GameplayBuildingId building);
+    bool AbilityUnitTouchesBuilding(int unit, GameplayBuildingId building);
+    bool AbilityUnitMovingToBuilding(int unit, GameplayBuildingId building);
+    bool AbilityApplyUnitProfile(int unit, in UnitTypeProfile profile);
     void AbilityPrepareCaster(int unit);
     void AbilityKillSummon(int unit);
 }
@@ -147,7 +179,11 @@ internal readonly record struct AbilityUnitRuntimeEntry(
     int Unit,
     int UnitTypeId,
     bool Hero,
+    AbilityUnitTraits Traits,
     int HeroLevel,
+    int HeroMaximumLevel,
+    int HeroExperience,
+    int ExperienceBounty,
     int UnspentSkillPoints,
     float Mana,
     float MaximumMana,
@@ -171,6 +207,7 @@ internal readonly record struct AbilityUnitRuntimeEntry(
     float CastRemaining,
     float ChannelRemaining,
     float PulseRemaining,
+    int PulsesRemaining,
     AbilityCastTarget Target);
 
 internal readonly record struct AbilityBuffRuntimeEntry(
@@ -178,8 +215,12 @@ internal readonly record struct AbilityBuffRuntimeEntry(
     int AbilityId,
     int SourceUnit,
     int TargetUnit,
+    string BuffId,
     float RemainingSeconds,
     bool Beneficial,
+    AbilityBuffPolarity Polarity,
+    AbilityBuffDispelKind DispelKind,
+    AbilityBuffStackingKind Stacking,
     AbilityStatusFlags Status,
     AbilityStatModifier Modifier);
 
@@ -195,13 +236,47 @@ internal readonly record struct AbilityRevealRuntimeEntry(
     float Radius,
     float RemainingSeconds);
 
+internal readonly record struct AbilityPersistentEffectRuntimeEntry(
+    int InstanceId,
+    int AbilityId,
+    int SourceUnit,
+    int Level,
+    int EffectIndex,
+    AbilityCastTarget Target,
+    float RemainingSeconds,
+    float StartDelayRemaining,
+    float PulseRemaining,
+    int PulsesRemaining);
+
+internal enum AbilityUnitFormPhase : byte
+{
+    ApproachingAlternate,
+    Alternate,
+    ApproachingNormal
+}
+
+internal readonly record struct AbilityUnitFormRuntimeEntry(
+    int Unit,
+    AbilityUnitFormProfile Profile,
+    AbilityUnitFormPhase Phase,
+    int TargetBuilding,
+    float RemainingSeconds);
+
+internal readonly record struct AbilityBuildingToggleRuntimeEntry(
+    int Building,
+    int AbilityId);
+
 internal sealed record AbilityRuntimeSnapshot(
     AbilityCatalogSnapshot Catalog,
     int NextBuffInstanceId,
+    int NextPersistentEffectInstanceId,
     AbilityUnitRuntimeEntry[] Units,
     AbilityBuffRuntimeEntry[] Buffs,
     AbilitySummonRuntimeEntry[] Summons,
-    AbilityRevealRuntimeEntry[] Reveals);
+    AbilityRevealRuntimeEntry[] Reveals,
+    AbilityPersistentEffectRuntimeEntry[] PersistentEffects,
+    AbilityUnitFormRuntimeEntry[] UnitForms,
+    AbilityBuildingToggleRuntimeEntry[] BuildingToggles);
 
 /// <summary>
 /// Deterministic, content-neutral ability authority. It owns mana, cooldowns,
@@ -213,7 +288,11 @@ public sealed class AbilitySystem
     private readonly int _capacity;
     private readonly int[] _unitTypeIds;
     private readonly bool[] _heroes;
+    private readonly AbilityUnitTraits[] _traits;
     private readonly int[] _heroLevels;
+    private readonly int[] _heroMaximumLevels;
+    private readonly int[] _heroExperience;
+    private readonly int[] _experienceBounty;
     private readonly int[] _unspentSkillPoints;
     private readonly float[] _mana;
     private readonly float[] _maximumMana;
@@ -239,12 +318,19 @@ public sealed class AbilitySystem
     private readonly float[] _castRemaining;
     private readonly float[] _channelRemaining;
     private readonly float[] _pulseRemaining;
+    private readonly int[] _pulsesRemaining;
     private readonly AbilityCastTarget[] _targets;
     private readonly AbilityStatModifier[] _modifierScratch;
     private readonly List<AbilityBuffRuntimeEntry> _buffs = [];
     private readonly List<AbilitySummonRuntimeEntry> _summons = [];
+    private readonly List<AbilityPersistentEffectRuntimeEntry>
+        _persistentEffects = [];
+    private readonly List<AbilityUnitFormRuntimeEntry> _unitForms = [];
+    private readonly List<AbilityBuildingToggleRuntimeEntry>
+        _buildingToggles = [];
     private AbilityCatalogSnapshot _catalog = AbilityCatalogSnapshot.Empty;
     private int _nextBuffInstanceId = 1;
+    private int _nextPersistentEffectInstanceId = 1;
     private ulong _combatEventCursor;
 
     public AbilitySystem(int capacity)
@@ -253,7 +339,11 @@ public sealed class AbilitySystem
         _capacity = capacity;
         _unitTypeIds = new int[capacity];
         _heroes = new bool[capacity];
+        _traits = new AbilityUnitTraits[capacity];
         _heroLevels = new int[capacity];
+        _heroMaximumLevels = new int[capacity];
+        _heroExperience = new int[capacity];
+        _experienceBounty = new int[capacity];
         _unspentSkillPoints = new int[capacity];
         _mana = new float[capacity];
         _maximumMana = new float[capacity];
@@ -279,6 +369,7 @@ public sealed class AbilitySystem
         _castRemaining = new float[capacity];
         _channelRemaining = new float[capacity];
         _pulseRemaining = new float[capacity];
+        _pulsesRemaining = new int[capacity];
         _targets = new AbilityCastTarget[capacity];
         _modifierScratch = new AbilityStatModifier[capacity];
         Array.Fill(_unitTypeIds, -1);
@@ -296,11 +387,16 @@ public sealed class AbilitySystem
     public AbilityCatalogSnapshot Catalog => _catalog;
     public int ActiveBuffCount => _buffs.Count;
     public int ActiveSummonCount => _summons.Count;
+    public int ActivePersistentEffectCount => _persistentEffects.Count;
+    public int ActiveUnitFormCount => _unitForms.Count;
+    public int ActiveBuildingToggleCount => _buildingToggles.Count;
 
     public void ConfigureCatalog(AbilityCatalogSnapshot catalog, int unitCount = 0)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        if (unitCount != 0 || _buffs.Count != 0 || _summons.Count != 0)
+        if (unitCount != 0 || _buffs.Count != 0 || _summons.Count != 0 ||
+            _persistentEffects.Count != 0 || _unitForms.Count != 0 ||
+            _buildingToggles.Count != 0)
             throw new InvalidOperationException(
                 "Ability catalog must be configured before units are spawned.");
         _catalog = catalog;
@@ -314,7 +410,11 @@ public sealed class AbilitySystem
         ValidateUnitSlot(unit);
         _unitTypeIds[unit] = -1;
         _heroes[unit] = false;
+        _traits[unit] = AbilityUnitTraits.None;
         _heroLevels[unit] = 0;
+        _heroMaximumLevels[unit] = 0;
+        _heroExperience[unit] = 0;
+        _experienceBounty[unit] = 0;
         _unspentSkillPoints[unit] = 0;
         _mana[unit] = 0f;
         _maximumMana[unit] = 0f;
@@ -344,7 +444,13 @@ public sealed class AbilitySystem
         if (!_catalog.TryBinding(unitTypeId, out var binding)) return false;
         _unitTypeIds[unit] = unitTypeId;
         _heroes[unit] = binding.Hero;
+        _traits[unit] = binding.Traits;
         _heroLevels[unit] = binding.Hero ? 1 : 0;
+        _heroMaximumLevels[unit] = binding.Hero
+            ? binding.HeroMaximumLevel
+            : 0;
+        _heroExperience[unit] = 0;
+        _experienceBounty[unit] = binding.ExperienceBounty;
         _unspentSkillPoints[unit] = binding.Hero ? 1 : 0;
         _mana[unit] = binding.Mana.Initial;
         _maximumMana[unit] = binding.Mana.Maximum;
@@ -360,6 +466,24 @@ public sealed class AbilitySystem
         return true;
     }
 
+    private bool RebindUnitForm(
+        int unit,
+        in UnitTypeProfile profile,
+        UnitStore units,
+        CombatStore combat)
+    {
+        if (!BindUnitType(unit, profile.Id)) return false;
+        _baseMaximumSpeed[unit] = units.MaxSpeeds[unit];
+        _baseAttackDamage[unit] = combat.AttackDamage[unit];
+        _baseArmor[unit] = combat.Armor[unit];
+        _baseAttackCooldown[unit] = combat.AttackCooldownDurations[unit];
+        _baseMaximumHealth[unit] = combat.MaximumHealth[unit];
+        _baseDetectionRange[unit] = combat.DetectionRanges[unit];
+        _baseConcealment[unit] = combat.ConcealmentKinds[unit];
+        _baseConcealmentPhase[unit] = combat.ConcealmentPhases[unit];
+        return true;
+    }
+
     public UnitAbilitySnapshot Observe(int unit)
     {
         ValidateUnitSlot(unit);
@@ -370,8 +494,11 @@ public sealed class AbilitySystem
                 _cooldowns[unit][slot], _toggles[unit][slot],
                 _autoCast[unit][slot]);
         return new UnitAbilitySnapshot(
-            unit, _unitTypeIds[unit], _heroes[unit],
-            _heroLevels[unit], _unspentSkillPoints[unit], _mana[unit],
+            unit, _unitTypeIds[unit], _heroes[unit], _traits[unit],
+            _heroLevels[unit], _heroMaximumLevels[unit],
+            _heroExperience[unit],
+            ExperienceRequiredForLevel(_heroLevels[unit] + 1),
+            _unspentSkillPoints[unit], _mana[unit],
             _maximumMana[unit], _effectiveManaRegeneration[unit],
             _castPhases[unit],
             _activeSlots[unit] >= 0
@@ -379,6 +506,21 @@ public sealed class AbilitySystem
                 : -1,
             _castRemaining[unit] + _channelRemaining[unit],
             _statuses[unit], slots);
+    }
+
+    public BuildingAbilitySlotSnapshot[] ObserveBuilding(
+        GameplayBuildingId building,
+        int buildingTypeId)
+    {
+        if (!_catalog.TryBuildingBinding(buildingTypeId, out var binding))
+            return [];
+        return binding.Abilities.Select(abilityId =>
+                new BuildingAbilitySlotSnapshot(
+                    abilityId,
+                    _buildingToggles.Any(value =>
+                        value.Building == building.Value &&
+                        value.AbilityId == abilityId)))
+            .ToArray();
     }
 
     public AbilityBuffSnapshot[] ObserveBuffs(int targetUnit) =>
@@ -395,7 +537,8 @@ public sealed class AbilitySystem
     private static AbilityBuffSnapshot ToSnapshot(
         AbilityBuffRuntimeEntry value) => new(
         value.InstanceId, value.AbilityId, value.SourceUnit,
-        value.TargetUnit, value.RemainingSeconds, value.Beneficial,
+        value.TargetUnit, value.BuffId, value.RemainingSeconds,
+        value.Beneficial, value.Polarity, value.DispelKind, value.Stacking,
         value.Status, value.Modifier);
 
     public bool TrySetLevel(int unit, int abilityId, int level)
@@ -425,12 +568,43 @@ public sealed class AbilitySystem
     {
         ValidateUnitSlot(unit);
         if (!_heroes[unit] || levels <= 0 ||
-            _heroLevels[unit] > int.MaxValue - levels ||
-            _unspentSkillPoints[unit] > int.MaxValue - levels)
+            _heroLevels[unit] >= _heroMaximumLevels[unit])
             return false;
-        _heroLevels[unit] += levels;
-        _unspentSkillPoints[unit] += levels;
+        var next = Math.Min(
+            _heroMaximumLevels[unit], _heroLevels[unit] + levels);
+        var gained = next - _heroLevels[unit];
+        _heroLevels[unit] = next;
+        _heroExperience[unit] = Math.Max(
+            _heroExperience[unit], ExperienceRequiredForLevel(next));
+        _unspentSkillPoints[unit] += gained;
         return true;
+    }
+
+    public bool TryGrantHeroExperience(int unit, int amount)
+    {
+        ValidateUnitSlot(unit);
+        if (!_heroes[unit] || amount <= 0 ||
+            _heroLevels[unit] >= _heroMaximumLevels[unit])
+            return false;
+        var maximumExperience = ExperienceRequiredForLevel(
+            _heroMaximumLevels[unit]);
+        _heroExperience[unit] = (int)Math.Min(
+            maximumExperience,
+            (long)_heroExperience[unit] + amount);
+        while (_heroLevels[unit] < _heroMaximumLevels[unit] &&
+               _heroExperience[unit] >= ExperienceRequiredForLevel(
+                   _heroLevels[unit] + 1))
+        {
+            _heroLevels[unit]++;
+            _unspentSkillPoints[unit]++;
+        }
+        return true;
+    }
+
+    public static int ExperienceRequiredForLevel(int level)
+    {
+        if (level <= 1) return 0;
+        return checked(50 * (level - 1) * (level + 2));
     }
 
     internal AbilityCommandResult Learn(
@@ -586,6 +760,124 @@ public sealed class AbilitySystem
         return new(AbilityCommandCode.Success, caster, abilityId);
     }
 
+    internal AbilityCommandResult IssueBuilding(
+        int playerId,
+        GameplayBuildingId caster,
+        int buildingTypeId,
+        int abilityId,
+        long tick,
+        IAbilityRuntimeWorld world,
+        AbilityEventStream events)
+    {
+        if (playerId <= 0) return new(AbilityCommandCode.InvalidPlayer);
+        if (!world.AbilityBuildingAlive(caster) ||
+            !world.AbilityBuildingCompleted(caster))
+            return new(
+                AbilityCommandCode.InvalidCaster,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        if (world.AbilityBuildingOwner(caster) != playerId)
+            return new(
+                AbilityCommandCode.WrongOwner,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        if ((uint)abilityId >= (uint)_catalog.Count)
+            return new(
+                AbilityCommandCode.UnknownAbility,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        if (!_catalog.TryBuildingBinding(buildingTypeId, out var binding) ||
+            !binding.Abilities.Contains(abilityId))
+            return new(
+                AbilityCommandCode.AbilityNotLearned,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+
+        var ability = _catalog.Ability(abilityId);
+        if (ability.Activation != AbilityActivationKind.Toggle)
+            return new(
+                ability.IsPassive
+                    ? AbilityCommandCode.PassiveAbility
+                    : AbilityCommandCode.InvalidTarget,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        var level = ability.Levels[0];
+        if (!RequirementsMet(playerId, level, world))
+            return new(
+                AbilityCommandCode.RequirementsNotMet,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        var formEffect = level.Effects.FirstOrDefault(value =>
+            value.Kind == AbilityEffectKind.TransformUnit &&
+            value.Timing == AbilityEffectTiming.Impact &&
+            value.Selector == AbilityEffectSelector.AreaAtCaster);
+        if (formEffect.Kind != AbilityEffectKind.TransformUnit)
+            return new(
+                AbilityCommandCode.InvalidTarget,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+
+        var toggleIndex = _buildingToggles.FindIndex(value =>
+            value.Building == caster.Value && value.AbilityId == abilityId);
+        var enabling = toggleIndex < 0;
+        if (enabling)
+            _buildingToggles.Add(new AbilityBuildingToggleRuntimeEntry(
+                caster.Value, abilityId));
+        else
+            _buildingToggles.RemoveAt(toggleIndex);
+
+        var bounds = world.AbilityBuildingBounds(caster);
+        var center = (bounds.Min + bounds.Max) * 0.5f;
+        var radius = formEffect.Radius > 0f
+            ? formEffect.Radius
+            : level.Area;
+        var radiusSquared = radius * radius;
+        var maximumTargets = formEffect.MaximumTargets > 0
+            ? formEffect.MaximumTargets
+            : int.MaxValue;
+        var affected = 0;
+        for (var unit = 0; unit < world.AbilityUnitCount &&
+             affected < maximumTargets; unit++)
+        {
+            if (!world.AbilityUnitAlive(unit) ||
+                world.AbilityUnitOwner(unit) != playerId)
+                continue;
+            var isApproachingThisBuilding = _unitForms.Any(value =>
+                value.Unit == unit &&
+                value.TargetBuilding == caster.Value &&
+                value.Phase == AbilityUnitFormPhase.ApproachingAlternate);
+            if (Vector2.DistanceSquared(
+                    world.AbilityUnitPosition(unit), center) > radiusSquared &&
+                !(!enabling && isApproachingThisBuilding))
+                continue;
+            var type = _unitTypeIds[unit];
+            if (enabling && type != formEffect.UnitForm.Normal.Id ||
+                !enabling && type != formEffect.UnitForm.Alternate.Id &&
+                !isApproachingThisBuilding)
+                continue;
+            BeginUnitFormTransition(
+                unit, formEffect.UnitForm, world, caster, enabling);
+            affected++;
+        }
+
+        events.Publish(
+            tick, AbilityEventKind.Started, ability.RawId, -1,
+            AbilityTargetKind.Building, caster.Value, center,
+            casterBuilding: caster.Value);
+        events.Publish(
+            tick, AbilityEventKind.Impact, ability.RawId, -1,
+            AbilityTargetKind.Building, caster.Value, center,
+            casterBuilding: caster.Value);
+        events.Publish(
+            tick, AbilityEventKind.Ended, ability.RawId, -1,
+            AbilityTargetKind.Building, caster.Value, center,
+            AbilityEndReason.Completed, caster.Value);
+        return new(
+            AbilityCommandCode.Success,
+            AbilityId: abilityId,
+            CasterBuilding: caster.Value);
+    }
+
     internal void Update(
         float delta,
         long tick,
@@ -673,6 +965,12 @@ public sealed class AbilitySystem
             }
         }
 
+        UpdatePersistentEffects(delta, tick, world, events);
+        UpdateUnitForms(delta, world, units, combat);
+        _buildingToggles.RemoveAll(value =>
+            !world.AbilityBuildingAlive(
+                new GameplayBuildingId(value.Building)));
+
         RebuildDerivedStats(delta, world, units, combat);
     }
 
@@ -717,7 +1015,6 @@ public sealed class AbilitySystem
         in AbilityLevelProfile level,
         IAbilityRuntimeWorld world)
     {
-        var abilityId = ability.Id;
         var relation = RelationFilter(
             world.AbilityUnitOwner(caster), caster, target,
             world.AbilityUnitOwner(target), world);
@@ -728,11 +1025,33 @@ public sealed class AbilitySystem
                 world.AbilityUnitHealth(target) + 0.5f <
                 world.AbilityUnitMaximumHealth(target))
                 return true;
+            if (effect.Kind == AbilityEffectKind.TransferMana)
+            {
+                if (relation is AbilityRelationFilter.Enemy or
+                        AbilityRelationFilter.Neutral)
+                {
+                    if (_mana[target] > 0f &&
+                        _mana[caster] < _maximumMana[caster])
+                        return true;
+                }
+                else if (_mana[caster] > 0f &&
+                         _mana[target] < _maximumMana[target])
+                {
+                    return true;
+                }
+            }
             if ((effect.Kind is AbilityEffectKind.ApplyStatus or
-                    AbilityEffectKind.ToggleStatus) &&
-                !_buffs.Any(value => value.AbilityId == abilityId &&
-                                     value.TargetUnit == target))
-                return true;
+                    AbilityEffectKind.ToggleStatus))
+            {
+                var buffId = string.IsNullOrWhiteSpace(effect.BuffId)
+                    ? ability.RawId
+                    : effect.BuffId;
+                if (!_buffs.Any(value =>
+                        value.BuffId.Equals(
+                            buffId, StringComparison.Ordinal) &&
+                        value.TargetUnit == target))
+                    return true;
+            }
             if (relation == AbilityRelationFilter.Enemy &&
                 effect.Kind is (AbilityEffectKind.Damage or
                     AbilityEffectKind.Mana or
@@ -753,6 +1072,13 @@ public sealed class AbilitySystem
         _combatEventCursor = batch.LatestSequence;
         foreach (var combatEvent in batch.Events)
         {
+            if (combatEvent.Kind == CombatEventKind.TargetDestroyed &&
+                combatEvent.TargetKind == CombatTargetKind.Unit)
+            {
+                AwardKillExperience(
+                    combatEvent.AttackerUnit, combatEvent.TargetId, world);
+                continue;
+            }
             if (combatEvent.Kind != CombatEventKind.Impact ||
                 combatEvent.TargetKind != CombatTargetKind.Unit ||
                 !world.AbilityUnitAlive(combatEvent.AttackerUnit))
@@ -767,6 +1093,12 @@ public sealed class AbilitySystem
                 var level = ability.Levels[_levels[caster][slot] - 1];
                 if (!RequirementsMet(
                         world.AbilityUnitOwner(caster), level, world))
+                    continue;
+                if (ability.Targets != AbilityTargetFlags.None &&
+                    ValidateTarget(
+                        world.AbilityUnitOwner(caster), caster,
+                        ability, level, target, world,
+                        impactValidation: true) != AbilityCommandCode.Success)
                     continue;
                 var triggered = false;
                 for (var effectIndex = 0;
@@ -847,13 +1179,28 @@ public sealed class AbilitySystem
             target.Kind, target.Id, target.Position);
         ApplyEffects(
             caster, ability, level, AbilityEffectTiming.Impact, target, world);
+        SchedulePersistentEffects(caster, ability, level, target);
         _castRemaining[caster] = 0f;
         if (level.ChannelSeconds > 0f && level.Effects.Any(value =>
                 value.Timing == AbilityEffectTiming.ChannelPulse))
         {
             _castPhases[caster] = AbilityCastPhase.Channeling;
             _channelRemaining[caster] = level.ChannelSeconds;
-            _pulseRemaining[caster] = 0f;
+            _pulsesRemaining[caster] = level.Effects
+                .Where(value =>
+                    value.Timing == AbilityEffectTiming.ChannelPulse)
+                .Select(value => value.PulseCount)
+                .DefaultIfEmpty(0)
+                .Max();
+            _pulseRemaining[caster] = _pulsesRemaining[caster] > 0
+                ? level.Effects
+                    .Where(value =>
+                        value.Timing == AbilityEffectTiming.ChannelPulse &&
+                        value.Interval > 0f)
+                    .Select(value => value.Interval)
+                    .DefaultIfEmpty(1f)
+                    .Min()
+                : 0f;
             return;
         }
         CompleteCast(caster, tick, events);
@@ -888,8 +1235,11 @@ public sealed class AbilitySystem
             .Where(value => value > 0f)
             .DefaultIfEmpty(1f)
             .Min();
+        var counted = _pulsesRemaining[caster] > 0;
         while (_pulseRemaining[caster] <= 0f &&
-               _channelRemaining[caster] > -interval)
+               (counted
+                   ? _pulsesRemaining[caster] > 0
+                   : _channelRemaining[caster] > -interval))
         {
             events.Publish(
                 tick, AbilityEventKind.Impact, ability.RawId, caster,
@@ -897,9 +1247,12 @@ public sealed class AbilitySystem
             ApplyEffects(
                 caster, ability, level, AbilityEffectTiming.ChannelPulse,
                 target, world);
+            if (counted) _pulsesRemaining[caster]--;
             _pulseRemaining[caster] += MathF.Max(0.05f, interval);
         }
-        if (_channelRemaining[caster] <= 0f)
+        if (counted
+                ? _pulsesRemaining[caster] <= 0
+                : _channelRemaining[caster] <= 0f)
             CompleteCast(caster, tick, events);
     }
 
@@ -980,7 +1333,241 @@ public sealed class AbilitySystem
         _castRemaining[unit] = 0f;
         _channelRemaining[unit] = 0f;
         _pulseRemaining[unit] = 0f;
+        _pulsesRemaining[unit] = 0;
         _targets[unit] = default;
+    }
+
+    private void SchedulePersistentEffects(
+        int caster,
+        in AbilityProfile ability,
+        in AbilityLevelProfile level,
+        in AbilityCastTarget target)
+    {
+        for (var effectIndex = 0;
+             effectIndex < level.Effects.Length;
+             effectIndex++)
+        {
+            var effect = level.Effects[effectIndex];
+            if (effect.Timing != AbilityEffectTiming.PersistentPulse)
+                continue;
+            _persistentEffects.Add(new AbilityPersistentEffectRuntimeEntry(
+                _nextPersistentEffectInstanceId++, ability.Id, caster,
+                level.Level, effectIndex, target,
+                effect.StartDelay + effect.Duration,
+                effect.StartDelay,
+                effect.StartDelay > 0f ? effect.Interval : 0f,
+                effect.PulseCount));
+        }
+    }
+
+    private void UpdatePersistentEffects(
+        float delta,
+        long tick,
+        IAbilityRuntimeWorld world,
+        AbilityEventStream events)
+    {
+        for (var index = _persistentEffects.Count - 1; index >= 0; index--)
+        {
+            var entry = _persistentEffects[index];
+            if ((uint)entry.AbilityId >= (uint)_catalog.Count ||
+                (uint)entry.SourceUnit >= (uint)world.AbilityUnitCount)
+            {
+                _persistentEffects.RemoveAt(index);
+                continue;
+            }
+            var ability = _catalog.Ability(entry.AbilityId);
+            if ((uint)(entry.Level - 1) >= (uint)ability.Levels.Length)
+            {
+                _persistentEffects.RemoveAt(index);
+                continue;
+            }
+            var level = ability.Levels[entry.Level - 1];
+            if ((uint)entry.EffectIndex >= (uint)level.Effects.Length)
+            {
+                _persistentEffects.RemoveAt(index);
+                continue;
+            }
+            var effect = level.Effects[entry.EffectIndex];
+            var remaining = entry.RemainingSeconds - delta;
+            var delay = entry.StartDelayRemaining;
+            var pulse = entry.PulseRemaining;
+            if (delay > 0f)
+            {
+                delay -= delta;
+                if (delay < 0f)
+                {
+                    pulse += delay;
+                    delay = 0f;
+                }
+            }
+            else
+            {
+                pulse -= delta;
+            }
+            var pulses = entry.PulsesRemaining;
+            while (delay <= 0f && pulse <= 0f && pulses > 0)
+            {
+                events.Publish(
+                    tick, AbilityEventKind.Impact, ability.RawId,
+                    entry.SourceUnit, entry.Target.Kind, entry.Target.Id,
+                    entry.Target.Position);
+                ApplyEffect(
+                    entry.SourceUnit, ability, level, effect,
+                    entry.Target, world);
+                pulses--;
+                pulse += MathF.Max(0.05f, effect.Interval);
+            }
+            if (pulses <= 0 || remaining <= 0f)
+            {
+                _persistentEffects.RemoveAt(index);
+                continue;
+            }
+            _persistentEffects[index] = entry with
+            {
+                RemainingSeconds = remaining,
+                StartDelayRemaining = delay,
+                PulseRemaining = pulse,
+                PulsesRemaining = pulses
+            };
+        }
+    }
+
+    private void BeginUnitFormTransition(
+        int unit,
+        in AbilityUnitFormProfile profile,
+        IAbilityRuntimeWorld world,
+        GameplayBuildingId? forcedBuilding = null,
+        bool? alternateRequested = null)
+    {
+        var requestAlternate = alternateRequested ??
+                               _unitTypeIds[unit] == profile.Normal.Id;
+        if (requestAlternate && _unitTypeIds[unit] == profile.Normal.Id)
+        {
+            _unitForms.RemoveAll(value => value.Unit == unit);
+            var entry = new AbilityUnitFormRuntimeEntry(
+                unit, profile, AbilityUnitFormPhase.ApproachingAlternate,
+                -1, profile.AlternateDurationSeconds);
+            _unitForms.Add(AssignFormBuilding(
+                entry, world, forcedBuilding));
+            return;
+        }
+        if (requestAlternate) return;
+        if (_unitTypeIds[unit] == profile.Normal.Id)
+        {
+            if (_unitForms.RemoveAll(value => value.Unit == unit) > 0)
+                world.AbilityPrepareCaster(unit);
+            return;
+        }
+        if (_unitTypeIds[unit] != profile.Alternate.Id) return;
+        var index = _unitForms.FindIndex(value => value.Unit == unit);
+        var returning = new AbilityUnitFormRuntimeEntry(
+            unit, profile, AbilityUnitFormPhase.ApproachingNormal,
+            -1, 0f);
+        returning = AssignFormBuilding(returning, world, forcedBuilding);
+        if (index >= 0) _unitForms[index] = returning;
+        else _unitForms.Add(returning);
+    }
+
+    private void UpdateUnitForms(
+        float delta,
+        IAbilityRuntimeWorld world,
+        UnitStore units,
+        CombatStore combat)
+    {
+        for (var index = _unitForms.Count - 1; index >= 0; index--)
+        {
+            var entry = _unitForms[index];
+            if (!world.AbilityUnitAlive(entry.Unit))
+            {
+                _unitForms.RemoveAt(index);
+                continue;
+            }
+            if (entry.Phase == AbilityUnitFormPhase.Alternate)
+            {
+                var remaining = entry.RemainingSeconds - delta;
+                if (remaining > 0f)
+                {
+                    _unitForms[index] = entry with
+                    {
+                        RemainingSeconds = remaining
+                    };
+                    continue;
+                }
+                entry = new AbilityUnitFormRuntimeEntry(
+                    entry.Unit, entry.Profile,
+                    AbilityUnitFormPhase.ApproachingNormal, -1, 0f);
+                entry = TryAssignFormBuilding(entry, world);
+                _unitForms[index] = entry;
+                continue;
+            }
+
+            var building = new GameplayBuildingId(entry.TargetBuilding);
+            if (entry.TargetBuilding < 0 ||
+                !world.AbilityBuildingAlive(building) ||
+                world.AbilityBuildingOwner(building) !=
+                world.AbilityUnitOwner(entry.Unit))
+            {
+                entry = TryAssignFormBuilding(
+                    entry with { TargetBuilding = -1 }, world);
+                _unitForms[index] = entry;
+                continue;
+            }
+            if (!world.AbilityUnitTouchesBuilding(entry.Unit, building))
+            {
+                if (!world.AbilityUnitMovingToBuilding(entry.Unit, building))
+                    world.AbilityMoveUnitToBuilding(entry.Unit, building);
+                continue;
+            }
+
+            var profile = entry.Phase ==
+                          AbilityUnitFormPhase.ApproachingAlternate
+                ? entry.Profile.Alternate
+                : entry.Profile.Normal;
+            if (!world.AbilityApplyUnitProfile(entry.Unit, profile) ||
+                !RebindUnitForm(entry.Unit, profile, units, combat))
+                continue;
+            if (entry.Phase == AbilityUnitFormPhase.ApproachingAlternate)
+            {
+                _unitForms[index] = entry with
+                {
+                    Phase = AbilityUnitFormPhase.Alternate,
+                    TargetBuilding = -1,
+                    RemainingSeconds = entry.Profile.AlternateDurationSeconds
+                };
+            }
+            else
+            {
+                _unitForms.RemoveAt(index);
+            }
+        }
+    }
+
+    private static AbilityUnitFormRuntimeEntry TryAssignFormBuilding(
+        in AbilityUnitFormRuntimeEntry entry,
+        IAbilityRuntimeWorld world)
+    {
+        if (!world.AbilityTryFindNearestOwnedBuilding(
+                entry.Unit, entry.Profile.RequiredBuildingFunction,
+                out var building))
+            return entry;
+        world.AbilityMoveUnitToBuilding(entry.Unit, building);
+        return entry with { TargetBuilding = building.Value };
+    }
+
+    private static AbilityUnitFormRuntimeEntry AssignFormBuilding(
+        in AbilityUnitFormRuntimeEntry entry,
+        IAbilityRuntimeWorld world,
+        GameplayBuildingId? forcedBuilding)
+    {
+        if (forcedBuilding is not { } building)
+            return TryAssignFormBuilding(entry, world);
+        if (!world.AbilityBuildingAlive(building) ||
+            !world.AbilityBuildingCompleted(building) ||
+            world.AbilityBuildingOwner(building) !=
+            world.AbilityUnitOwner(entry.Unit))
+            return entry;
+        world.AbilityMoveUnitToBuilding(entry.Unit, building);
+        return entry with { TargetBuilding = building.Value };
     }
 
     private AbilityCommandCode ValidateTarget(
@@ -1028,7 +1615,8 @@ public sealed class AbilitySystem
                 (ability.Targets & AbilityTargetFlags.Alive) == 0 ||
                 !alive && (ability.Targets & AbilityTargetFlags.Dead) == 0)
                 return AbilityCommandCode.InvalidTarget;
-            if (!world.AbilityCanSeeUnit(playerId, target.Id) && alive)
+            if (!impactValidation &&
+                !world.AbilityCanSeeUnit(playerId, target.Id) && alive)
                 return AbilityCommandCode.TargetNotVisible;
             var relation = RelationFilter(
                 playerId, caster, target.Id,
@@ -1056,10 +1644,14 @@ public sealed class AbilitySystem
                 invulnerable ||
                 (ability.Targets & AbilityTargetFlags.Invulnerable) != 0 &&
                 (ability.Targets & AbilityTargetFlags.Vulnerable) == 0 &&
-                !invulnerable)
+                !invulnerable ||
+                !UnitTraitsMatch(
+                    target.Id, ability.Targets,
+                    world.AbilityUnitOwner(target.Id)))
                 return AbilityCommandCode.InvalidTarget;
             if (HasStatus(target.Id, AbilityStatusFlags.MagicImmune) &&
-                relation == AbilityRelationFilter.Enemy)
+                relation == AbilityRelationFilter.Enemy &&
+                AbilityBlockedByMagicImmunity(level, relation))
                 return AbilityCommandCode.MagicImmune;
             targetPosition = world.AbilityUnitPosition(target.Id);
         }
@@ -1085,7 +1677,8 @@ public sealed class AbilitySystem
                 : target.Position;
         }
 
-        if (level.Range > 0f && target.Kind != AbilityTargetKind.Self)
+        if (!impactValidation && level.Range > 0f &&
+            target.Kind != AbilityTargetKind.Self)
         {
             var allowance = level.Range + world.AbilityUnitRadius(caster);
             if (Vector2.DistanceSquared(
@@ -1124,6 +1717,38 @@ public sealed class AbilitySystem
             return AbilityCommandCode.EnemyTargetRequired;
         return AbilityCommandCode.InvalidTarget;
     }
+
+    private static bool AbilityBlockedByMagicImmunity(
+        in AbilityLevelProfile level,
+        AbilityRelationFilter relation)
+    {
+        var found = false;
+        foreach (var effect in level.Effects)
+        {
+            if ((effect.Relations & relation) == 0 ||
+                effect.Timing is AbilityEffectTiming.Aura or
+                    AbilityEffectTiming.AttackHit)
+                continue;
+            found = true;
+            if (!EffectBlockedByMagicImmunity(effect)) return false;
+        }
+        return found;
+    }
+
+    private static bool EffectBlockedByMagicImmunity(
+        in AbilityEffectProfile effect) => effect.Kind switch
+    {
+        AbilityEffectKind.Damage =>
+            effect.DamageKind == AbilityDamageKind.Magic,
+        AbilityEffectKind.Mana => true,
+        AbilityEffectKind.TransferMana => true,
+        AbilityEffectKind.ApplyStatus or AbilityEffectKind.ToggleStatus =>
+            effect.DamageKind == AbilityDamageKind.Magic ||
+            (effect.BuffDispelKind & AbilityBuffDispelKind.Magic) != 0,
+        AbilityEffectKind.TransferControl or AbilityEffectKind.TransferBuff =>
+            true,
+        _ => false
+    };
 
     private static AbilityRelationFilter RelationFilter(
         int playerId,
@@ -1203,13 +1828,33 @@ public sealed class AbilitySystem
             return;
         }
 
+        if (effect.Kind == AbilityEffectKind.Teleport &&
+            effect.ClusteredPlacement)
+        {
+            var selected = SelectUnits(
+                    caster, ability, level, effect, target, world)
+                .ToArray();
+            world.AbilityTeleportUnits(
+                selected, TargetPosition(caster, target, world));
+            return;
+        }
+
+        if (effect.Kind == AbilityEffectKind.Damage &&
+            effect.Selector is AbilityEffectSelector.AreaAtTarget or
+                AbilityEffectSelector.AreaAtCaster)
+        {
+            ApplyAreaDamage(
+                caster, ability, level, effect, target, world);
+            return;
+        }
+
         if (effect.Selector == AbilityEffectSelector.Primary &&
             target.Kind == AbilityTargetKind.Building)
         {
             if (effect.Kind == AbilityEffectKind.Damage)
                 world.AbilityDamageBuilding(
                     caster, new GameplayBuildingId(target.Id),
-                    MathF.Max(0f, effect.Value));
+                    MathF.Max(0f, effect.Value), effect.DamageKind);
             return;
         }
 
@@ -1219,6 +1864,95 @@ public sealed class AbilitySystem
             ApplyEffectToUnit(
                 caster, ability, level, effect, target, targetUnit, world, toggle);
         }
+    }
+
+    private void ApplyAreaDamage(
+        int caster,
+        in AbilityProfile ability,
+        in AbilityLevelProfile level,
+        in AbilityEffectProfile effect,
+        in AbilityCastTarget target,
+        IAbilityRuntimeWorld world)
+    {
+        var units = SelectUnits(
+                caster, ability, level, effect, target, world)
+            .ToArray();
+        var buildings = SelectBuildings(
+                caster, level, effect, target, world)
+            .ToArray();
+        foreach (var group in new[]
+                 {
+                     AbilityRelationFilter.Friendly,
+                     AbilityRelationFilter.Enemy,
+                     AbilityRelationFilter.Neutral
+                 })
+        {
+            var selectedUnits = units.Where(unit =>
+            {
+                var relation = RelationFilter(
+                    world.AbilityUnitOwner(caster), caster, unit,
+                    world.AbilityUnitOwner(unit), world);
+                return group == AbilityRelationFilter.Friendly
+                    ? relation is AbilityRelationFilter.Self or
+                        AbilityRelationFilter.Friendly
+                    : relation == group;
+            }).ToArray();
+            var selectedBuildings = buildings.Where(building =>
+            {
+                var relation = RelationFilter(
+                    world.AbilityUnitOwner(caster), caster, -1,
+                    world.AbilityBuildingOwner(building), world);
+                return relation == group;
+            }).ToArray();
+            var count = selectedUnits.Length + selectedBuildings.Length;
+            if (count == 0) continue;
+            var value = effect.MaximumTotalValue > 0f
+                ? MathF.Min(
+                    effect.Value, effect.MaximumTotalValue / count)
+                : effect.Value;
+            var adjusted = effect with { Value = value };
+            foreach (var unit in selectedUnits)
+                ApplyEffectToUnit(
+                    caster, ability, level, adjusted, target, unit,
+                    world, false);
+            if (effect.BuildingValueMultiplier <= 0f) continue;
+            var buildingDamage = MathF.Max(
+                0f, value * effect.BuildingValueMultiplier);
+            foreach (var building in selectedBuildings)
+                world.AbilityDamageBuilding(
+                    caster, building, buildingDamage, effect.DamageKind);
+        }
+    }
+
+    private IEnumerable<GameplayBuildingId> SelectBuildings(
+        int caster,
+        in AbilityLevelProfile level,
+        in AbilityEffectProfile effect,
+        in AbilityCastTarget target,
+        IAbilityRuntimeWorld world)
+    {
+        if (effect.BuildingValueMultiplier <= 0f)
+            return [];
+        var center = effect.Selector == AbilityEffectSelector.AreaAtCaster
+            ? world.AbilityUnitPosition(caster)
+            : TargetPosition(caster, target, world);
+        var radius = EffectRadius(effect, level);
+        var radiusSquared = radius * radius;
+        var output = new List<GameplayBuildingId>();
+        for (var index = 0; index < world.AbilityBuildingCount; index++)
+        {
+            var building = new GameplayBuildingId(index);
+            if (!world.AbilityBuildingAlive(building)) continue;
+            var relation = RelationFilter(
+                world.AbilityUnitOwner(caster), caster, -1,
+                world.AbilityBuildingOwner(building), world);
+            if ((effect.Relations & relation) == 0) continue;
+            var closest = world.AbilityBuildingBounds(building).Clamp(center);
+            if (Vector2.DistanceSquared(center, closest) > radiusSquared)
+                continue;
+            output.Add(building);
+        }
+        return output;
     }
 
     private void ApplyEffectToUnit(
@@ -1235,13 +1969,13 @@ public sealed class AbilitySystem
             world.AbilityUnitOwner(caster), caster, target,
             world.AbilityUnitOwner(target), world);
         if ((effect.Relations & relation) == 0) return;
+        if (!EffectTraitsMatch(target, effect)) return;
         if (relation == AbilityRelationFilter.Enemy &&
             HasStatus(target, AbilityStatusFlags.Invulnerable))
             return;
         if (relation == AbilityRelationFilter.Enemy &&
             HasStatus(target, AbilityStatusFlags.MagicImmune) &&
-            (effect.Timing != AbilityEffectTiming.AttackHit ||
-             effect.Kind == AbilityEffectKind.Mana))
+            EffectBlockedByMagicImmunity(effect))
             return;
         switch (effect.Kind)
         {
@@ -1249,20 +1983,33 @@ public sealed class AbilitySystem
                 world.AbilityHealUnit(target, MathF.Max(0f, effect.Value));
                 break;
             case AbilityEffectKind.Damage:
-                if (!HasStatus(target, AbilityStatusFlags.Invulnerable |
-                                       AbilityStatusFlags.MagicImmune))
-                    world.AbilityDamageUnit(caster, target, MathF.Max(0f, effect.Value));
+                if (!HasStatus(target, AbilityStatusFlags.Invulnerable))
+                    DamageUnitAndAwardExperience(
+                        world,
+                        caster, target, MathF.Max(0f, effect.Value),
+                        effect.DamageKind);
                 break;
             case AbilityEffectKind.Mana:
             {
-                var amount = effect.Value;
+                var useHeroValues = _heroes[target] &&
+                                    effect.HeroValue != 0f;
+                var amount = useHeroValues
+                    ? effect.HeroValue
+                    : effect.Value;
+                var damagePerMana = useHeroValues
+                    ? effect.HeroSecondaryValue
+                    : effect.SecondaryValue;
                 if (amount < 0f)
                 {
                     var removed = MathF.Min(_mana[target], -amount);
                     _mana[target] -= removed;
-                    if (effect.SecondaryValue > 0f)
-                        world.AbilityDamageUnit(
-                            caster, target, removed * effect.SecondaryValue);
+                    if (damagePerMana > 0f)
+                        DamageUnitAndAwardExperience(
+                            world,
+                            caster, target, removed * damagePerMana,
+                            effect.DamageKind == AbilityDamageKind.None
+                                ? AbilityDamageKind.Magic
+                                : effect.DamageKind);
                 }
                 else
                 {
@@ -1271,38 +2018,68 @@ public sealed class AbilitySystem
                 }
                 break;
             }
+            case AbilityEffectKind.TransferMana:
+            {
+                var amount = MathF.Max(0f, effect.Value);
+                if (relation is AbilityRelationFilter.Enemy or
+                    AbilityRelationFilter.Neutral)
+                    TransferMana(target, caster, amount);
+                else
+                    TransferMana(caster, target, amount);
+                break;
+            }
             case AbilityEffectKind.ApplyStatus:
                 if (relation == AbilityRelationFilter.Enemy &&
-                    HasStatus(target, AbilityStatusFlags.Invulnerable |
-                                      AbilityStatusFlags.MagicImmune))
+                    HasStatus(target, AbilityStatusFlags.Invulnerable))
                     break;
                 if (effect.Value > 0f &&
-                    !HasStatus(target, AbilityStatusFlags.Invulnerable |
-                                       AbilityStatusFlags.MagicImmune))
-                    world.AbilityDamageUnit(caster, target, effect.Value);
+                    !HasStatus(target, AbilityStatusFlags.Invulnerable))
+                    DamageUnitAndAwardExperience(
+                        world,
+                        caster, target, effect.Value,
+                        effect.DamageKind == AbilityDamageKind.None
+                            ? AbilityDamageKind.Magic
+                            : effect.DamageKind);
                 AddOrRefreshBuff(
-                    caster, ability.Id, target,
+                    caster, ability, target,
                     toggle
                         ? float.PositiveInfinity
                         : EffectDuration(effect, level, _heroes[target]),
                     relation is AbilityRelationFilter.Self or
                         AbilityRelationFilter.Friendly,
-                    effect.Status, effect.Modifier);
+                    effect);
                 break;
             case AbilityEffectKind.ToggleStatus:
                 AddOrRefreshBuff(
-                    caster, ability.Id, target, float.PositiveInfinity,
-                    true, effect.Status, effect.Modifier);
+                    caster, ability, target, float.PositiveInfinity,
+                    true, effect);
                 break;
             case AbilityEffectKind.Dispel:
+            {
+                var dispelKind = effect.BuffDispelKind;
                 _buffs.RemoveAll(value =>
                     value.TargetUnit == target &&
+                    value.DispelKind != AbilityBuffDispelKind.None &&
+                    (value.DispelKind & dispelKind) != 0 &&
                     (relation == AbilityRelationFilter.Enemy
                         ? value.Beneficial
                         : !value.Beneficial));
+                if (effect.SecondaryValue > 0f &&
+                    relation is (AbilityRelationFilter.Enemy or
+                        AbilityRelationFilter.Neutral) &&
+                    _summons.Any(value => value.Unit == target))
+                {
+                    DamageUnitAndAwardExperience(
+                        world, caster, target, effect.SecondaryValue,
+                        effect.DamageKind == AbilityDamageKind.None
+                            ? AbilityDamageKind.Magic
+                            : effect.DamageKind);
+                }
                 break;
+            }
             case AbilityEffectKind.TransferBuff:
-                TransferOneBuff(caster, target, relation);
+                TransferOneBuff(
+                    caster, target, relation, effect.BuffDispelKind);
                 break;
             case AbilityEffectKind.TransferControl:
                 world.AbilitySetUnitOwner(
@@ -1316,6 +2093,9 @@ public sealed class AbilitySystem
                 if (!world.AbilityUnitAlive(target))
                     world.AbilityReviveUnit(
                         target, effect.Value > 0f ? effect.Value : 1f);
+                break;
+            case AbilityEffectKind.TransformUnit:
+                BeginUnitFormTransition(target, effect.UnitForm, world);
                 break;
         }
     }
@@ -1332,22 +2112,31 @@ public sealed class AbilitySystem
             return [caster];
         if (effect.Selector == AbilityEffectSelector.Primary &&
             target.Kind is AbilityTargetKind.Unit or AbilityTargetKind.Self)
-            return [target.Id];
+            return UnitTraitsMatch(
+                target.Id, ability.Targets,
+                world.AbilityUnitOwner(target.Id)) &&
+                EffectTraitsMatch(target.Id, effect)
+                ? [target.Id]
+                : [];
 
         var center = effect.Selector == AbilityEffectSelector.AreaAtCaster
             ? world.AbilityUnitPosition(caster)
             : TargetPosition(caster, target, world);
         var radius = EffectRadius(effect, level);
         var radiusSquared = radius * radius;
+        var innerRadiusSquared = effect.InnerRadius * effect.InnerRadius;
         var output = new List<int>();
         for (var unit = 0; unit < world.AbilityUnitCount; unit++)
         {
             var needsDead = (ability.Targets & AbilityTargetFlags.Dead) != 0 &&
                             (ability.Targets & AbilityTargetFlags.Alive) == 0;
+            var distanceSquared = Vector2.DistanceSquared(
+                center, world.AbilityUnitPosition(unit));
             if (!world.AbilityUnitExists(unit) ||
                 needsDead == world.AbilityUnitAlive(unit) ||
-                Vector2.DistanceSquared(
-                    center, world.AbilityUnitPosition(unit)) > radiusSquared)
+                distanceSquared > radiusSquared ||
+                effect.InnerRadius > 0f &&
+                distanceSquared <= innerRadiusSquared)
                 continue;
             if (effect.Timing == AbilityEffectTiming.AttackHit &&
                 effect.Selector == AbilityEffectSelector.AreaAtTarget &&
@@ -1363,20 +2152,138 @@ public sealed class AbilitySystem
                 (ability.Targets & AbilityTargetFlags.Air) != 0 &&
                 (ability.Targets & AbilityTargetFlags.Ground) == 0 && !isAir)
                 continue;
+            if (!UnitTraitsMatch(
+                    unit, ability.Targets, world.AbilityUnitOwner(unit)))
+                continue;
+            if (!EffectTraitsMatch(unit, effect)) continue;
             if (relation == AbilityRelationFilter.Enemy &&
                 HasStatus(unit, AbilityStatusFlags.MagicImmune) &&
-                effect.Kind is AbilityEffectKind.Damage or
-                    AbilityEffectKind.Mana or
-                    AbilityEffectKind.ApplyStatus or
-                    AbilityEffectKind.TransferControl or
-                    AbilityEffectKind.TransferBuff)
+                EffectBlockedByMagicImmunity(effect))
                 continue;
             output.Add(unit);
-            if (effect.MaximumTargets > 0 &&
+            if (effect.Kind != AbilityEffectKind.Teleport &&
+                effect.MaximumTargets > 0 &&
                 output.Count >= effect.MaximumTargets)
                 break;
         }
+        if (effect.Kind == AbilityEffectKind.Teleport)
+        {
+            output.Sort((left, right) =>
+            {
+                if (left == caster) return right == caster ? 0 : -1;
+                if (right == caster) return 1;
+                var leftDistance = Vector2.DistanceSquared(
+                    center, world.AbilityUnitPosition(left));
+                var rightDistance = Vector2.DistanceSquared(
+                    center, world.AbilityUnitPosition(right));
+                var comparison = leftDistance.CompareTo(rightDistance);
+                return comparison != 0 ? comparison : left.CompareTo(right);
+            });
+            if (effect.MaximumTargets > 0 &&
+                output.Count > effect.MaximumTargets)
+                output.RemoveRange(
+                    effect.MaximumTargets,
+                    output.Count - effect.MaximumTargets);
+        }
         return output;
+    }
+
+    private bool UnitTraitsMatch(
+        int unit,
+        AbilityTargetFlags targets,
+        int owner)
+    {
+        var traits = _traits[unit];
+        var ancient = (traits & AbilityUnitTraits.Ancient) != 0;
+        if ((targets & AbilityTargetFlags.Ancient) != 0 &&
+            (targets & AbilityTargetFlags.NonAncient) == 0 && !ancient)
+            return false;
+        if ((targets & AbilityTargetFlags.NonAncient) != 0 &&
+            (targets & AbilityTargetFlags.Ancient) == 0 && ancient)
+            return false;
+        if ((targets & AbilityTargetFlags.NonSapper) != 0 &&
+            (traits & AbilityUnitTraits.Sapper) != 0)
+            return false;
+        if ((traits & AbilityUnitTraits.Ward) != 0 &&
+            (targets & AbilityTargetFlags.Ward) == 0)
+            return false;
+        if ((targets & AbilityTargetFlags.PlayerControlled) != 0 && owner <= 0)
+            return false;
+        return true;
+    }
+
+    private bool EffectTraitsMatch(
+        int unit,
+        in AbilityEffectProfile effect)
+    {
+        var traits = _traits[unit];
+        return (traits & effect.RequiredUnitTraits) ==
+                   effect.RequiredUnitTraits &&
+               (traits & effect.ExcludedUnitTraits) == 0;
+    }
+
+    private void TransferMana(int source, int target, float amount)
+    {
+        if (amount <= 0f || _maximumMana[target] <= 0f) return;
+        var transferred = MathF.Min(
+            MathF.Min(_mana[source], amount),
+            _maximumMana[target] - _mana[target]);
+        if (transferred <= 0f) return;
+        _mana[source] -= transferred;
+        _mana[target] += transferred;
+    }
+
+    private bool DamageUnitAndAwardExperience(
+        IAbilityRuntimeWorld world,
+        int source,
+        int target,
+        float damage,
+        AbilityDamageKind damageKind)
+    {
+        var wasAlive = world.AbilityUnitAlive(target);
+        var applied = world.AbilityDamageUnit(
+            source, target, damage, damageKind);
+        if (applied && wasAlive && !world.AbilityUnitAlive(target))
+            AwardKillExperience(source, target, world);
+        return applied;
+    }
+
+    private void AwardKillExperience(
+        int killer,
+        int target,
+        IAbilityRuntimeWorld world)
+    {
+        if ((uint)killer >= (uint)_capacity ||
+            (uint)target >= (uint)_capacity ||
+            _experienceBounty[target] <= 0 ||
+            !world.AbilityUnitExists(killer))
+            return;
+        const float radius = 240f;
+        var radiusSquared = radius * radius;
+        var killerOwner = world.AbilityUnitOwner(killer);
+        if (killerOwner <= 0) return;
+        var position = world.AbilityUnitPosition(target);
+        var recipients = new List<int>();
+        for (var unit = 0; unit < world.AbilityUnitCount; unit++)
+        {
+            if (!_heroes[unit] || !world.AbilityUnitAlive(unit) ||
+                _heroLevels[unit] >= _heroMaximumLevels[unit] ||
+                Vector2.DistanceSquared(
+                    position, world.AbilityUnitPosition(unit)) > radiusSquared)
+                continue;
+            if (world.AbilityRelation(
+                    killerOwner, world.AbilityUnitOwner(unit)) is not
+                (PlayerEntityRelation.Own or PlayerEntityRelation.Ally))
+                continue;
+            recipients.Add(unit);
+        }
+        if (recipients.Count == 0) return;
+        recipients.Sort();
+        var share = _experienceBounty[target] / recipients.Count;
+        var remainder = _experienceBounty[target] % recipients.Count;
+        for (var index = 0; index < recipients.Count; index++)
+            TryGrantHeroExperience(
+                recipients[index], share + (index < remainder ? 1 : 0));
     }
 
     private static Vector2 TargetPosition(
@@ -1412,40 +2319,65 @@ public sealed class AbilitySystem
 
     private void AddOrRefreshBuff(
         int source,
-        int abilityId,
+        in AbilityProfile ability,
         int target,
         float duration,
         bool beneficial,
-        AbilityStatusFlags status,
-        AbilityStatModifier modifier)
+        in AbilityEffectProfile effect)
     {
-        modifier = modifier.Normalized;
-        var index = _buffs.FindIndex(value =>
-            value.SourceUnit == source && value.AbilityId == abilityId &&
-            value.TargetUnit == target);
+        var modifier = effect.Modifier.Normalized;
+        var buffId = string.IsNullOrWhiteSpace(effect.BuffId)
+            ? ability.RawId
+            : effect.BuffId;
+        var polarity = effect.BuffPolarity == AbilityBuffPolarity.Neutral
+            ? beneficial
+                ? AbilityBuffPolarity.Beneficial
+                : AbilityBuffPolarity.Harmful
+            : effect.BuffPolarity;
+        var index = effect.BuffStacking == AbilityBuffStackingKind.Stack
+            ? -1
+            : _buffs.FindIndex(value =>
+                value.TargetUnit == target &&
+                value.BuffId.Equals(buffId, StringComparison.Ordinal));
         if (index >= 0)
         {
-            _buffs[index] = _buffs[index] with
+            if (effect.BuffStacking == AbilityBuffStackingKind.Replace)
             {
-                RemainingSeconds = duration,
-                Beneficial = beneficial,
-                Status = status,
-                Modifier = modifier
-            };
-            return;
+                _buffs.RemoveAt(index);
+            }
+            else
+            {
+                _buffs[index] = _buffs[index] with
+                {
+                    AbilityId = ability.Id,
+                    SourceUnit = source,
+                    RemainingSeconds = duration,
+                    Beneficial = beneficial,
+                    Polarity = polarity,
+                    DispelKind = effect.BuffDispelKind,
+                    Stacking = effect.BuffStacking,
+                    Status = effect.Status,
+                    Modifier = modifier
+                };
+                return;
+            }
         }
         _buffs.Add(new AbilityBuffRuntimeEntry(
-            _nextBuffInstanceId++, abilityId, source, target, duration,
-            beneficial, status, modifier));
+            _nextBuffInstanceId++, ability.Id, source, target, buffId, duration,
+            beneficial, polarity, effect.BuffDispelKind,
+            effect.BuffStacking, effect.Status, modifier));
     }
 
     private void TransferOneBuff(
         int caster,
         int target,
-        AbilityRelationFilter relation)
+        AbilityRelationFilter relation,
+        AbilityBuffDispelKind dispelKind)
     {
         var index = _buffs.FindIndex(value =>
             value.TargetUnit == target &&
+            value.DispelKind != AbilityBuffDispelKind.None &&
+            (value.DispelKind & dispelKind) != 0 &&
             (relation == AbilityRelationFilter.Enemy
                 ? value.Beneficial
                 : !value.Beneficial));
@@ -1457,7 +2389,8 @@ public sealed class AbilitySystem
             InstanceId = _nextBuffInstanceId++,
             SourceUnit = caster,
             TargetUnit = caster,
-            Beneficial = true
+            Beneficial = true,
+            Polarity = AbilityBuffPolarity.Beneficial
         });
     }
 
@@ -1497,14 +2430,13 @@ public sealed class AbilitySystem
             var modifier = modifiers[unit].Normalized;
             units.MaxSpeeds[unit] = MathF.Max(
                 0f, _baseMaximumSpeed[unit] * modifier.MovementSpeedMultiplier);
-            combat.AttackDamage[unit] = MathF.Max(
-                0f, _baseAttackDamage[unit] * modifier.AttackDamageMultiplier +
-                    modifier.AttackDamageAdd);
+            combat.SetAttackModifiers(
+                unit,
+                modifier.AttackDamageMultiplier,
+                modifier.AttackDamageAdd,
+                modifier.AttackCooldownMultiplier);
             combat.Armor[unit] = MathF.Max(
                 0f, _baseArmor[unit] + modifier.ArmorAdd);
-            combat.AttackCooldownDurations[unit] = MathF.Max(
-                0.05f,
-                _baseAttackCooldown[unit] * modifier.AttackCooldownMultiplier);
             combat.MaximumHealth[unit] = MathF.Max(
                 1f, _baseMaximumHealth[unit] + modifier.MaximumHealthAdd);
             combat.Health[unit] = MathF.Min(
@@ -1539,6 +2471,9 @@ public sealed class AbilitySystem
         IAbilityRuntimeWorld world,
         AbilityStatModifier[] modifiers)
     {
+        var resolved = new Dictionary<
+            (int Target, string BuffId),
+            AbilityEffectProfile>();
         for (var caster = 0; caster < world.AbilityUnitCount; caster++)
         {
             if (!world.AbilityUnitAlive(caster)) continue;
@@ -1560,13 +2495,45 @@ public sealed class AbilitySystem
                             caster, world.AbilityUnitPosition(caster)), world);
                     foreach (var target in targets)
                     {
-                        _statuses[target] |= effect.Status;
-                        modifiers[target] = Combine(
-                            modifiers[target], effect.Modifier.Normalized);
+                        var buffId = string.IsNullOrWhiteSpace(effect.BuffId)
+                            ? ability.RawId
+                            : effect.BuffId;
+                        if (effect.BuffStacking ==
+                            AbilityBuffStackingKind.Stack)
+                            buffId += $"\0{caster}";
+                        var key = (target, buffId);
+                        if (!resolved.TryGetValue(key, out var current) ||
+                            AuraStrength(effect) >
+                            AuraStrength(current))
+                            resolved[key] = effect;
                     }
                 }
             }
         }
+        foreach (var pair in resolved
+                     .OrderBy(pair => pair.Key.Target)
+                     .ThenBy(pair => pair.Key.BuffId, StringComparer.Ordinal))
+        {
+            var effect = pair.Value;
+            var target = pair.Key.Target;
+            _statuses[target] |= effect.Status;
+            modifiers[target] = Combine(
+                modifiers[target], effect.Modifier.Normalized);
+        }
+    }
+
+    private static float AuraStrength(in AbilityEffectProfile effect)
+    {
+        var value = effect.Modifier.Normalized;
+        return MathF.Abs(value.MovementSpeedMultiplier - 1f) +
+               MathF.Abs(value.AttackCooldownMultiplier - 1f) +
+               MathF.Abs(value.AttackDamageMultiplier - 1f) +
+               MathF.Abs(value.AttackDamageAdd) +
+               MathF.Abs(value.ArmorAdd) +
+               MathF.Abs(value.MaximumHealthAdd) +
+               MathF.Abs(value.ManaRegenerationAdd) +
+               MathF.Abs(value.DetectionRangeAdd) +
+               (ushort)effect.Status;
     }
 
     private static bool RequirementsMet(
@@ -1631,8 +2598,10 @@ public sealed class AbilitySystem
         var units = new AbilityUnitRuntimeEntry[unitCount];
         for (var unit = 0; unit < unitCount; unit++)
             units[unit] = new AbilityUnitRuntimeEntry(
-                unit, _unitTypeIds[unit], _heroes[unit],
-                _heroLevels[unit], _unspentSkillPoints[unit], _mana[unit],
+                unit, _unitTypeIds[unit], _heroes[unit], _traits[unit],
+                _heroLevels[unit], _heroMaximumLevels[unit],
+                _heroExperience[unit], _experienceBounty[unit],
+                _unspentSkillPoints[unit], _mana[unit],
                 _maximumMana[unit], _baseManaRegeneration[unit],
                 _effectiveManaRegeneration[unit],
                 _baseMaximumSpeed[unit], _baseAttackDamage[unit],
@@ -1644,14 +2613,20 @@ public sealed class AbilitySystem
                 _autoCast[unit].ToArray(), _castPhases[unit],
                 _activeSlots[unit], _castRemaining[unit],
                 _channelRemaining[unit], _pulseRemaining[unit],
+                _pulsesRemaining[unit],
                 _targets[unit]);
         return new AbilityRuntimeSnapshot(
-            _catalog, _nextBuffInstanceId, units,
+            _catalog, _nextBuffInstanceId,
+            _nextPersistentEffectInstanceId, units,
             _buffs.OrderBy(value => value.InstanceId).ToArray(),
             _summons.OrderBy(value => value.Unit).ToArray(),
             _revealSources.OrderBy(value => value.PlayerId)
                 .ThenBy(value => value.Position.X)
-                .ThenBy(value => value.Position.Y).ToArray());
+                .ThenBy(value => value.Position.Y).ToArray(),
+            _persistentEffects.OrderBy(value => value.InstanceId).ToArray(),
+            _unitForms.OrderBy(value => value.Unit).ToArray(),
+            _buildingToggles.OrderBy(value => value.Building)
+                .ThenBy(value => value.AbilityId).ToArray());
     }
 
     internal void RestoreRuntimeState(
@@ -1662,12 +2637,20 @@ public sealed class AbilitySystem
             throw new InvalidOperationException("Ability runtime unit mismatch.");
         _catalog = snapshot.Catalog;
         _nextBuffInstanceId = snapshot.NextBuffInstanceId;
+        _nextPersistentEffectInstanceId =
+            snapshot.NextPersistentEffectInstanceId;
         _buffs.Clear();
         _buffs.AddRange(snapshot.Buffs);
         _summons.Clear();
         _summons.AddRange(snapshot.Summons);
         _revealSources.Clear();
         _revealSources.AddRange(snapshot.Reveals);
+        _persistentEffects.Clear();
+        _persistentEffects.AddRange(snapshot.PersistentEffects);
+        _unitForms.Clear();
+        _unitForms.AddRange(snapshot.UnitForms);
+        _buildingToggles.Clear();
+        _buildingToggles.AddRange(snapshot.BuildingToggles);
         Array.Clear(_abilityAppliedInvisibility);
         for (var unit = 0; unit < unitCount; unit++)
         {
@@ -1680,7 +2663,11 @@ public sealed class AbilitySystem
                 throw new InvalidOperationException("Invalid ability runtime entry.");
             _unitTypeIds[unit] = value.UnitTypeId;
             _heroes[unit] = value.Hero;
+            _traits[unit] = value.Traits;
             _heroLevels[unit] = value.HeroLevel;
+            _heroMaximumLevels[unit] = value.HeroMaximumLevel;
+            _heroExperience[unit] = value.HeroExperience;
+            _experienceBounty[unit] = value.ExperienceBounty;
             _unspentSkillPoints[unit] = value.UnspentSkillPoints;
             _mana[unit] = value.Mana;
             _maximumMana[unit] = value.MaximumMana;
@@ -1704,6 +2691,7 @@ public sealed class AbilitySystem
             _castRemaining[unit] = value.CastRemaining;
             _channelRemaining[unit] = value.ChannelRemaining;
             _pulseRemaining[unit] = value.PulseRemaining;
+            _pulsesRemaining[unit] = value.PulsesRemaining;
             _targets[unit] = value.Target;
         }
         _combatEventCursor = 0;
@@ -1713,12 +2701,17 @@ public sealed class AbilitySystem
     {
         hash.Add((long)_catalog.StableHash);
         hash.Add(_nextBuffInstanceId);
+        hash.Add(_nextPersistentEffectInstanceId);
         hash.Add(unitCount);
         for (var unit = 0; unit < unitCount; unit++)
         {
             hash.Add(_unitTypeIds[unit]);
             hash.Add(_heroes[unit]);
+            hash.Add((byte)_traits[unit]);
             hash.Add(_heroLevels[unit]);
+            hash.Add(_heroMaximumLevels[unit]);
+            hash.Add(_heroExperience[unit]);
+            hash.Add(_experienceBounty[unit]);
             hash.Add(_unspentSkillPoints[unit]);
             hash.Add(_mana[unit]);
             hash.Add(_maximumMana[unit]);
@@ -1746,6 +2739,7 @@ public sealed class AbilitySystem
             hash.Add(_castRemaining[unit]);
             hash.Add(_channelRemaining[unit]);
             hash.Add(_pulseRemaining[unit]);
+            hash.Add(_pulsesRemaining[unit]);
             hash.Add((byte)_targets[unit].Kind);
             hash.Add(_targets[unit].Id);
             hash.Add(_targets[unit].Position);
@@ -1757,8 +2751,12 @@ public sealed class AbilitySystem
             hash.Add(buff.AbilityId);
             hash.Add(buff.SourceUnit);
             hash.Add(buff.TargetUnit);
+            hash.Add(StableStringHash(buff.BuffId));
             hash.Add(buff.RemainingSeconds);
             hash.Add(buff.Beneficial);
+            hash.Add((byte)buff.Polarity);
+            hash.Add((byte)buff.DispelKind);
+            hash.Add((byte)buff.Stacking);
             hash.Add((int)buff.Status);
             AppendModifier(ref hash, buff.Modifier);
         }
@@ -1781,6 +2779,111 @@ public sealed class AbilitySystem
             hash.Add(reveal.Radius);
             hash.Add(reveal.RemainingSeconds);
         }
+        hash.Add(_persistentEffects.Count);
+        foreach (var effect in _persistentEffects
+                     .OrderBy(value => value.InstanceId))
+        {
+            hash.Add(effect.InstanceId);
+            hash.Add(effect.AbilityId);
+            hash.Add(effect.SourceUnit);
+            hash.Add(effect.Level);
+            hash.Add(effect.EffectIndex);
+            hash.Add((byte)effect.Target.Kind);
+            hash.Add(effect.Target.Id);
+            hash.Add(effect.Target.Position);
+            hash.Add(effect.RemainingSeconds);
+            hash.Add(effect.StartDelayRemaining);
+            hash.Add(effect.PulseRemaining);
+            hash.Add(effect.PulsesRemaining);
+        }
+        hash.Add(_unitForms.Count);
+        foreach (var form in _unitForms.OrderBy(value => value.Unit))
+        {
+            hash.Add(form.Unit);
+            AppendUnitForm(ref hash, form.Profile);
+            hash.Add((byte)form.Phase);
+            hash.Add(form.TargetBuilding);
+            hash.Add(form.RemainingSeconds);
+        }
+        hash.Add(_buildingToggles.Count);
+        foreach (var toggle in _buildingToggles
+                     .OrderBy(value => value.Building)
+                     .ThenBy(value => value.AbilityId))
+        {
+            hash.Add(toggle.Building);
+            hash.Add(toggle.AbilityId);
+        }
+    }
+
+    private static void AppendUnitForm(
+        ref StableHash64 hash,
+        in AbilityUnitFormProfile form)
+    {
+        AppendUnitType(ref hash, form.Normal);
+        AppendUnitType(ref hash, form.Alternate);
+        hash.Add(form.AlternateDurationSeconds);
+        hash.Add((byte)form.RequiredBuildingFunction);
+    }
+
+    private static void AppendUnitType(
+        ref StableHash64 hash,
+        in UnitTypeProfile profile)
+    {
+        hash.Add(profile.Id);
+        hash.Add(StableStringHash(profile.Name));
+        hash.Add(profile.Movement.Id);
+        hash.Add(StableStringHash(profile.Movement.Name));
+        hash.Add(profile.Movement.PhysicalRadius);
+        hash.Add(profile.Movement.MaximumSpeed);
+        hash.Add(profile.Movement.Acceleration);
+        hash.Add((byte)profile.Movement.MovementClass);
+        hash.Add(profile.Movement.NavigationRadius);
+        hash.Add(profile.Combat.MaximumHealth);
+        hash.Add(profile.Combat.AttackDamage);
+        hash.Add(profile.Combat.AttackRange);
+        hash.Add(profile.Combat.AcquisitionRange);
+        hash.Add(profile.Combat.AttackCooldownSeconds);
+        hash.Add(profile.Combat.AttackWindupSeconds);
+        hash.Add(profile.Combat.LeashDistance);
+        hash.Add((byte)profile.Combat.Positioning);
+        hash.Add(profile.Combat.Armor);
+        hash.Add((ushort)profile.Combat.Attributes);
+        hash.Add(profile.Combat.AttacksPerVolley);
+        hash.Add((ushort)profile.Combat.BonusVs);
+        hash.Add(profile.Combat.BonusDamage);
+        hash.Add(profile.Combat.BaseUpgradeDamage);
+        hash.Add(profile.Combat.BonusUpgradeDamage);
+        hash.Add(profile.Combat.ProjectileSpeed);
+        hash.Add(profile.Combat.CanMoveDuringWindup);
+        hash.Add(profile.Combat.CanMoveDuringCooldown);
+        hash.Add(profile.Combat.AutoTargetPriority);
+        hash.Add(profile.Combat.Weapons.Length);
+        foreach (var weapon in profile.Combat.Weapons)
+        {
+            hash.Add(weapon.Slot);
+            hash.Add((byte)weapon.TargetLayers);
+            hash.Add(weapon.EnabledByDefault);
+            hash.Add(weapon.RequiredTechnologyId);
+            hash.Add(weapon.AttackDamage);
+            hash.Add(weapon.AttackRange);
+            hash.Add(weapon.AttackCooldownSeconds);
+            hash.Add(weapon.AttackWindupSeconds);
+            hash.Add((byte)weapon.Positioning);
+            hash.Add(weapon.AttacksPerVolley);
+            hash.Add((ushort)weapon.BonusVs);
+            hash.Add(weapon.BonusDamage);
+            hash.Add(weapon.BaseUpgradeDamage);
+            hash.Add(weapon.BonusUpgradeDamage);
+            hash.Add(weapon.ProjectileSpeed);
+            hash.Add(weapon.CanMoveDuringWindup);
+            hash.Add(weapon.CanMoveDuringCooldown);
+        }
+        hash.Add(profile.IsWorker);
+        hash.Add((byte)profile.Perception.Concealment);
+        hash.Add(profile.Perception.DetectionRange);
+        hash.Add(profile.Perception.VisionRange);
+        hash.Add(profile.Perception.ObservationHeight);
+        hash.Add((byte)profile.Perception.TerrainVisionMode);
     }
 
     private static void AppendModifier(
@@ -1825,6 +2928,7 @@ internal static partial class AbilitySerialization
     {
         WriteCatalog(writer, snapshot.Catalog);
         writer.Write(snapshot.NextBuffInstanceId);
+        writer.Write(snapshot.NextPersistentEffectInstanceId);
         writer.Write(snapshot.Units.Length);
         foreach (var unit in snapshot.Units) WriteRuntimeUnit(writer, unit);
         writer.Write(snapshot.Buffs.Length);
@@ -1834,8 +2938,12 @@ internal static partial class AbilitySerialization
             writer.Write(buff.AbilityId);
             writer.Write(buff.SourceUnit);
             writer.Write(buff.TargetUnit);
+            WriteRuntimeString(writer, buff.BuffId);
             writer.Write(buff.RemainingSeconds);
             writer.Write(buff.Beneficial);
+            writer.Write((byte)buff.Polarity);
+            writer.Write((byte)buff.DispelKind);
+            writer.Write((byte)buff.Stacking);
             writer.Write((ushort)buff.Status);
             WriteRuntimeModifier(writer, buff.Modifier);
         }
@@ -1856,6 +2964,38 @@ internal static partial class AbilitySerialization
             writer.Write(reveal.Radius);
             writer.Write(reveal.RemainingSeconds);
         }
+        writer.Write(snapshot.PersistentEffects.Length);
+        foreach (var effect in snapshot.PersistentEffects)
+        {
+            writer.Write(effect.InstanceId);
+            writer.Write(effect.AbilityId);
+            writer.Write(effect.SourceUnit);
+            writer.Write(effect.Level);
+            writer.Write(effect.EffectIndex);
+            writer.Write((byte)effect.Target.Kind);
+            writer.Write(effect.Target.Id);
+            writer.Write(effect.Target.Position.X);
+            writer.Write(effect.Target.Position.Y);
+            writer.Write(effect.RemainingSeconds);
+            writer.Write(effect.StartDelayRemaining);
+            writer.Write(effect.PulseRemaining);
+            writer.Write(effect.PulsesRemaining);
+        }
+        writer.Write(snapshot.UnitForms.Length);
+        foreach (var form in snapshot.UnitForms)
+        {
+            writer.Write(form.Unit);
+            WriteUnitForm(writer, form.Profile);
+            writer.Write((byte)form.Phase);
+            writer.Write(form.TargetBuilding);
+            writer.Write(form.RemainingSeconds);
+        }
+        writer.Write(snapshot.BuildingToggles.Length);
+        foreach (var toggle in snapshot.BuildingToggles)
+        {
+            writer.Write(toggle.Building);
+            writer.Write(toggle.AbilityId);
+        }
     }
 
     public static AbilityRuntimeSnapshot ReadRuntime(
@@ -1864,8 +3004,9 @@ internal static partial class AbilitySerialization
     {
         var catalog = ReadCatalog(reader);
         var nextBuff = reader.ReadInt32();
+        var nextPersistentEffect = reader.ReadInt32();
         var count = reader.ReadInt32();
-        if (nextBuff <= 0 || count != unitCount)
+        if (nextBuff <= 0 || nextPersistentEffect <= 0 || count != unitCount)
             throw new InvalidDataException("Invalid ability runtime header.");
         var units = new AbilityUnitRuntimeEntry[count];
         for (var index = 0; index < count; index++)
@@ -1878,13 +3019,22 @@ internal static partial class AbilitySerialization
         {
             var buff = new AbilityBuffRuntimeEntry(
                 reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(),
-                reader.ReadInt32(), reader.ReadSingle(), reader.ReadBoolean(),
+                reader.ReadInt32(), ReadRuntimeString(reader),
+                reader.ReadSingle(), reader.ReadBoolean(),
+                (AbilityBuffPolarity)reader.ReadByte(),
+                (AbilityBuffDispelKind)reader.ReadByte(),
+                (AbilityBuffStackingKind)reader.ReadByte(),
                 (AbilityStatusFlags)reader.ReadUInt16(),
                 ReadRuntimeModifier(reader));
             if (buff.InstanceId <= previousBuff ||
                 (uint)buff.AbilityId >= (uint)catalog.Count ||
                 (uint)buff.SourceUnit >= (uint)unitCount ||
                 (uint)buff.TargetUnit >= (uint)unitCount ||
+                string.IsNullOrWhiteSpace(buff.BuffId) ||
+                buff.BuffId.Length > 64 ||
+                !Enum.IsDefined(buff.Polarity) ||
+                (buff.DispelKind & ~AbilityBuffDispelKind.Both) != 0 ||
+                !Enum.IsDefined(buff.Stacking) ||
                 (!float.IsFinite(buff.RemainingSeconds) &&
                  !float.IsPositiveInfinity(buff.RemainingSeconds)) ||
                 buff.RemainingSeconds <= 0f)
@@ -1929,8 +3079,93 @@ internal static partial class AbilitySerialization
                 throw new InvalidDataException("Invalid ability reveal source.");
             reveals[index] = reveal;
         }
+        var persistentCount = reader.ReadInt32();
+        if (persistentCount is < 0 or > 100_000)
+            throw new InvalidDataException();
+        var persistent = new AbilityPersistentEffectRuntimeEntry[persistentCount];
+        var previousPersistentId = 0;
+        for (var index = 0; index < persistentCount; index++)
+        {
+            var effect = new AbilityPersistentEffectRuntimeEntry(
+                reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(),
+                reader.ReadInt32(), reader.ReadInt32(),
+                new AbilityCastTarget(
+                    (AbilityTargetKind)reader.ReadByte(), reader.ReadInt32(),
+                    new Vector2(reader.ReadSingle(), reader.ReadSingle())),
+                reader.ReadSingle(), reader.ReadSingle(),
+                reader.ReadSingle(), reader.ReadInt32());
+            if (effect.InstanceId <= previousPersistentId ||
+                effect.InstanceId >= nextPersistentEffect ||
+                (uint)effect.AbilityId >= (uint)catalog.Count ||
+                (uint)effect.SourceUnit >= (uint)unitCount ||
+                effect.Level <= 0 ||
+                effect.Level > catalog.Ability(effect.AbilityId).Levels.Length ||
+                (uint)effect.EffectIndex >= (uint)catalog
+                    .Ability(effect.AbilityId).Levels[effect.Level - 1]
+                    .Effects.Length ||
+                catalog.Ability(effect.AbilityId).Levels[effect.Level - 1]
+                    .Effects[effect.EffectIndex].Timing !=
+                    AbilityEffectTiming.PersistentPulse ||
+                !Enum.IsDefined(effect.Target.Kind) ||
+                !float.IsFinite(effect.RemainingSeconds) ||
+                effect.RemainingSeconds <= 0f ||
+                !float.IsFinite(effect.StartDelayRemaining) ||
+                effect.StartDelayRemaining < 0f ||
+                !float.IsFinite(effect.PulseRemaining) ||
+                effect.PulsesRemaining <= 0)
+                throw new InvalidDataException(
+                    "Invalid persistent ability effect.");
+            persistent[index] = effect;
+            previousPersistentId = effect.InstanceId;
+        }
+        var formCount = reader.ReadInt32();
+        if (formCount is < 0 || formCount > unitCount)
+            throw new InvalidDataException();
+        var forms = new AbilityUnitFormRuntimeEntry[formCount];
+        var previousFormUnit = -1;
+        for (var index = 0; index < formCount; index++)
+        {
+            var form = new AbilityUnitFormRuntimeEntry(
+                reader.ReadInt32(), ReadUnitForm(reader),
+                (AbilityUnitFormPhase)reader.ReadByte(),
+                reader.ReadInt32(), reader.ReadSingle());
+            if (form.Unit <= previousFormUnit ||
+                (uint)form.Unit >= (uint)unitCount ||
+                !form.Profile.IsValid || !Enum.IsDefined(form.Phase) ||
+                form.TargetBuilding < -1 ||
+                !float.IsFinite(form.RemainingSeconds) ||
+                form.RemainingSeconds < 0f ||
+                form.Phase == AbilityUnitFormPhase.Alternate &&
+                    form.RemainingSeconds <= 0f)
+                throw new InvalidDataException("Invalid ability unit form.");
+            forms[index] = form;
+            previousFormUnit = form.Unit;
+        }
+        var buildingToggleCount = reader.ReadInt32();
+        if (buildingToggleCount is < 0 or > 100_000)
+            throw new InvalidDataException();
+        var buildingToggles =
+            new AbilityBuildingToggleRuntimeEntry[buildingToggleCount];
+        var previousBuilding = -1;
+        var previousAbility = -1;
+        for (var index = 0; index < buildingToggleCount; index++)
+        {
+            var toggle = new AbilityBuildingToggleRuntimeEntry(
+                reader.ReadInt32(), reader.ReadInt32());
+            if (toggle.Building < 0 ||
+                (uint)toggle.AbilityId >= (uint)catalog.Count ||
+                toggle.Building < previousBuilding ||
+                toggle.Building == previousBuilding &&
+                toggle.AbilityId <= previousAbility)
+                throw new InvalidDataException(
+                    "Invalid building ability toggle.");
+            buildingToggles[index] = toggle;
+            previousBuilding = toggle.Building;
+            previousAbility = toggle.AbilityId;
+        }
         return new AbilityRuntimeSnapshot(
-            catalog, nextBuff, units, buffs, summons, reveals);
+            catalog, nextBuff, nextPersistentEffect, units, buffs, summons,
+            reveals, persistent, forms, buildingToggles);
     }
 
     private static void WriteRuntimeUnit(
@@ -1940,7 +3175,11 @@ internal static partial class AbilitySerialization
         writer.Write(value.Unit);
         writer.Write(value.UnitTypeId);
         writer.Write(value.Hero);
+        writer.Write((byte)value.Traits);
         writer.Write(value.HeroLevel);
+        writer.Write(value.HeroMaximumLevel);
+        writer.Write(value.HeroExperience);
+        writer.Write(value.ExperienceBounty);
         writer.Write(value.UnspentSkillPoints);
         writer.Write(value.Mana);
         writer.Write(value.MaximumMana);
@@ -1968,6 +3207,7 @@ internal static partial class AbilitySerialization
         writer.Write(value.CastRemaining);
         writer.Write(value.ChannelRemaining);
         writer.Write(value.PulseRemaining);
+        writer.Write(value.PulsesRemaining);
         writer.Write((byte)value.Target.Kind);
         writer.Write(value.Target.Id);
         writer.Write(value.Target.Position.X);
@@ -1982,7 +3222,11 @@ internal static partial class AbilitySerialization
         var unit = reader.ReadInt32();
         var unitType = reader.ReadInt32();
         var hero = reader.ReadBoolean();
+        var traits = (AbilityUnitTraits)reader.ReadByte();
         var heroLevel = reader.ReadInt32();
+        var heroMaximumLevel = reader.ReadInt32();
+        var heroExperience = reader.ReadInt32();
+        var experienceBounty = reader.ReadInt32();
         var unspentSkillPoints = reader.ReadInt32();
         var mana = reader.ReadSingle();
         var maximumMana = reader.ReadSingle();
@@ -1998,8 +3242,18 @@ internal static partial class AbilitySerialization
         var concealmentPhase = (UnitConcealmentPhase)reader.ReadByte();
         var slotCount = reader.ReadInt32();
         if (unit != expectedUnit || slotCount is < 0 or > 32 ||
-            hero && (heroLevel <= 0 || unspentSkillPoints < 0) ||
-            !hero && (heroLevel != 0 || unspentSkillPoints != 0) ||
+            (traits & ~AbilityUnitTraits.All) != 0 ||
+            hero && (heroLevel <= 0 || heroMaximumLevel < heroLevel ||
+                     heroMaximumLevel > 100 || heroExperience < 0 ||
+                     heroExperience <
+                     AbilitySystem.ExperienceRequiredForLevel(heroLevel) ||
+                     heroExperience >
+                     AbilitySystem.ExperienceRequiredForLevel(
+                         heroMaximumLevel) ||
+                     unspentSkillPoints < 0) ||
+            !hero && (heroLevel != 0 || heroMaximumLevel != 0 ||
+                      heroExperience != 0 || unspentSkillPoints != 0) ||
+            experienceBounty is < 0 or > 1_000_000 ||
             !float.IsFinite(mana) || !float.IsFinite(maximumMana) ||
             mana < 0f || mana > maximumMana || maximumMana < 0f)
             throw new InvalidDataException("Invalid ability unit.");
@@ -2029,6 +3283,7 @@ internal static partial class AbilitySerialization
         var castRemaining = reader.ReadSingle();
         var channelRemaining = reader.ReadSingle();
         var pulseRemaining = reader.ReadSingle();
+        var pulsesRemaining = reader.ReadInt32();
         var target = new AbilityCastTarget(
             (AbilityTargetKind)reader.ReadByte(), reader.ReadInt32(),
             new Vector2(reader.ReadSingle(), reader.ReadSingle()));
@@ -2036,16 +3291,18 @@ internal static partial class AbilitySerialization
             castPhase == AbilityCastPhase.None && activeSlot != -1 ||
             castPhase != AbilityCastPhase.None &&
                 (uint)activeSlot >= (uint)slotCount ||
+            pulsesRemaining < 0 ||
             !Enum.IsDefined(target.Kind))
             throw new InvalidDataException("Invalid active ability cast.");
         return new AbilityUnitRuntimeEntry(
-            unit, unitType, hero, heroLevel, unspentSkillPoints,
+            unit, unitType, hero, traits, heroLevel, heroMaximumLevel,
+            heroExperience, experienceBounty, unspentSkillPoints,
             mana, maximumMana, regeneration,
             effectiveRegeneration, speed,
             damage, armor, attackCooldown, maximumHealth, detection,
             concealment, concealmentPhase, ids, levels, cooldowns, toggles,
             autoCast, castPhase, activeSlot, castRemaining,
-            channelRemaining, pulseRemaining, target);
+            channelRemaining, pulseRemaining, pulsesRemaining, target);
     }
 
     private static void WriteRuntimeModifier(
