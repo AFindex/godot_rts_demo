@@ -163,9 +163,14 @@ public sealed class DestinationYieldResolver
                 var radialWeight = RadialWeights[option / 2];
                 var direction = Vector2.Normalize(tangent * side + outward * radialWeight);
                 var candidate = blockerPosition + direction * offsetDistance;
-                if (!_world.IsDiscFree(candidate, units.Radii[blockerUnit]) ||
+                var navigationRadius = units.NavigationRadii[blockerUnit];
+                var firstSegmentRadius = _world.IsDiscFree(
+                    blockerPosition, navigationRadius)
+                    ? navigationRadius
+                    : units.Radii[blockerUnit];
+                if (!_world.IsDiscFree(candidate, navigationRadius) ||
                     !_world.IsSegmentFree(
-                        blockerPosition, candidate, units.Radii[blockerUnit]) ||
+                        blockerPosition, candidate, firstSegmentRadius) ||
                     HasConflict(units, blockerUnit, candidate))
                 {
                     continue;

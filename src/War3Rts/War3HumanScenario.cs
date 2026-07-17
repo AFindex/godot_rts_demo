@@ -85,6 +85,8 @@ public static class War3HumanScenario
     {
         simulation.Abilities.ConfigureCatalog(
             War3HumanContent.CreateAbilityCatalog(), simulation.Units.Count);
+        simulation.BuildingUpgrades.ConfigureCatalog(
+            War3HumanContent.CreateBuildingUpgradeCatalog());
         simulation.Economy.Players.RegisterPlayer(
             PlayerId, minerals: 1_250, vespeneGas: 700,
             supplyCapacity: 24, supplyUsed: InitialWorkers);
@@ -145,6 +147,8 @@ public static class War3HumanScenario
         War3NavigationMapAudit.TraceBootstrap("status=prepare_begin");
         simulation.Abilities.ConfigureCatalog(
             War3HumanContent.CreateAbilityCatalog(), simulation.Units.Count);
+        simulation.BuildingUpgrades.ConfigureCatalog(
+            War3HumanContent.CreateBuildingUpgradeCatalog());
         simulation.Economy.Players.RegisterPlayer(
             PlayerId, minerals: 1_250, vespeneGas: 700,
             supplyCapacity: 24, supplyUsed: 1);
@@ -239,6 +243,11 @@ public static class War3HumanScenario
         int[] enemyWorkers,
         int[] resourceNodeIds)
     {
+        var expectedUpgrades = War3HumanContent.CreateBuildingUpgradeCatalog();
+        if (simulation.BuildingUpgrades.Catalog.StableHash !=
+            expectedUpgrades.StableHash)
+            throw new InvalidDataException(
+                "War3 building upgrade catalog does not match the cached runtime.");
         var restoredPlayerWorkers = playerWorkers.ToArray();
         var restoredEnemyWorkers = enemyWorkers.ToArray();
         if (restoredPlayerWorkers.Length != InitialWorkers ||

@@ -78,7 +78,8 @@ public enum TestProductionCommandCode : byte
     InvalidOrder,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    ProducerUpgrading
 }
 
 public readonly record struct TestProductionRequirementStatus(
@@ -115,7 +116,8 @@ public enum TestResearchCommandCode : byte
     InvalidOrder,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    ResearcherUpgrading
 }
 
 public readonly record struct TestResearchOrderId(int Value);
@@ -3093,6 +3095,7 @@ public sealed partial class MovementTestRig
             source.Economy,
             source.Diplomacy,
             source.Construction,
+            source.BuildingUpgrades,
             source.Production,
             source.Technology,
             source.Abilities,
@@ -3253,6 +3256,7 @@ public sealed partial class MovementTestRig
             source.Economy,
             source.Diplomacy,
             source.Construction,
+            source.BuildingUpgrades,
             source.Production,
             source.Technology,
             source.Abilities,

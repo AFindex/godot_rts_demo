@@ -182,6 +182,57 @@ public sealed class War3GameplayDataAdapter(
         };
     }
 
+    public BuildingUpgradeProfile[] CreateBuildingUpgrades(
+        IReadOnlyList<War3BuildingDefinition> buildings,
+        IReadOnlyList<BuildingTypeProfile> profiles)
+    {
+        var buildingIds = buildings.ToDictionary(
+            value => value.ObjectId,
+            value => value.TypeId,
+            StringComparer.Ordinal);
+        var result = new List<BuildingUpgradeProfile>();
+        foreach (var source in buildings.OrderBy(value => value.TypeId))
+        {
+            if (!Catalog.TryGet(source.ObjectId, out var sourceData)) continue;
+            var targetObjectId = EditorValue(sourceData, "Upgrade");
+            if (string.IsNullOrWhiteSpace(targetObjectId) ||
+                !buildingIds.TryGetValue(targetObjectId, out var targetId))
+                continue;
+            var sourceProfile = profiles[source.TypeId];
+            var targetProfile = profiles[targetId];
+            var requirements = ImmutableArray<TechnologyRequirementProfile>.Empty;
+            if (Catalog.TryGet(targetObjectId, out var targetData))
+            {
+                requirements = EditorList(targetData, "Requires")
+                    .Where(buildingIds.ContainsKey)
+                    .Select(value => new TechnologyRequirementProfile(
+                        TechnologyRequirementKind.CompletedBuilding,
+                        buildingIds[value],
+                        1))
+                    .Distinct()
+                    .ToImmutableArray();
+            }
+            result.Add(new BuildingUpgradeProfile(
+                result.Count,
+                $"升级为{targetProfile.Name}",
+                source.TypeId,
+                targetProfile,
+                new EconomyCost(
+                    Math.Max(0,
+                        targetProfile.Cost.Minerals -
+                        sourceProfile.Cost.Minerals),
+                    Math.Max(0,
+                        targetProfile.Cost.VespeneGas -
+                        sourceProfile.Cost.VespeneGas)),
+                targetProfile.BuildSeconds,
+                targetProfile.CancelRefundFraction)
+            {
+                Requirements = requirements
+            });
+        }
+        return result.ToArray();
+    }
+
     public War3GameplayImportReport CreateReport(
         IEnumerable<string> unitObjectIds,
         IEnumerable<string> buildingObjectIds)
@@ -413,6 +464,25 @@ public sealed class War3GameplayDataAdapter(
         }
         return 0f;
     }
+
+    private static string EditorValue(War3UnitData data, string field)
+    {
+        foreach (var table in data.Editor.Values)
+        foreach (var value in table)
+        {
+            if (value.Key.Equals(field, StringComparison.OrdinalIgnoreCase))
+                return value.Value?.Trim() ?? string.Empty;
+        }
+        return string.Empty;
+    }
+
+    private static IEnumerable<string> EditorList(
+        War3UnitData data,
+        string field) =>
+        EditorValue(data, field)
+            .Split(',', StringSplitOptions.TrimEntries |
+                        StringSplitOptions.RemoveEmptyEntries)
+            .Where(value => value is not "_" and not "-");
 
     private static bool IsProjectileWeapon(string? value) =>
         value?.ToLowerInvariant() is "missile" or "artillery" or

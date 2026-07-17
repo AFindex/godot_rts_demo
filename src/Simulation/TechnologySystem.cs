@@ -205,7 +205,8 @@ public enum ResearchCommandCode : byte
     InvalidOrder,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    ResearcherUpgrading
 }
 
 public readonly record struct ResearchCommandResult(
@@ -273,10 +274,13 @@ public sealed class TechnologySystem
         GameplayBuildingId researcher,
         TechnologyProfile technology,
         ConstructionSystem construction,
-        PlayerEconomyStore economy)
+        PlayerEconomyStore economy,
+        Func<GameplayBuildingId, bool>? isUnavailable = null,
+        Func<int, int, bool>? satisfiesResearcherType = null)
     {
         var validation = ValidateEnqueue(
-            playerId, researcher, technology, construction, economy);
+            playerId, researcher, technology, construction, economy,
+            isUnavailable, satisfiesResearcherType);
         if (!validation.Succeeded) return validation;
         if (!economy.TrySpend(playerId, technology.Cost).Succeeded)
             throw new InvalidOperationException("Research spend changed after validation.");
@@ -295,7 +299,9 @@ public sealed class TechnologySystem
         GameplayBuildingId researcher,
         TechnologyProfile technology,
         ConstructionSystem construction,
-        PlayerEconomyStore economy)
+        PlayerEconomyStore economy,
+        Func<GameplayBuildingId, bool>? isUnavailable = null,
+        Func<int, int, bool>? satisfiesResearcherType = null)
     {
         if (!economy.IsRegistered(playerId)) return Failure(ResearchCommandCode.InvalidPlayer);
         if (!TechnologyCatalogSnapshot.ValidProfile(technology))
@@ -306,7 +312,11 @@ public sealed class TechnologySystem
         if (building.PlayerId != playerId) return Failure(ResearchCommandCode.WrongOwner);
         if (building.State != BuildingLifecycleState.Completed)
             return Failure(ResearchCommandCode.ResearcherNotCompleted);
-        if (building.Type.Id != technology.ResearcherBuildingTypeId)
+        if (isUnavailable?.Invoke(researcher) == true)
+            return Failure(ResearchCommandCode.ResearcherUpgrading);
+        if (building.Type.Id != technology.ResearcherBuildingTypeId &&
+            satisfiesResearcherType?.Invoke(
+                building.Type.Id, technology.ResearcherBuildingTypeId) != true)
             return Failure(ResearchCommandCode.WrongResearcherType);
         if (_queues.TryGetValue(researcher.Value, out var queue) &&
             queue.Orders.Count >= MaximumQueueLength)
@@ -322,7 +332,9 @@ public sealed class TechnologySystem
             return Failure(ResearchCommandCode.AlreadyQueued);
         if (Conflicts(playerId, technology))
             return Failure(ResearchCommandCode.MutuallyExclusive);
-        if (EvaluateRequirements(playerId, technology.Requirements, construction)
+        if (EvaluateRequirements(
+                playerId, technology.Requirements, construction,
+                satisfiesResearcherType)
             .Any(value => !value.Satisfied))
             return Failure(ResearchCommandCode.MissingPrerequisite);
         var spend = economy.ValidateSpend(playerId, technology.Cost);
@@ -342,11 +354,17 @@ public sealed class TechnologySystem
         GameplayBuildingId researcher,
         TechnologyProfile technology,
         ConstructionSystem construction,
-        PlayerEconomyStore economy) => new(
-        ValidateEnqueue(playerId, researcher, technology, construction, economy).Code,
+        PlayerEconomyStore economy,
+        Func<GameplayBuildingId, bool>? isUnavailable = null,
+        Func<int, int, bool>? satisfiesResearcherType = null) => new(
+        ValidateEnqueue(
+            playerId, researcher, technology, construction, economy,
+            isUnavailable, satisfiesResearcherType).Code,
         Level(playerId, technology.Id),
         TechnologyCatalogSnapshot.ValidProfile(technology)
-            ? EvaluateRequirements(playerId, technology.Requirements, construction)
+            ? EvaluateRequirements(
+                playerId, technology.Requirements, construction,
+                satisfiesResearcherType)
             : []);
 
     public bool Cancel(
@@ -623,7 +641,8 @@ public sealed class TechnologySystem
     private TechnologyRequirementStatus[] EvaluateRequirements(
         int playerId,
         ImmutableArray<TechnologyRequirementProfile> requirements,
-        ConstructionSystem construction)
+        ConstructionSystem construction,
+        Func<int, int, bool>? satisfiesBuildingType = null)
     {
         var result = new TechnologyRequirementStatus[requirements.Length];
         for (var index = 0; index < requirements.Length; index++)
@@ -632,7 +651,14 @@ public sealed class TechnologySystem
             var current = value.Kind switch
             {
                 TechnologyRequirementKind.CompletedBuilding =>
-                    construction.CountCompleted(playerId, value.TargetId),
+                    satisfiesBuildingType is null
+                        ? construction.CountCompleted(playerId, value.TargetId)
+                        : construction.CreateOverview().Count(building =>
+                            building.PlayerId == playerId &&
+                            building.State == BuildingLifecycleState.Completed &&
+                            building.Health > 0f &&
+                            satisfiesBuildingType(
+                                building.Type.Id, value.TargetId)),
                 TechnologyRequirementKind.TechnologyLevel =>
                     Level(playerId, value.TargetId),
                 _ => 0
@@ -705,14 +731,14 @@ internal static class TechnologySerialization
         return value with { Requirements = [.. requirements] };
     }
 
-    private static void WriteString(BinaryWriter writer, string value)
+    internal static void WriteString(BinaryWriter writer, string value)
     {
         var bytes = Encoding.UTF8.GetBytes(value);
         writer.Write(bytes.Length);
         writer.Write(bytes);
     }
 
-    private static string ReadString(BinaryReader reader)
+    internal static string ReadString(BinaryReader reader)
     {
         var length = reader.ReadInt32();
         if (length is < 1 or > 1024) throw new InvalidDataException();

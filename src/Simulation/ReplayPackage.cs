@@ -74,7 +74,8 @@ public enum ReplayPackageValidationCode : byte
     InvalidCommandLog,
     TrailingBytes,
     ResourceMismatch,
-    InitialStateMismatch
+    InitialStateMismatch,
+    InvalidBuildingUpgradeManifest
 }
 
 public readonly record struct ReplayPackageValidationResult(
@@ -92,7 +93,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 36;
+    public const int CurrentFormatVersion = 37;
 
     internal SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -103,6 +104,7 @@ public sealed class SimulationReplayPackageSnapshot
         EconomyRuntimeSnapshot economy,
         PlayerDiplomacyRuntimeSnapshot diplomacy,
         ConstructionRuntimeSnapshot construction,
+        BuildingUpgradeRuntimeSnapshot buildingUpgrades,
         ProductionRuntimeSnapshot production,
         TechnologyRuntimeSnapshot technology,
         AbilityRuntimeSnapshot abilities,
@@ -121,6 +123,7 @@ public sealed class SimulationReplayPackageSnapshot
         Economy = economy;
         Diplomacy = diplomacy;
         Construction = construction;
+        BuildingUpgrades = buildingUpgrades;
         Production = production;
         Technology = technology;
         Abilities = abilities;
@@ -143,6 +146,7 @@ public sealed class SimulationReplayPackageSnapshot
     public EconomyRuntimeSnapshot Economy { get; }
     public PlayerDiplomacyRuntimeSnapshot Diplomacy { get; }
     public ConstructionRuntimeSnapshot Construction { get; }
+    public BuildingUpgradeRuntimeSnapshot BuildingUpgrades { get; }
     public ProductionRuntimeSnapshot Production { get; }
     public TechnologyRuntimeSnapshot Technology { get; }
     internal AbilityRuntimeSnapshot Abilities { get; }
@@ -297,6 +301,18 @@ public sealed class SimulationReplayPackageSnapshot
             {
                 validation = new ReplayPackageValidationResult(
                     ReplayPackageValidationCode.InvalidConstructionManifest);
+                return false;
+            }
+            BuildingUpgradeRuntimeSnapshot buildingUpgrades;
+            try
+            {
+                buildingUpgrades = RuntimeHotSnapshotCodec.ReadBuildingUpgrades(
+                    reader, construction, economy);
+            }
+            catch (InvalidDataException)
+            {
+                validation = new ReplayPackageValidationResult(
+                    ReplayPackageValidationCode.InvalidBuildingUpgradeManifest);
                 return false;
             }
             ProductionRuntimeSnapshot production;
@@ -471,6 +487,7 @@ public sealed class SimulationReplayPackageSnapshot
                 economy,
                 diplomacy,
                 construction,
+                buildingUpgrades,
                 production,
                 technology,
                 abilities,
@@ -521,6 +538,8 @@ public sealed class SimulationReplayPackageSnapshot
             writer, Economy, Units.Length);
         RuntimeHotSnapshotCodec.WriteDiplomacy(writer, Diplomacy);
         RuntimeHotSnapshotCodec.WriteConstruction(writer, Construction);
+        RuntimeHotSnapshotCodec.WriteBuildingUpgrades(
+            writer, BuildingUpgrades);
         RuntimeHotSnapshotCodec.WriteProduction(writer, Production);
         RuntimeHotSnapshotCodec.WriteTechnology(writer, Technology);
         AbilitySerialization.WriteRuntime(writer, Abilities);
@@ -784,6 +803,7 @@ public sealed class SimulationReplayPackageRecorder
     private readonly EconomyRuntimeSnapshot _economy;
     private readonly PlayerDiplomacyRuntimeSnapshot _diplomacy;
     private readonly ConstructionRuntimeSnapshot _construction;
+    private readonly BuildingUpgradeRuntimeSnapshot _buildingUpgrades;
     private readonly ProductionRuntimeSnapshot _production;
     private readonly TechnologyRuntimeSnapshot _technology;
     private readonly AbilityRuntimeSnapshot _abilities;
@@ -807,6 +827,7 @@ public sealed class SimulationReplayPackageRecorder
             simulation.Units.Count);
         _diplomacy = simulation.Diplomacy.CaptureRuntimeState();
         _construction = simulation.Construction.CaptureRuntimeState();
+        _buildingUpgrades = simulation.BuildingUpgrades.CaptureRuntimeState();
         _production = simulation.Production.CaptureRuntimeState();
         _technology = simulation.Technology.CaptureRuntimeState();
         _abilities = simulation.Abilities.CaptureRuntimeState(
@@ -848,6 +869,7 @@ public sealed class SimulationReplayPackageRecorder
         _economy,
         _diplomacy,
         _construction,
+        _buildingUpgrades,
         _production,
         _technology,
         _abilities,
@@ -1001,6 +1023,20 @@ public static class SimulationReplayPackageFactory
         }
         try
         {
+            simulation.BuildingUpgrades.RestoreRuntimeState(
+                package.BuildingUpgrades,
+                simulation.Construction,
+                simulation.Economy.Players);
+        }
+        catch (InvalidOperationException)
+        {
+            simulation = null;
+            validation = new ReplayPackageValidationResult(
+                ReplayPackageValidationCode.InvalidBuildingUpgradeManifest);
+            return false;
+        }
+        try
+        {
             simulation.Production.RestoreRuntimeState(
                 package.Production,
                 simulation.Construction,
@@ -1026,6 +1062,18 @@ public static class SimulationReplayPackageFactory
             simulation = null;
             validation = new ReplayPackageValidationResult(
                 ReplayPackageValidationCode.InvalidTechnologyManifest);
+            return false;
+        }
+        try
+        {
+            simulation.BuildingUpgrades.ValidateQueueExclusivity(
+                simulation.Production, simulation.Technology);
+        }
+        catch (InvalidOperationException)
+        {
+            simulation = null;
+            validation = new ReplayPackageValidationResult(
+                ReplayPackageValidationCode.InvalidBuildingUpgradeManifest);
             return false;
         }
         try

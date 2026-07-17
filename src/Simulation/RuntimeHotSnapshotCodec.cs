@@ -32,6 +32,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteVisibility(writer, state.Visibility);
         WriteMatch(writer, state.Match);
         WriteConstruction(writer, state.Construction);
+        WriteBuildingUpgrades(writer, state.BuildingUpgrades);
         WriteProduction(writer, state.Production);
         WriteTechnology(writer, state.Technology);
         WriteQueues(writer, state.CommandQueues, state.Units.Count);
@@ -97,6 +98,8 @@ internal static class RuntimeHotSnapshotCodec
             var match = ReadMatch(reader, economy, diplomacySystem);
             var construction = ReadConstruction(
                 reader, units.Count, dynamic.Footprints, economy);
+            var buildingUpgrades = ReadBuildingUpgrades(
+                reader, construction, economy);
             var production = ReadProduction(
                 reader, units.Count, construction, economy);
             var technology = ReadTechnology(reader, construction, economy);
@@ -124,6 +127,7 @@ internal static class RuntimeHotSnapshotCodec
                 Visibility = visibility,
                 Match = match,
                 Construction = construction,
+                BuildingUpgrades = buildingUpgrades,
                 Production = production,
                 Technology = technology,
                 CommandQueues = queues,
@@ -1279,6 +1283,83 @@ internal static class RuntimeHotSnapshotCodec
             buildings,
             new ConstructionReservationRuntimeSnapshot(
                 nextReservationId, reservations));
+    }
+
+    internal static void WriteBuildingUpgrades(
+        BinaryWriter writer,
+        BuildingUpgradeRuntimeSnapshot upgrades)
+    {
+        writer.Write(upgrades.NextOrderId);
+        writer.Write(upgrades.CatalogProfiles.Length);
+        foreach (var profile in upgrades.CatalogProfiles)
+            BuildingUpgradeSerialization.WriteProfile(writer, profile);
+        writer.Write(upgrades.Orders.Length);
+        foreach (var order in upgrades.Orders)
+        {
+            writer.Write(order.Id.Value);
+            writer.Write(order.Building.Value);
+            writer.Write(order.PlayerId);
+            BuildingUpgradeSerialization.WriteProfile(writer, order.Profile);
+            writer.Write(order.Progress);
+        }
+    }
+
+    internal static BuildingUpgradeRuntimeSnapshot ReadBuildingUpgrades(
+        BinaryReader reader,
+        ConstructionRuntimeSnapshot construction,
+        EconomyRuntimeSnapshot economy)
+    {
+        var nextOrderId = reader.ReadInt32();
+        var profileCount = ReadCount(reader, MaximumCapacity);
+        var profiles = new BuildingUpgradeProfile[profileCount];
+        for (var index = 0; index < profiles.Length; index++)
+            profiles[index] = BuildingUpgradeSerialization.ReadProfile(reader);
+        if (nextOrderId <= 0 ||
+            !BuildingUpgradeCatalogSnapshot.TryCreate(
+                BuildingUpgradeCatalogSnapshot.CurrentFormatVersion,
+                profiles,
+                out var catalog,
+                out _) || catalog is null)
+            throw new InvalidDataException();
+
+        var count = ReadCount(reader, MaximumCapacity);
+        var orders = new BuildingUpgradeOrderRuntimeEntry[count];
+        var ids = new HashSet<int>();
+        var buildings = new HashSet<int>();
+        var maximumId = 0;
+        for (var index = 0; index < orders.Length; index++)
+        {
+            var value = new BuildingUpgradeOrderRuntimeEntry(
+                new BuildingUpgradeOrderId(reader.ReadInt32()),
+                new GameplayBuildingId(reader.ReadInt32()),
+                reader.ReadInt32(),
+                BuildingUpgradeSerialization.ReadProfile(reader),
+                reader.ReadSingle());
+            if (value.Id.Value <= 0 || !ids.Add(value.Id.Value) ||
+                !buildings.Add(value.Building.Value) ||
+                (uint)value.Building.Value >=
+                    (uint)construction.Buildings.Length ||
+                !economy.Players.Any(player =>
+                    player.PlayerId == value.PlayerId) ||
+                construction.Buildings[value.Building.Value].PlayerId !=
+                    value.PlayerId ||
+                construction.Buildings[value.Building.Value].State !=
+                    BuildingLifecycleState.Completed ||
+                construction.Buildings[value.Building.Value].Type.Id !=
+                    value.Profile.SourceBuildingTypeId ||
+                !catalog.TryForSource(
+                    value.Profile.SourceBuildingTypeId, out var canonical) ||
+                !BuildingUpgradeCatalogSnapshot.ProfileEquals(
+                    value.Profile, canonical) ||
+                !float.IsFinite(value.Progress) ||
+                value.Progress is < 0f or >= 1f)
+                throw new InvalidDataException();
+            maximumId = Math.Max(maximumId, value.Id.Value);
+            orders[index] = value;
+        }
+        if (nextOrderId <= maximumId) throw new InvalidDataException();
+        return new BuildingUpgradeRuntimeSnapshot(
+            nextOrderId, profiles, orders);
     }
 
     internal static void WriteProduction(

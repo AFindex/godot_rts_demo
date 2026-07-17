@@ -120,6 +120,9 @@ public static class War3HumanContent
     public static ProductionCatalogSnapshot CreateProductionCatalog() =>
         Runtime.Value.ProductionCatalog;
 
+    public static BuildingUpgradeCatalogSnapshot CreateBuildingUpgradeCatalog() =>
+        Runtime.Value.BuildingUpgradeCatalog;
+
     public static TechnologyCatalogSnapshot CreateTechnologyCatalog() =>
         Runtime.Value.TechnologyCatalog;
 
@@ -239,6 +242,9 @@ public static class War3HumanContent
         }
 
         var buildingCatalog = CreateBuildingCatalog(buildingProfiles);
+        var buildingUpgradeCatalog = CreateBuildingUpgradeCatalog(
+            adapter.CreateBuildingUpgrades(buildings, buildingProfiles),
+            buildingCatalog);
         var productionCatalog = CreateProductionCatalog(unitProfiles, recipes);
         var fallbackTechnologyValues = CreateFallbackTechnologies().ToList();
         var technologyBindings = new List<(
@@ -376,6 +382,7 @@ public static class War3HumanContent
             abilityImport.Definitions,
             abilityImport,
             buildingCatalog,
+            buildingUpgradeCatalog,
             productionCatalog,
             technologyCatalog,
             abilityImport.Catalog,
@@ -465,6 +472,22 @@ public static class War3HumanContent
             throw new InvalidOperationException(
                 $"Warcraft Human production catalog is invalid: " +
                 $"{validation.Code} {validation.Message}");
+        return catalog;
+    }
+
+    private static BuildingUpgradeCatalogSnapshot CreateBuildingUpgradeCatalog(
+        BuildingUpgradeProfile[] values,
+        BuildingTypeCatalogSnapshot buildings)
+    {
+        if (!BuildingUpgradeCatalogSnapshot.TryCreate(
+                BuildingUpgradeCatalogSnapshot.CurrentFormatVersion,
+                values,
+                out var catalog,
+                out var error) || catalog is null ||
+            !BuildingUpgradeCatalogSnapshot.TryValidateDependencies(
+                catalog, buildings, out error))
+            throw new InvalidOperationException(
+                $"Warcraft Human building upgrades are invalid: {error}");
         return catalog;
     }
 
@@ -768,6 +791,7 @@ public static class War3HumanContent
         IReadOnlyList<War3AbilityDefinition> Abilities,
         War3AbilityImportResult AbilityImportStatus,
         BuildingTypeCatalogSnapshot BuildingCatalog,
+        BuildingUpgradeCatalogSnapshot BuildingUpgradeCatalog,
         ProductionCatalogSnapshot ProductionCatalog,
         TechnologyCatalogSnapshot TechnologyCatalog,
         AbilityCatalogSnapshot AbilityCatalog,

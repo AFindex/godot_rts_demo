@@ -396,12 +396,23 @@ public sealed partial class War3Rts
                         BuildingAudioEmitter(value.Building),
                         value.Sequence);
                     break;
+                case GameplayEventKind.BuildingUpgradeStarted:
+                    _worldAudio.PlayConstructionStarted(
+                        value.Player,
+                        value.WorldPosition,
+                        BuildingAudioEmitter(value.Building),
+                        value.Sequence);
+                    break;
                 case GameplayEventKind.ConstructionCompleted
                     when TryGameplayEventPlayer(value, out var ownerPlayer):
                     _worldAudio.PlayConstructionCompleted(
                         ownerPlayer, value.Sequence);
                     break;
                 case GameplayEventKind.ResearchCompleted:
+                    _worldAudio.PlayResearchComplete(
+                        value.Player, value.Sequence, upgrade: true);
+                    break;
+                case GameplayEventKind.BuildingUpgradeCompleted:
                     _worldAudio.PlayResearchComplete(
                         value.Player, value.Sequence, upgrade: true);
                     break;

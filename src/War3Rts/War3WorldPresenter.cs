@@ -829,6 +829,19 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual = CreateBuilding(building, definition, camera);
                 _buildings.Add(id, visual);
             }
+            else if (visual.TypeId != building.Type.Id)
+            {
+                if (!visual.Definition.ModelSource.Equals(
+                        definition.ModelSource,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    visual.Actor.Load(
+                        definition.ModelSource, camera, building.PlayerId);
+                    visual.Actor.SetShadowCastingEnabled(false);
+                }
+                visual.Definition = definition;
+                visual.TypeId = building.Type.Id;
+            }
             if (!visual.LayoutInitialized)
             {
                 var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
@@ -876,10 +889,47 @@ public sealed partial class War3WorldPresenter : Node3D
                     MathF.Abs(visual.Actor.DrivenProgress - building.Progress) > 0.001f;
                 _sawConstructionEffect |= visual.Actor.LiveEffectCount > 0;
             }
+            else if (simulation.BuildingUpgrades.TryObserve(
+                         building.Id, out var upgrade))
+            {
+                if (upgrade.Profile.TargetType.Id == War3HumanContent.Keep)
+                    visual.Actor.SetSequenceProgress(
+                        upgrade.Progress,
+                        "Birth Upgrade First",
+                        "Stand Upgrade First");
+                else if (upgrade.Profile.TargetType.Id == War3HumanContent.Castle)
+                    visual.Actor.SetSequenceProgress(
+                        upgrade.Progress,
+                        "Birth Upgrade Second",
+                        "Stand Upgrade Second");
+                else
+                    visual.Actor.SetSequenceProgress(
+                        upgrade.Progress, "Birth", "Stand");
+            }
             else if (simulation.Production.Observe(building.Id).Orders.Length > 0)
-                visual.Actor.PlayPreferred(true, "Stand Work", "Stand");
+            {
+                if (building.Type.Id == War3HumanContent.Keep)
+                    visual.Actor.PlayPreferred(
+                        true, "Stand Work Upgrade First",
+                        "Stand Upgrade First", "Stand");
+                else if (building.Type.Id == War3HumanContent.Castle)
+                    visual.Actor.PlayPreferred(
+                        true, "Stand Work Upgrade Second",
+                        "Stand Upgrade Second", "Stand");
+                else
+                    visual.Actor.PlayPreferred(true, "Stand Work", "Stand");
+            }
             else
-                visual.Actor.PlayPreferred(true, "Stand");
+            {
+                if (building.Type.Id == War3HumanContent.Keep)
+                    visual.Actor.PlayPreferred(
+                        true, "Stand Upgrade First", "Stand");
+                else if (building.Type.Id == War3HumanContent.Castle)
+                    visual.Actor.PlayPreferred(
+                        true, "Stand Upgrade Second", "Stand");
+                else
+                    visual.Actor.PlayPreferred(true, "Stand");
+            }
             if (building.State == BuildingLifecycleState.Completed)
             {
                 var sequence = visual.Actor.CurrentSequence;
@@ -1083,7 +1133,8 @@ public sealed partial class War3WorldPresenter : Node3D
         };
         root.AddChild(shadowProxy);
         return new BuildingVisual(
-            root, actor, selection, shadowProxy, proxyHeight, definition);
+            root, actor, selection, shadowProxy, proxyHeight, definition,
+            building.Type.Id);
     }
 
     private ResourceVisual CreateResource(
@@ -1496,14 +1547,16 @@ public sealed partial class War3WorldPresenter : Node3D
         MeshInstance3D selection,
         MeshInstance3D shadowProxy,
         float shadowProxyHeight,
-        War3BuildingDefinition definition)
+        War3BuildingDefinition definition,
+        int typeId)
     {
         public Node3D Root { get; } = root;
         public War3ModelActor Actor { get; } = actor;
         public MeshInstance3D Selection { get; } = selection;
         public MeshInstance3D ShadowProxy { get; } = shadowProxy;
         public float ShadowProxyHeight { get; } = shadowProxyHeight;
-        public War3BuildingDefinition Definition { get; } = definition;
+        public War3BuildingDefinition Definition { get; set; } = definition;
+        public int TypeId { get; set; } = typeId;
         public NVector2 LastPosition { get; set; }
         public bool WasGhost { get; set; }
         public bool Dying { get; set; }

@@ -153,7 +153,7 @@ simulation.IssueBuildingAbility(playerId, casterBuilding, abilityId);
 - 运行时事件流（事件可由回放重建，不写入快照）。
 
 当前二进制版本为 Ability Catalog 13、Unit Command Log 8、Production Command
-Log 10、Production Catalog 8、State Hash 35、Hot Snapshot 37、Replay Package 36。
+Log 11、Production Catalog 8、State Hash 36、Hot Snapshot 38、Replay Package 37。
 持久区域、精确剩余波数以及单位形态的接近目标、阶段和剩余时间均参与状态哈希与
 二进制往返；建筑开关态和建筑施法命令也参与相同链路。旧开发版快照与回放会被
 明确拒绝，不会按新布局误读。民兵保留工人登记但临时禁用采集的合法状态也已纳入
@@ -164,6 +164,7 @@ Log 10、Production Catalog 8、State Hash 35、Hot Snapshot 37、Replay Package
 ```powershell
 godot --headless --path . -- --ability-self-test
 godot --headless --path . -- --war3-ability-data-self-test
+godot --headless --path . -- --building-upgrade-self-test
 godot --headless --path . -- --generate-war3-ability-runtime-coverage
 godot --headless --path . war3_rts/War3Rts.tscn -- --war3-rts-smoke
 ```

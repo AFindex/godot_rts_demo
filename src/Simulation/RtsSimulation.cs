@@ -110,6 +110,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Economy = new EconomySystem(capacity);
         Economy.ReachableDropOffResolver = ResolveReachableDropOff;
         Construction = new ConstructionSystem();
+        BuildingUpgrades = new BuildingUpgradeSystem();
         Production = new ProductionSystem();
         Technology = new TechnologySystem();
         Diplomacy = new PlayerDiplomacySystem();
@@ -163,6 +164,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     public UnitCommandQueueStore CommandQueues { get; }
     public EconomySystem Economy { get; }
     public ConstructionSystem Construction { get; }
+    public BuildingUpgradeSystem BuildingUpgrades { get; }
     public QueuedConstructionPolicy ConstructionQueuePolicy { get; } =
         QueuedConstructionPolicy.ProjectDefault;
     public ProductionSystem Production { get; }
@@ -395,6 +397,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Visibility = Visibility.CaptureRuntimeState(),
             Match = Match.CaptureRuntimeState(),
             Construction = Construction.CaptureRuntimeState(),
+            BuildingUpgrades = BuildingUpgrades.CaptureRuntimeState(),
             Production = Production.CaptureRuntimeState(),
             Technology = Technology.CaptureRuntimeState(),
             CommandQueues = queues,
@@ -433,6 +436,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             snapshot.Production, Construction, Economy, Units);
         Technology.RestoreRuntimeState(
             snapshot.Technology, Construction, Economy.Players);
+        BuildingUpgrades.RestoreRuntimeState(
+            snapshot.BuildingUpgrades, Construction, Economy.Players);
+        BuildingUpgrades.ValidateQueueExclusivity(Production, Technology);
         Abilities.RefreshDerivedState(this, Units, Combat);
         Visibility.RestoreRuntimeState(snapshot.Visibility);
         Visibility.Update(Units, Combat, Construction);
@@ -849,6 +855,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                         value => value.Id == command.ResearchOrderId) ||
                     !CancelResearch(command.PlayerId, command.ResearchOrderId))
                     throw new InvalidOperationException("Replay research Cancel failed.");
+                break;
+            case ProductionReplayCommandKind.UpgradeBuilding:
+                var upgrade = IssueBuildingUpgrade(
+                    command.PlayerId,
+                    command.Producer,
+                    command.BuildingUpgrade);
+                if (!upgrade.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Replay building upgrade failed with {upgrade.Code}.");
+                break;
+            case ProductionReplayCommandKind.CancelBuildingUpgrade:
+                if (!BuildingUpgrades.TryObserve(
+                        command.Producer, out var activeUpgrade) ||
+                    activeUpgrade.Id != command.BuildingUpgradeOrderId ||
+                    !CancelBuildingUpgrade(
+                        command.PlayerId,
+                        command.BuildingUpgradeOrderId))
+                    throw new InvalidOperationException(
+                        "Replay building upgrade Cancel failed.");
                 break;
             default:
                 throw new InvalidOperationException(
@@ -1716,6 +1741,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 AbilityCommandCode.InvalidCaster,
                 AbilityId: abilityId,
                 CasterBuilding: caster.Value);
+        if (BuildingUpgrades.IsUpgrading(caster))
+            return new AbilityCommandResult(
+                AbilityCommandCode.CasterDisabled,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
         var building = Construction.Observe(caster);
         var result = Abilities.IssueBuilding(
             playerId, caster, building.Type.Id, abilityId, Metrics.Tick,
@@ -1819,7 +1849,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 }, default);
         }
         var result = Production.Enqueue(
-            playerId, producer, recipe, Construction, Economy.Players);
+            playerId, producer, recipe, Construction, Economy.Players,
+            BuildingUpgrades.IsUpgrading,
+            BuildingUpgrades.SatisfiesBuildingType);
         if (result.Succeeded)
             _productionCommandRecorder?.RecordTrain(
                 Metrics.Tick, playerId, producer, recipe);
@@ -1888,7 +1920,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 }, default);
         }
         var result = Technology.Enqueue(
-            playerId, researcher, technology, Construction, Economy.Players);
+            playerId, researcher, technology, Construction, Economy.Players,
+            BuildingUpgrades.IsUpgrading,
+            BuildingUpgrades.SatisfiesBuildingType);
         if (result.Succeeded)
             _productionCommandRecorder?.RecordResearch(
                 Metrics.Tick, playerId, researcher, technology);
@@ -1906,6 +1940,75 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 Metrics.Tick, playerId, researcher, orderId);
         return result;
     }
+
+    public BuildingUpgradeCommandResult IssueBuildingUpgrade(
+        int playerId,
+        GameplayBuildingId building,
+        BuildingUpgradeProfile profile)
+    {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+        {
+            return new BuildingUpgradeCommandResult(
+                matchBlock switch
+                {
+                    MatchCommandBlock.Completed =>
+                        BuildingUpgradeCommandCode.MatchCompleted,
+                    MatchCommandBlock.NotParticipant =>
+                        BuildingUpgradeCommandCode.NotParticipant,
+                    _ => BuildingUpgradeCommandCode.PlayerDefeated
+                }, default);
+        }
+        var result = BuildingUpgrades.Enqueue(
+            playerId,
+            building,
+            profile,
+            Construction,
+            Economy.Players,
+            IsBuildingProductionOrResearchBusy,
+            technologyId => Technology.Level(playerId, technologyId));
+        if (!result.Succeeded) return result;
+        _productionCommandRecorder?.RecordBuildingUpgrade(
+            Metrics.Tick, playerId, building, profile);
+        var source = Construction.Observe(building);
+        GameplayEvents.Publish(
+            Metrics.Tick,
+            GameplayEventKind.BuildingUpgradeStarted,
+            building: building.Value,
+            value: profile.TargetType.Id,
+            worldPosition: (source.Bounds.Min + source.Bounds.Max) * 0.5f,
+            player: playerId);
+        return result;
+    }
+
+    public bool CancelBuildingUpgrade(
+        int playerId,
+        BuildingUpgradeOrderId orderId)
+    {
+        if (MatchCommandBlockFor(playerId) != MatchCommandBlock.None)
+            return false;
+        if (!BuildingUpgrades.Cancel(
+                playerId, orderId, Economy.Players, out var building))
+            return false;
+        _productionCommandRecorder?.RecordCancelBuildingUpgrade(
+            Metrics.Tick, playerId, building, orderId);
+        if (Construction.IsAlive(building))
+        {
+            var source = Construction.Observe(building);
+            GameplayEvents.Publish(
+                Metrics.Tick,
+                GameplayEventKind.BuildingUpgradeCanceled,
+                building: building.Value,
+                worldPosition:
+                    (source.Bounds.Min + source.Bounds.Max) * 0.5f,
+                player: playerId);
+        }
+        return true;
+    }
+
+    private bool IsBuildingProductionOrResearchBusy(GameplayBuildingId building) =>
+        Production.Observe(building).Orders.Length > 0 ||
+        Technology.Observe(building).Orders.Length > 0;
 
     public PlayerViewSnapshot CreatePlayerView(int playerId)
     {
@@ -3278,6 +3381,13 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.ConstructionMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.ConstructionAllocatedBytes =
             GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+
+        BuildingUpgrades.Update(
+            delta,
+            Metrics.Tick,
+            GameplayEvents,
+            Construction,
+            Economy);
 
         phaseStart = Stopwatch.GetTimestamp();
         phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();

@@ -852,6 +852,42 @@ public sealed class ConstructionSystem
             value.State == BuildingLifecycleState.Completed &&
             value.Health > 0f);
 
+    /// <summary>
+    /// Atomically replaces the gameplay profile of an existing completed
+    /// building without changing its stable entity or footprint ID. The
+    /// upgrade catalog guarantees footprint/function compatibility before the
+    /// order can be issued.
+    /// </summary>
+    internal bool TryTransformCompleted(
+        GameplayBuildingId id,
+        BuildingTypeProfile target,
+        EconomySystem economy)
+    {
+        if (!TryGet(id, out var building) ||
+            building.State != BuildingLifecycleState.Completed ||
+            building.Health <= 0f || !ValidProfile(target) ||
+            building.Type.Id == target.Id ||
+            building.Type.Function != target.Function ||
+            building.Type.Size != target.Size ||
+            building.Type.MinimumPassageClass != target.MinimumPassageClass ||
+            building.Type.RequiresVespeneNode != target.RequiresVespeneNode ||
+            building.Type.ConstructionMethod != target.ConstructionMethod)
+            return false;
+
+        var previous = building.Type;
+        var healthRatio = Math.Clamp(
+            building.Health / previous.MaximumHealth, 0f, 1f);
+        var supplyDelta = target.SupplyProvided - previous.SupplyProvided;
+        if (supplyDelta > 0)
+            economy.Players.AddSupplyCapacity(building.PlayerId, supplyDelta);
+        else if (supplyDelta < 0)
+            economy.Players.RemoveSupplyCapacity(building.PlayerId, -supplyDelta);
+        building.Type = target;
+        building.Health = Math.Clamp(
+            target.MaximumHealth * healthRatio, 1f, target.MaximumHealth);
+        return true;
+    }
+
     public ConstructionRuntimeSnapshot CaptureRuntimeState() => new(
         _buildings.Select(value => value.RuntimeSnapshot()).ToArray(),
         Reservations.CaptureRuntimeState());
@@ -1048,7 +1084,7 @@ public sealed class ConstructionSystem
 
         public GameplayBuildingId Id { get; }
         public int PlayerId { get; }
-        public BuildingTypeProfile Type { get; }
+        public BuildingTypeProfile Type { get; set; }
         public SimRect Bounds { get; }
         public ConstructionReservationId ReservationId { get; set; }
         public DynamicFootprintId FootprintId { get; set; }

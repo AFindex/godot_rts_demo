@@ -445,10 +445,36 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--war3-navigation-traversal-self-test"))
+        {
+            var result = War3NavigationTraversalSelfTest.Run();
+            GD.Print($"WAR3_NAVIGATION_TRAVERSAL_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--destination-slot-clearance-self-test"))
+        {
+            var result = DestinationSlotClearanceSelfTest.Run();
+            GD.Print($"DESTINATION_SLOT_CLEARANCE_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--ability-self-test"))
         {
             var result = AbilitySystemSelfTest.Run();
             GD.Print($"RTS_ABILITY_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+        if (userArguments.Contains("--building-upgrade-self-test"))
+        {
+            var result = BuildingUpgradeSelfTest.Run();
+            GD.Print($"BUILDING_UPGRADE_SELF_TEST " +
                      $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
             GetTree().Quit(result.Passed ? 0 : 1);
             return;

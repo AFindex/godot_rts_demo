@@ -23,6 +23,7 @@ public sealed partial class War3Rts : Node3D
     private BuildingTypeCatalogSnapshot? _buildings;
     private ProductionCatalogSnapshot? _production;
     private TechnologyCatalogSnapshot? _technologies;
+    private BuildingUpgradeCatalogSnapshot? _buildingUpgrades;
     private War3WorldPresenter? _presenter;
     private Rts3DTerrainPresenter? _terrainPresenter;
     private Camera3D? _camera;
@@ -163,6 +164,7 @@ public sealed partial class War3Rts : Node3D
         _buildings = War3HumanContent.CreateBuildingCatalog();
         _production = War3HumanContent.CreateProductionCatalog();
         _technologies = War3HumanContent.CreateTechnologyCatalog();
+        _buildingUpgrades = War3HumanContent.CreateBuildingUpgradeCatalog();
         var dataStatus = War3HumanContent.DataStatus;
         var objectDataStatus = War3HumanContent.ObjectDataStatus;
         var buffEffectCatalog = War3HumanContent.BuffEffectDataCatalog;
@@ -201,6 +203,9 @@ public sealed partial class War3Rts : Node3D
         if (!TechnologyCatalogDependencyValidator.TryValidate(
                 _technologies, _buildings, out var technologyError))
             throw new InvalidOperationException(technologyError);
+        if (!BuildingUpgradeCatalogSnapshot.TryValidateDependencies(
+                _buildingUpgrades, _buildings, out var buildingUpgradeError))
+            throw new InvalidOperationException(buildingUpgradeError);
 
         await AdvanceMapLoadingAsync(
             3, 0.36d,
@@ -855,6 +860,9 @@ public sealed partial class War3Rts : Node3D
             case War3CommandKind.Research:
                 Research(command.DataId);
                 break;
+            case War3CommandKind.Upgrade:
+                UpgradeBuilding(command.DataId);
+                break;
             case War3CommandKind.Rally:
                 BeginTarget(TargetMode.Rally);
                 break;
@@ -1201,8 +1209,9 @@ public sealed partial class War3Rts : Node3D
         {
             var id = new GameplayBuildingId(value);
             if (!_simulation.Construction.IsAlive(id) ||
-                _simulation.Construction.Observe(id).Type.Id !=
-                recipe.ProducerBuildingTypeId)
+                !_simulation.BuildingUpgrades.SatisfiesBuildingType(
+                    _simulation.Construction.Observe(id).Type.Id,
+                    recipe.ProducerBuildingTypeId))
                 continue;
             var result = _simulation.IssueProduction(
                 War3HumanScenario.PlayerId, id, recipe);
@@ -1231,6 +1240,30 @@ public sealed partial class War3Rts : Node3D
         Report(resultText);
     }
 
+    private void UpgradeBuilding(int profileId)
+    {
+        if (_simulation is null || _buildingUpgrades is null ||
+            (uint)profileId >= (uint)_buildingUpgrades.Profiles.Length)
+            return;
+        var profile = _buildingUpgrades.Profiles[profileId];
+        var resultText = $"请选择{War3HumanContent.Buildings[profile.SourceBuildingTypeId].Name}";
+        foreach (var value in _selectedBuildings.Order())
+        {
+            var building = new GameplayBuildingId(value);
+            if (!_simulation.Construction.IsAlive(building) ||
+                _simulation.Construction.Observe(building).Type.Id !=
+                    profile.SourceBuildingTypeId)
+                continue;
+            var result = _simulation.IssueBuildingUpgrade(
+                War3HumanScenario.PlayerId, building, profile);
+            resultText = result.Succeeded
+                ? $"开始升级：{profile.TargetType.Name}"
+                : $"升级失败：{result.Code}";
+            if (result.Succeeded) break;
+        }
+        Report(resultText);
+    }
+
     private void CancelQueueItem(War3QueueItemSnapshot item)
     {
         if (_simulation is null || !item.CanCancel) return;
@@ -1242,6 +1275,10 @@ public sealed partial class War3Rts : Node3D
             War3QueueItemKind.Research => _simulation.CancelResearch(
                 War3HumanScenario.PlayerId,
                 new ResearchOrderId(item.OrderId)),
+            War3QueueItemKind.BuildingUpgrade =>
+                _simulation.CancelBuildingUpgrade(
+                    War3HumanScenario.PlayerId,
+                    new BuildingUpgradeOrderId(item.OrderId)),
             _ => false
         };
         Report(canceled
@@ -1705,7 +1742,11 @@ public sealed partial class War3Rts : Node3D
             var progress = queueItems.Length == 0 ? 0f : queueItems[0].Progress;
             return new War3SelectionSnapshot(
                 definition.Name,
-                building.State == BuildingLifecycleState.Completed
+                _simulation.BuildingUpgrades.TryObserve(
+                    id, out var activeUpgrade)
+                    ? $"升级为{activeUpgrade.Profile.TargetType.Name} · " +
+                      $"{activeUpgrade.Progress:P0}"
+                    : building.State == BuildingLifecycleState.Completed
                     ? definition.Role
                     : $"建造中 · {building.Progress:P0}",
                 building.Health,
@@ -1746,6 +1787,26 @@ public sealed partial class War3Rts : Node3D
     private War3QueueItemSnapshot[] CreateQueueItems(GameplayBuildingId building)
     {
         if (_simulation is null) return [];
+        if (_simulation.BuildingUpgrades.TryObserve(
+                building, out var activeUpgrade))
+        {
+            var definition = War3HumanContent.Buildings[
+                activeUpgrade.Profile.TargetType.Id];
+            return
+            [
+                new War3QueueItemSnapshot(
+                    War3QueueItemKind.BuildingUpgrade,
+                    activeUpgrade.Id.Value,
+                    activeUpgrade.Profile.Id,
+                    definition.Name,
+                    definition.IconPath,
+                    activeUpgrade.Progress,
+                    "升级中",
+                    $"升级中：{definition.Name}\n点击取消并返还 " +
+                    $"{Refund(activeUpgrade.Profile.Cost.Minerals, activeUpgrade.Profile.CancelRefundFraction)} 黄金 / " +
+                    $"{Refund(activeUpgrade.Profile.Cost.VespeneGas, activeUpgrade.Profile.CancelRefundFraction)} 木材")
+            ];
+        }
         var production = _simulation.Production.Observe(building).Orders;
         if (production.Length > 0)
         {
@@ -1907,6 +1968,28 @@ public sealed partial class War3Rts : Node3D
                 missing.Add($"建筑建造动画:{building.ModelSource}");
             if (death is null || !death.NonLooping)
                 missing.Add($"建筑销毁动画:{building.ModelSource}");
+        }
+        var townHall = War3HumanContent.Buildings.First(value =>
+            value.TypeId == War3HumanContent.TownHall);
+        if (War3RuntimeAssets.Contains(townHall.ModelSource))
+        {
+            var townHallSequences = War3RuntimeAssets
+                .LoadMetadata(townHall.ModelSource).Sequences
+                .ToDictionary(value => value.Name, StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, nonLooping) in new[]
+                     {
+                         ("Birth Upgrade First", true),
+                         ("Stand Upgrade First", false),
+                         ("Stand Work Upgrade First", false),
+                         ("Birth Upgrade Second", true),
+                         ("Stand Upgrade Second", false),
+                         ("Stand Work Upgrade Second", false)
+                     })
+            {
+                if (!townHallSequences.TryGetValue(name, out var sequence) ||
+                    sequence.NonLooping != nonLooping)
+                    missing.Add($"建筑升级动画:{townHall.ModelSource}:{name}");
+            }
         }
         foreach (var ability in War3HumanContent.Abilities)
         {
@@ -2088,13 +2171,15 @@ public sealed partial class War3Rts : Node3D
             return commands.ToArray();
         }
         if (_selectedBuildings.Count > 0 && _simulation is not null &&
-            _production is not null && _technologies is not null)
+            _production is not null && _technologies is not null &&
+            _buildingUpgrades is not null)
         {
             var id = new GameplayBuildingId(_selectedBuildings.Order().First());
             if (!_simulation.Construction.IsAlive(id)) return [];
             var building = _simulation.Construction.Observe(id);
             var result = new List<War3CommandSnapshot>();
             var slot = 0;
+            if (_simulation.BuildingUpgrades.IsUpgrading(id)) return [];
             foreach (var learned in _simulation.Abilities.ObserveBuilding(
                          id, building.Type.Id))
             {
@@ -2133,11 +2218,15 @@ public sealed partial class War3Rts : Node3D
                     Toggled: learned.Toggled));
             }
             foreach (var recipe in _production.Recipes.ToArray().Where(value =>
-                         value.ProducerBuildingTypeId == building.Type.Id).Take(8))
+                         _simulation.BuildingUpgrades.SatisfiesBuildingType(
+                             building.Type.Id,
+                             value.ProducerBuildingTypeId)).Take(8))
             {
                 var availability = _simulation.Production.ObserveAvailability(
                     War3HumanScenario.PlayerId, id, recipe,
-                    _simulation.Construction, _simulation.Economy.Players);
+                    _simulation.Construction, _simulation.Economy.Players,
+                    _simulation.BuildingUpgrades.IsUpgrading,
+                    _simulation.BuildingUpgrades.SatisfiesBuildingType);
                 var definition = War3HumanContent.Units[recipe.UnitType.Id];
                 result.Add(new War3CommandSnapshot(
                     slot, War3CommandKind.Train, recipe.Id,
@@ -2153,10 +2242,15 @@ public sealed partial class War3Rts : Node3D
                 slot++;
             }
             if (_technologies.Technologies.ToArray().Any(value =>
-                    value.ResearcherBuildingTypeId == building.Type.Id))
+                    _simulation.BuildingUpgrades.SatisfiesBuildingType(
+                        building.Type.Id,
+                        value.ResearcherBuildingTypeId)))
             {
                 foreach (var technology in _technologies.Technologies.ToArray()
-                             .Where(value => value.ResearcherBuildingTypeId == building.Type.Id)
+                             .Where(value =>
+                                 _simulation.BuildingUpgrades.SatisfiesBuildingType(
+                                     building.Type.Id,
+                                     value.ResearcherBuildingTypeId))
                              .Take(8 - slot))
                 {
                     var presentation = War3HumanContent.Technologies[technology.Id];
@@ -2175,6 +2269,40 @@ public sealed partial class War3Rts : Node3D
                         presentation.IconPathForLevel(currentLevel),
                         Hotkey(slot - 1)));
                 }
+            }
+            if (_buildingUpgrades.TryForSource(
+                    building.Type.Id, out var buildingUpgrade))
+            {
+                var availability =
+                    _simulation.BuildingUpgrades.ObserveAvailability(
+                        War3HumanScenario.PlayerId,
+                        id,
+                        buildingUpgrade,
+                        _simulation.Construction,
+                        _simulation.Economy.Players,
+                        target =>
+                            _simulation.Production.Observe(target).Orders.Length > 0 ||
+                            _simulation.Technology.Observe(target).Orders.Length > 0,
+                        technologyId => _simulation.Technology.Level(
+                            War3HumanScenario.PlayerId, technologyId));
+                var target = War3HumanContent.Buildings[
+                    buildingUpgrade.TargetType.Id];
+                result.Add(new War3CommandSnapshot(
+                    7,
+                    War3CommandKind.Upgrade,
+                    buildingUpgrade.Id,
+                    target.Name,
+                    $"升级为 {target.Name} · " +
+                    $"{buildingUpgrade.Cost.Minerals} 黄金 / " +
+                    $"{buildingUpgrade.Cost.VespeneGas} 木材 / " +
+                    $"{buildingUpgrade.UpgradeSeconds:0.#} 秒\n" +
+                    availability.Code,
+                    target.IconPath,
+                    "U",
+                    availability.Code is
+                        BuildingUpgradeCommandCode.Success or
+                        BuildingUpgradeCommandCode.InsufficientMinerals or
+                        BuildingUpgradeCommandCode.InsufficientVespeneGas));
             }
             if (building.Type.Function is BuildingFunctionKind.Production or
                 BuildingFunctionKind.TownHall)

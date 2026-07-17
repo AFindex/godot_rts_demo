@@ -21,7 +21,8 @@ public enum ProductionCommandCode : byte
     InvalidOrder,
     PlayerDefeated,
     MatchCompleted,
-    NotParticipant
+    NotParticipant,
+    ProducerUpgrading
 }
 
 public readonly record struct ProductionCommandResult(
@@ -132,10 +133,13 @@ public sealed class ProductionSystem
         GameplayBuildingId producer,
         ProductionRecipeProfile recipe,
         ConstructionSystem construction,
-        PlayerEconomyStore economy)
+        PlayerEconomyStore economy,
+        Func<GameplayBuildingId, bool>? isUnavailable = null,
+        Func<int, int, bool>? satisfiesProducerType = null)
     {
         var validation = ValidateEnqueue(
-            playerId, producer, recipe, construction, economy);
+            playerId, producer, recipe, construction, economy,
+            isUnavailable, satisfiesProducerType);
         if (!validation.Succeeded) return validation;
 
         var spend = economy.TrySpend(playerId, recipe.Cost);
@@ -157,7 +161,9 @@ public sealed class ProductionSystem
         GameplayBuildingId producer,
         ProductionRecipeProfile recipe,
         ConstructionSystem construction,
-        PlayerEconomyStore economy)
+        PlayerEconomyStore economy,
+        Func<GameplayBuildingId, bool>? isUnavailable = null,
+        Func<int, int, bool>? satisfiesProducerType = null)
     {
         if (!economy.IsRegistered(playerId)) return Failure(ProductionCommandCode.InvalidPlayer);
         if (!ValidRecipeProfile(recipe)) return Failure(ProductionCommandCode.InvalidRecipe);
@@ -166,13 +172,18 @@ public sealed class ProductionSystem
         if (building.PlayerId != playerId) return Failure(ProductionCommandCode.WrongOwner);
         if (building.State != BuildingLifecycleState.Completed)
             return Failure(ProductionCommandCode.ProducerNotCompleted);
-        if (building.Type.Id != recipe.ProducerBuildingTypeId)
+        if (isUnavailable?.Invoke(producer) == true)
+            return Failure(ProductionCommandCode.ProducerUpgrading);
+        if (building.Type.Id != recipe.ProducerBuildingTypeId &&
+            satisfiesProducerType?.Invoke(
+                building.Type.Id, recipe.ProducerBuildingTypeId) != true)
             return Failure(ProductionCommandCode.WrongProducerType);
         if (_queues.TryGetValue(producer.Value, out var queue) &&
             queue.Orders.Count >= MaximumQueueLength)
             return Failure(ProductionCommandCode.QueueFull);
         var requirements = EvaluateRequirements(
-            playerId, recipe.Requirements, construction);
+            playerId, recipe.Requirements, construction,
+            satisfiesProducerType);
         if (requirements.Any(value => !value.Satisfied))
             return Failure(ProductionCommandCode.MissingPrerequisite);
         var spend = economy.ValidateSpend(playerId, recipe.Cost);
@@ -195,14 +206,19 @@ public sealed class ProductionSystem
         GameplayBuildingId producer,
         ProductionRecipeProfile recipe,
         ConstructionSystem construction,
-        PlayerEconomyStore economy)
+        PlayerEconomyStore economy,
+        Func<GameplayBuildingId, bool>? isUnavailable = null,
+        Func<int, int, bool>? satisfiesProducerType = null)
     {
         var result = ValidateEnqueue(
-            playerId, producer, recipe, construction, economy);
+            playerId, producer, recipe, construction, economy,
+            isUnavailable, satisfiesProducerType);
         return new ProductionAvailabilitySnapshot(
             result.Code,
             ProductionCatalogSnapshot.ValidRequirements(recipe.Requirements)
-                ? EvaluateRequirements(playerId, recipe.Requirements, construction)
+                ? EvaluateRequirements(
+                    playerId, recipe.Requirements, construction,
+                    satisfiesProducerType)
                 : []);
     }
 
@@ -527,16 +543,24 @@ public sealed class ProductionSystem
         int playerId,
         System.Collections.Immutable.ImmutableArray<ProductionRequirementProfile>
             requirements,
-        ConstructionSystem construction)
+        ConstructionSystem construction,
+        Func<int, int, bool>? satisfiesBuildingType = null)
     {
         var result = new ProductionRequirementStatus[requirements.Length];
         for (var index = 0; index < requirements.Length; index++)
         {
             var requirement = requirements[index];
-            var current = requirement.Kind ==
+            var current = requirement.Kind !=
                           ProductionRequirementKind.CompletedBuilding
-                ? construction.CountCompleted(playerId, requirement.TypeId)
-                : 0;
+                ? 0
+                : satisfiesBuildingType is null
+                    ? construction.CountCompleted(playerId, requirement.TypeId)
+                    : construction.CreateOverview().Count(building =>
+                        building.PlayerId == playerId &&
+                        building.State == BuildingLifecycleState.Completed &&
+                        building.Health > 0f &&
+                        satisfiesBuildingType(
+                            building.Type.Id, requirement.TypeId));
             result[index] = new ProductionRequirementStatus(requirement, current);
         }
         return result;

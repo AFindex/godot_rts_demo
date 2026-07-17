@@ -33,6 +33,8 @@ public static class SimulationSelfTest
             var profileResult = GameplayProfileSelfTest.Run(gameplayProfiles);
             var previewResult = ClearancePreviewSelfTest.Run();
             var connectivityResult = NavigationConnectivitySelfTest.Run();
+            var destinationSlotClearanceResult =
+                DestinationSlotClearanceSelfTest.Run();
             var bakeResult = ClearanceBakeSelfTest.Run(
                 navigationMap, clearanceBake);
             var incrementalResult = ClearanceIncrementalSelfTest.Run(
@@ -49,6 +51,7 @@ public static class SimulationSelfTest
                 productionCatalog);
             var technologyCatalogResult = TechnologyCatalogSelfTest.Run(
                 technologyCatalog);
+            var buildingUpgradeResult = BuildingUpgradeSelfTest.Run();
             var aiArchitectureResult = AiArchitectureSelfTest.Run();
             var aiConfigurationResult = AiConfigurationSelfTest.Run(
                 aiConfigurations);
@@ -78,12 +81,14 @@ public static class SimulationSelfTest
                          fallbackPathResult.Passed &&
                          profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
+                         destinationSlotClearanceResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
                          reloadResult.Passed && bakeCommitResult.Passed;
             passed &= placementDiffResult.Passed && watchWorkflowResult.Passed &&
                       economyResult.Passed && buildingTypeResult.Passed &&
                       productionCatalogResult.Passed &&
                       technologyCatalogResult.Passed &&
+                      buildingUpgradeResult.Passed &&
                        aiArchitectureResult.Passed &&
                        aiConfigurationResult.Passed && modularAiResult.Passed;
             passed &= operationPresentationResult.Passed && interface3DResult.Passed &&
@@ -135,6 +140,9 @@ public static class SimulationSelfTest
                 $"navigation-connectivity=" +
                 $"{(connectivityResult.Passed ? "PASS" : "FAIL")}" +
                 $"({connectivityResult.Summary})",
+                $"destination-slot-clearance=" +
+                $"{(destinationSlotClearanceResult.Passed ? "PASS" : "FAIL")}" +
+                $"({destinationSlotClearanceResult.Summary})",
                 $"clearance-bake={(bakeResult.Passed ? "PASS" : "FAIL")}" +
                 $"({bakeResult.Summary})",
                 $"clearance-incremental=" +
@@ -163,6 +171,9 @@ public static class SimulationSelfTest
                 $"technology-catalog=" +
                 $"{(technologyCatalogResult.Passed ? "PASS" : "FAIL")}" +
                 $"({technologyCatalogResult.Summary})",
+                $"building-upgrade=" +
+                $"{(buildingUpgradeResult.Passed ? "PASS" : "FAIL")}" +
+                $"({buildingUpgradeResult.Summary})",
                 $"ai-architecture=" +
                 $"{(aiArchitectureResult.Passed ? "PASS" : "FAIL")}" +
                 $"({aiArchitectureResult.Summary})",

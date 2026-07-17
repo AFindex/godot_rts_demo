@@ -18,7 +18,10 @@ public enum GameplayEventKind : byte
     ProductionDisplacementFinished,
     BuildingAttackChaseRetargeted,
     ProductionRallyChanged,
-    ResearchCompleted
+    ResearchCompleted,
+    BuildingUpgradeStarted,
+    BuildingUpgradeCanceled,
+    BuildingUpgradeCompleted
 }
 
 public readonly record struct GameplayEvent(

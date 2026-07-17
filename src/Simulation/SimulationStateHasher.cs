@@ -6,7 +6,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public static class SimulationStateHasher
 {
-    public const int CurrentFormatVersion = 35;
+    public const int CurrentFormatVersion = 36;
 
     public static ulong Compute(RtsSimulation simulation)
     {
@@ -32,6 +32,7 @@ public static class SimulationStateHasher
         simulation.Abilities.AppendStateHash(ref hash, simulation.Units.Count);
         simulation.Economy.AppendStateHash(ref hash, simulation.Units.Count);
         simulation.Construction.AppendStateHash(ref hash);
+        simulation.BuildingUpgrades.AppendStateHash(ref hash);
         simulation.CombatProjectiles.AppendStateHash(ref hash);
         simulation.Production.AppendStateHash(ref hash);
         simulation.Technology.AppendStateHash(ref hash);

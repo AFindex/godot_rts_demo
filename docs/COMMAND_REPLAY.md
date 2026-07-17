@@ -165,3 +165,12 @@ F:\my_work\Godot_v4.7-stable_mono_win64\Godot_v4.7-stable_mono_win64_console.exe
 ```
 
 状态 Hash v2～v21 是历史移动、战斗、AI、比赛生命周期与 Construction Reservation 边界。当前 Hash v22、Package v21、热快照 v21、Production Command Log v8、Construction Command Log v3、Economy Command Log v3 和 Unit Command Log v4 由 106 项全量回归验证；最新版本增加显式 Return Cargo、无 DropOff 携货等待和携货改派语义，并继续完整恢复 Reservation、可空 Hard Footprint、接受 Tick、Builder 接近点与 ReservedApproach。
+
+## 12. 当前建筑升级协议版本
+
+历史章节保留了当时的验收基线；当前代码版本为 State Hash 36、Replay Package 37、
+Hot Snapshot 38、Production Command Log 11 和 Unit Command Log 8。Production Log
+新增 `UpgradeBuilding`/`CancelBuildingUpgrade`，Replay Package 与热快照保存不可变
+升级目录和活动订单。恢复后会联合校验 Construction、Production、Technology 与
+BuildingUpgrade，拒绝同一建筑同时升级和生产/研究的非法未来态。详见
+`docs/BUILDING_UPGRADE_RUNTIME.md`。

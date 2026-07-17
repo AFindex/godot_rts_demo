@@ -10,7 +10,9 @@ public enum ProductionReplayCommandKind : byte
     Cancel = 2,
     SetRallyPoint = 3,
     Research = 4,
-    CancelResearch = 5
+    CancelResearch = 5,
+    UpgradeBuilding = 6,
+    CancelBuildingUpgrade = 7
 }
 
 public readonly record struct RecordedProductionCommand(
@@ -22,7 +24,11 @@ public readonly record struct RecordedProductionCommand(
     ProductionRecipeProfile Recipe,
     RallyTarget Rally,
     ResearchOrderId ResearchOrderId,
-    TechnologyProfile Technology);
+    TechnologyProfile Technology)
+{
+    public BuildingUpgradeOrderId BuildingUpgradeOrderId { get; init; }
+    public BuildingUpgradeProfile BuildingUpgrade { get; init; }
+}
 
 public enum ProductionCommandLogValidationCode : byte
 {
@@ -40,7 +46,7 @@ public sealed class ProductionCommandLogSnapshot
 {
     private const uint Magic = 0x43505452; // RTPC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 10;
+    public const int CurrentFormatVersion = 11;
 
     public ProductionCommandLogSnapshot(RecordedProductionCommand[] entries)
     {
@@ -111,6 +117,20 @@ public sealed class ProductionCommandLogSnapshot
                     ProductionReplayCommandKind.CancelResearch => new(
                         tick, kind, player, producer, default, default, default,
                         new ResearchOrderId(reader.ReadInt32()), default),
+                    ProductionReplayCommandKind.UpgradeBuilding => new(
+                        tick, kind, player, producer, default, default, default,
+                        default, default)
+                    {
+                        BuildingUpgrade =
+                            BuildingUpgradeSerialization.ReadProfile(reader)
+                    },
+                    ProductionReplayCommandKind.CancelBuildingUpgrade => new(
+                        tick, kind, player, producer, default, default, default,
+                        default, default)
+                    {
+                        BuildingUpgradeOrderId = new BuildingUpgradeOrderId(
+                            reader.ReadInt32())
+                    },
                     _ => default
                 };
                 if (tick < previousTick)
@@ -129,7 +149,13 @@ public sealed class ProductionCommandLogSnapshot
                     kind == ProductionReplayCommandKind.Research &&
                         !TechnologyCatalogSnapshot.ValidProfile(entry.Technology) ||
                     kind == ProductionReplayCommandKind.CancelResearch &&
-                        entry.ResearchOrderId.Value <= 0)
+                        entry.ResearchOrderId.Value <= 0 ||
+                    kind == ProductionReplayCommandKind.UpgradeBuilding &&
+                        !BuildingUpgradeCatalogSnapshot.ValidProfile(
+                            entry.BuildingUpgrade) ||
+                    kind ==
+                        ProductionReplayCommandKind.CancelBuildingUpgrade &&
+                        entry.BuildingUpgradeOrderId.Value <= 0)
                 {
                     validation = ProductionCommandLogValidationCode.InvalidEntry;
                     return false;
@@ -176,8 +202,13 @@ public sealed class ProductionCommandLogSnapshot
                 WriteRally(writer, entry.Rally);
             else if (entry.Kind == ProductionReplayCommandKind.Research)
                 TechnologySerialization.WriteProfile(writer, entry.Technology);
-            else
+            else if (entry.Kind == ProductionReplayCommandKind.CancelResearch)
                 writer.Write(entry.ResearchOrderId.Value);
+            else if (entry.Kind == ProductionReplayCommandKind.UpgradeBuilding)
+                BuildingUpgradeSerialization.WriteProfile(
+                    writer, entry.BuildingUpgrade);
+            else
+                writer.Write(entry.BuildingUpgradeOrderId.Value);
         }
         writer.Flush();
         return stream.ToArray();
@@ -230,6 +261,24 @@ public sealed class ProductionCommandRecorder
         _entries.Add(new RecordedProductionCommand(
             tick, ProductionReplayCommandKind.CancelResearch, player, researcher,
             default, default, default, order, default));
+    public void RecordBuildingUpgrade(
+        long tick, int player, GameplayBuildingId building,
+        BuildingUpgradeProfile profile) =>
+        _entries.Add(new RecordedProductionCommand(
+            tick, ProductionReplayCommandKind.UpgradeBuilding, player, building,
+            default, default, default, default, default)
+        {
+            BuildingUpgrade = profile
+        });
+    public void RecordCancelBuildingUpgrade(
+        long tick, int player, GameplayBuildingId building,
+        BuildingUpgradeOrderId order) =>
+        _entries.Add(new RecordedProductionCommand(
+            tick, ProductionReplayCommandKind.CancelBuildingUpgrade,
+            player, building, default, default, default, default, default)
+        {
+            BuildingUpgradeOrderId = order
+        });
     public ProductionCommandLogSnapshot Capture() => new(_entries.ToArray());
 }
 

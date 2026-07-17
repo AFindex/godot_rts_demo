@@ -22,13 +22,18 @@ public sealed class DestinationSlotAllocator
         }
 
         var maximumRadius = 0f;
+        var maximumNavigationRadius = 0f;
         for (var i = 0; i < unitIndices.Length; i++)
         {
             var unit = unitIndices[i];
             maximumRadius = MathF.Max(maximumRadius, units.Radii[unit]);
+            maximumNavigationRadius = MathF.Max(
+                maximumNavigationRadius, units.NavigationRadii[unit]);
         }
 
-        var target = _world.Bounds.Inset(maximumRadius + 2f).Clamp(requestedTarget);
+        var target = _world.Bounds
+            .Inset(maximumNavigationRadius + 2f)
+            .Clamp(requestedTarget);
         var spacing = maximumRadius * 2f + 4f;
 
         var candidates = GenerateCandidates(
@@ -37,6 +42,7 @@ public sealed class DestinationSlotAllocator
             target,
             spacing,
             maximumRadius,
+            maximumNavigationRadius,
             unitIndices.Length);
         if (candidates.Count < unitIndices.Length)
         {
@@ -67,7 +73,8 @@ public sealed class DestinationSlotAllocator
         ReadOnlySpan<int> selectedUnits,
         Vector2 center,
         float spacing,
-        float radius,
+        float physicalRadius,
+        float navigationRadius,
         int required)
     {
         var result = new List<Vector2>(required * 2);
@@ -80,9 +87,9 @@ public sealed class DestinationSlotAllocator
             for (var column = -maxRing; column <= maxRing; column++)
             {
                 var point = center + new Vector2(column * spacing + offset, row * rowHeight);
-                if (_world.IsDiscFree(point, radius) &&
+                if (_world.IsDiscFree(point, navigationRadius) &&
                     !ConflictsWithExistingReservation(
-                        units, selectedUnits, point, radius))
+                        units, selectedUnits, point, physicalRadius))
                 {
                     result.Add(point);
                 }

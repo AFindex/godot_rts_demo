@@ -17,7 +17,8 @@ public enum War3CommandKind : byte
     Ability,
     BuildingAbility,
     LearnAbility,
-    Cancel
+    Cancel,
+    Upgrade
 }
 
 public enum War3CommandFeedbackKind : byte
@@ -42,7 +43,8 @@ public readonly record struct War3CommandSnapshot(
 public enum War3QueueItemKind : byte
 {
     Production,
-    Research
+    Research,
+    BuildingUpgrade
 }
 
 public readonly record struct War3QueueItemSnapshot(

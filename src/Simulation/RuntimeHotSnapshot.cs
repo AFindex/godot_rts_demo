@@ -33,6 +33,7 @@ internal sealed class SimulationRuntimeStateCapture
     public required PlayerVisibilityRuntimeSnapshot Visibility { get; init; }
     public required MatchRuntimeSnapshot Match { get; init; }
     public required ConstructionRuntimeSnapshot Construction { get; init; }
+    public required BuildingUpgradeRuntimeSnapshot BuildingUpgrades { get; init; }
     public required ProductionRuntimeSnapshot Production { get; init; }
     public required TechnologyRuntimeSnapshot Technology { get; init; }
     public required UnitCommandQueueStore CommandQueues { get; init; }
@@ -47,7 +48,7 @@ internal sealed class SimulationRuntimeStateCapture
 /// </summary>
 public sealed class SimulationHotSnapshot
 {
-    public const int CurrentFormatVersion = 37;
+    public const int CurrentFormatVersion = 38;
 
     internal SimulationHotSnapshot(
         ulong packageHash,

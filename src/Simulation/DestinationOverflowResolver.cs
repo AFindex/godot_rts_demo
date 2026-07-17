@@ -184,9 +184,14 @@ public sealed class DestinationOverflowResolver
             {
                 var angle = angleOffset + sample * MathF.Tau / samples;
                 var point = groupGoal + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * radius;
-                if (!_world.IsDiscFree(point, units.Radii[unit]) ||
+                var navigationRadius = units.NavigationRadii[unit];
+                var firstSegmentRadius = _world.IsDiscFree(
+                    units.Positions[unit], navigationRadius)
+                    ? navigationRadius
+                    : units.Radii[unit];
+                if (!_world.IsDiscFree(point, navigationRadius) ||
                     !_world.IsSegmentFree(
-                        units.Positions[unit], point, units.Radii[unit]) ||
+                        units.Positions[unit], point, firstSegmentRadius) ||
                     HasReservationOrOccupancyConflict(units, unit, point))
                 {
                     continue;
