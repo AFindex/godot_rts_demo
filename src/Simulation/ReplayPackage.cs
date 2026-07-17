@@ -28,6 +28,8 @@ public readonly record struct ReplayInitialUnit(
     float Radius,
     float MaximumSpeed,
     float Acceleration,
+    float FacingRadians,
+    float TurnRateRadiansPerSecond,
     int Team,
     CombatProfileSnapshot CombatProfile,
     UnitPerceptionProfileSnapshot PerceptionProfile,
@@ -93,7 +95,7 @@ public sealed class SimulationReplayPackageSnapshot
 {
     private const uint Magic = 0x4B505452; // RTPK in little-endian bytes.
     private const int MaximumElements = 1_000_000;
-    public const int CurrentFormatVersion = 37;
+    public const int CurrentFormatVersion = 40;
 
     internal SimulationReplayPackageSnapshot(
         int simulationCapacity,
@@ -579,7 +581,9 @@ public sealed class SimulationReplayPackageSnapshot
     private static bool ValidUnit(ReplayInitialUnit unit)
     {
         if (!Finite(unit.Position) || !Positive(unit.Radius) ||
-            !Positive(unit.MaximumSpeed) || !Positive(unit.Acceleration))
+            !Positive(unit.MaximumSpeed) || !Positive(unit.Acceleration) ||
+            !float.IsFinite(unit.FacingRadians) ||
+            !Positive(unit.TurnRateRadiansPerSecond))
         {
             return false;
         }
@@ -636,6 +640,8 @@ public sealed class SimulationReplayPackageSnapshot
         reader.ReadSingle(),
         reader.ReadSingle(),
         reader.ReadSingle(),
+        reader.ReadSingle(),
+        reader.ReadSingle(),
         reader.ReadInt32(),
         ReadCombatProfile(reader),
         new UnitPerceptionProfileSnapshot(
@@ -653,6 +659,8 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(unit.Radius);
         writer.Write(unit.MaximumSpeed);
         writer.Write(unit.Acceleration);
+        writer.Write(unit.FacingRadians);
+        writer.Write(unit.TurnRateRadiansPerSecond);
         writer.Write(unit.Team);
         WriteCombatProfile(writer, unit.CombatProfile);
         writer.Write((byte)unit.PerceptionProfile.Concealment);
@@ -690,6 +698,10 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(profile.CanMoveDuringWindup);
         writer.Write(profile.CanMoveDuringCooldown);
         writer.Write(profile.AutoTargetPriority);
+        writer.Write((byte)profile.ArmorType);
+        writer.Write(profile.ArmorUpgradeTechnologyId);
+        writer.Write(profile.ArmorUpgradePerLevel);
+        writer.Write(profile.AttackHalfAngleRadians);
         writer.Write(profile.Weapons.Length);
         foreach (var weapon in profile.Weapons)
             WriteWeapon(writer, weapon);
@@ -705,7 +717,8 @@ public sealed class SimulationReplayPackageSnapshot
             reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
-            reader.ReadInt32());
+            reader.ReadInt32(), (CombatArmorType)reader.ReadByte(),
+            reader.ReadInt32(), reader.ReadSingle(), reader.ReadSingle());
         var count = reader.ReadInt32();
         if (count is < 0 or > 8) throw new InvalidDataException();
         var weapons = ImmutableArray.CreateBuilder<CombatWeaponProfileSnapshot>(count);
@@ -734,6 +747,14 @@ public sealed class SimulationReplayPackageSnapshot
         writer.Write(weapon.ProjectileSpeed);
         writer.Write(weapon.CanMoveDuringWindup);
         writer.Write(weapon.CanMoveDuringCooldown);
+        writer.Write((byte)weapon.AttackType);
+        writer.Write(weapon.DamageUpgradeTechnologyId);
+        writer.Write(weapon.MinimumRange);
+        writer.Write(weapon.Area.FullDamageRadius);
+        writer.Write(weapon.Area.HalfDamageRadius);
+        writer.Write(weapon.Area.QuarterDamageRadius);
+        writer.Write((byte)weapon.Area.TargetLayers);
+        WritePropagation(writer, weapon.Propagation);
     }
 
     private static CombatWeaponProfileSnapshot ReadWeapon(BinaryReader reader) =>
@@ -744,7 +765,33 @@ public sealed class SimulationReplayPackageSnapshot
             (CombatPositioningKind)reader.ReadByte(), reader.ReadInt32(),
             (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadBoolean(), reader.ReadBoolean());
+            reader.ReadBoolean(), reader.ReadBoolean(),
+            (CombatAttackType)reader.ReadByte(), reader.ReadInt32(),
+            reader.ReadSingle(), new CombatWeaponAreaSnapshot(
+                reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+                (CombatTargetLayer)reader.ReadByte()),
+            ReadPropagation(reader));
+
+    private static void WritePropagation(
+        BinaryWriter writer,
+        in CombatWeaponPropagationSnapshot value)
+    {
+        writer.Write((byte)value.Kind);
+        writer.Write(value.LineDistance);
+        writer.Write(value.Radius);
+        writer.Write(value.DamageLossFactor);
+        writer.Write(value.MaximumTargets);
+        writer.Write((byte)value.TargetLayers);
+        writer.Write(value.DistanceUpgradeTechnologyId);
+        writer.Write(value.DistanceUpgradePerLevel);
+    }
+
+    private static CombatWeaponPropagationSnapshot ReadPropagation(
+        BinaryReader reader) => new(
+        (CombatWeaponPropagationKind)reader.ReadByte(), reader.ReadSingle(),
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadInt32(),
+        (CombatTargetLayer)reader.ReadByte(), reader.ReadInt32(),
+        reader.ReadSingle());
 
     private static ReplayInitialBuilding ReadBuilding(BinaryReader reader) => new(
         new DynamicFootprintId(reader.ReadInt32()),
@@ -895,6 +942,8 @@ public sealed class SimulationReplayPackageRecorder
                 simulation.Units.Radii[unit],
                 simulation.Units.MaxSpeeds[unit],
                 simulation.Units.Accelerations[unit],
+                simulation.Units.Facings[unit],
+                simulation.Units.TurnRatesRadiansPerSecond[unit],
                 simulation.Combat.Teams[unit],
                 new CombatProfileSnapshot(
                     simulation.Combat.MaximumHealth[unit],
@@ -915,7 +964,11 @@ public sealed class SimulationReplayPackageRecorder
                     simulation.Combat.ProjectileSpeed[unit],
                     simulation.Combat.CanMoveDuringWindup[unit],
                     simulation.Combat.CanMoveDuringCooldown[unit],
-                    simulation.Combat.AutoTargetPriority[unit])
+                    simulation.Combat.AutoTargetPriority[unit],
+                    simulation.Combat.ArmorTypes[unit],
+                    simulation.Combat.ArmorUpgradeTechnologyIds[unit],
+                    simulation.Combat.ArmorUpgradePerLevel[unit],
+                    simulation.Combat.AttackHalfAngles[unit])
                 {
                     Weapons = simulation.Combat.WeaponProfiles[unit]
                 },
@@ -981,7 +1034,9 @@ public static class SimulationReplayPackageFactory
                 unit.MaximumSpeed,
                 unit.Acceleration,
                 unit.PerceptionProfile,
-                unit.ConcealmentCapability);
+                unit.ConcealmentCapability,
+                unit.TurnRateRadiansPerSecond,
+                unit.FacingRadians);
             if (actual != index)
             {
                 throw new InvalidOperationException("Unit IDs are not dense.");

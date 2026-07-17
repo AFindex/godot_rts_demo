@@ -1,3 +1,5 @@
+using Godot;
+using RtsDemo.Demos.ThreeD;
 using RtsDemo.Simulation;
 using NVector2 = System.Numerics.Vector2;
 
@@ -128,6 +130,8 @@ public sealed record War3HudSnapshot(
 
 internal static class War3PointerTargeting
 {
+    private const int TerrainRaySteps = 192;
+
     /// <summary>
     /// Buildings already expose their complete gameplay footprint. Unlike
     /// units and resource nodes, they must not inherit a world-space snap ring:
@@ -136,4 +140,78 @@ internal static class War3PointerTargeting
     /// </summary>
     public static bool HitsBuilding(in SimRect bounds, NVector2 point) =>
         bounds.Contains(point);
+
+    /// <summary>
+    /// The bottom Warcraft console blocks world commands, but the outer window
+    /// edge must remain available for classic RTS edge scrolling. A navigation
+    /// debug overlay is modal and is therefore still allowed to block it.
+    /// </summary>
+    public static bool BlocksCameraEdgeScroll(
+        bool hudBlocksWorldPointer,
+        bool navigationDebuggerBlocksWorldPointer) =>
+        navigationDebuggerBlocksWorldPointer;
+
+    /// <summary>
+    /// Intersects a camera ray with the authoritative terrain height field.
+    /// The interval must include fine-height extrema: Warcraft height data can
+    /// be below the zero plane or above the next nominal cliff level.
+    /// </summary>
+    public static bool TryIntersectTerrainRay(
+        TerrainMapSnapshot terrain,
+        Vector3 origin,
+        Vector3 direction,
+        out NVector2 point)
+    {
+        point = default;
+        if (direction.Y >= -0.0001f) return false;
+
+        const float heightPadding = 1f;
+        var minimumHeight = SimPlane3DTransform.ToWorldLength(
+            terrain.MinimumFineHeight - heightPadding);
+        var maximumHeight = SimPlane3DTransform.ToWorldLength(
+            terrain.MaximumCellLevel * terrain.CliffLevelHeight +
+            terrain.MaximumFineHeight + heightPadding);
+        var firstPlane = (maximumHeight - origin.Y) / direction.Y;
+        var secondPlane = (minimumHeight - origin.Y) / direction.Y;
+        var begin = MathF.Max(0f, MathF.Min(firstPlane, secondPlane));
+        var end = MathF.Max(firstPlane, secondPlane);
+        if (end < begin) return false;
+
+        var previousDistance = begin;
+        var previousDelta = HeightDelta(origin + direction * previousDistance);
+        for (var step = 1; step <= TerrainRaySteps; step++)
+        {
+            var distance = begin + (end - begin) * step / TerrainRaySteps;
+            var delta = HeightDelta(origin + direction * distance);
+            if (previousDelta >= 0f && delta <= 0f)
+            {
+                var low = previousDistance;
+                var high = distance;
+                for (var iteration = 0; iteration < 12; iteration++)
+                {
+                    var middle = (low + high) * 0.5f;
+                    if (HeightDelta(origin + direction * middle) > 0f)
+                        low = middle;
+                    else
+                        high = middle;
+                }
+                point = SimPlane3DTransform.ToSimulation(
+                    origin + direction * high);
+                return terrain.Bounds.Contains(point);
+            }
+            previousDistance = distance;
+            previousDelta = delta;
+        }
+        return false;
+
+        float HeightDelta(Vector3 worldPoint)
+        {
+            var simulationPoint =
+                SimPlane3DTransform.ToSimulation(worldPoint);
+            if (!terrain.Bounds.Contains(simulationPoint))
+                return float.PositiveInfinity;
+            return worldPoint.Y - SimPlane3DTransform.ToWorldLength(
+                terrain.HeightAt(simulationPoint));
+        }
+    }
 }

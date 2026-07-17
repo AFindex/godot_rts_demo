@@ -60,7 +60,8 @@ public readonly record struct BuildingTypeProfile(
     bool RequiresVespeneNode = false,
     float Armor = 0f,
     CombatAttribute Attributes = CombatAttribute.Structure | CombatAttribute.Mechanical,
-    float ArmorUpgradePerLevel = 0f)
+    float ArmorUpgradePerLevel = 0f,
+    CombatArmorType ArmorType = CombatArmorType.Legacy)
 {
     public BuildingFootprintProfileSnapshot PlacementProfile => new(
         Id,
@@ -1000,6 +1001,7 @@ public sealed class ConstructionSystem
             hash.Add(value.Type.Armor);
             hash.Add((ushort)value.Type.Attributes);
             hash.Add(value.Type.ArmorUpgradePerLevel);
+            hash.Add((byte)value.Type.ArmorType);
             hash.Add(value.Bounds.Min);
             hash.Add(value.Bounds.Max);
             hash.Add(value.ReservationId.Value);
@@ -1042,11 +1044,12 @@ public sealed class ConstructionSystem
         float.IsFinite(profile.Size.Y) && profile.Size.Y > 0f &&
         float.IsFinite(profile.BuildSeconds) && profile.BuildSeconds > 0f &&
         float.IsFinite(profile.MaximumHealth) && profile.MaximumHealth > 0f &&
-        float.IsFinite(profile.Armor) && profile.Armor >= 0f &&
+        float.IsFinite(profile.Armor) &&
         (profile.Attributes & ~CombatAttribute.All) == 0 &&
         (profile.Attributes & CombatAttribute.Structure) != 0 &&
         float.IsFinite(profile.ArmorUpgradePerLevel) &&
         profile.ArmorUpgradePerLevel >= 0f &&
+        Enum.IsDefined(profile.ArmorType) &&
         profile.SupplyProvided >= 0 &&
         float.IsFinite(profile.CancelRefundFraction) &&
         profile.CancelRefundFraction is >= 0f and <= 1f;

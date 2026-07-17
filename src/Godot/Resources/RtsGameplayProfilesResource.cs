@@ -7,7 +7,7 @@ namespace RtsDemo.GodotRuntime.Resources;
 public partial class RtsGameplayProfilesResource : Resource
 {
     [Export]
-    public int FormatVersion { get; set; } = 1;
+    public int FormatVersion { get; set; } = 2;
 
     [Export]
     public Array<UnitMovementProfileResource> UnitProfiles { get; set; } = new();

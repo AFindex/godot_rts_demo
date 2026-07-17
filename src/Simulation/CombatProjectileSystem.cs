@@ -182,6 +182,19 @@ public sealed class CombatProjectileSystem
         hash.Add(value.UpgradeLevel);
         hash.Add(value.BaseUpgradeDamage);
         hash.Add(value.BonusUpgradeDamage);
+        hash.Add((byte)value.AttackType);
+        hash.Add(value.Area.FullDamageRadius);
+        hash.Add(value.Area.HalfDamageRadius);
+        hash.Add(value.Area.QuarterDamageRadius);
+        hash.Add((byte)value.Area.TargetLayers);
+        hash.Add((byte)value.Propagation.Kind);
+        hash.Add(value.Propagation.LineDistance);
+        hash.Add(value.Propagation.Radius);
+        hash.Add(value.Propagation.DamageLossFactor);
+        hash.Add(value.Propagation.MaximumTargets);
+        hash.Add((byte)value.Propagation.TargetLayers);
+        hash.Add(value.Propagation.DistanceUpgradeTechnologyId);
+        hash.Add(value.Propagation.DistanceUpgradePerLevel);
     }
 
     internal static bool ValidWeapon(CombatWeaponDamageSnapshot value) =>
@@ -193,5 +206,35 @@ public sealed class CombatProjectileSystem
         float.IsFinite(value.BaseUpgradeDamage) &&
         value.BaseUpgradeDamage >= 0f &&
         float.IsFinite(value.BonusUpgradeDamage) &&
-        value.BonusUpgradeDamage >= 0f;
+        value.BonusUpgradeDamage >= 0f &&
+        Enum.IsDefined(value.AttackType) &&
+        ValidArea(value.Area) &&
+        ValidPropagation(value.Propagation);
+
+    private static bool ValidArea(CombatWeaponAreaSnapshot area)
+    {
+        try
+        {
+            area.Validate();
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
+    private static bool ValidPropagation(
+        CombatWeaponPropagationSnapshot propagation)
+    {
+        try
+        {
+            propagation.Validate();
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
 }

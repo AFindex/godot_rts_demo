@@ -195,6 +195,9 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(units.Alive[unit]);
             WriteVector(writer, units.Positions[unit]);
             WriteVector(writer, units.PreviousPositions[unit]);
+            writer.Write(units.Facings[unit]);
+            writer.Write(units.PreviousFacings[unit]);
+            writer.Write(units.TurnRatesRadiansPerSecond[unit]);
             WriteVector(writer, units.Velocities[unit]);
             WriteVector(writer, units.PreferredVelocities[unit]);
             WriteVector(writer, units.NextVelocities[unit]);
@@ -271,6 +274,14 @@ internal static class RuntimeHotSnapshotCodec
             units.Alive[unit] = reader.ReadBoolean();
             units.Positions[unit] = ReadVector(reader);
             units.PreviousPositions[unit] = ReadVector(reader);
+            units.Facings[unit] = reader.ReadSingle();
+            units.PreviousFacings[unit] = reader.ReadSingle();
+            units.TurnRatesRadiansPerSecond[unit] = reader.ReadSingle();
+            if (!float.IsFinite(units.Facings[unit]) ||
+                !float.IsFinite(units.PreviousFacings[unit]) ||
+                !float.IsFinite(units.TurnRatesRadiansPerSecond[unit]) ||
+                units.TurnRatesRadiansPerSecond[unit] <= 0f)
+                throw new InvalidDataException();
             units.Velocities[unit] = ReadVector(reader);
             units.PreferredVelocities[unit] = ReadVector(reader);
             units.NextVelocities[unit] = ReadVector(reader);
@@ -366,6 +377,10 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.MaximumHealth[unit]);
             writer.Write(combat.AttackDamage[unit]);
             writer.Write(combat.Armor[unit]);
+            writer.Write((byte)combat.ArmorTypes[unit]);
+            writer.Write(combat.ArmorUpgradeTechnologyIds[unit]);
+            writer.Write(combat.ArmorUpgradePerLevel[unit]);
+            writer.Write(combat.AttackHalfAngles[unit]);
             writer.Write((ushort)combat.Attributes[unit]);
             writer.Write(combat.AttacksPerVolley[unit]);
             writer.Write((ushort)combat.BonusVs[unit]);
@@ -376,6 +391,11 @@ internal static class RuntimeHotSnapshotCodec
             writer.Write(combat.CanMoveDuringWindup[unit]);
             writer.Write(combat.CanMoveDuringCooldown[unit]);
             writer.Write(combat.AutoTargetPriority[unit]);
+            writer.Write((byte)combat.AttackTypes[unit]);
+            writer.Write(combat.DamageUpgradeTechnologyIds[unit]);
+            writer.Write(combat.MinimumAttackRanges[unit]);
+            WriteArea(writer, combat.WeaponAreas[unit]);
+            WritePropagation(writer, combat.WeaponPropagations[unit]);
             writer.Write((byte)combat.ConcealmentKinds[unit]);
             writer.Write(combat.DetectionRanges[unit]);
             var capability = combat.ConcealmentCapabilities[unit];
@@ -434,6 +454,10 @@ internal static class RuntimeHotSnapshotCodec
             combat.MaximumHealth[unit] = reader.ReadSingle();
             combat.AttackDamage[unit] = reader.ReadSingle();
             combat.Armor[unit] = reader.ReadSingle();
+            combat.ArmorTypes[unit] = (CombatArmorType)reader.ReadByte();
+            combat.ArmorUpgradeTechnologyIds[unit] = reader.ReadInt32();
+            combat.ArmorUpgradePerLevel[unit] = reader.ReadSingle();
+            combat.AttackHalfAngles[unit] = reader.ReadSingle();
             combat.Attributes[unit] = (CombatAttribute)reader.ReadUInt16();
             combat.AttacksPerVolley[unit] = reader.ReadInt32();
             combat.BonusVs[unit] = (CombatAttribute)reader.ReadUInt16();
@@ -444,6 +468,11 @@ internal static class RuntimeHotSnapshotCodec
             combat.CanMoveDuringWindup[unit] = reader.ReadBoolean();
             combat.CanMoveDuringCooldown[unit] = reader.ReadBoolean();
             combat.AutoTargetPriority[unit] = reader.ReadInt32();
+            combat.AttackTypes[unit] = (CombatAttackType)reader.ReadByte();
+            combat.DamageUpgradeTechnologyIds[unit] = reader.ReadInt32();
+            combat.MinimumAttackRanges[unit] = reader.ReadSingle();
+            combat.WeaponAreas[unit] = ReadArea(reader);
+            combat.WeaponPropagations[unit] = ReadPropagation(reader);
             combat.ConcealmentKinds[unit] =
                 (UnitConcealmentKind)reader.ReadByte();
             combat.DetectionRanges[unit] = reader.ReadSingle();
@@ -499,6 +528,23 @@ internal static class RuntimeHotSnapshotCodec
             }
             combat.WeaponProfiles[unit] = weapons.MoveToImmutable();
             if (combat.AutoTargetPriority[unit] is < 0 or > 10 ||
+                !Enum.IsDefined(combat.ArmorTypes[unit]) ||
+                combat.ArmorUpgradeTechnologyIds[unit] < -1 ||
+                !float.IsFinite(combat.ArmorUpgradePerLevel[unit]) ||
+                combat.ArmorUpgradePerLevel[unit] < 0f ||
+                combat.ArmorUpgradeTechnologyIds[unit] < 0 &&
+                combat.ArmorUpgradePerLevel[unit] != 0f ||
+                !float.IsFinite(combat.AttackHalfAngles[unit]) ||
+                combat.AttackHalfAngles[unit] < 0f ||
+                combat.AttackHalfAngles[unit] > MathF.PI ||
+                !Enum.IsDefined(combat.AttackTypes[unit]) ||
+                combat.DamageUpgradeTechnologyIds[unit] < -1 ||
+                !float.IsFinite(combat.MinimumAttackRanges[unit]) ||
+                combat.MinimumAttackRanges[unit] < 0f ||
+                combat.MinimumAttackRanges[unit] >
+                combat.AttackRanges[unit] ||
+                !ValidArea(combat.WeaponAreas[unit]) ||
+                !ValidPropagation(combat.WeaponPropagations[unit]) ||
                 !Enum.IsDefined(combat.ConcealmentKinds[unit]) ||
                 !Enum.IsDefined(combat.ConcealmentPhases[unit]) ||
                 !float.IsFinite(combat.DetectionRanges[unit]) ||
@@ -548,6 +594,11 @@ internal static class RuntimeHotSnapshotCodec
         writer.Write(weapon.ProjectileSpeed);
         writer.Write(weapon.CanMoveDuringWindup);
         writer.Write(weapon.CanMoveDuringCooldown);
+        writer.Write((byte)weapon.AttackType);
+        writer.Write(weapon.DamageUpgradeTechnologyId);
+        writer.Write(weapon.MinimumRange);
+        WriteArea(writer, weapon.Area);
+        WritePropagation(writer, weapon.Propagation);
     }
 
     private static CombatWeaponProfileSnapshot ReadWeaponProfile(BinaryReader reader) =>
@@ -558,7 +609,70 @@ internal static class RuntimeHotSnapshotCodec
             (CombatPositioningKind)reader.ReadByte(), reader.ReadInt32(),
             (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadBoolean(), reader.ReadBoolean());
+            reader.ReadBoolean(), reader.ReadBoolean(),
+            (CombatAttackType)reader.ReadByte(), reader.ReadInt32(),
+            reader.ReadSingle(), ReadArea(reader), ReadPropagation(reader));
+
+    private static void WriteArea(
+        BinaryWriter writer, in CombatWeaponAreaSnapshot area)
+    {
+        writer.Write(area.FullDamageRadius);
+        writer.Write(area.HalfDamageRadius);
+        writer.Write(area.QuarterDamageRadius);
+        writer.Write((byte)area.TargetLayers);
+    }
+
+    private static CombatWeaponAreaSnapshot ReadArea(BinaryReader reader) =>
+        new(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            (CombatTargetLayer)reader.ReadByte());
+
+    private static void WritePropagation(
+        BinaryWriter writer,
+        in CombatWeaponPropagationSnapshot value)
+    {
+        writer.Write((byte)value.Kind);
+        writer.Write(value.LineDistance);
+        writer.Write(value.Radius);
+        writer.Write(value.DamageLossFactor);
+        writer.Write(value.MaximumTargets);
+        writer.Write((byte)value.TargetLayers);
+        writer.Write(value.DistanceUpgradeTechnologyId);
+        writer.Write(value.DistanceUpgradePerLevel);
+    }
+
+    private static CombatWeaponPropagationSnapshot ReadPropagation(
+        BinaryReader reader) => new(
+        (CombatWeaponPropagationKind)reader.ReadByte(), reader.ReadSingle(),
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadInt32(),
+        (CombatTargetLayer)reader.ReadByte(), reader.ReadInt32(),
+        reader.ReadSingle());
+
+    private static bool ValidArea(CombatWeaponAreaSnapshot area)
+    {
+        try
+        {
+            area.Validate();
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
+    private static bool ValidPropagation(
+        CombatWeaponPropagationSnapshot value)
+    {
+        try
+        {
+            value.Validate();
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
 
     private static bool ValidConcealmentState(CombatStore combat, int unit)
     {
@@ -649,12 +763,17 @@ internal static class RuntimeHotSnapshotCodec
         writer.Write(value.UpgradeLevel);
         writer.Write(value.BaseUpgradeDamage);
         writer.Write(value.BonusUpgradeDamage);
+        writer.Write((byte)value.AttackType);
+        WriteArea(writer, value.Area);
+        WritePropagation(writer, value.Propagation);
     }
 
     private static CombatWeaponDamageSnapshot ReadWeapon(BinaryReader reader) => new(
         reader.ReadSingle(), reader.ReadInt32(),
         (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
-        reader.ReadInt32(), reader.ReadSingle(), reader.ReadSingle());
+        reader.ReadInt32(), reader.ReadSingle(), reader.ReadSingle(),
+        (CombatAttackType)reader.ReadByte(), ReadArea(reader),
+        ReadPropagation(reader));
 
     internal static void WriteEconomy(
         BinaryWriter writer,

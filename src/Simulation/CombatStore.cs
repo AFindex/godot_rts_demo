@@ -161,7 +161,11 @@ public readonly record struct CombatProfileSnapshot(
     float ProjectileSpeed = 0f,
     bool CanMoveDuringWindup = false,
     bool CanMoveDuringCooldown = false,
-    int AutoTargetPriority = 0)
+    int AutoTargetPriority = 0,
+    CombatArmorType ArmorType = CombatArmorType.Legacy,
+    int ArmorUpgradeTechnologyId = -1,
+    float ArmorUpgradePerLevel = 0f,
+    float AttackHalfAngleRadians = MathF.PI)
 {
     public ImmutableArray<CombatWeaponProfileSnapshot> Weapons { get; init; } = [];
 
@@ -184,7 +188,7 @@ public readonly record struct CombatProfileSnapshot(
             !float.IsFinite(AttackWindupSeconds) || AttackWindupSeconds < 0f ||
             AttackWindupSeconds > AttackCooldownSeconds ||
             !float.IsFinite(LeashDistance) || LeashDistance < AcquisitionRange ||
-            !Enum.IsDefined(Positioning) || !float.IsFinite(Armor) || Armor < 0f ||
+            !Enum.IsDefined(Positioning) || !float.IsFinite(Armor) ||
             (Attributes & ~CombatAttribute.All) != 0 ||
             (BonusVs & ~CombatAttribute.All) != 0 ||
             AttacksPerVolley is < 1 or > 32 ||
@@ -192,7 +196,11 @@ public readonly record struct CombatProfileSnapshot(
             !float.IsFinite(BaseUpgradeDamage) || BaseUpgradeDamage < 0f ||
             !float.IsFinite(BonusUpgradeDamage) || BonusUpgradeDamage < 0f ||
             !float.IsFinite(ProjectileSpeed) || ProjectileSpeed < 0f ||
-            AutoTargetPriority is < 0 or > 10)
+            AutoTargetPriority is < 0 or > 10 ||
+            !Enum.IsDefined(ArmorType) || ArmorUpgradeTechnologyId < -1 ||
+            !float.IsFinite(ArmorUpgradePerLevel) ||
+            ArmorUpgradePerLevel < 0f ||
+            ArmorUpgradeTechnologyId < 0 && ArmorUpgradePerLevel != 0f)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(CombatProfileSnapshot),
@@ -203,6 +211,12 @@ public readonly record struct CombatProfileSnapshot(
                 $"positioning={Positioning}, armor={Armor}, " +
                 $"attacks={AttacksPerVolley}, priority={AutoTargetPriority}.");
         }
+        if (!float.IsFinite(AttackHalfAngleRadians) ||
+            AttackHalfAngleRadians < 0f ||
+            AttackHalfAngleRadians > MathF.PI)
+            throw new ArgumentOutOfRangeException(
+                nameof(AttackHalfAngleRadians),
+                "Attack half angle must be between zero and pi radians.");
         if (Weapons.IsDefault || Weapons.Length > 8)
             throw new ArgumentOutOfRangeException(
                 nameof(Weapons), "Combat weapon groups must contain at most eight weapons.");
@@ -234,7 +248,12 @@ public readonly record struct CombatWeaponProfileSnapshot(
     float BonusUpgradeDamage = 0f,
     float ProjectileSpeed = 0f,
     bool CanMoveDuringWindup = false,
-    bool CanMoveDuringCooldown = false)
+    bool CanMoveDuringCooldown = false,
+    CombatAttackType AttackType = CombatAttackType.Legacy,
+    int DamageUpgradeTechnologyId = -1,
+    float MinimumRange = 0f,
+    CombatWeaponAreaSnapshot Area = default,
+    CombatWeaponPropagationSnapshot Propagation = default)
 {
     public static CombatWeaponProfileSnapshot FromLegacy(
         in CombatProfileSnapshot profile) => new(
@@ -244,7 +263,8 @@ public readonly record struct CombatWeaponProfileSnapshot(
         profile.Positioning, profile.AttacksPerVolley, profile.BonusVs,
         profile.BonusDamage, profile.BaseUpgradeDamage,
         profile.BonusUpgradeDamage, profile.ProjectileSpeed,
-        profile.CanMoveDuringWindup, profile.CanMoveDuringCooldown);
+        profile.CanMoveDuringWindup, profile.CanMoveDuringCooldown,
+        CombatAttackType.Legacy, -1, 0f, default, default);
 
     public void Validate()
     {
@@ -270,6 +290,14 @@ public readonly record struct CombatWeaponProfileSnapshot(
                 nameof(CombatWeaponProfileSnapshot),
                 $"Combat weapon slot {Slot} is invalid.");
         }
+        if (!Enum.IsDefined(AttackType) || DamageUpgradeTechnologyId < -1 ||
+            !float.IsFinite(MinimumRange) || MinimumRange < 0f ||
+            MinimumRange > AttackRange)
+            throw new ArgumentOutOfRangeException(
+                nameof(CombatWeaponProfileSnapshot),
+                $"Combat weapon slot {Slot} has invalid typed fields.");
+        Area.Validate();
+        Propagation.Validate();
     }
 }
 
@@ -286,6 +314,9 @@ public sealed class CombatStore
         MaximumHealth = new float[capacity];
         AttackDamage = new float[capacity];
         Armor = new float[capacity];
+        ArmorTypes = new CombatArmorType[capacity];
+        ArmorUpgradeTechnologyIds = new int[capacity];
+        ArmorUpgradePerLevel = new float[capacity];
         Attributes = new CombatAttribute[capacity];
         AttacksPerVolley = new int[capacity];
         BonusVs = new CombatAttribute[capacity];
@@ -296,6 +327,11 @@ public sealed class CombatStore
         CanMoveDuringWindup = new bool[capacity];
         CanMoveDuringCooldown = new bool[capacity];
         AutoTargetPriority = new int[capacity];
+        AttackTypes = new CombatAttackType[capacity];
+        DamageUpgradeTechnologyIds = new int[capacity];
+        MinimumAttackRanges = new float[capacity];
+        WeaponAreas = new CombatWeaponAreaSnapshot[capacity];
+        WeaponPropagations = new CombatWeaponPropagationSnapshot[capacity];
         ConcealmentKinds = new UnitConcealmentKind[capacity];
         ConcealmentCapabilities =
             new UnitConcealmentCapabilitySnapshot[capacity];
@@ -333,9 +369,12 @@ public sealed class CombatStore
         AttackDamageMultipliers = new float[capacity];
         AttackDamageAdds = new float[capacity];
         AttackCooldownMultipliers = new float[capacity];
+        AttackHalfAngles = new float[capacity];
         Array.Fill(TargetUnits, -1);
         Array.Fill(TargetBuildings, -1);
         Array.Fill(ActiveWeaponSlots, -1);
+        Array.Fill(ArmorUpgradeTechnologyIds, -1);
+        Array.Fill(DamageUpgradeTechnologyIds, -1);
         Array.Fill(AttackDamageMultipliers, 1f);
         Array.Fill(AttackCooldownMultipliers, 1f);
     }
@@ -345,6 +384,9 @@ public sealed class CombatStore
     public float[] MaximumHealth { get; }
     public float[] AttackDamage { get; }
     public float[] Armor { get; }
+    public CombatArmorType[] ArmorTypes { get; }
+    public int[] ArmorUpgradeTechnologyIds { get; }
+    public float[] ArmorUpgradePerLevel { get; }
     public CombatAttribute[] Attributes { get; }
     public int[] AttacksPerVolley { get; }
     public CombatAttribute[] BonusVs { get; }
@@ -355,6 +397,11 @@ public sealed class CombatStore
     public bool[] CanMoveDuringWindup { get; }
     public bool[] CanMoveDuringCooldown { get; }
     public int[] AutoTargetPriority { get; }
+    public CombatAttackType[] AttackTypes { get; }
+    public int[] DamageUpgradeTechnologyIds { get; }
+    public float[] MinimumAttackRanges { get; }
+    public CombatWeaponAreaSnapshot[] WeaponAreas { get; }
+    public CombatWeaponPropagationSnapshot[] WeaponPropagations { get; }
     public UnitConcealmentKind[] ConcealmentKinds { get; }
     public UnitConcealmentCapabilitySnapshot[] ConcealmentCapabilities { get; }
     public UnitConcealmentPhase[] ConcealmentPhases { get; }
@@ -391,6 +438,7 @@ public sealed class CombatStore
     public float[] AttackDamageMultipliers { get; }
     public float[] AttackDamageAdds { get; }
     public float[] AttackCooldownMultipliers { get; }
+    public float[] AttackHalfAngles { get; }
 
     public void Register(
         int unit,
@@ -418,6 +466,11 @@ public sealed class CombatStore
         MaximumHealth[unit] = profile.MaximumHealth;
         AttackDamage[unit] = profile.AttackDamage;
         Armor[unit] = profile.Armor;
+        ArmorTypes[unit] = profile.ArmorType;
+        ArmorUpgradeTechnologyIds[unit] =
+            profile.ArmorUpgradeTechnologyId;
+        ArmorUpgradePerLevel[unit] = profile.ArmorUpgradePerLevel;
+        AttackHalfAngles[unit] = profile.AttackHalfAngleRadians;
         Attributes[unit] = profile.Attributes;
         AttacksPerVolley[unit] = profile.AttacksPerVolley;
         BonusVs[unit] = profile.BonusVs;
@@ -480,6 +533,11 @@ public sealed class CombatStore
             1f, profile.MaximumHealth * healthFraction);
         AttackDamage[unit] = profile.AttackDamage;
         Armor[unit] = profile.Armor;
+        ArmorTypes[unit] = profile.ArmorType;
+        ArmorUpgradeTechnologyIds[unit] =
+            profile.ArmorUpgradeTechnologyId;
+        ArmorUpgradePerLevel[unit] = profile.ArmorUpgradePerLevel;
+        AttackHalfAngles[unit] = profile.AttackHalfAngleRadians;
         Attributes[unit] = profile.Attributes;
         AttacksPerVolley[unit] = profile.AttacksPerVolley;
         BonusVs[unit] = profile.BonusVs;
@@ -526,6 +584,10 @@ public sealed class CombatStore
         Copy(source.MaximumHealth, MaximumHealth);
         Copy(source.AttackDamage, AttackDamage);
         Copy(source.Armor, Armor);
+        Copy(source.ArmorTypes, ArmorTypes);
+        Copy(source.ArmorUpgradeTechnologyIds, ArmorUpgradeTechnologyIds);
+        Copy(source.ArmorUpgradePerLevel, ArmorUpgradePerLevel);
+        Copy(source.AttackHalfAngles, AttackHalfAngles);
         Copy(source.Attributes, Attributes);
         Copy(source.AttacksPerVolley, AttacksPerVolley);
         Copy(source.BonusVs, BonusVs);
@@ -536,6 +598,11 @@ public sealed class CombatStore
         Copy(source.CanMoveDuringWindup, CanMoveDuringWindup);
         Copy(source.CanMoveDuringCooldown, CanMoveDuringCooldown);
         Copy(source.AutoTargetPriority, AutoTargetPriority);
+        Copy(source.AttackTypes, AttackTypes);
+        Copy(source.DamageUpgradeTechnologyIds, DamageUpgradeTechnologyIds);
+        Copy(source.MinimumAttackRanges, MinimumAttackRanges);
+        Copy(source.WeaponAreas, WeaponAreas);
+        Copy(source.WeaponPropagations, WeaponPropagations);
         Copy(source.ConcealmentKinds, ConcealmentKinds);
         Copy(source.ConcealmentCapabilities, ConcealmentCapabilities);
         Copy(source.ConcealmentPhases, ConcealmentPhases);
@@ -676,6 +743,12 @@ public sealed class CombatStore
         ProjectileSpeed[unit] = weapon.ProjectileSpeed;
         CanMoveDuringWindup[unit] = weapon.CanMoveDuringWindup;
         CanMoveDuringCooldown[unit] = weapon.CanMoveDuringCooldown;
+        AttackTypes[unit] = weapon.AttackType;
+        DamageUpgradeTechnologyIds[unit] =
+            weapon.DamageUpgradeTechnologyId;
+        MinimumAttackRanges[unit] = weapon.MinimumRange;
+        WeaponAreas[unit] = weapon.Area;
+        WeaponPropagations[unit] = weapon.Propagation;
     }
 
     private static void Copy<T>(T[] source, T[] destination) =>

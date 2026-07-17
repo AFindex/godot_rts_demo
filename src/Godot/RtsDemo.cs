@@ -463,6 +463,15 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--choke-command-replacement-self-test"))
+        {
+            var result = ChokeCommandReplacementSelfTest.Run();
+            GD.Print($"CHOKE_COMMAND_REPLACEMENT_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--ability-self-test"))
         {
             var result = AbilitySystemSelfTest.Run();
@@ -485,6 +494,16 @@ public partial class RtsDemo : Node2D
             var result = War3AbilityDataClosureSelfTest.Run();
             GD.Print($"WAR3_ABILITY_DATA_SELF_TEST " +
                      $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
+        if (userArguments.Contains("--war3-combat-rules-self-test"))
+        {
+            var result = War3CombatRulesSelfTest.Run();
+            GD.Print($"WAR3_COMBAT_RULES_SELF_TEST " +
+                     $"{(result.Passed ? "PASS" : "FAIL")}: " +
+                     result.Summary);
             GetTree().Quit(result.Passed ? 0 : 1);
             return;
         }

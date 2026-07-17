@@ -1,4 +1,5 @@
 using Godot;
+using RtsDemo.Simulation;
 
 namespace RtsDemo.GodotRuntime.Resources;
 
@@ -19,4 +20,8 @@ public partial class UnitMovementProfileResource : Resource
 
     [Export(PropertyHint.Range, "1,8192,1,or_greater")]
     public float Acceleration { get; set; } = 720f;
+
+    [Export(PropertyHint.Range, "0.01,200,0.01,or_greater")]
+    public float TurnRateRadiansPerSecond { get; set; } =
+        UnitFacing.LegacyTurnRateRadiansPerSecond;
 }

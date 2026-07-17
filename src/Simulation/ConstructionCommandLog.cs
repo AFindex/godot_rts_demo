@@ -37,7 +37,7 @@ public sealed class ConstructionCommandLogSnapshot
 {
     private const uint Magic = 0x43435452; // RTCC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 4;
+    public const int CurrentFormatVersion = 5;
 
     public ConstructionCommandLogSnapshot(RecordedConstructionCommand[] entries)
     {
@@ -263,6 +263,7 @@ internal static class ConstructionSerialization
         writer.Write(value.Armor);
         writer.Write((ushort)value.Attributes);
         writer.Write(value.ArmorUpgradePerLevel);
+        writer.Write((byte)value.ArmorType);
     }
 
     public static BuildingTypeProfile ReadProfile(BinaryReader reader)
@@ -286,7 +287,8 @@ internal static class ConstructionSerialization
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadInt32(),
             reader.ReadSingle(), (ConstructionMethodKind)reader.ReadByte(),
             reader.ReadBoolean(), reader.ReadSingle(),
-            (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle());
+            (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
+            (CombatArmorType)reader.ReadByte());
     }
 
     public static void WriteVector(BinaryWriter writer, Vector2 value)

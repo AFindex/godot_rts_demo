@@ -92,8 +92,13 @@ public static class War3NavigationTraversalSelfTest
             var highGround = map.PlayerSpawn + new Vector2(105f, -45f);
             var farHighGround = map.EnemySpawn + new Vector2(-105f, -45f);
             var outbound = RunLeg(simulation, workers, farHighGround);
+            var returningWorkers = workers
+                .Where(unit => simulation.Units.Alive[unit])
+                .ToArray();
             var returnLeg = outbound.Arrived
-                ? RunLeg(simulation, workers, highGround)
+                ? returningWorkers.Length > 0
+                    ? RunLeg(simulation, returningWorkers, highGround)
+                    : LegResult.NotRun("no surviving workers")
                 : LegResult.NotRun("outbound failed");
 
             var combatResults = new List<string>();
@@ -159,7 +164,8 @@ public static class War3NavigationTraversalSelfTest
                 passed,
                 $"bootstrap={bootstrapMode}, high={Point(highGround)}, " +
                 $"farHigh={Point(farHighGround)}, " +
-                $"workers={outbound}>{returnLeg}, " +
+                $"workers={returningWorkers.Length}/{workers.Length}:" +
+                $"{outbound}>{returnLeg}, " +
                 $"combat=[{string.Join(";", combatResults)}]");
         }
         catch (Exception exception)

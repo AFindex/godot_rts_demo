@@ -15,6 +15,9 @@ public partial class UnitTypeProfileResource : Resource
     public float MaximumSpeed { get; set; } = 128f;
     [Export(PropertyHint.Range, "1,5000,1,or_greater")]
     public float Acceleration { get; set; } = 720f;
+    [Export(PropertyHint.Range, "0.01,200,0.01,or_greater")]
+    public float TurnRateRadiansPerSecond { get; set; } =
+        UnitFacing.LegacyTurnRateRadiansPerSecond;
     [Export(PropertyHint.Range, "1,100000,1,or_greater")]
     public float MaximumHealth { get; set; } = 45f;
     [Export(PropertyHint.Range, "0,10000,0.1,or_greater")]
@@ -50,6 +53,13 @@ public partial class UnitTypeProfileResource : Resource
     [Export] public bool CanMoveDuringCooldown { get; set; }
     [Export(PropertyHint.Range, "0,10,1")]
     public int AutoTargetPriority { get; set; }
+    [Export] public CombatArmorType ArmorType { get; set; } =
+        CombatArmorType.Legacy;
+    [Export] public int ArmorUpgradeTechnologyId { get; set; } = -1;
+    [Export(PropertyHint.Range, "0,100,0.1,or_greater")]
+    public float ArmorUpgradePerLevel { get; set; }
+    [Export(PropertyHint.Range, "0,3.141593,0.001")]
+    public float AttackHalfAngleRadians { get; set; } = MathF.PI;
     [Export] public Array<CombatWeaponProfileResource> Weapons { get; set; } = new();
     [Export] public UnitConcealmentKind Concealment { get; set; }
     [Export(PropertyHint.Range, "0,5000,1,or_greater")]

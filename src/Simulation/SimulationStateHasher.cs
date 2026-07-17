@@ -6,7 +6,7 @@ namespace RtsDemo.Simulation;
 /// </summary>
 public static class SimulationStateHasher
 {
-    public const int CurrentFormatVersion = 36;
+    public const int CurrentFormatVersion = 39;
 
     public static ulong Compute(RtsSimulation simulation)
     {
@@ -54,6 +54,9 @@ public static class SimulationStateHasher
             hash.Add(units.Alive[unit]);
             hash.Add(units.Positions[unit]);
             hash.Add(units.PreviousPositions[unit]);
+            hash.Add(units.Facings[unit]);
+            hash.Add(units.PreviousFacings[unit]);
+            hash.Add(units.TurnRatesRadiansPerSecond[unit]);
             hash.Add(units.Velocities[unit]);
             hash.Add(units.PreferredVelocities[unit]);
             hash.Add(units.NextVelocities[unit]);
@@ -144,6 +147,10 @@ public static class SimulationStateHasher
             hash.Add(combat.MaximumHealth[unit]);
             hash.Add(combat.AttackDamage[unit]);
             hash.Add(combat.Armor[unit]);
+            hash.Add((byte)combat.ArmorTypes[unit]);
+            hash.Add(combat.ArmorUpgradeTechnologyIds[unit]);
+            hash.Add(combat.ArmorUpgradePerLevel[unit]);
+            hash.Add(combat.AttackHalfAngles[unit]);
             hash.Add((ushort)combat.Attributes[unit]);
             hash.Add(combat.AttacksPerVolley[unit]);
             hash.Add((ushort)combat.BonusVs[unit]);
@@ -154,6 +161,15 @@ public static class SimulationStateHasher
             hash.Add(combat.CanMoveDuringWindup[unit]);
             hash.Add(combat.CanMoveDuringCooldown[unit]);
             hash.Add(combat.AutoTargetPriority[unit]);
+            hash.Add((byte)combat.AttackTypes[unit]);
+            hash.Add(combat.DamageUpgradeTechnologyIds[unit]);
+            hash.Add(combat.MinimumAttackRanges[unit]);
+            hash.Add(combat.WeaponAreas[unit].FullDamageRadius);
+            hash.Add(combat.WeaponAreas[unit].HalfDamageRadius);
+            hash.Add(combat.WeaponAreas[unit].QuarterDamageRadius);
+            hash.Add((byte)combat.WeaponAreas[unit].TargetLayers);
+            AppendPropagation(
+                ref hash, combat.WeaponPropagations[unit]);
             hash.Add((byte)combat.ConcealmentKinds[unit]);
             hash.Add(combat.DetectionRanges[unit]);
             var capability = combat.ConcealmentCapabilities[unit];
@@ -216,8 +232,30 @@ public static class SimulationStateHasher
                 hash.Add(weapon.ProjectileSpeed);
                 hash.Add(weapon.CanMoveDuringWindup);
                 hash.Add(weapon.CanMoveDuringCooldown);
+                hash.Add((byte)weapon.AttackType);
+                hash.Add(weapon.DamageUpgradeTechnologyId);
+                hash.Add(weapon.MinimumRange);
+                hash.Add(weapon.Area.FullDamageRadius);
+                hash.Add(weapon.Area.HalfDamageRadius);
+                hash.Add(weapon.Area.QuarterDamageRadius);
+                hash.Add((byte)weapon.Area.TargetLayers);
+                AppendPropagation(ref hash, weapon.Propagation);
             }
         }
+    }
+
+    private static void AppendPropagation(
+        ref StableHash64 hash,
+        in CombatWeaponPropagationSnapshot value)
+    {
+        hash.Add((byte)value.Kind);
+        hash.Add(value.LineDistance);
+        hash.Add(value.Radius);
+        hash.Add(value.DamageLossFactor);
+        hash.Add(value.MaximumTargets);
+        hash.Add((byte)value.TargetLayers);
+        hash.Add(value.DistanceUpgradeTechnologyId);
+        hash.Add(value.DistanceUpgradePerLevel);
     }
 
     private static void AppendChokes(

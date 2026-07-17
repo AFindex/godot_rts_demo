@@ -22,7 +22,7 @@ public readonly record struct BuildingUpgradeProfile(
 /// </summary>
 public sealed class BuildingUpgradeCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
     private readonly BuildingUpgradeProfile[] _profiles;
     private readonly Dictionary<int, BuildingUpgradeProfile> _bySource;
     private readonly Dictionary<int, int> _parentByTarget;
@@ -587,6 +587,7 @@ public sealed class BuildingUpgradeSystem
         hash.Add(value.TargetType.Armor);
         hash.Add((ushort)value.TargetType.Attributes);
         hash.Add(value.TargetType.ArmorUpgradePerLevel);
+        hash.Add((byte)value.TargetType.ArmorType);
         hash.Add(value.Cost.Minerals);
         hash.Add(value.Cost.VespeneGas);
         hash.Add(value.Cost.Supply);

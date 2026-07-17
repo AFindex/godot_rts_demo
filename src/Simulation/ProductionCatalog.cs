@@ -62,7 +62,7 @@ public readonly record struct ProductionCatalogValidationResult(
 
 public sealed class ProductionCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 8;
+    public const int CurrentFormatVersion = 11;
     private readonly UnitTypeProfile[] _unitTypes;
     private readonly ProductionRecipeProfile[] _recipes;
     private readonly byte[] _canonicalBytes;
@@ -203,6 +203,8 @@ public sealed class ProductionCatalogSnapshot
         writer.Write(BitConverter.SingleToInt32Bits(unit.Movement.PhysicalRadius));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Movement.MaximumSpeed));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Movement.Acceleration));
+        writer.Write(BitConverter.SingleToInt32Bits(
+            unit.Movement.TurnRateRadiansPerSecond));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.MaximumHealth));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.AttackDamage));
         writer.Write(BitConverter.SingleToInt32Bits(unit.Combat.AttackRange));
@@ -222,6 +224,12 @@ public sealed class ProductionCatalogSnapshot
         writer.Write(unit.Combat.CanMoveDuringWindup);
         writer.Write(unit.Combat.CanMoveDuringCooldown);
         writer.Write(unit.Combat.AutoTargetPriority);
+        writer.Write((byte)unit.Combat.ArmorType);
+        writer.Write(unit.Combat.ArmorUpgradeTechnologyId);
+        writer.Write(BitConverter.SingleToInt32Bits(
+            unit.Combat.ArmorUpgradePerLevel));
+        writer.Write(BitConverter.SingleToInt32Bits(
+            unit.Combat.AttackHalfAngleRadians));
         writer.Write(unit.Combat.Weapons.Length);
         foreach (var weapon in unit.Combat.Weapons)
         {
@@ -246,6 +254,28 @@ public sealed class ProductionCatalogSnapshot
             writer.Write(BitConverter.SingleToInt32Bits(weapon.ProjectileSpeed));
             writer.Write(weapon.CanMoveDuringWindup);
             writer.Write(weapon.CanMoveDuringCooldown);
+            writer.Write((byte)weapon.AttackType);
+            writer.Write(weapon.DamageUpgradeTechnologyId);
+            writer.Write(BitConverter.SingleToInt32Bits(weapon.MinimumRange));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.Area.FullDamageRadius));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.Area.HalfDamageRadius));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.Area.QuarterDamageRadius));
+            writer.Write((byte)weapon.Area.TargetLayers);
+            writer.Write((byte)weapon.Propagation.Kind);
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.Propagation.LineDistance));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.Propagation.Radius));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.Propagation.DamageLossFactor));
+            writer.Write(weapon.Propagation.MaximumTargets);
+            writer.Write((byte)weapon.Propagation.TargetLayers);
+            writer.Write(weapon.Propagation.DistanceUpgradeTechnologyId);
+            writer.Write(BitConverter.SingleToInt32Bits(
+                weapon.Propagation.DistanceUpgradePerLevel));
         }
         writer.Write((byte)unit.Perception.Concealment);
         writer.Write(BitConverter.SingleToInt32Bits(
@@ -271,6 +301,7 @@ public sealed class ProductionCatalogSnapshot
                 unit.Movement.PhysicalRadius).NavigationRadius &&
         Positive(unit.Movement.MaximumSpeed) &&
         Positive(unit.Movement.Acceleration) &&
+        Positive(unit.Movement.TurnRateRadiansPerSecond) &&
         Positive(unit.Combat.MaximumHealth) &&
         unit.Combat.AttackDamage >= 0f && float.IsFinite(unit.Combat.AttackDamage) &&
         unit.Combat.AttackRange >= 0f && float.IsFinite(unit.Combat.AttackRange) &&
@@ -283,7 +314,7 @@ public sealed class ProductionCatalogSnapshot
         Positive(unit.Combat.LeashDistance) &&
         unit.Combat.LeashDistance >= unit.Combat.AcquisitionRange &&
         Enum.IsDefined(unit.Combat.Positioning) &&
-        unit.Combat.Armor >= 0f && float.IsFinite(unit.Combat.Armor) &&
+        float.IsFinite(unit.Combat.Armor) &&
         (unit.Combat.Attributes & ~CombatAttribute.All) == 0 &&
         unit.Combat.AttacksPerVolley is >= 1 and <= 32 &&
         (unit.Combat.BonusVs & ~CombatAttribute.All) == 0 &&
@@ -294,6 +325,14 @@ public sealed class ProductionCatalogSnapshot
         float.IsFinite(unit.Combat.BonusUpgradeDamage) &&
         unit.Combat.ProjectileSpeed >= 0f &&
         float.IsFinite(unit.Combat.ProjectileSpeed) &&
+        Enum.IsDefined(unit.Combat.ArmorType) &&
+        unit.Combat.ArmorUpgradeTechnologyId >= -1 &&
+        unit.Combat.ArmorUpgradePerLevel >= 0f &&
+        float.IsFinite(unit.Combat.ArmorUpgradePerLevel) &&
+        (unit.Combat.ArmorUpgradeTechnologyId >= 0 ||
+         unit.Combat.ArmorUpgradePerLevel == 0f) &&
+        float.IsFinite(unit.Combat.AttackHalfAngleRadians) &&
+        unit.Combat.AttackHalfAngleRadians is >= 0f and <= MathF.PI &&
         ValidWeapons(unit.Combat.Weapons) &&
         ValidPerception(unit.Perception);
 

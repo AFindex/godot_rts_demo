@@ -23,7 +23,8 @@ public static class GameplayProfileResourceConverter
                 DisplayName = source.Name,
                 PhysicalRadius = source.PhysicalRadius,
                 MaximumSpeed = source.MaximumSpeed,
-                Acceleration = source.Acceleration
+                Acceleration = source.Acceleration,
+                TurnRateRadiansPerSecond = source.TurnRateRadiansPerSecond
             });
         }
         var buildings = snapshot.BuildingProfiles;
@@ -93,7 +94,8 @@ public static class GameplayProfileResourceConverter
                 source.MaximumSpeed,
                 source.Acceleration,
                 default,
-                0f);
+                0f,
+                source.TurnRateRadiansPerSecond);
         }
 
         var buildings = new BuildingFootprintProfileSnapshot[

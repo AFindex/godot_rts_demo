@@ -70,18 +70,6 @@ public sealed class ChokeController
         Vector2 groupGoal,
         ReadOnlySpan<int> routeChokeIds)
     {
-        for (var i = 0; i < unitIndices.Length; i++)
-        {
-            var unit = unitIndices[i];
-            units.ActiveChokeIds[unit] = -1;
-            units.ChokeDirections[unit] = 0;
-            units.ChokeLaneOffsets[unit] = 0f;
-            units.ChokePhases[unit] = ChokePhase.None;
-            units.ChokeAdmitted[unit] = false;
-            units.ChokeQueueRanks[unit] = -1;
-            units.ChokeWaitTicks[unit] = 0;
-        }
-
         var chokeId = routeChokeIds.IsEmpty ? -1 : routeChokeIds[0];
         if (chokeId < 0)
         {
@@ -102,6 +90,7 @@ public sealed class ChokeController
 
         if ((uint)chokeId >= (uint)_definitions.Length)
         {
+            ClearAssignments(units, unitIndices);
             return;
         }
 
@@ -109,13 +98,14 @@ public sealed class ChokeController
         var axis = choke.Axis;
         var startAlong = Vector2.Dot(groupStart - choke.A, axis);
         var goalAlong = Vector2.Dot(groupGoal - choke.A, axis);
-        var direction = startAlong < 0f && goalAlong > choke.Length
+        var direction = startAlong <= choke.Length && goalAlong > choke.Length
             ? (sbyte)1
-            : startAlong > choke.Length && goalAlong < 0f
+            : startAlong >= 0f && goalAlong < 0f
                 ? (sbyte)-1
                 : (sbyte)0;
         if (direction == 0)
         {
+            ClearAssignments(units, unitIndices);
             return;
         }
 
@@ -146,10 +136,37 @@ public sealed class ChokeController
                 ? 0f
                 : -((laneCount - 1) * laneSpacing) * 0.5f + lane * laneSpacing;
             var unit = ordered[rank];
+            var preserveProgress =
+                units.ActiveChokeIds[unit] == chokeId &&
+                units.ChokeDirections[unit] == direction &&
+                units.ChokePhases[unit] != ChokePhase.None;
+            if (!preserveProgress)
+            {
+                ClearAssignment(units, unit);
+                units.ChokeLaneOffsets[unit] = offset;
+            }
             units.ActiveChokeIds[unit] = chokeId;
             units.ChokeDirections[unit] = direction;
-            units.ChokeLaneOffsets[unit] = offset;
         }
+    }
+
+    private static void ClearAssignments(
+        UnitStore units,
+        ReadOnlySpan<int> unitIndices)
+    {
+        for (var index = 0; index < unitIndices.Length; index++)
+            ClearAssignment(units, unitIndices[index]);
+    }
+
+    private static void ClearAssignment(UnitStore units, int unit)
+    {
+        units.ActiveChokeIds[unit] = -1;
+        units.ChokeDirections[unit] = 0;
+        units.ChokeLaneOffsets[unit] = 0f;
+        units.ChokePhases[unit] = ChokePhase.None;
+        units.ChokeAdmitted[unit] = false;
+        units.ChokeQueueRanks[unit] = -1;
+        units.ChokeWaitTicks[unit] = 0;
     }
 
     public void ApplyPreferredVelocities(UnitStore units)
@@ -368,7 +385,9 @@ public sealed class ChokeController
         {
             units.ChokePhases[unit] = ChokePhase.None;
         }
-        else if (!wasManaged && along <= choke.Length)
+        else if (!wasManaged &&
+                 along >= -choke.ApproachDistance &&
+                 along <= choke.Length)
         {
             units.ChokePhases[unit] = ChokePhase.Approaching;
         }

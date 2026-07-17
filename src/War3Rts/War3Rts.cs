@@ -60,6 +60,7 @@ public sealed partial class War3Rts : Node3D
     private bool _terrainCapture;
     private bool _pcgCapture;
     private bool _offlineBakeRequested;
+    private bool _rightClickInputSmoke;
     private int _earlyExitCode;
     private War3RuntimeProfiler? _runtimeProfiler;
     private War3StressTestMode? _stressTest;
@@ -80,11 +81,17 @@ public sealed partial class War3Rts : Node3D
 
     public override void _Ready()
     {
+        // This scene historically only used _UnhandledInput. Enable the new
+        // pre-GUI command input stage explicitly so imported/hot-reloaded C#
+        // metadata cannot leave it disabled on an existing scene instance.
+        SetProcessInput(true);
         var arguments = OS.GetCmdlineUserArgs();
         _smoke = arguments.Contains("--war3-rts-smoke");
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
         _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
         _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
+        _rightClickInputSmoke = arguments.Contains(
+            "--war3-right-click-input-smoke");
         var navigationAuditRequested =
             arguments.Contains(War3NavigationMapAudit.EnableArgument);
         if (navigationAuditRequested)
@@ -119,6 +126,7 @@ public sealed partial class War3Rts : Node3D
                 "--war3-map=", StringComparison.OrdinalIgnoreCase))?
             .Split('=', 2)[1];
         if (_smoke || _capture || _offlineBakeRequested ||
+            _rightClickInputSmoke ||
             navigationAuditRequested || _stressTest is not null ||
             !string.IsNullOrWhiteSpace(requestedId))
         {
@@ -425,7 +433,58 @@ public sealed partial class War3Rts : Node3D
         GD.Print($"WAR3_MAP_LOADED id={map.Metadata.Id} hash={map.StableHashText} " +
                  $"terrain={map.Terrain.StableHashText} objects={map.Objects.Length}");
         _runtimeProfiler?.MapReady();
+        if (_rightClickInputSmoke) _ = RunRightClickInputSmokeAsync();
         return false;
+    }
+
+    private async Task RunRightClickInputSmokeAsync()
+    {
+        while (_mapLoadInProgress)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (_simulation is null || _runtime is null || _camera is null ||
+            _runtime.PlayerWorkers.Length == 0)
+        {
+            GD.Print("WAR3_RIGHT_CLICK_INPUT_SMOKE FAIL reason=runtime-not-ready");
+            GetTree().Quit(1);
+            return;
+        }
+
+        var unit = _runtime.PlayerWorkers[0];
+        var versionBefore = _simulation.Units.CommandVersions[unit];
+        var screen = GetViewport().GetVisibleRect().Size *
+                     new Vector2(0.62f, 0.32f);
+        GetViewport().NotifyMouseEntered();
+        GetViewport().PushInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Right,
+            Pressed = true,
+            Position = screen,
+            GlobalPosition = screen
+        }, inLocalCoords: true);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GetViewport().PushInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Right,
+            Pressed = false,
+            Position = screen,
+            GlobalPosition = screen
+        }, inLocalCoords: true);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        var versionAfter = _simulation.Units.CommandVersions[unit];
+        var confirmationVisible =
+            _presenter?.SawMoveCommandConfirmation == true &&
+            _presenter.ActiveCommandConfirmationCount > 0;
+        var passed = versionAfter > versionBefore && confirmationVisible;
+        GD.Print(
+            $"WAR3_RIGHT_CLICK_INPUT_SMOKE {(passed ? "PASS" : "FAIL")} " +
+            $"u={unit} command={versionBefore}->{versionAfter} " +
+            $"confirmation={confirmationVisible}/" +
+            $"{_presenter?.ActiveCommandConfirmationCount ?? 0} " +
+            $"mode={_simulation.Units.Modes[unit]} " +
+            $"screen={screen.X:0.#},{screen.Y:0.#}");
+        GetTree().Quit(passed ? 0 : 1);
     }
 
     private static RtsSimulation CreateSimulation(
@@ -735,6 +794,25 @@ public sealed partial class War3Rts : Node3D
     private static double ElapsedMilliseconds(long start, long end) =>
         (end - start) * 1_000d / System.Diagnostics.Stopwatch.Frequency;
 
+    /// <summary>
+    /// World right-click commands are captured before GUI dispatch. The HUD is
+    /// a full-screen Control and some of its dynamic children consume mouse
+    /// events, so relying on _UnhandledInput makes otherwise identical world
+    /// clicks disappear before the command code can observe them.
+    /// </summary>
+    public override void _Input(InputEvent inputEvent)
+    {
+        if (_mapLoadInProgress || _simulation is null || _camera is null ||
+            inputEvent is not InputEventMouseButton
+            {
+                ButtonIndex: MouseButton.Right,
+                Pressed: true
+            } mouse)
+            return;
+        HandleRightMouse(mouse);
+        GetViewport().SetInputAsHandled();
+    }
+
     public override void _UnhandledInput(InputEvent inputEvent)
     {
         if (_mapLoadInProgress || _simulation is null || _camera is null) return;
@@ -783,22 +861,58 @@ public sealed partial class War3Rts : Node3D
             }
             return;
         }
-        if (mouse.ButtonIndex == MouseButton.Right && mouse.Pressed)
+    }
+
+    private void HandleRightMouse(InputEventMouseButton mouse)
+    {
+        if (_navigationDebugger?.BlocksWorldPointer(mouse.Position) == true)
         {
-            if (HasTargetMode() || _buildMenu)
-            {
-                CancelMode();
-                return;
-            }
-            if (_hud?.BlocksWorldPointer(mouse.Position) == true) return;
-            if (TryGroundPoint(mouse.Position, out var point))
-            {
-                if (_selectedUnits.Count > 0)
-                    IssueContext(point, mouse.ShiftPressed);
-                else if (SelectedProductionBuildings().Length > 0)
-                    SetRallyAt(point);
-            }
+            TraceRightPointer(mouse, "debug-ui");
+            return;
         }
+        if (HasTargetMode() || _buildMenu)
+        {
+            TraceRightPointer(mouse, "cancel-mode");
+            CancelMode();
+            return;
+        }
+        if (_hud?.BlocksWorldPointer(mouse.Position) == true)
+        {
+            TraceRightPointer(mouse, "hud-ui");
+            return;
+        }
+        if (!TryGroundPoint(mouse.Position, out var point))
+        {
+            TraceRightPointer(mouse, "ground-miss");
+            return;
+        }
+        if (_selectedUnits.Count > 0)
+        {
+            TraceRightPointer(mouse, "unit-command", point);
+            IssueContext(point, mouse.ShiftPressed);
+            return;
+        }
+        if (SelectedProductionBuildings().Length > 0)
+        {
+            TraceRightPointer(mouse, "rally-command", point);
+            SetRallyAt(point);
+            return;
+        }
+        TraceRightPointer(mouse, "no-command-selection", point);
+    }
+
+    private void TraceRightPointer(
+        InputEventMouseButton mouse,
+        string route,
+        NVector2? world = null)
+    {
+        GD.Print(
+            $"WAR3_POINTER_RIGHT tick={_simulation?.Metrics.Tick ?? -1} " +
+            $"screen={mouse.Position.X:0.#},{mouse.Position.Y:0.#} " +
+            $"world={(world.HasValue ? $"{world.Value.X:0.#},{world.Value.Y:0.#}" : "-")} " +
+            $"route={route} queued={mouse.ShiftPressed} " +
+            $"selected={_selectedUnits.Count}/{_selectedBuildings.Count} " +
+            $"targetMode={HasTargetMode()} buildMenu={_buildMenu} mode={_mode}");
     }
 
     private void HandleKey(InputEventKey input)
@@ -1101,9 +1215,17 @@ public sealed partial class War3Rts : Node3D
     {
         if (_simulation is null || _selectedUnits.Count == 0) return;
         var target = ResolveSmartTarget(point);
+        var selected = SelectedUnits();
         var result = _simulation.IssuePlayerSmartCommand(
-            War3HumanScenario.PlayerId, SelectedUnits(), target,
+            War3HumanScenario.PlayerId, selected, target,
             attackMoveModifier: false, queued);
+        _navigationDebugger?.RecordSmartCommand(
+            point,
+            target,
+            selected,
+            queued,
+            result.Succeeded,
+            result.Code.ToString());
         Report(result.Succeeded
             ? target.Kind switch
             {
@@ -1410,8 +1532,7 @@ public sealed partial class War3Rts : Node3D
         }
 
         var screen = GetViewport().GetMousePosition();
-        if (_hud?.BlocksWorldPointer(screen) == true ||
-            _navigationDebugger?.BlocksWorldPointer(screen) == true)
+        if (_navigationDebugger?.BlocksWorldPointer(screen) == true)
         {
             _presenter.HidePointerPreview();
             _presenter.HideAbilityPointerPreview();
@@ -1425,6 +1546,14 @@ public sealed partial class War3Rts : Node3D
             _presenter.HidePointerPreview();
             _presenter.HideAbilityPointerPreview();
             _cursor?.SetMode(edgeMode);
+            return;
+        }
+
+        if (_hud?.BlocksWorldPointer(screen) == true)
+        {
+            _presenter.HidePointerPreview();
+            _presenter.HideAbilityPointerPreview();
+            _cursor?.SetMode(War3CursorMode.Normal);
             return;
         }
 
@@ -1655,16 +1784,20 @@ public sealed partial class War3Rts : Node3D
             var maximum = living.Sum(unit => _simulation.Combat.MaximumHealth[unit]);
             var homogeneous = living.All(unit => War3HumanContent.ResolveUnit(
                 _simulation, _production, unit).TypeId == definition.TypeId);
-            var weaponLevel = _simulation.CombatWeaponUpgradeTechnologyId < 0
-                ? 0
-                : _simulation.Technology.Level(
-                    _simulation.Combat.Teams[first],
-                    _simulation.CombatWeaponUpgradeTechnologyId);
             var attack = _simulation.Combat.AttackDamage[first];
             var weapons = _simulation.Combat.WeaponProfiles[first];
             var activeWeaponSlot = _simulation.Combat.ActiveWeaponSlots[first];
             var activeWeapon = weapons.FirstOrDefault(value =>
                 value.Slot == activeWeaponSlot);
+            var weaponTechnologyId =
+                _simulation.Combat.DamageUpgradeTechnologyIds[first];
+            if (weaponTechnologyId < 0)
+                weaponTechnologyId =
+                    _simulation.CombatWeaponUpgradeTechnologyId;
+            var weaponLevel = weaponTechnologyId < 0
+                ? 0
+                : _simulation.Technology.Level(
+                    _simulation.Combat.Teams[first], weaponTechnologyId);
             var abilityState = _simulation.Abilities.Observe(first);
             var abilityStatus = AbilityStatusLabel(first, abilityState);
             var heroProgress = abilityState.Hero
@@ -1701,7 +1834,7 @@ public sealed partial class War3Rts : Node3D
                 0f,
                 string.Empty,
                 attack,
-                _simulation.Combat.Armor[first],
+                _simulation.EffectiveUnitArmor(first),
                 abilityState.Hero ? abilityState.HeroLevel : definition.Level,
                 weaponLevel,
                 attackClass,
@@ -2419,46 +2552,8 @@ public sealed partial class War3Rts : Node3D
             return _simulation?.World.Bounds.Contains(point) == true;
         }
 
-        var maximumHeight = SimPlane3DTransform.ToWorldLength(
-            (_terrain.MaximumCellLevel + 1f) * _terrain.CliffLevelHeight);
-        var begin = MathF.Max(0f, (maximumHeight - origin.Y) / direction.Y);
-        var end = -origin.Y / direction.Y;
-        if (end < begin) (begin, end) = (end, begin);
-        var previousDistance = begin;
-        var previousDelta = HeightDelta(origin + direction * previousDistance);
-        const int steps = 192;
-        for (var step = 1; step <= steps; step++)
-        {
-            var distance = begin + (end - begin) * step / steps;
-            var delta = HeightDelta(origin + direction * distance);
-            if (previousDelta >= 0f && delta <= 0f)
-            {
-                var low = previousDistance;
-                var high = distance;
-                for (var iteration = 0; iteration < 12; iteration++)
-                {
-                    var middle = (low + high) * 0.5f;
-                    if (HeightDelta(origin + direction * middle) > 0f)
-                        low = middle;
-                    else
-                        high = middle;
-                }
-                point = SimPlane3DTransform.ToSimulation(
-                    origin + direction * high);
-                return _terrain.Bounds.Contains(point);
-            }
-            previousDistance = distance;
-            previousDelta = delta;
-        }
-        return false;
-
-        float HeightDelta(Vector3 worldPoint)
-        {
-            var simulationPoint = SimPlane3DTransform.ToSimulation(worldPoint);
-            if (!_terrain.Bounds.Contains(simulationPoint))
-                return float.PositiveInfinity;
-            return worldPoint.Y - GroundWorldHeight(simulationPoint);
-        }
+        return War3PointerTargeting.TryIntersectTerrainRay(
+            _terrain, origin, direction, out point);
     }
 
     private void CreateCamera(StaticWorld world)
@@ -2483,7 +2578,9 @@ public sealed partial class War3Rts : Node3D
         };
         AddChild(_cameraController);
         _cameraController.EdgeScrollBlocked = point =>
-            _hud?.BlocksWorldPointer(point) == true;
+            War3PointerTargeting.BlocksCameraEdgeScroll(
+                _hud?.BlocksWorldPointer(point) == true,
+                _navigationDebugger?.BlocksWorldPointer(point) == true);
         _cameraController.TargetWorldHeight = GroundWorldHeight;
         _cameraController.Initialize(_camera, world.Bounds);
     }
@@ -2712,7 +2809,7 @@ public sealed partial class War3Rts : Node3D
             objectData.UpgradeManifestLoaded &&
             objectData.MissingAbilityIds.Count == 0 &&
             objectData.MissingUpgradeIds.Count == 0 &&
-            objectData.AppliedTechnologyCount == 15 &&
+            objectData.AppliedTechnologyCount == 17 &&
             War3HumanContent.DataCatalog.TryGet("hpea", out var peasantData) &&
             peasantData.Summary.Sight.Day is > 0f &&
             MathF.Abs(peasantProfile.Perception.VisionRange -
@@ -2722,7 +2819,7 @@ public sealed partial class War3Rts : Node3D
                 TerrainVisionMode.Elevated &&
             _simulation.CombatWeaponUpgradeTechnologyId == 0 &&
             _simulation.CombatBuildingArmorTechnologyId == 2 &&
-            War3HumanContent.Technologies.Count == 15;
+            War3HumanContent.Technologies.Count == 17;
         var abilityIntegrationReady =
             War3HumanContent.AbilityImportStatus.Catalog.Count == 44 &&
             War3HumanContent.AbilityImportStatus.MissingObjectIds.Length == 0 &&

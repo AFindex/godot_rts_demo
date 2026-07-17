@@ -55,6 +55,59 @@ public enum UnitMovementLegResult : byte
     Canceled
 }
 
+public static class UnitFacing
+{
+    public const float LegacyTurnRateRadiansPerSecond = 1000f;
+    private const float DirectionEpsilonSquared = 0.000001f;
+
+    public static Vector2 Direction(float radians) =>
+        new(MathF.Cos(radians), MathF.Sin(radians));
+
+    public static float FromDirection(Vector2 direction) =>
+        MathF.Atan2(direction.Y, direction.X);
+
+    public static float Normalize(float radians)
+    {
+        radians %= MathF.Tau;
+        if (radians > MathF.PI) radians -= MathF.Tau;
+        if (radians <= -MathF.PI) radians += MathF.Tau;
+        return radians;
+    }
+
+    public static float Difference(float from, float to) =>
+        Normalize(to - from);
+
+    public static float RotateToward(
+        float current,
+        Vector2 desiredDirection,
+        float maximumRadians)
+    {
+        if (desiredDirection.LengthSquared() <= DirectionEpsilonSquared ||
+            maximumRadians <= 0f)
+            return Normalize(current);
+        var desired = FromDirection(desiredDirection);
+        var difference = Difference(current, desired);
+        return Normalize(current + Math.Clamp(
+            difference, -maximumRadians, maximumRadians));
+    }
+
+    public static bool IsWithin(
+        float current,
+        Vector2 desiredDirection,
+        float halfAngleRadians)
+    {
+        if (desiredDirection.LengthSquared() <= DirectionEpsilonSquared)
+            return true;
+        return MathF.Abs(Difference(
+                   current, FromDirection(desiredDirection))) <=
+               halfAngleRadians + 0.0001f;
+    }
+
+    public static float Interpolate(float previous, float current, float weight) =>
+        Normalize(previous + Difference(previous, current) *
+            Math.Clamp(weight, 0f, 1f));
+}
+
 public readonly record struct UnitMovementSnapshot(
     int Unit,
     UnitMovementGoalKind GoalKind,
@@ -72,6 +125,9 @@ public sealed class UnitStore
         Positions = new Vector2[capacity];
         Alive = new bool[capacity];
         PreviousPositions = new Vector2[capacity];
+        Facings = new float[capacity];
+        PreviousFacings = new float[capacity];
+        TurnRatesRadiansPerSecond = new float[capacity];
         Velocities = new Vector2[capacity];
         PreferredVelocities = new Vector2[capacity];
         NextVelocities = new Vector2[capacity];
@@ -138,6 +194,9 @@ public sealed class UnitStore
     public Vector2[] Positions { get; }
     public bool[] Alive { get; }
     public Vector2[] PreviousPositions { get; }
+    public float[] Facings { get; }
+    public float[] PreviousFacings { get; }
+    public float[] TurnRatesRadiansPerSecond { get; }
     public Vector2[] Velocities { get; }
     public Vector2[] PreferredVelocities { get; }
     public Vector2[] NextVelocities { get; }
@@ -195,8 +254,20 @@ public sealed class UnitStore
     public float[] DynamicBlockageBestDistances { get; }
     public int[] ReservationMigrationTicks { get; }
 
-    public int Add(Vector2 position, float radius, float maxSpeed, float acceleration)
+    public int Add(
+        Vector2 position,
+        float radius,
+        float maxSpeed,
+        float acceleration,
+        float turnRateRadiansPerSecond =
+            UnitFacing.LegacyTurnRateRadiansPerSecond,
+        float facingRadians = 0f)
     {
+        if (!float.IsFinite(turnRateRadiansPerSecond) ||
+            turnRateRadiansPerSecond <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(turnRateRadiansPerSecond));
+        if (!float.IsFinite(facingRadians))
+            throw new ArgumentOutOfRangeException(nameof(facingRadians));
         if (Count >= Capacity)
         {
             throw new InvalidOperationException($"Unit capacity {Capacity} exceeded.");
@@ -206,6 +277,9 @@ public sealed class UnitStore
         Alive[index] = true;
         Positions[index] = position;
         PreviousPositions[index] = position;
+        Facings[index] = UnitFacing.Normalize(facingRadians);
+        PreviousFacings[index] = Facings[index];
+        TurnRatesRadiansPerSecond[index] = turnRateRadiansPerSecond;
         SlotTargets[index] = position;
         MoveGoals[index] = position;
         MovementGoalKinds[index] = UnitMovementGoalKind.None;
@@ -238,7 +312,9 @@ public sealed class UnitStore
             !float.IsFinite(profile.MaximumSpeed) ||
             profile.MaximumSpeed <= 0f ||
             !float.IsFinite(profile.Acceleration) ||
-            profile.Acceleration <= 0f)
+            profile.Acceleration <= 0f ||
+            !float.IsFinite(profile.TurnRateRadiansPerSecond) ||
+            profile.TurnRateRadiansPerSecond <= 0f)
             throw new ArgumentOutOfRangeException(nameof(unit));
         var clearance = MovementClearance.FromPhysicalRadius(
             profile.PhysicalRadius);
@@ -247,6 +323,7 @@ public sealed class UnitStore
         NavigationRadii[unit] = clearance.NavigationRadius;
         MaxSpeeds[unit] = profile.MaximumSpeed;
         Accelerations[unit] = profile.Acceleration;
+        TurnRatesRadiansPerSecond[unit] = profile.TurnRateRadiansPerSecond;
         Paths[unit] = null;
         RouteWaypoints[unit] = [];
         PathPending[unit] = false;
@@ -266,6 +343,9 @@ public sealed class UnitStore
         Copy(source.Positions, Positions);
         Copy(source.Alive, Alive);
         Copy(source.PreviousPositions, PreviousPositions);
+        Copy(source.Facings, Facings);
+        Copy(source.PreviousFacings, PreviousFacings);
+        Copy(source.TurnRatesRadiansPerSecond, TurnRatesRadiansPerSecond);
         Copy(source.Velocities, Velocities);
         Copy(source.PreferredVelocities, PreferredVelocities);
         Copy(source.NextVelocities, NextVelocities);

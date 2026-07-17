@@ -33,7 +33,8 @@ public static class BuildingTypeResourceConverter
                 RequiresVespeneNode = source.RequiresVespeneNode,
                 Armor = source.Armor,
                 Attributes = source.Attributes,
-                ArmorUpgradePerLevel = source.ArmorUpgradePerLevel
+                ArmorUpgradePerLevel = source.ArmorUpgradePerLevel,
+                ArmorType = source.ArmorType
             });
         }
         return resource;
@@ -92,7 +93,8 @@ public static class BuildingTypeResourceConverter
                 source.RequiresVespeneNode,
                 source.Armor,
                 source.Attributes,
-                source.ArmorUpgradePerLevel);
+                source.ArmorUpgradePerLevel,
+                source.ArmorType);
         }
         return BuildingTypeCatalogSnapshot.TryCreate(
             resource.FormatVersion, types, out snapshot, out validation);

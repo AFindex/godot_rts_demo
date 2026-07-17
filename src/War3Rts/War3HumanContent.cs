@@ -184,9 +184,39 @@ public static class War3HumanContent
             War3AssetPack.AbsolutePath("data/buff_effect_editor_data"));
         var abilityMetadataCatalog = War3AbilityMetadataCatalog.Open(
             War3AssetPack.AbsolutePath("data/ability_metadata"));
+        var technologyBindings = new List<(
+            string ObjectId, string Icon, int Researcher)>
+        {
+            ("Rhme", Btn("SteelMelee"), Blacksmith),
+            ("Rhar", Btn("HumanArmorUpOne"), Blacksmith),
+            ("Rhac", Btn("ImbuedMasonry"), Blacksmith),
+            ("Rhde", Btn("SelectHeroOn"), Barracks),
+            ("Rhgb", Btn("SelectHeroOn"), Workshop),
+            ("Rhfl", Btn("SelectHeroOn"), Workshop),
+            ("Rhrt", Btn("SelectHeroOn"), Workshop),
+            ("Rhfc", Btn("SelectHeroOn"), Workshop),
+            ("Rhfs", Btn("SelectHeroOn"), Workshop),
+            ("Rhpt", Btn("SelectHeroOn"), ArcaneSanctum),
+            ("Rhst", Btn("SelectHeroOn"), ArcaneSanctum),
+            ("Rhss", Btn("SelectHeroOn"), ArcaneSanctum),
+            ("Rhpm", Btn("SelectHeroOn"), TownHall),
+            ("Rhhb", Btn("SelectHeroOn"), GryphonAviary),
+            ("Rhcd", Btn("SelectHeroOn"), GryphonAviary),
+            ("Rhla", Btn("LeatherUpgradeOne"), Blacksmith),
+            ("Rhra", Btn("HumanMissileUpOne"), Blacksmith)
+        };
+        var technologyIdMap = technologyBindings
+            .Select((value, index) => (value.ObjectId, Index: index))
+            .ToDictionary(
+                value => value.ObjectId,
+                value => value.Index,
+                StringComparer.Ordinal);
         var adapter = new War3GameplayDataAdapter(
             dataCatalog, War3GameplayImportPolicy.Default)
         {
+            TechnologyIds = technologyIdMap,
+            AbilityCatalog = abilityCatalog,
+            UpgradeCatalog = upgradeCatalog,
             WeaponUnlockTechnologies = new Dictionary<string, int>(
                 StringComparer.Ordinal)
             {
@@ -247,25 +277,6 @@ public static class War3HumanContent
             buildingCatalog);
         var productionCatalog = CreateProductionCatalog(unitProfiles, recipes);
         var fallbackTechnologyValues = CreateFallbackTechnologies().ToList();
-        var technologyBindings = new List<(
-            string ObjectId, string Icon, int Researcher)>
-        {
-            ("Rhme", Btn("SteelMelee"), Blacksmith),
-            ("Rhar", Btn("HumanArmorUpOne"), Blacksmith),
-            ("Rhac", Btn("ImbuedMasonry"), Blacksmith),
-            ("Rhde", Btn("SelectHeroOn"), Barracks),
-            ("Rhgb", Btn("SelectHeroOn"), Workshop),
-            ("Rhfl", Btn("SelectHeroOn"), Workshop),
-            ("Rhrt", Btn("SelectHeroOn"), Workshop),
-            ("Rhfc", Btn("SelectHeroOn"), Workshop),
-            ("Rhfs", Btn("SelectHeroOn"), Workshop),
-            ("Rhpt", Btn("SelectHeroOn"), ArcaneSanctum),
-            ("Rhst", Btn("SelectHeroOn"), ArcaneSanctum),
-            ("Rhss", Btn("SelectHeroOn"), ArcaneSanctum),
-            ("Rhpm", Btn("SelectHeroOn"), TownHall),
-            ("Rhhb", Btn("SelectHeroOn"), GryphonAviary),
-            ("Rhcd", Btn("SelectHeroOn"), GryphonAviary)
-        };
         for (var index = fallbackTechnologyValues.Count;
              index < technologyBindings.Count;
              index++)
@@ -288,12 +299,6 @@ public static class War3HumanContent
             });
         }
         var fallbackTechnologies = fallbackTechnologyValues.ToArray();
-        var technologyIdMap = technologyBindings
-            .Select((value, index) => (value.ObjectId, Index: index))
-            .ToDictionary(
-                value => value.ObjectId,
-                value => value.Index,
-                StringComparer.Ordinal);
         var buildingTypeIdMap = buildings.ToDictionary(
             value => value.ObjectId,
             value => value.TypeId,

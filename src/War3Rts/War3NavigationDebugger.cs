@@ -55,6 +55,7 @@ internal sealed partial class War3NavigationDebugger : Node3D
     private int[] _selectedUnits = [];
     private int _traceUnit = -1;
     private UnitObservedState? _lastObserved;
+    private long _traceUntilTick = -1;
     private ImmediateMesh? _overlayMesh;
     private MeshInstance3D? _overlayVisual;
     private ImmediateMesh? _gridMesh;
@@ -80,6 +81,9 @@ internal sealed partial class War3NavigationDebugger : Node3D
     private bool _showGrid;
     private bool _showTrace = true;
     private bool _profilingWasEnabled;
+    private bool _panelDragging;
+    private Vector2 _panelDragPointerStart;
+    private Vector2 _panelDragPanelStart;
     private double _panelRefreshAccumulator;
     private Control? _uiRoot;
     private PanelContainer? _panel;
@@ -160,12 +164,62 @@ internal sealed partial class War3NavigationDebugger : Node3D
 
     public void SamplePhysics(double delta)
     {
-        if (!_active || _simulation is null) return;
+        if (_simulation is null ||
+            (!_active && _simulation.Metrics.Tick > _traceUntilTick))
+            return;
         SamplePrimaryUnit();
+        if (!_active) return;
         _panelRefreshAccumulator += delta;
         if (_panelRefreshAccumulator < 0.1d) return;
         _panelRefreshAccumulator = 0d;
         RefreshPanel();
+    }
+
+    public void RecordSmartCommand(
+        NVector2 clickedPoint,
+        in SmartCommandTarget target,
+        int[] units,
+        bool queued,
+        bool succeeded,
+        string commandCode)
+    {
+        if (_simulation is null) return;
+        _traceUntilTick = Math.Max(
+            _traceUntilTick,
+            _simulation.Metrics.Tick + 3_600);
+        _lastObserved = null;
+        var store = _simulation.Units;
+        for (var index = 0; index < units.Length; index++)
+        {
+            var unit = units[index];
+            if ((uint)unit >= (uint)store.Count || !store.Alive[unit])
+                continue;
+            var position = store.Positions[unit];
+            var navigationRadius = store.NavigationRadii[unit];
+            var slot = store.SlotTargets[unit];
+            var path = store.Paths[unit];
+            GD.Print(
+                $"WAR3_NAV_COMMAND tick={_simulation.Metrics.Tick} " +
+                $"u={unit} queued={queued} accepted={succeeded}/{commandCode} " +
+                $"click={Point(clickedPoint)} target={target.Kind}@{Point(target.Position)} " +
+                $"targetIds={target.Unit}/{target.Building}/{target.ResourceNode} " +
+                $"pos={Point(position)} physical={store.Radii[unit]:0.##} " +
+                $"navigation={navigationRadius:0.##} " +
+                $"startFree={_simulation.World.IsDiscFree(position, navigationRadius)} " +
+                $"goal={Point(store.MoveGoals[unit])} slot={Point(slot)} " +
+                $"slotFree={_simulation.World.IsDiscFree(slot, navigationRadius)} " +
+                $"mode={store.Modes[unit]} leg={store.MovementLegResults[unit]} " +
+                $"pending={store.PathPending[unit]} " +
+                $"path={(path?.Cursor ?? -1)}/{(path?.Points.Length ?? 0)} " +
+                $"route={store.RouteWaypoints[unit].Length} " +
+                $"choke={store.ActiveChokeIds[unit]}/" +
+                $"{store.ChokeDirections[unit]}/" +
+                $"{store.ChokePhases[unit]}/" +
+                $"admitted={store.ChokeAdmitted[unit]} " +
+                $"chokeWait={store.ChokeWaitTicks[unit]} " +
+                $"recovery={store.RecoveryStages[unit]}");
+        }
+        SamplePrimaryUnit();
     }
 
     public override void _Process(double delta)
@@ -173,6 +227,41 @@ internal sealed partial class War3NavigationDebugger : Node3D
         if (!_active || _simulation is null) return;
         SyncGrid();
         SyncOverlay();
+    }
+
+    public override void _Input(InputEvent inputEvent)
+    {
+        if (!_panelDragging || _panel is null) return;
+        if (inputEvent is InputEventMouseButton button &&
+            button.ButtonIndex == MouseButton.Left && !button.Pressed)
+        {
+            _panelDragging = false;
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (inputEvent is not InputEventMouseMotion) return;
+        var pointer = GetViewport().GetMousePosition();
+        var desired = _panelDragPanelStart + pointer - _panelDragPointerStart;
+        var viewportSize = GetViewport().GetVisibleRect().Size;
+        var maximum = new Vector2(
+            Mathf.Max(0f, viewportSize.X - _panel.Size.X),
+            Mathf.Max(0f, viewportSize.Y - _panel.Size.Y));
+        _panel.Position = new Vector2(
+            Mathf.Clamp(desired.X, 0f, maximum.X),
+            Mathf.Clamp(desired.Y, 0f, maximum.Y));
+        GetViewport().SetInputAsHandled();
+    }
+
+    private void HandlePanelHeaderInput(InputEvent inputEvent)
+    {
+        if (_panel is null ||
+            inputEvent is not InputEventMouseButton button ||
+            button.ButtonIndex != MouseButton.Left || !button.Pressed)
+            return;
+        _panelDragging = true;
+        _panelDragPointerStart = GetViewport().GetMousePosition();
+        _panelDragPanelStart = _panel.Position;
+        GetViewport().SetInputAsHandled();
     }
 
     private void SetActive(bool active)
@@ -198,6 +287,7 @@ internal sealed partial class War3NavigationDebugger : Node3D
         if (_gridVisual is not null) _gridVisual.Visible = active && _showGrid;
         if (!active)
         {
+            _panelDragging = false;
             SetPaused(false);
             _overlayMesh?.ClearSurfaces();
             _gridVisual?.Hide();
@@ -307,6 +397,7 @@ internal sealed partial class War3NavigationDebugger : Node3D
     {
         _events.Enqueue(value);
         while (_events.Count > MaximumEvents) _events.Dequeue();
+        GD.Print($"WAR3_NAV_TRACE {value}");
         RefreshEventHistory();
     }
 
@@ -358,6 +449,7 @@ internal sealed partial class War3NavigationDebugger : Node3D
         };
         _launcherButton.AnchorLeft = 1f;
         _launcherButton.AnchorRight = 1f;
+        _launcherButton.AddThemeFontSizeOverride("font_size", 13);
         _launcherButton.Pressed += () => SetActive(true);
         _uiRoot.AddChild(_launcherButton);
 
@@ -388,6 +480,7 @@ internal sealed partial class War3NavigationDebugger : Node3D
             CornerRadiusBottomRight = 7
         };
         _panel.AddThemeStyleboxOverride("panel", background);
+        _panel.AddThemeFontSizeOverride("font_size", 13);
         _uiRoot.AddChild(_panel);
 
         var margin = new MarginContainer();
@@ -400,14 +493,20 @@ internal sealed partial class War3NavigationDebugger : Node3D
         column.AddThemeConstantOverride("separation", 6);
         margin.AddChild(column);
 
-        var header = new HBoxContainer();
+        var header = new HBoxContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.Drag
+        };
+        header.GuiInput += HandlePanelHeaderInput;
         column.AddChild(header);
         var title = new Label
         {
             Text = "GM / 导航诊断  [F7]",
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore
         };
-        title.AddThemeFontSizeOverride("font_size", 19);
+        title.AddThemeFontSizeOverride("font_size", 18);
         title.AddThemeColorOverride("font_color", new Color("72e6ff"));
         header.AddChild(title);
         var close = new Button { Text = "关闭" };
@@ -432,6 +531,9 @@ internal sealed partial class War3NavigationDebugger : Node3D
         var export = new Button { Text = "导出 JSON" };
         export.Pressed += ExportSnapshot;
         controls.AddChild(export);
+        var copyLogPath = new Button { Text = "复制日志路径" };
+        copyLogPath.Pressed += CopyRuntimeLogPath;
+        controls.AddChild(copyLogPath);
 
         var toggles = new GridContainer { Columns = 4 };
         column.AddChild(toggles);
@@ -487,7 +589,7 @@ internal sealed partial class War3NavigationDebugger : Node3D
             CustomMinimumSize = new Vector2(0f, 240f),
             SizeFlagsVertical = Control.SizeFlags.ExpandFill
         };
-        _summary.AddThemeFontSizeOverride("normal_font_size", 13);
+        _summary.AddThemeFontSizeOverride("normal_font_size", 12);
         column.AddChild(_summary);
 
         column.AddChild(new Label { Text = "状态变迁（主选单位）" });
@@ -498,7 +600,7 @@ internal sealed partial class War3NavigationDebugger : Node3D
             ScrollActive = true,
             CustomMinimumSize = new Vector2(0f, 84f)
         };
-        _eventHistory.AddThemeFontSizeOverride("normal_font_size", 12);
+        _eventHistory.AddThemeFontSizeOverride("normal_font_size", 11);
         column.AddChild(_eventHistory);
         _exportStatus = new Label
         {
@@ -1254,6 +1356,40 @@ internal sealed partial class War3NavigationDebugger : Node3D
             _exportStatus!.Text = $"导出失败：{exception.Message}";
             GD.PushError($"WAR3_NAV_DEBUG_EXPORT_FAIL {exception}");
         }
+    }
+
+    private void CopyRuntimeLogPath()
+    {
+        var path = ResolveRuntimeLogPath();
+        DisplayServer.ClipboardSet(path);
+        if (_exportStatus is not null)
+            _exportStatus.Text = $"已复制运行日志路径：{path}";
+        AddEvent(
+            $"T{_simulation?.Metrics.Tick ?? 0}  已复制运行日志路径");
+    }
+
+    private static string ResolveRuntimeLogPath()
+    {
+        var arguments = OS.GetCmdlineArgs();
+        for (var index = 0; index < arguments.Length; index++)
+        {
+            var argument = arguments[index];
+            if (argument == "--log-file" && index + 1 < arguments.Length)
+                return ProjectSettings.GlobalizePath(arguments[index + 1]);
+            const string prefix = "--log-file=";
+            if (argument.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                return ProjectSettings.GlobalizePath(argument[prefix.Length..]);
+            }
+        }
+
+        const string setting = "debug/file_logging/log_path";
+        var configured = ProjectSettings.HasSetting(setting)
+            ? ProjectSettings.GetSetting(setting).AsString()
+            : "user://logs/godot.log";
+        if (string.IsNullOrWhiteSpace(configured))
+            configured = "user://logs/godot.log";
+        return ProjectSettings.GlobalizePath(configured);
     }
 
     private readonly record struct UnitObservedState(

@@ -9787,7 +9787,8 @@ public static partial class VisualTestCatalog
                     var economy = runtime.ObservePlayerEconomy(1);
                     var refinery = runtime.ObserveResourceNode(gas);
                     var passed = orders.All(order => order.Succeeded) && completed &&
-                                 distinctSizes == 4 && catalog.FormatVersion == 2 &&
+                                 distinctSizes == 4 && catalog.FormatVersion ==
+                                 BuildingTypeCatalogSnapshot.CurrentFormatVersion &&
                                  catalog.StableHash != 0UL && economy.Minerals == 275 &&
                                  economy.SupplyCapacity == 38 && refinery.Operational;
                     return new ScenarioResult(

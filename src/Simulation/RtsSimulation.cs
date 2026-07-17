@@ -261,6 +261,13 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     public CombatDamageResult PreviewCombatDamage(int attacker, int target) =>
         _combatSystem.PreviewDamage(attacker, target);
 
+    public float EffectiveUnitArmor(int unit)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit])
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        return _combatSystem.EffectiveArmor(unit);
+    }
+
     public CombatAutoTargetScore PreviewAutoTargetScore(
         int attacker,
         int target) => _combatSystem.PreviewAutoTargetScore(attacker, target);
@@ -1154,9 +1161,14 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         float maxSpeed = 128f,
         float acceleration = 720f,
         UnitPerceptionProfileSnapshot perception = default,
-        UnitConcealmentCapabilitySnapshot concealmentCapability = default)
+        UnitConcealmentCapabilitySnapshot concealmentCapability = default,
+        float turnRateRadiansPerSecond =
+            UnitFacing.LegacyTurnRateRadiansPerSecond,
+        float facingRadians = 0f)
     {
-        var unit = Units.Add(position, radius, maxSpeed, acceleration);
+        var unit = Units.Add(
+            position, radius, maxSpeed, acceleration,
+            turnRateRadiansPerSecond, facingRadians);
         Combat.Register(
             unit, team, position, combatProfile, perception,
             concealmentCapability);
@@ -1180,9 +1192,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         UnitMovementProfileSnapshot profile) =>
         AddUnit(
             position,
-            profile.PhysicalRadius,
-            profile.MaximumSpeed,
-            profile.Acceleration);
+            team: 0,
+            combatProfile: CombatProfileSnapshot.Standard,
+            radius: profile.PhysicalRadius,
+            maxSpeed: profile.MaximumSpeed,
+            acceleration: profile.Acceleration,
+            turnRateRadiansPerSecond: profile.TurnRateRadiansPerSecond);
 
     public int AddUnit(
         Vector2 position,
@@ -1199,7 +1214,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             movementProfile.MaximumSpeed,
             movementProfile.Acceleration,
             perception,
-            concealmentCapability);
+            concealmentCapability,
+            movementProfile.TurnRateRadiansPerSecond);
 
     public int AddWorker(
         Vector2 position,
@@ -3466,6 +3482,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Abilities.ApplyVisibilitySources(Visibility);
         Metrics.VisibilityDetectionMilliseconds =
             ElapsedMilliseconds(detectionStart);
+        UpdateUnitFacings(delta);
         _combatSystem.Update(delta, Metrics.Tick);
         Abilities.ProcessCombatEvents(
             Metrics.Tick, CombatEvents, this, AbilityEvents);
@@ -4482,6 +4499,50 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             ? Units.Radii[unit]
             : Units.NavigationRadii[unit];
         return World.IsSegmentFree(position, path.Points[nextIndex], radius);
+    }
+
+    private void UpdateUnitFacings(float delta)
+    {
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            Units.PreviousFacings[unit] = Units.Facings[unit];
+            if (!Units.Alive[unit]) continue;
+
+            var desired = Vector2.Zero;
+            switch (Combat.TargetKinds[unit])
+            {
+                case CombatTargetKind.Unit:
+                {
+                    var target = Combat.TargetUnits[unit];
+                    if ((uint)target < (uint)Units.Count && Units.Alive[target])
+                        desired = Units.Positions[target] - Units.Positions[unit];
+                    break;
+                }
+                case CombatTargetKind.Building:
+                {
+                    var target = new GameplayBuildingId(
+                        Combat.TargetBuildings[unit]);
+                    if (Construction.IsAlive(target))
+                    {
+                        var bounds = Construction.Observe(target).Bounds;
+                        desired = (bounds.Min + bounds.Max) * 0.5f -
+                                  Units.Positions[unit];
+                    }
+                    break;
+                }
+            }
+
+            if (desired.LengthSquared() <= 0.000001f)
+            {
+                desired = Units.Velocities[unit].LengthSquared() > 0.000001f
+                    ? Units.Velocities[unit]
+                    : Units.PreferredVelocities[unit];
+            }
+
+            Units.Facings[unit] = UnitFacing.RotateToward(
+                Units.Facings[unit], desired,
+                Units.TurnRatesRadiansPerSecond[unit] * delta);
+        }
     }
 
     private void Integrate(float delta)
@@ -6163,6 +6224,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         SetCombatDestination(unit, target);
     }
 
+    void ICombatMovementDriver.Retreat(int unit, Vector2 target)
+    {
+        SetCombatRetreatDestination(unit, target);
+    }
+
     void ICombatMovementDriver.StopForAttack(int unit)
     {
         if (Units.Modes[unit] == UnitMoveMode.Hold && !Units.PathPending[unit])
@@ -6350,7 +6416,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 new CombatWeaponDamageSnapshot(
                     damage, 1, CombatAttribute.None, 0f, 0, 0f, 0f),
                 new CombatDefenseSnapshot(
-                    Combat.Armor[targetUnit], Combat.Attributes[targetUnit]),
+                    EffectiveUnitArmor(targetUnit),
+                    Combat.Attributes[targetUnit]),
                 Combat.Health[targetUnit]).TotalDamage;
         }
         return DamageUnit(targetUnit, damage);
@@ -6684,6 +6751,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             damage.BonusApplied);
     }
 
+    GameplayBuildingSnapshot[]
+        ICombatMovementDriver.CombatBuildingOverview() =>
+        Construction.CreateOverview();
+
     int ICombatMovementDriver.WeaponUpgradeLevel(int team) =>
         CombatWeaponUpgradeTechnologyId < 0
             ? 0
@@ -6692,14 +6763,24 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     int ICombatMovementDriver.TechnologyLevel(int team, int technologyId) =>
         technologyId < 0 ? 0 : Technology.Level(team, technologyId);
 
-    private CombatWeaponDamageSnapshot CombatWeapon(int attacker) => new(
-        Combat.AttackDamage[attacker], Combat.AttacksPerVolley[attacker],
-        Combat.BonusVs[attacker], Combat.BonusDamage[attacker],
-        ((ICombatMovementDriver)this).WeaponUpgradeLevel(Combat.Teams[attacker]),
-        Combat.BaseUpgradeDamage[attacker], Combat.BonusUpgradeDamage[attacker]);
+    private CombatWeaponDamageSnapshot CombatWeapon(int attacker)
+    {
+        var technologyId = Combat.DamageUpgradeTechnologyIds[attacker];
+        var level = technologyId >= 0
+            ? Technology.Level(Combat.Teams[attacker], technologyId)
+            : ((ICombatMovementDriver)this).WeaponUpgradeLevel(
+                Combat.Teams[attacker]);
+        return new CombatWeaponDamageSnapshot(
+            Combat.AttackDamage[attacker], Combat.AttacksPerVolley[attacker],
+            Combat.BonusVs[attacker], Combat.BonusDamage[attacker], level,
+            Combat.BaseUpgradeDamage[attacker],
+            Combat.BonusUpgradeDamage[attacker],
+            Combat.AttackTypes[attacker], Combat.WeaponAreas[attacker]);
+    }
 
     private CombatDefenseSnapshot BuildingDefense(GameplayBuildingSnapshot building)
-        => new(EffectiveBuildingArmor(building), building.Type.Attributes);
+        => new(EffectiveBuildingArmor(building), building.Type.Attributes,
+            building.Type.ArmorType);
 
     private float EffectiveBuildingArmor(GameplayBuildingSnapshot building)
     {
@@ -6749,6 +6830,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Units.MovementGroupIds[unit] = 0;
             Units.MovementGroupSizes[unit] = 1;
         }
+        Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
+        Units.DestinationOverflowed[unit] = false;
+        QueueNavigationReplan(unit, countInvalidation: false);
+    }
+
+    private void SetCombatRetreatDestination(int unit, Vector2 target)
+    {
+        var clamped = World.Bounds.Inset(Units.Radii[unit] + 2f).Clamp(target);
+        Units.SlotTargets[unit] = clamped;
+        Units.MoveGoals[unit] = clamped;
+        SetMovementGoal(
+            unit,
+            UnitMovementGoalKind.GroundPoint,
+            default,
+            0f,
+            -1,
+            UnitMovementLegResult.InProgress);
+        Units.MovementGroupIds[unit] = 0;
+        Units.MovementGroupSizes[unit] = 1;
         Units.DestinationYieldPhases[unit] = DestinationYieldPhase.None;
         Units.DestinationOverflowed[unit] = false;
         QueueNavigationReplan(unit, countInvalidation: false);

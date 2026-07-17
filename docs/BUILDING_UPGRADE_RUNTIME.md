@@ -54,10 +54,10 @@
 
 升级目录和活动订单进入以下协议：
 
-- Production Command Log 11：`UpgradeBuilding` 与 `CancelBuildingUpgrade`；
-- State Hash 36：目录、next order ID、建筑、玩家、完整 profile 和进度；
-- Hot Snapshot 38：目录与活动订单二进制往返；
-- Replay Package 37：初始升级 manifest 和命令回放。
+- Production Command Log 13：`UpgradeBuilding` 与 `CancelBuildingUpgrade`；
+- State Hash 38：目录、next order ID、建筑、玩家、完整 profile 和进度；
+- Hot Snapshot 40：目录与活动订单二进制往返；
+- Replay Package 39：初始升级 manifest 和命令回放。
 
 恢复时会再次校验建筑所有权、完成态、源类型、profile 身份、进度范围和 next ID。
 所有子系统恢复后还会校验升级/生产/研究互斥，拒绝同一建筑同时拥有两种活动队列的
@@ -81,4 +81,3 @@ godot --headless --path . -- --building-upgrade-self-test
 该测试覆盖两段数据、祭坛门槛、费用/退款、生产互斥、热快照二进制往返、生命比例、
 类型继承、命令日志以及从命令重放后的最终状态 Hash。完整回归仍使用
 `godot --headless --path . -- --self-test`。
-

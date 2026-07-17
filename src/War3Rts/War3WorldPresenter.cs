@@ -446,19 +446,18 @@ public sealed partial class War3WorldPresenter : Node3D
             visual.LastPosition = position;
             var world = ToWorldAtGround(position, definition.FlyingHeight);
             visual.Actor.Position = world;
-            var velocity = simulation.Units.Velocities[unit];
-            if (TryResolveActionDirection(
-                    simulation, unit, position, interpolation, out var attackDirection))
+            var facing = UnitFacing.Interpolate(
+                simulation.Units.PreviousFacings[unit],
+                simulation.Units.Facings[unit], interpolation);
+            var facingDirection = UnitFacing.Direction(facing);
+            var angle = MathF.Atan2(facingDirection.X, facingDirection.Y);
+            visual.Actor.Rotation = new Vector3(0f, angle, 0f);
+            if (simulation.Combat.TargetKinds[unit] != CombatTargetKind.None)
             {
-                var angle = MathF.Atan2(attackDirection.X, attackDirection.Y);
-                visual.Actor.Rotation = new Vector3(0f, angle, 0f);
                 _sawAttackTargetFacing = true;
                 _attackTargetFacingMismatch |= MathF.Abs(Mathf.AngleDifference(
                     visual.Actor.Rotation.Y, angle)) > 0.001f;
             }
-            else if (velocity.LengthSquared() > 1f)
-                visual.Actor.Rotation = new Vector3(
-                    0f, MathF.Atan2(velocity.X, velocity.Y), 0f);
             var hiddenInsideGoldMine = IsGatheringGold(simulation, unit);
             visual.Actor.Visible = !hiddenInsideGoldMine;
             _sawGoldMinerHidden |= hiddenInsideGoldMine;
@@ -477,60 +476,6 @@ public sealed partial class War3WorldPresenter : Node3D
             _units[id].Root.QueueFree();
             _units.Remove(id);
         }
-    }
-
-    private static bool TryResolveActionDirection(
-        RtsSimulation simulation,
-        int unit,
-        NVector2 attackerPosition,
-        float interpolation,
-        out NVector2 direction)
-    {
-        direction = NVector2.Zero;
-        NVector2 targetPosition;
-        if (simulation.Combat.Phases[unit] == CombatPhase.Attacking)
-        {
-            switch (simulation.Combat.TargetKinds[unit])
-            {
-                case CombatTargetKind.Unit:
-                {
-                    var target = simulation.Combat.TargetUnits[unit];
-                    if ((uint)target >= (uint)simulation.Units.Count ||
-                        !simulation.Units.Alive[target])
-                        return false;
-                    targetPosition = NVector2.Lerp(
-                        simulation.Units.PreviousPositions[target],
-                        simulation.Units.Positions[target], interpolation);
-                    break;
-                }
-                case CombatTargetKind.Building:
-                {
-                    var target = new GameplayBuildingId(
-                        simulation.Combat.TargetBuildings[unit]);
-                    if (!simulation.Construction.IsAlive(target)) return false;
-                    var building = simulation.Construction.Observe(target);
-                    targetPosition = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
-                    break;
-                }
-                default:
-                    return false;
-            }
-        }
-        else if (simulation.Economy.IsWorker(unit))
-        {
-            var worker = simulation.Economy.Worker(unit);
-            if (worker.State != WorkerEconomyState.Gathering) return false;
-            var resource = simulation.Economy.ObserveResourceNode(worker.TargetNode);
-            if (resource.Kind != EconomyResourceKind.VespeneGas)
-                return false;
-            targetPosition = resource.Position;
-        }
-        else
-        {
-            return false;
-        }
-        direction = targetPosition - attackerPosition;
-        return direction.LengthSquared() > 0.0001f;
     }
 
     private void UpdateUnitAnimation(

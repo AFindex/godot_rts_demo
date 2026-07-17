@@ -37,7 +37,7 @@ public sealed class BuildingTypeCatalogValidationResult
 /// </summary>
 public sealed class BuildingTypeCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
 
     private readonly BuildingTypeProfile[] _types;
     private readonly byte[] _canonicalBytes;
@@ -110,11 +110,12 @@ public sealed class BuildingTypeCatalogSnapshot
                 !Enum.IsDefined(type.ConstructionMethod) ||
                 !type.Cost.IsValid || !IsPositive(type.BuildSeconds) ||
                 !IsPositive(type.MaximumHealth) || type.SupplyProvided < 0 ||
-                !float.IsFinite(type.Armor) || type.Armor < 0f ||
+                !float.IsFinite(type.Armor) ||
                 (type.Attributes & ~CombatAttribute.All) != 0 ||
                 (type.Attributes & CombatAttribute.Structure) == 0 ||
                 !float.IsFinite(type.ArmorUpgradePerLevel) ||
                 type.ArmorUpgradePerLevel < 0f ||
+                !Enum.IsDefined(type.ArmorType) ||
                 !float.IsFinite(type.CancelRefundFraction) ||
                 type.CancelRefundFraction is < 0f or > 1f)
             {
@@ -176,6 +177,7 @@ public sealed class BuildingTypeCatalogSnapshot
             writer.Write(BitConverter.SingleToInt32Bits(type.Armor));
             writer.Write((ushort)type.Attributes);
             writer.Write(BitConverter.SingleToInt32Bits(type.ArmorUpgradePerLevel));
+            writer.Write((byte)type.ArmorType);
         }
         writer.Flush();
         return stream.ToArray();

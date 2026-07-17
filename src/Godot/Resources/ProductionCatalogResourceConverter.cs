@@ -22,6 +22,8 @@ public static class ProductionCatalogResourceConverter
                 PhysicalRadius = type.Movement.PhysicalRadius,
                 MaximumSpeed = type.Movement.MaximumSpeed,
                 Acceleration = type.Movement.Acceleration,
+                TurnRateRadiansPerSecond =
+                    type.Movement.TurnRateRadiansPerSecond,
                 MaximumHealth = type.Combat.MaximumHealth,
                 AttackDamage = type.Combat.AttackDamage,
                 AttackRange = type.Combat.AttackRange,
@@ -41,6 +43,12 @@ public static class ProductionCatalogResourceConverter
                 CanMoveDuringWindup = type.Combat.CanMoveDuringWindup,
                 CanMoveDuringCooldown = type.Combat.CanMoveDuringCooldown,
                 AutoTargetPriority = type.Combat.AutoTargetPriority,
+                ArmorType = type.Combat.ArmorType,
+                ArmorUpgradeTechnologyId =
+                    type.Combat.ArmorUpgradeTechnologyId,
+                ArmorUpgradePerLevel = type.Combat.ArmorUpgradePerLevel,
+                AttackHalfAngleRadians =
+                    type.Combat.AttackHalfAngleRadians,
                 Concealment = type.Perception.Concealment,
                 DetectionRange = type.Perception.DetectionRange,
                 VisionRange = type.Perception.VisionRange,
@@ -68,7 +76,29 @@ public static class ProductionCatalogResourceConverter
                     BonusUpgradeDamage = weapon.BonusUpgradeDamage,
                     ProjectileSpeed = weapon.ProjectileSpeed,
                     CanMoveDuringWindup = weapon.CanMoveDuringWindup,
-                    CanMoveDuringCooldown = weapon.CanMoveDuringCooldown
+                    CanMoveDuringCooldown = weapon.CanMoveDuringCooldown,
+                    AttackType = weapon.AttackType,
+                    DamageUpgradeTechnologyId =
+                        weapon.DamageUpgradeTechnologyId,
+                    MinimumRange = weapon.MinimumRange,
+                    FullDamageRadius = weapon.Area.FullDamageRadius,
+                    HalfDamageRadius = weapon.Area.HalfDamageRadius,
+                    QuarterDamageRadius = weapon.Area.QuarterDamageRadius,
+                    AreaTargetLayers = weapon.Area.TargetLayers,
+                    PropagationKind = weapon.Propagation.Kind,
+                    PropagationLineDistance =
+                        weapon.Propagation.LineDistance,
+                    PropagationRadius = weapon.Propagation.Radius,
+                    PropagationDamageLossFactor =
+                        weapon.Propagation.DamageLossFactor,
+                    PropagationMaximumTargets =
+                        weapon.Propagation.MaximumTargets,
+                    PropagationTargetLayers =
+                        weapon.Propagation.TargetLayers,
+                    PropagationDistanceUpgradeTechnologyId =
+                        weapon.Propagation.DistanceUpgradeTechnologyId,
+                    PropagationDistanceUpgradePerLevel =
+                        weapon.Propagation.DistanceUpgradePerLevel
                 });
             }
             resource.UnitTypes.Add(unitResource);
@@ -137,7 +167,8 @@ public static class ProductionCatalogResourceConverter
             var movement = new UnitMovementProfileSnapshot(
                 source.Id, source.DisplayName ?? string.Empty,
                 source.PhysicalRadius, source.MaximumSpeed, source.Acceleration,
-                clearance.Class, clearance.NavigationRadius);
+                clearance.Class, clearance.NavigationRadius,
+                source.TurnRateRadiansPerSecond);
             var weaponProfiles = ImmutableArray
                 .CreateBuilder<CombatWeaponProfileSnapshot>(source.Weapons.Count);
             for (var weaponIndex = 0;
@@ -165,7 +196,24 @@ public static class ProductionCatalogResourceConverter
                     weapon.BonusUpgradeDamage,
                     weapon.ProjectileSpeed,
                     weapon.CanMoveDuringWindup,
-                    weapon.CanMoveDuringCooldown));
+                    weapon.CanMoveDuringCooldown,
+                    weapon.AttackType,
+                    weapon.DamageUpgradeTechnologyId,
+                    weapon.MinimumRange,
+                    new CombatWeaponAreaSnapshot(
+                        weapon.FullDamageRadius,
+                        weapon.HalfDamageRadius,
+                        weapon.QuarterDamageRadius,
+                        weapon.AreaTargetLayers),
+                    new CombatWeaponPropagationSnapshot(
+                        weapon.PropagationKind,
+                        weapon.PropagationLineDistance,
+                        weapon.PropagationRadius,
+                        weapon.PropagationDamageLossFactor,
+                        weapon.PropagationMaximumTargets,
+                        weapon.PropagationTargetLayers,
+                        weapon.PropagationDistanceUpgradeTechnologyId,
+                        weapon.PropagationDistanceUpgradePerLevel)));
             }
             var combat = new CombatProfileSnapshot(
                 source.MaximumHealth, source.AttackDamage, source.AttackRange,
@@ -177,7 +225,11 @@ public static class ProductionCatalogResourceConverter
                 source.ProjectileSpeed,
                 source.CanMoveDuringWindup,
                 source.CanMoveDuringCooldown,
-                source.AutoTargetPriority)
+                source.AutoTargetPriority,
+                source.ArmorType,
+                source.ArmorUpgradeTechnologyId,
+                source.ArmorUpgradePerLevel,
+                source.AttackHalfAngleRadians)
             {
                 Weapons = weaponProfiles.MoveToImmutable()
             };

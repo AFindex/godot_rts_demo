@@ -35,6 +35,8 @@ public static class SimulationSelfTest
             var connectivityResult = NavigationConnectivitySelfTest.Run();
             var destinationSlotClearanceResult =
                 DestinationSlotClearanceSelfTest.Run();
+            var chokeCommandReplacementResult =
+                ChokeCommandReplacementSelfTest.Run();
             var bakeResult = ClearanceBakeSelfTest.Run(
                 navigationMap, clearanceBake);
             var incrementalResult = ClearanceIncrementalSelfTest.Run(
@@ -62,6 +64,7 @@ public static class SimulationSelfTest
             var productionGroupResult = ProductionGroupPresentationSelfTest.Run();
             var combatEventResult = CombatEventStreamSelfTest.Run();
             var combatDamageResult = CombatDamageSelfTest.Run();
+            var war3CombatRulesResult = War3CombatRulesSelfTest.Run();
             var combatProjectileResult = CombatProjectileSelfTest.Run();
             var combatPresentationResult = CombatPresentationSelfTest.Run();
             var abilityResult = AbilitySystemSelfTest.Run();
@@ -82,6 +85,7 @@ public static class SimulationSelfTest
                          profileResult.Passed &&
                          previewResult.Passed && connectivityResult.Passed &&
                          destinationSlotClearanceResult.Passed &&
+                         chokeCommandReplacementResult.Passed &&
                          bakeResult.Passed && incrementalResult.Passed &&
                          reloadResult.Passed && bakeCommitResult.Passed;
             passed &= placementDiffResult.Passed && watchWorkflowResult.Passed &&
@@ -94,7 +98,9 @@ public static class SimulationSelfTest
             passed &= operationPresentationResult.Passed && interface3DResult.Passed &&
                       controlGroupResult.Passed &&
                       productionGroupResult.Passed && combatEventResult.Passed &&
-                      combatDamageResult.Passed && combatProjectileResult.Passed &&
+                      combatDamageResult.Passed &&
+                      war3CombatRulesResult.Passed &&
+                      combatProjectileResult.Passed &&
                       combatPresentationResult.Passed && abilityResult.Passed &&
                       testShowcaseResult.Passed &&
                       playableSkirmishResult.Passed;
@@ -143,6 +149,9 @@ public static class SimulationSelfTest
                 $"destination-slot-clearance=" +
                 $"{(destinationSlotClearanceResult.Passed ? "PASS" : "FAIL")}" +
                 $"({destinationSlotClearanceResult.Summary})",
+                $"choke-command-replacement=" +
+                $"{(chokeCommandReplacementResult.Passed ? "PASS" : "FAIL")}" +
+                $"({chokeCommandReplacementResult.Summary})",
                 $"clearance-bake={(bakeResult.Passed ? "PASS" : "FAIL")}" +
                 $"({bakeResult.Summary})",
                 $"clearance-incremental=" +
@@ -199,6 +208,9 @@ public static class SimulationSelfTest
                 $"({combatEventResult.Summary})",
                 $"combat-damage={(combatDamageResult.Passed ? "PASS" : "FAIL")}" +
                 $"({combatDamageResult.Summary})",
+                $"war3-combat-rules=" +
+                $"{(war3CombatRulesResult.Passed ? "PASS" : "FAIL")}" +
+                $"({war3CombatRulesResult.Summary})",
                 $"combat-projectiles=" +
                 $"{(combatProjectileResult.Passed ? "PASS" : "FAIL")}" +
                 $"({combatProjectileResult.Summary})",

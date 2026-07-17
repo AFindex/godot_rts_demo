@@ -23,6 +23,8 @@ public sealed record War3GameplayImportPolicy
     public float DefaultProjectileSpeed { get; init; } = 430f;
     public float BuildTimeScale { get; init; } = 1f;
     public float ProductionTimeScale { get; init; } = 1f;
+    public float TurnRateFrameSeconds { get; init; } = 0.03f;
+    public float AttackHalfAngleRadians { get; init; } = 0.5f;
 }
 
 public sealed record War3GameplayImportReport(
@@ -56,6 +58,10 @@ public sealed class War3GameplayDataAdapter(
     public War3GameplayImportPolicy Policy { get; } = policy;
     public IReadOnlyDictionary<string, int> WeaponUnlockTechnologies { get; init; } =
         new Dictionary<string, int>(StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, int> TechnologyIds { get; init; } =
+        new Dictionary<string, int>(StringComparer.Ordinal);
+    public War3ObjectDataCatalog? AbilityCatalog { get; init; }
+    public War3ObjectDataCatalog? UpgradeCatalog { get; init; }
 
     public War3UnitDefinition ApplyPresentation(War3UnitDefinition fallback)
     {
@@ -146,12 +152,13 @@ public sealed class War3GameplayDataAdapter(
             SupplyProvided = NonNegative(summary.Cost.FoodProduced)
                 ? summary.Cost.FoodProduced!.Value
                 : fallback.SupplyProvided,
-            Armor = NonNegative(summary.Armor.Effective)
+            Armor = Finite(summary.Armor.Effective)
                 ? summary.Armor.Effective!.Value
                 : fallback.Armor,
             ArmorUpgradePerLevel = NonNegative(summary.Armor.UpgradeAmount)
                 ? summary.Armor.UpgradeAmount!.Value
-                : fallback.ArmorUpgradePerLevel
+                : fallback.ArmorUpgradePerLevel,
+            ArmorType = ArmorType(summary.Armor.Type)
         };
     }
 
@@ -272,6 +279,10 @@ public sealed class War3GameplayDataAdapter(
             : fallback.MaximumSpeed;
         var clearance = MovementClearance.FromPhysicalRadius(radius);
         var name = Text(data.DisplayName, fallback.Name);
+        var turnRate = Positive(data.Summary.Movement.TurnRate)
+            ? data.Summary.Movement.TurnRate!.Value /
+              Policy.TurnRateFrameSeconds
+            : fallback.TurnRateRadiansPerSecond;
         return new UnitMovementProfileSnapshot(
             fallback.Id,
             name,
@@ -279,7 +290,8 @@ public sealed class War3GameplayDataAdapter(
             speed,
             speed * Policy.AccelerationMultiplier,
             clearance.Class,
-            clearance.NavigationRadius);
+            clearance.NavigationRadius,
+            turnRate);
     }
 
     private CombatProfileSnapshot ApplyCombat(
@@ -290,12 +302,26 @@ public sealed class War3GameplayDataAdapter(
         var maximumHealth = Positive(data.Summary.HitPoints.Effective)
             ? data.Summary.HitPoints.Effective!.Value
             : fallback.MaximumHealth;
-        var armor = NonNegative(data.Summary.Armor.Effective)
+        var armor = Finite(data.Summary.Armor.Effective)
             ? data.Summary.Armor.Effective!.Value
             : fallback.Armor;
         var attack = FirstEnabledAttack(data);
+        var armorTechnology = Technology(
+            data.Summary.Upgrades, "Rhar", "Rhla");
+        var armorUpgrade = armorTechnology >= 0 &&
+                           NonNegative(data.Summary.Armor.UpgradeAmount)
+            ? data.Summary.Armor.UpgradeAmount!.Value
+            : 0f;
         if (attack is null)
-            return fallback with { MaximumHealth = maximumHealth, Armor = armor };
+            return fallback with
+            {
+                MaximumHealth = maximumHealth,
+                Armor = armor,
+                ArmorType = ArmorType(data.Summary.Armor.Type),
+                ArmorUpgradeTechnologyId = armorTechnology,
+                ArmorUpgradePerLevel = armorUpgrade,
+                AttackHalfAngleRadians = Policy.AttackHalfAngleRadians
+            };
 
         var weaponValues = data.Summary.Combat.Attacks
             .Select((value, slot) => new
@@ -334,6 +360,9 @@ public sealed class War3GameplayDataAdapter(
                 acquisition + MathF.Max(20f, range * 0.25f)),
             Positioning = primary.Positioning,
             Armor = armor,
+            ArmorType = ArmorType(data.Summary.Armor.Type),
+            ArmorUpgradeTechnologyId = armorTechnology,
+            ArmorUpgradePerLevel = armorUpgrade,
             AttacksPerVolley = primary.AttacksPerVolley,
             BonusVs = primary.BonusVs,
             BonusDamage = primary.BonusDamage,
@@ -342,6 +371,7 @@ public sealed class War3GameplayDataAdapter(
             ProjectileSpeed = primary.ProjectileSpeed,
             CanMoveDuringWindup = primary.CanMoveDuringWindup,
             CanMoveDuringCooldown = primary.CanMoveDuringCooldown,
+            AttackHalfAngleRadians = Policy.AttackHalfAngleRadians,
             Weapons = weaponValues
         };
     }
@@ -371,6 +401,12 @@ public sealed class War3GameplayDataAdapter(
             : 0f;
         if (projectile && projectileSpeed <= 0f)
             projectileSpeed = Policy.DefaultProjectileSpeed;
+        var minimumRange = NonNegative(attack.MinimumRange)
+            ? MathF.Min(range,
+                attack.MinimumRange!.Value * Policy.WorldDistanceScale)
+            : 0f;
+        var area = Area(attack.Area);
+        var propagation = Propagation(data, attack, slot);
         return new CombatWeaponProfileSnapshot(
             slot,
             TargetLayers(attack.Targets),
@@ -392,7 +428,12 @@ public sealed class War3GameplayDataAdapter(
             fallback.BonusUpgradeDamage,
             projectileSpeed,
             fallback.CanMoveDuringWindup,
-            fallback.CanMoveDuringCooldown);
+            fallback.CanMoveDuringCooldown,
+            AttackType(attack.AttackType),
+            Technology(data.Summary.Upgrades, "Rhme", "Rhra"),
+            minimumRange,
+            area,
+            propagation);
     }
 
     public static string WeaponUnlockKey(string objectId, int slot) =>
@@ -412,6 +453,133 @@ public sealed class War3GameplayDataAdapter(
             };
         }
         return result == CombatTargetLayer.None ? CombatTargetLayer.All : result;
+    }
+
+    private CombatWeaponAreaSnapshot Area(War3AttackAreaSummary value)
+    {
+        if (!Positive(value.QuarterDamageRadius)) return default;
+        var quarter = value.QuarterDamageRadius!.Value *
+                      Policy.WorldDistanceScale;
+        var half = NonNegative(value.HalfDamageRadius)
+            ? MathF.Min(quarter,
+                value.HalfDamageRadius!.Value * Policy.WorldDistanceScale)
+            : 0f;
+        var full = NonNegative(value.FullDamageRadius)
+            ? MathF.Min(half,
+                value.FullDamageRadius!.Value * Policy.WorldDistanceScale)
+            : 0f;
+        var layers = AreaTargetLayers(value.Targets);
+        return layers == CombatTargetLayer.None
+            ? default
+            : new CombatWeaponAreaSnapshot(full, half, quarter, layers);
+    }
+
+    private CombatWeaponPropagationSnapshot Propagation(
+        War3UnitData data,
+        War3AttackSummary attack,
+        int slot)
+    {
+        var kind = attack.WeaponType?.ToLowerInvariant() switch
+        {
+            "mline" or "aline" => CombatWeaponPropagationKind.Line,
+            "mbounce" => CombatWeaponPropagationKind.Bounce,
+            _ => CombatWeaponPropagationKind.None
+        };
+        if (kind == CombatWeaponPropagationKind.None) return default;
+
+        var suffix = (slot + 1).ToString(CultureInfo.InvariantCulture);
+        var loss = Math.Clamp(EditorFloat(
+            data, $"damageLoss{suffix}") ?? 0f, 0f, 1f);
+        var spillRadius = MathF.Max(0f,
+            EditorFloat(data, $"spillRadius{suffix}") ?? 0f) *
+            Policy.WorldDistanceScale;
+        var targets = AreaTargetLayers(attack.Area.Targets);
+        if (targets == CombatTargetLayer.None) return default;
+
+        if (kind == CombatWeaponPropagationKind.Bounce)
+        {
+            var radius = Positive(attack.Area.FullDamageRadius)
+                ? attack.Area.FullDamageRadius!.Value *
+                  Policy.WorldDistanceScale
+                : spillRadius;
+            var maximumTargets = Math.Clamp(
+                EditorInt(data, $"targCount{suffix}") ?? 1, 1, 32);
+            return radius > 0f && maximumTargets > 1
+                ? new CombatWeaponPropagationSnapshot(
+                    kind, 0f, radius, loss, maximumTargets, targets)
+                : default;
+        }
+
+        var distance = MathF.Max(0f,
+            EditorFloat(data, $"spillDist{suffix}") ?? 0f) *
+            Policy.WorldDistanceScale;
+        var upgrade = SpillDistanceUpgrade(data);
+        if (spillRadius <= 0f ||
+            distance <= 0f && upgrade.PerLevel <= 0f)
+            return default;
+        return new CombatWeaponPropagationSnapshot(
+            kind, distance, spillRadius, loss, 32, targets,
+            upgrade.TechnologyId, upgrade.PerLevel);
+    }
+
+    private (int TechnologyId, float PerLevel) SpillDistanceUpgrade(
+        War3UnitData data)
+    {
+        if (AbilityCatalog is null || UpgradeCatalog is null)
+            return (-1, 0f);
+        foreach (var abilityId in data.Summary.Abilities
+                     .Order(StringComparer.Ordinal))
+        {
+            if (!AbilityCatalog.TryGet(abilityId, out var ability)) continue;
+            foreach (var requirement in ability.Summary.Levels
+                         .SelectMany(value => value.Requirements)
+                         .Distinct(StringComparer.Ordinal)
+                         .Order(StringComparer.Ordinal))
+            {
+                if (!TechnologyIds.TryGetValue(
+                        requirement, out var technologyId) ||
+                    !UpgradeCatalog.TryGet(requirement, out var upgrade))
+                    continue;
+                var effect = upgrade.Summary.Effects
+                    .Where(value => value.Type.Equals(
+                        "rasd", StringComparison.OrdinalIgnoreCase) &&
+                        value.Base is > 0f)
+                    .OrderBy(value => value.Slot)
+                    .FirstOrDefault();
+                if (effect?.Base is float amount && amount > 0f)
+                    return (technologyId,
+                        amount * Policy.WorldDistanceScale);
+            }
+        }
+        return (-1, 0f);
+    }
+
+    private static CombatTargetLayer AreaTargetLayers(
+        IEnumerable<string> values)
+    {
+        var result = CombatTargetLayer.None;
+        foreach (var value in values)
+        {
+            result |= value.ToLowerInvariant() switch
+            {
+                "air" => CombatTargetLayer.AirUnit,
+                "ground" => CombatTargetLayer.GroundUnit,
+                "structure" => CombatTargetLayer.Building,
+                _ => CombatTargetLayer.None
+            };
+        }
+        return result;
+    }
+
+    private int Technology(IEnumerable<string> upgrades, params string[] ids)
+    {
+        foreach (var id in ids)
+        {
+            if (upgrades.Contains(id, StringComparer.Ordinal) &&
+                TechnologyIds.TryGetValue(id, out var technologyId))
+                return technologyId;
+        }
+        return -1;
     }
 
     private UnitPerceptionProfileSnapshot ApplyPerception(
@@ -484,9 +652,22 @@ public sealed class War3GameplayDataAdapter(
                         StringSplitOptions.RemoveEmptyEntries)
             .Where(value => value is not "_" and not "-");
 
+    private static float? EditorFloat(War3UnitData data, string field) =>
+        float.TryParse(EditorValue(data, field), NumberStyles.Float,
+            CultureInfo.InvariantCulture, out var value) &&
+        float.IsFinite(value)
+            ? value
+            : null;
+
+    private static int? EditorInt(War3UnitData data, string field) =>
+        int.TryParse(EditorValue(data, field), NumberStyles.Integer,
+            CultureInfo.InvariantCulture, out var value)
+            ? value
+            : null;
+
     private static bool IsProjectileWeapon(string? value) =>
         value?.ToLowerInvariant() is "missile" or "artillery" or
-            "mline" or "mbounce" or "msplash";
+            "mline" or "aline" or "mbounce" or "msplash";
 
     private static string LocalizeAttackType(string? value, string fallback) =>
         value?.ToLowerInvariant() switch
@@ -499,6 +680,33 @@ public sealed class War3GameplayDataAdapter(
             "hero" => "英雄攻击",
             "spells" => "法术攻击",
             _ => fallback
+        };
+
+    private static CombatAttackType AttackType(string? value) =>
+        value?.ToLowerInvariant() switch
+        {
+            "normal" => CombatAttackType.Normal,
+            "pierce" => CombatAttackType.Pierce,
+            "siege" => CombatAttackType.Siege,
+            "magic" => CombatAttackType.Magic,
+            "chaos" => CombatAttackType.Chaos,
+            "spells" => CombatAttackType.Spells,
+            "hero" => CombatAttackType.Hero,
+            _ => CombatAttackType.Legacy
+        };
+
+    private static CombatArmorType ArmorType(string? value) =>
+        value?.ToLowerInvariant() switch
+        {
+            "small" => CombatArmorType.Small,
+            "medium" => CombatArmorType.Medium,
+            "large" => CombatArmorType.Large,
+            "fort" => CombatArmorType.Fortified,
+            "normal" or "unarmored" => CombatArmorType.Normal,
+            "hero" => CombatArmorType.Hero,
+            "divine" => CombatArmorType.Divine,
+            "none" => CombatArmorType.None,
+            _ => CombatArmorType.Legacy
         };
 
     private static string LocalizeArmorType(string? value, string fallback) =>
@@ -554,6 +762,9 @@ public sealed class War3GameplayDataAdapter(
 
     private static bool NonNegative(float? value) =>
         value is >= 0f && float.IsFinite(value.Value);
+
+    private static bool Finite(float? value) =>
+        value.HasValue && float.IsFinite(value.Value);
 
     private static bool NonNegative(int? value) => value is >= 0;
 }

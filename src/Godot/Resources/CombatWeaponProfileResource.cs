@@ -27,4 +27,29 @@ public partial class CombatWeaponProfileResource : Resource
     [Export] public float ProjectileSpeed { get; set; }
     [Export] public bool CanMoveDuringWindup { get; set; }
     [Export] public bool CanMoveDuringCooldown { get; set; }
+    [Export] public CombatAttackType AttackType { get; set; } =
+        CombatAttackType.Legacy;
+    [Export] public int DamageUpgradeTechnologyId { get; set; } = -1;
+    [Export(PropertyHint.Range, "0,1000,0.1,or_greater")]
+    public float MinimumRange { get; set; }
+    [Export(PropertyHint.Range, "0,1000,0.1,or_greater")]
+    public float FullDamageRadius { get; set; }
+    [Export(PropertyHint.Range, "0,1000,0.1,or_greater")]
+    public float HalfDamageRadius { get; set; }
+    [Export(PropertyHint.Range, "0,1000,0.1,or_greater")]
+    public float QuarterDamageRadius { get; set; }
+    [Export] public CombatTargetLayer AreaTargetLayers { get; set; }
+    [Export] public CombatWeaponPropagationKind PropagationKind { get; set; }
+    [Export(PropertyHint.Range, "0,1000,0.1,or_greater")]
+    public float PropagationLineDistance { get; set; }
+    [Export(PropertyHint.Range, "0,1000,0.1,or_greater")]
+    public float PropagationRadius { get; set; }
+    [Export(PropertyHint.Range, "0,1,0.01")]
+    public float PropagationDamageLossFactor { get; set; }
+    [Export(PropertyHint.Range, "0,32,1")]
+    public int PropagationMaximumTargets { get; set; }
+    [Export] public CombatTargetLayer PropagationTargetLayers { get; set; }
+    [Export] public int PropagationDistanceUpgradeTechnologyId { get; set; } = -1;
+    [Export(PropertyHint.Range, "0,1000,0.1,or_greater")]
+    public float PropagationDistanceUpgradePerLevel { get; set; }
 }

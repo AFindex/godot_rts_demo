@@ -332,12 +332,12 @@ public partial class Rts3DWorldPresenter : Node3D
                                 simulation.Combat);
             visual.Body.Visible = presented;
 
-            var velocity = simulation.Units.Velocities[unit];
-            if (velocity.LengthSquared() > 1f)
-            {
-                visual.Body.Rotation = new Vector3(
-                    0f, MathF.Atan2(velocity.X, velocity.Y), 0f);
-            }
+            var facing = UnitFacing.Interpolate(
+                simulation.Units.PreviousFacings[unit],
+                simulation.Units.Facings[unit], interpolation);
+            var direction = UnitFacing.Direction(facing);
+            visual.Body.Rotation = new Vector3(
+                0f, MathF.Atan2(direction.X, direction.Y), 0f);
 
             visual.Selection.Position = new Vector3(
                 worldPosition.X,

@@ -54,6 +54,8 @@ public partial class Rts3DCameraController : Node
     public NVector2 Target => _desiredTarget;
     public float Distance => _desiredDistance;
     public float Yaw => _desiredYaw;
+    internal bool MiddleMouseDragActive => _middleMouseDown;
+    internal Vector2 PendingPanPixels => _pendingPanPixels;
     public Func<Vector2, bool>? EdgeScrollBlocked { get; set; }
     public Func<NVector2, float>? TargetWorldHeight { get; set; }
 
@@ -90,6 +92,7 @@ public partial class Rts3DCameraController : Node
         _simulationBounds = Normalize(simulationBounds);
         ResetView(immediate: true);
         SetProcess(true);
+        SetProcessInput(true);
         SetProcessUnhandledInput(true);
     }
 
@@ -201,11 +204,6 @@ public partial class Rts3DCameraController : Node
 
         switch (inputEvent)
         {
-            case InputEventMouseButton button when button.ButtonIndex == MouseButton.Middle:
-                _middleMouseDown = button.Pressed;
-                GetViewport().SetInputAsHandled();
-                break;
-
             case InputEventMouseButton button when button.Pressed &&
                                                        button.ButtonIndex == MouseButton.WheelUp:
                 _desiredDistance *= 1f - WheelZoomFraction;
@@ -215,14 +213,6 @@ public partial class Rts3DCameraController : Node
             case InputEventMouseButton button when button.Pressed &&
                                                        button.ButtonIndex == MouseButton.WheelDown:
                 _desiredDistance *= 1f + WheelZoomFraction;
-                GetViewport().SetInputAsHandled();
-                break;
-
-            case InputEventMouseMotion motion when _middleMouseDown:
-                if (motion.AltPressed)
-                    _pendingRotationPixels += motion.Relative;
-                else
-                    _pendingPanPixels += motion.Relative;
                 GetViewport().SetInputAsHandled();
                 break;
 
@@ -240,6 +230,41 @@ public partial class Rts3DCameraController : Node
                 _pendingPanPixels += pan.Delta * 12f;
                 GetViewport().SetInputAsHandled();
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Middle-button camera dragging must be captured before Control nodes get
+    /// their GUI input. Otherwise a bottom HUD consumes the event and dragging
+    /// works over the world but silently stops over the lower screen area.
+    /// Wheel and touch gestures intentionally remain in _UnhandledInput so UI
+    /// panels can keep their normal scroll behavior.
+    /// </summary>
+    public override void _Input(InputEvent inputEvent)
+    {
+        if (_camera is null || _automationActive) return;
+        if (CaptureMiddleMouseDragInput(inputEvent))
+            GetViewport().SetInputAsHandled();
+    }
+
+    internal bool CaptureMiddleMouseDragInput(InputEvent inputEvent)
+    {
+        switch (inputEvent)
+        {
+            case InputEventMouseButton button when
+                button.ButtonIndex == MouseButton.Middle:
+                _middleMouseDown = button.Pressed;
+                return true;
+
+            case InputEventMouseMotion motion when _middleMouseDown:
+                if (motion.AltPressed)
+                    _pendingRotationPixels += motion.Relative;
+                else
+                    _pendingPanPixels += motion.Relative;
+                return true;
+
+            default:
+                return false;
         }
     }
 

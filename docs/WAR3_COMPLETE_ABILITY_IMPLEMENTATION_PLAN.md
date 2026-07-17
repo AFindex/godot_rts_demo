@@ -129,7 +129,7 @@ rawcode -> baseCode -> behavior family -> typed parameters -> runtime profile
 - 修正当前 44 条的近似或错误实现。
 - 接入当前 13 个建筑 profile 的能力。
 - 完成民兵、蒸汽机车、凤凰、水元素、塔侦测、商店和资源交回链路。
-- 接入英雄学习和 15 条科技门槛。
+- 接入英雄学习和当前 17 项人族科技（含近战/远程武器与两类单位护甲）的门槛与数值消费点。
 
 验收：人族可玩单位、建筑和召唤物引用全部为 implemented/delegated，且不存在
 未解释的空效果。
@@ -304,8 +304,63 @@ M3 第六批已完成建筑升级协议：
 6. 专项测试覆盖数据、祭坛门槛、费用/退款、互斥、两段完成、生命比例、类型继承、
    命令往返、热恢复和最终回放 Hash。
 
-下一批进入 War3 攻防类型矩阵和普通武器 `area`/`minimum-range` 字段，然后补单位
-护甲科技的逐级效果。建筑升级实现细节见 `docs/BUILDING_UPGRADE_RUNTIME.md`。
+M3 第七批已完成基础战斗规则闭环：
+
+1. 从 1.27a `Units/MiscGame.txt` 编译 Normal/Pierce/Siege/Magic/Chaos/Spells/Hero
+   对 Small/Medium/Large/Fortified/Normal/Hero/Divine/None 的 7×8 矩阵；War3
+   profile 使用 `DefenseArmor=0.06` 的正护甲曲线，旧 Demo profile 保持原平减算法。
+2. `combat.attacks[].attackType/minimumRange/area` 已进入内容中立武器 profile。
+   最小射程内的可移动单位先向目标反方向撤离，退出盲区后才起手；Hold 单位不擅自
+   离开阵位。迫击炮的 25/150/250 半径按世界尺度换算为全伤/半伤/四分之一伤害。
+3. 区域伤害在稳定单位/建筑 ID 顺序中结算，复用同一攻击/护甲矩阵、科技等级、
+   目标层、关系和死亡事件；弹道命中保存完整区域快照，不在表现层二次猜测。
+4. `Rhar/Rhla` 单位护甲科技和 `Rhme/Rhra` 逐武器伤害科技按每个单位原始
+   `summary.upgrades` 绑定。`Rhla`、`Rhra` 追加为稠密科技 15/16，既有 0..14 ID
+   不变；HUD 展示当前武器科技等级和含科技增量的有效护甲。
+5. 新字段进入 Production Catalog 9、Production Command Log 12、Ability Catalog
+   14、Building Type Catalog 3、Building Upgrade Catalog 2、State Hash 37、Replay
+   Package 38 与 Hot Snapshot 39；Godot Resource 转换和弹道快照同步完成。
+6. `--war3-combat-rules-self-test` 覆盖矩阵、原始数据映射、护甲科技、迫击炮三段
+   溅射、最小射程后撤/再开火和非默认字段二进制往返；真实 War3 smoke 输出
+   `technology_applied=17` 且 `success=True`。
+
+M3 第八批已完成特殊普通武器传播与负护甲闭环：
+
+1. 审计 837 个对象、644 个启用攻击槽：`mline=1`、`mbounce=2`、`aline=1`；其余为
+   normal/missile/msplash/artillery/instant。特殊 profile 编译为内容中立的
+   Line/Bounce、距离、半径、Damage Loss、Maximum Targets、目标层和距离科技。
+2. Line 在主目标之后的稳定走廊内按纵向距离、目标种类、ID 命中；Bounce 每跳选择
+   最近且未访问目标，距离相同按种类/ID 决胜。次级攻击清空 Area/Propagation，避免
+   递归传播，并对每个目标重新结算护甲和攻击类型。
+3. `hgry -> Asth -> Rhhb -> rasd=200` 从 Ability/Upgrade 导出闭包自动编译；科技 13
+   未研究时 Spill Distance 为 0，研究风暴战锤后增加 200 原始距离，不写 rawcode
+   特例到战斗系统。
+4. 负护甲改为经典 `2 - 0.94 ^ -armor` 伤害倍率，单位/建筑 profile 与各目录校验
+   接受有限负值；`Spells` 仍忽略数值护甲。
+5. 新字段进入 Production Catalog 10、Production Command Log 13、Ability Catalog
+   15、State Hash 38、Replay Package 39、Hot Snapshot 40、Godot Resource、活动
+   弹道快照与热恢复校验。
+6. `--war3-combat-rules-self-test` 新增负 5 护甲、Line/Bounce 传播、走廊外排除、
+   风暴战锤研究前后对照和非默认传播序列化/Resource 往返。
+
+M3 第九批已完成确定性朝向与攻击起手闭环：
+
+1. `UnitStore` 新增 `Facing/PreviousFacing/TurnRateRadiansPerSecond`，以最短弧度路径
+   确定性转身；移动朝速度方向，交战时目标方向拥有优先级。
+2. 原始对象 `TurnRate` 按 0.03 秒内部帧转换为 rad/s，`MiscData.txt` 的
+   `AttackHalfAngle=0.5` 编译到 War3 combat profile；旧内容使用兼容默认值。
+3. 单位/建筑攻击只有在射程、冷却和朝向窗口同时满足时才发布 `AttackStarted`；已开始
+   的 Windup 不被朝向漂移重复取消。表现器改为插值权威朝向，不能再视觉瞬转绕过规则。
+4. 新状态进入 Gameplay Profile 2、Production Catalog 11、Production Command Log
+   14、Ability Catalog 16、State Hash 39、Replay Package 40、Hot Snapshot 41 和
+   Godot Resource 往返。
+5. 专项黑盒验证背对目标连续 20 tick 不伤害、转正后才开火，并覆盖 Footman
+   `0.6 / 0.03 = 20 rad/s`、资源/命令序列化与热恢复；真实 War3 smoke 继续
+   `success=True attack_facing=True`。
+
+下一批继续把 tree/wall/debris/item/ward 接入统一普通武器目标查询边界，并评估技能侧
+攻击附伤是否迁入同一区域求解器。建筑升级实现细节见
+`docs/BUILDING_UPGRADE_RUNTIME.md`，战斗规则见 `docs/WAR3_COMBAT_RULES.md`。
 
 本批半径语义参考：Blizzard 经典站点的
 [Flying Machine](https://classic.battle.net/war3/human/units/flyingmachine.shtml) 与

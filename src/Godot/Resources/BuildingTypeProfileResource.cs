@@ -34,4 +34,6 @@ public partial class BuildingTypeProfileResource : Resource
         CombatAttribute.Structure | CombatAttribute.Mechanical;
     [Export(PropertyHint.Range, "0,100,0.5,or_greater")]
     public float ArmorUpgradePerLevel { get; set; }
+    [Export] public CombatArmorType ArmorType { get; set; } =
+        CombatArmorType.Legacy;
 }

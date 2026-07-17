@@ -43,7 +43,9 @@ public readonly record struct UnitMovementProfileSnapshot(
     float MaximumSpeed,
     float Acceleration,
     MovementClass MovementClass,
-    float NavigationRadius);
+    float NavigationRadius,
+    float TurnRateRadiansPerSecond =
+        UnitFacing.LegacyTurnRateRadiansPerSecond);
 
 public readonly record struct BuildingFootprintProfileSnapshot(
     int Id,
@@ -55,7 +57,7 @@ public readonly record struct BuildingFootprintProfileSnapshot(
 
 public sealed class GameplayProfileCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     private readonly UnitMovementProfileSnapshot[] _units;
     private readonly BuildingFootprintProfileSnapshot[] _buildings;
@@ -145,7 +147,8 @@ public sealed class GameplayProfileCatalogSnapshot
             if (string.IsNullOrWhiteSpace(profile.Name) ||
                 !IsPositive(profile.PhysicalRadius) ||
                 !IsPositive(profile.MaximumSpeed) ||
-                !IsPositive(profile.Acceleration))
+                !IsPositive(profile.Acceleration) ||
+                !IsPositive(profile.TurnRateRadiansPerSecond))
             {
                 Add(issues, GameplayProfileErrorCode.InvalidUnitProfile, index,
                     "Unit name, radius, maximum speed and acceleration must be valid.");
@@ -218,6 +221,8 @@ public sealed class GameplayProfileCatalogSnapshot
             writer.Write(BitConverter.SingleToInt32Bits(value.Acceleration));
             writer.Write((byte)value.MovementClass);
             writer.Write(BitConverter.SingleToInt32Bits(value.NavigationRadius));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                value.TurnRateRadiansPerSecond));
         }
 
         writer.Write(_buildings.Length);

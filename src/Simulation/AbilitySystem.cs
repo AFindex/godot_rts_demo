@@ -2853,6 +2853,7 @@ public sealed class AbilitySystem
         hash.Add(profile.Movement.Acceleration);
         hash.Add((byte)profile.Movement.MovementClass);
         hash.Add(profile.Movement.NavigationRadius);
+        hash.Add(profile.Movement.TurnRateRadiansPerSecond);
         hash.Add(profile.Combat.MaximumHealth);
         hash.Add(profile.Combat.AttackDamage);
         hash.Add(profile.Combat.AttackRange);
@@ -2872,6 +2873,10 @@ public sealed class AbilitySystem
         hash.Add(profile.Combat.CanMoveDuringWindup);
         hash.Add(profile.Combat.CanMoveDuringCooldown);
         hash.Add(profile.Combat.AutoTargetPriority);
+        hash.Add((byte)profile.Combat.ArmorType);
+        hash.Add(profile.Combat.ArmorUpgradeTechnologyId);
+        hash.Add(profile.Combat.ArmorUpgradePerLevel);
+        hash.Add(profile.Combat.AttackHalfAngleRadians);
         hash.Add(profile.Combat.Weapons.Length);
         foreach (var weapon in profile.Combat.Weapons)
         {
@@ -2892,6 +2897,21 @@ public sealed class AbilitySystem
             hash.Add(weapon.ProjectileSpeed);
             hash.Add(weapon.CanMoveDuringWindup);
             hash.Add(weapon.CanMoveDuringCooldown);
+            hash.Add((byte)weapon.AttackType);
+            hash.Add(weapon.DamageUpgradeTechnologyId);
+            hash.Add(weapon.MinimumRange);
+            hash.Add(weapon.Area.FullDamageRadius);
+            hash.Add(weapon.Area.HalfDamageRadius);
+            hash.Add(weapon.Area.QuarterDamageRadius);
+            hash.Add((byte)weapon.Area.TargetLayers);
+            hash.Add((byte)weapon.Propagation.Kind);
+            hash.Add(weapon.Propagation.LineDistance);
+            hash.Add(weapon.Propagation.Radius);
+            hash.Add(weapon.Propagation.DamageLossFactor);
+            hash.Add(weapon.Propagation.MaximumTargets);
+            hash.Add((byte)weapon.Propagation.TargetLayers);
+            hash.Add(weapon.Propagation.DistanceUpgradeTechnologyId);
+            hash.Add(weapon.Propagation.DistanceUpgradePerLevel);
         }
         hash.Add(profile.IsWorker);
         hash.Add((byte)profile.Perception.Concealment);

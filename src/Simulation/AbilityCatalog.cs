@@ -195,7 +195,9 @@ public readonly record struct AbilitySummonProfile(
                 Perception.Validate();
                 return Movement.PhysicalRadius > 0f &&
                        Movement.MaximumSpeed > 0f &&
-                       Movement.Acceleration > 0f;
+                       Movement.Acceleration > 0f &&
+                       float.IsFinite(Movement.TurnRateRadiansPerSecond) &&
+                       Movement.TurnRateRadiansPerSecond > 0f;
             }
             catch (ArgumentOutOfRangeException)
             {
@@ -248,6 +250,8 @@ public readonly record struct AbilityUnitFormProfile(
         float.IsFinite(value.PhysicalRadius) && value.PhysicalRadius > 0f &&
         float.IsFinite(value.MaximumSpeed) && value.MaximumSpeed > 0f &&
         float.IsFinite(value.Acceleration) && value.Acceleration > 0f &&
+        float.IsFinite(value.TurnRateRadiansPerSecond) &&
+        value.TurnRateRadiansPerSecond > 0f &&
         Enum.IsDefined(value.MovementClass) &&
         float.IsFinite(value.NavigationRadius) && value.NavigationRadius > 0f;
 }
@@ -508,7 +512,7 @@ public readonly record struct BuildingAbilityBindingProfile(
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 13;
+    public const int CurrentFormatVersion = 16;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
     private readonly Dictionary<int, BuildingAbilityBindingProfile>
@@ -848,6 +852,7 @@ internal static partial class AbilitySerialization
         writer.Write(value.Movement.Acceleration);
         writer.Write((byte)value.Movement.MovementClass);
         writer.Write(value.Movement.NavigationRadius);
+        writer.Write(value.Movement.TurnRateRadiansPerSecond);
         WriteCombat(writer, value.Combat);
         writer.Write(value.IsWorker);
         writer.Write((byte)value.Perception.Concealment);
@@ -864,7 +869,8 @@ internal static partial class AbilitySerialization
         var movement = new UnitMovementProfileSnapshot(
             reader.ReadInt32(), ReadString(reader), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(),
-            (MovementClass)reader.ReadByte(), reader.ReadSingle());
+            (MovementClass)reader.ReadByte(), reader.ReadSingle(),
+            reader.ReadSingle());
         var combat = ReadCombat(reader);
         var worker = reader.ReadBoolean();
         var perception = new UnitPerceptionProfileSnapshot(
@@ -904,6 +910,7 @@ internal static partial class AbilitySerialization
         writer.Write(value.Movement.Acceleration);
         writer.Write((byte)value.Movement.MovementClass);
         writer.Write(value.Movement.NavigationRadius);
+        writer.Write(value.Movement.TurnRateRadiansPerSecond);
         WriteCombat(writer, value.Combat);
         writer.Write((byte)value.Perception.Concealment);
         writer.Write(value.Perception.DetectionRange);
@@ -919,7 +926,8 @@ internal static partial class AbilitySerialization
         var movement = new UnitMovementProfileSnapshot(
             reader.ReadInt32(), ReadString(reader), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(),
-            (MovementClass)reader.ReadByte(), reader.ReadSingle());
+            (MovementClass)reader.ReadByte(), reader.ReadSingle(),
+            reader.ReadSingle());
         var combat = ReadCombat(reader);
         var perception = new UnitPerceptionProfileSnapshot(
             (UnitConcealmentKind)reader.ReadByte(), reader.ReadSingle(),
@@ -950,6 +958,10 @@ internal static partial class AbilitySerialization
         writer.Write(value.CanMoveDuringWindup);
         writer.Write(value.CanMoveDuringCooldown);
         writer.Write(value.AutoTargetPriority);
+        writer.Write((byte)value.ArmorType);
+        writer.Write(value.ArmorUpgradeTechnologyId);
+        writer.Write(value.ArmorUpgradePerLevel);
+        writer.Write(value.AttackHalfAngleRadians);
         writer.Write(value.Weapons.Length);
         foreach (var weapon in value.Weapons)
             WriteWeapon(writer, weapon);
@@ -965,7 +977,8 @@ internal static partial class AbilitySerialization
             reader.ReadInt32(), (CombatAttribute)reader.ReadUInt16(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadBoolean(), reader.ReadBoolean(),
-            reader.ReadInt32());
+            reader.ReadInt32(), (CombatArmorType)reader.ReadByte(),
+            reader.ReadInt32(), reader.ReadSingle(), reader.ReadSingle());
         var count = reader.ReadInt32();
         if (count is < 0 or > 8) throw new InvalidDataException();
         var weapons = ImmutableArray.CreateBuilder<CombatWeaponProfileSnapshot>(count);
@@ -994,6 +1007,11 @@ internal static partial class AbilitySerialization
         writer.Write(value.ProjectileSpeed);
         writer.Write(value.CanMoveDuringWindup);
         writer.Write(value.CanMoveDuringCooldown);
+        writer.Write((byte)value.AttackType);
+        writer.Write(value.DamageUpgradeTechnologyId);
+        writer.Write(value.MinimumRange);
+        WriteArea(writer, value.Area);
+        WritePropagation(writer, value.Propagation);
     }
 
     private static CombatWeaponProfileSnapshot ReadWeapon(BinaryReader reader) =>
@@ -1004,7 +1022,43 @@ internal static partial class AbilitySerialization
             (CombatPositioningKind)reader.ReadByte(), reader.ReadInt32(),
             (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadBoolean(), reader.ReadBoolean());
+            reader.ReadBoolean(), reader.ReadBoolean(),
+            (CombatAttackType)reader.ReadByte(), reader.ReadInt32(),
+            reader.ReadSingle(), ReadArea(reader), ReadPropagation(reader));
+
+    private static void WriteArea(
+        BinaryWriter writer, in CombatWeaponAreaSnapshot area)
+    {
+        writer.Write(area.FullDamageRadius);
+        writer.Write(area.HalfDamageRadius);
+        writer.Write(area.QuarterDamageRadius);
+        writer.Write((byte)area.TargetLayers);
+    }
+
+    private static CombatWeaponAreaSnapshot ReadArea(BinaryReader reader) =>
+        new(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+            (CombatTargetLayer)reader.ReadByte());
+
+    private static void WritePropagation(
+        BinaryWriter writer,
+        in CombatWeaponPropagationSnapshot value)
+    {
+        writer.Write((byte)value.Kind);
+        writer.Write(value.LineDistance);
+        writer.Write(value.Radius);
+        writer.Write(value.DamageLossFactor);
+        writer.Write(value.MaximumTargets);
+        writer.Write((byte)value.TargetLayers);
+        writer.Write(value.DistanceUpgradeTechnologyId);
+        writer.Write(value.DistanceUpgradePerLevel);
+    }
+
+    private static CombatWeaponPropagationSnapshot ReadPropagation(
+        BinaryReader reader) => new(
+        (CombatWeaponPropagationKind)reader.ReadByte(), reader.ReadSingle(),
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadInt32(),
+        (CombatTargetLayer)reader.ReadByte(), reader.ReadInt32(),
+        reader.ReadSingle());
 
     private static void WriteBinding(
         BinaryWriter writer,
