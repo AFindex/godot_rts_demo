@@ -79,6 +79,8 @@ public sealed partial class War3WorldPresenter : Node3D
     private bool _attackTargetFacingMismatch;
     private bool _sawConstructionGhost;
     private bool _foundationAppearedAfterApproach;
+    private bool _sawMoveCommandConfirmation;
+    private bool _sawAttackCommandConfirmation;
     private int _nextTransientAudioEmitterId = 1_500_000_000;
     private ulong _animationAudioSequence;
     private ulong _abilityEventCursor;
@@ -110,6 +112,10 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool AttackTargetFacingMismatch => _attackTargetFacingMismatch;
     public bool SawConstructionGhost => _sawConstructionGhost;
     public bool FoundationAppearedAfterApproach => _foundationAppearedAfterApproach;
+    public bool SawMoveCommandConfirmation => _sawMoveCommandConfirmation;
+    public bool SawAttackCommandConfirmation => _sawAttackCommandConfirmation;
+    public int ActiveCommandConfirmationCount =>
+        _transients.Count(value => value.CommandConfirmation);
     public bool PointerPreviewUsesWar3Model => _pointerGhost?.Loaded == true;
     public bool AbilityPointerPreviewVisible =>
         _abilityTargetPreview?.Visible == true;
@@ -1203,6 +1209,59 @@ public sealed partial class War3WorldPresenter : Node3D
         _transients.Add(new TransientVisual(actor, Time.GetTicksMsec() + lifetime));
     }
 
+    public bool ShowCommandConfirmation(
+        NVector2 position,
+        War3CommandFeedbackKind kind)
+    {
+        if (_camera is null || !War3RuntimeAssets.Contains(
+                War3CommandFeedbackCatalog.ConfirmationSource))
+            return false;
+
+        RetireOldestCommandConfirmationAtCapacity();
+        var actor = new War3ModelActor
+        {
+            Name = kind == War3CommandFeedbackKind.Attack
+                ? "AttackCommandConfirmation"
+                : "MoveCommandConfirmation"
+        };
+        AddChild(actor);
+        actor.Position = ToWorldAtGround(position, 0.08f);
+        actor.Load(
+            War3CommandFeedbackCatalog.ConfirmationSource,
+            _camera,
+            War3HumanScenario.PlayerId,
+            includeEffects: false);
+        actor.SetSurfaceTint(War3CommandFeedbackCatalog.Tint(kind));
+        actor.SetShadowCastingEnabled(false);
+        actor.ReplayPreferred("Stand");
+        _transients.Add(new TransientVisual(
+            actor,
+            Time.GetTicksMsec() +
+            War3CommandFeedbackCatalog.VisibleLifetimeMilliseconds,
+            CommandConfirmation: true));
+        if (kind == War3CommandFeedbackKind.Attack)
+            _sawAttackCommandConfirmation = true;
+        else
+            _sawMoveCommandConfirmation = true;
+        return true;
+    }
+
+    private void RetireOldestCommandConfirmationAtCapacity()
+    {
+        var count = 0;
+        foreach (var value in _transients)
+            if (value.CommandConfirmation) count++;
+        if (count < War3CommandFeedbackCatalog.MaximumSimultaneousConfirmations)
+            return;
+        for (var index = 0; index < _transients.Count; index++)
+        {
+            if (!_transients[index].CommandConfirmation) continue;
+            _transients[index].Root.QueueFree();
+            _transients.RemoveAt(index);
+            return;
+        }
+    }
+
     private void PublishUnitAnimationAudio(
         int unit,
         int sourcePlayerId,
@@ -1482,7 +1541,10 @@ public sealed partial class War3WorldPresenter : Node3D
         public bool HasPosition { get; set; }
     }
 
-    private sealed record TransientVisual(Node3D Root, ulong RemoveAt);
+    private sealed record TransientVisual(
+        Node3D Root,
+        ulong RemoveAt,
+        bool CommandConfirmation = false);
     private sealed record AbilityBuffVisual(
         War3ModelActor Actor,
         int TargetUnit);

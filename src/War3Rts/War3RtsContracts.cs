@@ -20,6 +20,12 @@ public enum War3CommandKind : byte
     Cancel
 }
 
+public enum War3CommandFeedbackKind : byte
+{
+    Move,
+    Attack
+}
+
 public readonly record struct War3CommandSnapshot(
     int Slot,
     War3CommandKind Kind,

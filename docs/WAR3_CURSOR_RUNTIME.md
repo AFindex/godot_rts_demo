@@ -50,6 +50,11 @@ godot --headless --path . res://war3_rts/War3Rts.tscn -- `
 ```
 
 The cursor self-test validates all four 256×128 atlases, race parsing, and the
-normal/target/invalid/scroll frame mapping. The ability test verifies that
-target preview returns the same validation codes as issue while leaving mana,
-health, cooldowns, events, and command logs unchanged.
+normal/target/invalid/scroll frame mapping. It also validates the original
+`UI\Feedback\Confirmation\Confirmation.mdx` selected-point model: accepted
+move/right-click ground orders play its three-arrow focus animation in green,
+while attack-move and hostile-target orders play it in red. The model is
+prewarmed with the normal skirmish presentation assets, so the first command
+does not parse the GLB on the click frame. The ability test verifies that target
+preview returns the same validation codes as issue while leaving mana, health,
+cooldowns, events, and command logs unchanged.

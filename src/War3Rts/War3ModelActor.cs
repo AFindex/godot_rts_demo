@@ -50,6 +50,7 @@ public sealed partial class War3ModelActor : Node3D
     public int RenderMeshCount { get; private set; }
     public int RenderSurfaceCount { get; private set; }
     public int ShadowSurfaceCount { get; private set; }
+    public Color SurfaceTint { get; private set; } = Colors.White;
     public string CurrentSequence => _sequenceIndex >= 0 && _metadata is not null &&
                                      _sequenceIndex < _metadata.Sequences.Count
         ? _metadata.Sequences[_sequenceIndex].Name
@@ -96,6 +97,7 @@ public sealed partial class War3ModelActor : Node3D
         RepeatedSequenceRestartCount = 0;
         _soundTimelineSequence = 0;
         _deathLocked = false;
+        SurfaceTint = Colors.White;
         PlayPreferred(true, "Stand", "Birth");
     }
 
@@ -107,6 +109,39 @@ public sealed partial class War3ModelActor : Node3D
             : GeometryInstance3D.ShadowCastingSetting.Off;
         SetShadowCasting(_model, setting);
         RefreshRenderStats();
+    }
+
+    /// <summary>
+    /// Multiplies every imported textured surface by one runtime color. The
+    /// material is duplicated per actor so feedback tinting never leaks into
+    /// the cached model template or another instance.
+    /// </summary>
+    public void SetSurfaceTint(Color tint)
+    {
+        if (_model is null) return;
+        ApplySurfaceTint(_model, tint);
+        SurfaceTint = tint;
+    }
+
+    private static void ApplySurfaceTint(Node node, Color tint)
+    {
+        if (node is MeshInstance3D { Mesh: not null } mesh)
+        {
+            for (var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++)
+            {
+                if (mesh.GetActiveMaterial(surface) is not StandardMaterial3D source)
+                    continue;
+                var material = (StandardMaterial3D)source.Duplicate();
+                material.ResourceName = source.ResourceName;
+                material.AlbedoColor = new Color(
+                    source.AlbedoColor.R * tint.R,
+                    source.AlbedoColor.G * tint.G,
+                    source.AlbedoColor.B * tint.B,
+                    source.AlbedoColor.A * tint.A);
+                mesh.SetSurfaceOverrideMaterial(surface, material);
+            }
+        }
+        foreach (var child in node.GetChildren()) ApplySurfaceTint(child, tint);
     }
 
     public bool PlayPreferred(bool loop, params string[] candidates)

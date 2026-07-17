@@ -993,14 +993,24 @@ public sealed partial class War3Rts : Node3D
             var result = _simulation.IssuePlayerMove(
                 War3HumanScenario.PlayerId, SelectedUnits(), point, queued);
             Report(result.Succeeded ? "已下达移动命令" : $"移动失败：{result.Code}");
-            if (result.Succeeded) PlayCommandAudio(attack: false, queued);
+            if (result.Succeeded)
+            {
+                PlayCommandAudio(attack: false, queued);
+                _presenter?.ShowCommandConfirmation(
+                    point, War3CommandFeedbackKind.Move);
+            }
         }
         else if (_attackMovePending)
         {
             var result = _simulation.IssuePlayerAttackMove(
                 War3HumanScenario.PlayerId, SelectedUnits(), point, queued);
             Report(result.Succeeded ? "已下达攻击移动" : $"攻击移动失败：{result.Code}");
-            if (result.Succeeded) PlayCommandAudio(attack: true, queued);
+            if (result.Succeeded)
+            {
+                PlayCommandAudio(attack: true, queued);
+                _presenter?.ShowCommandConfirmation(
+                    point, War3CommandFeedbackKind.Attack);
+            }
         }
         else if (_rallyPending)
         {
@@ -1100,6 +1110,9 @@ public sealed partial class War3Rts : Node3D
             var attack = target.Kind is SmartCommandTargetKind.EnemyUnit or
                 SmartCommandTargetKind.EnemyBuilding;
             PlayCommandAudio(attack, queued);
+            _presenter?.ShowCommandConfirmation(
+                target.Position,
+                War3CommandFeedbackCatalog.ForSmartTarget(target.Kind));
         }
     }
 
@@ -1908,6 +1921,7 @@ public sealed partial class War3Rts : Node3D
         }
         Model(War3HumanContent.GoldMineSource);
         Model(@"UI\Feedback\RallyPoint\RallyPoint.mdx");
+        Model(War3CommandFeedbackCatalog.ConfirmationSource);
         for (var variant = 0; variant < 10; variant++)
             Model(War3HumanContent.TreeSource(variant));
 
@@ -2612,13 +2626,15 @@ public sealed partial class War3Rts : Node3D
                       _presenter.SawCarriedLumberAnimation &&
                       rallySet && resourceCentersClear && constructionSynchronized &&
                       harvestingSynchronized && buildingAnimationsValid &&
-                       buildingEffectsValid && _presenter.SawBlendedTransition &&
-                       _presenter.RallyMarkerUsesWar3Model && attackFacingValid &&
-                        constructionPresentationValid && terrainReady &&
-                         dataIntegrationReady && mapLoadingValid &&
-                         abilityIntegrationReady &&
-                         queueUiValid && queueCancelValid &&
-                         researchQueueUiValid;
+                      buildingEffectsValid && _presenter.SawBlendedTransition &&
+                      _presenter.RallyMarkerUsesWar3Model && attackFacingValid &&
+                      _presenter.SawMoveCommandConfirmation &&
+                      _presenter.SawAttackCommandConfirmation &&
+                      constructionPresentationValid && terrainReady &&
+                      dataIntegrationReady && mapLoadingValid &&
+                      abilityIntegrationReady &&
+                      queueUiValid && queueCancelValid &&
+                      researchQueueUiValid;
         GD.Print(
             $"WAR3_RTS_SMOKE success={success} units={_presenter.PresentedUnitCount} " +
              $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
@@ -2643,6 +2659,8 @@ public sealed partial class War3Rts : Node3D
              $"placement_model={_presenter.PointerPreviewUsesWar3Model} " +
              $"animation_blend={_presenter.SawBlendedTransition} " +
             $"rally_model={_presenter.RallyMarkerUsesWar3Model} " +
+             $"command_confirmation={_presenter.SawMoveCommandConfirmation}/" +
+             $"{_presenter.SawAttackCommandConfirmation} " +
              $"attack_facing={attackFacingValid} terrain={terrainReady} " +
              $"data_integration={dataIntegrationReady} " +
              $"ability_integration={abilityIntegrationReady}/" +
@@ -2666,6 +2684,15 @@ public sealed partial class War3Rts : Node3D
                             value.Type.Id == War3HumanContent.Barracks);
         _smokeRallyBuilding = rallyBuilding.Id.Value;
         var home = _runtime?.PlayerHome ?? War3HumanScenario.PlayerHome;
+        if (_presenter is null ||
+            !_presenter.ShowCommandConfirmation(
+                home + new NVector2(90f, 30f),
+                War3CommandFeedbackKind.Move) ||
+            !_presenter.ShowCommandConfirmation(
+                home + new NVector2(175f, 30f),
+                War3CommandFeedbackKind.Attack))
+            throw new InvalidOperationException(
+                "Smoke command confirmation setup failed.");
         _smokeRallyPosition = home + new NVector2(330f, 210f);
         if (!_simulation.SetProductionRallyTarget(
                 War3HumanScenario.PlayerId, rallyBuilding.Id,

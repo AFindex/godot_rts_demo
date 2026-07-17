@@ -1,4 +1,5 @@
 using Godot;
+using RtsDemo.Simulation;
 using War3Rts;
 using NVector2 = System.Numerics.Vector2;
 
@@ -52,11 +53,45 @@ public static class War3CursorCatalogSelfTest
             indicators &= !presenter.AbilityPointerPreviewVisible &&
                           !presenter.AbilityRangePreviewVisible;
             presenter.Free();
-            var passed = loaded == 4 && parsed && frames && indicators;
+
+            var confirmation = War3RuntimeAssets.LoadMetadata(
+                War3CommandFeedbackCatalog.ConfirmationSource);
+            var confirmationSequence = confirmation.Sequences.SingleOrDefault(
+                value => value.Name.Equals("Stand", StringComparison.OrdinalIgnoreCase));
+            var confirmationTexture = confirmation.Textures.Any(value =>
+                value.Image.Equals(
+                    @"Textures\RallyArrow2.blp",
+                    StringComparison.OrdinalIgnoreCase));
+            var confirmationActor = new War3ModelActor();
+            confirmationActor.Load(
+                War3CommandFeedbackCatalog.ConfirmationSource,
+                camera: null,
+                War3HumanScenario.PlayerId,
+                includeEffects: false);
+            var moveTint = War3CommandFeedbackCatalog.Tint(
+                War3CommandFeedbackKind.Move);
+            confirmationActor.SetSurfaceTint(moveTint);
+            var confirmationModel = confirmationActor.Loaded &&
+                                    confirmationActor.CurrentSequence == "Stand" &&
+                                    confirmationActor.SurfaceTint.IsEqualApprox(moveTint);
+            confirmationActor.Free();
+            var confirmationMapping =
+                confirmationSequence is { NonLooping: true } &&
+                confirmationSequence.DurationMilliseconds > 1_900d &&
+                confirmationTexture && confirmationModel &&
+                War3CommandFeedbackCatalog.ForSmartTarget(
+                    SmartCommandTargetKind.Ground) ==
+                War3CommandFeedbackKind.Move &&
+                War3CommandFeedbackCatalog.ForSmartTarget(
+                    SmartCommandTargetKind.EnemyBuilding) ==
+                War3CommandFeedbackKind.Attack;
+
+            var passed = loaded == 4 && parsed && frames && indicators &&
+                         confirmationMapping;
             return new SelfTestResult(
                 passed,
                 $"themes={loaded}/4, parse={parsed}, frames={frames}, " +
-                $"indicators={indicators}, " +
+                $"indicators={indicators}, confirmation={confirmationMapping}, " +
                 $"normal={normal.Column}:{normal.Row}, " +
                 $"target={targeted.Column}:{targeted.Row}, " +
                 $"scroll={scroll.Column}:{scroll.Row}/r{scroll.EighthTurns}");
