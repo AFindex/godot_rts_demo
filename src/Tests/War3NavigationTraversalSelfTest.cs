@@ -116,7 +116,9 @@ public static class War3NavigationTraversalSelfTest
             // not merely be an empty cell on the other side of the footprint.
             var surfaceStartEscape = RunBlockedStartEscapeRegression(
                 simulation,
-                runtime.PlayerWorkers[4],
+                runtime.PlayerWorkers.First(unit =>
+                    unit != runtime.PlayerWorkers[0] &&
+                    simulation.Units.Alive[unit]),
                 new EconomyResourceNodeId(1),
                 new Vector2(1253.9f, 1848.5f));
 
@@ -361,7 +363,7 @@ public static class War3NavigationTraversalSelfTest
             start, start, simulation.Units.Radii[worker] + 0.05f);
         var navigationRepair = simulation.World.ConstrainDisc(
             physicalRepair, physicalRepair,
-            simulation.Units.NavigationRadii[worker] + 2f);
+            simulation.Units.NavigationRadii[worker] + 0.05f);
         var physicalRepairFree = simulation.World.IsDiscFree(
             physicalRepair, simulation.Units.Radii[worker]);
         var navigationRepairFree = simulation.World.IsDiscFree(

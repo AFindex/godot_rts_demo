@@ -4163,7 +4163,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         out Vector2 escape)
     {
         const float physicalProjectionMargin = 0.05f;
-        const float navigationProjectionMargin = 2f;
+        const float navigationProjectionMargin = 0.05f;
         escape = default;
         var physicalRadius = Units.Radii[unit];
         var navigationRadius = Units.NavigationRadii[unit];

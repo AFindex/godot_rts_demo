@@ -82,6 +82,7 @@ public sealed partial class War3RtsHud : Control
     private War3ModelActor? _portraitActor;
     private TextureRect? _portraitMask;
     private ColorRect? _portraitHealthFill;
+    private ColorRect? _portraitManaBack;
     private ColorRect? _portraitManaFill;
     private Label? _portraitHealthValue;
     private Label? _portraitManaValue;
@@ -209,20 +210,21 @@ public sealed partial class War3RtsHud : Control
                 ? $"{MathF.Ceiling(snapshot.Selection.Health):0} / " +
                   $"{MathF.Ceiling(snapshot.Selection.MaximumHealth):0}"
                 : string.Empty;
+        var hasMana = snapshot.Selection.MaximumMana > 0f;
+        if (_portraitManaBack is not null)
+            _portraitManaBack.Visible = hasMana;
         if (_portraitManaFill is not null)
         {
-            var manaRatio = snapshot.Selection.MaximumMana > 0f
+            var manaRatio = hasMana
                 ? Math.Clamp(snapshot.Selection.Mana /
                              snapshot.Selection.MaximumMana, 0f, 1f)
                 : 0f;
             _portraitManaFill.Size = new Vector2(
                 PortraitBarWidth * manaRatio, PortraitBarHeight);
-            _portraitManaFill.Visible = snapshot.Selection.MaximumMana > 0f;
         }
         if (_portraitManaValue is not null)
         {
-            _portraitManaValue.Visible = snapshot.Selection.MaximumMana > 0f;
-            _portraitManaValue.Text = snapshot.Selection.MaximumMana > 0f
+            _portraitManaValue.Text = hasMana
                 ? $"{MathF.Ceiling(snapshot.Selection.Mana):0} / " +
                   $"{MathF.Ceiling(snapshot.Selection.MaximumMana):0}"
                 : string.Empty;
@@ -512,7 +514,7 @@ public sealed partial class War3RtsHud : Control
         healthBack.AddChild(_portraitHealthFill);
         _portraitHealthValue = PortraitBarLabel();
         healthBack.AddChild(_portraitHealthValue);
-        var manaBack = new ColorRect
+        _portraitManaBack = new ColorRect
         {
             Position = new Vector2(
                 -PortraitMaskScale,
@@ -522,16 +524,16 @@ public sealed partial class War3RtsHud : Control
             MouseFilter = MouseFilterEnum.Ignore,
             ZIndex = 15
         };
-        _portraitSlot.AddChild(manaBack);
+        _portraitSlot.AddChild(_portraitManaBack);
         _portraitManaFill = new ColorRect
         {
             Size = new Vector2(PortraitBarWidth, PortraitBarHeight),
             Color = new Color("1766bb"),
             MouseFilter = MouseFilterEnum.Ignore
         };
-        manaBack.AddChild(_portraitManaFill);
+        _portraitManaBack.AddChild(_portraitManaFill);
         _portraitManaValue = PortraitBarLabel();
-        manaBack.AddChild(_portraitManaValue);
+        _portraitManaBack.AddChild(_portraitManaValue);
     }
 
     private void AddSelectionInfo(Control parent)
