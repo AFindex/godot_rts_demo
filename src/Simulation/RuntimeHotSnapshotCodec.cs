@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace RtsDemo.Simulation;
@@ -28,6 +29,7 @@ internal static class RuntimeHotSnapshotCodec
         WriteCombatObjects(writer, state.CombatObjects);
         AbilitySerialization.WriteRuntime(writer, state.Abilities);
         WriteProjectiles(writer, state.CombatProjectiles);
+        WriteBuildingCombat(writer, state.BuildingCombat);
         WriteEconomy(writer, state.Economy, state.Units.Count);
         WriteDiplomacy(writer, state.Diplomacy);
         WriteVisibility(writer, state.Visibility);
@@ -93,6 +95,7 @@ internal static class RuntimeHotSnapshotCodec
             var abilities = AbilitySerialization.ReadRuntime(reader, units.Count);
             var projectiles = ReadProjectiles(
                 reader, units.Count, combatObjects.Objects.Length);
+            var buildingCombat = ReadBuildingCombat(reader, units.Count);
             var economy = ReadEconomy(reader, units.Count);
             ValidateCombatObjects(combatObjects, economy, dynamic);
             var diplomacy = ReadDiplomacy(reader);
@@ -102,6 +105,7 @@ internal static class RuntimeHotSnapshotCodec
             var match = ReadMatch(reader, economy, diplomacySystem);
             var construction = ReadConstruction(
                 reader, units.Count, dynamic.Footprints, economy);
+            ValidateBuildingCombat(buildingCombat, construction);
             var buildingUpgrades = ReadBuildingUpgrades(
                 reader, construction, economy);
             var production = ReadProduction(
@@ -129,6 +133,7 @@ internal static class RuntimeHotSnapshotCodec
                 CombatObjects = combatObjects,
                 Abilities = abilities,
                 CombatProjectiles = projectiles,
+                BuildingCombat = buildingCombat,
                 Economy = economy,
                 Diplomacy = diplomacy,
                 Visibility = visibility,
@@ -839,6 +844,122 @@ internal static class RuntimeHotSnapshotCodec
         reader.ReadInt32(), reader.ReadSingle(), reader.ReadSingle(),
         (CombatAttackType)reader.ReadByte(), ReadArea(reader),
         ReadPropagation(reader));
+
+    private static void WriteBuildingCombat(
+        BinaryWriter writer,
+        BuildingCombatRuntimeSnapshot snapshot)
+    {
+        writer.Write(snapshot.NextProjectileId);
+        writer.Write(snapshot.Buildings.Length);
+        foreach (var value in snapshot.Buildings)
+        {
+            writer.Write(value.BuildingId.Value);
+            writer.Write((byte)value.Phase);
+            writer.Write(value.TargetUnit);
+            writer.Write(value.WeaponSlot);
+            writer.Write(value.CooldownRemaining);
+            writer.Write(value.WindupRemaining);
+        }
+        writer.Write(snapshot.Projectiles.Length);
+        foreach (var value in snapshot.Projectiles)
+        {
+            writer.Write(value.Id);
+            writer.Write(value.AttackerBuilding.Value);
+            writer.Write(value.TargetUnit);
+            writer.Write(value.WeaponSlot);
+            WriteVector(writer, value.Position);
+            writer.Write(value.Speed);
+            WriteWeapon(writer, value.Weapon);
+            var effectCount = value.OnHitEffects.IsDefault
+                ? 0
+                : value.OnHitEffects.Length;
+            writer.Write(effectCount);
+            if (!value.OnHitEffects.IsDefault)
+                foreach (var effect in value.OnHitEffects)
+                    CombatProfileBinary.WriteBuildingOnHit(writer, effect);
+        }
+    }
+
+    private static BuildingCombatRuntimeSnapshot ReadBuildingCombat(
+        BinaryReader reader,
+        int unitCount)
+    {
+        var nextProjectileId = reader.ReadInt32();
+        if (nextProjectileId <= 0) throw new InvalidDataException();
+        var stateCount = ReadCount(reader, MaximumCapacity);
+        var states = new BuildingCombatStateSnapshot[stateCount];
+        for (var index = 0; index < stateCount; index++)
+        {
+            var value = new BuildingCombatStateSnapshot(
+                new GameplayBuildingId(reader.ReadInt32()),
+                (BuildingCombatPhase)reader.ReadByte(),
+                reader.ReadInt32(), reader.ReadInt32(),
+                reader.ReadSingle(), reader.ReadSingle());
+            if (value.BuildingId.Value != index ||
+                !Enum.IsDefined(value.Phase) ||
+                value.TargetUnit is < -1 || value.TargetUnit >= unitCount ||
+                value.WeaponSlot is < -1 or > 7 ||
+                !float.IsFinite(value.CooldownRemaining) ||
+                value.CooldownRemaining < 0f ||
+                !float.IsFinite(value.WindupRemaining) ||
+                value.WindupRemaining < 0f)
+                throw new InvalidDataException();
+            states[index] = value;
+        }
+        var projectileCount = ReadCount(
+            reader, BuildingCombatSystem.MaximumProjectiles);
+        var projectiles = new BuildingCombatProjectileSnapshot[projectileCount];
+        var previous = 0;
+        for (var index = 0; index < projectileCount; index++)
+        {
+            var id = reader.ReadInt32();
+            var attacker = new GameplayBuildingId(reader.ReadInt32());
+            var target = reader.ReadInt32();
+            var slot = reader.ReadInt32();
+            var position = ReadVector(reader);
+            var speed = reader.ReadSingle();
+            var weapon = ReadWeapon(reader);
+            var effectCount = ReadCount(reader, 16);
+            var effects = ImmutableArray.CreateBuilder<
+                BuildingWeaponOnHitEffectSnapshot>(effectCount);
+            for (var effect = 0; effect < effectCount; effect++)
+                effects.Add(CombatProfileBinary.ReadBuildingOnHit(reader));
+            var value = new BuildingCombatProjectileSnapshot(
+                id, attacker, target, slot, position, speed, weapon,
+                effects.MoveToImmutable());
+            if (value.Id <= previous || value.Id >= nextProjectileId ||
+                value.AttackerBuilding.Value < 0 ||
+                (uint)value.TargetUnit >= (uint)unitCount ||
+                value.WeaponSlot is < 0 or > 7 ||
+                !float.IsFinite(value.Position.X) ||
+                !float.IsFinite(value.Position.Y) ||
+                !float.IsFinite(value.Speed) || value.Speed <= 0f ||
+                !CombatProjectileSystem.ValidWeapon(value.Weapon))
+                throw new InvalidDataException();
+            foreach (var effect in value.OnHitEffects)
+            {
+                try { effect.Validate(); }
+                catch (ArgumentOutOfRangeException)
+                {
+                    throw new InvalidDataException();
+                }
+            }
+            projectiles[index] = value;
+            previous = value.Id;
+        }
+        return new BuildingCombatRuntimeSnapshot(
+            nextProjectileId, states, projectiles);
+    }
+
+    private static void ValidateBuildingCombat(
+        BuildingCombatRuntimeSnapshot combat,
+        ConstructionRuntimeSnapshot construction)
+    {
+        if (combat.Buildings.Length != construction.Buildings.Length ||
+            combat.Projectiles.Any(value =>
+                value.AttackerBuilding.Value >= construction.Buildings.Length))
+            throw new InvalidDataException();
+    }
 
     internal static void WriteEconomy(
         BinaryWriter writer,

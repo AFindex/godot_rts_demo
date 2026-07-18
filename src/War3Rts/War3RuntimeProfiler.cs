@@ -52,7 +52,20 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _physicsAllocated = new();
     private readonly Series _presenterAllocated = new();
     private readonly Series _presenterUnits = new();
+    private readonly Series _presenterUnitAnimation = new();
+    private readonly Series _presenterUnitActorsVisited = new();
+    private readonly Series _presenterUnitActorsAlive = new();
+    private readonly Series _presenterUnitActorsInFrustum = new();
+    private readonly Series _presenterUnitActorsCreated = new();
+    private readonly Series _presenterUnitResolveAllocated = new();
+    private readonly Series _presenterUnitFrustumAllocated = new();
+    private readonly Series _presenterUnitLodAllocated = new();
+    private readonly Series _presenterUnitAnimationAllocated = new();
     private readonly Series _presenterBuildings = new();
+    private readonly Series _presenterBuildingActorsVisited = new();
+    private readonly Series _presenterBuildingActorsInFrustum = new();
+    private readonly Series _presenterBuildingOverviewAllocated = new();
+    private readonly Series _presenterBuildingAnimationAllocated = new();
     private readonly Series _presenterResources = new();
     private readonly Series _presenterProjectiles = new();
     private readonly Series _presenterTransients = new();
@@ -64,6 +77,29 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _objects = new();
     private readonly Series _drawCalls = new();
     private readonly Series _primitives = new();
+    private readonly Series _renderSetupCpu = new();
+    private readonly Series _renderViewportCpu = new();
+    private readonly Series _renderViewportGpu = new();
+    private readonly Series _renderVisibleObjects = new();
+    private readonly Series _renderVisibleDrawCalls = new();
+    private readonly Series _renderVisiblePrimitives = new();
+    private readonly Series _renderShadowObjects = new();
+    private readonly Series _renderShadowDrawCalls = new();
+    private readonly Series _renderShadowPrimitives = new();
+    private readonly Series _renderCanvasDrawCalls = new();
+    private readonly Series _renderVideoMemoryBytes = new();
+    private readonly Series _engineProcess = new();
+    private readonly Series _enginePhysicsProcess = new();
+    private readonly Series _engineFps = new();
+    private readonly Series _engineNodeCount = new();
+    private readonly Series _modelActorProcess = new();
+    private readonly Series _modelActorGeoset = new();
+    private readonly Series _modelActorEffects = new();
+    private readonly Series _modelActorAllocated = new();
+    private readonly Series _modelActorCallbacks = new();
+    private readonly Series _modelActorVisible = new();
+    private readonly Series _modelActorPlayingAnimations = new();
+    private readonly Series _modelActorEffectsActive = new();
     private readonly Series _simTotal = new();
     private readonly Series _simEconomy = new();
     private readonly Series _simConstruction = new();
@@ -93,8 +129,14 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _simSpatialHash = new();
     private readonly Series _simSteering = new();
     private readonly Series _simSteeringAllocated = new();
+    private readonly Series _simSteeringNeighborPairs = new();
+    private readonly Series _simSteeringCandidateEvaluations = new();
     private readonly Series _simIntegrate = new();
     private readonly Series _simCollision = new();
+    private readonly Series _simCollisionBroadphasePairs = new();
+    private readonly Series _simCollisionMainIterations = new();
+    private readonly Series _simCollisionResidualPasses = new();
+    private readonly Series _simCollisionConstraintCalls = new();
     private readonly Series _simRecovery = new();
     private readonly Series _simQueue = new();
     private readonly Series _simVisibility = new();
@@ -118,6 +160,8 @@ internal sealed class War3RuntimeProfiler
     private ulong _lastFrameUsec;
     private bool _samplingAnnounced;
     private bool _completed;
+    private readonly bool _quitOnComplete;
+    private Rid _viewportRid;
     private readonly double _spikeMilliseconds;
     private readonly double _automatedSkirmishSpikeMilliseconds;
     private double _lastPhysicsMilliseconds;
@@ -141,7 +185,8 @@ internal sealed class War3RuntimeProfiler
         double warmupSeconds,
         double sampleSeconds,
         double spikeMilliseconds,
-        double automatedSkirmishSpikeMilliseconds)
+        double automatedSkirmishSpikeMilliseconds,
+        bool quitOnComplete)
     {
         Variant = variant;
         _warmupUsec = (ulong)(warmupSeconds * 1_000_000d);
@@ -149,11 +194,13 @@ internal sealed class War3RuntimeProfiler
         _spikeMilliseconds = spikeMilliseconds;
         _automatedSkirmishSpikeMilliseconds =
             automatedSkirmishSpikeMilliseconds;
+        _quitOnComplete = quitOnComplete;
         GD.Print(
             $"WAR3_RUNTIME_PROFILE configured variant={Variant} " +
             $"warmup_s={warmupSeconds:0.###} sample_s={sampleSeconds:0.###} " +
             $"spike_ms={spikeMilliseconds:0.###} " +
-            $"auto_tick_spike_ms={automatedSkirmishSpikeMilliseconds:0.###}");
+            $"auto_tick_spike_ms={automatedSkirmishSpikeMilliseconds:0.###} " +
+            $"quit_on_complete={quitOnComplete}");
     }
 
     public string Variant { get; }
@@ -179,12 +226,17 @@ internal sealed class War3RuntimeProfiler
         var automatedSkirmishSpike = PositiveDouble(
             ArgumentValue(arguments, "--war3-auto-skirmish-spike-ms="),
             8d);
+        var quitOnComplete = !arguments.Contains("--war3-profile-no-quit");
         return new War3RuntimeProfiler(
-            variant, warmup, sample, spike, automatedSkirmishSpike);
+            variant, warmup, sample, spike, automatedSkirmishSpike,
+            quitOnComplete);
     }
 
-    public void MapReady()
+    public void MapReady(Viewport viewport)
     {
+        _viewportRid = viewport.GetViewportRid();
+        RenderingServer.ViewportSetMeasureRenderTime(_viewportRid, true);
+        War3ModelActor.BeginRuntimeProfiling();
         _readyUsec = Time.GetTicksUsec();
         _lastFrameUsec = 0;
         _lastGen0Collections = GC.CollectionCount(0);
@@ -274,8 +326,16 @@ internal sealed class War3RuntimeProfiler
         _simSpatialHash.Add(metrics.SpatialHashMilliseconds);
         _simSteering.Add(metrics.SteeringMilliseconds);
         _simSteeringAllocated.Add(metrics.SteeringAllocatedBytes);
+        _simSteeringNeighborPairs.Add(metrics.SteeringNeighborPairs);
+        _simSteeringCandidateEvaluations.Add(
+            metrics.SteeringCandidateEvaluations);
         _simIntegrate.Add(metrics.IntegrateMilliseconds);
         _simCollision.Add(metrics.CollisionMilliseconds);
+        _simCollisionBroadphasePairs.Add(
+            metrics.CollisionBroadphasePairs);
+        _simCollisionMainIterations.Add(metrics.CollisionMainIterations);
+        _simCollisionResidualPasses.Add(metrics.CollisionResidualPasses);
+        _simCollisionConstraintCalls.Add(metrics.CollisionConstraintCalls);
         _simRecovery.Add(metrics.RecoveryMilliseconds);
         _simQueue.Add(metrics.QueueMilliseconds);
         _simVisibility.Add(metrics.VisibilityMilliseconds);
@@ -472,7 +532,13 @@ internal sealed class War3RuntimeProfiler
             $"path_alloc={metrics.PathAllocatedBytes} " +
             $"steering_ms={metrics.SteeringMilliseconds:0.###} " +
             $"steering_alloc={metrics.SteeringAllocatedBytes} " +
+            $"steering_work={metrics.SteeringNeighborPairs}/" +
+            $"{metrics.SteeringCandidateEvaluations} " +
             $"collision_ms={metrics.CollisionMilliseconds:0.###} " +
+            $"collision_work={metrics.CollisionBroadphasePairs}/" +
+            $"{metrics.CollisionMainIterations}/" +
+            $"{metrics.CollisionResidualPasses}/" +
+            $"{metrics.CollisionConstraintCalls} " +
             $"ai_detail={aiProfile.CaptureMilliseconds:0.###}/" +
             $"{aiProfile.DecisionMilliseconds:0.###}/" +
             $"{aiProfile.ExecutionMilliseconds:0.###}/" +
@@ -488,13 +554,40 @@ internal sealed class War3RuntimeProfiler
         double presenterMilliseconds,
         double buildPreviewMilliseconds,
         long presenterAllocatedBytes,
-        War3PresenterSyncProfile presenterProfile)
+        War3PresenterSyncProfile presenterProfile,
+        War3ModelActorProcessProfile modelActorProfile)
     {
         if (_readyUsec == 0 || _completed) return false;
         var now = Time.GetTicksUsec();
         var sampling = IsSampling(now);
         if (sampling)
         {
+            var renderSetupCpu = RenderingServer.GetFrameSetupTimeCpu();
+            var renderViewportCpu =
+                RenderingServer.ViewportGetMeasuredRenderTimeCpu(_viewportRid);
+            var renderViewportGpu =
+                RenderingServer.ViewportGetMeasuredRenderTimeGpu(_viewportRid);
+            var visibleObjects = ViewportRenderInfo(
+                RenderingServer.ViewportRenderInfoType.Visible,
+                RenderingServer.ViewportRenderInfo.ObjectsInFrame);
+            var visibleDrawCalls = ViewportRenderInfo(
+                RenderingServer.ViewportRenderInfoType.Visible,
+                RenderingServer.ViewportRenderInfo.DrawCallsInFrame);
+            var visiblePrimitives = ViewportRenderInfo(
+                RenderingServer.ViewportRenderInfoType.Visible,
+                RenderingServer.ViewportRenderInfo.PrimitivesInFrame);
+            var shadowObjects = ViewportRenderInfo(
+                RenderingServer.ViewportRenderInfoType.Shadow,
+                RenderingServer.ViewportRenderInfo.ObjectsInFrame);
+            var shadowDrawCalls = ViewportRenderInfo(
+                RenderingServer.ViewportRenderInfoType.Shadow,
+                RenderingServer.ViewportRenderInfo.DrawCallsInFrame);
+            var shadowPrimitives = ViewportRenderInfo(
+                RenderingServer.ViewportRenderInfoType.Shadow,
+                RenderingServer.ViewportRenderInfo.PrimitivesInFrame);
+            var canvasDrawCalls = ViewportRenderInfo(
+                RenderingServer.ViewportRenderInfoType.Canvas,
+                RenderingServer.ViewportRenderInfo.DrawCallsInFrame);
             if (_lastFrameUsec != 0)
             {
                 var frameMilliseconds = (now - _lastFrameUsec) / 1_000d;
@@ -502,13 +595,45 @@ internal sealed class War3RuntimeProfiler
                 ReportSpike(
                     frameMilliseconds,
                     presenterMilliseconds,
-                    presenterAllocatedBytes);
+                    presenterAllocatedBytes,
+                    presenterProfile,
+                    modelActorProfile,
+                    renderSetupCpu,
+                    renderViewportCpu,
+                    renderViewportGpu,
+                    visibleDrawCalls,
+                    shadowDrawCalls);
             }
             _presenter.Add(presenterMilliseconds);
             _buildPreview.Add(buildPreviewMilliseconds);
             _presenterAllocated.Add(presenterAllocatedBytes);
             _presenterUnits.Add(presenterProfile.UnitsMilliseconds);
+            _presenterUnitAnimation.Add(
+                presenterProfile.UnitAnimationMilliseconds);
+            _presenterUnitActorsVisited.Add(
+                presenterProfile.UnitActorsVisited);
+            _presenterUnitActorsAlive.Add(presenterProfile.UnitActorsAlive);
+            _presenterUnitActorsInFrustum.Add(
+                presenterProfile.UnitActorsInFrustum);
+            _presenterUnitActorsCreated.Add(
+                presenterProfile.UnitActorsCreated);
+            _presenterUnitResolveAllocated.Add(
+                presenterProfile.UnitResolveAllocatedBytes);
+            _presenterUnitFrustumAllocated.Add(
+                presenterProfile.UnitFrustumAllocatedBytes);
+            _presenterUnitLodAllocated.Add(
+                presenterProfile.UnitLodAllocatedBytes);
+            _presenterUnitAnimationAllocated.Add(
+                presenterProfile.UnitAnimationAllocatedBytes);
             _presenterBuildings.Add(presenterProfile.BuildingsMilliseconds);
+            _presenterBuildingActorsVisited.Add(
+                presenterProfile.BuildingActorsVisited);
+            _presenterBuildingActorsInFrustum.Add(
+                presenterProfile.BuildingActorsInFrustum);
+            _presenterBuildingOverviewAllocated.Add(
+                presenterProfile.BuildingOverviewAllocatedBytes);
+            _presenterBuildingAnimationAllocated.Add(
+                presenterProfile.BuildingAnimationAllocatedBytes);
             _presenterResources.Add(presenterProfile.ResourcesMilliseconds);
             _presenterProjectiles.Add(presenterProfile.ProjectilesMilliseconds);
             _presenterTransients.Add(presenterProfile.TransientsMilliseconds);
@@ -527,18 +652,61 @@ internal sealed class War3RuntimeProfiler
                 RenderingServer.RenderingInfo.TotalDrawCallsInFrame));
             _primitives.Add(RenderingServer.GetRenderingInfo(
                 RenderingServer.RenderingInfo.TotalPrimitivesInFrame));
+            _renderSetupCpu.Add(renderSetupCpu);
+            _renderViewportCpu.Add(renderViewportCpu);
+            _renderViewportGpu.Add(renderViewportGpu);
+            _renderVisibleObjects.Add(visibleObjects);
+            _renderVisibleDrawCalls.Add(visibleDrawCalls);
+            _renderVisiblePrimitives.Add(visiblePrimitives);
+            _renderShadowObjects.Add(shadowObjects);
+            _renderShadowDrawCalls.Add(shadowDrawCalls);
+            _renderShadowPrimitives.Add(shadowPrimitives);
+            _renderCanvasDrawCalls.Add(canvasDrawCalls);
+            _renderVideoMemoryBytes.Add(RenderingServer.GetRenderingInfo(
+                RenderingServer.RenderingInfo.VideoMemUsed));
+            _engineProcess.Add(Performance.GetMonitor(
+                Performance.Monitor.TimeProcess) * 1_000d);
+            _enginePhysicsProcess.Add(Performance.GetMonitor(
+                Performance.Monitor.TimePhysicsProcess) * 1_000d);
+            _engineFps.Add(Performance.GetMonitor(
+                Performance.Monitor.TimeFps));
+            _engineNodeCount.Add(Performance.GetMonitor(
+                Performance.Monitor.ObjectNodeCount));
+            _modelActorProcess.Add(modelActorProfile.TotalMilliseconds);
+            _modelActorGeoset.Add(modelActorProfile.GeosetMilliseconds);
+            _modelActorEffects.Add(modelActorProfile.EffectsMilliseconds);
+            _modelActorAllocated.Add(modelActorProfile.AllocatedBytes);
+            _modelActorCallbacks.Add(modelActorProfile.ActorCallbacks);
+            _modelActorVisible.Add(modelActorProfile.VisibleActors);
+            _modelActorPlayingAnimations.Add(
+                modelActorProfile.PlayingAnimationActors);
+            _modelActorEffectsActive.Add(modelActorProfile.EffectActors);
         }
         _lastFrameUsec = sampling ? now : 0;
         if (now - _readyUsec < _warmupUsec + _sampleUsec) return false;
         PrintSummary();
         _completed = true;
-        return true;
+        RenderingServer.ViewportSetMeasureRenderTime(_viewportRid, false);
+        War3ModelActor.EndRuntimeProfiling();
+        return _quitOnComplete;
     }
+
+    private int ViewportRenderInfo(
+        RenderingServer.ViewportRenderInfoType type,
+        RenderingServer.ViewportRenderInfo info) =>
+        RenderingServer.ViewportGetRenderInfo(_viewportRid, type, info);
 
     private void ReportSpike(
         double frameMilliseconds,
         double presenterMilliseconds,
-        long presenterAllocatedBytes)
+        long presenterAllocatedBytes,
+        War3PresenterSyncProfile presenterProfile,
+        War3ModelActorProcessProfile modelActorProfile,
+        double renderSetupCpu,
+        double renderViewportCpu,
+        double renderViewportGpu,
+        int visibleDrawCalls,
+        int shadowDrawCalls)
     {
         var gen0 = GC.CollectionCount(0);
         var gen1 = GC.CollectionCount(1);
@@ -558,6 +726,23 @@ internal sealed class War3RuntimeProfiler
             $"physics_ms={_lastPhysicsMilliseconds:0.###} " +
             $"simulation_ms={_lastSimulationMilliseconds:0.###} " +
             $"presenter_ms={presenterMilliseconds:0.###} " +
+            $"presenter_units_ms={presenterProfile.UnitsMilliseconds:0.###} " +
+            $"unit_animation_ms={presenterProfile.UnitAnimationMilliseconds:0.###} " +
+            $"units_seen={presenterProfile.UnitActorsVisited}/" +
+            $"{presenterProfile.UnitActorsAlive}/" +
+            $"{presenterProfile.UnitActorsInFrustum}/" +
+            $"{presenterProfile.UnitActorsCreated} " +
+            $"model_process_ms={modelActorProfile.TotalMilliseconds:0.###} " +
+            $"model_geoset_ms={modelActorProfile.GeosetMilliseconds:0.###} " +
+            $"model_effects_ms={modelActorProfile.EffectsMilliseconds:0.###} " +
+            $"model_callbacks={modelActorProfile.ActorCallbacks}/" +
+            $"{modelActorProfile.VisibleActors}/" +
+            $"{modelActorProfile.PlayingAnimationActors}/" +
+            $"{modelActorProfile.EffectActors} " +
+            $"render_cpu_ms={renderSetupCpu:0.###}/" +
+            $"{renderViewportCpu:0.###} " +
+            $"render_gpu_ms={renderViewportGpu:0.###} " +
+            $"draw_calls={visibleDrawCalls}/{shadowDrawCalls} " +
             $"physics_alloc={_lastPhysicsAllocatedBytes} " +
             $"presenter_alloc={presenterAllocatedBytes} " +
             $"economy_ms={_lastSimulationMetrics.EconomyMilliseconds:0.###} " +
@@ -687,7 +872,28 @@ internal sealed class War3RuntimeProfiler
         Print("physics_alloc_bytes", _physicsAllocated);
         Print("presenter_alloc_bytes", _presenterAllocated);
         Print("presenter_units_ms", _presenterUnits);
+        Print("presenter_unit_animation_ms", _presenterUnitAnimation);
+        Print("presenter_unit_actors_visited", _presenterUnitActorsVisited);
+        Print("presenter_unit_actors_alive", _presenterUnitActorsAlive);
+        Print("presenter_unit_actors_in_frustum",
+            _presenterUnitActorsInFrustum);
+        Print("presenter_unit_actors_created", _presenterUnitActorsCreated);
+        Print("presenter_unit_resolve_alloc_bytes",
+            _presenterUnitResolveAllocated);
+        Print("presenter_unit_frustum_alloc_bytes",
+            _presenterUnitFrustumAllocated);
+        Print("presenter_unit_lod_alloc_bytes", _presenterUnitLodAllocated);
+        Print("presenter_unit_animation_alloc_bytes",
+            _presenterUnitAnimationAllocated);
         Print("presenter_buildings_ms", _presenterBuildings);
+        Print("presenter_building_actors_visited",
+            _presenterBuildingActorsVisited);
+        Print("presenter_building_actors_in_frustum",
+            _presenterBuildingActorsInFrustum);
+        Print("presenter_building_overview_alloc_bytes",
+            _presenterBuildingOverviewAllocated);
+        Print("presenter_building_animation_alloc_bytes",
+            _presenterBuildingAnimationAllocated);
         Print("presenter_resources_ms", _presenterResources);
         Print("presenter_projectiles_ms", _presenterProjectiles);
         Print("presenter_transients_ms", _presenterTransients);
@@ -700,6 +906,30 @@ internal sealed class War3RuntimeProfiler
         Print("render_objects", _objects);
         Print("render_draw_calls", _drawCalls);
         Print("render_primitives", _primitives);
+        Print("render_setup_cpu_ms", _renderSetupCpu);
+        Print("render_viewport_cpu_ms", _renderViewportCpu);
+        Print("render_viewport_gpu_ms", _renderViewportGpu);
+        Print("render_visible_objects", _renderVisibleObjects);
+        Print("render_visible_draw_calls", _renderVisibleDrawCalls);
+        Print("render_visible_primitives", _renderVisiblePrimitives);
+        Print("render_shadow_objects", _renderShadowObjects);
+        Print("render_shadow_draw_calls", _renderShadowDrawCalls);
+        Print("render_shadow_primitives", _renderShadowPrimitives);
+        Print("render_canvas_draw_calls", _renderCanvasDrawCalls);
+        Print("render_video_memory_bytes", _renderVideoMemoryBytes);
+        Print("engine_process_ms", _engineProcess);
+        Print("engine_physics_process_ms", _enginePhysicsProcess);
+        Print("engine_fps", _engineFps);
+        Print("engine_node_count", _engineNodeCount);
+        Print("model_actor_process_ms", _modelActorProcess);
+        Print("model_actor_geoset_ms", _modelActorGeoset);
+        Print("model_actor_effects_ms", _modelActorEffects);
+        Print("model_actor_alloc_bytes", _modelActorAllocated);
+        Print("model_actor_callbacks", _modelActorCallbacks);
+        Print("model_actor_visible", _modelActorVisible);
+        Print("model_actor_playing_animations",
+            _modelActorPlayingAnimations);
+        Print("model_actor_effects_active", _modelActorEffectsActive);
         Print("sim_total_ms", _simTotal);
         Print("sim_economy_ms", _simEconomy);
         Print("sim_construction_ms", _simConstruction);
@@ -737,8 +967,19 @@ internal sealed class War3RuntimeProfiler
         Print("sim_spatial_hash_ms", _simSpatialHash);
         Print("sim_steering_ms", _simSteering);
         Print("sim_steering_alloc_bytes", _simSteeringAllocated);
+        Print("sim_steering_neighbor_pairs", _simSteeringNeighborPairs);
+        Print("sim_steering_candidate_evaluations",
+            _simSteeringCandidateEvaluations);
         Print("sim_integrate_ms", _simIntegrate);
         Print("sim_collision_ms", _simCollision);
+        Print("sim_collision_broadphase_pairs",
+            _simCollisionBroadphasePairs);
+        Print("sim_collision_main_iterations",
+            _simCollisionMainIterations);
+        Print("sim_collision_residual_passes",
+            _simCollisionResidualPasses);
+        Print("sim_collision_constraint_calls",
+            _simCollisionConstraintCalls);
         Print("sim_recovery_ms", _simRecovery);
         Print("sim_queue_ms", _simQueue);
         Print("sim_visibility_ms", _simVisibility);

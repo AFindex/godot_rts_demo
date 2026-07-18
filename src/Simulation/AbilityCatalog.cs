@@ -187,7 +187,7 @@ public readonly record struct AbilitySummonProfile(
         get
         {
             if (string.IsNullOrWhiteSpace(ObjectId) ||
-                !float.IsFinite(LifetimeSeconds) || LifetimeSeconds <= 0f)
+                !float.IsFinite(LifetimeSeconds) || LifetimeSeconds < 0f)
                 return false;
             try
             {
@@ -379,6 +379,18 @@ public readonly record struct AbilityLevelProfile(
             Requirements.All(value => value.IsValid));
 }
 
+public readonly record struct AbilityProjectileProfile(
+    float Speed,
+    float Arc,
+    bool Homing)
+{
+    public bool Enabled => Speed > 0f;
+
+    public bool IsValid =>
+        float.IsFinite(Speed) && Speed >= 0f &&
+        float.IsFinite(Arc) && Arc is >= 0f and <= 4f;
+}
+
 public readonly record struct AbilityProfile(
     int Id,
     string RawId,
@@ -392,7 +404,8 @@ public readonly record struct AbilityProfile(
     bool AutoCastDefault,
     ImmutableArray<AbilityLevelProfile> Levels,
     int RequiredHeroLevel = 0,
-    int HeroLevelSkip = 0)
+    int HeroLevelSkip = 0,
+    AbilityProjectileProfile Projectile = default)
 {
     public bool IsPassive => Activation == AbilityActivationKind.Passive;
 
@@ -416,6 +429,7 @@ public readonly record struct AbilityProfile(
                      AbilityTargetFlags.NonSapper | AbilityTargetFlags.Bridge |
                      AbilityTargetFlags.Item | AbilityTargetFlags.Wall)) == 0 &&
         !Levels.IsDefaultOrEmpty && Levels.Length <= 32 &&
+        Projectile.IsValid &&
         RequiredHeroLevel >= 0 && HeroLevelSkip >= 0 &&
         Levels.Select((value, index) =>
                 value.Level == index + 1 && value.IsValid)
@@ -486,17 +500,18 @@ public readonly record struct UnitAbilityBindingProfile(
 }
 
 /// <summary>
-/// Building loadouts deliberately contain only ability IDs. Buildings do not
-/// share unit mana, hero-level or auto-cast state; the authoritative runtime
-/// stores their toggle state against the concrete GameplayBuildingId.
+/// Building loadouts carry the same JSON-derived mana contract as units, but
+/// deliberately omit hero-level and auto-cast state. Cooldowns, mana and
+/// toggle state belong to the concrete GameplayBuildingId at runtime.
 /// </summary>
 public readonly record struct BuildingAbilityBindingProfile(
     int BuildingTypeId,
-    ImmutableArray<int> Abilities)
+    ImmutableArray<int> Abilities,
+    UnitManaProfile Mana = default)
 {
     public bool IsValid(AbilityProfile[] profiles)
     {
-        if (BuildingTypeId < 0 || Abilities.IsDefault ||
+        if (BuildingTypeId < 0 || Abilities.IsDefault || !Mana.IsValid ||
             Abilities.Length > 32)
             return false;
         var seen = new HashSet<int>();
@@ -512,7 +527,7 @@ public readonly record struct BuildingAbilityBindingProfile(
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 17;
+    public const int CurrentFormatVersion = 19;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
     private readonly Dictionary<int, BuildingAbilityBindingProfile>
@@ -664,6 +679,9 @@ internal static partial class AbilitySerialization
         writer.Write(value.AutoCastDefault);
         writer.Write(value.RequiredHeroLevel);
         writer.Write(value.HeroLevelSkip);
+        writer.Write(value.Projectile.Speed);
+        writer.Write(value.Projectile.Arc);
+        writer.Write(value.Projectile.Homing);
         writer.Write(value.Levels.Length);
         foreach (var level in value.Levels) WriteLevel(writer, level);
     }
@@ -682,6 +700,8 @@ internal static partial class AbilitySerialization
         var autoCast = reader.ReadBoolean();
         var requiredHeroLevel = reader.ReadInt32();
         var heroLevelSkip = reader.ReadInt32();
+        var projectile = new AbilityProjectileProfile(
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadBoolean());
         var levelCount = ReadCount(reader, 32);
         var levels = new AbilityLevelProfile[levelCount];
         for (var index = 0; index < levelCount; index++)
@@ -689,7 +709,7 @@ internal static partial class AbilitySerialization
         return new AbilityProfile(
             id, rawId, name, description, icon, hotkey, activation, targets,
             hero, autoCast, levels.ToImmutableArray(), requiredHeroLevel,
-            heroLevelSkip);
+            heroLevelSkip, projectile);
     }
 
     private static void WriteLevel(BinaryWriter writer, AbilityLevelProfile value)
@@ -1107,6 +1127,9 @@ internal static partial class AbilitySerialization
         BuildingAbilityBindingProfile value)
     {
         writer.Write(value.BuildingTypeId);
+        writer.Write(value.Mana.Initial);
+        writer.Write(value.Mana.Maximum);
+        writer.Write(value.Mana.RegenerationPerSecond);
         writer.Write(value.Abilities.Length);
         foreach (var ability in value.Abilities) writer.Write(ability);
     }
@@ -1115,12 +1138,14 @@ internal static partial class AbilitySerialization
         BinaryReader reader)
     {
         var buildingType = reader.ReadInt32();
+        var mana = new UnitManaProfile(
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
         var count = ReadCount(reader, 32);
         var abilities = new int[count];
         for (var index = 0; index < count; index++)
             abilities[index] = reader.ReadInt32();
         return new BuildingAbilityBindingProfile(
-            buildingType, abilities.ToImmutableArray());
+            buildingType, abilities.ToImmutableArray(), mana);
     }
 
     private static int ReadCount(BinaryReader reader, int maximum)

@@ -5,6 +5,7 @@ namespace RtsDemo.Simulation;
 public enum AbilityEventKind : byte
 {
     Started,
+    Released,
     Impact,
     Ended,
     Interrupted
@@ -38,7 +39,8 @@ public readonly record struct AbilityEvent(
     int TargetId,
     Vector2 WorldPosition,
     AbilityEndReason EndReason,
-    int CasterBuilding = -1);
+    int CasterBuilding = -1,
+    int InstanceId = -1);
 
 public readonly record struct AbilityEventBatch(
     AbilityEvent[] Events,
@@ -76,7 +78,8 @@ public sealed class AbilityEventStream
         int targetId = -1,
         Vector2 worldPosition = default,
         AbilityEndReason endReason = AbilityEndReason.None,
-        int casterBuilding = -1)
+        int casterBuilding = -1,
+        int instanceId = -1)
     {
         if (string.IsNullOrWhiteSpace(abilityId))
             throw new ArgumentException(
@@ -87,12 +90,15 @@ public sealed class AbilityEventStream
         if (!Enum.IsDefined(kind) || !Enum.IsDefined(targetKind) ||
             !Enum.IsDefined(endReason))
             throw new ArgumentOutOfRangeException(nameof(kind));
+        if (instanceId < -1)
+            throw new ArgumentOutOfRangeException(nameof(instanceId));
 
         var sequence = _nextSequence++;
         _events[(int)((sequence - 1) % (ulong)_events.Length)] =
             new AbilityEvent(
                 tick, sequence, kind, abilityId, casterUnit, targetKind,
-                targetId, worldPosition, endReason, casterBuilding);
+                targetId, worldPosition, endReason, casterBuilding,
+                instanceId);
         if (_count < _events.Length) _count++;
     }
 

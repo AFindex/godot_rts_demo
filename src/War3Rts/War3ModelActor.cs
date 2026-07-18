@@ -3,6 +3,16 @@ using RtsDemo.Demos.War3;
 
 namespace War3Rts;
 
+public readonly record struct War3ModelActorProcessProfile(
+    double TotalMilliseconds,
+    double GeosetMilliseconds,
+    double EffectsMilliseconds,
+    long AllocatedBytes,
+    int ActorCallbacks,
+    int VisibleActors,
+    int PlayingAnimationActors,
+    int EffectActors);
+
 public readonly record struct War3ModelSoundTimelineEvent(
     string EventCode,
     string SequenceName,
@@ -25,6 +35,7 @@ public sealed partial class War3ModelActor : Node3D
     private War3ModelMetadata? _metadata;
     private int _sequenceIndex;
     private string _requestedSequence = string.Empty;
+    private IReadOnlyList<string>? _requestedCandidatesReference;
     private bool _requestedLoop = true;
     private bool _requestedRepeat;
     private bool _progressDriven;
@@ -33,6 +44,15 @@ public sealed partial class War3ModelActor : Node3D
     private double _lastSoundTimelineMilliseconds = -0.001d;
     private ulong _soundTimelineSequence;
     private StandardMaterial3D? _ghostMaterial;
+    private static bool _runtimeProfilingEnabled;
+    private static long _profileTotalTicks;
+    private static long _profileGeosetTicks;
+    private static long _profileEffectsTicks;
+    private static long _profileAllocatedBytes;
+    private static int _profileActorCallbacks;
+    private static int _profileVisibleActors;
+    private static int _profilePlayingAnimationActors;
+    private static int _profileEffectActors;
 
     public event Action<War3ModelSoundTimelineEvent>? SoundTimelineEvent;
 
@@ -60,6 +80,25 @@ public sealed partial class War3ModelActor : Node3D
         _sequenceIndex < _metadata.Sequences.Count
             ? _metadata.Sequences[_sequenceIndex].DurationMilliseconds / 1000d
             : 0d;
+
+    public float ApproximateWorldHeight()
+    {
+        if (_metadata is null || _model is null) return 1.5f;
+        var root = FindByName<Node3D>(_model, "WarcraftRoot") ??
+                   _model as Node3D;
+        if (root is null)
+            return MathF.Max(0.25f,
+                (_metadata.Bounds.Maximum.Z -
+                 _metadata.Bounds.Minimum.Z) * 0.01f);
+        var center = _metadata.Bounds.Center;
+        var bottom = root.ToGlobal(new Vector3(
+            center.X, center.Y, _metadata.Bounds.Minimum.Z));
+        var top = root.ToGlobal(new Vector3(
+            center.X, center.Y, _metadata.Bounds.Maximum.Z));
+        var vertical = MathF.Abs(top.Y - bottom.Y);
+        return MathF.Max(0.25f,
+            vertical > 0.05f ? vertical : top.DistanceTo(bottom));
+    }
 
     public override void _Ready()
     {
@@ -94,6 +133,7 @@ public sealed partial class War3ModelActor : Node3D
         }
         _sequenceIndex = -1;
         _requestedSequence = string.Empty;
+        _requestedCandidatesReference = null;
         _requestedRepeat = false;
         _progressDriven = false;
         _drivenMilliseconds = 0d;
@@ -208,6 +248,7 @@ public sealed partial class War3ModelActor : Node3D
         var index = FindSequence(candidates);
         if (index < 0) return false;
         _requestedSequence = string.Join('|', candidates);
+        _requestedCandidatesReference = candidates;
         _requestedLoop = false;
         _requestedRepeat = false;
         StartSequence(index, false);
@@ -226,12 +267,15 @@ public sealed partial class War3ModelActor : Node3D
         var index = FindSequence(candidates);
         if (index < 0) return false;
         var progress = Math.Clamp(normalizedProgress, 0f, 1f);
-        var key = string.Join('|', candidates);
+        var key = ReferenceEquals(_requestedCandidatesReference, candidates)
+            ? _requestedSequence
+            : string.Join('|', candidates);
         if (!_progressDriven || _sequenceIndex != index || _requestedSequence != key)
             StartSequence(index, false, allowBlend: false);
 
         var sequence = _metadata.Sequences[index];
         _requestedSequence = key;
+        _requestedCandidatesReference = candidates;
         _requestedLoop = false;
         _requestedRepeat = false;
         _progressDriven = true;
@@ -266,11 +310,14 @@ public sealed partial class War3ModelActor : Node3D
         var nonLooping = _metadata.Sequences[index].NonLooping;
         var effectiveLoop = loop && !nonLooping;
         var repeatAfterFinish = loop && repeatNonLooping && nonLooping;
-        var key = string.Join('|', candidates);
+        var key = ReferenceEquals(_requestedCandidatesReference, candidates)
+            ? _requestedSequence
+            : string.Join('|', candidates);
         var sameRequest = _requestedSequence == key &&
                           _requestedLoop == effectiveLoop &&
                           _requestedRepeat == repeatAfterFinish && !_progressDriven;
         _requestedSequence = key;
+        _requestedCandidatesReference = candidates;
         _requestedLoop = effectiveLoop;
         _requestedRepeat = repeatAfterFinish;
         _progressDriven = false;
@@ -406,6 +453,7 @@ public sealed partial class War3ModelActor : Node3D
         if (index < 0) return false;
         StartSequence(index, false);
         _requestedSequence = "Death";
+        _requestedCandidatesReference = null;
         _requestedLoop = false;
         _requestedRepeat = false;
         _deathLocked = true;
@@ -419,6 +467,44 @@ public sealed partial class War3ModelActor : Node3D
     }
 
     public override void _Process(double delta)
+    {
+        if (!_runtimeProfilingEnabled)
+        {
+            ProcessModelFrame();
+            return;
+        }
+        var allocatedStart = GC.GetAllocatedBytesForCurrentThread();
+        var totalStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        var geosetStart = totalStart;
+        if (_metadata is null || _metadata.Sequences.Count == 0) return;
+        var milliseconds = _progressDriven
+            ? _drivenMilliseconds
+            : (_animation?.CurrentAnimationPosition ?? 0d) * 1000d;
+        ApplyGeosetVisibility(_geosets, _metadata, _sequenceIndex, milliseconds);
+        var geosetEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (!_progressDriven) DispatchSoundTimeline(milliseconds);
+        var effectsStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        _effects?.Sync(milliseconds);
+        var effectsEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (!_deathLocked && _animation is not null && !_animation.IsPlaying() &&
+            _requestedSequence.Length > 0 && (_requestedLoop || _requestedRepeat))
+        {
+            if (_requestedRepeat) RepeatedSequenceRestartCount++;
+            StartSequence(_sequenceIndex, _requestedLoop);
+        }
+        var totalEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        _profileTotalTicks += totalEnd - totalStart;
+        _profileGeosetTicks += geosetEnd - geosetStart;
+        _profileEffectsTicks += effectsEnd - effectsStart;
+        _profileAllocatedBytes +=
+            GC.GetAllocatedBytesForCurrentThread() - allocatedStart;
+        _profileActorCallbacks++;
+        if (IsVisibleInTree()) _profileVisibleActors++;
+        if (_animation?.IsPlaying() == true) _profilePlayingAnimationActors++;
+        if (_effects is not null) _profileEffectActors++;
+    }
+
+    private void ProcessModelFrame()
     {
         if (_metadata is null || _metadata.Sequences.Count == 0) return;
         var milliseconds = _progressDriven
@@ -434,6 +520,49 @@ public sealed partial class War3ModelActor : Node3D
             StartSequence(_sequenceIndex, _requestedLoop);
         }
     }
+
+    internal static void BeginRuntimeProfiling()
+    {
+        ResetRuntimeProfile();
+        _runtimeProfilingEnabled = true;
+    }
+
+    internal static void EndRuntimeProfiling()
+    {
+        _runtimeProfilingEnabled = false;
+        ResetRuntimeProfile();
+    }
+
+    internal static War3ModelActorProcessProfile CaptureRuntimeProfile()
+    {
+        if (!_runtimeProfilingEnabled) return default;
+        var profile = new War3ModelActorProcessProfile(
+            TicksToMilliseconds(_profileTotalTicks),
+            TicksToMilliseconds(_profileGeosetTicks),
+            TicksToMilliseconds(_profileEffectsTicks),
+            _profileAllocatedBytes,
+            _profileActorCallbacks,
+            _profileVisibleActors,
+            _profilePlayingAnimationActors,
+            _profileEffectActors);
+        ResetRuntimeProfile();
+        return profile;
+    }
+
+    private static void ResetRuntimeProfile()
+    {
+        _profileTotalTicks = 0;
+        _profileGeosetTicks = 0;
+        _profileEffectsTicks = 0;
+        _profileAllocatedBytes = 0;
+        _profileActorCallbacks = 0;
+        _profileVisibleActors = 0;
+        _profilePlayingAnimationActors = 0;
+        _profileEffectActors = 0;
+    }
+
+    private static double TicksToMilliseconds(long ticks) =>
+        ticks * 1_000d / System.Diagnostics.Stopwatch.Frequency;
 
     public void FrameCamera(Camera3D camera, bool portrait, bool building = false)
     {
@@ -673,6 +802,7 @@ public sealed partial class War3ModelActor : Node3D
         _model = null;
         _metadata = null;
         _animation = null;
+        _requestedCandidatesReference = null;
         _geosets.Clear();
         _lastSoundTimelineMilliseconds = -0.001d;
         _soundTimelineSequence = 0;

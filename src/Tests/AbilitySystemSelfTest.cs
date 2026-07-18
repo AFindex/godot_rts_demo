@@ -124,7 +124,34 @@ public static class AbilitySystemSelfTest
         var fire = simulation.IssueAbility(
             1, caster, 0,
             AbilityCastTarget.Unit(enemy, simulation.Units.Positions[enemy]));
+        var projectileReleased = fire.Succeeded &&
+            simulation.Abilities.ActiveProjectileCount == 1 &&
+            simulation.Combat.Health[enemy] == previewHealth &&
+            simulation.AbilityEvents.ReadAfter(0).Events.Any(value =>
+                value.AbilityId == "T001" &&
+                value.Kind == AbilityEventKind.Released &&
+                value.InstanceId > 0);
+        var projectileHot = new SimulationHotSnapshot(
+            0xB017UL, simulation.CaptureRuntimeState());
+        var projectileRestored = SimulationHotSnapshot.TryDeserialize(
+            projectileHot.CanonicalBytes, out var parsedProjectile,
+            out var projectileValidation) && parsedProjectile is not null &&
+            projectileValidation == HotSnapshotValidationCode.Success &&
+            parsedProjectile.State.Abilities.Projectiles.Length == 1;
+        if (parsedProjectile is not null)
+            simulation.RestoreRuntimeState(parsedProjectile.State);
+        for (var tick = 0; tick < 60 &&
+             simulation.Combat.Health[enemy] == previewHealth; tick++)
+            rig.Step();
+        var projectileImpacted = simulation.AbilityEvents.ReadAfter(0)
+            .Events.Any(value =>
+                value.AbilityId == "T001" &&
+                value.Kind == AbilityEventKind.Impact &&
+                value.InstanceId > 0);
         var directDamageWorked = fire.Succeeded &&
+                                 projectileReleased && projectileRestored &&
+                                 projectileImpacted &&
+                                 simulation.Abilities.ActiveProjectileCount == 0 &&
                                  simulation.Combat.Health[enemy] == 70f;
         var enemyManaBefore = simulation.Abilities.Observe(enemy).Mana;
         var enemyManaTransfer = simulation.IssueAbility(
@@ -334,6 +361,10 @@ public static class AbilitySystemSelfTest
             AbilityCastTarget.Self(caster, simulation.Units.Positions[caster]));
         var friendlySummon = simulation.Abilities.ObserveSummons()
             .Single(value => value.SourceUnit == caster).Unit;
+        var permanentSummonWorked = float.IsPositiveInfinity(
+            simulation.Abilities.ObserveSummons()
+                .Single(value => value.Unit == friendlySummon)
+                .RemainingSeconds);
         var summonDispel = simulation.IssueAbility(
             1, caster, 18,
             AbilityCastTarget.Point(simulation.Units.Positions[enemySummon]));
@@ -447,7 +478,7 @@ public static class AbilitySystemSelfTest
                      heroLearningWorked && damageClassificationWorked &&
                      buffIdentityWorked && dispelWorked && unitTraitsWorked &&
                      heroExperienceWorked && auraStackingWorked;
-        passed &= summonDispelWorked;
+        passed &= summonDispelWorked && permanentSummonWorked;
         passed &= manaTransferWorked;
         passed &= feedbackWorked;
         passed &= holyLightWorked;
@@ -473,6 +504,7 @@ public static class AbilitySystemSelfTest
             $"hero_xp={heroExperienceWorked}, " +
             $"aura_stack={auraStackingWorked}, " +
             $"summon_dispel={summonDispelWorked}, " +
+            $"permanent_summon={permanentSummonWorked}, " +
             $"mana_transfer={manaTransferWorked}, " +
             $"feedback={feedbackWorked}, " +
             $"holy_light={holyLightWorked}, " +
@@ -619,7 +651,7 @@ public static class AbilitySystemSelfTest
         var buildingEvents = eventBatch.Count(value =>
             value.AbilityId == "T028" &&
             value.CasterUnit == -1 &&
-            value.CasterBuilding == build.BuildingId.Value) == 6;
+            value.CasterBuilding == build.BuildingId.Value) == 8;
         var passed = call.Succeeded && toggled && serializedLog &&
                      logValidation.Succeeded && replayExact &&
                      rangeAndForcedBuilding && abilityBinary && hotRoundTrip &&
@@ -773,7 +805,9 @@ public static class AbilitySystemSelfTest
             Level(20f, 0.2f, new AbilityEffectProfile(
                 AbilityEffectKind.Damage, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                Value: 30f, DamageKind: AbilityDamageKind.Magic)));
+                Value: 30f, DamageKind: AbilityDamageKind.Magic)),
+            Projectile: new AbilityProjectileProfile(
+                180f, 0.15f, Homing: true));
         var shield = new AbilityProfile(
             1, "T002", "Test Shield", string.Empty, string.Empty, "S",
             AbilityActivationKind.TargetUnit,
@@ -935,7 +969,7 @@ public static class AbilitySystemSelfTest
                 AttackDamage = 0f
             },
             UnitPerceptionProfileSnapshot.Standard,
-            60f);
+            0f);
         var summon = new AbilityProfile(
             17, "T018", "Test Summon", string.Empty, string.Empty, string.Empty,
             AbilityActivationKind.Instant,

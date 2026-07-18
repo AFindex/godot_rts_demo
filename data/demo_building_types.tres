@@ -68,4 +68,5 @@ ArmorUpgradePerLevel = 1.0
 
 [resource]
 script = ExtResource("2_catalog")
+FormatVersion = 4
 Types = Array[ExtResource("1_type")]([SubResource("Resource_rnpfl"), SubResource("Resource_qrs4f"), SubResource("Resource_qbl0u"), SubResource("Resource_3emw1"), SubResource("Resource_w31p3")])

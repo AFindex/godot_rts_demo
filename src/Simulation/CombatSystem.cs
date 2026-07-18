@@ -80,6 +80,8 @@ public sealed class CombatSystem
     private readonly Func<int, bool> _canTakeDamage;
     private readonly Func<int, CombatTargetLayer> _unitTargetLayer;
     private readonly Func<int, int, bool> _hasTechnology;
+    private readonly SpatialHash _spatialHash;
+    private int[] _targetCandidates;
     private double _targetSearchMilliseconds;
     private int _targetSearches;
     public CombatProjectileSystem Projectiles { get; } = new();
@@ -96,7 +98,8 @@ public sealed class CombatSystem
         Func<int, int, bool> isHostileTarget,
         Func<int, bool> canAttack,
         Func<int, bool> canTakeDamage,
-        Func<int, CombatTargetLayer> unitTargetLayer)
+        Func<int, CombatTargetLayer> unitTargetLayer,
+        SpatialHash spatialHash)
     {
         _units = units;
         _combat = combat;
@@ -108,6 +111,8 @@ public sealed class CombatSystem
         _canAttack = canAttack;
         _canTakeDamage = canTakeDamage;
         _unitTargetLayer = unitTargetLayer;
+        _spatialHash = spatialHash;
+        _targetCandidates = new int[units.Capacity];
         _hasTechnology = HasTechnology;
     }
 
@@ -517,11 +522,27 @@ public sealed class CombatSystem
 
     private int FindBestTarget(int unit)
     {
+        // Preserve the established small/medium-match traversal exactly;
+        // large battles are where the O(attackers * all units) scan dominates.
+        if (_units.Count <= 256)
+            return FindBestTargetFullScan(unit);
+
         var best = -1;
         var bestScore = float.PositiveInfinity;
         var intent = _combat.CommandIntents[unit];
-        for (var candidate = 0; candidate < _units.Count; candidate++)
+        if (_targetCandidates.Length < _units.Count)
+            Array.Resize(ref _targetCandidates, _units.Capacity);
+        var queryRadius = intent == UnitCommandIntent.Hold
+            ? _combat.AttackRanges[unit] +
+              _units.Radii[unit] +
+              _spatialHash.MaximumRadius
+            : _combat.AcquisitionRanges[unit];
+        var candidateCount = _spatialHash.Query(
+            _units.Positions[unit], queryRadius, unit,
+            _targetCandidates.AsSpan(0, _units.Count));
+        for (var index = 0; index < candidateCount; index++)
         {
+            var candidate = _targetCandidates[index];
             if (!IsValidTarget(unit, candidate))
             {
                 continue;
@@ -546,6 +567,34 @@ public sealed class CombatSystem
             }
         }
 
+        return best;
+    }
+
+    private int FindBestTargetFullScan(int unit)
+    {
+        var best = -1;
+        var bestScore = float.PositiveInfinity;
+        var intent = _combat.CommandIntents[unit];
+        for (var candidate = 0; candidate < _units.Count; candidate++)
+        {
+            if (!IsValidTarget(unit, candidate))
+                continue;
+            var distanceSquared = Vector2.DistanceSquared(
+                _units.Positions[unit], _units.Positions[candidate]);
+            var acquisitionRange = intent == UnitCommandIntent.Hold
+                ? _combat.AttackRanges[unit] +
+                  _units.Radii[unit] + _units.Radii[candidate]
+                : _combat.AcquisitionRanges[unit];
+            if (distanceSquared > acquisitionRange * acquisitionRange)
+                continue;
+            var score = TargetScore(unit, candidate).TotalScore;
+            if (score < bestScore ||
+                score == bestScore && candidate < best)
+            {
+                best = candidate;
+                bestScore = score;
+            }
+        }
         return best;
     }
 

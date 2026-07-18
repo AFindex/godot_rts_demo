@@ -21,6 +21,7 @@ public partial class RtsLaunchScreen : Control
     public event Action? Demo3DRequested;
     public event Action? War3AssetLabRequested;
     public event Action? War3RtsRequested;
+    public event Action? War3StressRequested;
     public event Action<TerrainShowcaseTarget>? TerrainShowcaseRequested;
     public event Action<string>? TestRequested;
     public event Action? TestBrowserRequested;
@@ -46,7 +47,7 @@ public partial class RtsLaunchScreen : Control
         AddBackdrop();
         var center = FullRect<CenterContainer>();
         AddChild(center);
-        var panel = Panel(new Vector2(960f, 650f));
+        var panel = Panel(new Vector2(960f, 690f));
         center.AddChild(panel);
         var margin = Margin(32);
         panel.AddChild(margin);
@@ -84,6 +85,10 @@ public partial class RtsLaunchScreen : Control
             "进入 Warcraft III 人族对战",
             "经典人族单位、建筑、金矿、伐木、实时肖像与人族 AI 的完整 3D RTS 对局。",
             () => War3RtsRequested?.Invoke()));
+        actions.AddChild(HomeActionCard(
+            "观看 800 单位自动压测",
+            "8192×5120 大地图；双边自动战斗、补兵，48 名农民循环免费建造与定时拆除。",
+            () => War3StressRequested?.Invoke()));
         actions.AddChild(HomeActionCard(
             $"打开测试中心  ·  {_entries.Count} 项",
             "浏览每项黑盒测试的中文说明，并直接切换到对应场景。",

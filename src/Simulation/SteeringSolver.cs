@@ -12,7 +12,15 @@ public sealed class SteeringSolver
 
     private readonly StaticWorld _world;
     private readonly SpatialHash _spatialHash;
-    private readonly int[] _neighborBuffer = new int[48];
+    private readonly int[] _neighborIds = new int[48];
+    private readonly Vector2[] _neighborOffsets = new Vector2[48];
+    private readonly Vector2[] _neighborVelocities = new Vector2[48];
+    private readonly float[] _neighborDistancesSquared = new float[48];
+    private readonly float[] _neighborCombinedRadiiSquared = new float[48];
+    private readonly float[] _neighborForwardResponsibilities = new float[48];
+
+    public int LastNeighborPairs { get; private set; }
+    public int LastCandidateEvaluations { get; private set; }
 
     public SteeringSolver(StaticWorld world, SpatialHash spatialHash)
     {
@@ -28,6 +36,8 @@ public sealed class SteeringSolver
         ReadOnlySpan<CombatContactSnapshot> combatContacts,
         ReadOnlySpan<CombatTargetKind> combatTargets)
     {
+        LastNeighborPairs = 0;
+        LastCandidateEvaluations = 0;
         for (var unit = 0; unit < units.Count; unit++)
         {
             if (!units.Alive[unit])
@@ -37,10 +47,13 @@ public sealed class SteeringSolver
             }
             if (units.Modes[unit] is not UnitMoveMode.Moving)
             {
-                units.NextVelocities[unit] = MoveTowards(
-                    units.Velocities[unit],
-                    Vector2.Zero,
-                    units.Accelerations[unit] * delta);
+                units.NextVelocities[unit] =
+                    units.Velocities[unit].LengthSquared() <= 0.0000001f
+                        ? Vector2.Zero
+                        : MoveTowards(
+                            units.Velocities[unit],
+                            Vector2.Zero,
+                            units.Accelerations[unit] * delta);
                 continue;
             }
 
@@ -74,23 +87,20 @@ public sealed class SteeringSolver
         var neighborRadius = MathF.Max(64f, radius * 7f);
         var slotDistance = Vector2.Distance(position, units.SlotTargets[unit]);
         var horizon = slotDistance < 28f ? 0.16f : slotDistance < 90f ? 0.34f : 0.65f;
-        var neighborCount = _spatialHash.Query(
-            position,
-            neighborRadius,
-            unit,
-            _neighborBuffer);
+        var neighborCount = PrepareNeighbors(
+            units, unit, position, neighborRadius,
+            unitCollisionSuppressed, concealmentKinds,
+            combatContacts, combatTargets);
+        LastNeighborPairs += neighborCount;
         var preferredProbeSeconds = MathF.Min(
             0.32f,
             slotDistance / preferredSpeed);
 
         var preferredRisk = CollisionRisk(
-            units,
-            unit,
             preferred,
             neighborCount,
-            horizon,
-            unitCollisionSuppressed, concealmentKinds, combatContacts,
-            combatTargets);
+            horizon);
+        LastCandidateEvaluations++;
         if (preferredRisk < 0.02f &&
             _world.IsSegmentFree(
                 position,
@@ -109,42 +119,44 @@ public sealed class SteeringSolver
         var bestScore = float.PositiveInfinity;
         var bestSide = (sbyte)0;
 
-        for (var candidateIndex = 0; candidateIndex < CandidateAngles.Length; candidateIndex++)
+        for (var candidateIndex = 0;
+             candidateIndex < CandidateAngles.Length;
+             candidateIndex++)
         {
             var angle = CandidateAngles[candidateIndex] * MathF.PI / 180f;
             var candidateDirection = Rotate(preferredDirection, angle);
-            var speedScale = MathF.Abs(CandidateAngles[candidateIndex]) >= 100f ? 0.45f : 1f;
+            var speedScale = MathF.Abs(CandidateAngles[candidateIndex]) >= 100f
+                ? 0.45f
+                : 1f;
             var candidate = candidateDirection * preferredSpeed * speedScale;
             var candidateProbeSeconds = MathF.Min(
                 0.32f,
                 slotDistance / candidate.Length());
-
             if (!_world.IsSegmentFree(
                     position,
                     position + candidate * candidateProbeSeconds,
                     radius))
-            {
                 continue;
-            }
-
             var collisionRisk = CollisionRisk(
-                units,
-                unit,
                 candidate,
                 neighborCount,
-                horizon,
-                unitCollisionSuppressed, concealmentKinds, combatContacts,
-                combatTargets);
+                horizon);
+            LastCandidateEvaluations++;
+
             var angularCost = MathF.Abs(CandidateAngles[candidateIndex]) / 180f;
             var speedLoss = 1f - candidate.Length() / preferredSpeed;
-            var side = MathF.Abs(angle) < 0.01f ? (sbyte)0 : angle < 0f ? (sbyte)-1 : (sbyte)1;
+            var side = MathF.Abs(angle) < 0.01f
+                ? (sbyte)0
+                : angle < 0f ? (sbyte)-1 : (sbyte)1;
             var sideSwitchCost = units.AvoidanceLockTicks[unit] > 0 &&
                                  units.AvoidanceSides[unit] != 0 &&
                                  side != 0 &&
                                  side != units.AvoidanceSides[unit]
                 ? 2.5f
                 : 0f;
-            var reverseCost = MathF.Abs(CandidateAngles[candidateIndex]) > 90f ? 1.5f : 0f;
+            var reverseCost = MathF.Abs(CandidateAngles[candidateIndex]) > 90f
+                ? 1.5f
+                : 0f;
             var score = collisionRisk * 8f + angularCost * 2.2f +
                         speedLoss * 0.8f + sideSwitchCost + reverseCost;
 
@@ -169,52 +181,79 @@ public sealed class SteeringSolver
             units.Accelerations[unit] * delta);
     }
 
-    private float CollisionRisk(
+    private int PrepareNeighbors(
         UnitStore units,
         int unit,
-        Vector2 candidate,
-        int neighborCount,
-        float horizon,
+        Vector2 position,
+        float neighborRadius,
         ReadOnlySpan<bool> unitCollisionSuppressed,
         ReadOnlySpan<UnitConcealmentKind> concealmentKinds,
         ReadOnlySpan<CombatContactSnapshot> combatContacts,
         ReadOnlySpan<CombatTargetKind> combatTargets)
     {
-        var risk = 0f;
-        var position = units.Positions[unit];
-        var radius = units.Radii[unit];
-
-        for (var i = 0; i < neighborCount; i++)
+        var queried = _spatialHash.Query(
+            position,
+            neighborRadius,
+            unit,
+            _neighborIds);
+        var prepared = 0;
+        var unitEngaged = combatTargets[unit] != CombatTargetKind.None;
+        for (var index = 0; index < queried; index++)
         {
-            var neighbor = _neighborBuffer[i];
+            var neighbor = _neighborIds[index];
             if (UnitCollisionPolicy.SuppressesPair(
                     unitCollisionSuppressed[unit], concealmentKinds[unit],
                     unitCollisionSuppressed[neighbor],
                     concealmentKinds[neighbor]))
-            {
                 continue;
-            }
+
             var offset = units.Positions[neighbor] - position;
-            var combinedRadius = radius + units.Radii[neighbor] + 1.5f;
             var distanceSquared = offset.LengthSquared();
             if (distanceSquared > 90f * 90f)
-            {
                 continue;
-            }
 
-            if (distanceSquared < combinedRadius * combinedRadius)
+            var combinedRadius = units.Radii[unit] +
+                                 units.Radii[neighbor] + 1.5f;
+            _neighborIds[prepared] = neighbor;
+            _neighborOffsets[prepared] = offset;
+            _neighborVelocities[prepared] = units.Velocities[neighbor];
+            _neighborDistancesSquared[prepared] = distanceSquared;
+            _neighborCombinedRadiiSquared[prepared] =
+                combinedRadius * combinedRadius;
+            _neighborForwardResponsibilities[prepared] =
+                UnitPushPriorityPolicy.ForwardAvoidanceResponsibility(
+                    units, unit, neighbor, offset,
+                    combatContacts[neighbor], unitEngaged,
+                    combatTargets[neighbor] != CombatTargetKind.None);
+            prepared++;
+        }
+        return prepared;
+    }
+
+    private float CollisionRisk(
+        Vector2 candidate,
+        int neighborCount,
+        float horizon)
+    {
+        var risk = 0f;
+
+        for (var i = 0; i < neighborCount; i++)
+        {
+            var offset = _neighborOffsets[i];
+            var distanceSquared = _neighborDistancesSquared[i];
+            var responsibility =
+                UnitPushPriorityPolicy.IsAvoidanceDirectedToward(
+                    candidate, offset)
+                    ? _neighborForwardResponsibilities[i]
+                    : 1f;
+
+            if (distanceSquared < _neighborCombinedRadiiSquared[i])
             {
-                var responsibility =
-                    UnitPushPriorityPolicy.AvoidanceResponsibility(
-                        units, unit, neighbor, candidate,
-                        combatContacts[neighbor],
-                        combatTargets[unit] != CombatTargetKind.None,
-                        combatTargets[neighbor] != CombatTargetKind.None);
                 risk += 3f * responsibility;
                 continue;
             }
 
-            var relativeVelocity = units.Velocities[neighbor] - candidate;
+            var relativeVelocity = _neighborVelocities[i] - candidate;
             var a = relativeVelocity.LengthSquared();
             if (a < 0.0001f)
             {
@@ -222,7 +261,7 @@ public sealed class SteeringSolver
             }
 
             var b = 2f * Vector2.Dot(offset, relativeVelocity);
-            var c = distanceSquared - combinedRadius * combinedRadius;
+            var c = distanceSquared - _neighborCombinedRadiiSquared[i];
             var discriminant = b * b - 4f * a * c;
             if (discriminant < 0f)
             {
@@ -232,12 +271,6 @@ public sealed class SteeringSolver
             var time = (-b - MathF.Sqrt(discriminant)) / (2f * a);
             if (time >= 0f && time <= horizon)
             {
-                var responsibility =
-                    UnitPushPriorityPolicy.AvoidanceResponsibility(
-                        units, unit, neighbor, candidate,
-                        combatContacts[neighbor],
-                        combatTargets[unit] != CombatTargetKind.None,
-                        combatTargets[neighbor] != CombatTargetKind.None);
                 risk += (1f + (horizon - time) / horizon) * responsibility;
             }
 

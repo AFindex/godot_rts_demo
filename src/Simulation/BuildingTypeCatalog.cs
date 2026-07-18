@@ -37,7 +37,7 @@ public sealed class BuildingTypeCatalogValidationResult
 /// </summary>
 public sealed class BuildingTypeCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
 
     private readonly BuildingTypeProfile[] _types;
     private readonly byte[] _canonicalBytes;
@@ -116,6 +116,8 @@ public sealed class BuildingTypeCatalogSnapshot
                 !float.IsFinite(type.ArmorUpgradePerLevel) ||
                 type.ArmorUpgradePerLevel < 0f ||
                 !Enum.IsDefined(type.ArmorType) ||
+                !ValidCombat(type.Combat) ||
+                !ValidPerception(type.Perception) ||
                 !float.IsFinite(type.CancelRefundFraction) ||
                 type.CancelRefundFraction is < 0f or > 1f)
             {
@@ -178,6 +180,30 @@ public sealed class BuildingTypeCatalogSnapshot
             writer.Write((ushort)type.Attributes);
             writer.Write(BitConverter.SingleToInt32Bits(type.ArmorUpgradePerLevel));
             writer.Write((byte)type.ArmorType);
+            writer.Write(BitConverter.SingleToInt32Bits(
+                type.Combat.AcquisitionRange));
+            var weaponCount = type.Combat.Weapons.IsDefault
+                ? 0
+                : type.Combat.Weapons.Length;
+            writer.Write(weaponCount);
+            if (!type.Combat.Weapons.IsDefault)
+                foreach (var weapon in type.Combat.Weapons)
+                    CombatProfileBinary.WriteWeapon(writer, weapon);
+            var onHitCount = type.Combat.OnHitEffects.IsDefault
+                ? 0
+                : type.Combat.OnHitEffects.Length;
+            writer.Write(onHitCount);
+            if (!type.Combat.OnHitEffects.IsDefault)
+                foreach (var effect in type.Combat.OnHitEffects)
+                    CombatProfileBinary.WriteBuildingOnHit(writer, effect);
+            writer.Write(BitConverter.SingleToInt32Bits(
+                type.Perception.VisionRange));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                type.Perception.DetectionRange));
+            writer.Write(BitConverter.SingleToInt32Bits(
+                type.Perception.ObservationHeight));
+            writer.Write((byte)type.Perception.TerrainVisionMode);
+            writer.Write(type.Perception.DetectionTechnologyId);
         }
         writer.Flush();
         return stream.ToArray();
@@ -204,6 +230,19 @@ public sealed class BuildingTypeCatalogSnapshot
     private static bool IsPositive(float value) =>
         float.IsFinite(value) && value > 0f;
 
+    private static bool ValidCombat(in BuildingCombatProfileSnapshot value)
+    {
+        try { value.Validate(); return true; }
+        catch (ArgumentOutOfRangeException) { return false; }
+    }
+
+    private static bool ValidPerception(
+        in BuildingPerceptionProfileSnapshot value)
+    {
+        try { value.Validate(); return true; }
+        catch (ArgumentOutOfRangeException) { return false; }
+    }
+
     private static void Add(
         List<BuildingTypeCatalogValidationIssue> issues,
         BuildingTypeCatalogErrorCode code,
@@ -226,7 +265,8 @@ public readonly record struct BuildingTypeCatalogDiff(
         var changed = Math.Abs(currentTypes.Length - candidateTypes.Length);
         for (var index = 0; index < shared; index++)
         {
-            changed += currentTypes[index] == candidateTypes[index] ? 0 : 1;
+            changed += ConstructionSerialization.ProfileEquals(
+                currentTypes[index], candidateTypes[index]) ? 0 : 1;
         }
         return new BuildingTypeCatalogDiff(
             current.StableHash != candidate.StableHash,

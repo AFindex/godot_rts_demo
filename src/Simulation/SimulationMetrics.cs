@@ -10,6 +10,10 @@ public sealed class SimulationMetrics
     public int PathsCompleted { get; internal set; }
     public int PathsFailed { get; internal set; }
     public int CollisionPairs { get; internal set; }
+    public int CollisionBroadphasePairs { get; internal set; }
+    public int CollisionMainIterations { get; internal set; }
+    public int CollisionResidualPasses { get; internal set; }
+    public int CollisionConstraintCalls { get; internal set; }
     public float MaximumPenetration { get; internal set; }
     public int RepathRequests { get; internal set; }
     public int NavigationRevision { get; internal set; }
@@ -94,6 +98,8 @@ public sealed class SimulationMetrics
     public double SpatialHashMilliseconds { get; internal set; }
     public double SteeringMilliseconds { get; internal set; }
     public long SteeringAllocatedBytes { get; internal set; }
+    public int SteeringNeighborPairs { get; internal set; }
+    public int SteeringCandidateEvaluations { get; internal set; }
     public double IntegrateMilliseconds { get; internal set; }
     public double CollisionMilliseconds { get; internal set; }
     public double RecoveryMilliseconds { get; internal set; }

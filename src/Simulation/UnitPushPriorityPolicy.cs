@@ -42,17 +42,45 @@ public static class UnitPushPriorityPolicy
         bool unitEngaged,
         bool neighborEngaged)
     {
-        var candidateLengthSquared = candidateVelocity.LengthSquared();
-        if (candidateLengthSquared <= 0.0001f)
+        var offset = units.Positions[neighbor] - units.Positions[unit];
+        if (!IsAvoidanceDirectedToward(candidateVelocity, offset))
             return 1f;
 
-        var offset = units.Positions[neighbor] - units.Positions[unit];
+        return ForwardAvoidanceResponsibility(
+            units, unit, neighbor, offset, neighborContact,
+            unitEngaged, neighborEngaged);
+    }
+
+    public static bool IsAvoidanceDirectedToward(
+        Vector2 candidateVelocity,
+        Vector2 offset)
+    {
+        var candidateLengthSquared = candidateVelocity.LengthSquared();
         var offsetLengthSquared = offset.LengthSquared();
+        if (candidateLengthSquared <= 0.0001f ||
+            offsetLengthSquared <= 0.0001f)
+            return false;
         var forward = Vector2.Dot(candidateVelocity, offset);
-        if (offsetLengthSquared <= 0.0001f || forward <= 0f ||
-            forward * forward <= candidateLengthSquared *
-            offsetLengthSquared * DirectionThreshold * DirectionThreshold)
-            return 1f;
+        return forward > 0f &&
+               forward * forward > candidateLengthSquared *
+               offsetLengthSquared * DirectionThreshold * DirectionThreshold;
+    }
+
+    /// <summary>
+    /// Returns the stable pair responsibility once the caller has established
+    /// that its candidate velocity points toward the neighbor. Steering probes
+    /// many candidate velocities against the same neighbor set, so separating
+    /// the directional test lets it cache the rest of the pair policy once.
+    /// </summary>
+    public static float ForwardAvoidanceResponsibility(
+        UnitStore units,
+        int unit,
+        int neighbor,
+        Vector2 offset,
+        CombatContactSnapshot neighborContact,
+        bool unitEngaged,
+        bool neighborEngaged)
+    {
 
         if (!CanDisplace(units, unit, neighbor))
             return 1.45f;

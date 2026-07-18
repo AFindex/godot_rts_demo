@@ -135,8 +135,88 @@ public static class War3AbilityDataClosureSelfTest
                 archmageBinding.Hero &&
                 archmageBinding.Abilities.Any(value =>
                     value.AbilityId == waterSkill.Id && value.Level == 0);
+            var runtimeManaFromJson = runtimeImport.Catalog.Bindings.All(binding =>
+            {
+                var definition = War3HumanContent.Units[binding.UnitTypeId];
+                if (!units.TryGet(definition.ObjectId, out var source))
+                    return false;
+                var expected = source.Summary.Mana.Effective is > 0f
+                    ? source.Summary.Mana.Effective.Value
+                    : source.Summary.Mana.Maximum is > 0f
+                        ? source.Summary.Mana.Maximum.Value
+                        : 0f;
+                var expectedInitial = expected <= 0f
+                    ? 0f
+                    : source.Summary.Mana.Initial is > 0f
+                        ? MathF.Min(expected,
+                            source.Summary.Mana.Initial.Value)
+                        : expected;
+                var expectedRegeneration = MathF.Max(
+                    0f, source.Summary.Mana.Regeneration ?? 0f);
+                return MathF.Abs(binding.Mana.Initial - expectedInitial) < 0.001f &&
+                       MathF.Abs(binding.Mana.Maximum - expected) < 0.001f &&
+                       MathF.Abs(binding.Mana.RegenerationPerSecond -
+                                 expectedRegeneration) < 0.001f;
+            }) && runtimeImport.Catalog.BuildingBindings.All(binding =>
+            {
+                var definition = War3HumanContent.Buildings[
+                    binding.BuildingTypeId];
+                if (!units.TryGet(definition.ObjectId, out var source))
+                    return false;
+                var expected = source.Summary.Mana.Effective is > 0f
+                    ? source.Summary.Mana.Effective.Value
+                    : source.Summary.Mana.Maximum is > 0f
+                        ? source.Summary.Mana.Maximum.Value
+                        : 0f;
+                var expectedInitial = expected <= 0f
+                    ? 0f
+                    : source.Summary.Mana.Initial is > 0f
+                        ? MathF.Min(expected,
+                            source.Summary.Mana.Initial.Value)
+                        : expected;
+                var expectedRegeneration = MathF.Max(
+                    0f, source.Summary.Mana.Regeneration ?? 0f);
+                return MathF.Abs(binding.Mana.Initial - expectedInitial) < 0.001f &&
+                       MathF.Abs(binding.Mana.Maximum - expected) < 0.001f &&
+                       MathF.Abs(binding.Mana.RegenerationPerSecond -
+                                 expectedRegeneration) < 0.001f;
+            });
+            var runtimeSummonsFromJson =
+                runtimeImport.Catalog.TryFind("AHwe", out var runtimeWater) &&
+                abilities.TryGet("AHwe", out var sourceWater) &&
+                runtimeWater.Levels.Zip(sourceWater.Summary.Levels)
+                    .All(value => value.First.Effects.Length == 1 &&
+                        SummonMatchesUnitJson(
+                            units,
+                            value.First.Effects[0].Summon,
+                            value.Second.SummonedUnitId,
+                            value.Second.Duration)) &&
+                runtimeImport.Catalog.TryFind("AHpx", out var runtimePhoenix) &&
+                abilities.TryGet("AHpx", out var sourcePhoenix) &&
+                runtimePhoenix.Levels.Zip(sourcePhoenix.Summary.Levels)
+                    .All(value => value.First.Effects.Length == 1 &&
+                        SummonMatchesUnitJson(
+                            units,
+                            value.First.Effects[0].Summon,
+                            value.Second.SummonedUnitId,
+                            value.Second.Duration));
+            var runtimePresentationAttachments =
+                War3HumanContent.TryAbility("AHta", out var revealPresentation) &&
+                revealPresentation is not null &&
+                revealPresentation.CasterAttachments.SequenceEqual(["overhead"]) &&
+                buffEffects.TryGet("Xfhl", out var sixPointEffect) &&
+                War3AbilityDataAdapter.AttachmentPaths(
+                        sixPointEffect.Profile, "Targetattach")
+                    .SequenceEqual([
+                        "sprite,first", "sprite,second", "sprite,fifth",
+                        "sprite,third", "sprite,fourth", "sprite,sixth"
+                    ]);
             var runtimeEffectSemantics =
                 runtimeImport.Catalog.TryFind("AHtb", out var stormBolt) &&
+                stormBolt.Projectile.Enabled &&
+                MathF.Abs(stormBolt.Projectile.Speed -
+                    1000f * 4f / 15f) < 0.001f &&
+                stormBolt.Projectile.Homing &&
                 stormBolt.Levels.All(level =>
                     level.Effects.Length == 1 &&
                     level.Effects[0].DamageKind == AbilityDamageKind.Magic &&
@@ -334,17 +414,20 @@ public static class War3AbilityDataClosureSelfTest
                 (CombatTargetLayer.GroundUnit |
                  CombatTargetLayer.Building) &&
                 siegeEngine.Weapons.Length == 2 &&
-                siegeEngine.Weapons[0].TargetLayers ==
-                    CombatTargetLayer.Building &&
+                (siegeEngine.Weapons[0].TargetLayers &
+                 CombatTargetLayer.Building) != 0 &&
+                (siegeEngine.Weapons[0].TargetLayers &
+                 (CombatTargetLayer.GroundUnit |
+                  CombatTargetLayer.AirUnit)) == 0 &&
                 !siegeEngine.Weapons[1].EnabledByDefault &&
                 siegeEngine.Weapons[1].RequiredTechnologyId == 6 &&
                 siegeEngine.Weapons[1].TargetLayers ==
                     CombatTargetLayer.AirUnit &&
                 mortarTeam.Weapons.Length == 2 &&
-                mortarTeam.Weapons[0].TargetLayers ==
-                    CombatTargetLayer.GroundUnit &&
-                mortarTeam.Weapons[1].TargetLayers ==
-                    CombatTargetLayer.Building &&
+                (mortarTeam.Weapons[0].TargetLayers &
+                 CombatTargetLayer.GroundUnit) != 0 &&
+                (mortarTeam.Weapons[1].TargetLayers &
+                 CombatTargetLayer.Building) != 0 &&
                 gryphonRider.Weapons.Length == 2 &&
                 gryphonRider.Weapons.Any(value =>
                     value.TargetLayers == CombatTargetLayer.AirUnit);
@@ -407,23 +490,23 @@ public static class War3AbilityDataClosureSelfTest
                     .Combat.Weapons.AsSpan().SequenceEqual(
                         flyingMachine.Weapons.AsSpan());
             var behaviorRegistryValid =
-                War3AbilityBehaviorRegistry.All.Count == 43 &&
-                runtimeImport.RequestedCount == 44 &&
-                runtimeImport.BehaviorFamilyCount == 43 &&
-                runtimeImport.PrototypeCount == 36 &&
+                War3AbilityBehaviorRegistry.All.Count == 53 &&
+                runtimeImport.RequestedCount == 47 &&
+                runtimeImport.BehaviorFamilyCount == 45 &&
+                runtimeImport.PrototypeCount == 39 &&
                 runtimeImport.UnclassifiedBaseCodes.Length == 0 &&
                 runtimeImport.UnresolvedRequirementIds.Length == 0 &&
-                runtimeCoverage.RegistryBaseFamilyCount == 43 &&
+                runtimeCoverage.RegistryBaseFamilyCount == 53 &&
                 runtimeCoverage.All.AbilityCount == 801 &&
                 runtimeCoverage.All.BaseFamilyCount == 415 &&
-                runtimeCoverage.All.ClassifiedBaseFamilyCount == 43 &&
+                runtimeCoverage.All.ClassifiedBaseFamilyCount == 53 &&
                 runtimeCoverage.UnitReferenced.AbilityCount == 461 &&
                 runtimeCoverage.UnitReferenced.BaseFamilyCount == 285 &&
                 runtimeCoverage.Items.AbilityCount == 234 &&
                 runtimeCoverage.Items.BaseFamilyCount == 129 &&
-                runtimeCoverage.CurrentRuntime.AbilityCount == 44 &&
-                runtimeCoverage.CurrentRuntime.BaseFamilyCount == 43 &&
-                runtimeCoverage.CurrentRuntime.PrototypeAbilityCount == 36 &&
+                runtimeCoverage.CurrentRuntime.AbilityCount == 47 &&
+                runtimeCoverage.CurrentRuntime.BaseFamilyCount == 45 &&
+                runtimeCoverage.CurrentRuntime.PrototypeAbilityCount == 39 &&
                 runtimeCoverage.CurrentRuntime.StatusCounts["unclassified"] == 0 &&
                 runtimeCoverage.OrphanRegisteredBaseCodes.Length == 0 &&
                 runtimeCoverage.Targeting.ExportedTokens.Length == 27 &&
@@ -433,14 +516,14 @@ public static class War3AbilityDataClosureSelfTest
                 runtimeCoverage.TechnologyRequirements
                     .AbilitiesWithRequirements == 93 &&
                 runtimeCoverage.TechnologyRequirements
-                    .CurrentRuntimeAbilitiesWithRequirements == 15 &&
+                    .CurrentRuntimeAbilitiesWithRequirements == 17 &&
                 runtimeCoverage.TechnologyRequirements
-                    .CurrentRuntimeRequirementIds.Length == 12 &&
+                    .CurrentRuntimeRequirementIds.Length == 13 &&
                 runtimeCoverage.TechnologyRequirements
-                    .CurrentRuntimeResolvedRequirementIds.Length == 12 &&
+                    .CurrentRuntimeResolvedRequirementIds.Length == 13 &&
                 runtimeCoverage.TechnologyRequirements
                     .CurrentRuntimeUnresolvedRequirementIds.Length == 0 &&
-                runtimeCompilerMatrix.Length == 36 &&
+                runtimeCompilerMatrix.Length == 39 &&
                 runtimeCompilerMatrix.Select(value => value.Compiler)
                     .Distinct().Count() == 36 &&
                 runtimeCompilerMatrix.All(value => value.HasEffects) &&
@@ -449,7 +532,8 @@ public static class War3AbilityDataClosureSelfTest
                 runtimeHeroExperienceData && weaponProfilesValid &&
                 weaponSelectionValid && weaponTechnologyRequirementsValid &&
                 weaponBehaviorStatusValid && weaponCommandRoundTrip &&
-                weaponResourceRoundTrip;
+                weaponResourceRoundTrip && runtimeManaFromJson &&
+                runtimeSummonsFromJson && runtimePresentationAttachments;
             var references = normalReferences
                 .Concat(heroReferences)
                 .ToHashSet(StringComparer.Ordinal);
@@ -485,12 +569,19 @@ public static class War3AbilityDataClosureSelfTest
                 $"requirements={runtimeRequirementsPreserved}, " +
                 $"hero_learning={heroLearningBindings}, " +
                 $"effect_semantics={runtimeEffectSemantics}, " +
+                $"mana_json={runtimeManaFromJson}, " +
+                $"summon_json={runtimeSummonsFromJson}, " +
+                $"attachments_json={runtimePresentationAttachments}, " +
                 $"unit_traits={runtimeUnitTraits}, " +
                 $"hero_xp_data={runtimeHeroExperienceData}, " +
                 $"weapons={weaponProfilesValid}/{weaponSelectionValid}/" +
                 $"{weaponTechnologyRequirementsValid}/" +
                 $"{weaponBehaviorStatusValid}/{weaponCommandRoundTrip}/" +
-                $"{weaponResourceRoundTrip}, " +
+                $"{weaponResourceRoundTrip}" +
+                $"[fly={string.Join('|', flyingMachine.Weapons.Select(value => $"{value.Slot}:{value.EnabledByDefault}:{value.RequiredTechnologyId}:{value.TargetLayers}"))};" +
+                $"siege={string.Join('|', siegeEngine.Weapons.Select(value => $"{value.Slot}:{value.EnabledByDefault}:{value.RequiredTechnologyId}:{value.TargetLayers}"))};" +
+                $"mortar={string.Join('|', mortarTeam.Weapons.Select(value => $"{value.Slot}:{value.TargetLayers}"))};" +
+                $"gryphon={string.Join('|', gryphonRider.Weapons.Select(value => $"{value.Slot}:{value.TargetLayers}"))}], " +
                 $"unit_unclassified=" +
                 $"{runtimeCoverage.UnclassifiedReferencedBaseCodes.Length}" +
                 (errors.Count == 0
@@ -503,5 +594,38 @@ public static class War3AbilityDataClosureSelfTest
                 false,
                 $"{exception.GetType().Name}: {exception.Message}");
         }
+    }
+
+    private static bool SummonMatchesUnitJson(
+        War3UnitDataCatalog units,
+        in AbilitySummonProfile summon,
+        string? expectedObjectId,
+        float? expectedLifetime)
+    {
+        if (string.IsNullOrWhiteSpace(expectedObjectId) ||
+            !summon.ObjectId.Equals(expectedObjectId, StringComparison.Ordinal) ||
+            !units.TryGet(summon.ObjectId, out var source) ||
+            source.Summary.Combat.Attacks.FirstOrDefault(value => value.Enabled)
+                is not { } attack)
+            return false;
+        var policy = War3GameplayImportPolicy.Default;
+        var expectedRadius = MathF.Max(
+            policy.MinimumUnitRadius,
+            (source.Summary.Movement.CollisionSize ?? 0f) *
+            policy.UnitCollisionRadiusScale);
+        return MathF.Abs(summon.LifetimeSeconds -
+                         (expectedLifetime ?? 0f)) < 0.001f &&
+               MathF.Abs(summon.Movement.PhysicalRadius -
+                         expectedRadius) < 0.001f &&
+               MathF.Abs(summon.Movement.MaximumSpeed -
+                         (source.Summary.Movement.Speed ?? 0f) *
+                         policy.MovementSpeedScale) < 0.001f &&
+               MathF.Abs(summon.Combat.MaximumHealth -
+                         (source.Summary.HitPoints.Effective ?? 0f)) < 0.001f &&
+               MathF.Abs(summon.Combat.AttackDamage -
+                         (attack.Damage.Average ?? 0f)) < 0.001f &&
+               MathF.Abs(summon.Perception.VisionRange -
+                         (source.Summary.Sight.Day ?? 0f) *
+                         policy.WorldDistanceScale) < 0.001f;
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace RtsDemo.Simulation;
@@ -17,6 +18,104 @@ public enum ConstructionMethodKind : byte
 {
     ContinuousWorker,
     StartAndRelease
+}
+
+/// <summary>
+/// Static combat contract for an immobile building.  The values are authored
+/// content (for Warcraft, compiled from the unit JSON) while target selection,
+/// attack phases and damage application live in the generic simulation.
+/// </summary>
+public readonly record struct BuildingCombatProfileSnapshot(
+    float AcquisitionRange)
+{
+    public ImmutableArray<CombatWeaponProfileSnapshot> Weapons { get; init; } = [];
+    public ImmutableArray<BuildingWeaponOnHitEffectSnapshot> OnHitEffects
+        { get; init; } = [];
+
+    public bool Enabled => AcquisitionRange > 0f && !Weapons.IsDefaultOrEmpty;
+
+    public void Validate()
+    {
+        if (AcquisitionRange == 0f && Weapons.IsDefaultOrEmpty &&
+            OnHitEffects.IsDefaultOrEmpty)
+            return;
+        if (!float.IsFinite(AcquisitionRange) || AcquisitionRange <= 0f ||
+            Weapons.IsDefaultOrEmpty || Weapons.Length > 8 ||
+            OnHitEffects.IsDefault || OnHitEffects.Length > 16)
+            throw new ArgumentOutOfRangeException(
+                nameof(BuildingCombatProfileSnapshot));
+        var slots = new HashSet<int>();
+        foreach (var weapon in Weapons)
+        {
+            weapon.Validate();
+            if (!slots.Add(weapon.Slot) || weapon.AttackRange > AcquisitionRange)
+                throw new ArgumentOutOfRangeException(
+                    nameof(BuildingCombatProfileSnapshot));
+        }
+        foreach (var effect in OnHitEffects)
+        {
+            effect.Validate();
+            if (!slots.Contains(effect.WeaponSlot))
+                throw new ArgumentOutOfRangeException(
+                    nameof(BuildingCombatProfileSnapshot));
+        }
+    }
+}
+
+public enum BuildingWeaponOnHitEffectKind : byte
+{
+    ManaFeedback
+}
+
+/// <summary>
+/// Generic, JSON-compiled attack-hit modifier.  Warcraft Feedback is the first
+/// consumer; the simulation contract itself contains no ability rawcodes.
+/// </summary>
+public readonly record struct BuildingWeaponOnHitEffectSnapshot(
+    int WeaponSlot,
+    BuildingWeaponOnHitEffectKind Kind,
+    float UnitMaximumValue,
+    float UnitDamagePerValue,
+    float HeroMaximumValue,
+    float HeroDamagePerValue,
+    float SummonedDamage)
+{
+    public void Validate()
+    {
+        if (WeaponSlot is < 0 or > 7 || !Enum.IsDefined(Kind) ||
+            !Valid(UnitMaximumValue) || !Valid(UnitDamagePerValue) ||
+            !Valid(HeroMaximumValue) || !Valid(HeroDamagePerValue) ||
+            !Valid(SummonedDamage))
+            throw new ArgumentOutOfRangeException(
+                nameof(BuildingWeaponOnHitEffectSnapshot));
+    }
+
+    private static bool Valid(float value) =>
+        float.IsFinite(value) && value >= 0f;
+}
+
+/// <summary>JSON-authored sight and detection contract for a building.</summary>
+public readonly record struct BuildingPerceptionProfileSnapshot(
+    float VisionRange,
+    float DetectionRange = 0f,
+    float ObservationHeight = PlayerVisibilitySystem.DefaultGroundObservationHeight,
+    TerrainVisionMode TerrainVisionMode = TerrainVisionMode.Ground,
+    int DetectionTechnologyId = -1)
+{
+    public bool Enabled => VisionRange > 0f;
+
+    public void Validate()
+    {
+        if (!float.IsFinite(VisionRange) || VisionRange < 0f ||
+            !float.IsFinite(DetectionRange) || DetectionRange < 0f ||
+            !float.IsFinite(ObservationHeight) || ObservationHeight < 0f ||
+            !Enum.IsDefined(TerrainVisionMode) ||
+            DetectionTechnologyId < -1 ||
+            VisionRange == 0f && DetectionRange != 0f ||
+            DetectionRange == 0f && DetectionTechnologyId is not (-1 or 0))
+            throw new ArgumentOutOfRangeException(
+                nameof(BuildingPerceptionProfileSnapshot));
+    }
 }
 
 public enum QueuedConstructionPaymentTiming : byte
@@ -61,7 +160,9 @@ public readonly record struct BuildingTypeProfile(
     float Armor = 0f,
     CombatAttribute Attributes = CombatAttribute.Structure | CombatAttribute.Mechanical,
     float ArmorUpgradePerLevel = 0f,
-    CombatArmorType ArmorType = CombatArmorType.Legacy)
+    CombatArmorType ArmorType = CombatArmorType.Legacy,
+    BuildingCombatProfileSnapshot Combat = default,
+    BuildingPerceptionProfileSnapshot Perception = default)
 {
     public BuildingFootprintProfileSnapshot PlacementProfile => new(
         Id,
@@ -875,6 +976,22 @@ public sealed class ConstructionSystem
         }
     }
 
+    internal void VisitPerceptionSources(
+        Action<int, Vector2, BuildingTypeProfile> visitor)
+    {
+        for (var index = 0; index < _buildings.Count; index++)
+        {
+            var building = _buildings[index];
+            if (building.IsTerminal || building.PlayerId <= 0 ||
+                building.FootprintId.Value <= 0)
+                continue;
+            visitor(
+                building.PlayerId,
+                (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                building.Type);
+        }
+    }
+
     internal PlayerBuildingCapabilities CountPlayerCapabilities(int playerId)
     {
         var active = 0;
@@ -1105,9 +1222,39 @@ public sealed class ConstructionSystem
         float.IsFinite(profile.ArmorUpgradePerLevel) &&
         profile.ArmorUpgradePerLevel >= 0f &&
         Enum.IsDefined(profile.ArmorType) &&
+        ValidBuildingCombat(profile.Combat) &&
+        ValidBuildingPerception(profile.Perception) &&
         profile.SupplyProvided >= 0 &&
         float.IsFinite(profile.CancelRefundFraction) &&
         profile.CancelRefundFraction is >= 0f and <= 1f;
+
+    private static bool ValidBuildingCombat(
+        in BuildingCombatProfileSnapshot value)
+    {
+        try
+        {
+            value.Validate();
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
+    private static bool ValidBuildingPerception(
+        in BuildingPerceptionProfileSnapshot value)
+    {
+        try
+        {
+            value.Validate();
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
 
     private static ConstructionCommandResult Failure(ConstructionCommandCode code) =>
         new(code, default);

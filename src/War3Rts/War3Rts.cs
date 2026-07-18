@@ -51,6 +51,7 @@ public sealed partial class War3Rts : Node3D
     private bool _rallyPending;
     private int _pendingAbilityId = -1;
     private int _pendingAbilityCaster = -1;
+    private int _pendingAbilityBuilding = -1;
     private int _pendingItemUnit = -1;
     private int _pendingItemSlot = -1;
     private int _pendingBuilding = -1;
@@ -94,6 +95,9 @@ public sealed partial class War3Rts : Node3D
     private bool _smokeItemUseValid;
     private bool _smokeAbilityCastsIssued;
     private bool _smokeAbilityDamageApplied;
+    private int _smokeAbilityTarget = -1;
+    private float _smokeAbilityTargetInitialHealth;
+    private string _smokeExpectedSummonObjectId = string.Empty;
     private int _smokeSummonedUnit = -1;
 
     public override void _Ready()
@@ -102,7 +106,14 @@ public sealed partial class War3Rts : Node3D
         // pre-GUI command input stage explicitly so imported/hot-reloaded C#
         // metadata cannot leave it disabled on an existing scene instance.
         SetProcessInput(true);
-        var arguments = OS.GetCmdlineUserArgs();
+        var arguments = War3LaunchRequest.ConsumeArguments(
+            OS.GetCmdlineUserArgs());
+        if (arguments.Contains(War3LaunchRequest.InteractiveStressArgument))
+        {
+            GD.Print(
+                "WAR3_INTERACTIVE_STRESS_LAUNCH " +
+                "units=800 map=256x160 builders=48 slots=96 rendered=true");
+        }
         _smoke = arguments.Contains("--war3-rts-smoke");
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
         _pcgCapture = arguments.Contains("--war3-rts-pcg-capture");
@@ -481,9 +492,32 @@ public sealed partial class War3Rts : Node3D
         }
         if (_capture) _ = CaptureAsync();
         UpdateHud();
+        if (_runtimeProfiler is not null &&
+            (_stressTest is not null || _automatedSkirmish is not null))
+        {
+            var initialPresenterStart =
+                System.Diagnostics.Stopwatch.GetTimestamp();
+            _presenter?.Sync(1f);
+            var initialPresenterMilliseconds = ElapsedMilliseconds(
+                initialPresenterStart,
+                System.Diagnostics.Stopwatch.GetTimestamp());
+            var initialProfile = _presenter?.LastSyncProfile ?? default;
+            GD.Print(
+                $"WAR3_INITIAL_PRESENTATION_PROFILE " +
+                $"total_ms={initialPresenterMilliseconds:0.###} " +
+                $"units_ms={initialProfile.UnitsMilliseconds:0.###} " +
+                $"unit_animation_ms={initialProfile.UnitAnimationMilliseconds:0.###} " +
+                $"units={initialProfile.UnitActorsVisited}/" +
+                $"{initialProfile.UnitActorsAlive}/" +
+                $"{initialProfile.UnitActorsInFrustum}/" +
+                $"{initialProfile.UnitActorsCreated} " +
+                $"buildings_ms={initialProfile.BuildingsMilliseconds:0.###} " +
+                $"resources_ms={initialProfile.ResourcesMilliseconds:0.###}");
+            _presenter?.PrintRuntimeRenderLayout();
+        }
         GD.Print($"WAR3_MAP_LOADED id={map.Metadata.Id} hash={map.StableHashText} " +
                  $"terrain={map.Terrain.StableHashText} objects={map.Objects.Length}");
-        _runtimeProfiler?.MapReady();
+        _runtimeProfiler?.MapReady(GetViewport());
         if (_rightClickInputSmoke) _ = RunRightClickInputSmokeAsync();
         return false;
     }
@@ -894,6 +928,7 @@ public sealed partial class War3Rts : Node3D
     public override void _Process(double delta)
     {
         if (_mapLoadInProgress || _simulation is null) return;
+        var modelActorProfile = War3ModelActor.CaptureRuntimeProfile();
         var allocationStart = GC.GetAllocatedBytesForCurrentThread();
         var previewStart = System.Diagnostics.Stopwatch.GetTimestamp();
         UpdatePointerFeedback();
@@ -904,7 +939,8 @@ public sealed partial class War3Rts : Node3D
                 ElapsedMilliseconds(presenterStart, presenterEnd),
                 ElapsedMilliseconds(previewStart, presenterStart),
                 GC.GetAllocatedBytesForCurrentThread() - allocationStart,
-                _presenter?.LastSyncProfile ?? default) == true)
+                _presenter?.LastSyncProfile ?? default,
+                modelActorProfile) == true)
         {
             _stressTest?.PrintSummary();
             _automatedSkirmish?.PrintSummary();
@@ -1138,6 +1174,7 @@ public sealed partial class War3Rts : Node3D
         _learnMenu = false;
         _pendingAbilityId = -1;
         _pendingAbilityCaster = -1;
+        _pendingAbilityBuilding = -1;
         _mode = target switch
         {
             TargetMode.Move when _movePending => "移动：左键指定位置",
@@ -1179,6 +1216,7 @@ public sealed partial class War3Rts : Node3D
         _rallyPending = false;
         _pendingAbilityId = -1;
         _pendingAbilityCaster = -1;
+        _pendingAbilityBuilding = -1;
         _pendingBuilding = -1;
         _buildMenu = false;
         _pendingAbilityId = abilityId;
@@ -1191,17 +1229,29 @@ public sealed partial class War3Rts : Node3D
 
     private void UseBuildingAbility(int abilityId)
     {
-        if (_simulation is null || _selectedBuildings.Count == 0) return;
+        if (_simulation is null || _selectedBuildings.Count == 0 ||
+            (uint)abilityId >= (uint)_simulation.Abilities.Catalog.Count)
+            return;
         var building = new GameplayBuildingId(ActiveSelectionBuilding());
+        var ability = _simulation.Abilities.Catalog.Ability(abilityId);
+        if (ability.Activation is not (
+                AbilityActivationKind.Instant or
+                AbilityActivationKind.Toggle))
+        {
+            CancelMode();
+            _pendingAbilityId = abilityId;
+            _pendingAbilityBuilding = building.Value;
+            _mode = ability.Activation is AbilityActivationKind.TargetUnit or
+                AbilityActivationKind.ChannelUnit
+                ? $"{ability.Name}：选择目标单位"
+                : $"{ability.Name}：选择目标位置";
+            return;
+        }
         var result = _simulation.IssueBuildingAbility(
             War3HumanScenario.PlayerId, building, abilityId);
-        if ((uint)abilityId < (uint)_simulation.Abilities.Catalog.Count)
-        {
-            var ability = _simulation.Abilities.Catalog.Ability(abilityId);
-            Report(result.Succeeded
-                ? $"已执行 {ability.Name}"
-                : $"{ability.Name} 执行失败：{result.Code}");
-        }
+        Report(result.Succeeded
+            ? $"已执行 {ability.Name}"
+            : $"{ability.Name} 执行失败：{result.Code}");
     }
 
     private void LearnAbility(int abilityId)
@@ -1314,13 +1364,36 @@ public sealed partial class War3Rts : Node3D
 
     private void CompleteAbilityTarget(NVector2 point)
     {
-        if (_simulation is null || _pendingAbilityCaster < 0 ||
-            !_simulation.Units.Alive[_pendingAbilityCaster])
+        if (_simulation is null)
         {
             CancelMode();
             return;
         }
         var ability = _simulation.Abilities.Catalog.Ability(_pendingAbilityId);
+        if (_pendingAbilityBuilding >= 0)
+        {
+            var building = new GameplayBuildingId(_pendingAbilityBuilding);
+            if (!_simulation.Construction.IsAlive(building))
+            {
+                CancelMode();
+                return;
+            }
+            var buildingTarget = AbilityCastTarget.Point(point);
+            var buildingResult = _simulation.IssueBuildingAbility(
+                War3HumanScenario.PlayerId, building,
+                _pendingAbilityId, buildingTarget);
+            Report(buildingResult.Succeeded
+                ? $"已施放 {ability.Name}"
+                : $"{ability.Name} 施放失败：{buildingResult.Code}");
+            if (buildingResult.Succeeded) CancelMode();
+            return;
+        }
+        if (_pendingAbilityCaster < 0 ||
+            !_simulation.Units.Alive[_pendingAbilityCaster])
+        {
+            CancelMode();
+            return;
+        }
         AbilityCastTarget target;
         if (ability.Activation is AbilityActivationKind.TargetUnit or
             AbilityActivationKind.ChannelUnit)
@@ -2436,8 +2509,6 @@ public sealed partial class War3Rts : Node3D
     private void UpdateAbilityPointer(NVector2 point)
     {
         if (_simulation is null || _presenter is null ||
-            _pendingAbilityCaster < 0 ||
-            !_simulation.Units.Alive[_pendingAbilityCaster] ||
             (uint)_pendingAbilityId >= (uint)_simulation.Abilities.Catalog.Count)
         {
             _presenter?.HideAbilityPointerPreview();
@@ -2446,6 +2517,43 @@ public sealed partial class War3Rts : Node3D
         }
 
         var ability = _simulation.Abilities.Catalog.Ability(_pendingAbilityId);
+        if (_pendingAbilityBuilding >= 0)
+        {
+            var buildingId = new GameplayBuildingId(_pendingAbilityBuilding);
+            if (!_simulation.Construction.IsAlive(buildingId))
+            {
+                _presenter.HideAbilityPointerPreview();
+                _cursor?.SetMode(War3CursorMode.InvalidTarget);
+                return;
+            }
+            var building = _simulation.Construction.Observe(buildingId);
+            var buildingLevel = ability.Levels[0];
+            var buildingTarget = AbilityCastTarget.Point(point);
+            var buildingPreview = _simulation.PreviewBuildingAbility(
+                War3HumanScenario.PlayerId, buildingId,
+                _pendingAbilityId, buildingTarget);
+            var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+            var extent = building.Bounds.Max - building.Bounds.Min;
+            var buildingCastRange = buildingLevel.Range <= 0f
+                ? 0f
+                : buildingLevel.Range +
+                  MathF.Max(extent.X, extent.Y) * 0.5f;
+            _presenter.SetAbilityPointerPreview(
+                point, center, buildingCastRange,
+                AbilityPointerRadius(buildingLevel.Area, default),
+                buildingPreview.Succeeded);
+            _cursor?.SetMode(buildingPreview.Succeeded
+                ? War3CursorMode.TargetSelect
+                : War3CursorMode.InvalidTarget);
+            return;
+        }
+        if (_pendingAbilityCaster < 0 ||
+            !_simulation.Units.Alive[_pendingAbilityCaster])
+        {
+            _presenter.HideAbilityPointerPreview();
+            _cursor?.SetMode(War3CursorMode.InvalidTarget);
+            return;
+        }
         var state = _simulation.Abilities.Observe(_pendingAbilityCaster);
         var slot = state.Abilities.FirstOrDefault(value =>
             value.AbilityId == _pendingAbilityId);
@@ -2831,14 +2939,16 @@ public sealed partial class War3Rts : Node3D
     {
         if (hero) return 6;
         if (_simulation is null ||
-            !War3HumanContent.DataCatalog.TryGet(objectId, out var data) ||
-            !data.Summary.Upgrades.Contains("Rhpm", StringComparer.Ordinal))
+            !War3HumanContent.DataCatalog.TryGet(objectId, out var data))
             return 0;
         var backpack = War3HumanContent.Technologies.FirstOrDefault(value =>
-            value.ObjectId.Equals("Rhpm", StringComparison.Ordinal));
+            value.SemanticKind ==
+                War3TechnologySemanticKind.BackpackInventory &&
+            data.Summary.Upgrades.Contains(
+                value.ObjectId, StringComparer.Ordinal));
         return backpack is not null && _simulation.Technology.Level(
             War3HumanScenario.PlayerId, backpack.TechnologyId) > 0
-            ? 2
+            ? backpack.GrantedInventorySlots
             : 0;
     }
 
@@ -3385,6 +3495,21 @@ public sealed partial class War3Rts : Node3D
             {
                 var ability = _simulation.Abilities.Catalog.Ability(
                     learned.AbilityId);
+                var level = ability.Levels[0];
+                var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+                var target = ability.Activation is
+                        AbilityActivationKind.TargetPoint or
+                        AbilityActivationKind.ChannelPoint
+                    ? AbilityCastTarget.Point(center)
+                    : AbilityCastTarget.Building(id, center);
+                var preview = ability.IsPassive
+                    ? new AbilityCommandResult(
+                        AbilityCommandCode.PassiveAbility,
+                        AbilityId: ability.Id,
+                        CasterBuilding: id.Value)
+                    : _simulation.PreviewBuildingAbility(
+                        War3HumanScenario.PlayerId, id, ability.Id, target);
+                var ready = !ability.IsPassive && preview.Succeeded;
                 War3HumanContent.TryAbility(
                     ability.RawId, out var presentation);
                 var label = learned.Toggled &&
@@ -3412,16 +3537,24 @@ public sealed partial class War3Rts : Node3D
                     War3CommandKind.BuildingAbility,
                     ability.Id,
                     label,
-                    description,
+                    $"{description}\n法力 {level.ManaCost:0} · 冷却 " +
+                    $"{level.CooldownSeconds:0.#} 秒" +
+                    (learned.CooldownRemaining > 0f
+                        ? $"（剩余 {learned.CooldownRemaining:0.0}）"
+                        : string.Empty),
                     icon,
                     hotkey,
-                    !ability.IsPassive,
+                    ready,
+                    learned.CooldownRemaining,
+                    level.ManaCost,
                     Toggled: learned.Toggled,
                     State: ability.IsPassive
                         ? War3CommandVisualState.Passive
                         : learned.Toggled
                             ? War3CommandVisualState.Active
-                            : War3CommandVisualState.Ready));
+                            : ready
+                                ? War3CommandVisualState.Ready
+                                : War3CommandVisualState.Unavailable));
             }
             foreach (var recipe in _production.Recipes.ToArray().Where(value =>
                          _simulation.BuildingUpgrades.SatisfiesBuildingType(
@@ -3722,6 +3855,7 @@ public sealed partial class War3Rts : Node3D
         _rallyPending = false;
         _pendingAbilityId = -1;
         _pendingAbilityCaster = -1;
+        _pendingAbilityBuilding = -1;
         _pendingItemUnit = -1;
         _pendingItemSlot = -1;
         _pendingBuilding = -1;
@@ -3955,6 +4089,10 @@ public sealed partial class War3Rts : Node3D
         if (_simulation is null || _runtime is null || _production is null ||
             _presenter is null || _hud is null)
             return;
+        if ((uint)_smokeAbilityTarget < (uint)_simulation.Units.Count)
+            _smokeAbilityDamageApplied |=
+                _simulation.Combat.Health[_smokeAbilityTarget] <
+                _smokeAbilityTargetInitialHealth;
         _smoke = false;
         var player = _simulation.Economy.Players.Snapshot(War3HumanScenario.PlayerId);
         var enemyArmy = Enumerable.Range(0, _simulation.Units.Count).Count(unit =>
@@ -4164,15 +4302,24 @@ public sealed partial class War3Rts : Node3D
             _simulation.CombatWeaponUpgradeTechnologyId == 0 &&
             _simulation.CombatBuildingArmorTechnologyId == 2 &&
             War3HumanContent.Technologies.Count == 21;
+        var smokeSummonAlive = _smokeSummonedUnit >= 0 &&
+                               _simulation.Units.Alive[_smokeSummonedUnit];
+        var summonedObjectId = string.Empty;
+        var smokeSummonKnown = smokeSummonAlive &&
+            _simulation.Abilities.TrySummonedObjectId(
+                _smokeSummonedUnit, out summonedObjectId);
+        var smokeSummonMatches = smokeSummonKnown &&
+                                 !string.IsNullOrEmpty(
+                                     _smokeExpectedSummonObjectId) &&
+                                 summonedObjectId.Equals(
+                                     _smokeExpectedSummonObjectId,
+                                     StringComparison.Ordinal);
         var abilityIntegrationReady =
-            War3HumanContent.AbilityImportStatus.Catalog.Count == 44 &&
+            War3HumanContent.AbilityImportStatus.Catalog.Count ==
+                War3HumanContent.AbilityImportStatus.RequestedCount &&
             War3HumanContent.AbilityImportStatus.MissingObjectIds.Length == 0 &&
             _smokeAbilityCastsIssued && _smokeAbilityDamageApplied &&
-            _smokeSummonedUnit >= 0 &&
-            _simulation.Units.Alive[_smokeSummonedUnit] &&
-            _simulation.Abilities.TrySummonedObjectId(
-                _smokeSummonedUnit, out var summonedObjectId) &&
-            summonedObjectId is "hwat" or "hwt2" or "hwt3" &&
+            smokeSummonMatches &&
             _simulation.AbilityEvents.LatestSequence >= 6;
         var mapLoadingValid = _loadingUiReady &&
                               _loadingProgressMonotonic &&
@@ -4253,6 +4400,9 @@ public sealed partial class War3Rts : Node3D
              $"data_integration={dataIntegrationReady} " +
              $"ability_integration={abilityIntegrationReady}/" +
              $"{_simulation.AbilityEvents.LatestSequence} " +
+             $"ability_parts={_smokeAbilityCastsIssued}/" +
+             $"{_smokeAbilityDamageApplied}/" +
+             $"{smokeSummonAlive}/{smokeSummonKnown}/{smokeSummonMatches} " +
              $"map_loading={mapLoadingValid}/{_loadingStageUpdateCount} " +
              $"selection_group_ui={_smokeSelectionGroupUiValid} " +
              $"construction_progress_ui={_smokeConstructionProgressUiValid} " +
@@ -4483,6 +4633,21 @@ public sealed partial class War3Rts : Node3D
             War3HumanScenario.PlayerId, hero, waterElemental.AbilityId);
         var learnBolt = _simulation.IssueLearnAbility(
             War3HumanScenario.PlayerId, mountainKing, stormBolt.AbilityId);
+        // This integration probe validates the cast/effect pipeline rather
+        // than the scenario's starting-resource balance. Refill through the
+        // authoritative store using each JSON-derived mana snapshot.
+        var heroMana = _simulation.Abilities.Observe(hero);
+        _simulation.Abilities.RestoreMana(
+            hero, heroMana.MaximumMana - heroMana.Mana);
+        var mountainKingMana = _simulation.Abilities.Observe(mountainKing);
+        _simulation.Abilities.RestoreMana(
+            mountainKing,
+            mountainKingMana.MaximumMana - mountainKingMana.Mana);
+        var summonLevel = _simulation.Abilities.Catalog
+            .Ability(waterElemental.AbilityId).Levels[0];
+        _smokeExpectedSummonObjectId = summonLevel.Effects
+            .First(value => value.Kind == AbilityEffectKind.Summon)
+            .Summon.ObjectId;
         var summon = _simulation.IssueAbility(
             War3HumanScenario.PlayerId, hero, waterElemental.AbilityId,
             AbilityCastTarget.Self(hero, _simulation.Units.Positions[hero]));
@@ -4494,8 +4659,14 @@ public sealed partial class War3Rts : Node3D
         _smokeAbilityCastsIssued = learnSummon.Succeeded &&
                                    learnBolt.Succeeded &&
                                    summon.Succeeded && bolt.Succeeded;
-        _smokeAbilityDamageApplied =
-            _simulation.Combat.Health[skillTarget] < targetHealth;
+        GD.Print(
+            $"WAR3_SMOKE_ABILITY learn_summon={learnSummon.Code} " +
+            $"learn_bolt={learnBolt.Code} summon={summon.Code} " +
+            $"bolt={bolt.Code}");
+        // Projectile damage belongs to the later authoritative Impact phase.
+        // FinishSmoke compares this checkpoint after the flight completes.
+        _smokeAbilityTarget = skillTarget;
+        _smokeAbilityTargetInitialHealth = targetHealth;
         _smokeSummonedUnit = _simulation.Abilities.ObserveSummons()
             .Select(value => value.Unit).DefaultIfEmpty(-1).First();
         _simulation.IssueAttackTarget([player], enemy);

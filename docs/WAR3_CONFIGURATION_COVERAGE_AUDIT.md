@@ -8,12 +8,12 @@
 
 | 范围 | 原始对象/家族 | 已分类 | 当前结论 |
 | --- | ---: | ---: | --- |
-| Ability 全量 | 801 / 415 | 134 / 51 | 667 个 rawcode 尚未分类 |
-| 单位实际引用 | 461 / 285 | 74 / 43 | 242 个引用家族尚未分类 |
-| Item Ability | 234 / 129 | 44 / 19 | 190 个物品技能尚未分类 |
-| 当前人族运行时 | 44 / 43 | 44 / 43 | 33 项仍为 `blocked` |
+| Ability 全量 | 801 / 415 | 137 / 53 | 664 个 rawcode 尚未分类 |
+| 单位实际引用 | 461 / 285 | 76 / 45 | 240 个引用家族尚未分类 |
+| Item Ability | 234 / 129 | 45 / 20 | 189 个物品技能尚未分类 |
+| 当前人族运行时 | 47 / 45 | 47 / 45 | 34 项仍为 `blocked` |
 | Item 对象 | 273 | 273 已导出 | 仅藏宝室 9 件已接玩法 |
-| 当前人族建筑 Ability 绑定 | 原始多类 | 2 | 目前只有主城/城堡的战斗号召 |
+| 当前人族建筑 Ability 绑定 | 原始多类 | 6 个建筑 / 9 个槽位 | 战斗号召、魔法岗哨、反馈、显示已进入配置绑定 |
 
 权威机器可读报告是 `reports/war3_ability_runtime_coverage.json`。其中
 `implemented_gameplay`、`delegated`、`presentation_only`、`blocked` 和
@@ -70,6 +70,27 @@
 这消除了“逻辑已升级、视觉仍是哨塔”和重复模型闪现。当前自动检查覆盖 first/second/
 third 配置、目标序列候选和建筑肖像候选。
 
+### 2.3 技能数值、召唤对象与法力
+
+受支持技能编译器不再在 JSON 缺字段时偷偷套用某个经典单位的数值。治疗量、伤害、
+波数、减速倍率、召唤数量等必需字段均读取 `summary.levels[].data`；缺失或非法时，导入
+自检以 `InvalidDataException` 失败。召唤物 rawcode 只读 `summonedUnitId`，生命、攻击、
+移速、碰撞和视野再从该单位 JSON 读取。持续时间为 0 的凤凰按永久召唤处理，不再用
+代码中的 60 秒替代。
+
+单位和建筑法力读取各自 Unit JSON 的 effective/maximum、initial 和 regeneration；已删除
+按英雄 rawcode 补最大法力和按英雄身份强改初始法力的分支。演示场景的完整性判断也由
+固定“44 个技能”改为 `Catalog.Count == RequestedCount`。
+
+非英雄物品栏也不再在 HUD 内判断人族 `Rhpm`。升级适配器从 Upgrade JSON 的
+`editorData.comments` 将四族的 backpack 对象归类为通用 `BackpackInventory` 语义，单位
+再通过自己的 `summary.upgrades` 关联实际科技。原始 UpgradeData 对这一特殊科技没有
+effect 行，因此“解锁两个非英雄物品槽”明确保留为经典引擎语义，集中在科技定义中，
+而不是散落成单位或种族 rawcode 分支。
+
+这里保留的代码映射只有“baseCode 对应哪一种通用行为编译器”，例如 Heal、Flare、
+Summon。它决定怎样解释 JSON 字段，不保存任何单位/技能的内容数值。
+
 ## 3. 技能表现审计与本轮修复
 
 旧表现适配把 Ability、Buff、Effect、Missile 的模型合并成四个平面数组，导致：
@@ -85,36 +106,84 @@ third 配置、目标序列候选和建筑肖像候选。
   `Spell Throw`；引导期间不会再被通用动作覆盖；
 - Ability 的 Caster/Target/Effect、持续 BuffArt 和 MissileArt 分开持有；
 - 持续 Buff 只由 Buff 实例生命周期拥有；
-- MissileArt 不再伪装成 Impact 特效；
-- caster/target/buff attachment、count 和 effect sound 字段进入表现定义，后续不会再
-  因适配丢字段。
+- `Started -> Released -> ProjectileFlight -> Impact -> Ended/Interrupted` 已成为权威事件
+  生命周期；投射物位置、速度、自导目标和实例 id 进入状态、哈希与热快照；
+- MissileArt 由 ProjectileFlight 独占，JSON `Missilespeed/Missilearc/MissileHoming` 驱动
+  移动与弧线，不再伪装成 Impact 特效；
+- caster/target/buff attachment 和 count 已进入表现消费。`sprite,first` 被保留为一条
+  复合路径，`Targetattach1..5` 按声明顺序展开；overhead/head/chest/hand/foot/origin 和
+  sprite 序号根据宿主模型实际高度定位，不再全部叠在地面原点；
+- effect sound 字段进入表现定义，后续不会再因适配丢字段。
 
 尚未完成且不能隐藏的部分：
 
-- Ability 事件流没有独立 `Release/ProjectileFlight` 阶段，真实导弹速度、弧度、自导和
-  命中交接尚未实现；
-- attachment 配置已保留，但外部模型还没有绑定到 MDX 骨骼/attachment transform，
-  血魔法师球体等 `sprite,first` 挂件仍未达到最终正确性；
+- 当前挂点解释器能给出稳定的语义位置，但尚未把每条路径绑定到导出 GLB 的精确
+  Skeleton3D bone transform；需要逐模型保留 MDX attachment-object 到 glTF bone 的映射，
+  才能让手持、坐骑和多 sprite 挂件达到像素级一致；
 - 循环 EffectSound 尚未和 Buff/引导实例做一对一清理；
-- 33 个当前人族 Ability 仍只有原型或阻塞状态，不能因按钮出现而视为完成。
+- 34 个当前人族 Ability 仍只有阻塞/委托/表现状态，不能因按钮出现而视为完成。
 
-## 4. 建筑 Ability 的实际缺口
+## 4. 建筑武器与被动能力（2026-07-18 第二轮）
+
+此前建筑适配器只读取生命、护甲和占地，同一份 Unit JSON 中的攻击、视野和 Ability
+被直接丢弃。现已增加 Godot 无关的 `BuildingCombatProfileSnapshot` 与独立
+`BuildingCombatSystem`，不使用塔 rawcode 分支，也不把建筑伪装成负数 unit id。
+
+建筑攻击阶段契约：
+
+1. `Idle/Search`：建筑战斗系统拥有目标搜索，按 JSON 的 acquisition、target layers、
+   minimum range 与科技门槛选武器；
+2. `Windup`：同一 BuildingVisual 读取武器 DamagePoint，并用建筑 `Animprops` 解析攻击
+   序列，不生成第二份塔模型；
+3. `ProjectileFlight`：独立建筑投射物拥有 Missile 视觉，保存发射时的伤害和 on-hit
+   快照；建筑 Actor 回到 cooldown，不继续拥有导弹；
+4. `Impact`：只应用一次类型伤害、区域伤害和 on-hit，再发布表现事件；投射物视觉在
+   命中交接后销毁；
+5. `Upgrade/Destroy interruption`：建筑攻击状态被清空；已经发射的投射物保存发射时
+   配置，目标失效则明确发布 expired。
+
+已由 JSON 接入并验收：
+
+- `hgtw` 防御塔：25 穿刺伤害、700 范围、0.9 秒周期、0.3 秒前摇和
+  `GuardTowerMissile`；
+- `hctw` 炮塔：两组目标武器、攻城伤害及 50/100/125 区域衰减；
+- `hatw` 神秘之塔：9 点攻击与 `OrbOfDeathMissile`；
+- `Adts` 魔法岗哨：900 侦测范围和 `Rhse` 科技门槛进入建筑感知 profile；
+- `Afbt` 反馈：普通单位 24、英雄 12 的法力燃烧上限、倍率及召唤物伤害进入通用
+  attack-hit effect；
+- 建筑武器、前摇、冷却、目标、投射物和 on-hit 都进入状态哈希、热快照、施工命令、
+  建筑升级及生产重放的二进制格式。
+
+自动验证包含：塔实际攻击、前摇/发射/命中阶段、单次 Impact、投射物中途热快照恢复、
+炮塔区域配置，以及神秘之塔命中女巫后法力与生命同时下降。不能再用“信息面板有攻击
+数值”冒充运行时接入。
+
+## 5. 建筑主动 Ability（本轮完成）与剩余委托
 
 人族建筑原始配置还包含 `Abds/Abdl`、`Argl`、`Arlm`、`Aall/Apit`、`Adts`、
-`Afbt`、`AHta` 等对象。当前只有 `Amic` 战斗号召进入 AbilitySystem 的建筑绑定。
-其中集结点、资源交回和商店已由独立模块承载，但缺少 rawcode 到委托测试的覆盖链接；
-塔的侦测、反馈伤害和神秘之塔 Reveal 仍未完整进入建筑运行时。建筑武器也尚未由
-通用 CombatStore 作为攻击者驱动，因此“塔能显示攻击数值”不等于塔的攻击行为已完成。
+`Afbt`、`AHta` 等对象。建筑 Ability 现在按具体建筑实例维护 JSON 法力、回复、技能槽和
+冷却；Preview/Issue 共用单位技能的目标、距离、科技、法力和冷却校验，命令面板显示
+权威禁用原因、剩余冷却和法力。点目标建筑技能也使用统一目标模式、范围圈和区域圈。
 
-下一阶段必须先增加建筑能力/武器的确定性状态（冷却、目标、科技门槛、攻击事件和
-快照/哈希），再开放命令按钮，不能只把原始 rawcode 塞进 command card。
+神秘之塔 `AHta` 不由 rawcode 分支实现：行为注册表把其 baseCode `AIta` 编译为通用
+Flare/Reveal，范围 900、持续 15 秒、冷却 180 秒、无限施法距离和 `Rhse` 前置都读取
+JSON。Reveal/Detect 状态、建筑法力/冷却和目标进入状态哈希、命令回放及热快照；测试
+覆盖前置失败、施放、生效、隐形探测、过期、冷却拒绝以及中途快照恢复。
 
-## 5. 验收门槛
+`Abds/Abdl`、`Argl`、`Arlm`、`Aall/Apit` 中部分属于商店、集结点、资源交回或系统
+委托。模块本身已有实现，但仍需逐 baseCode 建立“配置对象 -> 委托模块 -> 自动测试”
+的覆盖证据，不能简单标成玩法完成。
+
+## 6. 验收门槛
 
 - `dotnet build rts-demo-1.csproj`：0 warning / 0 error；
 - `--war3-human-ui-self-test`：要求 towerAnimations、abilityPresentation、items 全部 true；
+- `--war3-combat-rules-self-test`：要求 building 与 feedback 的 staged/hot/hit 全部 true；
+- `--ability-self-test`：要求 projectile snapshot 与 `permanent_summon=True`；
+- `--war3-ability-data-self-test`：要求 `mana_json=True`、`summon_json=True`、
+  `attachments_json=True`；
 - `--war3-rts-smoke`：要求 `success=True`、`data_integration=True`、
   `ability_integration=True`、`shop=True`、`item_use=True`；
 - 覆盖生成器：801/415、461/285、234/129 的数量不得回退；
 - 塔升级视觉后续还需增加 first/second/third 的逐帧截图门禁；
-- Missile/attachment 未完成前，相应条目不得标为 `implemented`。
+- 精确骨骼挂点和循环音效所有权未完成前，相应表现条目不得标为最终验收。

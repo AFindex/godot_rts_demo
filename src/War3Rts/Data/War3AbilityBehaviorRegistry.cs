@@ -201,6 +201,9 @@ public static class War3AbilityBehaviorRegistry
         Gameplay("Amic", AbilityActivationKind.Toggle,
             War3AbilityCompilerKind.BuildingMilitiaCall,
             "主城/城堡按原始 2000 范围号召农民、指定施令建筑接触、关闭时提前复工与建筑命令回放已落地。");
+        Gameplay("AIta", AbilityActivationKind.TargetPoint,
+            War3AbilityCompilerKind.Flare,
+            "目标点、范围、持续时间、冷却、科技前置和揭露特效均由 Ability JSON 驱动；建筑与物品共用 Reveal 效果语义。");
         Pending("Arep", AbilityActivationKind.Passive,
             "缺少消耗资源的建筑/机械单位修理命令与自动施法行为。");
         Prototype("Ahea", AbilityActivationKind.TargetUnit,
@@ -234,6 +237,9 @@ public static class War3AbilityBehaviorRegistry
             "飞行机器炸弹由 CombatStore 武器组承载；Rhgb 解锁第二武器的对地/建筑目标层。"));
         Prototype("Agyv", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.DetectionAura);
+        Gameplay("Adts", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.DetectionAura,
+            "建筑侦测范围与科技前置由 Ability JSON 编译进建筑感知 profile，战争迷雾系统按玩家科技等级启用。");
         Gameplay("Aflk", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.FlakCannons,
             "高射火炮按空中攻击命中、Rhfc 前置和互斥 7/6/5 伤害环触发。");

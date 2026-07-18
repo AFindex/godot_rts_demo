@@ -32,7 +32,9 @@ public sealed record War3BuildingDefinition(
     string SpecialEffectSource = "",
     string ArmorClass = "",
     bool Constructible = true,
-    float SelectionCircleScale = 0f)
+    float SelectionCircleScale = 0f,
+    string ProjectileSource = "",
+    string ImpactSource = "")
 {
     /// <summary>
     /// Original UnitFunc Animprops tokens. Shared Warcraft models use these
@@ -160,10 +162,9 @@ public static class War3HumanContent
         ProductionCatalogSnapshot catalog,
         int unit)
     {
-        if (simulation.Abilities.TrySummonedObjectId(unit, out var objectId) &&
-            Runtime.Value.SummonedUnits.TryGetValue(objectId, out var summoned))
+        if (TryResolveSummonedUnit(simulation, unit, out var summoned))
             return summoned;
-        var unitTypeId = simulation.Abilities.Observe(unit).UnitTypeId;
+        var unitTypeId = simulation.Abilities.UnitTypeId(unit);
         if ((uint)unitTypeId < (uint)Units.Count)
             return Units[unitTypeId];
         var isWorker = simulation.Economy.IsWorker(unit);
@@ -176,6 +177,22 @@ public static class War3HumanContent
             .ThenBy(value => value.Id)
             .First();
         return Units[profile.Id];
+    }
+
+    public static bool TryResolveSummonedUnit(
+        RtsSimulation simulation,
+        int unit,
+        out War3UnitDefinition definition)
+    {
+        if (simulation.Abilities.ActiveSummonCount > 0 &&
+            simulation.Abilities.TrySummonedObjectId(unit, out var objectId) &&
+            Runtime.Value.SummonedUnits.TryGetValue(objectId, out var summoned))
+        {
+            definition = summoned;
+            return true;
+        }
+        definition = null!;
+        return false;
     }
 
     public static string GoldMineSource =>

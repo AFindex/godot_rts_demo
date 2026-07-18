@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Text;
+using System.Collections.Immutable;
 
 namespace RtsDemo.Simulation;
 
@@ -37,7 +38,7 @@ public sealed class ConstructionCommandLogSnapshot
 {
     private const uint Magic = 0x43435452; // RTCC
     private const int MaximumEntries = 1_000_000;
-    public const int CurrentFormatVersion = 5;
+    public const int CurrentFormatVersion = 6;
 
     public ConstructionCommandLogSnapshot(RecordedConstructionCommand[] entries)
     {
@@ -264,6 +265,26 @@ internal static class ConstructionSerialization
         writer.Write((ushort)value.Attributes);
         writer.Write(value.ArmorUpgradePerLevel);
         writer.Write((byte)value.ArmorType);
+        writer.Write(value.Combat.AcquisitionRange);
+        var weaponCount = value.Combat.Weapons.IsDefault
+            ? 0
+            : value.Combat.Weapons.Length;
+        writer.Write(weaponCount);
+        if (!value.Combat.Weapons.IsDefault)
+            foreach (var weapon in value.Combat.Weapons)
+                CombatProfileBinary.WriteWeapon(writer, weapon);
+        var onHitCount = value.Combat.OnHitEffects.IsDefault
+            ? 0
+            : value.Combat.OnHitEffects.Length;
+        writer.Write(onHitCount);
+        if (!value.Combat.OnHitEffects.IsDefault)
+            foreach (var effect in value.Combat.OnHitEffects)
+                CombatProfileBinary.WriteBuildingOnHit(writer, effect);
+        writer.Write(value.Perception.VisionRange);
+        writer.Write(value.Perception.DetectionRange);
+        writer.Write(value.Perception.ObservationHeight);
+        writer.Write((byte)value.Perception.TerrainVisionMode);
+        writer.Write(value.Perception.DetectionTechnologyId);
     }
 
     public static BuildingTypeProfile ReadProfile(BinaryReader reader)
@@ -279,7 +300,7 @@ internal static class ConstructionSerialization
         {
             throw new EndOfStreamException();
         }
-        return new BuildingTypeProfile(
+        var legacy = new BuildingTypeProfile(
             id, StrictUtf8.GetString(nameBytes),
             (BuildingFunctionKind)reader.ReadByte(), ReadVector(reader),
             (MovementClass)reader.ReadByte(),
@@ -289,6 +310,30 @@ internal static class ConstructionSerialization
             reader.ReadBoolean(), reader.ReadSingle(),
             (CombatAttribute)reader.ReadUInt16(), reader.ReadSingle(),
             (CombatArmorType)reader.ReadByte());
+        var acquisition = reader.ReadSingle();
+        var weaponCount = reader.ReadInt32();
+        if (weaponCount is < 0 or > 8) throw new InvalidDataException();
+        var weapons = ImmutableArray.CreateBuilder<CombatWeaponProfileSnapshot>(
+            weaponCount);
+        for (var index = 0; index < weaponCount; index++)
+            weapons.Add(CombatProfileBinary.ReadWeapon(reader));
+        var onHitCount = reader.ReadInt32();
+        if (onHitCount is < 0 or > 16) throw new InvalidDataException();
+        var onHit = ImmutableArray.CreateBuilder<
+            BuildingWeaponOnHitEffectSnapshot>(onHitCount);
+        for (var index = 0; index < onHitCount; index++)
+            onHit.Add(CombatProfileBinary.ReadBuildingOnHit(reader));
+        return legacy with
+        {
+            Combat = new BuildingCombatProfileSnapshot(acquisition)
+            {
+                Weapons = weapons.MoveToImmutable(),
+                OnHitEffects = onHit.MoveToImmutable()
+            },
+            Perception = new BuildingPerceptionProfileSnapshot(
+                reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+                (TerrainVisionMode)reader.ReadByte(), reader.ReadInt32())
+        };
     }
 
     public static void WriteVector(BinaryWriter writer, Vector2 value)
@@ -305,4 +350,14 @@ internal static class ConstructionSerialization
 
     public static bool ValidProfile(BuildingTypeProfile profile) =>
         ConstructionSystem.ValidProfile(profile);
+
+    public static bool ProfileEquals(
+        in BuildingTypeProfile left,
+        in BuildingTypeProfile right) =>
+        left with { Combat = default } == right with { Combat = default } &&
+        left.Combat.AcquisitionRange == right.Combat.AcquisitionRange &&
+        left.Combat.Weapons.AsSpan().SequenceEqual(
+            right.Combat.Weapons.AsSpan()) &&
+        left.Combat.OnHitEffects.AsSpan().SequenceEqual(
+            right.Combat.OnHitEffects.AsSpan());
 }

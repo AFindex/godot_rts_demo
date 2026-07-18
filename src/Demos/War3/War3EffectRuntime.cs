@@ -20,8 +20,26 @@ public sealed partial class War3EffectRuntime : Node3D
     private double _accumulatorMilliseconds;
     private int _teamColor;
 
-    public int LiveParticleCount => _particles.Sum(runtime => runtime.Particles.Count);
-    public int LiveRibbonPointCount => _ribbons.Sum(runtime => runtime.Points.Count);
+    public int LiveParticleCount
+    {
+        get
+        {
+            var count = 0;
+            for (var index = 0; index < _particles.Count; index++)
+                count += _particles[index].Particles.Count;
+            return count;
+        }
+    }
+    public int LiveRibbonPointCount
+    {
+        get
+        {
+            var count = 0;
+            for (var index = 0; index < _ribbons.Count; index++)
+                count += _ribbons[index].Points.Count;
+            return count;
+        }
+    }
     public int ActiveParticleEmitterCount => _particles.Count;
     public int ActiveRibbonEmitterCount => _ribbons.Count;
     public int ResolvedEmitterCount =>
@@ -223,19 +241,26 @@ public sealed partial class War3EffectRuntime : Node3D
         IReadOnlyList<double> globalSequences)
     {
         var sampleFrame = frame;
-        IEnumerable<War3ScalarTrack.Key> keys = track.Keys;
+        var global = false;
         if (track.GlobalSequenceId is int globalId &&
             globalId >= 0 && globalId < globalSequences.Count)
         {
             var duration = Math.Max(1d, globalSequences[globalId]);
             sampleFrame = ((frame % duration) + duration) % duration;
+            global = true;
         }
-        else
+        War3ScalarTrack.Key? latest = null;
+        for (var index = 0; index < track.Keys.Count; index++)
         {
-            keys = keys.Where(key => key.Frame >= sequence.StartFrame &&
-                                     key.Frame <= sequence.EndFrame);
+            var key = track.Keys[index];
+            if (!global && (key.Frame < sequence.StartFrame ||
+                            key.Frame > sequence.EndFrame))
+                continue;
+            if (key.Frame <= sampleFrame &&
+                (latest is null || key.Frame >= latest.Frame))
+                latest = key;
         }
-        return keys.LastOrDefault(key => key.Frame <= sampleFrame);
+        return latest;
     }
 
     private void SpawnParticle(ParticleEmitterRuntime runtime, double frame)
@@ -316,9 +341,18 @@ public sealed partial class War3EffectRuntime : Node3D
         if (runtime.Particles.Count == 0) return;
         var rendersHead = (runtime.Definition.FrameFlags & 1) != 0 ||
                           runtime.Definition.FrameFlags == 0;
-        var rendersTail = (runtime.Definition.FrameFlags & 2) != 0 &&
-                          runtime.Particles.Any(particle =>
-                              particle.Velocity.LengthSquared() > 0.00001f);
+        var rendersTail = false;
+        if ((runtime.Definition.FrameFlags & 2) != 0)
+        {
+            for (var index = 0; index < runtime.Particles.Count; index++)
+            {
+                if (runtime.Particles[index].Velocity.LengthSquared() <=
+                    0.00001f)
+                    continue;
+                rendersTail = true;
+                break;
+            }
+        }
         if (!rendersHead && !rendersTail) return;
         runtime.Mesh.SurfaceBegin(Mesh.PrimitiveType.Triangles, runtime.Material);
         foreach (var particle in runtime.Particles)
@@ -498,9 +532,9 @@ public sealed partial class War3EffectRuntime : Node3D
         var animation = progress <= definition.Time
             ? definition.LifeSpanUv
             : definition.DecayUv;
-        var start = animation.ElementAtOrDefault(0);
-        var end = animation.ElementAtOrDefault(1);
-        var repeat = Math.Max(1, animation.ElementAtOrDefault(2));
+        var start = animation.Length > 0 ? animation[0] : 0;
+        var end = animation.Length > 1 ? animation[1] : 0;
+        var repeat = Math.Max(1, animation.Length > 2 ? animation[2] : 0);
         var frame = start + (int)Math.Floor((end - start + 1) * repeat * progress);
         frame = Math.Clamp(frame, Math.Min(start, end), Math.Max(start, end));
         var column = frame % definition.Columns;

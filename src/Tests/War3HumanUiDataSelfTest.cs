@@ -137,10 +137,17 @@ public static class War3HumanUiDataSelfTest
             var inventoryPolicy = heroData && buildings.All(value =>
                 !War3HumanContent.DataCatalog.TryGet(value.ObjectId, out var data) ||
                 !data.Summary.Abilities.Contains("AInv", StringComparer.Ordinal)) &&
+                War3HumanContent.Technologies.Count(value =>
+                    value.SemanticKind ==
+                        War3TechnologySemanticKind.BackpackInventory &&
+                    value.GrantedInventorySlots == 2) == 1 &&
                 units.Count(value => War3HumanContent.DataCatalog.TryGet(
                     value.ObjectId, out var data) &&
-                    data.Summary.Upgrades.Contains(
-                        "Rhpm", StringComparer.Ordinal)) == 6;
+                    War3HumanContent.Technologies.Any(technology =>
+                        technology.SemanticKind ==
+                            War3TechnologySemanticKind.BackpackInventory &&
+                        data.Summary.Upgrades.Contains(
+                            technology.ObjectId, StringComparer.Ordinal))) == 6;
 
             var abilityPresentation =
                 War3HumanContent.TryAbility("AHbz", out var blizzard) &&
@@ -156,7 +163,10 @@ public static class War3HumanUiDataSelfTest
                 War3HumanContent.TryAbility("Asph", out var spheres) &&
                 spheres is not null &&
                 spheres.TargetAttachments.SequenceEqual(
-                    new[] { "sprite", "first" }) &&
+                    new[]
+                    {
+                        "sprite,first", "sprite,second", "sprite,third"
+                    }) &&
                 War3HumanContent.TryAbility("Ainf", out var innerFire) &&
                 innerFire is not null &&
                 innerFire.BuffModels.Length > 0;

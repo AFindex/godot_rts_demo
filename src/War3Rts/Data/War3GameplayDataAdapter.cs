@@ -108,6 +108,8 @@ public sealed class War3GameplayDataAdapter(
             Name = Text(data.DisplayName, fallback.Name),
             ModelSource = ModelPath(data.Assets.Model, fallback.ModelSource),
             IconPath = AssetPath(data.Assets.Icon, fallback.IconPath),
+            ProjectileSource = ModelPath(
+                data.Assets.Missile, fallback.ProjectileSource),
             SpecialEffectSource = ModelPath(
                 data.Assets.SpecialEffect, fallback.SpecialEffectSource),
             ArmorClass = LocalizeArmorType(
@@ -137,7 +139,7 @@ public sealed class War3GameplayDataAdapter(
     {
         if (!Catalog.TryGet(binding.ObjectId, out var data)) return fallback;
         var movement = ApplyMovement(data, fallback.Movement);
-        var combat = ApplyCombat(binding, data, fallback.Combat);
+        var combat = ApplyCombat(binding.ObjectId, data, fallback.Combat);
         var perception = ApplyPerception(data, fallback.Perception);
         return fallback with
         {
@@ -161,6 +163,21 @@ public sealed class War3GameplayDataAdapter(
                 summary.Cost.Lumber!.Value,
                 fallback.Cost.Supply);
         var footprint = ReadPathingFootprint(data) ?? fallback.Size;
+        var maximumHealth = Positive(summary.HitPoints.Effective)
+            ? summary.HitPoints.Effective!.Value
+            : fallback.MaximumHealth;
+        var armor = Finite(summary.Armor.Effective)
+            ? summary.Armor.Effective!.Value
+            : fallback.Armor;
+        var combatFallback = new CombatProfileSnapshot(
+            maximumHealth, 0f, 0f, 0f, 1f, 0f, 0f,
+            CombatPositioningKind.Ranged, armor, fallback.Attributes,
+            ArmorType: ArmorType(summary.Armor.Type));
+        var combat = ApplyCombat(binding.ObjectId, data, combatFallback);
+        var onHitEffects = BuildingOnHitEffects(data, combat.Weapons);
+        var perception = ApplyPerception(
+            data, UnitPerceptionProfileSnapshot.Standard);
+        var detection = BuildingDetection(data);
         return fallback with
         {
             Name = Text(data.DisplayName, fallback.Name),
@@ -169,21 +186,104 @@ public sealed class War3GameplayDataAdapter(
             BuildSeconds = Positive(summary.Cost.BuildTime)
                 ? summary.Cost.BuildTime!.Value * Policy.BuildTimeScale
                 : fallback.BuildSeconds,
-            MaximumHealth = Positive(summary.HitPoints.Effective)
-                ? summary.HitPoints.Effective!.Value
-                : fallback.MaximumHealth,
+            MaximumHealth = maximumHealth,
             SupplyProvided = NonNegative(summary.Cost.FoodProduced)
                 ? summary.Cost.FoodProduced!.Value
                 : fallback.SupplyProvided,
-            Armor = Finite(summary.Armor.Effective)
-                ? summary.Armor.Effective!.Value
-                : fallback.Armor,
+            Armor = armor,
             ArmorUpgradePerLevel = NonNegative(summary.Armor.UpgradeAmount)
                 ? summary.Armor.UpgradeAmount!.Value
                 : fallback.ArmorUpgradePerLevel,
-            ArmorType = ArmorType(summary.Armor.Type)
+            ArmorType = ArmorType(summary.Armor.Type),
+            Combat = combat.Weapons.IsDefaultOrEmpty
+                ? default
+                : new BuildingCombatProfileSnapshot(combat.AcquisitionRange)
+                {
+                    Weapons = combat.Weapons,
+                    OnHitEffects = onHitEffects
+                },
+            Perception = new BuildingPerceptionProfileSnapshot(
+                perception.VisionRange,
+                detection.Range,
+                perception.ObservationHeight,
+                perception.TerrainVisionMode,
+                detection.TechnologyId)
         };
     }
+
+    private (float Range, int TechnologyId) BuildingDetection(
+        War3UnitData data)
+    {
+        if (AbilityCatalog is null) return (0f, -1);
+        foreach (var abilityId in data.Summary.Abilities
+                     .Order(StringComparer.Ordinal))
+        {
+            if (!AbilityCatalog.TryGet(abilityId, out var ability)) continue;
+            var baseCode = string.IsNullOrWhiteSpace(ability.Identity.BaseCode)
+                ? ability.Id
+                : ability.Identity.BaseCode;
+            if (War3AbilityBehaviorRegistry.Resolve(baseCode, ability.Id)
+                    .Compiler != War3AbilityCompilerKind.DetectionAura)
+                continue;
+            var level = ability.Summary.Levels.FirstOrDefault();
+            var range = level?.Range is > 0f
+                ? level.Range.Value * Policy.WorldDistanceScale
+                : 0f;
+            var technology = level?.Requirements
+                .Select(value => TechnologyIds.TryGetValue(value, out var id)
+                    ? id
+                    : -1)
+                .FirstOrDefault(value => value >= 0) ?? -1;
+            if (range > 0f) return (range, technology);
+        }
+        return (0f, -1);
+    }
+
+    private ImmutableArray<BuildingWeaponOnHitEffectSnapshot>
+        BuildingOnHitEffects(
+            War3UnitData data,
+            ImmutableArray<CombatWeaponProfileSnapshot> weapons)
+    {
+        if (AbilityCatalog is null || weapons.IsDefaultOrEmpty)
+            return [];
+        var result = ImmutableArray.CreateBuilder<
+            BuildingWeaponOnHitEffectSnapshot>();
+        foreach (var abilityId in data.Summary.Abilities
+                     .Order(StringComparer.Ordinal))
+        {
+            if (!AbilityCatalog.TryGet(abilityId, out var ability)) continue;
+            var baseCode = string.IsNullOrWhiteSpace(ability.Identity.BaseCode)
+                ? ability.Id
+                : ability.Identity.BaseCode;
+            if (War3AbilityBehaviorRegistry.Resolve(baseCode, ability.Id)
+                    .Compiler != War3AbilityCompilerKind.Feedback ||
+                ability.Summary.Levels.FirstOrDefault() is not { } level)
+                continue;
+            var unitMaximum = AbilityData(level, "A");
+            var unitRatio = AbilityData(level, "B");
+            var heroMaximum = AbilityData(level, "C");
+            var heroRatio = AbilityData(level, "D");
+            var summonedDamage = AbilityData(level, "E");
+            foreach (var weapon in weapons.OrderBy(value => value.Slot))
+                result.Add(new BuildingWeaponOnHitEffectSnapshot(
+                    weapon.Slot,
+                    BuildingWeaponOnHitEffectKind.ManaFeedback,
+                    MathF.Max(0f, unitMaximum),
+                    MathF.Max(0f, unitRatio),
+                    MathF.Max(0f, heroMaximum),
+                    MathF.Max(0f, heroRatio),
+                    MathF.Max(0f, summonedDamage)));
+        }
+        return result.ToImmutable();
+    }
+
+    private static float AbilityData(War3ObjectLevel level, string field) =>
+        level.Data.TryGetValue(field, out var value) &&
+        float.TryParse(value, NumberStyles.Float,
+            CultureInfo.InvariantCulture, out var parsed) &&
+        float.IsFinite(parsed)
+            ? parsed
+            : 0f;
 
     public ProductionRecipeProfile ApplyRecipe(
         War3UnitDefinition binding,
@@ -320,7 +420,7 @@ public sealed class War3GameplayDataAdapter(
     }
 
     private CombatProfileSnapshot ApplyCombat(
-        War3UnitDefinition binding,
+        string objectId,
         War3UnitData data,
         CombatProfileSnapshot fallback)
     {
@@ -354,7 +454,7 @@ public sealed class War3GameplayDataAdapter(
                 Attack = value,
                 Slot = slot,
                 RequiredTechnology = WeaponUnlockTechnologies.TryGetValue(
-                    WeaponUnlockKey(binding.ObjectId, slot), out var technology)
+                    WeaponUnlockKey(objectId, slot), out var technology)
                     ? technology
                     : -1
             })

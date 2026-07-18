@@ -118,6 +118,7 @@ public interface ITerrainMapQuery
     float CliffLevelHeight { get; }
     bool HasHeightVariation { get; }
     bool HasVisionBlockers { get; }
+    bool IsUniformlyGroundTraversable { get; }
     float HeightAt(Vector2 position);
     bool IsVisibleFrom(
         Vector2 observer,
@@ -183,6 +184,11 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             MinimumFineHeight != MaximumFineHeight;
         HasVisionBlockers = cells.Any(value =>
             (value.Flags & TerrainCellFlags.BlocksVision) != 0);
+        IsUniformlyGroundTraversable =
+            !HasHeightVariation &&
+            cells.All(value =>
+                !value.IsRamp &&
+                Allows(value, TerrainMovementMode.Ground));
         _visionBlockerBounds = HasVisionBlockers
             ? ComputeVisionBlockerBounds()
             : default;
@@ -208,6 +214,7 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
     public byte MaximumCellLevel { get; }
     public bool HasHeightVariation { get; }
     public bool HasVisionBlockers { get; }
+    public bool IsUniformlyGroundTraversable { get; }
     public ReadOnlySpan<TerrainSurfaceDefinition> Surfaces => _surfaces;
     public ReadOnlySpan<TerrainCell> Cells => _cells;
     public ReadOnlySpan<float> FineHeightPoints => _fineHeightPoints;
@@ -698,7 +705,16 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         TerrainMovementMode mode = TerrainMovementMode.Ground)
     {
         if (!float.IsFinite(radius) || radius < 0f ||
-            !Bounds.Inset(radius).Contains(position) ||
+            !Bounds.Inset(radius).Contains(position))
+        {
+            return false;
+        }
+        if (mode == TerrainMovementMode.Ground &&
+            IsUniformlyGroundTraversable)
+        {
+            return true;
+        }
+        if (
             !TryCellAt(position, out var centerColumn, out var centerRow) ||
             !Allows(Cell(centerColumn, centerRow), mode))
         {
@@ -723,6 +739,13 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         float radius,
         TerrainMovementMode mode = TerrainMovementMode.Ground)
     {
+        if (mode == TerrainMovementMode.Ground &&
+            IsUniformlyGroundTraversable)
+        {
+            return float.IsFinite(radius) && radius >= 0f &&
+                   Bounds.Inset(radius).Contains(from) &&
+                   Bounds.Inset(radius).Contains(to);
+        }
         if (!IsDiscTraversable(from, radius, mode) ||
             !IsDiscTraversable(to, radius, mode))
         {

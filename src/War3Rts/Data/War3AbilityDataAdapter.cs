@@ -141,7 +141,7 @@ public sealed class War3AbilityDataAdapter(
             bindings.Add(new UnitAbilityBindingProfile(
                 definition.TypeId,
                 unitData.Identity.IsHero,
-                ManaProfile(definition.ObjectId, unitData),
+                ManaProfile(unitData),
                 entries,
                 AdaptUnitTraits(unitData),
                 Math.Max(1, unitData.Summary.Level ?? 1),
@@ -162,7 +162,8 @@ public sealed class War3AbilityDataAdapter(
                 .ToImmutableArray();
             if (!abilityIds.IsEmpty)
                 buildingBindings.Add(new BuildingAbilityBindingProfile(
-                    definition.TypeId, abilityIds));
+                    definition.TypeId, abilityIds,
+                    ManaProfile(buildingData)));
         }
 
         return new War3AbilityImportResult(
@@ -201,8 +202,11 @@ public sealed class War3AbilityDataAdapter(
         var baseCode = string.IsNullOrWhiteSpace(data.Identity.BaseCode)
             ? data.Id
             : data.Identity.BaseCode;
-        return War3AbilityBehaviorRegistry.Resolve(baseCode, data.Id).Compiler ==
-               War3AbilityCompilerKind.BuildingMilitiaCall;
+        return War3AbilityBehaviorRegistry.Resolve(baseCode, data.Id).Compiler is
+            War3AbilityCompilerKind.BuildingMilitiaCall or
+            War3AbilityCompilerKind.DetectionAura or
+            War3AbilityCompilerKind.Feedback or
+            War3AbilityCompilerKind.Flare;
     }
 
     private AbilityProfile AdaptProfile(int id, War3ObjectEditorData data)
@@ -235,8 +239,31 @@ public sealed class War3AbilityDataAdapter(
             behavior.AutoCastDefault,
             levels,
             data.Identity.RequiredHeroLevel,
-            data.Identity.HeroLevelSkip);
+            data.Identity.HeroLevelSkip,
+            ProjectileProfile(data));
     }
+
+    private AbilityProjectileProfile ProjectileProfile(
+        War3ObjectEditorData data)
+    {
+        if (Models(data.Profile, "Missileart").Length == 0)
+            return default;
+        var speed = ParseProfileFloat(data.Profile, "Missilespeed");
+        var arc = ParseProfileFloat(data.Profile, "Missilearc");
+        var homing = (Value(data.Profile, "MissileHoming") ?? string.Empty)
+            .Trim().Equals("1", StringComparison.Ordinal);
+        return new AbilityProjectileProfile(
+            Distance(speed), Math.Clamp(arc ?? 0f, 0f, 4f), homing);
+    }
+
+    private static float? ParseProfileFloat(
+        IReadOnlyDictionary<string, string> profile,
+        string key) => float.TryParse(
+        Value(profile, key), NumberStyles.Float,
+        CultureInfo.InvariantCulture, out var value) &&
+        float.IsFinite(value) && value >= 0f
+            ? value
+            : null;
 
     private AbilityLevelProfile AdaptLevel(
         War3AbilityBehaviorDescriptor behavior,
@@ -304,9 +331,11 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectKind.ToggleStatus, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
                 Modifier: new AbilityStatModifier(
-                    MovementSpeedMultiplier: Math.Clamp(c > 0f ? c : 0.7f,
+                    MovementSpeedMultiplier: Math.Clamp(
+                        RequiredPositiveData(level, "C", compiler),
                         0.1f, 1f)))),
-            War3AbilityCompilerKind.Heal => One(Heal(a > 0f ? a : 25f)),
+            War3AbilityCompilerKind.Heal => One(Heal(
+                RequiredPositiveData(level, "A", compiler))),
             War3AbilityCompilerKind.InnerFire => One(Status(
                 AbilityEffectSelector.Primary,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
@@ -318,7 +347,7 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectKind.Dispel, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Any,
                 SecondaryValue: MathF.Max(0f, b),
-                Radius: Distance(level.Area), MaximumTargets: 32,
+                Radius: Distance(level.Area),
                 DamageKind: AbilityDamageKind.Magic,
                 BuffDispelKind: AbilityBuffDispelKind.Magic)),
             War3AbilityCompilerKind.Invisibility => One(Status(
@@ -329,16 +358,17 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 duration,
                 AbilityStatusFlags.Polymorphed |
-                AbilityStatusFlags.AttackDisabled,
-                new AbilityStatModifier(MovementSpeedMultiplier: 0.45f))),
+                AbilityStatusFlags.AttackDisabled)),
             War3AbilityCompilerKind.Slow => One(Status(
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 duration,
                 modifier: new AbilityStatModifier(
-                    MovementSpeedMultiplier: Math.Clamp(a, 0.1f, 1f),
-                    AttackCooldownMultiplier: b > 0f
-                        ? 1f / MathF.Max(0.1f, 1f - b)
-                        : 1f))),
+                    MovementSpeedMultiplier: Math.Clamp(
+                        RequiredPositiveData(level, "A", compiler),
+                        0.1f, 1f),
+                    AttackCooldownMultiplier: 1f / MathF.Max(
+                        0.1f,
+                        1f - RequiredPositiveData(level, "B", compiler))))),
             War3AbilityCompilerKind.SpellSteal => One(new AbilityEffectProfile(
                 AbilityEffectKind.TransferBuff, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
@@ -352,60 +382,66 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.Feedback => One(new AbilityEffectProfile(
                 AbilityEffectKind.Mana, AbilityEffectTiming.AttackHit,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                Value: -(a > 0f ? a : 20f),
+                Value: -RequiredPositiveData(level, "A", compiler),
                 SecondaryValue: MathF.Max(0f, b),
                 DamageKind: AbilityDamageKind.Magic,
-                HeroValue: -(c > 0f ? c : a > 0f ? a : 20f),
-                HeroSecondaryValue: d > 0f ? d : MathF.Max(0f, b))),
+                HeroValue: -RequiredPositiveData(level, "C", compiler),
+                HeroSecondaryValue: MathF.Max(0f, d))),
             War3AbilityCompilerKind.Flare => One(new AbilityEffectProfile(
                 AbilityEffectKind.Reveal, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Self,
                 Radius: Distance(level.Area), Duration: duration)),
             War3AbilityCompilerKind.FragmentationShards => AttackBands(
                 Distance(level.Area), Distance(a), Distance(b),
-                c > 0f ? c : 25f,
-                d > 0f ? d : 18f,
-                e > 0f ? e : 12f),
+                RequiredPositiveData(level, "C", compiler),
+                RequiredPositiveData(level, "D", compiler),
+                RequiredPositiveData(level, "E", compiler)),
             War3AbilityCompilerKind.DetectionAura => One(Aura(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
                 modifier: new AbilityStatModifier(
-                    DetectionRangeAdd: Distance(level.Range ?? 900f)))),
+                    DetectionRangeAdd: Distance(RequiredPositive(
+                        level.Range, "range", compiler, level.Level))))),
             War3AbilityCompilerKind.FlakCannons => AttackBands(
                 Distance(level.Area), Distance(a), Distance(b),
-                c > 0f ? c : 7f,
-                d > 0f ? d : 6f,
-                e > 0f ? e : 5f),
+                RequiredPositiveData(level, "C", compiler),
+                RequiredPositiveData(level, "D", compiler),
+                RequiredPositiveData(level, "E", compiler)),
             War3AbilityCompilerKind.Barrage => One(AttackSplash(
-                a > 0f ? a : 25f,
-                Distance(level.Area ?? 500f),
-                Math.Max(1, (int)MathF.Round(c > 0f ? c : 9f)))),
+                RequiredPositiveData(level, "A", compiler),
+                Distance(RequiredPositive(
+                    level.Area, "area", compiler, level.Level)),
+                Math.Max(1, (int)MathF.Round(
+                    RequiredPositiveData(level, "C", compiler))))),
             War3AbilityCompilerKind.Cloud => One(Status(
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Enemy,
                 duration, AbilityStatusFlags.AttackDisabled,
-                radius: Distance(level.Area), maximumTargets: 32)),
+                radius: Distance(level.Area))),
             War3AbilityCompilerKind.SiphonMana => One(new AbilityEffectProfile(
                 AbilityEffectKind.Damage, AbilityEffectTiming.ChannelPulse,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                Value: a > 0f ? a : 30f, Interval: 1f,
+                Value: RequiredPositiveData(level, "A", compiler), Interval: 1f,
                 DamageKind: AbilityDamageKind.Magic)),
             War3AbilityCompilerKind.Blizzard => One(new AbilityEffectProfile(
                 AbilityEffectKind.Damage, AbilityEffectTiming.ChannelPulse,
                 AbilityEffectSelector.AreaAtTarget,
                 AbilityRelationFilter.Any,
-                Value: b > 0f ? b : 30f,
+                Value: RequiredPositiveData(level, "B", compiler),
                 Radius: Distance(level.Area),
                 Interval: 1f,
                 DamageKind: AbilityDamageKind.Magic,
                 PulseCount: Math.Max(
-                    1, (int)MathF.Round(a > 0f ? a : 6f)),
+                    1, (int)MathF.Round(
+                        RequiredPositiveData(level, "A", compiler))),
                 MaximumTotalValue: MathF.Max(0f, Data(level, "F")),
                 BuildingValueMultiplier: Math.Clamp(d, 0f, 1f),
                 VisualCount: Math.Max(
-                    1, (int)MathF.Round(c > 0f ? c : 6f)))),
+                    1, (int)MathF.Round(
+                        RequiredPositiveData(level, "C", compiler))))),
             War3AbilityCompilerKind.SummonWaterElemental => One(new AbilityEffectProfile(
                 AbilityEffectKind.Summon, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtCaster, AbilityRelationFilter.Self,
-                MaximumTargets: Math.Max(1, (int)MathF.Round(a > 0f ? a : 1f)),
+                MaximumTargets: Math.Max(1, (int)MathF.Round(
+                    RequiredPositiveData(level, "A", compiler))),
                 Summon: WaterElemental(level))),
             War3AbilityCompilerKind.BrillianceAura => One(Aura(
                 AbilityEffectSelector.AreaAtCaster,
@@ -418,31 +454,35 @@ public sealed class War3AbilityDataAdapter(
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Radius: Distance(level.Area),
                 MaximumTargets: Math.Max(
-                    1, (int)MathF.Round(a > 0f ? a : 24f)),
+                    1, (int)MathF.Round(
+                        RequiredPositiveData(level, "A", compiler))),
                 VisualCount: Math.Max(
-                    1, (int)MathF.Round(a > 0f ? a : 24f)),
+                    1, (int)MathF.Round(
+                        RequiredPositiveData(level, "A", compiler))),
                 ClusteredPlacement: c >= 0.5f)),
             War3AbilityCompilerKind.StormBolt => One(Status(
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 duration, AbilityStatusFlags.Stunned,
-                value: a > 0f ? a : 100f,
+                value: RequiredPositiveData(level, "A", compiler),
                 damageKind: AbilityDamageKind.Magic)),
             War3AbilityCompilerKind.ThunderClap => One(Status(
                 AbilityEffectSelector.AreaAtCaster,
                 AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
                 duration,
                 modifier: new AbilityStatModifier(
-                    MovementSpeedMultiplier: c > 0f ? c : 0.5f,
-                    AttackCooldownMultiplier: d > 0f ? 1f / d : 2f),
-                value: a > 0f ? a : 60f,
-                radius: Distance(level.Area), maximumTargets: 32,
+                    MovementSpeedMultiplier:
+                        RequiredPositiveData(level, "C", compiler),
+                    AttackCooldownMultiplier: 1f /
+                        RequiredPositiveData(level, "D", compiler)),
+                value: RequiredPositiveData(level, "A", compiler),
+                radius: Distance(level.Area),
                 damageKind: AbilityDamageKind.Magic)),
             War3AbilityCompilerKind.Bash => One(new AbilityEffectProfile(
                 AbilityEffectKind.ApplyStatus, AbilityEffectTiming.AttackHit,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                Value: c > 0f ? c : 25f,
+                Value: RequiredPositiveData(level, "C", compiler),
                 Duration: duration,
-                Interval: a > 0f ? a : 20f,
+                Interval: RequiredPositiveData(level, "A", compiler),
                 Status: AbilityStatusFlags.Stunned,
                 DamageKind: AbilityDamageKind.Physical)),
             War3AbilityCompilerKind.Avatar => One(Status(
@@ -450,19 +490,21 @@ public sealed class War3AbilityDataAdapter(
                 duration,
                 AbilityStatusFlags.MagicImmune,
                 new AbilityStatModifier(
-                    AttackDamageAdd: c > 0f ? c : 20f,
-                    ArmorAdd: a > 0f ? a : 5f,
-                    MaximumHealthAdd: b > 0f ? b : 500f))),
+                    AttackDamageAdd: RequiredPositiveData(
+                        level, "C", compiler),
+                    ArmorAdd: RequiredPositiveData(level, "A", compiler),
+                    MaximumHealthAdd: RequiredPositiveData(
+                        level, "B", compiler)))),
             War3AbilityCompilerKind.HolyLight =>
             [
-                Heal(a > 0f ? a : 200f) with
+                Heal(RequiredPositiveData(level, "A", compiler)) with
                 {
                     ExcludedUnitTraits = AbilityUnitTraits.Undead
                 },
                 new AbilityEffectProfile(
                     AbilityEffectKind.Damage, AbilityEffectTiming.Impact,
                     AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                    Value: (a > 0f ? a : 200f) * 0.5f,
+                    Value: RequiredPositiveData(level, "A", compiler) * 0.5f,
                     DamageKind: AbilityDamageKind.Magic,
                     RequiredUnitTraits: AbilityUnitTraits.Undead)
             ],
@@ -479,7 +521,8 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectSelector.AreaAtCaster,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Value: 1f, Radius: Distance(level.Area),
-                MaximumTargets: Math.Max(1, (int)MathF.Round(a > 0f ? a : 6f)))),
+                MaximumTargets: Math.Max(1, (int)MathF.Round(
+                    RequiredPositiveData(level, "A", compiler))))),
             War3AbilityCompilerKind.FlameStrike => FlameStrikeEffects(
                 level, duration, heroDuration),
             War3AbilityCompilerKind.Banish => One(Status(
@@ -488,18 +531,20 @@ public sealed class War3AbilityDataAdapter(
                 AbilityStatusFlags.Banished |
                 AbilityStatusFlags.AttackDisabled,
                 new AbilityStatModifier(
-                    MovementSpeedMultiplier: a > 0f ? a : 0.5f))),
+                    MovementSpeedMultiplier:
+                        RequiredPositiveData(level, "A", compiler)))),
             War3AbilityCompilerKind.DrainMana =>
                 One(new AbilityEffectProfile(
                     AbilityEffectKind.TransferMana,
                     AbilityEffectTiming.ChannelPulse,
                     AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
-                    Value: e > 0f ? e : b > 0f ? b : 15f,
-                    Interval: c > 0f ? c : 1f)),
+                    Value: FirstPositiveData(level, compiler, "E", "B"),
+                    Interval: RequiredPositiveData(level, "C", compiler))),
             War3AbilityCompilerKind.SummonPhoenix => One(new AbilityEffectProfile(
                 AbilityEffectKind.Summon, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtCaster, AbilityRelationFilter.Self,
-                MaximumTargets: Math.Max(1, (int)MathF.Round(a > 0f ? a : 1f)),
+                MaximumTargets: Math.Max(1, (int)MathF.Round(
+                    RequiredPositiveData(level, "A", compiler))),
                 Summon: Phoenix(level))),
             War3AbilityCompilerKind.MilitiaTransform => One(
                 new AbilityEffectProfile(
@@ -516,36 +561,52 @@ public sealed class War3AbilityDataAdapter(
                     AbilityRelationFilter.Self |
                     AbilityRelationFilter.Friendly,
                     Radius: Distance(level.Area),
-                    UnitForm: MilitiaForm(
-                        level, duration > 0f
-                            ? duration
-                            : MilitiaDurationSeconds()))),
+                    UnitForm: MilitiaForm(level, duration))),
             _ => ImmutableArray<AbilityEffectProfile>.Empty
         };
-    }
-
-    private float MilitiaDurationSeconds()
-    {
-        if (abilities.TryGet("Amil", out var militia) &&
-            militia.Summary.Levels.FirstOrDefault() is { } level &&
-            level.Duration is > 0f and var duration)
-            return duration;
-        return 45f;
     }
 
     private AbilityUnitFormProfile MilitiaForm(
         War3ObjectLevel level,
         float duration)
     {
-        var normalId = DataText(level, "A", "hpea");
-        var alternateId = DataText(level, "B", "hmil");
+        var source = HasDataText(level, "A") && HasDataText(level, "B")
+            ? level
+            : FindUnitFormLevel();
+        var normalId = RequiredDataText(
+            source, "A", War3AbilityCompilerKind.MilitiaTransform);
+        var alternateId = RequiredDataText(
+            source, "B", War3AbilityCompilerKind.MilitiaTransform);
         if (!unitTypes.TryGetValue(normalId, out var normal) ||
             !unitTypes.TryGetValue(alternateId, out var alternate))
             throw new InvalidOperationException(
                 $"Militia form units {normalId}/{alternateId} are not bound.");
         return new AbilityUnitFormProfile(
-            normal, alternate, MathF.Max(0.1f, duration),
+            normal, alternate, RequiredPositive(
+                duration > 0f ? duration : source.Duration,
+                "duration", War3AbilityCompilerKind.MilitiaTransform,
+                source.Level),
             BuildingFunctionKind.TownHall);
+    }
+
+    private War3ObjectLevel FindUnitFormLevel()
+    {
+        foreach (var entry in abilities.Entries.OrderBy(
+                     value => value.Id, StringComparer.Ordinal))
+        {
+            if (!abilities.TryGet(entry.Id, out var candidate)) continue;
+            var baseCode = string.IsNullOrWhiteSpace(candidate.Identity.BaseCode)
+                ? candidate.Id
+                : candidate.Identity.BaseCode;
+            if (War3AbilityBehaviorRegistry.Resolve(baseCode, candidate.Id)
+                    .Compiler != War3AbilityCompilerKind.MilitiaTransform)
+                continue;
+            var level = candidate.Summary.Levels.FirstOrDefault(value =>
+                HasDataText(value, "A") && HasDataText(value, "B"));
+            if (level is not null) return level;
+        }
+        throw new InvalidDataException(
+            "A militia unit-form ability with JSON DataA/DataB was not found.");
     }
 
     private static AbilityEffectProfile Heal(float value) => new(
@@ -622,17 +683,19 @@ public sealed class War3AbilityDataAdapter(
         float duration,
         float fullDuration)
     {
-        var fullDamage = Data(level, "A");
-        if (fullDamage <= 0f) fullDamage = 15f;
-        var fullInterval = Data(level, "B");
-        if (fullInterval <= 0f) fullInterval = 0.33f;
+        const War3AbilityCompilerKind compiler =
+            War3AbilityCompilerKind.FlameStrike;
+        var fullDamage = RequiredPositiveData(level, "A", compiler);
+        var fullInterval = RequiredPositiveData(level, "B", compiler);
         var partialDamage = Data(level, "C");
-        var partialInterval = Data(level, "D");
-        if (partialInterval <= 0f) partialInterval = 1f;
+        var partialInterval = partialDamage > 0f
+            ? RequiredPositiveData(level, "D", compiler)
+            : 1f;
         var buildingMultiplier = Math.Clamp(Data(level, "E"), 0f, 1f);
         var maximumDamage = MathF.Max(0f, Data(level, "F"));
         fullDuration = Math.Clamp(
-            fullDuration > 0f ? fullDuration : 2.67f,
+            RequiredPositive(
+                fullDuration, "hero duration", compiler, level.Level),
             fullInterval,
             MathF.Max(fullInterval, duration));
         var partialDuration = MathF.Max(0f, duration - fullDuration);
@@ -832,39 +895,80 @@ public sealed class War3AbilityDataAdapter(
         return result;
     }
 
-    private static string DataText(
+    private static float RequiredPositiveData(
         War3ObjectLevel level,
         string key,
-        string fallback) =>
-        level.Data.TryGetValue(key, out var value) &&
-        !string.IsNullOrWhiteSpace(value)
-            ? value.Trim()
-            : fallback;
+        War3AbilityCompilerKind compiler) => RequiredPositive(
+        Data(level, key), $"Data{key}", compiler, level.Level);
 
-    private static UnitManaProfile ManaProfile(
-        string objectId,
-        War3UnitData data)
+    private static float FirstPositiveData(
+        War3ObjectLevel level,
+        War3AbilityCompilerKind compiler,
+        params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = Data(level, key);
+            if (value > 0f) return value;
+        }
+        throw new InvalidDataException(
+            $"{compiler} level {level.Level} requires one positive JSON field: " +
+            string.Join(", ", keys.Select(value => $"Data{value}")));
+    }
+
+    private static float RequiredPositive(
+        float? value,
+        string field,
+        War3AbilityCompilerKind compiler,
+        int level)
+    {
+        if (value is > 0f and var result && float.IsFinite(result))
+            return result;
+        throw new InvalidDataException(
+            $"{compiler} level {level} requires positive JSON {field}.");
+    }
+
+    private static float RequiredNonNegative(
+        float? value,
+        string field,
+        War3AbilityCompilerKind compiler,
+        int level)
+    {
+        if (value is >= 0f and var result && float.IsFinite(result))
+            return result;
+        throw new InvalidDataException(
+            $"{compiler} level {level} requires non-negative JSON {field}.");
+    }
+
+    private static bool HasDataText(
+        War3ObjectLevel level,
+        string key) =>
+        level.Data.TryGetValue(key, out var value) &&
+        !string.IsNullOrWhiteSpace(value) && value is not "_" and not "-";
+
+    private static string RequiredDataText(
+        War3ObjectLevel level,
+        string key,
+        War3AbilityCompilerKind compiler)
+    {
+        if (HasDataText(level, key)) return level.Data[key].Trim();
+        throw new InvalidDataException(
+            $"{compiler} level {level.Level} requires JSON Data{key}.");
+    }
+
+    private static UnitManaProfile ManaProfile(War3UnitData data)
     {
         var mana = data.Summary.Mana;
         var maximum = mana.Effective is > 0f
             ? mana.Effective.Value
             : mana.Maximum is > 0f
                 ? mana.Maximum.Value
-                : objectId switch
-                {
-                    "Hamg" => 285f,
-                    "Hmkg" => 255f,
-                    "Hpal" => 255f,
-                    "Hblm" => 315f,
-                    _ => 0f
-                };
+                : 0f;
         var initial = maximum <= 0f
             ? 0f
             : mana.Initial is > 0f
                 ? MathF.Min(maximum, mana.Initial.Value)
                 : maximum;
-        if (data.Identity.IsHero && initial < maximum * 0.6f)
-            initial = maximum * 0.7f;
         return new UnitManaProfile(
             initial, maximum, MathF.Max(0f, mana.Regeneration ?? 0f));
     }
@@ -904,68 +1008,67 @@ public sealed class War3AbilityDataAdapter(
     }
 
     private AbilitySummonProfile WaterElemental(War3ObjectLevel level)
-    {
-        var index = Math.Clamp(level.Level, 1, 3) - 1;
-        var health = new[] { 525f, 675f, 900f }[index];
-        var damage = new[] { 19f, 33f, 44f }[index];
-        var movement = Movement(
-            $"水元素 {level.Level}", 12f, 220f, 1_100f);
-        var combat = new CombatProfileSnapshot(
-            health, damage, 80f, 180f, 1.5f, 0.3f, 315f,
-            CombatPositioningKind.Ranged, 0f,
-            CombatAttribute.Biological, ProjectileSpeed: 380f);
-        var objectId = level.SummonedUnitId ??
-                       (index switch { 0 => "hwat", 1 => "hwt2", _ => "hwt3" });
-        return AdaptSummon(
-            objectId, movement, combat,
-            UnitPerceptionProfileSnapshot.Standard,
-            level.Duration is > 0f ? level.Duration.Value : 60f);
-    }
+        => AdaptSummon(level,
+            War3AbilityCompilerKind.SummonWaterElemental);
 
     private AbilitySummonProfile Phoenix(War3ObjectLevel level)
-    {
-        var movement = Movement("火凤凰", 16f, 320f, 1_500f);
-        var combat = new CombatProfileSnapshot(
-            1_250f, 68f, 120f, 220f, 1.4f, 0.25f, 385f,
-            CombatPositioningKind.Ranged, 1f,
-            CombatAttribute.Biological, ProjectileSpeed: 420f);
-        return AdaptSummon(
-            level.SummonedUnitId ?? "hphx", movement, combat,
-            UnitPerceptionProfileSnapshot.ElevatedObserver(300f), 60f);
-    }
+        => AdaptSummon(level, War3AbilityCompilerKind.SummonPhoenix);
 
     private AbilitySummonProfile AdaptSummon(
-        string objectId,
-        UnitMovementProfileSnapshot movement,
-        CombatProfileSnapshot combat,
-        UnitPerceptionProfileSnapshot perception,
-        float lifetime)
+        War3ObjectLevel level,
+        War3AbilityCompilerKind compiler)
     {
+        var objectId = level.SummonedUnitId?.Trim();
+        if (string.IsNullOrWhiteSpace(objectId))
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} requires a JSON summonedUnitId.");
+        if (!units.TryGet(objectId, out var source))
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} references missing unit JSON {objectId}.");
+        _ = RequiredPositive(source.Summary.Movement.CollisionSize,
+            "summoned unit collisionSize", compiler, level.Level);
+        _ = RequiredPositive(source.Summary.Movement.Speed,
+            "summoned unit movement speed", compiler, level.Level);
+        _ = RequiredPositive(source.Summary.HitPoints.Effective,
+            "summoned unit effective hit points", compiler, level.Level);
+        _ = RequiredPositive(source.Summary.Sight.Day,
+            "summoned unit day sight", compiler, level.Level);
+        var sourceAttack = source.Summary.Combat.Attacks.FirstOrDefault(
+            value => value.Enabled);
+        if (sourceAttack is null)
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} summoned unit {objectId} has no enabled JSON attack.");
+        _ = RequiredPositive(sourceAttack.Damage.Average,
+            "summoned unit average attack damage", compiler, level.Level);
+        _ = RequiredPositive(sourceAttack.Cooldown,
+            "summoned unit attack cooldown", compiler, level.Level);
+
+        var name = string.IsNullOrWhiteSpace(source.DisplayName)
+            ? objectId
+            : source.DisplayName;
+        var radius = policy.MinimumUnitRadius;
+        var speed = policy.MinimumMovementSpeed;
+        var clearance = MovementClearance.FromPhysicalRadius(radius);
+        var movement = new UnitMovementProfileSnapshot(
+            0, name, radius, speed,
+            speed * policy.AccelerationMultiplier,
+            clearance.Class, clearance.NavigationRadius);
+        var combat = new CombatProfileSnapshot(
+            1f, 0f, 0f, 0f, 1f, 0f, 0f,
+            CombatPositioningKind.Melee, 0f,
+            CombatAttribute.Biological);
         var fallback = new UnitTypeProfile(
-            0, movement.Name, movement, combat, false)
-        {
-            Perception = perception
-        };
+            0, name, movement, combat, false);
         var definition = new War3UnitDefinition(
-            0, objectId, movement.Name, "召唤单位",
+            0, objectId, name, string.Empty,
             string.Empty, string.Empty, string.Empty);
         var adapted = new War3GameplayDataAdapter(units, policy)
             .ApplyUnitProfile(definition, fallback);
         return new AbilitySummonProfile(
             objectId, adapted.Movement, adapted.Combat,
-            adapted.Perception, lifetime);
-    }
-
-    private static UnitMovementProfileSnapshot Movement(
-        string name,
-        float radius,
-        float speed,
-        float acceleration)
-    {
-        var clearance = MovementClearance.FromPhysicalRadius(radius);
-        return new UnitMovementProfileSnapshot(
-            0, name, radius, speed, acceleration,
-            clearance.Class, clearance.NavigationRadius);
+            adapted.Perception,
+            RequiredNonNegative(
+                level.Duration, "duration", compiler, level.Level));
     }
 
     private War3AbilityDefinition AdaptPresentation(
@@ -1003,8 +1106,8 @@ public sealed class War3AbilityDataAdapter(
         {
             AnimationNames = AnimationCandidates(data.Profile),
             BuffModels = buffModels,
-            CasterAttachments = AttachmentList(data.Profile, "Casterattach"),
-            TargetAttachments = AttachmentList(data.Profile, "Targetattach"),
+            CasterAttachments = AttachmentPaths(data.Profile, "Casterattach"),
+            TargetAttachments = AttachmentPaths(data.Profile, "Targetattach"),
             BuffAttachments = RelatedAttachments(buffs, "Targetattach",
                 "Specialattach"),
             CasterAttachmentCount = Integer(data.Profile, "Casterattachcount"),
@@ -1026,7 +1129,7 @@ public sealed class War3AbilityDataAdapter(
         {
             if (!buffEffects.TryGet(objectId, out var related)) continue;
             foreach (var key in keys)
-                output.AddRange(AttachmentList(related.Profile, key));
+                output.AddRange(AttachmentPaths(related.Profile, key));
         }
         return output.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
@@ -1047,7 +1150,7 @@ public sealed class War3AbilityDataAdapter(
     private static string[] AnimationCandidates(
         IReadOnlyDictionary<string, string> profile)
     {
-        var tokens = AttachmentList(profile, "Animnames");
+        var tokens = TokenList(profile, "Animnames");
         if (tokens.Length == 0)
             return ["Spell", "Spell Slam", "Spell Channel", "Attack"];
         var normalized = tokens.Select(Title).ToArray();
@@ -1058,13 +1161,42 @@ public sealed class War3AbilityDataAdapter(
             .ToArray();
     }
 
-    private static string[] AttachmentList(
+    private static string[] TokenList(
         IReadOnlyDictionary<string, string> profile,
         string key) => (Value(profile, key) ?? string.Empty)
         .Split(',', StringSplitOptions.TrimEntries |
                     StringSplitOptions.RemoveEmptyEntries)
         .Where(value => value is not "_" and not "-")
         .ToArray();
+
+    internal static string[] AttachmentPaths(
+        IReadOnlyDictionary<string, string> profile,
+        string key)
+    {
+        var paths = profile
+            .Where(pair => pair.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                           pair.Key.StartsWith(key, StringComparison.OrdinalIgnoreCase) &&
+                           int.TryParse(pair.Key.AsSpan(key.Length), out _))
+            .Select(pair => new
+            {
+                Index = pair.Key.Length == key.Length
+                    ? 0
+                    : int.Parse(pair.Key.AsSpan(key.Length),
+                        NumberStyles.Integer, CultureInfo.InvariantCulture),
+                Path = string.Join(',', pair.Value
+                    .Split(',', StringSplitOptions.TrimEntries |
+                                StringSplitOptions.RemoveEmptyEntries)
+                    .Where(value => value is not "_" and not "-"))
+            })
+            .Where(value => value.Path.Length > 0)
+            .OrderBy(value => value.Index)
+            .Select(value => value.Path)
+            .ToArray();
+        var declaredCount = Integer(profile, key + "count");
+        return declaredCount > 0
+            ? paths.Take(declaredCount).ToArray()
+            : paths;
+    }
 
     private static int Integer(
         IReadOnlyDictionary<string, string> profile,

@@ -185,6 +185,16 @@ public partial class RtsDemo : Node2D
             return;
         }
 
+        if (userArguments.Contains("--war3-launch-request-self-test"))
+        {
+            var result = War3LaunchRequestSelfTest.Run();
+            GD.Print(
+                $"WAR3_LAUNCH_REQUEST_SELF_TEST " +
+                $"{(result.Passed ? "PASS" : "FAIL")}: {result.Summary}");
+            GetTree().Quit(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (userArguments.Contains("--capture-terrain-showcase-page"))
         {
             await CaptureTerrainShowcasePage();
@@ -3066,14 +3076,32 @@ public partial class RtsDemo : Node2D
                 DemoSceneCatalog.TerrainShowcaseScene(target));
         _launchScreen.War3AssetLabRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.War3AssetLab);
-        _launchScreen.War3RtsRequested += () =>
-            GetTree().ChangeSceneToFile(DemoSceneCatalog.War3Rts);
+        _launchScreen.War3RtsRequested += LaunchWar3Rts;
+        _launchScreen.War3StressRequested += LaunchWar3InteractiveStress;
         _launchScreen.TestRequested += StartInteractiveVisualTest;
         _launchScreen.TestBrowserRequested += () =>
             ReturnToTestBrowser("已停止当前测试，可选择其他场景。 ");
         layer.AddChild(_launchScreen);
         _launchScreen.Initialize(_testShowcaseEntries);
         SetFrontEndBlocking(true);
+    }
+
+    private void LaunchWar3Rts()
+    {
+        War3LaunchRequest.Clear();
+        GetTree().ChangeSceneToFile(DemoSceneCatalog.War3Rts);
+    }
+
+    private void LaunchWar3InteractiveStress()
+    {
+        War3LaunchRequest.RequestInteractiveStress();
+        var error = GetTree().ChangeSceneToFile(DemoSceneCatalog.War3Rts);
+        if (error != Error.Ok)
+        {
+            War3LaunchRequest.Clear();
+            GD.PushError(
+                $"WAR3_INTERACTIVE_STRESS_LAUNCH_FAIL error={error}");
+        }
     }
 
     private void EnterDefaultDemo()

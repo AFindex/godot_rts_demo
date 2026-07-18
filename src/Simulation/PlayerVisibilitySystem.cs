@@ -131,7 +131,10 @@ public sealed class PlayerVisibilitySystem
     private readonly Dictionary<StaticVisionSourceKey, int[]>
         _staticVisionCells = [];
     private readonly List<int> _visionCellScratch = new(512);
-    private readonly Action<int, Vector2, BuildingFunctionKind> _revealBuilding;
+    private readonly Action<int, Vector2, BuildingTypeProfile>
+        _revealBuildingProfile;
+    private readonly Action<int, Vector2, BuildingTypeProfile>
+        _revealBuildingDetection;
     private VisionFootprintCache[] _unitVisionCaches = [];
     private int _profileUnitCacheHits;
     private int _profileUnitCacheRebuilds;
@@ -169,7 +172,8 @@ public sealed class PlayerVisibilitySystem
             (int)MathF.Ceiling(bounds.Width / _visionUpdateCellSize);
         _visionUpdateRows =
             (int)MathF.Ceiling(bounds.Height / _visionUpdateCellSize);
-        _revealBuilding = RevealBuilding;
+        _revealBuildingProfile = RevealBuildingProfile;
+        _revealBuildingDetection = RevealBuildingDetection;
     }
 
     public float CellSize { get; }
@@ -177,6 +181,7 @@ public sealed class PlayerVisibilitySystem
     public int Rows { get; }
     public bool HasExploredState =>
         _players.Values.Any(value => value.Explored.Any(cell => cell));
+    public Func<int, int, int>? TechnologyLevelResolver { get; set; }
     internal bool ProfilingEnabled { get; set; }
     internal PlayerVisibilityUpdateProfile LastUpdateProfile { get; private set; }
 
@@ -228,7 +233,7 @@ public sealed class PlayerVisibilitySystem
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
 
-        construction.VisitVisionSources(_revealBuilding);
+        construction.VisitPerceptionSources(_revealBuildingProfile);
         if (ProfilingEnabled)
         {
             var buildingsEnd = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -242,7 +247,10 @@ public sealed class PlayerVisibilitySystem
         }
     }
 
-    public void UpdateDetection(UnitStore units, CombatStore combat)
+    public void UpdateDetection(
+        UnitStore units,
+        CombatStore combat,
+        ConstructionSystem? construction = null)
     {
         foreach (var grid in _players.Values)
             Array.Clear(grid.Detected);
@@ -260,6 +268,7 @@ public sealed class PlayerVisibilitySystem
                 units.Positions[unit],
                 combat.DetectionRanges[unit]);
         }
+        construction?.VisitPerceptionSources(_revealBuildingDetection);
     }
 
     public MapVisibility At(int playerId, Vector2 position)
@@ -624,6 +633,66 @@ public sealed class PlayerVisibilitySystem
                 radius,
                 DefaultGroundObservationHeight,
                 TerrainVisionMode.Ground,
+                _visionCellScratch);
+            cells = _visionCellScratch.ToArray();
+            _staticVisionCells.Add(key, cells);
+        }
+        ApplyVisionCells(playerId, cells);
+    }
+
+    private void RevealBuildingProfile(
+        int playerId,
+        Vector2 center,
+        BuildingTypeProfile type)
+    {
+        if (!type.Perception.Enabled)
+        {
+            RevealBuilding(playerId, center, type.Function);
+            return;
+        }
+        RevealStaticVision(
+            playerId, center, type.Perception.VisionRange,
+            type.Perception.ObservationHeight,
+            type.Perception.TerrainVisionMode);
+        if (BuildingDetectionEnabled(playerId, type.Perception))
+            RevealDetectionSource(
+                playerId, center, type.Perception.DetectionRange);
+    }
+
+    private void RevealBuildingDetection(
+        int playerId,
+        Vector2 center,
+        BuildingTypeProfile type)
+    {
+        if (BuildingDetectionEnabled(playerId, type.Perception))
+            RevealDetectionSource(
+                playerId, center, type.Perception.DetectionRange);
+    }
+
+    private bool BuildingDetectionEnabled(
+        int playerId,
+        in BuildingPerceptionProfileSnapshot perception) =>
+        perception.DetectionRange > 0f &&
+        (perception.DetectionTechnologyId < 0 ||
+         TechnologyLevelResolver?.Invoke(
+             playerId, perception.DetectionTechnologyId) > 0);
+
+    private void RevealStaticVision(
+        int playerId,
+        Vector2 center,
+        float radius,
+        float observationHeight,
+        TerrainVisionMode terrainVisionMode)
+    {
+        if (playerId <= 0 || playerId >= MaximumPlayers || radius <= 0f)
+            return;
+        var key = new StaticVisionSourceKey(
+            center, radius, observationHeight, terrainVisionMode);
+        if (!_staticVisionCells.TryGetValue(key, out var cells))
+        {
+            _visionCellScratch.Clear();
+            CollectVisionCells(
+                center, radius, observationHeight, terrainVisionMode,
                 _visionCellScratch);
             cells = _visionCellScratch.ToArray();
             _staticVisionCells.Add(key, cells);

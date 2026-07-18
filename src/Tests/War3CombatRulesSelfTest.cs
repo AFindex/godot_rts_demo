@@ -44,6 +44,8 @@ public static class War3CombatRulesSelfTest
                     value.UnitType.Id == War3HumanContent.GryphonRider));
             var resourceRoundTrip = VerifyResourceRoundTrip(production);
             var guardTower = buildings.Type(War3HumanContent.GuardTower);
+            var cannonTower = buildings.Type(War3HumanContent.CannonTower);
+            var arcaneTower = buildings.Type(War3HumanContent.ArcaneTower);
             var barracks = buildings.Type(War3HumanContent.Barracks);
 
             var dataMapped =
@@ -98,10 +100,40 @@ public static class War3CombatRulesSelfTest
                     200f * 4f / 15f) &&
                 guardTower.ArmorType == CombatArmorType.Large &&
                 barracks.ArmorType == CombatArmorType.Fortified &&
-                technologies.Technologies.Length == 17 &&
+                technologies.Technologies.Length >= 17 &&
                 technologies.Technology(15).Name.Length > 0 &&
                 technologies.Technology(16).Name.Length > 0 &&
                 serialization && resourceRoundTrip;
+            var buildingDataMapped =
+                guardTower.Combat.Enabled &&
+                guardTower.Combat.Weapons.Length == 1 &&
+                Nearly(guardTower.Perception.DetectionRange,
+                    900f * 4f / 15f) &&
+                guardTower.Perception.DetectionTechnologyId >= 0 &&
+                War3HumanContent.Technologies[
+                        guardTower.Perception.DetectionTechnologyId]
+                    .ObjectId.Equals("Rhse", StringComparison.Ordinal) &&
+                Nearly(guardTower.Combat.Weapons[0].AttackDamage, 25f) &&
+                Nearly(guardTower.Combat.Weapons[0].AttackRange,
+                    700f * 4f / 15f) &&
+                cannonTower.Combat.Weapons.Length == 2 &&
+                cannonTower.Combat.Weapons[0].Area.Enabled &&
+                cannonTower.Combat.Weapons[0].AttackType ==
+                    CombatAttackType.Siege &&
+                arcaneTower.Combat.Weapons.Length == 1 &&
+                Nearly(arcaneTower.Combat.Weapons[0].AttackDamage, 9f) &&
+                arcaneTower.Combat.OnHitEffects.Length == 1 &&
+                arcaneTower.Combat.OnHitEffects[0].Kind ==
+                    BuildingWeaponOnHitEffectKind.ManaFeedback &&
+                Nearly(
+                    arcaneTower.Combat.OnHitEffects[0].UnitMaximumValue,
+                    24f) &&
+                Nearly(
+                    arcaneTower.Combat.OnHitEffects[0].HeroMaximumValue,
+                    12f) &&
+                War3HumanContent.Buildings[War3HumanContent.GuardTower]
+                    .ProjectileSource.Contains(
+                        "GuardTowerMissile", StringComparison.OrdinalIgnoreCase);
 
             var effectiveArmor = VerifyArmorTechnology(
                 footman, technologies.Technology(1));
@@ -115,29 +147,52 @@ public static class War3CombatRulesSelfTest
             var facing = VerifyFacingRules();
             var combatObjects = VerifyCombatObjects();
             var combatObjectReplay = VerifyCombatObjectReplay();
+            var buildingCombat = VerifyBuildingCombat(guardTower);
+            var buildingFeedback = VerifyBuildingFeedback(
+                arcaneTower, production);
+            var buildingReveal = VerifyBuildingReveal(arcaneTower);
             var matrix = Nearly(normalMedium, 15f) &&
                          Nearly(pierceSmall, 20f) &&
                          Nearly(siegeFort, 15f / 1.3f) &&
                          Nearly(spellsHero, 7f) &&
                          Nearly(negativeArmor,
                              10f * (2f - MathF.Pow(0.94f, 5f)));
-            var passed = matrix && dataMapped && Nearly(effectiveArmor, 6f) &&
+            var passed = matrix && dataMapped && buildingDataMapped &&
+                         Nearly(effectiveArmor, 6f) &&
                          area.Passed && minimumRange.Passed &&
                          propagation.Passed && stormHammers.Passed &&
                          facing.Passed && combatObjects.Passed &&
-                         combatObjectReplay.Passed;
+                         combatObjectReplay.Passed && buildingCombat.Passed &&
+                         buildingFeedback.Passed && buildingReveal.Passed;
             passed &= hotRoundTrip;
             return new SelfTestResult(
                 passed,
                 $"matrix={normalMedium:0.###}/{pierceSmall:0.###}/" +
                 $"{siegeFort:0.###}/{spellsHero:0.###}/" +
                 $"neg={negativeArmor:0.###}, " +
-                $"data={dataMapped}, armor={effectiveArmor:0.###}, " +
+                $"data={dataMapped}/{buildingDataMapped}, " +
+                $"armor={effectiveArmor:0.###}, " +
+                $"baseFlags=ser:{serialization}/res:{resourceRoundTrip}/" +
+                $"gArmor:{guardTower.ArmorType}/bArmor:{barracks.ArmorType}/" +
+                $"tech:{technologies.Technologies.Length}, " +
+                $"tower={guardTower.Combat.Weapons.Length}/" +
+                $"{guardTower.Combat.AcquisitionRange:0.###}/" +
+                $"{guardTower.Combat.Weapons.FirstOrDefault().AttackDamage:0.###}/" +
+                $"{guardTower.Combat.Weapons.FirstOrDefault().AttackRange:0.###}, " +
+                $"cannon={cannonTower.Combat.Weapons.Length}/" +
+                $"{cannonTower.Combat.Weapons.FirstOrDefault().Area.Enabled}/" +
+                $"{cannonTower.Combat.Weapons.FirstOrDefault().AttackType}, " +
+                $"arcane={arcaneTower.Combat.Weapons.Length}/" +
+                $"{arcaneTower.Combat.Weapons.FirstOrDefault().AttackDamage:0.###}, " +
+                $"missile={War3HumanContent.Buildings[War3HumanContent.GuardTower].ProjectileSource}, " +
                 $"area={area.Summary}, minimum={minimumRange.Summary}, " +
                 $"propagation={propagation.Summary}, " +
                 $"storm={stormHammers.Summary}, facing={facing.Summary}, " +
                 $"objects={combatObjects.Summary}, " +
                 $"objectReplay={combatObjectReplay.Summary}, " +
+                $"building={buildingCombat.Summary}, " +
+                $"feedback={buildingFeedback.Summary}, " +
+                $"reveal={buildingReveal.Summary}, " +
                 $"hot={hotRoundTrip}");
         }
         catch (Exception exception)
@@ -709,6 +764,265 @@ public static class War3CombatRulesSelfTest
             $"run={runner.Completed}/{exact}/{dead}/{opened}");
     }
 
+    private static (bool Passed, string Summary) VerifyBuildingCombat(
+        BuildingTypeProfile tower)
+    {
+        var simulation = CreateSimulation();
+        var bounds = new SimRect(
+            new Vector2(240f, 240f), new Vector2(288f, 288f));
+        var footprint = simulation.PlaceBuilding(bounds);
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    new GameplayBuildingId(0), 1, tower, bounds,
+                    default, footprint, BuildingLifecycleState.Completed,
+                    -1, bounds.Min, 1f, tower.MaximumHealth,
+                    new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        var target = Add(
+            simulation, new Vector2(380f, 264f), 2, PassiveProfile());
+        var launched = TickUntil(
+            simulation, 90,
+            () => simulation.BuildingCombat.ActiveProjectileCount > 0);
+        if (!launched)
+            return (false, "no-projectile");
+
+        var phase = simulation.BuildingCombat.Observe(
+            new GameplayBuildingId(0));
+        var launchEvents = simulation.BuildingCombatEvents.ReadAfter(0).Events;
+        var startedEvent = launchEvents.Any(value =>
+            value.Kind == BuildingCombatEventKind.AttackStarted);
+        var launchedEvent = launchEvents.Any(value =>
+            value.Kind == BuildingCombatEventKind.ProjectileLaunched);
+        var state = simulation.CaptureRuntimeState();
+        var payload = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion, 0UL, state);
+        var hot = RuntimeHotSnapshotCodec.TryDeserialize(
+                      payload,
+                      SimulationHotSnapshot.CurrentFormatVersion,
+                      out _, out var restored, out var validation) &&
+                  restored is not null &&
+                  validation == HotSnapshotValidationCode.Success &&
+                  restored.BuildingCombat.Projectiles.Length == 1;
+        if (restored is not null)
+            simulation.RestoreRuntimeState(restored);
+
+        var hit = TickUntil(
+            simulation, 90,
+            () => simulation.Combat.Health[target] < 100f);
+        var events = simulation.BuildingCombatEvents.ReadAfter(0).Events;
+        var impactCount = events.Count(value =>
+            value.Kind == BuildingCombatEventKind.Impact &&
+            value.TargetUnit == target);
+        var staged = startedEvent && launchedEvent && impactCount == 1;
+        return (
+            phase.Phase == BuildingCombatPhase.Cooldown && hot && hit && staged,
+            $"phase={phase.Phase} hot={hot} hit={hit} stages={staged}/" +
+            $"impact={impactCount} hp={simulation.Combat.Health[target]:0.###}");
+    }
+
+    private static (bool Passed, string Summary) VerifyBuildingFeedback(
+        BuildingTypeProfile tower,
+        ProductionCatalogSnapshot production)
+    {
+        var simulation = CreateSimulation();
+        simulation.Abilities.ConfigureCatalog(
+            War3HumanContent.CreateAbilityCatalog());
+        var bounds = new SimRect(
+            new Vector2(240f, 240f), new Vector2(288f, 288f));
+        var footprint = simulation.PlaceBuilding(bounds);
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    new GameplayBuildingId(0), 1, tower, bounds,
+                    default, footprint, BuildingLifecycleState.Completed,
+                    -1, bounds.Min, 1f, tower.MaximumHealth,
+                    new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        var targetType = production.UnitType(War3HumanContent.Sorceress);
+        var target = simulation.AddUnit(
+            new Vector2(390f, 264f), targetType, 2);
+        var initialMana = simulation.Abilities.Observe(target).Mana;
+        var initialHealth = simulation.Combat.Health[target];
+        if (!TickUntil(simulation, 90,
+                () => simulation.BuildingCombat.ActiveProjectileCount > 0))
+            return (false, "no-projectile");
+        var payload = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion,
+            0UL,
+            simulation.CaptureRuntimeState());
+        var hot = RuntimeHotSnapshotCodec.TryDeserialize(
+                      payload,
+                      SimulationHotSnapshot.CurrentFormatVersion,
+                      out _, out var restored, out var validation) &&
+                  restored is not null &&
+                  validation == HotSnapshotValidationCode.Success &&
+                  restored.BuildingCombat.Projectiles.Length == 1 &&
+                  restored.BuildingCombat.Projectiles[0]
+                      .OnHitEffects.Length == 1;
+        if (restored is not null)
+            simulation.RestoreRuntimeState(restored);
+        var hit = TickUntil(
+            simulation, 90,
+            () => simulation.Combat.Health[target] < initialHealth);
+        var remainingMana = simulation.Abilities.Observe(target).Mana;
+        var burned = initialMana - remainingMana;
+        var damage = initialHealth - simulation.Combat.Health[target];
+        return (
+            hot && hit && burned is > 23f and <= 24f && damage > 9f,
+            $"hot={hot} hit={hit} mana={initialMana:0.###}->" +
+            $"{remainingMana:0.###} damage={damage:0.###}");
+    }
+
+    private static (bool Passed, string Summary) VerifyBuildingReveal(
+        BuildingTypeProfile tower)
+    {
+        var abilityCatalog = War3HumanContent.CreateAbilityCatalog();
+        if (!abilityCatalog.TryFind("AHta", out var reveal) ||
+            reveal.Activation != AbilityActivationKind.TargetPoint)
+            return (false, "missing-AHta");
+        var level = reveal.Levels[0];
+        if (!abilityCatalog.TryBuildingBinding(
+                War3HumanContent.ArcaneTower, out var binding) ||
+            !binding.Abilities.Contains(reveal.Id))
+            return (false, "missing-binding");
+
+        var simulation = CreateSimulation();
+        simulation.Abilities.ConfigureCatalog(abilityCatalog);
+        var bounds = new SimRect(
+            new Vector2(240f, 240f), new Vector2(288f, 288f));
+        var footprint = simulation.PlaceBuilding(bounds);
+        var buildingId = new GameplayBuildingId(0);
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    buildingId, 1, tower, bounds, default, footprint,
+                    BuildingLifecycleState.Completed, -1, bounds.Min, 1f,
+                    tower.MaximumHealth, new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        var target = new Vector2(700f, 500f);
+        var castTarget = AbilityCastTarget.Point(target);
+        var blocked = simulation.IssueBuildingAbility(
+            1, buildingId, reveal.Id, castTarget);
+
+        var rhseDefinition = War3HumanContent.Technologies.Single(value =>
+            value.ObjectId.Equals("Rhse", StringComparison.Ordinal));
+        var rhse = War3HumanContent.CreateTechnologyCatalog()
+            .Technology(rhseDefinition.TechnologyId);
+        simulation.Technology.RestoreRuntimeState(
+            new TechnologyRuntimeSnapshot(
+                1,
+                [new TechnologyLevelRuntimeEntry(1, rhse, 1)],
+                []),
+            simulation.Construction,
+            simulation.Economy.Players);
+
+        // Normalize derived visibility before taking a replay checkpoint;
+        // RestoreRuntimeState intentionally rebuilds the same derived sources.
+        simulation.Tick(Delta);
+        var beforeCommand = simulation.CaptureRuntimeState();
+        simulation.StartCommandRecording();
+        var issued = simulation.IssueBuildingAbility(
+            1, buildingId, reveal.Id, castTarget);
+        var commandLog = simulation.CaptureCommandLog();
+        var runtime = simulation.Abilities.ObserveBuildingState(
+            buildingId, tower.Id);
+        var slot = runtime.Abilities.Single(value =>
+            value.AbilityId == reveal.Id);
+        var abilityState = simulation.Abilities.CaptureRuntimeState(
+            simulation.Units.Count);
+        var configured =
+            Nearly(level.Area, 900f * 4f / 15f) &&
+            Nearly(level.Duration, 15f) &&
+            Nearly(level.CooldownSeconds, 180f) &&
+            level.Requirements.Any(value =>
+                value.Kind == AbilityRequirementKind.TechnologyLevel &&
+                value.TargetId == rhse.Id && value.Value == 1);
+        var active = issued.Succeeded &&
+                     Nearly(slot.CooldownRemaining, 180f) &&
+                     Nearly(runtime.Mana, binding.Mana.Initial) &&
+                     abilityState.Reveals.Length == 1 &&
+                     Nearly(abilityState.Reveals[0].Radius, level.Area) &&
+                     Nearly(abilityState.Reveals[0].RemainingSeconds, 15f) &&
+                     abilityState.Reveals[0].Position == target;
+
+        var replay = CreateSimulation();
+        replay.RestoreRuntimeState(beforeCommand);
+        if (commandLog.Entries.Length == 1)
+            replay.ApplyRecordedCommand(commandLog.Entries[0]);
+        var sourceState = simulation.CaptureRuntimeState();
+        var replayState = replay.CaptureRuntimeState();
+        var sourceHash = sourceState.StateHash;
+        var replayHash = replayState.StateHash;
+        var sourceStateBytes = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion, 0UL,
+            sourceState);
+        var replayStateBytes = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion, 0UL,
+            replayState);
+        var sourceAbilityBytes = SerializeAbilityRuntime(sourceState.Abilities);
+        var replayAbilityBytes = SerializeAbilityRuntime(replayState.Abilities);
+        var replayAbilityExact = sourceAbilityBytes.SequenceEqual(
+            replayAbilityBytes);
+        var replayStateExact =
+            sourceStateBytes.AsSpan(0, 28).SequenceEqual(
+                replayStateBytes.AsSpan(0, 28)) &&
+            sourceStateBytes.AsSpan(36).SequenceEqual(
+                replayStateBytes.AsSpan(36));
+        var replayDifference = FirstDifference(
+            sourceStateBytes, replayStateBytes, 36);
+        var replayExact = commandLog.Entries.Length == 1 &&
+                          commandLog.Entries[0].TargetPosition == target &&
+                          replayHash == sourceHash && replayStateExact;
+
+        var payload = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion, 0UL,
+            simulation.CaptureRuntimeState());
+        var hot = RuntimeHotSnapshotCodec.TryDeserialize(
+                      payload, SimulationHotSnapshot.CurrentFormatVersion,
+                      out _, out var restored, out var validation) &&
+                  validation == HotSnapshotValidationCode.Success &&
+                  restored is not null &&
+                  restored.Abilities.Reveals.Length == 1 &&
+                  restored.Abilities.Buildings.Length == 1 &&
+                  Array.IndexOf(
+                      restored.Abilities.Buildings[0].AbilityIds,
+                      reveal.Id) is var hotSlot && hotSlot >= 0 &&
+                  Nearly(restored.Abilities.Buildings[0].Cooldowns[hotSlot],
+                      180f);
+        if (restored is not null) simulation.RestoreRuntimeState(restored);
+        var cooldown = simulation.IssueBuildingAbility(
+            1, buildingId, reveal.Id, castTarget);
+        simulation.Tick(Delta);
+        var visible = simulation.Visibility.At(1, target) ==
+                          MapVisibility.Visible &&
+                      simulation.Visibility.IsDetected(1, target);
+        for (var tick = 0; tick < 451; tick++) simulation.Tick(Delta);
+        var expired = simulation.Visibility.At(1, target) !=
+                          MapVisibility.Visible &&
+                      !simulation.Visibility.IsDetected(1, target) &&
+                      simulation.Abilities.CaptureRuntimeState(
+                          simulation.Units.Count).Reveals.Length == 0;
+        return (
+            blocked.Code == AbilityCommandCode.RequirementsNotMet &&
+            configured && active && replayExact && hot &&
+            cooldown.Code == AbilityCommandCode.Cooldown && visible && expired,
+            $"req={blocked.Code} config={configured} active={active} " +
+            $"replay={replayExact}/{sourceHash:X16}/{replayHash:X16} " +
+            $"bytes={replayStateExact}/{replayDifference}/" +
+            $"{sourceStateBytes.Length}/{replayStateBytes.Length} " +
+            $"ability={replayAbilityExact}/" +
+            $"{sourceAbilityBytes.Length}/{replayAbilityBytes.Length} " +
+            $"hot={hot} cooldown={cooldown.Code} " +
+            $"visible={visible} expired={expired}");
+    }
+
     private static RtsSimulation CreateSimulation()
     {
         var world = new StaticWorld(new SimRect(
@@ -766,6 +1080,27 @@ public static class War3CombatRulesSelfTest
             if (condition()) return true;
         }
         return false;
+    }
+
+    private static int FirstDifference(
+        byte[] left,
+        byte[] right,
+        int start = 0)
+    {
+        var count = Math.Min(left.Length, right.Length);
+        for (var index = start; index < count; index++)
+            if (left[index] != right[index]) return index;
+        return left.Length == right.Length ? -1 : count;
+    }
+
+    private static byte[] SerializeAbilityRuntime(
+        AbilityRuntimeSnapshot snapshot)
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        AbilitySerialization.WriteRuntime(writer, snapshot);
+        writer.Flush();
+        return stream.ToArray();
     }
 
     private static bool Nearly(float left, float right) =>

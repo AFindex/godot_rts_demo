@@ -77,6 +77,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private readonly Func<int, int, SimRect, float, bool>
         _productionEvacuateExitBlocker;
     private readonly int[] _collisionNeighbors = new int[64];
+    private long[] _collisionPairScratch = new long[4096];
     private CombatContactSnapshot[] _combatContacts;
     private bool[] _unitCollisionSuppressed;
     private int[] _orderReadyUnits;
@@ -127,7 +128,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Diplomacy = new PlayerDiplomacySystem();
         Visibility = new PlayerVisibilitySystem(
             world.Bounds, Diplomacy, terrain: world.Terrain);
+        Visibility.TechnologyLevelResolver = Technology.Level;
         Match = new MatchSystem();
+        BuildingCombat = new BuildingCombatSystem(
+            Units, Combat, Construction, Technology, Diplomacy, Visibility,
+            CombatTargetLayerForUnit, DamageUnit, Abilities.RemoveMana,
+            Abilities.IsHero, Abilities.IsSummoned);
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
@@ -151,7 +157,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _combatSystem = new CombatSystem(
             Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit,
             Diplomacy.IsEnemy, CanUnitAttack, CanUnitTakeDamage,
-            CombatTargetLayerForUnit);
+            CombatTargetLayerForUnit, _spatialHash);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
         _economyFinishDropOffMovement = FinishEconomyDropOffMovement;
@@ -185,6 +191,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     public PlayerDiplomacySystem Diplomacy { get; }
     public PlayerVisibilitySystem Visibility { get; }
     public MatchSystem Match { get; }
+    public BuildingCombatSystem BuildingCombat { get; }
+    public BuildingCombatEventStream BuildingCombatEvents =>
+        BuildingCombat.Events;
     public SimulationMetrics Metrics { get; } = new();
     public GroupRoutePlan LastIssuedGroupRoute { get; private set; } = GroupRoutePlan.Empty;
     public IGroupRoutePlanner? GroupRoutePlanner => _groupRoutePlanner;
@@ -438,6 +447,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             CombatObjects = CombatObjects.CaptureRuntimeState(),
             Abilities = Abilities.CaptureRuntimeState(Units.Count),
             CombatProjectiles = CombatProjectiles.CaptureRuntimeState(),
+            BuildingCombat = BuildingCombat.CaptureRuntimeState(),
             Economy = Economy.CaptureRuntimeState(Units.Count),
             Diplomacy = Diplomacy.CaptureRuntimeState(),
             Visibility = Visibility.CaptureRuntimeState(),
@@ -477,7 +487,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         CombatObjects.RestoreRuntimeState(snapshot.CombatObjects);
         Abilities.RestoreRuntimeState(snapshot.Abilities, Units.Count);
         CombatProjectiles.RestoreRuntimeState(snapshot.CombatProjectiles);
+        BuildingCombat.RestoreRuntimeState(snapshot.BuildingCombat);
         CombatEvents.Reset();
+        BuildingCombatEvents.Reset();
         GameplayEvents.Reset();
         AbilityEvents.Reset();
         Economy.RestoreRuntimeState(snapshot.Economy, Units.Count);
@@ -788,10 +800,19 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 if (!Construction.IsAlive(building))
                     throw new InvalidOperationException(
                         "Recorded building ability caster is invalid.");
+                var ability = Abilities.Catalog.Ability(
+                    command.TargetResourceNode);
+                var target = ability.Activation is
+                        AbilityActivationKind.TargetPoint or
+                        AbilityActivationKind.ChannelPoint
+                    ? AbilityCastTarget.Point(command.TargetPosition)
+                    : AbilityCastTarget.Building(
+                        building, command.TargetPosition);
                 var cast = IssueBuildingAbility(
                     Construction.Observe(building).PlayerId,
                     building,
-                    command.TargetResourceNode);
+                    command.TargetResourceNode,
+                    target);
                 if (!cast.Succeeded)
                     throw new InvalidOperationException(
                         $"Replay building ability cast failed with {cast.Code}.");
@@ -1917,6 +1938,53 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         GameplayBuildingId caster,
         int abilityId)
     {
+        if (!Construction.IsAlive(caster))
+            return new AbilityCommandResult(
+                AbilityCommandCode.InvalidCaster,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        var building = Construction.Observe(caster);
+        var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
+        return IssueBuildingAbility(
+            playerId, caster, abilityId,
+            AbilityCastTarget.Building(caster, center));
+    }
+
+    public AbilityCommandResult PreviewBuildingAbility(
+        int playerId,
+        GameplayBuildingId caster,
+        int abilityId,
+        in AbilityCastTarget target)
+    {
+        var matchBlock = MatchCommandBlockFor(playerId);
+        if (matchBlock != MatchCommandBlock.None)
+            return new AbilityCommandResult(matchBlock switch
+            {
+                MatchCommandBlock.Completed => AbilityCommandCode.MatchCompleted,
+                MatchCommandBlock.NotParticipant => AbilityCommandCode.NotParticipant,
+                _ => AbilityCommandCode.PlayerDefeated
+            }, AbilityId: abilityId, CasterBuilding: caster.Value);
+        if (!Construction.IsAlive(caster))
+            return new AbilityCommandResult(
+                AbilityCommandCode.InvalidCaster,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        if (BuildingUpgrades.IsUpgrading(caster))
+            return new AbilityCommandResult(
+                AbilityCommandCode.CasterDisabled,
+                AbilityId: abilityId,
+                CasterBuilding: caster.Value);
+        var building = Construction.Observe(caster);
+        return Abilities.PreviewBuilding(
+            playerId, caster, building.Type.Id, abilityId, target, this);
+    }
+
+    public AbilityCommandResult IssueBuildingAbility(
+        int playerId,
+        GameplayBuildingId caster,
+        int abilityId,
+        in AbilityCastTarget target)
+    {
         var matchBlock = MatchCommandBlockFor(playerId);
         if (matchBlock != MatchCommandBlock.None)
         {
@@ -1939,7 +2007,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 CasterBuilding: caster.Value);
         var building = Construction.Observe(caster);
         var result = Abilities.IssueBuilding(
-            playerId, caster, building.Type.Id, abilityId, Metrics.Tick,
+            playerId, caster, building.Type.Id, abilityId, target, Metrics.Tick,
             this, AbilityEvents);
         if (result.Succeeded)
         {
@@ -1948,7 +2016,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 ReadOnlySpan<int>.Empty,
                 new UnitOrder(
                     UnitOrderKind.CastBuildingAbility,
-                    (building.Bounds.Min + building.Bounds.Max) * 0.5f,
+                    target.Position,
                     TargetBuilding: caster.Value,
                     TargetResourceNode: abilityId),
                 queued: false);
@@ -3634,6 +3702,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.PathEdgeCacheFullClears = 0;
         Metrics.PathCompletedCacheHits = 0;
         Metrics.CollisionPairs = 0;
+        Metrics.CollisionBroadphasePairs = 0;
+        Metrics.CollisionMainIterations = 0;
+        Metrics.CollisionResidualPasses = 0;
+        Metrics.CollisionConstraintCalls = 0;
         Metrics.MaximumPenetration = 0f;
         Metrics.RepathRequests = 0;
         Metrics.NavigationRevision = World.NavigationRevision;
@@ -3742,6 +3814,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
         Metrics.EconomyMilliseconds = ElapsedMilliseconds(lifecycleStart);
 
+        // Combat acquisition uses the same deterministic unit broadphase as
+        // steering. Refresh it after lifecycle/spawn work so target searches
+        // inspect nearby cells instead of scanning every unit in the match.
+        _spatialHash.Rebuild(Units);
+
         phaseStart = Stopwatch.GetTimestamp();
         phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         var detectionStart = phaseStart;
@@ -3752,12 +3829,13 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         if (!Visibility.HasExploredState)
             Visibility.Update(Units, Combat, Construction);
         else
-            Visibility.UpdateDetection(Units, Combat);
+            Visibility.UpdateDetection(Units, Combat, Construction);
         Abilities.ApplyVisibilitySources(Visibility);
         Metrics.VisibilityDetectionMilliseconds =
             ElapsedMilliseconds(detectionStart);
         UpdateUnitFacings(delta);
         _combatSystem.Update(delta, Metrics.Tick);
+        BuildingCombat.Update(delta, Metrics.Tick);
         Abilities.ProcessCombatEvents(
             Metrics.Tick, CombatEvents, this, AbilityEvents);
         Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
@@ -3827,6 +3905,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _steeringSolver.Solve(
             Units, delta, _unitCollisionSuppressed, Combat.ConcealmentKinds,
             _combatContacts, Combat.TargetKinds);
+        Metrics.SteeringNeighborPairs = _steeringSolver.LastNeighborPairs;
+        Metrics.SteeringCandidateEvaluations =
+            _steeringSolver.LastCandidateEvaluations;
         _chokeController?.ConstrainSolvedVelocities(Units);
         Metrics.SteeringMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.SteeringAllocatedBytes =
@@ -5249,48 +5330,152 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void SolveCollisions()
     {
+        if (Units.Count <= 256)
+        {
+            SolveCollisionsEstablishedOrder();
+            return;
+        }
+
         for (var iteration = 0; iteration < CollisionIterations; iteration++)
         {
+            Metrics.CollisionMainIterations++;
             Array.Clear(Units.CollisionCorrections, 0, Units.Count);
             _spatialHash.Rebuild(Units);
+            var pairCount = CollectCollisionPairs(0f);
+            Metrics.CollisionBroadphasePairs += pairCount;
 
+            for (var pairIndex = 0; pairIndex < pairCount; pairIndex++)
+            {
+                var encodedPair = _collisionPairScratch[pairIndex];
+                var unit = (int)(encodedPair >> 32);
+                var neighbor = (int)encodedPair;
+                if (UnitCollisionPolicy.SuppressesPair(
+                        _unitCollisionSuppressed[unit],
+                        Combat.ConcealmentKinds[unit],
+                        _unitCollisionSuppressed[neighbor],
+                        Combat.ConcealmentKinds[neighbor]))
+                {
+                    continue;
+                }
+
+                var offset = Units.Positions[neighbor] - Units.Positions[unit];
+                var minimumDistance = Units.Radii[unit] + Units.Radii[neighbor];
+                var distanceSquared = offset.LengthSquared();
+                if (distanceSquared >= minimumDistance * minimumDistance)
+                {
+                    continue;
+                }
+
+                var distance = MathF.Sqrt(MathF.Max(distanceSquared, 0.000001f));
+                var normal = distanceSquared > 0.000001f
+                    ? offset / distance
+                    : DeterministicNormal(unit, neighbor);
+                var penetration = minimumDistance - distance;
+                Metrics.CollisionPairs++;
+                Metrics.MaximumPenetration = MathF.Max(
+                    Metrics.MaximumPenetration,
+                    penetration);
+
+                var resolution = UnitPushPriorityPolicy.Resolve(
+                    Units,
+                    unit,
+                    neighbor,
+                    _combatContacts[unit],
+                    _combatContacts[neighbor],
+                    normal,
+                    Combat.TargetKinds[unit] != CombatTargetKind.None,
+                    Combat.TargetKinds[neighbor] != CombatTargetKind.None);
+                if (resolution.LeftCorrectionShare <= 0f &&
+                    resolution.RightCorrectionShare <= 0f)
+                {
+                    continue;
+                }
+
+                var correctionMagnitude = (penetration + 0.01f) * 0.72f;
+                var correction = normal * correctionMagnitude;
+                Units.CollisionCorrections[unit] -=
+                    correction * resolution.LeftCorrectionShare;
+                Units.CollisionCorrections[neighbor] +=
+                    correction * resolution.RightCorrectionShare;
+                if (resolution.LeftPushing || resolution.RightPushing)
+                {
+                    Metrics.PriorityPushPairs++;
+                    Metrics.PriorityPushDisplacement += correctionMagnitude *
+                        (resolution.LeftPushing
+                            ? resolution.RightCorrectionShare
+                            : resolution.LeftCorrectionShare);
+                }
+            }
+
+            var moved = false;
             for (var unit = 0; unit < Units.Count; unit++)
             {
                 if (!Units.Alive[unit])
                 {
                     continue;
                 }
+                var correction = Units.CollisionCorrections[unit];
+                if (correction.LengthSquared() <= 0.0000001f)
+                    continue;
+                var previous = Units.Positions[unit];
+                Metrics.CollisionConstraintCalls++;
+                var constrained = World.ConstrainDisc(
+                    previous,
+                    previous + correction,
+                    Units.Radii[unit]);
+                Units.Positions[unit] = constrained;
+                moved |= Vector2.DistanceSquared(previous, constrained) >
+                         0.0000001f;
+            }
+            if (!moved)
+                break;
+        }
+        ResolveResidualCollisionPenetrations();
+    }
+
+    private void SolveCollisionsEstablishedOrder()
+    {
+        for (var iteration = 0; iteration < CollisionIterations; iteration++)
+        {
+            Metrics.CollisionMainIterations++;
+            Array.Clear(Units.CollisionCorrections, 0, Units.Count);
+            _spatialHash.Rebuild(Units);
+
+            for (var unit = 0; unit < Units.Count; unit++)
+            {
+                if (!Units.Alive[unit])
+                    continue;
                 var neighborCount = _spatialHash.Query(
                     Units.Positions[unit],
                     Units.Radii[unit] * 4f + 8f,
                     unit,
                     _collisionNeighbors);
 
-                for (var neighborIndex = 0; neighborIndex < neighborCount; neighborIndex++)
+                for (var neighborIndex = 0;
+                     neighborIndex < neighborCount;
+                     neighborIndex++)
                 {
                     var neighbor = _collisionNeighbors[neighborIndex];
                     if (neighbor <= unit)
-                    {
                         continue;
-                    }
+                    Metrics.CollisionBroadphasePairs++;
                     if (UnitCollisionPolicy.SuppressesPair(
                             _unitCollisionSuppressed[unit],
                             Combat.ConcealmentKinds[unit],
                             _unitCollisionSuppressed[neighbor],
                             Combat.ConcealmentKinds[neighbor]))
-                    {
                         continue;
-                    }
 
-                    var offset = Units.Positions[neighbor] - Units.Positions[unit];
-                    var minimumDistance = Units.Radii[unit] + Units.Radii[neighbor];
+                    var offset = Units.Positions[neighbor] -
+                                 Units.Positions[unit];
+                    var minimumDistance = Units.Radii[unit] +
+                                          Units.Radii[neighbor];
                     var distanceSquared = offset.LengthSquared();
                     if (distanceSquared >= minimumDistance * minimumDistance)
-                    {
                         continue;
-                    }
 
-                    var distance = MathF.Sqrt(MathF.Max(distanceSquared, 0.000001f));
+                    var distance = MathF.Sqrt(MathF.Max(
+                        distanceSquared, 0.000001f));
                     var normal = distanceSquared > 0.000001f
                         ? offset / distance
                         : DeterministicNormal(unit, neighbor);
@@ -5311,11 +5496,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                         Combat.TargetKinds[neighbor] != CombatTargetKind.None);
                     if (resolution.LeftCorrectionShare <= 0f &&
                         resolution.RightCorrectionShare <= 0f)
-                    {
                         continue;
-                    }
 
-                    var correctionMagnitude = (penetration + 0.01f) * 0.72f;
+                    var correctionMagnitude =
+                        (penetration + 0.01f) * 0.72f;
                     var correction = normal * correctionMagnitude;
                     Units.CollisionCorrections[unit] -=
                         correction * resolution.LeftCorrectionShare;
@@ -5324,7 +5508,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                     if (resolution.LeftPushing || resolution.RightPushing)
                     {
                         Metrics.PriorityPushPairs++;
-                        Metrics.PriorityPushDisplacement += correctionMagnitude *
+                        Metrics.PriorityPushDisplacement +=
+                            correctionMagnitude *
                             (resolution.LeftPushing
                                 ? resolution.RightCorrectionShare
                                 : resolution.LeftCorrectionShare);
@@ -5335,10 +5520,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             for (var unit = 0; unit < Units.Count; unit++)
             {
                 if (!Units.Alive[unit])
-                {
                     continue;
-                }
                 var previous = Units.Positions[unit];
+                Metrics.CollisionConstraintCalls++;
                 Units.Positions[unit] = World.ConstrainDisc(
                     previous,
                     previous + Units.CollisionCorrections[unit],
@@ -5357,13 +5541,43 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     /// </summary>
     private void ResolveResidualCollisionPenetrations()
     {
+        if (Units.Count <= 256)
+        {
+            ResolveResidualCollisionPenetrationsEstablishedOrder();
+            return;
+        }
+
         for (var pass = 0; pass < ResidualCollisionPassLimit; pass++)
         {
+            Metrics.CollisionResidualPasses++;
+            var corrected = false;
+            _spatialHash.Rebuild(Units);
+            var pairCount = CollectCollisionPairs(
+                ResidualCollisionTolerance);
+            Metrics.CollisionBroadphasePairs += pairCount;
+            for (var pairIndex = 0; pairIndex < pairCount; pairIndex++)
+            {
+                var encodedPair = _collisionPairScratch[pairIndex];
+                var unit = (int)(encodedPair >> 32);
+                var neighbor = (int)encodedPair;
+                var result = ResolveResidualCollisionPair(unit, neighbor);
+                corrected |= result.Moved;
+            }
+            if (!corrected) return;
+        }
+    }
+
+    private void ResolveResidualCollisionPenetrationsEstablishedOrder()
+    {
+        for (var pass = 0; pass < ResidualCollisionPassLimit; pass++)
+        {
+            Metrics.CollisionResidualPasses++;
             var corrected = false;
             _spatialHash.Rebuild(Units);
             for (var unit = 0; unit < Units.Count; unit++)
             {
-                if (!Units.Alive[unit]) continue;
+                if (!Units.Alive[unit])
+                    continue;
                 var neighborCount = _spatialHash.Query(
                     Units.Positions[unit],
                     Units.Radii[unit] * 4f + 8f,
@@ -5374,104 +5588,150 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                      neighborIndex++)
                 {
                     var neighbor = _collisionNeighbors[neighborIndex];
-                    if (neighbor <= unit ||
-                        UnitCollisionPolicy.SuppressesPair(
-                            _unitCollisionSuppressed[unit],
-                            Combat.ConcealmentKinds[unit],
-                            _unitCollisionSuppressed[neighbor],
-                            Combat.ConcealmentKinds[neighbor]))
-                    {
+                    if (neighbor <= unit)
                         continue;
-                    }
-
-                    var offset = Units.Positions[neighbor] -
-                                 Units.Positions[unit];
-                    var minimumDistance = Units.Radii[unit] +
-                                          Units.Radii[neighbor];
-                    var distanceSquared = offset.LengthSquared();
-                    var allowedDistance = minimumDistance -
-                                          ResidualCollisionTolerance;
-                    if (distanceSquared >= allowedDistance * allowedDistance)
-                        continue;
-
-                    var distance = MathF.Sqrt(MathF.Max(
-                        distanceSquared, 0.000001f));
-                    var normal = distanceSquared > 0.000001f
-                        ? offset / distance
-                        : DeterministicNormal(unit, neighbor);
-                    var resolution = UnitPushPriorityPolicy.Resolve(
-                        Units,
-                        unit,
-                        neighbor,
-                        _combatContacts[unit],
-                        _combatContacts[neighbor],
-                        normal,
-                        Combat.TargetKinds[unit] != CombatTargetKind.None,
-                        Combat.TargetKinds[neighbor] != CombatTargetKind.None);
-                    if (resolution.LeftCorrectionShare <= 0f &&
-                        resolution.RightCorrectionShare <= 0f)
-                    {
-                        continue;
-                    }
-
-                    corrected = true;
-                    var required = minimumDistance - distance +
-                                   ResidualCollisionTolerance;
-                    ApplyResidualCollisionCorrection(
-                        unit,
-                        -normal * required * resolution.LeftCorrectionShare);
-                    ApplyResidualCollisionCorrection(
-                        neighbor,
-                        normal * required * resolution.RightCorrectionShare);
-
-                    // A wall may clip one unit's assigned share. Transfer only
-                    // the still-missing separation to a side that policy says
-                    // may move, instead of leaving hidden overlap at the wall.
-                    offset = Units.Positions[neighbor] - Units.Positions[unit];
-                    distance = offset.Length();
-                    var remaining = minimumDistance - distance +
-                                    ResidualCollisionTolerance;
-                    if (remaining <= 0f) continue;
-                    normal = distance > 0.0001f
-                        ? offset / distance
-                        : DeterministicNormal(unit, neighbor);
-                    if (resolution.RightCorrectionShare >=
-                        resolution.LeftCorrectionShare)
-                    {
-                        if (resolution.RightCorrectionShare > 0f)
-                            ApplyResidualCollisionCorrection(
-                                neighbor, normal * remaining);
-                        remaining = RemainingCollisionSeparation(unit, neighbor);
-                        if (remaining > 0f &&
-                            resolution.LeftCorrectionShare > 0f)
-                            ApplyResidualCollisionCorrection(
-                                unit, -normal * remaining);
-                    }
-                    else
-                    {
-                        if (resolution.LeftCorrectionShare > 0f)
-                            ApplyResidualCollisionCorrection(
-                                unit, -normal * remaining);
-                        remaining = RemainingCollisionSeparation(unit, neighbor);
-                        if (remaining > 0f &&
-                            resolution.RightCorrectionShare > 0f)
-                            ApplyResidualCollisionCorrection(
-                                neighbor, normal * remaining);
-                    }
+                    Metrics.CollisionBroadphasePairs++;
+                    var result = ResolveResidualCollisionPair(unit, neighbor);
+                    // Preserve the established bounded retry behavior for
+                    // ordinary-size movement scenes. Large crowds instead
+                    // stop when a pass made no physical progress.
+                    corrected |= result.Applicable;
                 }
             }
-            if (!corrected) return;
+            if (!corrected)
+                return;
         }
     }
 
-    private void ApplyResidualCollisionCorrection(int unit, Vector2 correction)
+    private (bool Applicable, bool Moved) ResolveResidualCollisionPair(
+        int unit,
+        int neighbor)
     {
-        if (correction.LengthSquared() <= 0.0000001f) return;
+        if (UnitCollisionPolicy.SuppressesPair(
+                _unitCollisionSuppressed[unit],
+                Combat.ConcealmentKinds[unit],
+                _unitCollisionSuppressed[neighbor],
+                Combat.ConcealmentKinds[neighbor]))
+            return (false, false);
+
+        var offset = Units.Positions[neighbor] - Units.Positions[unit];
+        var minimumDistance = Units.Radii[unit] + Units.Radii[neighbor];
+        var distanceSquared = offset.LengthSquared();
+        var allowedDistance = minimumDistance - ResidualCollisionTolerance;
+        if (distanceSquared >= allowedDistance * allowedDistance)
+            return (false, false);
+
+        var distance = MathF.Sqrt(MathF.Max(distanceSquared, 0.000001f));
+        var normal = distanceSquared > 0.000001f
+            ? offset / distance
+            : DeterministicNormal(unit, neighbor);
+        var resolution = UnitPushPriorityPolicy.Resolve(
+            Units,
+            unit,
+            neighbor,
+            _combatContacts[unit],
+            _combatContacts[neighbor],
+            normal,
+            Combat.TargetKinds[unit] != CombatTargetKind.None,
+            Combat.TargetKinds[neighbor] != CombatTargetKind.None);
+        if (resolution.LeftCorrectionShare <= 0f &&
+            resolution.RightCorrectionShare <= 0f)
+            return (false, false);
+
+        var required = minimumDistance - distance +
+                       ResidualCollisionTolerance;
+        var pairMoved = ApplyResidualCollisionCorrection(
+            unit,
+            -normal * required * resolution.LeftCorrectionShare);
+        pairMoved |= ApplyResidualCollisionCorrection(
+            neighbor,
+            normal * required * resolution.RightCorrectionShare);
+
+        // A wall may clip one unit's assigned share. Transfer only the
+        // still-missing separation to a side that policy says may move.
+        offset = Units.Positions[neighbor] - Units.Positions[unit];
+        distance = offset.Length();
+        var remaining = minimumDistance - distance +
+                        ResidualCollisionTolerance;
+        if (remaining <= 0f)
+            return (true, pairMoved);
+        normal = distance > 0.0001f
+            ? offset / distance
+            : DeterministicNormal(unit, neighbor);
+        if (resolution.RightCorrectionShare >=
+            resolution.LeftCorrectionShare)
+        {
+            if (resolution.RightCorrectionShare > 0f)
+                pairMoved |= ApplyResidualCollisionCorrection(
+                    neighbor, normal * remaining);
+            remaining = RemainingCollisionSeparation(unit, neighbor);
+            if (remaining > 0f && resolution.LeftCorrectionShare > 0f)
+                pairMoved |= ApplyResidualCollisionCorrection(
+                    unit, -normal * remaining);
+        }
+        else
+        {
+            if (resolution.LeftCorrectionShare > 0f)
+                pairMoved |= ApplyResidualCollisionCorrection(
+                    unit, -normal * remaining);
+            remaining = RemainingCollisionSeparation(unit, neighbor);
+            if (remaining > 0f && resolution.RightCorrectionShare > 0f)
+                pairMoved |= ApplyResidualCollisionCorrection(
+                    neighbor, normal * remaining);
+        }
+        return (true, pairMoved);
+    }
+
+    private bool ApplyResidualCollisionCorrection(int unit, Vector2 correction)
+    {
+        if (correction.LengthSquared() <= 0.0000001f)
+            return false;
         var position = Units.Positions[unit];
-        Units.Positions[unit] = World.ConstrainDisc(
+        Metrics.CollisionConstraintCalls++;
+        var constrained = World.ConstrainDisc(
             position,
             position + correction,
             Units.Radii[unit]);
+        Units.Positions[unit] = constrained;
+        return Vector2.DistanceSquared(position, constrained) > 0.0000001f;
+    }
+
+    private int CollectCollisionPairs(float tolerance)
+    {
+        // Keep the established small/medium crowd ordering used by movement
+        // regression scenes. Large crowds switch to the bucket-pair traversal,
+        // which removes the duplicated per-unit neighborhood scans that
+        // dominate the 800-unit workload.
+        if (Units.Count > 256)
+            return _spatialHash.CollectPotentialCollisionPairs(
+                Units, tolerance, ref _collisionPairScratch);
+
+        var count = 0;
+        for (var unit = 0; unit < Units.Count; unit++)
+        {
+            if (!Units.Alive[unit])
+                continue;
+            var neighborCount = _spatialHash.Query(
+                Units.Positions[unit],
+                Units.Radii[unit] * 4f + 8f + tolerance,
+                unit,
+                _collisionNeighbors);
+            for (var neighborIndex = 0;
+                 neighborIndex < neighborCount;
+                 neighborIndex++)
+            {
+                var neighbor = _collisionNeighbors[neighborIndex];
+                if (neighbor <= unit)
+                    continue;
+                if (count == _collisionPairScratch.Length)
+                    Array.Resize(
+                        ref _collisionPairScratch,
+                        _collisionPairScratch.Length * 2);
+                _collisionPairScratch[count++] =
+                    ((long)unit << 32) | (uint)neighbor;
+            }
+        }
+        return count;
     }
 
     private float RemainingCollisionSeparation(int left, int right) =>

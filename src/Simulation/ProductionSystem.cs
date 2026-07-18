@@ -363,6 +363,10 @@ public sealed class ProductionSystem
             queue.Orders.Select(value => value.Snapshot(producer)).ToArray());
     }
 
+    public bool HasOrders(GameplayBuildingId producer) =>
+        _queues.TryGetValue(producer.Value, out var queue) &&
+        queue.Orders.Count > 0;
+
     public ProductionQueueSnapshot[] CreateOverview() =>
         _queues.Values
             .Where(value => value.Orders.Count > 0 || value.Rally.IsSet)

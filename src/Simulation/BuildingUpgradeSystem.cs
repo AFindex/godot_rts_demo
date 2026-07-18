@@ -22,7 +22,7 @@ public readonly record struct BuildingUpgradeProfile(
 /// </summary>
 public sealed class BuildingUpgradeCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 2;
+    public const int CurrentFormatVersion = 3;
     private readonly BuildingUpgradeProfile[] _profiles;
     private readonly Dictionary<int, BuildingUpgradeProfile[]> _bySource;
     private readonly Dictionary<int, BuildingUpgradeProfile> _byId;
@@ -159,7 +159,9 @@ public sealed class BuildingUpgradeCatalogSnapshot
         {
             if ((uint)value.SourceBuildingTypeId >= (uint)buildings.Types.Length ||
                 (uint)value.TargetType.Id >= (uint)buildings.Types.Length ||
-                value.TargetType != buildings.Type(value.TargetType.Id))
+                !ConstructionSerialization.ProfileEquals(
+                    value.TargetType,
+                    buildings.Type(value.TargetType.Id)))
             {
                 error = $"Building upgrade {value.Id} references an unknown type.";
                 return false;
@@ -214,8 +216,17 @@ public sealed class BuildingUpgradeCatalogSnapshot
     internal static bool ProfileEquals(
         in BuildingUpgradeProfile left,
         in BuildingUpgradeProfile right) =>
-        left with { Requirements = default } ==
-            right with { Requirements = default } &&
+        left with
+        {
+            TargetType = default,
+            Requirements = default
+        } == right with
+        {
+            TargetType = default,
+            Requirements = default
+        } &&
+        ConstructionSerialization.ProfileEquals(
+            left.TargetType, right.TargetType) &&
         left.Requirements.AsSpan().SequenceEqual(right.Requirements.AsSpan());
 
     private byte[] Serialize()
