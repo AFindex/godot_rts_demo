@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "modt",
+  "displayName": "死亡面罩",
+  "identity": {
+    "race": "neutral",
+    "class": "Artifact",
+    "level": 8,
+    "legacyLevel": 10,
+    "scriptName": "maskofdeath"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMaskOfDeath.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMaskOfDeath.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmaskofdeath.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIva"
+    ],
+    "cooldownAbilityId": "AIva",
+    "ignoreCooldown": false,
+    "priority": 138,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买死亡面罩",
+    "extendedTooltip": "\"能使英雄的攻击将<AIva,DataA1,%>%对敌人造成的伤害转换成自己的生命值。\"",
+    "description": "\"这面罩能于英雄攻击时汲取生命值。\""
+  },
+  "editorData": {
+    "itemID": "modt",
+    "comment": "mask of death",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "8",
+    "uses": "-",
+    "prio": "138",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "1000",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Artifact",
+    "oldLevel": "10",
+    "abilList": "AIva",
+    "cooldownID": "AIva",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "maskofdeath",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNMaskOfDeath.blp",
+    "Name": "死亡面罩",
+    "Tip": "购买死亡面罩",
+    "Ubertip": "\"能使英雄的攻击将<AIva,DataA1,%>%对敌人造成的伤害转换成自己的生命值。\"",
+    "Description": "\"这面罩能于英雄攻击时汲取生命值。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

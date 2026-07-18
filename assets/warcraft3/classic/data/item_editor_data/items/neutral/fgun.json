@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "fgun",
+  "displayName": "信号枪",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 3,
+    "scriptName": "FlareGun"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNFlare.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNFlare.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnflare.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIfa"
+    ],
+    "cooldownAbilityId": "AIfa",
+    "ignoreCooldown": false,
+    "charges": 3,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 45,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 125,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "F",
+    "tooltip": "购买信号枪(|cffffcc00F|r)",
+    "extendedTooltip": "\"显示地图上的某块区域。|n可使用<fgun,uses>次。\"",
+    "description": "\"显示地图上的某块区域。\""
+  },
+  "editorData": {
+    "itemID": "fgun",
+    "comment": "Flare Gun",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "3",
+    "abilList": "AIfa",
+    "cooldownID": "AIfa",
+    "ignoreCD": "0",
+    "uses": "3",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "45",
+    "stockStart": "0",
+    "goldcost": "125",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "FlareGun",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNFlare.blp",
+    "Name": "信号枪",
+    "Hotkey": "F",
+    "Tip": "购买信号枪(|cffffcc00F|r)",
+    "Ubertip": "\"显示地图上的某块区域。|n可使用<fgun,uses>次。\"",
+    "Description": "\"显示地图上的某块区域。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

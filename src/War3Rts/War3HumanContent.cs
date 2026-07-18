@@ -32,7 +32,14 @@ public sealed record War3BuildingDefinition(
     string SpecialEffectSource = "",
     string ArmorClass = "",
     bool Constructible = true,
-    float SelectionCircleScale = 0f);
+    float SelectionCircleScale = 0f)
+{
+    /// <summary>
+    /// Original UnitFunc Animprops tokens. Shared Warcraft models use these
+    /// tokens to select their correct geoset/animation variant.
+    /// </summary>
+    public string[] AnimationProperties { get; init; } = [];
+}
 
 /// <summary>
 /// Human-faction composition boundary. Stable dense IDs remain in the core
@@ -102,6 +109,9 @@ public static class War3HumanContent
 
     public static War3ObjectDataCatalog BuffEffectDataCatalog =>
         Runtime.Value.BuffEffectDataCatalog;
+
+    public static War3ObjectDataCatalog ItemDataCatalog =>
+        Runtime.Value.ItemDataCatalog;
 
     public static War3AbilityMetadataCatalog AbilityMetadataCatalog =>
         Runtime.Value.AbilityMetadataCatalog;
@@ -186,6 +196,8 @@ public static class War3HumanContent
             War3AssetPack.AbsolutePath("data/upgrade_editor_data"));
         var buffEffectCatalog = War3ObjectDataCatalog.OpenBuffEffect(
             War3AssetPack.AbsolutePath("data/buff_effect_editor_data"));
+        var itemCatalog = War3ObjectDataCatalog.OpenItem(
+            War3AssetPack.AbsolutePath("data/item_editor_data"));
         var abilityMetadataCatalog = War3AbilityMetadataCatalog.Open(
             War3AssetPack.AbsolutePath("data/ability_metadata"));
         var technologyBindings = new List<(
@@ -389,6 +401,7 @@ public static class War3HumanContent
             abilityCatalog,
             upgradeCatalog,
             buffEffectCatalog,
+            itemCatalog,
             abilityMetadataCatalog,
             objectReport,
             technologyDefinitions,
@@ -407,7 +420,10 @@ public static class War3HumanContent
     {
         var result = new Dictionary<string, War3UnitDefinition>(
             StringComparer.Ordinal);
-        foreach (var objectId in new[] { "hwat", "hwt2", "hwt3", "hphx" })
+        foreach (var objectId in new[]
+                 {
+                     "hwat", "hwt2", "hwt3", "hphx", "necr"
+                 })
         {
             if (!catalog.TryGet(objectId, out var data)) continue;
             var model = ModelAsset(data.Assets.Model, string.Empty);
@@ -814,6 +830,7 @@ public static class War3HumanContent
         War3ObjectDataCatalog AbilityDataCatalog,
         War3ObjectDataCatalog UpgradeDataCatalog,
         War3ObjectDataCatalog BuffEffectDataCatalog,
+        War3ObjectDataCatalog ItemDataCatalog,
         War3AbilityMetadataCatalog AbilityMetadataCatalog,
         War3ObjectDataImportReport ObjectDataStatus,
         IReadOnlyList<War3TechnologyDefinition> Technologies,

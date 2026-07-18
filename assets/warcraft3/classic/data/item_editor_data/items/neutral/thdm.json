@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "thdm",
+  "displayName": "雷霆蜥蜴钻石",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "ThunderlizardDiamond"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNEnchantedGemstone.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNEnchantedGemstone.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnenchantedgemstone.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIcl"
+    ],
+    "cooldownAbilityId": "AOcl",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1190,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "T",
+    "tooltip": "购买雷霆蜥蜴钻石(|cffffcc00T|r)",
+    "extendedTooltip": "\"|cff32cd32特有的|r|n能射出闪电之箭对多个敌人造成伤害。\"",
+    "description": "\"|cff32cd32特有的|r|n大型的钻石。\""
+  },
+  "editorData": {
+    "itemID": "thdm",
+    "comment": "Thunderlizard Diamond",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIcl",
+    "cooldownID": "AOcl",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "1190",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "ThunderlizardDiamond",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNEnchantedGemstone.blp",
+    "Name": "雷霆蜥蜴钻石",
+    "Hotkey": "T",
+    "Tip": "购买雷霆蜥蜴钻石(|cffffcc00T|r)",
+    "Ubertip": "\"|cff32cd32特有的|r|n能射出闪电之箭对多个敌人造成伤害。\"",
+    "Description": "\"|cff32cd32特有的|r|n大型的钻石。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "tdx2",
+  "displayName": "敏捷之书 +2",
+  "identity": {
+    "race": "neutral",
+    "class": "PowerUp",
+    "level": 2,
+    "legacyLevel": 5,
+    "scriptName": "TomeofAgility2"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTome.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTome.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntome.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\tomeGreen\\tomeGreen.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\tomeGreen\\tomeGreen.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/tomegreen/tomegreen.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIgm"
+    ],
+    "cooldownAbilityId": "AIgm",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 200,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": false,
+    "randomDrop": true,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 300,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买敏捷之书+2",
+    "extendedTooltip": "\"能永久地增加英雄2点的敏捷度。\"",
+    "description": "能永久地增加英雄敏捷度。"
+  },
+  "editorData": {
+    "itemID": "tdx2",
+    "comment": "Tome of Agility +2",
+    "file": "Objects\\InventoryItems\\tomeGreen\\tomeGreen.mdl",
+    "Level": "2",
+    "uses": "1",
+    "prio": "200",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "300",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "PowerUp",
+    "oldLevel": "5",
+    "abilList": "AIgm",
+    "cooldownID": "AIgm",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "0",
+    "pickRandom": "1",
+    "powerup": "1",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "TomeofAgility2",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNTome.blp",
+    "Name": "敏捷之书 +2",
+    "Tip": "购买敏捷之书+2",
+    "Ubertip": "\"能永久地增加英雄2点的敏捷度。\"",
+    "Description": "能永久地增加英雄敏捷度。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -79,6 +79,7 @@ public sealed class CombatSystem
     private readonly Func<int, bool> _canAttack;
     private readonly Func<int, bool> _canTakeDamage;
     private readonly Func<int, CombatTargetLayer> _unitTargetLayer;
+    private readonly Func<int, int, bool> _hasTechnology;
     private double _targetSearchMilliseconds;
     private int _targetSearches;
     public CombatProjectileSystem Projectiles { get; } = new();
@@ -107,6 +108,7 @@ public sealed class CombatSystem
         _canAttack = canAttack;
         _canTakeDamage = canTakeDamage;
         _unitTargetLayer = unitTargetLayer;
+        _hasTechnology = HasTechnology;
     }
 
     public void Update(float delta, long tick)
@@ -316,7 +318,7 @@ public sealed class CombatSystem
     {
         if (!_combat.TrySelectWeapon(
                 unit, CombatTargetLayer.Building,
-                technologyId => HasTechnology(unit, technologyId)))
+                _hasTechnology))
             return;
         _slots.Release(unit);
         _combat.TargetUnits[unit] = -1;
@@ -562,12 +564,8 @@ public sealed class CombatSystem
         var distanceSquared = Vector2.DistanceSquared(
             _units.Positions[attacker], _units.Positions[target]);
         var priority = _combat.AutoTargetPriority[target];
-        var bonusVs = _combat.TryResolveWeapon(
-            attacker, TargetLayer(target),
-            technologyId => HasTechnology(attacker, technologyId),
-            out var weapon)
-            ? weapon.BonusVs
-            : CombatAttribute.None;
+        var bonusVs = ResolveWeaponBonusAttributes(
+            attacker, TargetLayer(target));
         var bonusMatch = bonusVs != CombatAttribute.None &&
                          (bonusVs &
                           _combat.Attributes[target]) != 0;
@@ -577,6 +575,31 @@ public sealed class CombatSystem
                     (armedThreat ? ArmedThreatScoreWeight : 0f);
         return new CombatAutoTargetScore(
             target, distanceSquared, priority, bonusMatch, armedThreat, total);
+    }
+
+    private CombatAttribute ResolveWeaponBonusAttributes(
+        int attacker,
+        CombatTargetLayer layer)
+    {
+        // Target scoring runs once per candidate. Passing a capturing
+        // has-technology lambda into TryResolveWeapon allocated a delegate for
+        // every attacker/candidate pair (about 6 MB per tick at 800 units).
+        // Resolve the same immutable weapon profile directly and allocate
+        // nothing in the acquisition loop.
+        var profiles = _combat.WeaponProfiles[attacker];
+        for (var index = 0; index < profiles.Length; index++)
+        {
+            var candidate = profiles[index];
+            if ((candidate.TargetLayers & layer) == 0 ||
+                !candidate.EnabledByDefault &&
+                (candidate.RequiredTechnologyId < 0 ||
+                 !HasTechnology(attacker, candidate.RequiredTechnologyId)))
+            {
+                continue;
+            }
+            return candidate.BonusVs;
+        }
+        return CombatAttribute.None;
     }
 
     private static bool HasSemanticTargetAdvantage(
@@ -607,7 +630,7 @@ public sealed class CombatSystem
         var building = new GameplayBuildingId(_combat.TargetBuildings[unit]);
         if (!_combat.TrySelectWeapon(
                 unit, CombatTargetLayer.Building,
-                technologyId => HasTechnology(unit, technologyId)) ||
+                _hasTechnology) ||
             !_movement.IsBuildingTargetValid(unit, building))
         {
             Disengage(unit);
@@ -780,7 +803,7 @@ public sealed class CombatSystem
         var snapshot = _movement.CombatObject(target);
         if (!_combat.TrySelectWeapon(
                 unit, snapshot.TargetLayer,
-                technologyId => HasTechnology(unit, technologyId)))
+                _hasTechnology))
         {
             Disengage(unit);
             return;
@@ -1031,14 +1054,12 @@ public sealed class CombatSystem
         _unitTargetLayer(target);
 
     private bool CanTargetLayer(int unit, CombatTargetLayer layer) =>
-        _combat.CanTarget(
-            unit, layer,
-            technologyId => HasTechnology(unit, technologyId));
+        _combat.TryResolveWeapon(
+            unit, layer, _hasTechnology, out _);
 
     private bool TrySelectTargetWeapon(int unit, int target) =>
         _combat.TrySelectWeapon(
-            unit, TargetLayer(target),
-            technologyId => HasTechnology(unit, technologyId));
+            unit, TargetLayer(target), _hasTechnology);
 
     private bool HasTechnology(int unit, int technologyId) =>
         _movement.TechnologyLevel(_combat.Teams[unit], technologyId) > 0;

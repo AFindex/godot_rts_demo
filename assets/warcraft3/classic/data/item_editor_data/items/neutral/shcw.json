@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "shcw",
+  "displayName": "萨满利爪",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "ShamanClaws"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNShamanMaster.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNShamanMaster.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnshamanmaster.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIlx"
+    ],
+    "cooldownAbilityId": "AIll",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 950,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "S",
+    "tooltip": "购买萨满利爪(|cffffcc00S|r)",
+    "extendedTooltip": "\"|cff8b00ff特有的|r|n这装备是在萨满学完所有技能之后得到的。能增加<AIlx,DataA1>点的攻击力。并使得英雄有一定的概率来驱散魔法和在 <AIpg,Dur1> 秒内减慢敌人的移动速度。\"",
+    "description": "\"|cff8b00ff特有的|r|n增加攻击力和驱散魔法。\""
+  },
+  "editorData": {
+    "itemID": "shcw",
+    "comment": "Shaman Claws",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIlx",
+    "cooldownID": "AIll",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "950",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "ShamanClaws",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNShamanMaster.blp",
+    "Name": "萨满利爪",
+    "Hotkey": "S",
+    "Tip": "购买萨满利爪(|cffffcc00S|r)",
+    "Ubertip": "\"|cff8b00ff特有的|r|n这装备是在萨满学完所有技能之后得到的。能增加<AIlx,DataA1>点的攻击力。并使得英雄有一定的概率来驱散魔法和在 <AIpg,Dur1> 秒内减慢敌人的移动速度。\"",
+    "Description": "\"|cff8b00ff特有的|r|n增加攻击力和驱散魔法。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

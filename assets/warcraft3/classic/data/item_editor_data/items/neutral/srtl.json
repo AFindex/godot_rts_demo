@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "srtl",
+  "displayName": "瑟拉思尔",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "Serathil"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorcmeleeupthree.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIsx",
+      "AItf"
+    ],
+    "cooldownAbilityId": "AIas",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 5500,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "S",
+    "tooltip": "购买瑟拉思尔(|cffffcc00S|r)",
+    "extendedTooltip": "\"|cffff8c00神器|r|n增加英雄<AIsx,DataA1,%>%的攻击速度和<AItf,DataA1>点的攻击力。|n|cffffcc00历史|r|n|cffffdead这把巨大的战斧是为了卡斯德拉克所造。并在血河战争中被是使用。随着黑疤部落的灭亡，这把战斧也最终不知了去向。那滋盖尔是卡斯德拉克唯一一个还健在的亲戚。|r\"",
+    "description": "\"|cffff8c00宝物|r|n这把巨大的斧子上面有着很多的刮痕和兽族的符文。\""
+  },
+  "editorData": {
+    "itemID": "srtl",
+    "comment": "Serathil",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIsx,AItf",
+    "cooldownID": "AIas",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "5500",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "Serathil",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrcMeleeUpThree.blp",
+    "Name": "瑟拉思尔",
+    "Hotkey": "S",
+    "Tip": "购买瑟拉思尔(|cffffcc00S|r)",
+    "Ubertip": "\"|cffff8c00神器|r|n增加英雄<AIsx,DataA1,%>%的攻击速度和<AItf,DataA1>点的攻击力。|n|cffffcc00历史|r|n|cffffdead这把巨大的战斧是为了卡斯德拉克所造。并在血河战争中被是使用。随着黑疤部落的灭亡，这把战斧也最终不知了去向。那滋盖尔是卡斯德拉克唯一一个还健在的亲戚。|r\"",
+    "Description": "\"|cffff8c00宝物|r|n这把巨大的斧子上面有着很多的刮痕和兽族的符文。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

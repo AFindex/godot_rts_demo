@@ -1,0 +1,112 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "dthb",
+  "displayName": "雷电花芯",
+  "identity": {
+    "race": "neutral",
+    "class": "Campaign",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "ThunderbloomBulb"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManaFlareOff.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManaFlareOff.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanaflareoff.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\Shimmerweed\\Shimmerweed.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\Shimmerweed\\Shimmerweed.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/shimmerweed/shimmerweed.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [],
+    "ignoreCooldown": false,
+    "priority": 200,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": false,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "T",
+    "tooltip": "购买雷电花芯(|cffffcc00T|r)",
+    "extendedTooltip": "\"一种奇异的植物，以其不稳定性和危险性而著称。\"",
+    "description": "\"一种奇异的植物，以其不稳定性和危险性而著称。\""
+  },
+  "editorData": {
+    "itemID": "dthb",
+    "comment": "Thunderbloom Bulb",
+    "version": "1",
+    "class": "Campaign",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "_",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "200",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "0",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\Shimmerweed\\Shimmerweed.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "140",
+    "colorB": "140",
+    "InBeta": "0",
+    "scriptname": "ThunderbloomBulb",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNManaFlareOff.blp",
+    "Name": "雷电花芯",
+    "Hotkey": "T",
+    "Tip": "购买雷电花芯(|cffffcc00T|r)",
+    "Ubertip": "\"一种奇异的植物，以其不稳定性和危险性而著称。\"",
+    "Description": "\"一种奇异的植物，以其不稳定性和危险性而著称。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -80,7 +80,12 @@ public readonly record struct War3InventoryItemSnapshot(
     string Name,
     string IconPath,
     string Tooltip,
-    int Charges = 0);
+    int Charges = 0,
+    int Slot = -1,
+    bool Usable = false,
+    bool Passive = false,
+    float CooldownRemaining = 0f,
+    string StateLabel = "");
 
 /// <summary>
 /// One mini portrait in Warcraft's multi-selection information card. Entries
@@ -139,6 +144,7 @@ public sealed record War3SelectionSnapshot(
     public War3InventoryItemSnapshot[] InventoryItems { get; init; } = [];
     public int PortraitTeam { get; init; }
     public bool PortraitAnimated { get; init; }
+    public string[] PortraitAnimationProperties { get; init; } = [];
     public bool Controllable { get; init; }
     public bool IsShop { get; init; }
     public int ShopUserUnit { get; init; } = -1;

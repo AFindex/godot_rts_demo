@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "envl",
+  "displayName": "魔法小瓶",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "EnchantedVial"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNVialFull.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNVialFull.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnvialfull.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIp3"
+    ],
+    "cooldownAbilityId": "AIrg",
+    "ignoreCooldown": false,
+    "charges": 5,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 450,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "E",
+    "tooltip": "购买魔法小瓶(|cffffcc00E|r)",
+    "extendedTooltip": "\"恢复<AIp3,DataA1>点的生命值和<AIp3,DataB1>点的魔法值。持续<AIp3,Dur1>秒。|n包含<envl,uses>次使用次数。\"",
+    "description": "\"恢复生命值和魔法值。\""
+  },
+  "editorData": {
+    "itemID": "envl",
+    "comment": "Enchanted Vial",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIp3",
+    "cooldownID": "AIrg",
+    "ignoreCD": "0",
+    "uses": "5",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "450",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "EnchantedVial",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNVialFull.blp",
+    "Name": "魔法小瓶",
+    "Hotkey": "E",
+    "Tip": "购买魔法小瓶(|cffffcc00E|r)",
+    "Ubertip": "\"恢复<AIp3,DataA1>点的生命值和<AIp3,DataB1>点的魔法值。持续<AIp3,Dur1>秒。|n包含<envl,uses>次使用次数。\"",
+    "Description": "\"恢复生命值和魔法值。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

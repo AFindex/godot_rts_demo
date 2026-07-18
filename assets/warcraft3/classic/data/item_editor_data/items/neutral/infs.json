@@ -1,0 +1,118 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "infs",
+  "displayName": "恶魔岩石",
+  "identity": {
+    "race": "neutral",
+    "class": "Charged",
+    "level": 6,
+    "legacyLevel": 8,
+    "scriptName": "InfernoStone"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNInfernalStone.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNInfernalStone.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btninfernalstone.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIin"
+    ],
+    "cooldownAbilityId": "AIfs",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 141,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 700,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买恶魔岩石",
+    "extendedTooltip": "\"召唤一个地狱火从天而降，造成<AIin,DataA1>点的伤害，并让敌方地面单位在<AIin,Dur1>秒内处于昏晕状态。地狱火持续<AIin,DataB1>秒。\"",
+    "description": "召唤地狱火恶魔。"
+  },
+  "editorData": {
+    "itemID": "infs",
+    "comment": "Inferno Stone",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "6",
+    "uses": "1",
+    "prio": "141",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "700",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Charged",
+    "oldLevel": "8",
+    "abilList": "AIin",
+    "cooldownID": "AIfs",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "InfernoStone",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNInfernalStone.blp",
+    "Name": "恶魔岩石",
+    "Tip": "购买恶魔岩石",
+    "Ubertip": "\"召唤一个地狱火从天而降，造成<AIin,DataA1>点的伤害，并让敌方地面单位在<AIin,Dur1>秒内处于昏晕状态。地狱火持续<AIin,DataB1>秒。\"",
+    "Description": "召唤地狱火恶魔。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

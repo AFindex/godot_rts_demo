@@ -738,6 +738,39 @@ public sealed class AbilitySystem
         return objectId.Length > 0;
     }
 
+    /// <summary>
+    /// Restores mana through the authoritative ability store. Item runtimes
+    /// use this instead of maintaining a second mana value beside abilities.
+    /// </summary>
+    public float RestoreMana(int unit, float amount)
+    {
+        if ((uint)unit >= (uint)_capacity || !float.IsFinite(amount) ||
+            amount <= 0f || _maximumMana[unit] <= 0f)
+            return 0f;
+        var before = _mana[unit];
+        _mana[unit] = MathF.Min(_maximumMana[unit], before + amount);
+        return _mana[unit] - before;
+    }
+
+    /// <summary>
+    /// Registers a unit created by an external data-driven effect so the
+    /// presentation layer can resolve its original object id and model.
+    /// </summary>
+    public void RegisterExternalSummon(
+        int unit,
+        int sourceUnit,
+        string objectId,
+        float lifetimeSeconds = float.MaxValue)
+    {
+        if ((uint)unit >= (uint)_capacity || unit < 0 || sourceUnit < 0 ||
+            string.IsNullOrWhiteSpace(objectId) ||
+            !float.IsFinite(lifetimeSeconds) || lifetimeSeconds <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        _summons.RemoveAll(value => value.Unit == unit);
+        _summons.Add(new AbilitySummonRuntimeEntry(
+            unit, sourceUnit, objectId, lifetimeSeconds));
+    }
+
     public bool HasStatus(int unit, AbilityStatusFlags status) =>
         (uint)unit < (uint)_capacity && (_statuses[unit] & status) != 0;
 

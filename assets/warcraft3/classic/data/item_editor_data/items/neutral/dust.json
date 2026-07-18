@@ -1,0 +1,121 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "dust",
+  "displayName": "尘土之影",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 1,
+    "legacyLevel": 0,
+    "scriptName": "DustofAppearance"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDustOfAppearance.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDustOfAppearance.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndustofappearance.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AItb"
+    ],
+    "cooldownAbilityId": "AItb",
+    "ignoreCooldown": false,
+    "charges": 2,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 60,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 75,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      3,
+      0
+    ],
+    "requirements": [],
+    "hotkey": "D",
+    "tooltip": "购买尘土之影(|cffffcc00D|r)",
+    "extendedTooltip": "\"显示英雄周围的隐形单位。|n一共可以使用<dust,uses>次。|n持续<AItb,Dur1>秒。\"",
+    "description": "显示敌方的隐形单位。"
+  },
+  "editorData": {
+    "itemID": "dust",
+    "comment": "Dust of Appearance",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "1",
+    "oldLevel": "0",
+    "abilList": "AItb",
+    "cooldownID": "AItb",
+    "ignoreCD": "0",
+    "uses": "2",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "60",
+    "stockStart": "0",
+    "goldcost": "75",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "DustofAppearance",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDustOfAppearance.blp",
+    "Buttonpos": "3,0",
+    "Name": "尘土之影",
+    "Hotkey": "D",
+    "Tip": "购买尘土之影(|cffffcc00D|r)",
+    "Ubertip": "\"显示英雄周围的隐形单位。|n一共可以使用<dust,uses>次。|n持续<AItb,Dur1>秒。\"",
+    "Description": "显示敌方的隐形单位。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

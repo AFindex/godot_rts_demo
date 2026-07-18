@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "arsh",
+  "displayName": "芒硝护盾",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "ArcaniteShield"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnarcanitearmor.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AId5",
+      "AIdd"
+    ],
+    "cooldownAbilityId": "Adef",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 3500,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "A",
+    "tooltip": "购买芒硝护盾(|cffffcc00A|r)",
+    "extendedTooltip": "\"减少<AIdd,DataA1,%>%受到的远程攻击伤害。并增加英雄<AId5,DataA1>点的护甲。\"",
+    "description": "\"一种发着闪亮光芒的护盾，由芒硝钾制成。\""
+  },
+  "editorData": {
+    "itemID": "arsh",
+    "comment": "Arcanite Shield",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AId5,AIdd",
+    "cooldownID": "Adef",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "3500",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "ArcaniteShield",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNArcaniteArmor.blp",
+    "Name": "芒硝护盾",
+    "Hotkey": "A",
+    "Tip": "购买芒硝护盾(|cffffcc00A|r)",
+    "Ubertip": "\"减少<AIdd,DataA1,%>%受到的远程攻击伤害。并增加英雄<AId5,DataA1>点的护甲。\"",
+    "Description": "\"一种发着闪亮光芒的护盾，由芒硝钾制成。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

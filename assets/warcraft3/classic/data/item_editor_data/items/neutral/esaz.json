@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "esaz",
+  "displayName": "埃苏尼之精髓",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "EssenceofAszune"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHeartOfAszune.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHeartOfAszune.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnheartofaszune.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIh3"
+    ],
+    "cooldownAbilityId": "AIhe",
+    "ignoreCooldown": false,
+    "priority": 89,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 600,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "E",
+    "tooltip": "购买埃苏尼之精髓(|cffffcc00E|r)",
+    "extendedTooltip": "\"传说中有一个兽族发现了神奇的埃苏尼之心。现在这个就是埃苏尼之心的一部分。它具有医疗英雄的能力。这是一个永久性的物品。\"",
+    "description": "\"一件强大的暗夜精灵族宝物。\""
+  },
+  "editorData": {
+    "itemID": "esaz",
+    "comment": "Essence of Aszune",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIh3",
+    "cooldownID": "AIhe",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "89",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "600",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "EssenceofAszune",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHeartOfAszune.blp",
+    "Name": "埃苏尼之精髓",
+    "Hotkey": "E",
+    "Tip": "购买埃苏尼之精髓(|cffffcc00E|r)",
+    "Ubertip": "\"传说中有一个兽族发现了神奇的埃苏尼之心。现在这个就是埃苏尼之心的一部分。它具有医疗英雄的能力。这是一个永久性的物品。\"",
+    "Description": "\"一件强大的暗夜精灵族宝物。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

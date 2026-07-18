@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "desc",
+  "displayName": "科勒恩的逃脱匕首",
+  "identity": {
+    "race": "neutral",
+    "class": "Artifact",
+    "level": 7,
+    "legacyLevel": 0,
+    "scriptName": "DaggerofEscape"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDaggerOfEscape.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDaggerOfEscape.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndaggerofescape.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIbk"
+    ],
+    "cooldownAbilityId": "AIbk",
+    "ignoreCooldown": false,
+    "priority": 47,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 800,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "E",
+    "tooltip": "购买逃脱匕首(|cffffcc00E|r)",
+    "extendedTooltip": "\"允许英雄传送一小段距离。\"",
+    "description": "传送英雄一小段距离。"
+  },
+  "editorData": {
+    "itemID": "desc",
+    "comment": "Dagger of Escape",
+    "version": "1",
+    "class": "Artifact",
+    "Level": "7",
+    "oldLevel": "0",
+    "abilList": "AIbk",
+    "cooldownID": "AIbk",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "47",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "800",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "DaggerofEscape",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDaggerOfEscape.blp",
+    "Name": "科勒恩的逃脱匕首",
+    "Hotkey": "E",
+    "Tip": "购买逃脱匕首(|cffffcc00E|r)",
+    "Ubertip": "\"允许英雄传送一小段距离。\"",
+    "Description": "传送英雄一小段距离。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

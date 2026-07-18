@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "ofro",
+  "displayName": "霜冻之球",
+  "identity": {
+    "race": "neutral",
+    "class": "Artifact",
+    "level": 7,
+    "legacyLevel": 7,
+    "scriptName": "OrbofFrost"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfFrost.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfFrost.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorboffrost.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIob"
+    ],
+    "cooldownAbilityId": "AIob",
+    "ignoreCooldown": false,
+    "priority": 97,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 800,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "R",
+    "tooltip": "购买霜冻之球(|cffffcc00R|r)",
+    "extendedTooltip": "\"能让英雄的攻击带有<AIob,DataA1>点的冷冻伤害。而且这种攻击在攻击空中单位的时候会变成远程攻击，还能在<AIob,Dur1>秒内减慢敌人的进攻和移动速度。\"",
+    "description": "使得英雄的攻击带有冷冻伤害。"
+  },
+  "editorData": {
+    "itemID": "ofro",
+    "comment": "Orb of Frost",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "7",
+    "uses": "-",
+    "prio": "97",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "800",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Artifact",
+    "oldLevel": "7",
+    "abilList": "AIob",
+    "cooldownID": "AIob",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "OrbofFrost",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrbOfFrost.blp",
+    "Name": "霜冻之球",
+    "Hotkey": "R",
+    "Tip": "购买霜冻之球(|cffffcc00R|r)",
+    "Ubertip": "\"能让英雄的攻击带有<AIob,DataA1>点的冷冻伤害。而且这种攻击在攻击空中单位的时候会变成远程攻击，还能在<AIob,Dur1>秒内减慢敌人的进攻和移动速度。\"",
+    "Description": "使得英雄的攻击带有冷冻伤害。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

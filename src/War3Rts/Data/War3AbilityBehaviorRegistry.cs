@@ -159,6 +159,33 @@ public static class War3AbilityBehaviorRegistry
                 War3AbilityRuntimeSupportStatus.ImplementedGameplay,
                 reason));
 
+        void Delegated(
+            string id,
+            AbilityActivationKind activation,
+            string reason) => result.Add(
+            id,
+            new War3AbilityBehaviorDescriptor(
+                id, activation, false, War3AbilityCompilerKind.None,
+                War3AbilityRuntimeSupportStatus.Delegated,
+                reason));
+
+        Delegated("AIrg", AbilityActivationKind.Instant,
+            "物品持续生命/魔法恢复由 War3ItemEffectRuntime 承载；持续时间、区域和 DataA/DataB 来自 Ability JSON。");
+        Pending("Amec", AbilityActivationKind.Instant,
+            "机械小玩艺已可生成侦察单位，但原版随机 critter 选择与完整单位 profile 尚未数据化。");
+        Delegated("AIhe", AbilityActivationKind.Instant,
+            "物品即时生命恢复由 War3ItemEffectRuntime 承载，恢复量和冷却来自 Ability JSON。");
+        Delegated("AIma", AbilityActivationKind.Instant,
+            "物品即时魔法恢复由 War3ItemEffectRuntime 承载，恢复量和冷却来自 Ability JSON。");
+        Delegated("AItp", AbilityActivationKind.TargetUnit,
+            "回城卷轴由物品模块承载，施法时间、区域和目标前置来自 Item/Ability JSON。");
+        Delegated("AIbl", AbilityActivationKind.TargetPoint,
+            "象牙塔由物品与建造模块协作承载，创建单位和建造时间来自 Ability JSON。");
+        Delegated("AIfb", AbilityActivationKind.Passive,
+            "火焰之球由物品与 CombatStore 武器 profile 承载，伤害和区域来自 Ability JSON。");
+        Delegated("ANsa", AbilityActivationKind.TargetUnit,
+            "避难权杖由物品模块承载，范围、冷却、恢复延迟和每秒生命来自 Ability JSON。");
+
         Prototype("Adef", AbilityActivationKind.Toggle,
             War3AbilityCompilerKind.Defend);
         Pending("AInv", AbilityActivationKind.Passive,

@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "gobm",
+  "displayName": "地精地雷",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "GoblinLandMine"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGoblinLandMine.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGoblinLandMine.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngoblinlandmine.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIpm"
+    ],
+    "cooldownAbilityId": "AIpm",
+    "ignoreCooldown": false,
+    "charges": 3,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 3,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 225,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "L",
+    "tooltip": "购买地精地雷(|cffffcc00L|r)",
+    "extendedTooltip": "\"在地上放置一个地精地雷以后，如果有敌人靠近地雷，则地雷就会自动爆炸从而对一定范围内的单位都造成伤害。|n可使用<gobm,uses>次。\"",
+    "description": "爆炸性的地雷。"
+  },
+  "editorData": {
+    "itemID": "gobm",
+    "comment": "Goblin Land Mine",
+    "version": "0",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIpm",
+    "cooldownID": "AIpm",
+    "ignoreCD": "0",
+    "uses": "3",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "3",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "225",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "GoblinLandMine",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNGoblinLandMine.blp",
+    "Name": "地精地雷",
+    "Hotkey": "L",
+    "Tip": "购买地精地雷(|cffffcc00L|r)",
+    "Ubertip": "\"在地上放置一个地精地雷以后，如果有敌人靠近地雷，则地雷就会自动爆炸从而对一定范围内的单位都造成伤害。|n可使用<gobm,uses>次。\"",
+    "Description": "爆炸性的地雷。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

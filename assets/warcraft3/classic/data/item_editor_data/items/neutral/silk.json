@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "silk",
+  "displayName": "蜘蛛丝饰针",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "SpiderSilk"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiderSilkBroach.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSpiderSilkBroach.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnspidersilkbroach.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIwb"
+    ],
+    "cooldownAbilityId": "AIwb",
+    "ignoreCooldown": false,
+    "charges": 4,
+    "priority": 81,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 60,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 50,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "S",
+    "tooltip": "购买蜘蛛丝饰针(|cffffcc00S|r)",
+    "extendedTooltip": "\"将敌人的空中单位捕获到地面，被捕获到地面的空中单位能被地面单位攻击。|n可使用<silk,uses>次。\"",
+    "description": "捕获某个敌方的空中单位。"
+  },
+  "editorData": {
+    "itemID": "silk",
+    "comment": "Spider Silk",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIwb",
+    "cooldownID": "AIwb",
+    "ignoreCD": "0",
+    "uses": "4",
+    "prio": "81",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "60",
+    "stockStart": "0",
+    "goldcost": "50",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "SpiderSilk",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSpiderSilkBroach.blp",
+    "Name": "蜘蛛丝饰针",
+    "Hotkey": "S",
+    "Tip": "购买蜘蛛丝饰针(|cffffcc00S|r)",
+    "Ubertip": "\"将敌人的空中单位捕获到地面，被捕获到地面的空中单位能被地面单位攻击。|n可使用<silk,uses>次。\"",
+    "Description": "捕获某个敌方的空中单位。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

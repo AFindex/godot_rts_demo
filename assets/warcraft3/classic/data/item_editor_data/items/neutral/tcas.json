@@ -1,0 +1,120 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "tcas",
+  "displayName": "小城堡",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "TinyCastle"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTinyCastle.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTinyCastle.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntinycastle.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIbl"
+    ],
+    "cooldownAbilityId": "AIbl",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 800,
+    "lumberCost": 300,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [
+      "hcas"
+    ],
+    "hotkey": "A",
+    "tooltip": "购买小城堡(|cffffcc00A|r)",
+    "extendedTooltip": "\"能在目标区域内创建出一座城堡来。\"",
+    "description": "\"能在目标区域内创建出一座城堡来。\""
+  },
+  "editorData": {
+    "itemID": "tcas",
+    "comment": "Tiny Castle",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIbl",
+    "cooldownID": "AIbl",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "800",
+    "lumbercost": "300",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "TinyCastle",
+    "selSize": "0"
+  },
+  "profile": {
+    "Requires": "hcas",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNTinyCastle.blp",
+    "Name": "小城堡",
+    "Hotkey": "A",
+    "Tip": "购买小城堡(|cffffcc00A|r)",
+    "Ubertip": "\"能在目标区域内创建出一座城堡来。\"",
+    "Description": "\"能在目标区域内创建出一座城堡来。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

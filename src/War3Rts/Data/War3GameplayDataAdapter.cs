@@ -118,9 +118,18 @@ public sealed class War3GameplayDataAdapter(
             // visible model and is also used by irregular buildings.
             SelectionCircleScale = Positive(EditorFloat(data, "scale"))
                 ? EditorFloat(data, "scale")!.Value
-                : fallback.SelectionCircleScale
+                : fallback.SelectionCircleScale,
+            AnimationProperties = AnimationProperties(data)
         };
     }
+
+    private static string[] AnimationProperties(War3UnitData data) =>
+        EditorValue(data, "Animprops")
+            .Split(',', StringSplitOptions.TrimEntries |
+                        StringSplitOptions.RemoveEmptyEntries)
+            .Where(value => value is not "_" and not "-")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
     public UnitTypeProfile ApplyUnitProfile(
         War3UnitDefinition binding,

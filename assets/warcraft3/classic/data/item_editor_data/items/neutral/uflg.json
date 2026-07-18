@@ -1,0 +1,115 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "uflg",
+  "displayName": "不死族旗帜",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "Undeadflag"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUndeadCaptureFlag.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUndeadCaptureFlag.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnundeadcaptureflag.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\UndeadCaptureFlag\\UndeadCaptureFlag.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\UndeadCaptureFlag\\UndeadCaptureFlag.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/undeadcaptureflag/undeadcaptureflag.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIfe"
+    ],
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": true,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买不死族旗帜",
+    "extendedTooltip": "\"特殊的物品，常被用来当作某些场景内获胜的条件。\"",
+    "description": "能在某些特殊的场景内获得。"
+  },
+  "editorData": {
+    "itemID": "uflg",
+    "comment": "Undead flag",
+    "file": "Objects\\InventoryItems\\UndeadCaptureFlag\\UndeadCaptureFlag.mdl",
+    "Level": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "1",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "1000",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Miscellaneous",
+    "oldLevel": "0",
+    "abilList": "AIfe",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "Undeadflag",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNUndeadCaptureFlag.blp",
+    "Name": "不死族旗帜",
+    "Tip": "购买不死族旗帜",
+    "Ubertip": "\"特殊的物品，常被用来当作某些场景内获胜的条件。\"",
+    "Description": "能在某些特殊的场景内获得。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

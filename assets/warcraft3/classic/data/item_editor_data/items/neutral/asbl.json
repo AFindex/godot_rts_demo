@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "asbl",
+  "displayName": "刺客佩刀",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "AssassinsBlade"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNDaggerOfEscape.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNDaggerOfEscape.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btndaggerofescape.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIsz",
+      "AItj"
+    ],
+    "cooldownAbilityId": "Aspo",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 2000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "A",
+    "tooltip": "购买刺客佩刀(|cffffcc00A|r)",
+    "extendedTooltip": "\"当携带的时候，提高英雄<AItj,DataA1>点的攻击力。英雄的攻击在一定的时间内也能对敌人造成持续性的伤害，每秒<AIsz,DataA1>点。还能减慢敌人的移动和攻击速度。\"",
+    "description": "\"能增加攻击力。\""
+  },
+  "editorData": {
+    "itemID": "asbl",
+    "comment": "Assassin's Blade",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIsz,AItj",
+    "cooldownID": "Aspo",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "2000",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "AssassinsBlade",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNDaggerOfEscape.blp",
+    "Name": "刺客佩刀",
+    "Hotkey": "A",
+    "Tip": "购买刺客佩刀(|cffffcc00A|r)",
+    "Ubertip": "\"当携带的时候，提高英雄<AItj,DataA1>点的攻击力。英雄的攻击在一定的时间内也能对敌人造成持续性的伤害，每秒<AIsz,DataA1>点。还能减慢敌人的移动和攻击速度。\"",
+    "Description": "\"能增加攻击力。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

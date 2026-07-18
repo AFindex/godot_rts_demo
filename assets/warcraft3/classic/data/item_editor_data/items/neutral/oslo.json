@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "oslo",
+  "displayName": "减速之球",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "OrbofSlow"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbofSlowness.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbofSlowness.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofslowness.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIsb"
+    ],
+    "cooldownAbilityId": "AIsb",
+    "ignoreCooldown": false,
+    "priority": 98,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 550,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "S",
+    "tooltip": "购买减速之球(|cffffcc00S|r)",
+    "extendedTooltip": "\"增加英雄<AIsb,DataA1>点的攻击力。英雄的攻击在攻击空中单位的时候也变为远程攻击并能在<AIos,Dur1>秒内减慢敌方单位 <AIos,DataA1,%>%的攻击速度和<AIos,DataB1,%>%的移动速度。\"",
+    "description": "使攻击带有减慢效果。"
+  },
+  "editorData": {
+    "itemID": "oslo",
+    "comment": "Orb of Slow",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIsb",
+    "cooldownID": "AIsb",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "98",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "550",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "OrbofSlow",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrbofSlowness.blp",
+    "Name": "减速之球",
+    "Hotkey": "S",
+    "Tip": "购买减速之球(|cffffcc00S|r)",
+    "Ubertip": "\"增加英雄<AIsb,DataA1>点的攻击力。英雄的攻击在攻击空中单位的时候也变为远程攻击并能在<AIos,Dur1>秒内减慢敌方单位 <AIos,DataA1,%>%的攻击速度和<AIos,DataB1,%>%的移动速度。\"",
+    "Description": "使攻击带有减慢效果。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

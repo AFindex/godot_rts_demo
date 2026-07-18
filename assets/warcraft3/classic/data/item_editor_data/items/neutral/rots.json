@@ -1,0 +1,118 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "rots",
+  "displayName": "海之权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "RodoftheSea"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWitchDoctorAdept.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWitchDoctorAdept.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwitchdoctoradept.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIwm",
+      "AIx2"
+    ],
+    "cooldownAbilityId": "ANwm",
+    "ignoreCooldown": false,
+    "charges": 5,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "R",
+    "tooltip": "购买海之权杖(|cffffcc00R|r)",
+    "extendedTooltip": "\"|cff87ceeb特有的消耗性物品|r|n能召唤<AIwm,DataA1>个两栖鱼人人来为你战斗。同时能增加英雄2点的智力，力量和敏捷度。|n包含<rots,uses>次使用次数。\"",
+    "description": "\"|cff87ceeb特有的消耗性物品|r|n能召唤出两栖鱼人。\""
+  },
+  "editorData": {
+    "itemID": "rots",
+    "comment": "Rod of the Sea",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIwm,AIx2",
+    "cooldownID": "ANwm",
+    "ignoreCD": "0",
+    "uses": "5",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "1000",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "RodoftheSea",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWitchDoctorAdept.blp",
+    "Name": "海之权杖",
+    "Hotkey": "R",
+    "Tip": "购买海之权杖(|cffffcc00R|r)",
+    "Ubertip": "\"|cff87ceeb特有的消耗性物品|r|n能召唤<AIwm,DataA1>个两栖鱼人人来为你战斗。同时能增加英雄2点的智力，力量和敏捷度。|n包含<rots,uses>次使用次数。\"",
+    "Description": "\"|cff87ceeb特有的消耗性物品|r|n能召唤出两栖鱼人。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

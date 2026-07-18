@@ -366,6 +366,58 @@ public sealed class ConstructionSystem
         return id;
     }
 
+    /// <summary>
+    /// Registers an already completed structure after the caller has committed
+    /// its authoritative hard footprint. Intended for data-driven item or map
+    /// effects that create a building without assigning a worker.
+    /// </summary>
+    public GameplayBuildingId AddCompleted(
+        int playerId,
+        BuildingTypeProfile profile,
+        SimRect bounds,
+        DynamicFootprintId footprintId)
+    {
+        if (!ValidProfile(profile) || footprintId.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(profile));
+        var id = new GameplayBuildingId(_buildings.Count);
+        _buildings.Add(new BuildingEntity(
+            id, playerId, profile, bounds, default, footprintId, -1,
+            new EconomyResourceNodeId(-1),
+            (bounds.Min + bounds.Max) * 0.5f)
+        {
+            State = BuildingLifecycleState.Completed,
+            Progress = 1f,
+            Health = profile.MaximumHealth
+        });
+        return id;
+    }
+
+    /// <summary>
+    /// Registers a committed start-and-release structure without a worker.
+    /// The normal update loop advances progress and publishes completion.
+    /// </summary>
+    public GameplayBuildingId AddReleased(
+        int playerId,
+        BuildingTypeProfile profile,
+        SimRect bounds,
+        DynamicFootprintId footprintId)
+    {
+        if (!ValidProfile(profile) || footprintId.Value <= 0 ||
+            profile.ConstructionMethod != ConstructionMethodKind.StartAndRelease)
+            throw new ArgumentOutOfRangeException(nameof(profile));
+        var id = new GameplayBuildingId(_buildings.Count);
+        _buildings.Add(new BuildingEntity(
+            id, playerId, profile, bounds, default, footprintId, -1,
+            new EconomyResourceNodeId(-1),
+            (bounds.Min + bounds.Max) * 0.5f)
+        {
+            State = BuildingLifecycleState.Constructing,
+            Progress = 0f,
+            Health = profile.MaximumHealth * 0.1f
+        });
+        return id;
+    }
+
     public bool RejectQueuedReservation(
         GameplayBuildingId id,
         int playerId,

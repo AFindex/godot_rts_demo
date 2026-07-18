@@ -30,6 +30,7 @@ public sealed partial class War3Rts : Node3D
     private Rts3DCameraController? _cameraController;
     private War3RtsHud? _hud;
     private War3ItemShopRuntime? _itemShops;
+    private War3ItemEffectRuntime? _itemEffects;
     private War3MapRuntime? _activeMap;
     private CanvasLayer? _mapSelectionLayer;
     private War3MapLoadingOverlay? _mapLoadingOverlay;
@@ -50,6 +51,8 @@ public sealed partial class War3Rts : Node3D
     private bool _rallyPending;
     private int _pendingAbilityId = -1;
     private int _pendingAbilityCaster = -1;
+    private int _pendingItemUnit = -1;
+    private int _pendingItemSlot = -1;
     private int _pendingBuilding = -1;
     private bool _buildMenu;
     private bool _learnMenu;
@@ -88,6 +91,7 @@ public sealed partial class War3Rts : Node3D
     private bool _smokeUnitPortraitValid;
     private bool _smokeEnemySelectionValid;
     private bool _smokeShopValid;
+    private bool _smokeItemUseValid;
     private bool _smokeAbilityCastsIssued;
     private bool _smokeAbilityDamageApplied;
     private int _smokeSummonedUnit = -1;
@@ -108,12 +112,6 @@ public sealed partial class War3Rts : Node3D
             "--war3-right-click-input-smoke");
         _automatedSkirmishRequested =
             War3AutomatedSkirmishStressMode.IsRequested(arguments);
-        if (_automatedSkirmishRequested &&
-            War3StressTestMode.IsRequested(arguments))
-        {
-            throw new InvalidOperationException(
-                "The synthetic and automated skirmish stress modes cannot run together.");
-        }
         var navigationAuditRequested =
             arguments.Contains(War3NavigationMapAudit.EnableArgument);
         if (navigationAuditRequested)
@@ -365,6 +363,7 @@ public sealed partial class War3Rts : Node3D
 
         _simulation.WarmPathingCaches();
         _itemShops = new War3ItemShopRuntime();
+        _itemEffects = new War3ItemEffectRuntime();
 
         await AdvanceMapLoadingAsync(
             6, 0.77d,
@@ -611,6 +610,19 @@ public sealed partial class War3Rts : Node3D
                     throw new InvalidOperationException(error);
             }
 
+            if (_automatedSkirmishRequested &&
+                War3AutomatedSkirmishStressMap.IsRequested(arguments))
+            {
+                runtime = War3AutomatedSkirmishStressMap.Create(arguments);
+                offlineCache = null;
+                GD.Print(
+                    $"WAR3_AUTO_SKIRMISH_MAP id={runtime.Metadata.Id} " +
+                    $"terrain={runtime.Terrain.Columns}x{runtime.Terrain.Rows} " +
+                    $"bounds={runtime.Terrain.Bounds.Max.X:0}x" +
+                    $"{runtime.Terrain.Bounds.Max.Y:0} objects={runtime.Objects.Length} " +
+                    "source=ephemeral cache=disabled");
+            }
+
             await AdvanceMapLoadingAsync(
                 0, 0.10d,
                 $"地图包读取完成：{runtime.Terrain.Columns}×{runtime.Terrain.Rows} 地形，" +
@@ -803,6 +815,11 @@ public sealed partial class War3Rts : Node3D
                 var stepStart = System.Diagnostics.Stopwatch.GetTimestamp();
                 var automationProfile =
                     default(War3AutomatedSkirmishUpdateProfile);
+                _stressTest?.Update();
+                var stressEnd =
+                    System.Diagnostics.Stopwatch.GetTimestamp();
+                stressMilliseconds += ElapsedMilliseconds(stepStart, stressEnd);
+                stressProfile = _stressTest?.LastUpdateProfile ?? default;
                 if (_automatedSkirmish is not null)
                 {
                     _automatedSkirmish.UpdateBeforeSimulation();
@@ -816,11 +833,6 @@ public sealed partial class War3Rts : Node3D
                 }
                 else
                 {
-                    _stressTest?.Update();
-                    var stressEnd =
-                        System.Diagnostics.Stopwatch.GetTimestamp();
-                    stressMilliseconds +=
-                        ElapsedMilliseconds(stepStart, stressEnd);
                     _runtime.AiDirector.Update(_simulation.Metrics.Tick);
                     var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
                     aiMilliseconds += ElapsedMilliseconds(stressEnd, aiEnd);
@@ -832,6 +844,8 @@ public sealed partial class War3Rts : Node3D
                     System.Diagnostics.Stopwatch.GetTimestamp();
                 _simulation.Tick(frame);
                 _itemShops?.Update(frame);
+                if (_itemEffects is not null)
+                    _itemEffects.Update(frame, _simulation);
                 ConsumeAudioEvents();
                 var stepEnd =
                     System.Diagnostics.Stopwatch.GetTimestamp();
@@ -1223,6 +1237,11 @@ public sealed partial class War3Rts : Node3D
     private void CompleteTarget(NVector2 point, bool queued)
     {
         if (_simulation is null) return;
+        if (_pendingItemSlot >= 0)
+        {
+            CompleteItemTarget(point);
+            return;
+        }
         if (_pendingBuilding >= 0)
         {
             IssueConstruction(point, queued);
@@ -1634,11 +1653,223 @@ public sealed partial class War3Rts : Node3D
         var purchase = _itemShops.Purchase(
             id.Value, itemRuntimeId, buyer, slots, HighestHumanTownTier(),
             _simulation.Economy.Players, War3HumanScenario.PlayerId);
+        if (purchase.Succeeded &&
+            purchase.Item.UseKind == War3ItemUseKind.OrbOfFire)
+            _itemEffects?.ApplyOrbOfFire(_simulation, buyer, purchase.Item);
         Report(purchase.Succeeded
             ? $"{purchase.Item.Name} 已放入 " +
               $"{War3HumanContent.ResolveUnit(_simulation, _production!, buyer).Name} 的物品栏"
             : $"购买失败：{ShopPurchaseReason(purchase.Code)}");
     }
+
+    private void UseInventoryItem(int slot)
+    {
+        if (_simulation is null || _production is null ||
+            _itemShops is null || _itemEffects is null)
+            return;
+        var unit = ActiveSelectionUnit();
+        if (unit < 0 || _simulation.Combat.Teams[unit] !=
+            War3HumanScenario.PlayerId)
+        {
+            Report("只有己方当前单位可以使用物品");
+            return;
+        }
+        var validation = _itemShops.ValidateUse(unit, slot, out var item);
+        if (validation != War3ItemUseCode.Success)
+        {
+            Report($"{item.Name} 无法使用：{ItemUseReason(validation)}");
+            return;
+        }
+        if (item.RequiresTarget)
+        {
+            CancelMode();
+            _pendingItemUnit = unit;
+            _pendingItemSlot = slot;
+            _mode = $"使用 {item.Name}：选择目标";
+            _cursor?.SetMode(War3CursorMode.TargetSelect);
+            UpdateHud();
+            return;
+        }
+
+        var result = item.UseKind switch
+        {
+            War3ItemUseKind.RegenerationScroll =>
+                _itemEffects.UseRegenerationScroll(_simulation, unit, item),
+            War3ItemUseKind.ClarityPotion =>
+                _itemEffects.UseClarityPotion(_simulation, unit, item),
+            War3ItemUseKind.MechanicalCritter =>
+                _itemEffects.UseMechanicalCritter(
+                    _simulation,
+                    unit,
+                    item,
+                    _production.UnitTypes[War3HumanContent.Peasant],
+                    out _),
+            War3ItemUseKind.HealingPotion =>
+                _itemEffects.UseHealingPotion(_simulation, unit, item),
+            War3ItemUseKind.ManaPotion =>
+                _itemEffects.UseManaPotion(_simulation, unit, item),
+            _ => War3ItemUseCode.PassiveItem
+        };
+        FinishItemUse(unit, slot, item, result);
+    }
+
+    private void CompleteItemTarget(NVector2 point)
+    {
+        if (_simulation is null || _buildings is null ||
+            _itemShops is null || _itemEffects is null ||
+            _pendingItemUnit < 0 || _pendingItemSlot < 0)
+        {
+            CancelMode();
+            return;
+        }
+        var unit = _pendingItemUnit;
+        var slot = _pendingItemSlot;
+        var validation = _itemShops.ValidateUse(unit, slot, out var item);
+        if (validation != War3ItemUseCode.Success)
+        {
+            FinishItemUse(unit, slot, item, validation);
+            return;
+        }
+        var smart = ResolveSmartTarget(point);
+        var result = item.UseKind switch
+        {
+            War3ItemUseKind.TownPortal =>
+                UseTownPortalTarget(unit, smart, item),
+            War3ItemUseKind.IvoryTower =>
+                UseIvoryTowerTarget(point, item),
+            War3ItemUseKind.SanctuaryStaff =>
+                UseSanctuaryTarget(unit, smart, item),
+            _ => War3ItemUseCode.InvalidTarget
+        };
+        FinishItemUse(unit, slot, item, result);
+    }
+
+    private War3ItemUseCode UseTownPortalTarget(
+        int caster,
+        in SmartCommandTarget target,
+        War3ShopItemDefinition item)
+    {
+        if (_simulation is null || _itemEffects is null ||
+            target.Kind != SmartCommandTargetKind.FriendlyBuilding)
+            return War3ItemUseCode.InvalidTarget;
+        var id = new GameplayBuildingId(target.Building);
+        if (!_simulation.Construction.IsAlive(id))
+            return War3ItemUseCode.InvalidTarget;
+        var building = _simulation.Construction.Observe(id);
+        if (building.State != BuildingLifecycleState.Completed ||
+            building.Type.Function != BuildingFunctionKind.TownHall ||
+            !_simulation.Diplomacy.IsFriendly(
+                _simulation.Combat.Teams[caster], building.PlayerId))
+            return War3ItemUseCode.InvalidTarget;
+        return _itemEffects.BeginTownPortal(
+            _simulation, caster, BuildingArrival(building, caster), item);
+    }
+
+    private War3ItemUseCode UseIvoryTowerTarget(
+        NVector2 point,
+        War3ShopItemDefinition item)
+    {
+        if (_simulation is null || _buildings is null)
+            return War3ItemUseCode.InvalidTarget;
+        var objectId = item.UnitIds.FirstOrDefault();
+        var building = War3HumanContent.Buildings.FirstOrDefault(value =>
+            value.ObjectId.Equals(objectId, StringComparison.Ordinal));
+        if (building is null) return War3ItemUseCode.InvalidTarget;
+        var profile = _buildings.Type(building.TypeId) with
+        {
+            Cost = default,
+            BuildSeconds = MathF.Max(0.01f, item.Duration),
+            ConstructionMethod = ConstructionMethodKind.StartAndRelease
+        };
+        return _simulation.TryCreateReleasedBuilding(
+            War3HumanScenario.PlayerId, profile, point, out _)
+            ? War3ItemUseCode.Success
+            : War3ItemUseCode.PlacementBlocked;
+    }
+
+    private War3ItemUseCode UseSanctuaryTarget(
+        int caster,
+        in SmartCommandTarget target,
+        War3ShopItemDefinition item)
+    {
+        if (_simulation is null || _itemEffects is null ||
+            target.Kind != SmartCommandTargetKind.FriendlyUnit)
+            return War3ItemUseCode.InvalidTarget;
+        if (!TryHighestTownHall(
+                _simulation.Combat.Teams[caster], out var townHall))
+            return War3ItemUseCode.InvalidTarget;
+        return _itemEffects.UseSanctuaryStaff(
+            _simulation,
+            caster,
+            target.Unit,
+            BuildingArrival(townHall, target.Unit),
+            item);
+    }
+
+    private bool TryHighestTownHall(
+        int playerId,
+        out GameplayBuildingSnapshot townHall)
+    {
+        townHall = default;
+        if (_simulation is null) return false;
+        var values = _simulation.CreateGameplayBuildingOverview()
+            .Where(value => value.PlayerId == playerId &&
+                            value.State == BuildingLifecycleState.Completed &&
+                            value.Type.Function == BuildingFunctionKind.TownHall)
+            .OrderByDescending(value => value.Type.Id switch
+            {
+                War3HumanContent.Castle => 3,
+                War3HumanContent.Keep => 2,
+                _ => 1
+            })
+            .ThenBy(value => value.Id.Value)
+            .ToArray();
+        if (values.Length == 0) return false;
+        townHall = values[0];
+        return true;
+    }
+
+    private NVector2 BuildingArrival(
+        in GameplayBuildingSnapshot building,
+        int unit)
+    {
+        var radius = _simulation is not null &&
+                     (uint)unit < (uint)_simulation.Units.Count
+            ? _simulation.Units.Radii[unit]
+            : 8f;
+        return new NVector2(
+            (building.Bounds.Min.X + building.Bounds.Max.X) * 0.5f,
+            building.Bounds.Max.Y + radius + 8f);
+    }
+
+    private void FinishItemUse(
+        int unit,
+        int slot,
+        in War3ShopItemDefinition item,
+        War3ItemUseCode result)
+    {
+        if (result == War3ItemUseCode.Success)
+        {
+            _itemShops?.CommitUse(unit, slot);
+            CancelMode();
+            Report($"已使用：{item.Name}");
+            return;
+        }
+        Report($"{item.Name} 使用失败：{ItemUseReason(result)}");
+    }
+
+    private static string ItemUseReason(War3ItemUseCode code) => code switch
+    {
+        War3ItemUseCode.InvalidUnit => "单位无效",
+        War3ItemUseCode.InvalidSlot => "物品栏位置为空",
+        War3ItemUseCode.PassiveItem => "这是自动生效的被动物品",
+        War3ItemUseCode.Cooldown => "物品仍在冷却",
+        War3ItemUseCode.InvalidTarget => "请选择有效的友军单位或主基地",
+        War3ItemUseCode.OutOfRange => "目标超出施法范围",
+        War3ItemUseCode.NoEffect => "当前没有可恢复的生命或魔法",
+        War3ItemUseCode.PlacementBlocked => "目标位置不能放置哨塔",
+        _ => "未知错误"
+    };
 
     private int LocalShopUser(GameplayBuildingSnapshot building)
     {
@@ -2066,6 +2297,12 @@ public sealed partial class War3Rts : Node3D
             return;
         }
 
+        if (_pendingItemSlot >= 0)
+        {
+            UpdateItemPointer(point);
+            return;
+        }
+
         _presenter.HidePointerPreview();
         if (_pendingAbilityId >= 0)
         {
@@ -2110,6 +2347,90 @@ public sealed partial class War3Rts : Node3D
         _cursor?.SetMode(valid
             ? War3CursorMode.HoldItem
             : War3CursorMode.InvalidTarget);
+    }
+
+    private void UpdateItemPointer(NVector2 point)
+    {
+        if (_simulation is null || _buildings is null || _presenter is null ||
+            _itemShops is null ||
+            !_itemShops.TryGetItem(
+                _pendingItemUnit, _pendingItemSlot, out var item))
+        {
+            _presenter?.HidePointerPreview();
+            _presenter?.HideAbilityPointerPreview();
+            _cursor?.SetMode(War3CursorMode.InvalidTarget);
+            return;
+        }
+        _presenter.HideAbilityPointerPreview();
+        if (item.UseKind == War3ItemUseKind.IvoryTower)
+        {
+            var profile = _buildings.Type(War3HumanContent.ScoutTower);
+            var half = profile.Size * 0.5f;
+            var valid = _simulation.AssessBuildingPlacement(
+                new SimRect(point - half, point + half),
+                new BuildingPlacementRules(
+                    profile.MinimumPassageClass,
+                    profile.PlacementProfile.UnitPadding)).Succeeded;
+            _presenter.SetPointerPreview(
+                point,
+                profile.Size,
+                War3HumanContent.Buildings[War3HumanContent.ScoutTower]
+                    .ModelSource,
+                valid);
+            _cursor?.SetMode(valid
+                ? War3CursorMode.HoldItem
+                : War3CursorMode.InvalidTarget);
+            return;
+        }
+
+        _presenter.HidePointerPreview();
+        var smart = ResolveSmartTarget(point);
+        var validTarget = item.UseKind switch
+        {
+            War3ItemUseKind.TownPortal =>
+                IsValidTownPortalTarget(_pendingItemUnit, smart),
+            War3ItemUseKind.SanctuaryStaff =>
+                IsValidSanctuaryTarget(_pendingItemUnit, smart, item),
+            _ => false
+        };
+        _cursor?.SetMode(validTarget
+            ? War3CursorMode.TargetSelect
+            : War3CursorMode.InvalidTarget);
+    }
+
+    private bool IsValidTownPortalTarget(
+        int caster,
+        in SmartCommandTarget target)
+    {
+        if (_simulation is null ||
+            target.Kind != SmartCommandTargetKind.FriendlyBuilding)
+            return false;
+        var id = new GameplayBuildingId(target.Building);
+        if (!_simulation.Construction.IsAlive(id)) return false;
+        var building = _simulation.Construction.Observe(id);
+        return building.State == BuildingLifecycleState.Completed &&
+               building.Type.Function == BuildingFunctionKind.TownHall &&
+               _simulation.Diplomacy.IsFriendly(
+                   _simulation.Combat.Teams[caster], building.PlayerId);
+    }
+
+    private bool IsValidSanctuaryTarget(
+        int caster,
+        in SmartCommandTarget target,
+        War3ShopItemDefinition item)
+    {
+        if (_simulation is null ||
+            target.Kind != SmartCommandTargetKind.FriendlyUnit ||
+            (uint)target.Unit >= (uint)_simulation.Units.Count ||
+            !_simulation.Units.Alive[target.Unit] ||
+            !TryHighestTownHall(
+                _simulation.Combat.Teams[caster], out _))
+            return false;
+        var range = item.Range * War3ItemEffectRuntime.WorldDistanceScale;
+        return NVector2.DistanceSquared(
+                   _simulation.Units.Positions[caster],
+                   _simulation.Units.Positions[target.Unit]) <=
+               range * range;
     }
 
     private void UpdateAbilityPointer(NVector2 point)
@@ -2437,6 +2758,7 @@ public sealed partial class War3Rts : Node3D
                 ConstructionProgress = building.Progress,
                 PortraitTeam = building.PlayerId,
                 PortraitAnimated = controllable,
+                PortraitAnimationProperties = definition.AnimationProperties,
                 Controllable = controllable,
                 IsShop = definition.TypeId == War3HumanContent.ArcaneVault,
                 ShopUserUnit = shopUser
@@ -2777,6 +3099,21 @@ public sealed partial class War3Rts : Node3D
             if (warmedModels.Add(path))
                 War3RuntimeAssets.PreloadModelTemplate(path);
         }
+        static War3Sequence? ResolveSequence(
+            IReadOnlyList<War3Sequence> sequences,
+            IReadOnlyList<string> candidates)
+        {
+            foreach (var candidate in candidates)
+            {
+                var exact = sequences.FirstOrDefault(value => value.Name.Equals(
+                    candidate, StringComparison.OrdinalIgnoreCase));
+                if (exact is not null) return exact;
+                var prefix = sequences.FirstOrDefault(value => value.Name.StartsWith(
+                    candidate, StringComparison.OrdinalIgnoreCase));
+                if (prefix is not null) return prefix;
+            }
+            return null;
+        }
 
         foreach (var unit in War3HumanContent.Units)
         {
@@ -2807,27 +3144,30 @@ public sealed partial class War3Rts : Node3D
                 missing.Add($"建筑建造动画:{building.ModelSource}");
             if (death is null || !death.NonLooping)
                 missing.Add($"建筑销毁动画:{building.ModelSource}");
-        }
-        var townHall = War3HumanContent.Buildings.First(value =>
-            value.TypeId == War3HumanContent.TownHall);
-        if (War3RuntimeAssets.Contains(townHall.ModelSource))
-        {
-            var townHallSequences = War3RuntimeAssets
-                .LoadMetadata(townHall.ModelSource).Sequences
-                .ToDictionary(value => value.Name, StringComparer.OrdinalIgnoreCase);
-            foreach (var (name, nonLooping) in new[]
+            if (building.AnimationProperties.Length == 0) continue;
+            foreach (var (phase, candidates, nonLooping) in new[]
                      {
-                         ("Birth Upgrade First", true),
-                         ("Stand Upgrade First", false),
-                         ("Stand Work Upgrade First", false),
-                         ("Birth Upgrade Second", true),
-                         ("Stand Upgrade Second", false),
-                         ("Stand Work Upgrade Second", false)
+                         ("升级", War3AnimationPropertyResolver.UpgradeBirth(
+                             building.AnimationProperties), true),
+                         ("待机", War3AnimationPropertyResolver.Stand(
+                             building.AnimationProperties), false),
+                         ("肖像", War3AnimationPropertyResolver.Portrait(
+                             building.AnimationProperties), false)
                      })
             {
-                if (!townHallSequences.TryGetValue(name, out var sequence) ||
-                    sequence.NonLooping != nonLooping)
-                    missing.Add($"建筑升级动画:{townHall.ModelSource}:{name}");
+                // Stand/Portrait must resolve the exact configured variant;
+                // accepting their generic fallback would silently display the
+                // scout tower again. Tower upgrade birth is one combined MDX
+                // sequence, so it may legitimately use the ordered fallbacks.
+                var validationCandidates = phase == "升级"
+                    ? candidates
+                    : [candidates[0]];
+                var resolved = ResolveSequence(
+                    metadata.Sequences, validationCandidates);
+                if (resolved is null || resolved.NonLooping != nonLooping)
+                    missing.Add(
+                        $"建筑{phase}动画:{building.ObjectId}:" +
+                        string.Join('|', candidates));
             }
         }
         foreach (var ability in War3HumanContent.Abilities)
@@ -3382,6 +3722,8 @@ public sealed partial class War3Rts : Node3D
         _rallyPending = false;
         _pendingAbilityId = -1;
         _pendingAbilityCaster = -1;
+        _pendingItemUnit = -1;
+        _pendingItemSlot = -1;
         _pendingBuilding = -1;
         _buildMenu = false;
         _learnMenu = false;
@@ -3399,7 +3741,8 @@ public sealed partial class War3Rts : Node3D
 
     private bool HasTargetMode() =>
         _movePending || _attackMovePending || _rallyPending ||
-        _pendingAbilityId >= 0 || _pendingBuilding >= 0;
+        _pendingAbilityId >= 0 || _pendingBuilding >= 0 ||
+        _pendingItemSlot >= 0;
 
     private int[] SelectedUnits() => _simulation is null
         ? []
@@ -3599,6 +3942,7 @@ public sealed partial class War3Rts : Node3D
         _hud = new War3RtsHud { Name = "HumanHud" };
         _hud.CommandRequested += ExecuteCommand;
         _hud.QueueItemCancelRequested += CancelQueueItem;
+        _hud.InventoryItemRequested += UseInventoryItem;
         _hud.SelectionGroupEntryRequested += SelectGroupEntry;
         _hud.ReturnRequested += () =>
             GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
@@ -3714,6 +4058,19 @@ public sealed partial class War3Rts : Node3D
                     stockBadge == "1" &&
                     _itemShops.InventoryCount(buyer) == 1 &&
                     _hud.VisibleInventoryItemCount == 1;
+                if (_smokeShopValid && _itemEffects is not null)
+                {
+                    _simulation.DamageUnit(buyer, 100f);
+                    var damagedHealth = _simulation.Combat.Health[buyer];
+                    UseInventoryItem(0);
+                    _itemEffects.Update(1f, _simulation);
+                    RefreshSelection();
+                    _smokeItemUseValid =
+                        _itemShops.InventoryCount(buyer) == 0 &&
+                        _simulation.Combat.Health[buyer] > damagedHealth &&
+                        _itemEffects.ActiveRecoveryCount > 0 &&
+                        _hud.VisibleInventoryItemCount == 0;
+                }
             }
         }
         player = _simulation.Economy.Players.Snapshot(
@@ -3854,6 +4211,7 @@ public sealed partial class War3Rts : Node3D
                       _smokeUnitPortraitValid &&
                       _smokeEnemySelectionValid &&
                       _smokeShopValid &&
+                      _smokeItemUseValid &&
                       queueUiValid && queueCancelValid &&
                       researchQueueUiValid;
         success &= combatObjectsReady;
@@ -3901,7 +4259,7 @@ public sealed partial class War3Rts : Node3D
              $"portrait_building={_smokeBuildingPortraitValid} " +
              $"portrait_unit={_smokeUnitPortraitValid} " +
              $"enemy_selection={_smokeEnemySelectionValid} " +
-             $"shop={_smokeShopValid} " +
+             $"shop={_smokeShopValid} item_use={_smokeItemUseValid} " +
              $"queue_ui={queueUiValid}/5 queue_cancel={queueCancelValid}/" +
              $"4 research_queue={researchQueueUiValid} " +
              $"terrain_hash={_terrain?.StableHashText ?? "none"} " +

@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "ciri",
+  "displayName": "法师长袍 +6",
+  "identity": {
+    "race": "neutral",
+    "class": "Permanent",
+    "level": 4,
+    "legacyLevel": 8,
+    "scriptName": "RobeoftheMagi6"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRobeOfTheMagi.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRobeOfTheMagi.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrobeofthemagi.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIi6"
+    ],
+    "cooldownAbilityId": "AIi6",
+    "ignoreCooldown": false,
+    "priority": 43,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 400,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "R",
+    "tooltip": "购买法师长袍(|cffffcc00R|r)",
+    "extendedTooltip": "\"增加英雄6点的智力。\"",
+    "description": "能提高智力属性。"
+  },
+  "editorData": {
+    "itemID": "ciri",
+    "comment": "Robe of the Magi +6",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "4",
+    "uses": "-",
+    "prio": "43",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "400",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Permanent",
+    "oldLevel": "8",
+    "abilList": "AIi6",
+    "cooldownID": "AIi6",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "RobeoftheMagi6",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRobeOfTheMagi.blp",
+    "Name": "法师长袍 +6",
+    "Hotkey": "R",
+    "Tip": "购买法师长袍(|cffffcc00R|r)",
+    "Ubertip": "\"增加英雄6点的智力。\"",
+    "Description": "能提高智力属性。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

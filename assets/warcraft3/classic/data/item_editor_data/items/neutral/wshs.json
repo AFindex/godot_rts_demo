@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "wshs",
+  "displayName": "影子权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Charged",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "WandofShadowsight"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWandOfShadowSight.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWandOfShadowSight.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwandofshadowsight.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "Ashs"
+    ],
+    "cooldownAbilityId": "Ashs",
+    "ignoreCooldown": false,
+    "charges": 2,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 60,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "W",
+    "tooltip": "购买影子权杖(|cffffcc00W|r)",
+    "extendedTooltip": "\"能让玩家拥有敌方目标单位的视野直到该单位身上的魔法被驱逐。|n可使用<wshs,uses>次。\"",
+    "description": "\"能让玩家拥有敌方目标单位的视野直到该单位身上的魔法被驱逐。\""
+  },
+  "editorData": {
+    "itemID": "wshs",
+    "comment": "Wand of Shadowsight",
+    "version": "1",
+    "class": "Charged",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "Ashs",
+    "cooldownID": "Ashs",
+    "ignoreCD": "0",
+    "uses": "2",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "60",
+    "stockStart": "0",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "WandofShadowsight",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWandOfShadowSight.blp",
+    "Name": "影子权杖",
+    "Hotkey": "W",
+    "Tip": "购买影子权杖(|cffffcc00W|r)",
+    "Ubertip": "\"能让玩家拥有敌方目标单位的视野直到该单位身上的魔法被驱逐。|n可使用<wshs,uses>次。\"",
+    "Description": "\"能让玩家拥有敌方目标单位的视野直到该单位身上的魔法被驱逐。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

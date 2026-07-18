@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "gemt",
+  "displayName": "显形宝石",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 2,
+    "legacyLevel": 0,
+    "scriptName": "GemofTrueSeeing"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGem.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGem.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngem.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "Adt1"
+    ],
+    "cooldownAbilityId": "Adet",
+    "ignoreCooldown": false,
+    "priority": 35,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "G",
+    "tooltip": "购买显形宝石(|cffffcc00G|r)",
+    "extendedTooltip": "\"能让英雄看到敌方的隐形单位。\"",
+    "description": "能看到隐形单位。"
+  },
+  "editorData": {
+    "itemID": "gemt",
+    "comment": "Gem of True Seeing",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "2",
+    "uses": "-",
+    "prio": "35",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Miscellaneous",
+    "oldLevel": "0",
+    "abilList": "Adt1",
+    "cooldownID": "Adet",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "GemofTrueSeeing",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNGem.blp",
+    "Name": "显形宝石",
+    "Hotkey": "G",
+    "Tip": "购买显形宝石(|cffffcc00G|r)",
+    "Ubertip": "\"能让英雄看到敌方的隐形单位。\"",
+    "Description": "能看到隐形单位。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

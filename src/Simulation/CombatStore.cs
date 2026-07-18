@@ -752,6 +752,17 @@ public sealed class CombatStore
         return true;
     }
 
+    public bool TrySelectWeapon(
+        int unit,
+        CombatTargetLayer layer,
+        Func<int, int, bool> hasTechnology)
+    {
+        if (!TryResolveWeapon(unit, layer, hasTechnology, out var weapon))
+            return false;
+        ActivateWeapon(unit, weapon);
+        return true;
+    }
+
     public bool TryResolveWeapon(
         int unit,
         CombatTargetLayer layer,
@@ -780,6 +791,34 @@ public sealed class CombatStore
         return false;
     }
 
+    public bool TryResolveWeapon(
+        int unit,
+        CombatTargetLayer layer,
+        Func<int, int, bool> hasTechnology,
+        out CombatWeaponProfileSnapshot weapon)
+    {
+        if ((uint)unit >= (uint)WeaponProfiles.Length ||
+            layer == CombatTargetLayer.None)
+        {
+            weapon = default;
+            return false;
+        }
+        var profiles = WeaponProfiles[unit];
+        for (var index = 0; index < profiles.Length; index++)
+        {
+            var candidate = profiles[index];
+            if ((candidate.TargetLayers & layer) == 0 ||
+                !candidate.EnabledByDefault &&
+                (candidate.RequiredTechnologyId < 0 ||
+                 !hasTechnology(unit, candidate.RequiredTechnologyId)))
+                continue;
+            weapon = candidate;
+            return true;
+        }
+        weapon = default;
+        return false;
+    }
+
     public void SetAttackModifiers(
         int unit,
         float damageMultiplier,
@@ -797,6 +836,34 @@ public sealed class CombatStore
             ActivateWeapon(unit, profiles[index]);
             return;
         }
+    }
+
+    /// <summary>
+    /// Replaces authored weapon profiles while preserving the currently
+    /// computed ability modifiers. This is used by permanent inventory
+    /// passives such as Warcraft III orbs.
+    /// </summary>
+    public void ReplaceWeaponProfiles(
+        int unit,
+        ImmutableArray<CombatWeaponProfileSnapshot> weapons)
+    {
+        if ((uint)unit >= (uint)WeaponProfiles.Length ||
+            weapons.IsDefaultOrEmpty || weapons.Length > 8)
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        var slots = new HashSet<int>();
+        foreach (var weapon in weapons)
+        {
+            weapon.Validate();
+            if (!slots.Add(weapon.Slot))
+                throw new ArgumentException(
+                    $"Combat weapon slot {weapon.Slot} is duplicated.",
+                    nameof(weapons));
+        }
+        var activeSlot = ActiveWeaponSlots[unit];
+        WeaponProfiles[unit] = weapons;
+        var active = weapons.FirstOrDefault(value => value.Slot == activeSlot);
+        if (!slots.Contains(activeSlot)) active = weapons[0];
+        ActivateWeapon(unit, active);
     }
 
     private void ConfigureWeapons(

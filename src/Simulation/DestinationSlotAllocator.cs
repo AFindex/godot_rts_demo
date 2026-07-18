@@ -4,6 +4,7 @@ namespace RtsDemo.Simulation;
 
 public sealed class DestinationSlotAllocator
 {
+    private const int ExactAssignmentLimit = 96;
     private readonly StaticWorld _world;
 
     public DestinationSlotAllocator(StaticWorld world)
@@ -36,18 +37,41 @@ public sealed class DestinationSlotAllocator
             .Clamp(requestedTarget);
         var spacing = maximumRadius * 2f + 4f;
 
+        var selectedMembership = new bool[units.Count];
+        for (var index = 0; index < unitIndices.Length; index++)
+            selectedMembership[unitIndices[index]] = true;
+        var ignoreExternalReservations =
+            unitIndices.Length > ExactAssignmentLimit;
         var candidates = GenerateCandidates(
             units,
-            unitIndices,
+            selectedMembership,
             target,
             spacing,
             maximumRadius,
             maximumNavigationRadius,
-            unitIndices.Length);
+            unitIndices.Length,
+            ignoreExternalReservations);
+        if (candidates.Count < unitIndices.Length)
+        {
+            // Destination reservations are advisory crowd organization, not
+            // static navigation blockers. Near a map edge or a popular rally
+            // point they can temporarily cover every candidate. Relax them
+            // before rejecting an otherwise legal command; collision and
+            // destination-yield logic still serialize the eventual arrival.
+            candidates = GenerateCandidates(
+                units,
+                selectedMembership,
+                target,
+                spacing,
+                maximumRadius,
+                maximumNavigationRadius,
+                unitIndices.Length,
+                ignoreExternalReservations: true);
+        }
         if (candidates.Count < unitIndices.Length)
         {
             throw new InvalidOperationException(
-                $"Could not allocate {unitIndices.Length} legal destination slots near {target}.");
+                $"Could not allocate {unitIndices.Length} statically legal destination slots near {target}.");
         }
 
         var selectedSlots = candidates
@@ -57,7 +81,9 @@ public sealed class DestinationSlotAllocator
 
         var orderedUnits = unitIndices.ToArray();
         Array.Sort(orderedUnits);
-        var assignment = AssignMinimumDistance(units, orderedUnits, selectedSlots);
+        var assignment = orderedUnits.Length <= ExactAssignmentLimit
+            ? AssignMinimumDistance(units, orderedUnits, selectedSlots)
+            : AssignMonotoneLargeGroup(units, orderedUnits, selectedSlots);
 
         var result = new Dictionary<int, Vector2>(unitIndices.Length);
         for (var i = 0; i < orderedUnits.Length; i++)
@@ -70,12 +96,13 @@ public sealed class DestinationSlotAllocator
 
     private List<Vector2> GenerateCandidates(
         UnitStore units,
-        ReadOnlySpan<int> selectedUnits,
+        bool[] selectedMembership,
         Vector2 center,
         float spacing,
         float physicalRadius,
         float navigationRadius,
-        int required)
+        int required,
+        bool ignoreExternalReservations)
     {
         var result = new List<Vector2>(required * 2);
         var maxRing = Math.Max(4, (int)MathF.Ceiling(MathF.Sqrt(required)) + 8);
@@ -88,8 +115,9 @@ public sealed class DestinationSlotAllocator
             {
                 var point = center + new Vector2(column * spacing + offset, row * rowHeight);
                 if (_world.IsDiscFree(point, navigationRadius) &&
-                    !ConflictsWithExistingReservation(
-                        units, selectedUnits, point, physicalRadius))
+                    (ignoreExternalReservations ||
+                     !ConflictsWithExistingReservation(
+                         units, selectedMembership, point, physicalRadius)))
                 {
                     result.Add(point);
                 }
@@ -101,7 +129,7 @@ public sealed class DestinationSlotAllocator
 
     private static bool ConflictsWithExistingReservation(
         UnitStore units,
-        ReadOnlySpan<int> selectedUnits,
+        bool[] selectedMembership,
         Vector2 candidate,
         float candidateRadius)
     {
@@ -111,17 +139,7 @@ public sealed class DestinationSlotAllocator
             {
                 continue;
             }
-            var isSelected = false;
-            for (var selectedIndex = 0; selectedIndex < selectedUnits.Length; selectedIndex++)
-            {
-                if (selectedUnits[selectedIndex] == unit)
-                {
-                    isSelected = true;
-                    break;
-                }
-            }
-
-            if (isSelected)
+            if (selectedMembership[unit])
             {
                 continue;
             }
@@ -158,6 +176,37 @@ public sealed class DestinationSlotAllocator
         }
 
         return false;
+    }
+
+    private static int[] AssignMonotoneLargeGroup(
+        UnitStore units,
+        int[] unitIndices,
+        Vector2[] slots)
+    {
+        var count = unitIndices.Length;
+        var unitOrder = Enumerable.Range(0, count).ToArray();
+        var slotOrder = Enumerable.Range(0, count).ToArray();
+        Array.Sort(unitOrder, (left, right) =>
+        {
+            var leftPosition = units.Positions[unitIndices[left]];
+            var rightPosition = units.Positions[unitIndices[right]];
+            var vertical = leftPosition.Y.CompareTo(rightPosition.Y);
+            if (vertical != 0) return vertical;
+            var horizontal = leftPosition.X.CompareTo(rightPosition.X);
+            return horizontal != 0 ? horizontal : left.CompareTo(right);
+        });
+        Array.Sort(slotOrder, (left, right) =>
+        {
+            var vertical = slots[left].Y.CompareTo(slots[right].Y);
+            if (vertical != 0) return vertical;
+            var horizontal = slots[left].X.CompareTo(slots[right].X);
+            return horizontal != 0 ? horizontal : left.CompareTo(right);
+        });
+
+        var assignment = new int[count];
+        for (var rank = 0; rank < count; rank++)
+            assignment[unitOrder[rank]] = slotOrder[rank];
+        return assignment;
     }
 
     private static int[] AssignMinimumDistance(

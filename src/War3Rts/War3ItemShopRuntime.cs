@@ -14,6 +14,33 @@ public enum War3ShopPurchaseCode : byte
     InsufficientLumber
 }
 
+public enum War3ItemUseKind : byte
+{
+    Unsupported,
+    RegenerationScroll,
+    ClarityPotion,
+    MechanicalCritter,
+    HealingPotion,
+    ManaPotion,
+    TownPortal,
+    IvoryTower,
+    OrbOfFire,
+    SanctuaryStaff
+}
+
+public enum War3ItemUseCode : byte
+{
+    Success,
+    InvalidUnit,
+    InvalidSlot,
+    PassiveItem,
+    Cooldown,
+    InvalidTarget,
+    OutOfRange,
+    NoEffect,
+    PlacementBlocked
+}
+
 public readonly record struct War3ShopItemDefinition(
     int RuntimeId,
     string ItemId,
@@ -28,6 +55,25 @@ public readonly record struct War3ShopItemDefinition(
     int RequiredTownTier,
     int Charges = 0)
 {
+    public string AbilityRawId { get; init; } = string.Empty;
+    public string AbilityBaseCode { get; init; } = string.Empty;
+    public string CooldownGroup { get; init; } = string.Empty;
+    public War3ItemUseKind UseKind { get; init; }
+    public float CooldownSeconds { get; init; }
+    public bool Perishable { get; init; }
+    public bool Passive { get; init; }
+    public bool RequiresTarget { get; init; }
+    public float CastTime { get; init; }
+    public float Duration { get; init; }
+    public float HeroDuration { get; init; }
+    public float Area { get; init; }
+    public float Range { get; init; }
+    public IReadOnlyDictionary<string, float> EffectData { get; init; } =
+        new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+    public string[] UnitIds { get; init; } = [];
+    public string[] Targets { get; init; } = [];
+    public string[] Requirements { get; init; } = [];
+
     public string RequirementLabel => RequiredTownTier switch
     {
         1 => "主城",
@@ -60,42 +106,16 @@ public readonly record struct War3ShopPurchaseResult(
 public sealed class War3ItemShopRuntime
 {
     private readonly Dictionary<StockKey, StockState> _stock = [];
-    private readonly Dictionary<int, List<War3ShopItemDefinition>> _inventories = [];
+    private readonly Dictionary<int, War3ShopItemDefinition?[]> _inventories = [];
+    private readonly Dictionary<CooldownKey, float> _cooldowns = [];
 
     public const float InteractionRange = 150f;
 
-    // Arcane Vault order, positions, costs and stock values come from hvlt's
-    // Makeitems plus ItemFunc.txt/ItemData.slk in the exported Classic data.
-    public static IReadOnlyList<War3ShopItemDefinition> ArcaneVaultItems { get; } =
-    [
-        Item(0, "sreg", "恢复卷轴",
-            "45 秒内为周围非机械友军恢复生命值。",
-            "ScrollOfRegenerationGreen", "R", 0, 100, 0, 2, 90f, 0, 1),
-        Item(1, "plcl", "小净化药水",
-            "在一段时间内恢复英雄的魔法值。",
-            "LesserClarityPotion", "C", 1, 70, 0, 2, 30f, 0, 1),
-        Item(2, "mcri", "机械类的小玩艺",
-            "召唤一个由玩家控制的机械侦察单位。",
-            "MechanicalCritter", "E", 2, 50, 0, 2, 60f, 0, 1),
-        Item(3, "phea", "生命药水",
-            "立即恢复 250 点生命值。",
-            "PotionGreenSmall", "P", 4, 150, 0, 3, 120f, 1, 1),
-        Item(4, "pman", "魔法药水",
-            "立即恢复 150 点魔法值。",
-            "PotionBlueSmall", "M", 5, 200, 0, 2, 120f, 1, 1),
-        Item(5, "stwp", "回城卷轴",
-            "将英雄和附近单位传送到己方或友军城镇。",
-            "ScrollUber", "T", 6, 350, 0, 2, 120f, 1, 1),
-        Item(6, "tsct", "象牙塔",
-            "在指定区域快速创建一座哨塔。",
-            "HumanWatchTower", "V", 7, 40, 20, 3, 30f, 1, 1),
-        Item(7, "ofir", "火焰之球",
-            "为英雄攻击附加火焰伤害并允许对空远程攻击。",
-            "OrbOfFire", "F", 8, 275, 0, 1, 120f, 2),
-        Item(8, "ssan", "避难权杖",
-            "将目标友军传送到最高等级主基地并持续治疗。",
-            "StaffOfSanctuary", "N", 9, 250, 0, 1, 120f, 2)
-    ];
+    private static readonly Lazy<IReadOnlyList<War3ShopItemDefinition>>
+        ArcaneVaultItemDefinitions = new(BuildArcaneVaultItems);
+
+    public static IReadOnlyList<War3ShopItemDefinition> ArcaneVaultItems =>
+        ArcaneVaultItemDefinitions.Value;
 
     public void Update(float deltaSeconds)
     {
@@ -115,6 +135,12 @@ public sealed class War3ItemShopRuntime
                 state.Count++;
                 state.RestockRemaining += item.RestockSeconds;
             }
+        }
+        foreach (var key in _cooldowns.Keys.ToArray())
+        {
+            var remaining = MathF.Max(0f, _cooldowns[key] - deltaSeconds);
+            if (remaining <= 0f) _cooldowns.Remove(key);
+            else _cooldowns[key] = remaining;
         }
     }
 
@@ -185,13 +211,13 @@ public sealed class War3ItemShopRuntime
             return new War3ShopPurchaseResult(
                 code, offer.Item, buyerUnit, offer.Stock);
         }
-        var inventory = _inventories.GetValueOrDefault(buyerUnit);
-        if (inventory is null)
-        {
-            inventory = [];
-            _inventories.Add(buyerUnit, inventory);
-        }
-        inventory.Add(offer.Item);
+        var inventory = EnsureInventory(buyerUnit, inventorySlots);
+        var slot = Array.FindIndex(inventory, value => !value.HasValue);
+        if (slot < 0)
+            return new War3ShopPurchaseResult(
+                War3ShopPurchaseCode.InventoryFull,
+                offer.Item, buyerUnit, offer.Stock);
+        inventory[slot] = offer.Item;
         var stock = EnsureStock(shopBuilding, offer.Item);
         stock.Count--;
         if (stock.Count == offer.Item.MaximumStock - 1)
@@ -201,17 +227,104 @@ public sealed class War3ItemShopRuntime
     }
 
     public int InventoryCount(int unit) =>
-        _inventories.TryGetValue(unit, out var items) ? items.Count : 0;
+        _inventories.TryGetValue(unit, out var items)
+            ? items.Count(value => value.HasValue)
+            : 0;
 
     public War3InventoryItemSnapshot[] InventorySnapshot(int unit) =>
         !_inventories.TryGetValue(unit, out var items)
             ? []
-            : items.Select(item => new War3InventoryItemSnapshot(
-                item.ItemId,
-                item.Name,
-                item.IconPath,
-                item.Description,
-                item.Charges)).ToArray();
+            : items.Select((value, slot) => (value, slot))
+                .Where(value => value.value.HasValue)
+                .Select(value =>
+                {
+                    var item = value.value!.Value;
+                    var cooldown = CooldownRemaining(unit, item);
+                    var state = item.Passive
+                        ? "被动生效"
+                        : cooldown > 0f
+                            ? $"冷却 {cooldown:0.0} 秒"
+                            : item.RequiresTarget
+                                ? "点击后选择目标"
+                                : "点击使用";
+                    return new War3InventoryItemSnapshot(
+                        item.ItemId,
+                        item.Name,
+                        item.IconPath,
+                        item.Description,
+                        item.Perishable ? Math.Max(1, item.Charges) : 0,
+                        value.slot,
+                        !item.Passive && cooldown <= 0f,
+                        item.Passive,
+                        cooldown,
+                        state);
+                }).ToArray();
+
+    public bool TryGetItem(
+        int unit,
+        int slot,
+        out War3ShopItemDefinition item)
+    {
+        item = default;
+        return _inventories.TryGetValue(unit, out var inventory) &&
+               (uint)slot < (uint)inventory.Length &&
+               inventory[slot] is { } value &&
+               (item = value).ItemId.Length > 0;
+    }
+
+    public War3ItemUseCode ValidateUse(
+        int unit,
+        int slot,
+        out War3ShopItemDefinition item)
+    {
+        if (!TryGetItem(unit, slot, out item))
+            return War3ItemUseCode.InvalidSlot;
+        if (item.Passive) return War3ItemUseCode.PassiveItem;
+        return CooldownRemaining(unit, item) > 0f
+            ? War3ItemUseCode.Cooldown
+            : War3ItemUseCode.Success;
+    }
+
+    public bool CommitUse(int unit, int slot)
+    {
+        if (!TryGetItem(unit, slot, out var item)) return false;
+        if (item.CooldownSeconds > 0f)
+            _cooldowns[new CooldownKey(unit, CooldownGroup(item))] =
+                item.CooldownSeconds;
+        if (item.Perishable)
+            _inventories[unit][slot] = null;
+        return true;
+    }
+
+    public bool HasItem(int unit, War3ItemUseKind kind) =>
+        _inventories.TryGetValue(unit, out var inventory) &&
+        inventory.Any(value => value?.UseKind == kind);
+
+    public float CooldownRemaining(
+        int unit,
+        War3ShopItemDefinition item) =>
+        _cooldowns.GetValueOrDefault(
+            new CooldownKey(unit, CooldownGroup(item)));
+
+    private War3ShopItemDefinition?[] EnsureInventory(int unit, int slots)
+    {
+        slots = Math.Clamp(slots, 1, 6);
+        if (_inventories.TryGetValue(unit, out var inventory))
+        {
+            if (inventory.Length >= slots) return inventory;
+            Array.Resize(ref inventory, slots);
+            _inventories[unit] = inventory;
+            return inventory;
+        }
+        inventory = new War3ShopItemDefinition?[slots];
+        _inventories.Add(unit, inventory);
+        return inventory;
+    }
+
+    private static string CooldownGroup(War3ShopItemDefinition item) =>
+        item.CooldownGroup.Length > 0
+            ? item.CooldownGroup
+            : item.AbilityRawId;
 
     private StockState EnsureStock(
         int shopBuilding,
@@ -230,28 +343,22 @@ public sealed class War3ItemShopRuntime
         War3ShopPurchaseCode code,
         string reason) => new(item, stock, false, code, reason);
 
-    private static War3ShopItemDefinition Item(
-        int runtimeId,
-        string itemId,
-        string name,
-        string description,
-        string icon,
-        string hotkey,
-        int slot,
-        int gold,
-        int lumber,
-        int maximumStock,
-        float restockSeconds,
-        int requiredTownTier,
-        int charges = 0) => new(
-        runtimeId, itemId, name, description,
-        $@"ReplaceableTextures\CommandButtons\BTN{icon}.blp",
-        hotkey, slot, new EconomyCost(gold, lumber), maximumStock,
-        restockSeconds, requiredTownTier, charges);
+    private static IReadOnlyList<War3ShopItemDefinition> BuildArcaneVaultItems()
+    {
+        if (!War3HumanContent.DataCatalog.TryGet("hvlt", out var vault))
+            throw new InvalidDataException(
+                "Arcane Vault unit data is unavailable.");
+        return new Data.War3ItemDataAdapter(
+                War3HumanContent.ItemDataCatalog,
+                War3HumanContent.AbilityDataCatalog)
+            .AdaptShop(vault.Summary.MakesItems);
+    }
 
     private readonly record struct StockKey(
         int ShopBuilding,
         int ItemRuntimeId);
+
+    private readonly record struct CooldownKey(int Unit, string Group);
 
     private sealed class StockState(int count, float restockRemaining)
     {

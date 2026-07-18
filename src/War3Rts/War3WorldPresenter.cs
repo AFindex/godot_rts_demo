@@ -44,6 +44,9 @@ public sealed partial class War3WorldPresenter : Node3D
     private const float SelectionHeight = 0.035f;
     private const int BuildingAudioEmitterBase = 1_000_000_000;
     private const int ProjectileAudioEmitterBase = 1_250_000_000;
+    private const int MaximumProjectileVisualCreationsPerSync = 4;
+    private const int MaximumProjectileImpactVisualsPerSync = 4;
+    private const int MaximumNonCommandTransientVisuals = 256;
     private readonly Dictionary<int, UnitVisual> _units = [];
     private readonly Dictionary<int, BuildingVisual> _buildings = [];
     private readonly Dictionary<int, ResourceVisual> _resources = [];
@@ -526,8 +529,12 @@ public sealed partial class War3WorldPresenter : Node3D
         var abilityState = simulation.Abilities.Observe(unit);
         if (abilityState.CastPhase != AbilityCastPhase.None)
         {
-            visual.Actor.PlayRepeatedPreferred(
-                "Spell Channel", "Spell", "Spell Slam", "Attack");
+            var candidates = (uint)abilityState.ActiveAbilityId <
+                             (uint)War3HumanContent.Abilities.Count
+                ? War3HumanContent.Ability(
+                    abilityState.ActiveAbilityId).AnimationNames
+                : ["Spell Channel", "Spell", "Spell Slam", "Attack"];
+            visual.Actor.PlayRepeatedPreferred(candidates);
             return;
         }
         if (Time.GetTicksMsec() < visual.AbilityAnimationUntil)
@@ -670,9 +677,12 @@ public sealed partial class War3WorldPresenter : Node3D
                 if (_units.TryGetValue(value.CasterUnit, out var caster))
                 {
                     caster.AbilityAnimationUntil = Time.GetTicksMsec() + 700;
-                    caster.Actor.ReplayPreferred(
-                        "Spell", "Spell Slam", "Spell Channel", "Attack");
+                    caster.Actor.ReplayPreferred(definition.AnimationNames);
                 }
+                else if (_buildings.TryGetValue(
+                             value.CasterBuilding, out var buildingCaster))
+                    buildingCaster.Actor.ReplayPreferred(
+                        definition.AnimationNames);
                 SpawnAbilityModels(
                     definition.CasterModels,
                     AbilityCasterPosition(simulation, value),
@@ -685,8 +695,9 @@ public sealed partial class War3WorldPresenter : Node3D
                 definition.TargetModels, position, camera, sourcePlayerId);
             SpawnAbilityModels(
                 definition.EffectModels, position, camera, sourcePlayerId);
-            SpawnAbilityModels(
-                definition.MissileModels, position, camera, sourcePlayerId);
+            // MissileArt is intentionally not emitted as an impact burst. A
+            // missile needs an authoritative release/travel phase; until that
+            // phase exists, Target/Effect art is the correct impact owner.
         }
     }
 
@@ -717,8 +728,7 @@ public sealed partial class War3WorldPresenter : Node3D
             if (!_abilityBuffs.TryGetValue(buff.InstanceId, out var visual))
             {
                 var definition = War3HumanContent.Ability(buff.AbilityId);
-                var source = definition.TargetModels
-                    .Concat(definition.EffectModels)
+                var source = definition.BuffModels
                     .FirstOrDefault(War3RuntimeAssets.Contains);
                 if (source is null) continue;
                 var actor = new War3ModelActor
@@ -877,43 +887,27 @@ public sealed partial class War3WorldPresenter : Node3D
             else if (simulation.BuildingUpgrades.TryObserve(
                          building.Id, out var upgrade))
             {
-                if (upgrade.Profile.TargetType.Id == War3HumanContent.Keep)
-                    visual.Actor.SetSequenceProgress(
-                        upgrade.Progress,
-                        "Birth Upgrade First",
-                        "Stand Upgrade First");
-                else if (upgrade.Profile.TargetType.Id == War3HumanContent.Castle)
-                    visual.Actor.SetSequenceProgress(
-                        upgrade.Progress,
-                        "Birth Upgrade Second",
-                        "Stand Upgrade Second");
-                else
-                    visual.Actor.SetSequenceProgress(
-                        upgrade.Progress, "Birth", "Stand");
+                var targetDefinition = War3HumanContent.Buildings[
+                    upgrade.Profile.TargetType.Id];
+                visual.Actor.SetSequenceProgress(
+                    upgrade.Progress,
+                    War3AnimationPropertyResolver.UpgradeBirth(
+                        targetDefinition.AnimationProperties));
             }
             else if (simulation.Production.Observe(building.Id).Orders.Length > 0)
             {
-                if (building.Type.Id == War3HumanContent.Keep)
-                    visual.Actor.PlayPreferred(
-                        true, "Stand Work Upgrade First",
-                        "Stand Upgrade First", "Stand");
-                else if (building.Type.Id == War3HumanContent.Castle)
-                    visual.Actor.PlayPreferred(
-                        true, "Stand Work Upgrade Second",
-                        "Stand Upgrade Second", "Stand");
-                else
-                    visual.Actor.PlayPreferred(true, "Stand Work", "Stand");
+                visual.Actor.PlayPreferred(
+                    true,
+                    War3AnimationPropertyResolver.Stand(
+                        visual.Definition.AnimationProperties,
+                        working: true));
             }
             else
             {
-                if (building.Type.Id == War3HumanContent.Keep)
-                    visual.Actor.PlayPreferred(
-                        true, "Stand Upgrade First", "Stand");
-                else if (building.Type.Id == War3HumanContent.Castle)
-                    visual.Actor.PlayPreferred(
-                        true, "Stand Upgrade Second", "Stand");
-                else
-                    visual.Actor.PlayPreferred(true, "Stand");
+                visual.Actor.PlayPreferred(
+                    true,
+                    War3AnimationPropertyResolver.Stand(
+                        visual.Definition.AnimationProperties));
             }
             if (building.State == BuildingLifecycleState.Completed)
             {
@@ -1097,6 +1091,7 @@ public sealed partial class War3WorldPresenter : Node3D
         Camera3D camera)
     {
         _seenProjectiles.Clear();
+        var visualCreations = 0;
         foreach (var projectile in simulation.CombatProjectiles.ObserveActive())
         {
             _seenProjectiles.Add(projectile.Id);
@@ -1108,12 +1103,21 @@ public sealed partial class War3WorldPresenter : Node3D
                     simulation, production, projectile.AttackerUnit);
             if (!_projectiles.TryGetValue(projectile.Id, out var visual))
             {
+                // Model loading is intentionally bounded per rendered frame.
+                // A large battle can launch hundreds of authoritative missiles
+                // between two presenter syncs; creating all their Godot node
+                // trees at once caused 700+ ms cosmetic spikes. Missiles that
+                // exceed this visual budget remain fully simulated and can be
+                // picked up by a later frame if they are still active.
+                if (visualCreations >= MaximumProjectileVisualCreationsPerSync)
+                    continue;
                 visual = CreateProjectile(
                     projectile.Id,
                     definition,
                     simulation.Combat.Teams[projectile.AttackerUnit],
                     camera);
                 _projectiles.Add(projectile.Id, visual);
+                visualCreations++;
             }
             var displacement = projectile.Position - visual.LastPosition;
             if (visual.HasPosition && displacement.LengthSquared() > 0.0001f)
@@ -1124,20 +1128,34 @@ public sealed partial class War3WorldPresenter : Node3D
             var height = MathF.Max(0.7f, definition.FlyingHeight * 0.55f + 0.55f);
             visual.Root.Position = ToWorldAtGround(projectile.Position, height);
         }
+        var impactVisuals = 0;
         foreach (var id in _projectiles.Keys.Where(id => !_seenProjectiles.Contains(id)).ToArray())
         {
             var visual = _projectiles[id];
             visual.Root.QueueFree();
             _projectiles.Remove(id);
             if (visual.Definition.ImpactSource.Length > 0 &&
-                War3RuntimeAssets.Contains(visual.Definition.ImpactSource))
+                War3RuntimeAssets.Contains(visual.Definition.ImpactSource) &&
+                impactVisuals < MaximumProjectileImpactVisualsPerSync &&
+                NonCommandTransientCount() < MaximumNonCommandTransientVisuals)
+            {
                 SpawnTransient(
                     visual.Definition.ImpactSource,
                     visual.LastPosition,
                     camera,
                     1_300,
                     visual.SourcePlayerId);
+                impactVisuals++;
+            }
         }
+    }
+
+    private int NonCommandTransientCount()
+    {
+        var count = 0;
+        for (var index = 0; index < _transients.Count; index++)
+            if (!_transients[index].CommandConfirmation) count++;
+        return count;
     }
 
     private UnitVisual CreateUnit(

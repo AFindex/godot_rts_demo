@@ -1,0 +1,123 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "spre",
+  "displayName": "保存权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "StaffofPreservation"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfPreservation.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfPreservation.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstaffofpreservation.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "ANpr"
+    ],
+    "cooldownAbilityId": "ANpr",
+    "ignoreCooldown": false,
+    "priority": 4,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      3,
+      1
+    ],
+    "requirements": [
+      "etoa"
+    ],
+    "hotkey": "E",
+    "tooltip": "购买保存权杖(|cffffcc00E|r)",
+    "extendedTooltip": "\"将一个目标单位传送到最高等级的主基地。\"",
+    "description": "将目标单位传送回城。"
+  },
+  "editorData": {
+    "itemID": "spre",
+    "comment": "Staff of Preservation",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "ANpr",
+    "cooldownID": "ANpr",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "4",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "StaffofPreservation",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "3,1",
+    "Requires": "etoa",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStaffOfPreservation.blp",
+    "Name": "保存权杖",
+    "Hotkey": "E",
+    "Tip": "购买保存权杖(|cffffcc00E|r)",
+    "Ubertip": "\"将一个目标单位传送到最高等级的主基地。\"",
+    "Description": "将目标单位传送回城。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

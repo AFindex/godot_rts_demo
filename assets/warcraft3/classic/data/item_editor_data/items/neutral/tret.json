@@ -1,0 +1,121 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "tret",
+  "displayName": "再训练之书",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 3,
+    "legacyLevel": 0,
+    "scriptName": "TomeofRetraining"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTomeOfRetraining.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTomeOfRetraining.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntomeofretraining.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "Aret"
+    ],
+    "cooldownAbilityId": "Aret",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 440,
+    "goldCost": 300,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      0,
+      2
+    ],
+    "requirements": [],
+    "hotkey": "O",
+    "tooltip": "购买再训练之书(|cffffcc00O|r)",
+    "extendedTooltip": "\"取消英雄所学的所有魔法，让英雄能重新选择技能。\"",
+    "description": "\"取消英雄所学的所有魔法，让英雄能重新选择技能。\""
+  },
+  "editorData": {
+    "itemID": "tret",
+    "comment": "Tome of Retraining",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "3",
+    "oldLevel": "0",
+    "abilList": "Aret",
+    "cooldownID": "Aret",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "440",
+    "goldcost": "300",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "TomeofRetraining",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "0,2",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNTomeOfRetraining.blp",
+    "Name": "再训练之书",
+    "Hotkey": "O",
+    "Tip": "购买再训练之书(|cffffcc00O|r)",
+    "Ubertip": "\"取消英雄所学的所有魔法，让英雄能重新选择技能。\"",
+    "Description": "\"取消英雄所学的所有魔法，让英雄能重新选择技能。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

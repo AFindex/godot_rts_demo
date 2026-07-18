@@ -116,6 +116,7 @@ public interface ITerrainMapQuery
     ulong StableHash { get; }
     float CellSize { get; }
     float CliffLevelHeight { get; }
+    bool HasHeightVariation { get; }
     bool HasVisionBlockers { get; }
     float HeightAt(Vector2 position);
     bool IsVisibleFrom(
@@ -175,7 +176,11 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         _fineHeightPoints = fineHeightPoints;
         MinimumFineHeight = fineHeightPoints.Min();
         MaximumFineHeight = fineHeightPoints.Max();
+        MinimumCellLevel = cells.Min(value => value.CliffLevel);
         MaximumCellLevel = cells.Max(value => value.CliffLevel);
+        HasHeightVariation =
+            MinimumCellLevel != MaximumCellLevel ||
+            MinimumFineHeight != MaximumFineHeight;
         HasVisionBlockers = cells.Any(value =>
             (value.Flags & TerrainCellFlags.BlocksVision) != 0);
         _visionBlockerBounds = HasVisionBlockers
@@ -199,7 +204,9 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         MinimumFineHeight < -0.0001f || MaximumFineHeight > 0.0001f;
     public float MinimumFineHeight { get; }
     public float MaximumFineHeight { get; }
+    public byte MinimumCellLevel { get; }
     public byte MaximumCellLevel { get; }
+    public bool HasHeightVariation { get; }
     public bool HasVisionBlockers { get; }
     public ReadOnlySpan<TerrainSurfaceDefinition> Surfaces => _surfaces;
     public ReadOnlySpan<TerrainCell> Cells => _cells;
@@ -573,6 +580,8 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         }
         if (mode == TerrainVisionMode.Elevated)
             return true;
+        if (!HasHeightVariation && !HasVisionBlockers)
+            return true;
 
         var observerEyeHeight = HeightAt(observer) + observationHeight;
         var numericTolerance = MathF.Max(0.01f, CliffLevelHeight * 0.001f);
@@ -596,18 +605,71 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         if (observerBlocked != targetBlocked)
             return false;
 
-        var distance = Vector2.Distance(observer, target);
-        if (distance <= 0.0001f)
-            return true;
-        var steps = Math.Max(
-            1, (int)MathF.Ceiling(distance / MathF.Max(2f, CellSize * 0.25f)));
-        for (var step = 1; step < steps; step++)
+        return VisionLineStaysInBlockerClass(
+            observer, target, observerBlocked);
+    }
+
+    private bool VisionLineStaysInBlockerClass(
+        Vector2 from,
+        Vector2 to,
+        bool expectedBlocked)
+    {
+        if (!TryCellAt(from, out var column, out var row) ||
+            !TryCellAt(to, out var targetColumn, out var targetRow))
+            return false;
+        var delta = to - from;
+        var stepColumn = Math.Sign(delta.X);
+        var stepRow = Math.Sign(delta.Y);
+        var tDeltaColumn = stepColumn == 0
+            ? float.PositiveInfinity
+            : CellSize / MathF.Abs(delta.X);
+        var tDeltaRow = stepRow == 0
+            ? float.PositiveInfinity
+            : CellSize / MathF.Abs(delta.Y);
+        var nextColumnBoundary = _boundsCellBoundary(
+            column, stepColumn, axisX: true);
+        var nextRowBoundary = _boundsCellBoundary(
+            row, stepRow, axisX: false);
+        var tMaximumColumn = stepColumn == 0
+            ? float.PositiveInfinity
+            : (nextColumnBoundary - from.X) / delta.X;
+        var tMaximumRow = stepRow == 0
+            ? float.PositiveInfinity
+            : (nextRowBoundary - from.Y) / delta.Y;
+
+        while (true)
         {
-            var position = Vector2.Lerp(observer, target, step / (float)steps);
-            if (IsVisionBlocker(position) != observerBlocked)
+            var blocked =
+                (Cell(column, row).Flags & TerrainCellFlags.BlocksVision) != 0;
+            if (blocked != expectedBlocked) return false;
+            if (column == targetColumn && row == targetRow) return true;
+            if (tMaximumColumn < tMaximumRow)
+            {
+                column += stepColumn;
+                tMaximumColumn += tDeltaColumn;
+            }
+            else if (tMaximumRow < tMaximumColumn)
+            {
+                row += stepRow;
+                tMaximumRow += tDeltaRow;
+            }
+            else
+            {
+                // Exact corner crossing has zero length in either side cell.
+                column += stepColumn;
+                row += stepRow;
+                tMaximumColumn += tDeltaColumn;
+                tMaximumRow += tDeltaRow;
+            }
+            if ((uint)column >= (uint)Columns || (uint)row >= (uint)Rows)
                 return false;
         }
-        return true;
+
+        float _boundsCellBoundary(int cell, int step, bool axisX)
+        {
+            var origin = axisX ? Bounds.Min.X : Bounds.Min.Y;
+            return origin + (step > 0 ? cell + 1 : cell) * CellSize;
+        }
     }
 
     public float CellCornerHeight(

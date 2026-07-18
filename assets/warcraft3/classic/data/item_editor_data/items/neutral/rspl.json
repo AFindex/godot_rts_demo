@@ -1,0 +1,115 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "rspl",
+  "displayName": "灵魂锁链神符",
+  "identity": {
+    "race": "neutral",
+    "class": "PowerUp",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "RuneofSpiritLink"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrune.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\runicobject\\runicobject.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\runicobject\\runicobject.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/runicobject/runicobject.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "Aspp"
+    ],
+    "cooldownAbilityId": "Aspp",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 200,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 80,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买灵魂锁链神符",
+    "extendedTooltip": "\"将几个单位的灵魂联系在一起，使得<Aspp,DataA1,%>%某个单位受到的伤害被分配到其他灵魂连在一起的单位身上。\"",
+    "description": "灵魂连在一起的单位会共同承受伤害。"
+  },
+  "editorData": {
+    "itemID": "rspl",
+    "comment": "Rune of Spirit Link",
+    "version": "1",
+    "class": "PowerUp",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "Aspp",
+    "cooldownID": "Aspp",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "200",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\runicobject\\runicobject.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "RuneofSpiritLink",
+    "selSize": "80"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+    "Name": "灵魂锁链神符",
+    "Tip": "购买灵魂锁链神符",
+    "Ubertip": "\"将几个单位的灵魂联系在一起，使得<Aspp,DataA1,%>%某个单位受到的伤害被分配到其他灵魂连在一起的单位身上。\"",
+    "Description": "灵魂连在一起的单位会共同承受伤害。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

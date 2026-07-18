@@ -1,0 +1,112 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "wtlg",
+  "displayName": "怀特之腿",
+  "identity": {
+    "race": "neutral",
+    "class": "Campaign",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "WirtsLeg"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWirtsLeg.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWirtsLeg.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwirtsleg.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [],
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": false,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "L",
+    "tooltip": "购买怀特之腿(|cffffcc00L|r)",
+    "extendedTooltip": "\"是否这个打开的空间门释放我们在暗黑破坏神世界的亲爱的朋友们？如果是这样, 那是个玩家,还是个恶魔？燃烧军团到底征服了多少个世界？是否燃烧军团的恶魔们和那些避难所中的是同一类呢？思维已经混乱。\"",
+    "description": "一条腿。"
+  },
+  "editorData": {
+    "itemID": "wtlg",
+    "comment": "Wirt's Leg",
+    "version": "1",
+    "class": "Campaign",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "_",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "0",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "WirtsLeg",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWirtsLeg.blp",
+    "Name": "怀特之腿",
+    "Hotkey": "L",
+    "Tip": "购买怀特之腿(|cffffcc00L|r)",
+    "Ubertip": "\"是否这个打开的空间门释放我们在暗黑破坏神世界的亲爱的朋友们？如果是这样, 那是个玩家,还是个恶魔？燃烧军团到底征服了多少个世界？是否燃烧军团的恶魔们和那些避难所中的是同一类呢？思维已经混乱。\"",
+    "Description": "一条腿。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

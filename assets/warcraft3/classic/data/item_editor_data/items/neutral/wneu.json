@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "wneu",
+  "displayName": "中和权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 2,
+    "legacyLevel": 0,
+    "scriptName": "WandofNeutralization"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWandOfNeutralization.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWandOfNeutralization.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwandofneutralization.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIdc"
+    ],
+    "cooldownAbilityId": "AIdc",
+    "ignoreCooldown": false,
+    "charges": 4,
+    "priority": 111,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 90,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "N",
+    "tooltip": "购买中和权杖(|cffffcc00N|r)",
+    "extendedTooltip": "\"投掷出一道魔法能量波，在不同的单位间跳跃<AIdc,DataC1>次从而驱散各类的魔法效果。|n可使用<wneu,uses>次。\"",
+    "description": "能驱逐魔法效果。"
+  },
+  "editorData": {
+    "itemID": "wneu",
+    "comment": "Wand of Neutralization",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "2",
+    "oldLevel": "0",
+    "abilList": "AIdc",
+    "cooldownID": "AIdc",
+    "ignoreCD": "0",
+    "uses": "4",
+    "prio": "111",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "90",
+    "stockStart": "0",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "WandofNeutralization",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWandOfNeutralization.blp",
+    "Name": "中和权杖",
+    "Hotkey": "N",
+    "Tip": "购买中和权杖(|cffffcc00N|r)",
+    "Ubertip": "\"投掷出一道魔法能量波，在不同的单位间跳跃<AIdc,DataC1>次从而驱散各类的魔法效果。|n可使用<wneu,uses>次。\"",
+    "Description": "能驱逐魔法效果。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

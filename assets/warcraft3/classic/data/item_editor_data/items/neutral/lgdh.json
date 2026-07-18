@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "lgdh",
+  "displayName": "毁灭之角",
+  "identity": {
+    "race": "neutral",
+    "class": "Permanent",
+    "level": 5,
+    "legacyLevel": 7,
+    "scriptName": "LegionDoomHorn"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHornOfDoom.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHornOfDoom.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhornofdoom.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIau"
+    ],
+    "cooldownAbilityId": "AUau",
+    "ignoreCooldown": false,
+    "priority": 124,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 500,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买毁灭之角",
+    "extendedTooltip": "\"增加英雄和附近单位的生命值恢复速度和移动速度。|n不能和邪恶光环同时使用。\"",
+    "description": "提高周围单位生命值恢复速度和移动速度。"
+  },
+  "editorData": {
+    "itemID": "lgdh",
+    "comment": "Legion Doom-Horn",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "5",
+    "uses": "-",
+    "prio": "124",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "500",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Permanent",
+    "oldLevel": "7",
+    "abilList": "AIau",
+    "cooldownID": "AUau",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "LegionDoomHorn",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHornOfDoom.blp",
+    "Name": "毁灭之角",
+    "Tip": "购买毁灭之角",
+    "Ubertip": "\"增加英雄和附近单位的生命值恢复速度和移动速度。|n不能和邪恶光环同时使用。\"",
+    "Description": "提高周围单位生命值恢复速度和移动速度。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

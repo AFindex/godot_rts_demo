@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "sfog",
+  "displayName": "乌云号角",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "HornoftheClouds"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHornOfFog.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHornOfFog.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhornoffog.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIfg"
+    ],
+    "cooldownAbilityId": "Aclf",
+    "ignoreCooldown": false,
+    "priority": 13,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "C",
+    "tooltip": "购买乌云号角(|cffffcc00C|r)",
+    "extendedTooltip": "\"能让英雄施放乌云技能，从而可以使得一定范围内敌人所有的防御塔在<AIfg,Dur1>秒内都失去攻击能力。\"",
+    "description": "能让敌人的防御塔失去攻击能力。"
+  },
+  "editorData": {
+    "itemID": "sfog",
+    "comment": "Horn of the Clouds",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIfg",
+    "cooldownID": "Aclf",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "13",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "HornoftheClouds",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHornOfFog.blp",
+    "Name": "乌云号角",
+    "Hotkey": "C",
+    "Tip": "购买乌云号角(|cffffcc00C|r)",
+    "Ubertip": "\"能让英雄施放乌云技能，从而可以使得一定范围内敌人所有的防御塔在<AIfg,Dur1>秒内都失去攻击能力。\"",
+    "Description": "能让敌人的防御塔失去攻击能力。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

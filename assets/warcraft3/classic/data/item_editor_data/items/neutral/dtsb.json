@@ -1,0 +1,118 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "dtsb",
+  "displayName": "德雷克萨尔魔法书",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "DrektharsSpellbook"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSorceressMaster.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSorceressMaster.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsorceressmaster.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AItp",
+      "AImv",
+      "AIsr"
+    ],
+    "cooldownAbilityId": "AItp",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 3350,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "D",
+    "tooltip": "购买德雷克萨尔魔法书(|cffffcc00D|r)",
+    "extendedTooltip": "\"|cffff8c00神器|r|n能让你传送回自己的基地。并能减少<AIsr,DataB1,%>%受到的魔法伤害和增加英雄<AImv,DataA1>点的魔法值。|n|cffffcc00历史|r|n|cffffdead这本魔法书里面很多页都是来自肯瑞托魔法师的作品。他们都阵亡在了古代的战场上。|r\"",
+    "description": "\"|cffff8c00宝物|r|n一本外表简单的魔法书，由先知德雷克萨尔所编写。\""
+  },
+  "editorData": {
+    "itemID": "dtsb",
+    "comment": "Drek'thar's Spellbook",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AItp,AImv,AIsr",
+    "cooldownID": "AItp",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "3350",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "DrektharsSpellbook",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSorceressMaster.blp",
+    "Name": "德雷克萨尔魔法书",
+    "Hotkey": "D",
+    "Tip": "购买德雷克萨尔魔法书(|cffffcc00D|r)",
+    "Ubertip": "\"|cffff8c00神器|r|n能让你传送回自己的基地。并能减少<AIsr,DataB1,%>%受到的魔法伤害和增加英雄<AImv,DataA1>点的魔法值。|n|cffffcc00历史|r|n|cffffdead这本魔法书里面很多页都是来自肯瑞托魔法师的作品。他们都阵亡在了古代的战场上。|r\"",
+    "Description": "\"|cffff8c00宝物|r|n一本外表简单的魔法书，由先知德雷克萨尔所编写。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

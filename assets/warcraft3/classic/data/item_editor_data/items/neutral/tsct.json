@@ -1,0 +1,124 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "tsct",
+  "displayName": "象牙塔",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 1,
+    "legacyLevel": 0,
+    "scriptName": "IvoryTower"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanWatchTower.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNHumanWatchTower.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnhumanwatchtower.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIbt"
+    ],
+    "cooldownAbilityId": "AIbl",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 3,
+    "stockReplenishSeconds": 30,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 40,
+    "lumberCost": 20,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      3,
+      1
+    ],
+    "requirements": [
+      "hkee"
+    ],
+    "hotkey": "V",
+    "tooltip": "购买象牙塔(|cffffcc00V|r)",
+    "extendedTooltip": "\"能在指定的区域内创建出一座哨塔来。\"",
+    "description": "\"能在指定的区域内创建出一座哨塔来。\""
+  },
+  "editorData": {
+    "itemID": "tsct",
+    "comment": "Ivory Tower",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "1",
+    "oldLevel": "0",
+    "abilList": "AIbt",
+    "cooldownID": "AIbl",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "3",
+    "stockRegen": "30",
+    "stockStart": "0",
+    "goldcost": "40",
+    "lumbercost": "20",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "IvoryTower",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "3,1",
+    "Requires": "hkee",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNHumanWatchTower.blp",
+    "Name": "象牙塔",
+    "Hotkey": "V",
+    "Tip": "购买象牙塔(|cffffcc00V|r)",
+    "Ubertip": "\"能在指定的区域内创建出一座哨塔来。\"",
+    "Description": "\"能在指定的区域内创建出一座哨塔来。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

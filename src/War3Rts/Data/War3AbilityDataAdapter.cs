@@ -22,7 +22,19 @@ public sealed record War3AbilityDefinition(
     string AlternateName = "",
     string AlternateDescription = "",
     string AlternateIconPath = "",
-    string AlternateHotkey = "");
+    string AlternateHotkey = "")
+{
+    public string[] AnimationNames { get; init; } = [];
+    public string[] BuffModels { get; init; } = [];
+    public string[] CasterAttachments { get; init; } = [];
+    public string[] TargetAttachments { get; init; } = [];
+    public string[] BuffAttachments { get; init; } = [];
+    public int CasterAttachmentCount { get; init; }
+    public int TargetAttachmentCount { get; init; }
+    public int BuffAttachmentCount { get; init; }
+    public string EffectSound { get; init; } = string.Empty;
+    public string EffectSoundLooped { get; init; } = string.Empty;
+}
 
 public sealed record War3AbilityImportResult(
     AbilityCatalogSnapshot Catalog,
@@ -966,15 +978,13 @@ public sealed class War3AbilityDataAdapter(
         var effects = data.Summary.Levels
             .SelectMany(value => value.EffectIds)
             .Distinct(StringComparer.Ordinal).ToArray();
+        var buffModels = RelatedModels(
+            buffs, "Targetart", "Specialart", "Effectart");
         return new War3AbilityDefinition(
             profile.Id, profile.RawId, profile.Name, profile.Description,
             profile.IconPath, profile.Hotkey,
-            MergeModels(
-                Models(data.Profile, "Casterart"),
-                RelatedModels(buffs.Concat(effects), "Casterart")),
-            MergeModels(
-                Models(data.Profile, "Targetart"),
-                RelatedModels(buffs, "Targetart", "Specialart")),
+            Models(data.Profile, "Casterart"),
+            Models(data.Profile, "Targetart"),
             MergeModels(
                 Models(data.Profile, "Effectart", "Specialart", "Areaeffectart"),
                 RelatedModels(
@@ -989,8 +999,82 @@ public sealed class War3AbilityDataAdapter(
             CleanTooltip(Value(data.Profile, "Untip") ?? string.Empty),
             CleanTooltip(Value(data.Profile, "Unubertip") ?? string.Empty),
             Value(data.Profile, "Unart") ?? string.Empty,
-            NormalizeHotkey(Value(data.Profile, "Unhotkey")));
+            NormalizeHotkey(Value(data.Profile, "Unhotkey")))
+        {
+            AnimationNames = AnimationCandidates(data.Profile),
+            BuffModels = buffModels,
+            CasterAttachments = AttachmentList(data.Profile, "Casterattach"),
+            TargetAttachments = AttachmentList(data.Profile, "Targetattach"),
+            BuffAttachments = RelatedAttachments(buffs, "Targetattach",
+                "Specialattach"),
+            CasterAttachmentCount = Integer(data.Profile, "Casterattachcount"),
+            TargetAttachmentCount = Integer(data.Profile, "Targetattachcount"),
+            BuffAttachmentCount = RelatedAttachmentCount(
+                buffs, "Targetattachcount", "Specialattachcount"),
+            EffectSound = Value(data.Profile, "Effectsound") ?? string.Empty,
+            EffectSoundLooped = Value(data.Profile, "Effectsoundlooped") ??
+                                  string.Empty
+        };
     }
+
+    private string[] RelatedAttachments(
+        IEnumerable<string> objectIds,
+        params string[] keys)
+    {
+        var output = new List<string>();
+        foreach (var objectId in objectIds.Distinct(StringComparer.Ordinal))
+        {
+            if (!buffEffects.TryGet(objectId, out var related)) continue;
+            foreach (var key in keys)
+                output.AddRange(AttachmentList(related.Profile, key));
+        }
+        return output.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private int RelatedAttachmentCount(
+        IEnumerable<string> objectIds,
+        params string[] keys)
+    {
+        var count = 0;
+        foreach (var objectId in objectIds.Distinct(StringComparer.Ordinal))
+        {
+            if (!buffEffects.TryGet(objectId, out var related)) continue;
+            foreach (var key in keys) count = Math.Max(count, Integer(related.Profile, key));
+        }
+        return count;
+    }
+
+    private static string[] AnimationCandidates(
+        IReadOnlyDictionary<string, string> profile)
+    {
+        var tokens = AttachmentList(profile, "Animnames");
+        if (tokens.Length == 0)
+            return ["Spell", "Spell Slam", "Spell Channel", "Attack"];
+        var normalized = tokens.Select(Title).ToArray();
+        return new[] { string.Join(' ', normalized) }
+            .Concat(normalized)
+            .Concat(new[] { "Spell", "Attack" })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string[] AttachmentList(
+        IReadOnlyDictionary<string, string> profile,
+        string key) => (Value(profile, key) ?? string.Empty)
+        .Split(',', StringSplitOptions.TrimEntries |
+                    StringSplitOptions.RemoveEmptyEntries)
+        .Where(value => value is not "_" and not "-")
+        .ToArray();
+
+    private static int Integer(
+        IReadOnlyDictionary<string, string> profile,
+        string key) => int.TryParse(
+        Value(profile, key), NumberStyles.Integer,
+        CultureInfo.InvariantCulture, out var value) ? value : 0;
+
+    private static string Title(string value) =>
+        CultureInfo.InvariantCulture.TextInfo.ToTitleCase(
+            value.Trim().ToLowerInvariant());
 
     private string[] RelatedModels(
         IEnumerable<string> objectIds,

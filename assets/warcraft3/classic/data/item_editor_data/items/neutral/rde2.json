@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "rde2",
+  "displayName": "守护指环 +3",
+  "identity": {
+    "race": "neutral",
+    "class": "Permanent",
+    "level": 3,
+    "legacyLevel": 0,
+    "scriptName": "RingofProtection3"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRingGreen.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRingGreen.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnringgreen.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AId3"
+    ],
+    "cooldownAbilityId": "AIde",
+    "ignoreCooldown": false,
+    "priority": 105,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 300,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "3",
+    "tooltip": "购买守护指环 +(|cffffcc003|r)",
+    "extendedTooltip": "\"增加英雄3点的护甲。\"",
+    "description": "增加英雄3点的护甲。"
+  },
+  "editorData": {
+    "itemID": "rde2",
+    "comment": "Ring of Protection +3",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "3",
+    "uses": "-",
+    "prio": "105",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "300",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Permanent",
+    "oldLevel": "0",
+    "abilList": "AId3",
+    "cooldownID": "AIde",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "RingofProtection3",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRingGreen.blp",
+    "Name": "守护指环 +3",
+    "Hotkey": "3",
+    "Tip": "购买守护指环 +(|cffffcc003|r)",
+    "Ubertip": "\"增加英雄3点的护甲。\"",
+    "Description": "增加英雄3点的护甲。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

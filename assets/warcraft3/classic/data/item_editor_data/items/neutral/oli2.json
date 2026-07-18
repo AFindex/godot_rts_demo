@@ -1,0 +1,123 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "oli2",
+  "displayName": "闪电之球",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 3,
+    "legacyLevel": 0,
+    "scriptName": "OrbofLightning"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfLightning.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfLightning.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorboflightning.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIll"
+    ],
+    "cooldownAbilityId": "AIll",
+    "ignoreCooldown": false,
+    "priority": 91,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 375,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      0,
+      2
+    ],
+    "requirements": [
+      "ofrt"
+    ],
+    "hotkey": "L",
+    "tooltip": "购买闪电之球(|cffffcc00L|r)",
+    "extendedTooltip": "\"能增加英雄<AIlb,DataA1>点的攻击力。也使得英雄的攻击在攻击空中单位的时候会变为远程攻击，还能驱逐魔法和在<AIlp,Dur1>秒内减慢敌人的移动速度。|n|cffffcc00对召唤出来的单位能造成 <AIpg,DataC1>点的伤害。\"",
+    "description": "使得英雄的攻击能带有闪电伤害。"
+  },
+  "editorData": {
+    "itemID": "oli2",
+    "comment": "Orb of Lightning",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "3",
+    "oldLevel": "0",
+    "abilList": "AIll",
+    "cooldownID": "AIll",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "91",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "375",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "OrbofLightning",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "0,2",
+    "Requires": "ofrt",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrbOfLightning.blp",
+    "Name": "闪电之球",
+    "Hotkey": "L",
+    "Tip": "购买闪电之球(|cffffcc00L|r)",
+    "Ubertip": "\"能增加英雄<AIlb,DataA1>点的攻击力。也使得英雄的攻击在攻击空中单位的时候会变为远程攻击，还能驱逐魔法和在<AIlp,Dur1>秒内减慢敌人的移动速度。|n|cffffcc00对召唤出来的单位能造成 <AIpg,DataC1>点的伤害。\"",
+    "Description": "使得英雄的攻击能带有闪电伤害。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

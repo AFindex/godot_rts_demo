@@ -1,0 +1,124 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "skul",
+  "displayName": "献祭头骨",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 1,
+    "legacyLevel": 0,
+    "scriptName": "SacrificialSkull"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSacrificialSkull.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSacrificialSkull.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnsacrificialskull.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "Ablp"
+    ],
+    "cooldownAbilityId": "Ablp",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 60,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 50,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      2,
+      0
+    ],
+    "requirements": [
+      "ugrv"
+    ],
+    "hotkey": "K",
+    "tooltip": "购买献祭头骨(|cffffcc00K|r)",
+    "extendedTooltip": "\"在指定的区域创造出一片荒芜之地来。\"",
+    "description": "在指定的区域创造出一片荒芜之地来。"
+  },
+  "editorData": {
+    "itemID": "skul",
+    "comment": "Sacrificial Skull",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "1",
+    "oldLevel": "0",
+    "abilList": "Ablp",
+    "cooldownID": "Ablp",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "60",
+    "stockStart": "0",
+    "goldcost": "50",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "SacrificialSkull",
+    "selSize": "0"
+  },
+  "profile": {
+    "ButtonPos": "2,0",
+    "Requires": "ugrv",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSacrificialSkull.blp",
+    "Name": "献祭头骨",
+    "Hotkey": "K",
+    "Tip": "购买献祭头骨(|cffffcc00K|r)",
+    "Ubertip": "\"在指定的区域创造出一片荒芜之地来。\"",
+    "Description": "在指定的区域创造出一片荒芜之地来。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -32,6 +32,18 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _automatedSkirmishSimulation = new();
     private readonly Series _automatedSkirmishAllocated = new();
     private readonly Series _automatedSkirmishSpikeBurstInterval = new();
+    private readonly Series _automatedSkirmishPath = new();
+    private readonly Series _automatedSkirmishPathNormalization = new();
+    private readonly Series _automatedSkirmishPathStartEscape = new();
+    private readonly Series _automatedSkirmishPathConnectivity = new();
+    private readonly Series _automatedSkirmishPathAllocated = new();
+    private readonly Series _automatedSkirmishPathExpandedNodes = new();
+    private readonly Series _automatedSkirmishPathWorkUnits = new();
+    private readonly Series _automatedSkirmishPathBudgetDeferrals = new();
+    private readonly Series _automatedSkirmishSlowestPathRequest = new();
+    private readonly Series _automatedSkirmishVisibility = new();
+    private readonly Series _automatedSkirmishCollision = new();
+    private readonly Series _automatedSkirmishSteering = new();
     private readonly Series _ai = new();
     private readonly Series _simulation = new();
     private readonly Series _selectionHud = new();
@@ -73,6 +85,8 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _simCombatTargetSearch = new();
     private readonly Series _simCombatAllocated = new();
     private readonly Series _simPath = new();
+    private readonly Series _simPathNormalization = new();
+    private readonly Series _simPathStartEscape = new();
     private readonly Series _simPathAllocated = new();
     private readonly Series _simPreferredVelocity = new();
     private readonly Series _simChoke = new();
@@ -252,6 +266,8 @@ internal sealed class War3RuntimeProfiler
         _simCombatTargetSearch.Add(metrics.CombatTargetSearchMilliseconds);
         _simCombatAllocated.Add(metrics.CombatAllocatedBytes);
         _simPath.Add(metrics.PathMilliseconds);
+        _simPathNormalization.Add(metrics.PathNormalizationMilliseconds);
+        _simPathStartEscape.Add(metrics.PathStartEscapeMilliseconds);
         _simPathAllocated.Add(metrics.PathAllocatedBytes);
         _simPreferredVelocity.Add(metrics.PreferredVelocityMilliseconds);
         _simChoke.Add(metrics.ChokeMilliseconds);
@@ -302,6 +318,23 @@ internal sealed class War3RuntimeProfiler
             automationProfile.StatusSampleMilliseconds);
         _automatedSkirmishSimulation.Add(simulationMilliseconds);
         _automatedSkirmishAllocated.Add(allocatedBytes);
+        _automatedSkirmishPath.Add(metrics.PathMilliseconds);
+        _automatedSkirmishPathNormalization.Add(
+            metrics.PathNormalizationMilliseconds);
+        _automatedSkirmishPathStartEscape.Add(
+            metrics.PathStartEscapeMilliseconds);
+        _automatedSkirmishPathConnectivity.Add(
+            metrics.PathConnectivityRefreshMilliseconds);
+        _automatedSkirmishPathAllocated.Add(metrics.PathAllocatedBytes);
+        _automatedSkirmishPathExpandedNodes.Add(metrics.PathExpandedNodes);
+        _automatedSkirmishPathWorkUnits.Add(metrics.PathWorkUnits);
+        _automatedSkirmishPathBudgetDeferrals.Add(
+            metrics.PathBudgetDeferrals);
+        _automatedSkirmishSlowestPathRequest.Add(
+            metrics.PathSlowestRequestMilliseconds);
+        _automatedSkirmishVisibility.Add(metrics.VisibilityMilliseconds);
+        _automatedSkirmishCollision.Add(metrics.CollisionMilliseconds);
+        _automatedSkirmishSteering.Add(metrics.SteeringMilliseconds);
 
         if (totalMilliseconds < _automatedSkirmishSpikeMilliseconds)
         {
@@ -356,6 +389,27 @@ internal sealed class War3RuntimeProfiler
             $"technology_ms={metrics.TechnologyMilliseconds:0.###} " +
             $"combat_ms={metrics.CombatMilliseconds:0.###} " +
             $"path_ms={metrics.PathMilliseconds:0.###} " +
+            $"path_detail={metrics.PathDirectCheckMilliseconds:0.###}/" +
+            $"{metrics.PathSearchMilliseconds:0.###}/" +
+            $"{metrics.PathSimplificationMilliseconds:0.###}/" +
+            $"{metrics.PathNormalizationMilliseconds:0.###}/" +
+            $"{metrics.PathStartEscapeMilliseconds:0.###}/" +
+            $"{metrics.PathExpandedNodes}/" +
+            $"{metrics.PathRawPoints}/{metrics.PathSimplifiedPoints} " +
+            $"slowest_path={metrics.PathSlowestRequestUnit}/" +
+            $"{metrics.PathSlowestRequestCommandVersion}/" +
+            $"{metrics.PathSlowestRequestMilliseconds:0.###}/" +
+            $"{metrics.PathSlowestRequestDistance:0.###}/" +
+            $"{metrics.PathSlowestRequestNavigationRadius:0.###}/" +
+            $"{metrics.PathSlowestRequestRouteWaypoints}/" +
+            $"{metrics.PathSlowestRequestExpandedNodes} " +
+            $"path_cache={metrics.PathEdgeCacheInvalidatedStates}/" +
+            $"{metrics.PathEdgeCacheFullClears}/" +
+            $"{metrics.PathCompletedCacheHits} " +
+            $"path_budget={metrics.PathWorkUnits}/" +
+            $"{metrics.PathBudgetDeferrals} " +
+            $"path_connectivity_ms=" +
+            $"{metrics.PathConnectivityRefreshMilliseconds:0.###} " +
             $"steering_ms={metrics.SteeringMilliseconds:0.###} " +
             $"collision_ms={metrics.CollisionMilliseconds:0.###} " +
             $"visibility_ms={metrics.VisibilityMilliseconds:0.###} " +
@@ -558,6 +612,8 @@ internal sealed class War3RuntimeProfiler
             $"path_detail={_lastSimulationMetrics.PathDirectCheckMilliseconds:0.###}/" +
             $"{_lastSimulationMetrics.PathSearchMilliseconds:0.###}/" +
             $"{_lastSimulationMetrics.PathSimplificationMilliseconds:0.###}/" +
+            $"{_lastSimulationMetrics.PathNormalizationMilliseconds:0.###}/" +
+            $"{_lastSimulationMetrics.PathStartEscapeMilliseconds:0.###}/" +
             $"{_lastSimulationMetrics.PathExpandedNodes}/" +
             $"{_lastSimulationMetrics.PathRawPoints}/" +
             $"{_lastSimulationMetrics.PathSimplifiedPoints} " +
@@ -604,6 +660,25 @@ internal sealed class War3RuntimeProfiler
         Print("auto_skirmish_alloc_bytes", _automatedSkirmishAllocated);
         Print("auto_skirmish_spike_burst_interval_ticks",
             _automatedSkirmishSpikeBurstInterval);
+        Print("auto_skirmish_path_ms", _automatedSkirmishPath);
+        Print("auto_skirmish_path_normalization_ms",
+            _automatedSkirmishPathNormalization);
+        Print("auto_skirmish_path_start_escape_ms",
+            _automatedSkirmishPathStartEscape);
+        Print("auto_skirmish_path_connectivity_ms",
+            _automatedSkirmishPathConnectivity);
+        Print("auto_skirmish_path_alloc_bytes", _automatedSkirmishPathAllocated);
+        Print("auto_skirmish_path_expanded_nodes",
+            _automatedSkirmishPathExpandedNodes);
+        Print("auto_skirmish_path_work_units",
+            _automatedSkirmishPathWorkUnits);
+        Print("auto_skirmish_path_budget_deferrals",
+            _automatedSkirmishPathBudgetDeferrals);
+        Print("auto_skirmish_slowest_path_request_ms",
+            _automatedSkirmishSlowestPathRequest);
+        Print("auto_skirmish_visibility_ms", _automatedSkirmishVisibility);
+        Print("auto_skirmish_collision_ms", _automatedSkirmishCollision);
+        Print("auto_skirmish_steering_ms", _automatedSkirmishSteering);
         Print("ai_ms", _ai);
         Print("simulation_call_ms", _simulation);
         Print("selection_hud_ms", _selectionHud);
@@ -654,6 +729,8 @@ internal sealed class War3RuntimeProfiler
         Print("sim_combat_target_search_ms", _simCombatTargetSearch);
         Print("sim_combat_alloc_bytes", _simCombatAllocated);
         Print("sim_path_ms", _simPath);
+        Print("sim_path_normalization_ms", _simPathNormalization);
+        Print("sim_path_start_escape_ms", _simPathStartEscape);
         Print("sim_path_alloc_bytes", _simPathAllocated);
         Print("sim_preferred_velocity_ms", _simPreferredVelocity);
         Print("sim_choke_ms", _simChoke);

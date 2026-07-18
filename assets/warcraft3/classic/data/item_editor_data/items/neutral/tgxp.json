@@ -1,0 +1,118 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "tgxp",
+  "displayName": "超级经验之书",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "TomeofGreaterExperience"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManual3.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManual3.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanual3.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\tomeBrown\\tomeBrown.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\tomeBrown\\tomeBrown.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/tomebrown/tomebrown.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIe2"
+    ],
+    "cooldownAbilityId": "AIe2",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 200,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买超级经验之书",
+    "extendedTooltip": "\"给予英雄<AIe2,DataA1>点的经验值。\"",
+    "description": "给予英雄额外的经验值。"
+  },
+  "editorData": {
+    "itemID": "tgxp",
+    "comment": "Tome of Greater Experience",
+    "file": "Objects\\InventoryItems\\tomeBrown\\tomeBrown.mdl",
+    "Level": "0",
+    "uses": "1",
+    "prio": "200",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "1000",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Miscellaneous",
+    "oldLevel": "0",
+    "abilList": "AIe2",
+    "cooldownID": "AIe2",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "1",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "TomeofGreaterExperience",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNManual3.blp",
+    "Name": "超级经验之书",
+    "Tip": "购买超级经验之书",
+    "Ubertip": "\"给予英雄<AIe2,DataA1>点的经验值。\"",
+    "Description": "给予英雄额外的经验值。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

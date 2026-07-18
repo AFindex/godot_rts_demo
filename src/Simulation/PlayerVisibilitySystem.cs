@@ -508,6 +508,8 @@ public sealed class PlayerVisibilitySystem
         }
         var paddedRadius = radius + CellSize * 0.70710678f;
         var radiusSquared = paddedRadius * paddedRadius;
+        var terrainOcclusion = _terrain is not null &&
+            (_terrain.HasHeightVariation || _terrain.HasVisionBlockers);
         for (var row = minimumRow; row <= maximumRow; row++)
         for (var column = minimumColumn; column <= maximumColumn; column++)
         {
@@ -515,7 +517,7 @@ public sealed class PlayerVisibilitySystem
                 _bounds.Min.X + (column + 0.5f) * CellSize,
                 _bounds.Min.Y + (row + 0.5f) * CellSize);
             if (Vector2.DistanceSquared(position, center) > radiusSquared ||
-                _terrain is not null && !_terrain.IsVisibleFrom(
+                terrainOcclusion && !_terrain!.IsVisibleFrom(
                     center,
                     position,
                     observationHeight,
@@ -566,6 +568,8 @@ public sealed class PlayerVisibilitySystem
             0, Rows - 1);
         var paddedRadius = radius + CellSize * 0.70710678f;
         var radiusSquared = paddedRadius * paddedRadius;
+        var terrainOcclusion = !detection && _terrain is not null &&
+            (_terrain.HasHeightVariation || _terrain.HasVisionBlockers);
         for (var row = minimumRow; row <= maximumRow; row++)
         {
             for (var column = minimumColumn; column <= maximumColumn; column++)
@@ -575,8 +579,7 @@ public sealed class PlayerVisibilitySystem
                     _bounds.Min.Y + (row + 0.5f) * CellSize);
                 if (Vector2.DistanceSquared(position, center) > radiusSquared)
                     continue;
-                if (!detection && _terrain is not null &&
-                    !_terrain.IsVisibleFrom(
+                if (terrainOcclusion && !_terrain!.IsVisibleFrom(
                         center,
                         position,
                         observationHeight,

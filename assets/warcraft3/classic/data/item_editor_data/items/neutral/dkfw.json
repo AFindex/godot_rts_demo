@@ -1,0 +1,112 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "dkfw",
+  "displayName": "雷霆水桶",
+  "identity": {
+    "race": "neutral",
+    "class": "Campaign",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "KegofThunderwater"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBarrel.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBarrel.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbarrel.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Buildings\\Other\\BarrelsUnit0\\BarrelsUnit0.mdl",
+        "resolvedPath": "Buildings\\Other\\BarrelsUnit0\\BarrelsUnit0.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/buildings/other/barrelsunit0/barrelsunit0.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [],
+    "ignoreCooldown": false,
+    "priority": 200,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": false,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 80,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "K",
+    "tooltip": "购买雷霆水桶(|cffffcc00K|r)",
+    "extendedTooltip": "\"一个小桶，里面装着卡兹莫丹大陆上最烈性的酒。\"",
+    "description": "\"一个小桶，里面装着卡兹莫丹大陆上最烈性的酒。\""
+  },
+  "editorData": {
+    "itemID": "dkfw",
+    "comment": "Keg of Thunderwater",
+    "version": "1",
+    "class": "Campaign",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "_",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "200",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "0",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Buildings\\Other\\BarrelsUnit0\\BarrelsUnit0.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "KegofThunderwater",
+    "selSize": "80"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNBarrel.blp",
+    "Name": "雷霆水桶",
+    "Hotkey": "K",
+    "Tip": "购买雷霆水桶(|cffffcc00K|r)",
+    "Ubertip": "\"一个小桶，里面装着卡兹莫丹大陆上最烈性的酒。\"",
+    "Description": "\"一个小桶，里面装着卡兹莫丹大陆上最烈性的酒。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

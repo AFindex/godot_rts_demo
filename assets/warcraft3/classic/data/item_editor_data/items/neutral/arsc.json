@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "arsc",
+  "displayName": "神秘卷轴",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "ArcaneScroll"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNBansheeAdept.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNBansheeAdept.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnbansheeadept.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIdb"
+    ],
+    "cooldownAbilityId": "AIdb",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 0,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "A",
+    "tooltip": "购买神秘卷轴(|cffffcc00A|r)",
+    "extendedTooltip": "\"一种强大的卷轴。能恢复<AIha,DataA1>点的生命值，<AImr,DataA1>点的魔法值。并能增加周围单位<AIda,DataA1>点的护甲。\"",
+    "description": "\"恢复生命值，魔法值，并能提高周围单位的护甲。\""
+  },
+  "editorData": {
+    "itemID": "arsc",
+    "comment": "Arcane Scroll",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIdb",
+    "cooldownID": "AIdb",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "1000",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "ArcaneScroll",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNBansheeAdept.blp",
+    "Name": "神秘卷轴",
+    "Hotkey": "A",
+    "Tip": "购买神秘卷轴(|cffffcc00A|r)",
+    "Ubertip": "\"一种强大的卷轴。能恢复<AIha,DataA1>点的生命值，<AImr,DataA1>点的魔法值。并能增加周围单位<AIda,DataA1>点的护甲。\"",
+    "Description": "\"恢复生命值，魔法值，并能提高周围单位的护甲。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

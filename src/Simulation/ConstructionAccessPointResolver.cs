@@ -148,11 +148,30 @@ public static class ConstructionAccessPointResolver
             bounds,
             clearance,
             MathF.Max(collisionRadius * 2f, 8f));
-        var best = default(Vector2);
-        var bestLength = float.PositiveInfinity;
+        var rankedCandidates = new CandidateLowerBound[candidates.Count];
         for (var index = 0; index < candidates.Count; index++)
         {
             var candidate = candidates[index];
+            rankedCandidates[index] = new CandidateLowerBound(
+                candidate,
+                Vector2.Distance(origin, candidate),
+                index);
+        }
+        Array.Sort(rankedCandidates, CandidateLowerBoundComparer.Instance);
+
+        var best = default(Vector2);
+        var bestLength = float.PositiveInfinity;
+        for (var index = 0; index < rankedCandidates.Length; index++)
+        {
+            var ranked = rankedCandidates[index];
+            // Straight-line distance is a strict lower bound for every path to
+            // this endpoint. Once it cannot beat the best measured path, no
+            // later (farther) boundary candidate can improve the result. This
+            // preserves the exact shortest reachable endpoint while avoiding
+            // a full A* query for every point around a building footprint.
+            if (ranked.Distance >= bestLength)
+                break;
+            var candidate = ranked.Point;
             if (Vector2.DistanceSquared(candidate, projected) <=
                 numericClearance * numericClearance)
             {
@@ -325,5 +344,24 @@ public static class ConstructionAccessPointResolver
         for (var index = 1; index < path.Length; index++)
             result += Vector2.Distance(path[index - 1], path[index]);
         return result;
+    }
+
+    private readonly record struct CandidateLowerBound(
+        Vector2 Point,
+        float Distance,
+        int Ordinal);
+
+    private sealed class CandidateLowerBoundComparer :
+        IComparer<CandidateLowerBound>
+    {
+        public static CandidateLowerBoundComparer Instance { get; } = new();
+
+        public int Compare(CandidateLowerBound left, CandidateLowerBound right)
+        {
+            var distance = left.Distance.CompareTo(right.Distance);
+            return distance != 0
+                ? distance
+                : left.Ordinal.CompareTo(right.Ordinal);
+        }
     }
 }

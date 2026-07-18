@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "fwss",
+  "displayName": "冰霜巨龙头骨护盾",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "FrostwyrmSkullShield"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGrimWard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGrimWard.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngrimward.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AId2",
+      "AIsr"
+    ],
+    "cooldownAbilityId": "AIsr",
+    "ignoreCooldown": false,
+    "priority": 127,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 750,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "F",
+    "tooltip": "购买冰霜巨龙头骨护盾(|cffffcc00F|r)",
+    "extendedTooltip": "\"这个冰霜巨龙的头骨已经被改装成了一块坚固的护盾。能增加英雄2点的护甲并减少<AIsr,DataB1,%>%英雄所受到的魔法攻击。\"",
+    "description": "\"一件强大的不死族宝物。\""
+  },
+  "editorData": {
+    "itemID": "fwss",
+    "comment": "Frostwyrm Skull Shield",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AId2,AIsr",
+    "cooldownID": "AIsr",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "127",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "750",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "FrostwyrmSkullShield",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNGrimWard.blp",
+    "Name": "冰霜巨龙头骨护盾",
+    "Hotkey": "F",
+    "Tip": "购买冰霜巨龙头骨护盾(|cffffcc00F|r)",
+    "Ubertip": "\"这个冰霜巨龙的头骨已经被改装成了一块坚固的护盾。能增加英雄2点的护甲并减少<AIsr,DataB1,%>%英雄所受到的魔法攻击。\"",
+    "Description": "\"一件强大的不死族宝物。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

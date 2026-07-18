@@ -1,0 +1,121 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "plcl",
+  "displayName": "小净化药水",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "LesserClarityPotion"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLesserClarityPotion.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLesserClarityPotion.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlesserclaritypotion.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIpl"
+    ],
+    "cooldownAbilityId": "AIpr",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 57,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 30,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 70,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      1,
+      0
+    ],
+    "requirements": [],
+    "hotkey": "C",
+    "tooltip": "购买小净化药水(|cffffcc00C|r)",
+    "extendedTooltip": "\"|cff87ceeb非战斗类一次性物品|r|n在<AIpl,Dur1>秒内恢复英雄<AIpl,DataB1>点的魔法值。\"",
+    "description": "在一定的时间内恢复英雄的魔法值。"
+  },
+  "editorData": {
+    "itemID": "plcl",
+    "comment": "Lesser Clarity Potion",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIpl",
+    "cooldownID": "AIpr",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "57",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "30",
+    "stockStart": "0",
+    "goldcost": "70",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "LesserClarityPotion",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "1,0",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNLesserClarityPotion.blp",
+    "Name": "小净化药水",
+    "Hotkey": "C",
+    "Tip": "购买小净化药水(|cffffcc00C|r)",
+    "Ubertip": "\"|cff87ceeb非战斗类一次性物品|r|n在<AIpl,Dur1>秒内恢复英雄<AIpl,DataB1>点的魔法值。\"",
+    "Description": "在一定的时间内恢复英雄的魔法值。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -71,9 +71,24 @@ public sealed class SimulationMetrics
     public double PathDirectCheckMilliseconds { get; internal set; }
     public double PathSearchMilliseconds { get; internal set; }
     public double PathSimplificationMilliseconds { get; internal set; }
+    public double PathNormalizationMilliseconds { get; internal set; }
+    public double PathStartEscapeMilliseconds { get; internal set; }
     public int PathExpandedNodes { get; internal set; }
     public int PathRawPoints { get; internal set; }
     public int PathSimplifiedPoints { get; internal set; }
+    public int PathRequestsProcessed { get; internal set; }
+    public int PathWorkUnits { get; internal set; }
+    public int PathBudgetDeferrals { get; internal set; }
+    public double PathSlowestRequestMilliseconds { get; internal set; }
+    public int PathSlowestRequestUnit { get; internal set; } = -1;
+    public int PathSlowestRequestCommandVersion { get; internal set; }
+    public float PathSlowestRequestDistance { get; internal set; }
+    public float PathSlowestRequestNavigationRadius { get; internal set; }
+    public int PathSlowestRequestRouteWaypoints { get; internal set; }
+    public int PathSlowestRequestExpandedNodes { get; internal set; }
+    public int PathEdgeCacheInvalidatedStates { get; internal set; }
+    public int PathEdgeCacheFullClears { get; internal set; }
+    public int PathCompletedCacheHits { get; internal set; }
     public double PreferredVelocityMilliseconds { get; internal set; }
     public double ChokeMilliseconds { get; internal set; }
     public double SpatialHashMilliseconds { get; internal set; }

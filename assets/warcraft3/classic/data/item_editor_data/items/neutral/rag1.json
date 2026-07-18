@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "rag1",
+  "displayName": "敏捷便鞋  +3",
+  "identity": {
+    "race": "neutral",
+    "class": "Permanent",
+    "level": 1,
+    "legacyLevel": 2,
+    "scriptName": "SlippersofAgility3"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNSlippersOfAgility.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNSlippersOfAgility.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnslippersofagility.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIa3"
+    ],
+    "cooldownAbilityId": "AIa3",
+    "ignoreCooldown": false,
+    "priority": 104,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 100,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "A",
+    "tooltip": "购买敏捷便鞋 +3(|cffffcc00A|r)",
+    "extendedTooltip": "\"增加英雄3点的敏捷度。\"",
+    "description": "增加英雄3点的敏捷度。"
+  },
+  "editorData": {
+    "itemID": "rag1",
+    "comment": "Slippers of Agility +3",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "1",
+    "uses": "-",
+    "prio": "104",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "100",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Permanent",
+    "oldLevel": "2",
+    "abilList": "AIa3",
+    "cooldownID": "AIa3",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "SlippersofAgility3",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNSlippersOfAgility.blp",
+    "Name": "敏捷便鞋  +3",
+    "Hotkey": "A",
+    "Tip": "购买敏捷便鞋 +3(|cffffcc00A|r)",
+    "Ubertip": "\"增加英雄3点的敏捷度。\"",
+    "Description": "增加英雄3点的敏捷度。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

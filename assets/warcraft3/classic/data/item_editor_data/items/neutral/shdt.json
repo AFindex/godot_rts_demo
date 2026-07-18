@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "shdt",
+  "displayName": "死亡领主护盾",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "ShieldoftheDeathlord"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNLightningShield.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNLightningShield.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnlightningshield.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIlf",
+      "AImz",
+      "AId0",
+      "AIcf"
+    ],
+    "cooldownAbilityId": "AIcf",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 9000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "D",
+    "tooltip": "购买死亡领主护盾(|cffffcc00D|r)",
+    "extendedTooltip": "\"|cffff8c00神器|r|n使得英雄陷于火焰的包围之中，对周围的单位造成每秒<AIpi,DataA1>的伤害。同时增加英雄<AId0,DataA1>点的护甲，<AIlf,DataA1>点的生命值，<AImz,DataA1>点的魔法值。|n|cffffcc00历史|r|n|cffffdead当阿尔塞斯开始屠杀自己的子民的时候，死亡领主在洛旦伦大陆许多其他的地方也实行着同样的罪行。|r\"",
+    "description": "\"|cffff8c00宝物|r|n一个魔法护盾。上面刻着一些圣骑士的规章制度。\""
+  },
+  "editorData": {
+    "itemID": "shdt",
+    "comment": "Shield of the Deathlord",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIlf,AImz,AId0,AIcf",
+    "cooldownID": "AIcf",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "9000",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "ShieldoftheDeathlord",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNLightningShield.blp",
+    "Name": "死亡领主护盾",
+    "Hotkey": "D",
+    "Tip": "购买死亡领主护盾(|cffffcc00D|r)",
+    "Ubertip": "\"|cffff8c00神器|r|n使得英雄陷于火焰的包围之中，对周围的单位造成每秒<AIpi,DataA1>的伤害。同时增加英雄<AId0,DataA1>点的护甲，<AIlf,DataA1>点的生命值，<AImz,DataA1>点的魔法值。|n|cffffcc00历史|r|n|cffffdead当阿尔塞斯开始屠杀自己的子民的时候，死亡领主在洛旦伦大陆许多其他的地方也实行着同样的罪行。|r\"",
+    "Description": "\"|cffff8c00宝物|r|n一个魔法护盾。上面刻着一些圣骑士的规章制度。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

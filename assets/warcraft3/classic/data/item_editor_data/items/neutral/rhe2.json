@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "rhe2",
+  "displayName": "治疗神符",
+  "identity": {
+    "race": "neutral",
+    "class": "PowerUp",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "RuneofHealing"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrune.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\runicobject\\runicobject.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\runicobject\\runicobject.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/runicobject/runicobject.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "APh2"
+    ],
+    "cooldownAbilityId": "AIha",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 200,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 90,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 80,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "H",
+    "tooltip": "购买治疗神符(|cffffcc00H|r)",
+    "extendedTooltip": "\"治疗所有附近友方非机械单位<APh2,DataA2>点生命值。\"",
+    "description": "恢复英雄周围单位的生命值。"
+  },
+  "editorData": {
+    "itemID": "rhe2",
+    "comment": "Rune of Healing",
+    "version": "1",
+    "class": "PowerUp",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "APh2",
+    "cooldownID": "AIha",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "200",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "90",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\runicobject\\runicobject.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "RuneofHealing",
+    "selSize": "80"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRune.blp",
+    "Name": "治疗神符",
+    "Hotkey": "H",
+    "Tip": "购买治疗神符(|cffffcc00H|r)",
+    "Ubertip": "\"治疗所有附近友方非机械单位<APh2,DataA2>点生命值。\"",
+    "Description": "恢复英雄周围单位的生命值。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

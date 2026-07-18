@@ -1,0 +1,120 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "pspd",
+  "displayName": "速度药水",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 1,
+    "legacyLevel": 0,
+    "scriptName": "PotionofSpeed"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionRed.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionRed.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpotionred.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIsp"
+    ],
+    "cooldownAbilityId": "AIsp",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 7,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 45,
+    "stockStartDelaySeconds": 440,
+    "goldCost": 75,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "S",
+    "tooltip": "购买速度药水(|cffffcc00S|r)",
+    "extendedTooltip": "\"在<AIsp,Dur1>秒内提高 <AIsp,DataA1,%>%的移动速度。\"",
+    "description": "能暂时提高英雄的移动速度。"
+  },
+  "editorData": {
+    "itemID": "pspd",
+    "comment": "Potion of Speed",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "1",
+    "uses": "1",
+    "prio": "7",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "45",
+    "stockStart": "440",
+    "goldcost": "75",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Miscellaneous",
+    "oldLevel": "0",
+    "abilList": "AIsp",
+    "cooldownID": "AIsp",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "PotionofSpeed",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNPotionRed.blp",
+    "Name": "速度药水",
+    "Hotkey": "S",
+    "Tip": "购买速度药水(|cffffcc00S|r)",
+    "Ubertip": "\"在<AIsp,Dur1>秒内提高 <AIsp,DataA1,%>%的移动速度。\"",
+    "Description": "能暂时提高英雄的移动速度。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

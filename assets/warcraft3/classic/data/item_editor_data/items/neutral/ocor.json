@@ -1,0 +1,123 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "ocor",
+  "displayName": "腐蚀之球",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 3,
+    "legacyLevel": 7,
+    "scriptName": "OrbofCorruption"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfCorruption.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrbOfCorruption.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorbofcorruption.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIcb"
+    ],
+    "cooldownAbilityId": "AIcb",
+    "ignoreCooldown": false,
+    "priority": 93,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 375,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      0,
+      2
+    ],
+    "requirements": [
+      "unp2"
+    ],
+    "hotkey": "B",
+    "tooltip": "购买腐蚀之球(|cffffcc00B|r)",
+    "extendedTooltip": "\"增加英雄<AIcb,DataA1>点的攻击力。英雄的攻击在攻击空中单位的时候也变为远程，而且能在<AIcb,Dur1>秒内削弱敌人的护甲。\"",
+    "description": "攻击能削弱敌人的护甲。"
+  },
+  "editorData": {
+    "itemID": "ocor",
+    "comment": "Orb of Corruption",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "3",
+    "oldLevel": "7",
+    "abilList": "AIcb",
+    "cooldownID": "AIcb",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "93",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "375",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "OrbofCorruption",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "0,2",
+    "Requires": "unp2",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrbOfCorruption.blp",
+    "Name": "腐蚀之球",
+    "Hotkey": "B",
+    "Tip": "购买腐蚀之球(|cffffcc00B|r)",
+    "Ubertip": "\"增加英雄<AIcb,DataA1>点的攻击力。英雄的攻击在攻击空中单位的时候也变为远程，而且能在<AIcb,Dur1>秒内削弱敌人的护甲。\"",
+    "Description": "攻击能削弱敌人的护甲。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

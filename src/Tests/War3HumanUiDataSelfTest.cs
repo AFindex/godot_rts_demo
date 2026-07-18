@@ -100,6 +100,23 @@ public static class War3HumanUiDataSelfTest
                               towerTargets.Select(value => UnitSlot(
                                       buildings[value.TargetType.Id].ObjectId))
                                   .Order().SequenceEqual(new[] { 8, 9, 10 });
+            var towerAnimationProperties =
+                buildings[War3HumanContent.ScoutTower].AnimationProperties.Length == 0 &&
+                buildings[War3HumanContent.GuardTower].AnimationProperties
+                    .SequenceEqual(new[] { "upgrade", "first" }) &&
+                buildings[War3HumanContent.CannonTower].AnimationProperties
+                    .SequenceEqual(new[] { "upgrade", "second" }) &&
+                buildings[War3HumanContent.ArcaneTower].AnimationProperties
+                    .SequenceEqual(new[] { "upgrade", "third" }) &&
+                War3AnimationPropertyResolver.Stand(
+                    buildings[War3HumanContent.GuardTower].AnimationProperties)[0] ==
+                "Stand Upgrade First" &&
+                War3AnimationPropertyResolver.UpgradeBirth(
+                    buildings[War3HumanContent.CannonTower].AnimationProperties)[0] ==
+                "Birth Upgrade Second" &&
+                War3AnimationPropertyResolver.Portrait(
+                    buildings[War3HumanContent.ArcaneTower].AnimationProperties)[0] ==
+                "Portrait Upgrade Third";
 
             var playableHeroes = units.Where(value =>
                 value.TypeId is War3HumanContent.Archmage or
@@ -125,16 +142,83 @@ public static class War3HumanUiDataSelfTest
                     data.Summary.Upgrades.Contains(
                         "Rhpm", StringComparer.Ordinal)) == 6;
 
+            var abilityPresentation =
+                War3HumanContent.TryAbility("AHbz", out var blizzard) &&
+                blizzard is not null &&
+                blizzard.AnimationNames.FirstOrDefault() == "Stand Channel" &&
+                War3HumanContent.TryAbility("AHtb", out var stormBolt) &&
+                stormBolt is not null &&
+                stormBolt.AnimationNames.FirstOrDefault() == "Spell Throw" &&
+                stormBolt.MissileModels.Length > 0 &&
+                !stormBolt.EffectModels.Intersect(
+                    stormBolt.MissileModels,
+                    StringComparer.OrdinalIgnoreCase).Any() &&
+                War3HumanContent.TryAbility("Asph", out var spheres) &&
+                spheres is not null &&
+                spheres.TargetAttachments.SequenceEqual(
+                    new[] { "sprite", "first" }) &&
+                War3HumanContent.TryAbility("Ainf", out var innerFire) &&
+                innerFire is not null &&
+                innerFire.BuffModels.Length > 0;
+
+            var items = War3ItemShopRuntime.ArcaneVaultItems.ToArray();
+            var itemRuntime = items.Length == 9 &&
+                              items.Select(value => value.RuntimeId)
+                                  .SequenceEqual(Enumerable.Range(0, 9)) &&
+                              items.Select(value => value.ItemId).SequenceEqual(
+                                  new[]
+                                  {
+                                      "sreg", "mcri", "plcl", "phea", "pman",
+                                      "stwp", "tsct", "ofir", "ssan"
+                                  }) &&
+                              items.Select(value => value.AbilityRawId)
+                                  .SequenceEqual(new[]
+                                  {
+                                      "AIsl", "Amec", "AIpl", "AIh1", "AIm1",
+                                      "AItp", "AIbt", "AIfb", "ANsa"
+                                  }) &&
+                              War3HumanContent.ItemDataCatalog.IsAvailable &&
+                              War3HumanContent.ItemDataCatalog.Count == 273 &&
+                              items.Count(value => value.RequiresTarget) == 3 &&
+                              items.Count(value => value.Perishable) == 7 &&
+                              items.Single(value => value.ItemId == "ofir").Passive &&
+                              items.Single(value => value.ItemId == "ssan")
+                                  .CooldownSeconds == 45f &&
+                              items.Single(value => value.ItemId == "tsct")
+                                  .Cost == new EconomyCost(40, 20) &&
+                              items.Single(value => value.ItemId == "sreg")
+                                  .EffectData.GetValueOrDefault("A") == 225f &&
+                              items.Single(value => value.ItemId == "sreg").Area ==
+                                  600f &&
+                              items.Single(value => value.ItemId == "tsct")
+                                  .UnitIds.FirstOrDefault() == "hwtw" &&
+                              items.Single(value => value.ItemId == "ofir")
+                                  .EffectData.GetValueOrDefault("A") == 5f &&
+                              items.Single(value => value.ItemId == "ssan").Range ==
+                                  700f &&
+                              War3HumanContent.DataCatalog.TryGet("necr", out _);
+
             var passed = units.Count == 17 && buildings.Count == 16 &&
                          buildLayout && researchCoverage && productionCoverage &&
-                         buildingCards && towerLayout && heroData && inventoryPolicy;
+                         buildingCards && towerLayout && towerAnimationProperties &&
+                         heroData && inventoryPolicy && abilityPresentation &&
+                         itemRuntime;
             return new SelfTestResult(
                 passed,
                 $"content={units.Count}/{buildings.Count}/" +
                 $"{adaptedResearch.Length}, build={buildLayout}, " +
                 $"research={researchCoverage}, production={productionCoverage}, " +
                 $"cards={buildingCards}, towers={towerLayout}, " +
-                $"heroes={heroData}, inventory={inventoryPolicy}");
+                $"towerAnimations={towerAnimationProperties}, " +
+                $"heroes={heroData}, inventory={inventoryPolicy}, " +
+                $"abilityPresentation={abilityPresentation}, " +
+                $"items={itemRuntime}[{string.Join(',', items.Select(value =>
+                    $"{value.ItemId}:{value.AbilityRawId}:{value.CommandSlot}:" +
+                    $"{value.Cost.Minerals}/{value.Cost.VespeneGas}:" +
+                    $"{value.MaximumStock}/{value.RestockSeconds}:" +
+                    $"{value.RequiredTownTier}:{value.UseKind}:" +
+                    $"{value.CooldownSeconds}:{value.Passive}:" +
+                    $"{value.RequiresTarget}"))}]");
         }
         catch (Exception exception)
         {

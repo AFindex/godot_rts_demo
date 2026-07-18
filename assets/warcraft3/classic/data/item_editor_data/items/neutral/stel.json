@@ -1,0 +1,120 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "stel",
+  "displayName": "传送权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Permanent",
+    "level": 2,
+    "legacyLevel": 0,
+    "scriptName": "StaffofTeleportation"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfTeleportation.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfTeleportation.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstaffofteleportation.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AImt"
+    ],
+    "cooldownAbilityId": "AHmt",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 220,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      3,
+      1
+    ],
+    "requirements": [],
+    "hotkey": "E",
+    "tooltip": "购买传送权杖(|cffffcc00E|r)",
+    "extendedTooltip": "\"将英雄传送到目标地面单位或者建筑物。\"",
+    "description": "能传送英雄。"
+  },
+  "editorData": {
+    "itemID": "stel",
+    "comment": "Staff of Teleportation",
+    "version": "1",
+    "class": "Permanent",
+    "Level": "2",
+    "oldLevel": "0",
+    "abilList": "AImt",
+    "cooldownID": "AHmt",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "220",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "StaffofTeleportation",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "3,1",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStaffOfTeleportation.blp",
+    "Name": "传送权杖",
+    "Hotkey": "E",
+    "Tip": "购买传送权杖(|cffffcc00E|r)",
+    "Ubertip": "\"将英雄传送到目标地面单位或者建筑物。\"",
+    "Description": "能传送英雄。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

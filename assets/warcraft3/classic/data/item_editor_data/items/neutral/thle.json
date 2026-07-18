@@ -1,0 +1,110 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "thle",
+  "displayName": "雷霆蜥蜴之蛋",
+  "identity": {
+    "race": "neutral",
+    "class": "Campaign",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "thunderlizardegg"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNThunderLizardEgg.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNThunderLizardEgg.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnthunderlizardegg.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\ThunderLizardEgg\\ThunderLizardEgg.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\ThunderLizardEgg\\ThunderLizardEgg.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/thunderlizardegg/thunderlizardegg.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [],
+    "ignoreCooldown": false,
+    "priority": 200,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": false,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买雷霆蜥蜴之蛋",
+    "extendedTooltip": "\"这只巨大的蛋如果没有母体的温度是不会孵化的。\"",
+    "description": "\"巨蜥蜴之蛋。\""
+  },
+  "editorData": {
+    "itemID": "thle",
+    "comment": "thunder lizard egg",
+    "version": "1",
+    "class": "Campaign",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "_",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "200",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "0",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\ThunderLizardEgg\\ThunderLizardEgg.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "thunderlizardegg",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNThunderLizardEgg.blp",
+    "Name": "雷霆蜥蜴之蛋",
+    "Tip": "购买雷霆蜥蜴之蛋",
+    "Ubertip": "\"这只巨大的蛋如果没有母体的温度是不会孵化的。\"",
+    "Description": "\"巨蜥蜴之蛋。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "mnst",
+  "displayName": "魔法石",
+  "identity": {
+    "race": "neutral",
+    "class": "Charged",
+    "level": 4,
+    "legacyLevel": 4,
+    "scriptName": "ManaStone"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNManaStone.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNManaStone.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmanastone.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIm2",
+      "AIrn"
+    ],
+    "cooldownAbilityId": "AIma",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 90,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 450,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买魔法石",
+    "extendedTooltip": "\"加快英雄<AIrn,DataA1,%>%的魔法恢复速度。也可以一次使用掉来增加<AIm2,DataA1>点的魔法。\"",
+    "description": "\"能加快魔法恢复速度。也能一次性使用掉从而增加英雄的魔法值。\""
+  },
+  "editorData": {
+    "itemID": "mnst",
+    "comment": "Mana Stone",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "4",
+    "uses": "1",
+    "prio": "90",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "450",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Charged",
+    "oldLevel": "4",
+    "abilList": "AIm2,AIrn",
+    "cooldownID": "AIma",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "ManaStone",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNManaStone.blp",
+    "Name": "魔法石",
+    "Tip": "购买魔法石",
+    "Ubertip": "\"加快英雄<AIrn,DataA1,%>%的魔法恢复速度。也可以一次使用掉来增加<AIm2,DataA1>点的魔法。\"",
+    "Description": "\"能加快魔法恢复速度。也能一次性使用掉从而增加英雄的魔法值。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

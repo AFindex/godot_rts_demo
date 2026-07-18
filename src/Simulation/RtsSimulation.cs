@@ -5,6 +5,14 @@ namespace RtsDemo.Simulation;
 
 public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 {
+    // Count-only throttling allowed a batch of individually reasonable A*
+    // requests to accumulate into a long frame. These deterministic work
+    // units bound aggregate search complexity without consulting wall time,
+    // so replay and lockstep behavior remain stable across machines.
+    private const int PathWorkBudgetPerTick = 9_000;
+    private const int PathRequestBaseWork = 128;
+    private const int PathRawPointWork = 8;
+    private const int PathSimplifiedPointWork = 16;
     private const string ActiveConcealmentAbilityId = "active-concealment";
     private const string ActiveRevealAbilityId = "active-reveal";
     private const float WaypointRadius = 13f;
@@ -274,6 +282,23 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             throw new ArgumentOutOfRangeException(nameof(unit));
         return _combatSystem.EffectiveArmor(unit);
     }
+
+    public float RestoreUnitHealth(int unit, float amount)
+    {
+        if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit] ||
+            !float.IsFinite(amount) || amount <= 0f)
+            return 0f;
+        var before = Combat.Health[unit];
+        Combat.Health[unit] = MathF.Min(
+            Combat.MaximumHealth[unit], before + amount);
+        return Combat.Health[unit] - before;
+    }
+
+    public void TeleportUnit(int unit, Vector2 position) =>
+        ((IAbilityRuntimeWorld)this).AbilityTeleportUnit(unit, position);
+
+    public void TeleportUnits(int[] units, Vector2 position) =>
+        ((IAbilityRuntimeWorld)this).AbilityTeleportUnits(units, position);
 
     public CombatAutoTargetScore PreviewAutoTargetScore(
         int attacker,
@@ -1060,6 +1085,86 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         SimRect footprint,
         BuildingPlacementRules rules) =>
         TryCommitHardFootprint(footprint, rules, default);
+
+    /// <summary>
+    /// Creates an already completed building after normal authoritative
+    /// placement validation. Intended for map and item effects that do not
+    /// assign a construction worker.
+    /// </summary>
+    public bool TryCreateCompletedBuilding(
+        int playerId,
+        BuildingTypeProfile profile,
+        Vector2 center,
+        out GameplayBuildingId buildingId)
+    {
+        buildingId = new GameplayBuildingId(-1);
+        if (!Economy.Players.IsRegistered(playerId) ||
+            !float.IsFinite(center.X) || !float.IsFinite(center.Y) ||
+            profile.Id < 0 || profile.Size.X <= 0f || profile.Size.Y <= 0f ||
+            profile.RequiresVespeneNode)
+            return false;
+        var halfSize = profile.Size * 0.5f;
+        var bounds = new SimRect(center - halfSize, center + halfSize);
+        var commit = TryCommitHardFootprint(
+            bounds,
+            new BuildingPlacementRules(
+                profile.MinimumPassageClass,
+                profile.PlacementProfile.UnitPadding));
+        if (!commit.Succeeded) return false;
+
+        buildingId = Construction.AddCompleted(
+            playerId, profile, bounds, commit.FootprintId);
+        if (profile.SupplyProvided > 0)
+            Economy.Players.AddSupplyCapacity(playerId, profile.SupplyProvided);
+        if (profile.Function == BuildingFunctionKind.TownHall)
+            Economy.RegisterTownHall(playerId, buildingId, bounds);
+        GameplayEvents.Publish(
+            Metrics.Tick,
+            GameplayEventKind.ConstructionStarted,
+            building: buildingId.Value,
+            worldPosition: center,
+            player: playerId);
+        GameplayEvents.Publish(
+            Metrics.Tick,
+            GameplayEventKind.ConstructionCompleted,
+            building: buildingId.Value,
+            value: 1f,
+            worldPosition: center,
+            player: playerId);
+        return true;
+    }
+
+    public bool TryCreateReleasedBuilding(
+        int playerId,
+        BuildingTypeProfile profile,
+        Vector2 center,
+        out GameplayBuildingId buildingId)
+    {
+        buildingId = new GameplayBuildingId(-1);
+        if (!Economy.Players.IsRegistered(playerId) ||
+            !float.IsFinite(center.X) || !float.IsFinite(center.Y) ||
+            profile.Id < 0 || profile.Size.X <= 0f || profile.Size.Y <= 0f ||
+            profile.RequiresVespeneNode ||
+            profile.ConstructionMethod != ConstructionMethodKind.StartAndRelease)
+            return false;
+        var halfSize = profile.Size * 0.5f;
+        var bounds = new SimRect(center - halfSize, center + halfSize);
+        var commit = TryCommitHardFootprint(
+            bounds,
+            new BuildingPlacementRules(
+                profile.MinimumPassageClass,
+                profile.PlacementProfile.UnitPadding));
+        if (!commit.Succeeded) return false;
+        buildingId = Construction.AddReleased(
+            playerId, profile, bounds, commit.FootprintId);
+        GameplayEvents.Publish(
+            Metrics.Tick,
+            GameplayEventKind.ConstructionStarted,
+            building: buildingId.Value,
+            worldPosition: center,
+            player: playerId);
+        return true;
+    }
 
     private HardFootprintCommitResult TryCommitHardFootprint(
         SimRect footprint,
@@ -3513,6 +3618,21 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.Tick++;
         Metrics.PathsCompleted = 0;
         Metrics.PathsFailed = 0;
+        Metrics.PathRequestsProcessed = 0;
+        Metrics.PathWorkUnits = 0;
+        Metrics.PathBudgetDeferrals = 0;
+        Metrics.PathSlowestRequestMilliseconds = 0d;
+        Metrics.PathSlowestRequestUnit = -1;
+        Metrics.PathSlowestRequestCommandVersion = 0;
+        Metrics.PathSlowestRequestDistance = 0f;
+        Metrics.PathSlowestRequestNavigationRadius = 0f;
+        Metrics.PathSlowestRequestRouteWaypoints = 0;
+        Metrics.PathSlowestRequestExpandedNodes = 0;
+        Metrics.PathNormalizationMilliseconds = 0d;
+        Metrics.PathStartEscapeMilliseconds = 0d;
+        Metrics.PathEdgeCacheInvalidatedStates = 0;
+        Metrics.PathEdgeCacheFullClears = 0;
+        Metrics.PathCompletedCacheHits = 0;
         Metrics.CollisionPairs = 0;
         Metrics.MaximumPenetration = 0f;
         Metrics.RepathRequests = 0;
@@ -3681,6 +3801,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Metrics.PathRawPoints = gridPathProvider.LastRawPathPoints;
             Metrics.PathSimplifiedPoints =
                 gridPathProvider.LastSimplifiedPathPoints;
+            Metrics.PathEdgeCacheInvalidatedStates =
+                gridPathProvider.LastEdgeCacheInvalidatedStates;
+            Metrics.PathEdgeCacheFullClears =
+                gridPathProvider.LastEdgeCacheFullClears;
+            Metrics.PathCompletedCacheHits =
+                gridPathProvider.LastCompletedPathCacheHits;
         }
 
         phaseStart = Stopwatch.GetTimestamp();
@@ -4042,8 +4168,15 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
 
         var requestsToProcess = Math.Min(PathBudgetPerTick, _pathRequests.Count);
+        var workUnits = 0;
         for (var requestIndex = 0; requestIndex < requestsToProcess; requestIndex++)
         {
+            if (requestIndex > 0 && workUnits >= PathWorkBudgetPerTick)
+            {
+                Metrics.PathBudgetDeferrals = _pathRequests.Count;
+                break;
+            }
+
             var request = _pathRequests.Dequeue();
             var unit = request.UnitIndex;
             _pathRequestQueued[unit] = false;
@@ -4059,6 +4192,13 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             var commandVersion = Units.CommandVersions[unit];
             var start = Units.Positions[unit];
             var goal = Units.SlotTargets[unit];
+            var requestStart = Stopwatch.GetTimestamp();
+            var pathDiagnostics = _pathProvider as GridPathProvider;
+            var expandedBefore = pathDiagnostics?.LastExpandedNodes ?? 0;
+            var rawPointsBefore = pathDiagnostics?.LastRawPathPoints ?? 0;
+            var simplifiedPointsBefore =
+                pathDiagnostics?.LastSimplifiedPathPoints ?? 0;
+            var routeWaypointCount = Units.RouteWaypoints[unit].Length;
             var points = BuildUnitPath(unit, start, goal);
             if (points.Length == 0 &&
                 Units.RouteWaypoints[unit].Length > 0)
@@ -4068,6 +4208,35 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 // low-level path from the unit's actual position to its goal.
                 Units.RouteWaypoints[unit] = [];
                 points = BuildUnitPath(unit, start, goal);
+            }
+            var requestMilliseconds = ElapsedMilliseconds(requestStart);
+            var expandedNodes = Math.Max(
+                0,
+                (pathDiagnostics?.LastExpandedNodes ?? expandedBefore) -
+                expandedBefore);
+            var rawPoints = Math.Max(
+                0,
+                (pathDiagnostics?.LastRawPathPoints ?? rawPointsBefore) -
+                rawPointsBefore);
+            var simplifiedPoints = Math.Max(
+                0,
+                (pathDiagnostics?.LastSimplifiedPathPoints ??
+                 simplifiedPointsBefore) - simplifiedPointsBefore);
+            workUnits += PathRequestBaseWork + expandedNodes +
+                         rawPoints * PathRawPointWork +
+                         simplifiedPoints * PathSimplifiedPointWork;
+            Metrics.PathWorkUnits = workUnits;
+            Metrics.PathRequestsProcessed++;
+            if (requestMilliseconds > Metrics.PathSlowestRequestMilliseconds)
+            {
+                Metrics.PathSlowestRequestMilliseconds = requestMilliseconds;
+                Metrics.PathSlowestRequestUnit = unit;
+                Metrics.PathSlowestRequestCommandVersion = commandVersion;
+                Metrics.PathSlowestRequestDistance = Vector2.Distance(start, goal);
+                Metrics.PathSlowestRequestNavigationRadius =
+                    Units.NavigationRadii[unit];
+                Metrics.PathSlowestRequestRouteWaypoints = routeWaypointCount;
+                Metrics.PathSlowestRequestExpandedNodes = expandedNodes;
             }
 
             if (commandVersion != Units.CommandVersions[unit])
@@ -4122,8 +4291,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
         if (!World.IsDiscFree(start, navigationRadius))
         {
-            if (!TryResolveNavigationStartEscape(
-                    unit, start, finalGoal, out var escape))
+            var escapeStart = Stopwatch.GetTimestamp();
+            var escaped = TryResolveNavigationStartEscape(
+                unit, start, finalGoal, out var escape);
+            Metrics.PathStartEscapeMilliseconds +=
+                ElapsedMilliseconds(escapeStart);
+            if (!escaped)
             {
                 return [];
             }
@@ -4141,6 +4314,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 ? ResolveUnitRouteWaypoint(unit, route[waypointIndex])
                 : finalGoal;
             Vector2[] segment;
+            var segmentAlreadyValidated = false;
             var surfaceEntryDistance = MathF.Max(
                 1f,
                 navigationRadius - Units.Radii[unit] + 0.5f);
@@ -4152,10 +4326,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 surfaceEntryDistance * surfaceEntryDistance &&
                 World.IsSegmentFree(
                     current, segmentGoal, Units.Radii[unit]);
-            if (directSurfaceEntry ||
-                World.IsSegmentFree(current, segmentGoal, navigationRadius))
+            if (directSurfaceEntry)
             {
                 segment = [current, segmentGoal];
+                segmentAlreadyValidated = true;
+            }
+            else if (_pathProvider is GridPathProvider)
+            {
+                // GridPathProvider owns the same direct-line fast path. Let it
+                // perform that check once; doing it here first doubled the
+                // broad-phase scan for every blocked cross-map segment.
+                segment = _pathProvider.FindPath(
+                    current, segmentGoal, navigationRadius);
+                segmentAlreadyValidated = true;
+            }
+            else if (World.IsSegmentFree(
+                         current, segmentGoal, navigationRadius))
+            {
+                segment = [current, segmentGoal];
+                segmentAlreadyValidated = true;
             }
             else
             {
@@ -4187,8 +4376,14 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                         unit, segment[^1], segmentGoal)
                     : Vector2.DistanceSquared(segment[^1], segmentGoal) <=
                       24f * 24f);
-            if (!endpointAccepted ||
-                !NavigationPathTransition.TryNormalize(
+            if (!endpointAccepted)
+            {
+                return [];
+            }
+            if (!segmentAlreadyValidated)
+            {
+                var normalizationStart = Stopwatch.GetTimestamp();
+                var normalized = NavigationPathTransition.TryNormalize(
                     World,
                     segment,
                     navigationRadius,
@@ -4199,9 +4394,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                     finalSegment && IsSurfaceInteractionGoal(unit)
                         ? Units.Radii[unit]
                         : null,
-                    out segment))
-            {
-                return [];
+                    out segment);
+                Metrics.PathNormalizationMilliseconds +=
+                    ElapsedMilliseconds(normalizationStart);
+                if (!normalized)
+                    return [];
             }
 
             for (var pointIndex = 1; pointIndex < segment.Length; pointIndex++)
@@ -4280,6 +4477,15 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             escape = projected;
             return true;
         }
+
+        if (_pathProvider is GridPathProvider gridPathProvider &&
+            gridPathProvider.TryFindStartEscape(
+                physicalOrigin,
+                goal,
+                physicalRadius,
+                navigationRadius,
+                out escape))
+            return true;
 
         // Terrain corners and overlapping footprints may not have a useful
         // single projection. Search the smallest local ring and prefer the

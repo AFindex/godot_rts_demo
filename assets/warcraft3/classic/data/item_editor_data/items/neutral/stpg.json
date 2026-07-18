@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "stpg",
+  "displayName": "时钟企鹅",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "StuffedPenguin"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPenguin.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPenguin.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpenguin.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Units\\Critters\\Penguin\\Penguin.mdl",
+        "resolvedPath": "Units\\Critters\\Penguin\\Penguin.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/units/critters/penguin/penguin.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIpz"
+    ],
+    "cooldownAbilityId": "AIha",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 450,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "P",
+    "tooltip": "购买时钟企鹅(|cffffcc0P|r)",
+    "extendedTooltip": "\"这个可爱的企鹅玩具最初由地精工人萨拉哈尔为半人马所造。由于半人马从来都没有见过企鹅的样子，所以他们对其充满着敬畏之情并将它们放在祭坛里进行膜拜。\"",
+    "description": "\"一个能发出唧唧声的可爱时钟企鹅玩具。\""
+  },
+  "editorData": {
+    "itemID": "stpg",
+    "comment": "Stuffed Penguin",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIpz",
+    "cooldownID": "AIha",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "450",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Units\\Critters\\Penguin\\Penguin.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "StuffedPenguin",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNPenguin.blp",
+    "Name": "时钟企鹅",
+    "Hotkey": "P",
+    "Tip": "购买时钟企鹅(|cffffcc0P|r)",
+    "Ubertip": "\"这个可爱的企鹅玩具最初由地精工人萨拉哈尔为半人马所造。由于半人马从来都没有见过企鹅的样子，所以他们对其充满着敬畏之情并将它们放在祭坛里进行膜拜。\"",
+    "Description": "\"一个能发出唧唧声的可爱时钟企鹅玩具。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

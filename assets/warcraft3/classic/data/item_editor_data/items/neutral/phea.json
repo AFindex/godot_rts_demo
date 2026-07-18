@@ -1,0 +1,127 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "phea",
+  "displayName": "生命药水",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 1,
+    "legacyLevel": 3,
+    "scriptName": "potionofhealing"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionGreenSmall.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNPotionGreenSmall.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnpotiongreensmall.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIh1"
+    ],
+    "cooldownAbilityId": "AIhe",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 74,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 3,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 440,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      0,
+      1
+    ],
+    "requirements": [
+      "TWN2"
+    ],
+    "hotkey": "P",
+    "tooltip": "购买生命药水(|cffffcc00P|r)",
+    "extendedTooltip": "\"恢复<AIh1,DataA1>点的生命值。\"",
+    "description": "恢复损失的生命值。"
+  },
+  "editorData": {
+    "itemID": "phea",
+    "comment": "potion of healing",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "1",
+    "uses": "1",
+    "prio": "74",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "3",
+    "stockRegen": "120",
+    "stockStart": "440",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Purchasable",
+    "oldLevel": "3",
+    "abilList": "AIh1",
+    "cooldownID": "AIhe",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "potionofhealing",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNPotionGreenSmall.blp",
+    "Name": "生命药水",
+    "Hotkey": "P",
+    "Tip": "购买生命药水(|cffffcc00P|r)",
+    "Ubertip": "\"恢复<AIh1,DataA1>点的生命值。\"",
+    "Description": "恢复损失的生命值。",
+    "Requires": "TWN2",
+    "Buttonpos": "0,1"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

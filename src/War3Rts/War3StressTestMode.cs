@@ -485,14 +485,17 @@ internal sealed class War3StressTestMode
         int ordinal,
         int team)
     {
-        const int columns = 12;
-        var column = ordinal % columns;
-        var row = (ordinal / columns) % 18;
-        var wave = ordinal / (columns * 18);
+        // Build the formation away from the front line. The previous wrapped
+        // 12x18 layout started overlapping at unit 216, which made a nominal
+        // 800-unit test mostly measure collision recovery at spawn time.
+        const int lanes = 20;
+        const float spacing = 32f;
+        var lane = ordinal % lanes;
+        var depth = ordinal / lanes;
         var side = team == War3HumanScenario.PlayerId ? -1f : 1f;
         return center + new Vector2(
-            side * (column * 36f + wave * 18f),
-            (row - 8.5f) * 36f + (wave % 3 - 1) * 10f);
+            side * depth * spacing,
+            (lane - (lanes - 1) * 0.5f) * spacing);
     }
 
     private static int IntegerArgument(

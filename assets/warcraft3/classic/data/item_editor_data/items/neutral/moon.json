@@ -1,0 +1,121 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "moon",
+  "displayName": "月亮石",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 1,
+    "legacyLevel": 0,
+    "scriptName": "Moonstone"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNMoonStone.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNMoonStone.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnmoonstone.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIct"
+    ],
+    "cooldownAbilityId": "AIct",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 1,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 90,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 50,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      0,
+      0
+    ],
+    "requirements": [],
+    "hotkey": "N",
+    "tooltip": "购买月亮石(|cffffcc00N|r)",
+    "extendedTooltip": "\"制造日蚀，阻挡阳光，以创造人造夜晚。|n持续<AIct,Dur1>秒。\"",
+    "description": "使白天变成黑夜。"
+  },
+  "editorData": {
+    "itemID": "moon",
+    "comment": "Moonstone",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "1",
+    "oldLevel": "0",
+    "abilList": "AIct",
+    "cooldownID": "AIct",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "1",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "90",
+    "stockStart": "0",
+    "goldcost": "50",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "Moonstone",
+    "selSize": "0"
+  },
+  "profile": {
+    "Buttonpos": "0,0",
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNMoonStone.blp",
+    "Name": "月亮石",
+    "Hotkey": "N",
+    "Tip": "购买月亮石(|cffffcc00N|r)",
+    "Ubertip": "\"制造日蚀，阻挡阳光，以创造人造夜晚。|n持续<AIct,Dur1>秒。\"",
+    "Description": "使白天变成黑夜。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

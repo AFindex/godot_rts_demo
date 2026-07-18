@@ -1,0 +1,120 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "tkno",
+  "displayName": "能量之书",
+  "identity": {
+    "race": "neutral",
+    "class": "Artifact",
+    "level": 8,
+    "legacyLevel": 9,
+    "scriptName": "TomeofPower"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTomeRed.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTomeRed.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntomered.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\tomeBrown\\tomeBrown.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\tomeBrown\\tomeBrown.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/tomebrown/tomebrown.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIlm"
+    ],
+    "cooldownAbilityId": "AIlm",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 200,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": false,
+    "randomDrop": true,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1250,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "P",
+    "tooltip": "购买能量之书(|cffffcc00P|r)",
+    "extendedTooltip": "\"能提高英雄<AIlm,DataA1>个等级。\"",
+    "description": "能提高英雄的经验等级。"
+  },
+  "editorData": {
+    "itemID": "tkno",
+    "comment": "Tome of Power",
+    "file": "Objects\\InventoryItems\\tomeBrown\\tomeBrown.mdl",
+    "Level": "8",
+    "uses": "1",
+    "prio": "200",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "1250",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Artifact",
+    "oldLevel": "9",
+    "abilList": "AIlm",
+    "cooldownID": "AIlm",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "0",
+    "pickRandom": "1",
+    "powerup": "1",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "TomeofPower",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNTomeRed.blp",
+    "Name": "能量之书",
+    "Hotkey": "P",
+    "Tip": "购买能量之书(|cffffcc00P|r)",
+    "Ubertip": "\"能提高英雄<AIlm,DataA1>个等级。\"",
+    "Description": "能提高英雄的经验等级。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

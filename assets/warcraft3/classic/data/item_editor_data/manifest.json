@@ -1,0 +1,2247 @@
+{
+  "schema": "war3-item-editor-manifest/v1",
+  "generatedAt": "2026-07-18T04:12:47.186Z",
+  "game": {
+    "edition": "Warcraft III Classic",
+    "localization": "zh-CN",
+    "overlayLayers": [
+      "roc",
+      "tft",
+      "tft-locale",
+      "patch"
+    ]
+  },
+  "layout": {
+    "objectPathPattern": "items/{race}/{id}.json",
+    "valuePolicy": "editorData/profile 保留原始字符串；summary 对常用字段进行结构化。"
+  },
+  "statistics": {
+    "objectCount": 273,
+    "objectWithProfileCount": 273,
+    "resolvedAssetReferenceCount": 546
+  },
+  "sources": [
+    {
+      "path": "extracted/raw/classic/patch/Units/ItemData.slk",
+      "sha256": "ceb4bf6cfdc4ae1fdb4957027ffc00dc72cd8bdba7c9acc3a6742b1e86c0f481"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "sha256": "4860ba758d62d4c0ce7545d72b0e6bd0e0abe7fb2eebb9be4ea7da750b8cee72"
+    },
+    {
+      "path": "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "sha256": "760638eddd6fcb8ffce27a84dfb827c01827e3d1470eea9ac82b3173302cbb45"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/ItemData.slk",
+      "sha256": "8936be1d2a0070f3fee4333fb10c11b9d546e1be3e20947450f84fbb3d75d7cd"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "sha256": "e6ef53dfd27d12f5d5957e7adf541f4eb7ded28d6c8adbc9c95f66aeca06a8ec"
+    },
+    {
+      "path": "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "sha256": "19f272e29445a55f2d40ed150ea7c1d926af58284c7581c5061804e41f4bb600"
+    },
+    {
+      "path": "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "sha256": "047b7465bfa48645a2b60ab5b539f41e61ade318948ca396c18a3dc224dcddc1"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/ItemData.slk",
+      "sha256": "e319f3e80c3b9851cf70d9eb1cbdddf8025a37b374fcfc2c5a320c81ba675b19"
+    },
+    {
+      "path": "extracted/raw/classic/tft/Units/ItemFunc.txt",
+      "sha256": "7749719d9a372728e8d7463bc5f7937bb7e98546589b7ff1aae09d52d3fdc9a0"
+    }
+  ],
+  "objects": [
+    {
+      "id": "afac",
+      "displayName": "阿利亚之笛",
+      "race": "neutral",
+      "path": "items/neutral/afac.json",
+      "bytes": 3539,
+      "sha256": "0d2d5630c943105f7fab9064076370cd3cbf01acbd91482842f5295863b6bdf4"
+    },
+    {
+      "id": "ajen",
+      "displayName": "古之忍耐姜歌",
+      "race": "neutral",
+      "path": "items/neutral/ajen.json",
+      "bytes": 3519,
+      "sha256": "8b322e3672c05cb96f4669a67285c86797dd4974960c296903d3872d2059e0c2"
+    },
+    {
+      "id": "amrc",
+      "displayName": "召唤护身符",
+      "race": "neutral",
+      "path": "items/neutral/amrc.json",
+      "bytes": 3497,
+      "sha256": "10ed82e0599419a1869f52a2318b35150ef2dbc5659c8dbb7766b417a51afae7"
+    },
+    {
+      "id": "anfg",
+      "displayName": "远古雕像",
+      "race": "neutral",
+      "path": "items/neutral/anfg.json",
+      "bytes": 3311,
+      "sha256": "7ea728817e9cbca8bdbfd3e6ae9de4de5c7c1334af2ad87598e268ab14162c06"
+    },
+    {
+      "id": "ankh",
+      "displayName": "重生十字章",
+      "race": "neutral",
+      "path": "items/neutral/ankh.json",
+      "bytes": 3478,
+      "sha256": "1b0f4206ea02f96262557030b4857373b6a115974ed789dcf1faa86a964d24d8"
+    },
+    {
+      "id": "arsc",
+      "displayName": "神秘卷轴",
+      "race": "neutral",
+      "path": "items/neutral/arsc.json",
+      "bytes": 3543,
+      "sha256": "b4c59685b86b51285392026b1f779b39339f0a71586dd1e808788cd049538236"
+    },
+    {
+      "id": "arsh",
+      "displayName": "芒硝护盾",
+      "race": "neutral",
+      "path": "items/neutral/arsh.json",
+      "bytes": 3434,
+      "sha256": "6a20eff1c339f7aefd005129352a3443b0873ee331f0931610ec553c5cd81ce9"
+    },
+    {
+      "id": "asbl",
+      "displayName": "刺客佩刀",
+      "race": "neutral",
+      "path": "items/neutral/asbl.json",
+      "bytes": 3601,
+      "sha256": "e5439ff8133323c5e2dd71fb41a3cfe8427a3271d3b81c5200dd30f7c29fd2c0"
+    },
+    {
+      "id": "axas",
+      "displayName": "先祖权杖",
+      "race": "neutral",
+      "path": "items/neutral/axas.json",
+      "bytes": 3979,
+      "sha256": "3cec8b42c54ec049ff3cd62a912713929402a7f456b6ab8826a048e0ef9b96d9"
+    },
+    {
+      "id": "azhr",
+      "displayName": "埃苏尼之心",
+      "race": "neutral",
+      "path": "items/neutral/azhr.json",
+      "bytes": 3294,
+      "sha256": "e5626d6e3b0137d566998826ba55fe6181487f9d3faf6b2d72e8db7918d408a3"
+    },
+    {
+      "id": "belv",
+      "displayName": "奎尔萨拉斯之靴 +6",
+      "race": "neutral",
+      "path": "items/neutral/belv.json",
+      "bytes": 3407,
+      "sha256": "2532acf93917659378593d1c4fe168987c3609fd8e61ed3a0a227c4fb86379b6"
+    },
+    {
+      "id": "bfhr",
+      "displayName": "血羽之心",
+      "race": "neutral",
+      "path": "items/neutral/bfhr.json",
+      "bytes": 3384,
+      "sha256": "e919689dae257c05129c035df2619bc43d57f26b4f6e42b0899410af38b6da64"
+    },
+    {
+      "id": "bgst",
+      "displayName": "巨人力量腰带+6",
+      "race": "neutral",
+      "path": "items/neutral/bgst.json",
+      "bytes": 3379,
+      "sha256": "eabd1e2a5f6215711c8ce5f991091cf5e99017258c390454cad3368a383cd469"
+    },
+    {
+      "id": "blba",
+      "displayName": "剑刃护甲",
+      "race": "neutral",
+      "path": "items/neutral/blba.json",
+      "bytes": 3320,
+      "sha256": "67f9f0b3b2728b9c32292a8433ab4aec41ae69f695ebb58b067ea78d88d3cee3"
+    },
+    {
+      "id": "brac",
+      "displayName": "神秘腰带",
+      "race": "neutral",
+      "path": "items/neutral/brac.json",
+      "bytes": 3262,
+      "sha256": "70f6706146f4cfd01ae79ef1bf8fd08bae7c486b20009e4d7c5b35e07bdeaf70"
+    },
+    {
+      "id": "brag",
+      "displayName": "敏捷腰带",
+      "race": "neutral",
+      "path": "items/neutral/brag.json",
+      "bytes": 3314,
+      "sha256": "b3106050b8d441713f24e663868cba72856b6f992dddbd886ebd10efdc086cef"
+    },
+    {
+      "id": "bspd",
+      "displayName": "速度之靴",
+      "race": "neutral",
+      "path": "items/neutral/bspd.json",
+      "bytes": 3366,
+      "sha256": "d51a1401db8e19c05cbfd985322cef3516cd4de31ba9444e22b3cd3eabe84f39"
+    },
+    {
+      "id": "btst",
+      "displayName": "战斗标准",
+      "race": "neutral",
+      "path": "items/neutral/btst.json",
+      "bytes": 3192,
+      "sha256": "26f88d4ae0414d5d03bca5d72e272d87926683656979dc7f1ab8b28dfb5a85d9"
+    },
+    {
+      "id": "bzbe",
+      "displayName": "空瓶",
+      "race": "neutral",
+      "path": "items/neutral/bzbe.json",
+      "bytes": 3199,
+      "sha256": "86d176eeb293d30d530f4e3ce40c4fe3c1b99bb55f12cf795a263fd63feba0da"
+    },
+    {
+      "id": "bzbf",
+      "displayName": "盛满泉水的瓶子",
+      "race": "neutral",
+      "path": "items/neutral/bzbf.json",
+      "bytes": 3276,
+      "sha256": "7a1e5642dff32a8429c411d4a3cabab156c89ce811c32106b8f14cb4f11a597e"
+    },
+    {
+      "id": "ccmd",
+      "displayName": "统治权杖",
+      "race": "neutral",
+      "path": "items/neutral/ccmd.json",
+      "bytes": 3759,
+      "sha256": "22b824a54664edf41264e3112433342d1a43472e42522b89c4ba1a559df0f678"
+    },
+    {
+      "id": "ches",
+      "displayName": "奶酪",
+      "race": "neutral",
+      "path": "items/neutral/ches.json",
+      "bytes": 3107,
+      "sha256": "a3954c15f502bbecbb28e651428f794d604d01c373bc74cb8779edec4de39a6e"
+    },
+    {
+      "id": "ciri",
+      "displayName": "法师长袍 +6",
+      "race": "neutral",
+      "path": "items/neutral/ciri.json",
+      "bytes": 3373,
+      "sha256": "a51176ecc665758a93272c87c32d72247c2cffb0f0de5a6addc3c82aa6da91cc"
+    },
+    {
+      "id": "ckng",
+      "displayName": "国王之冠 +5",
+      "race": "neutral",
+      "path": "items/neutral/ckng.json",
+      "bytes": 3463,
+      "sha256": "9942f22682ea9826f3bfc088bcdd4bcdace01ef5d62ba3d23184dbcb2f82e4a5"
+    },
+    {
+      "id": "clfm",
+      "displayName": "火焰风衣",
+      "race": "neutral",
+      "path": "items/neutral/clfm.json",
+      "bytes": 3521,
+      "sha256": "947cc678bb473daed2a44ba14dd956ae69b95e23100245ba0ff4c076d3f05ee8"
+    },
+    {
+      "id": "clsd",
+      "displayName": "影子风衣",
+      "race": "neutral",
+      "path": "items/neutral/clsd.json",
+      "bytes": 3548,
+      "sha256": "6e4084fca9cc532f8311a484cbf908f7c7b810b5b5e1739b255e5b4a7c04eeaf"
+    },
+    {
+      "id": "cnhn",
+      "displayName": "赛纳留斯的号角",
+      "race": "neutral",
+      "path": "items/neutral/cnhn.json",
+      "bytes": 3597,
+      "sha256": "360658668c1c8fcdd8a504211679d191e748c9e600dda10bbbd3c2a2d867eabd"
+    },
+    {
+      "id": "cnob",
+      "displayName": "贵族圆环",
+      "race": "neutral",
+      "path": "items/neutral/cnob.json",
+      "bytes": 3495,
+      "sha256": "bc1c860b1c62d342170a5e30099d1e6653ebf3678c950a2265863b3049f63a38"
+    },
+    {
+      "id": "cosl",
+      "displayName": "灵魂之球",
+      "race": "neutral",
+      "path": "items/neutral/cosl.json",
+      "bytes": 3811,
+      "sha256": "5f77f5c6a156f6b14e6f7b4942420e18054b232a8a80c937be5ec8164b233fcb"
+    },
+    {
+      "id": "crdt",
+      "displayName": "死亡领主皇冠",
+      "race": "neutral",
+      "path": "items/neutral/crdt.json",
+      "bytes": 3995,
+      "sha256": "4a2b9ddc50492002decfe636e5d5d7b1cc622de383044c454d52e0880b4d0ac6"
+    },
+    {
+      "id": "crys",
+      "displayName": "水晶球",
+      "race": "neutral",
+      "path": "items/neutral/crys.json",
+      "bytes": 3480,
+      "sha256": "0799003cd7509ff70dcefb7ca507b929d155ceb1d45d21b91eb90e4d4ed272be"
+    },
+    {
+      "id": "desc",
+      "displayName": "科勒恩的逃脱匕首",
+      "race": "neutral",
+      "path": "items/neutral/desc.json",
+      "bytes": 3252,
+      "sha256": "0a93fc60a769a07887fdcb261d57bf11100794d1aa1cd68812bc7c78bc5ddca4"
+    },
+    {
+      "id": "dkfw",
+      "displayName": "雷霆水桶",
+      "race": "neutral",
+      "path": "items/neutral/dkfw.json",
+      "bytes": 3236,
+      "sha256": "82015b2c9b0bdf1e9e3a2bc0a24f61001d792ce1e60c6c3b55e8bb2287e70624"
+    },
+    {
+      "id": "dphe",
+      "displayName": "雷霆凤凰蛋",
+      "race": "neutral",
+      "path": "items/neutral/dphe.json",
+      "bytes": 3095,
+      "sha256": "14c18f4e4b4541e681c07dadc13c04b08818f1a0ba409b4668172bba37cb8892"
+    },
+    {
+      "id": "drph",
+      "displayName": "德鲁伊布袋",
+      "race": "neutral",
+      "path": "items/neutral/drph.json",
+      "bytes": 3274,
+      "sha256": "c68c9386d16c831864d742decd267cb15cc24ca15e25c19233527736d93aae43"
+    },
+    {
+      "id": "dsum",
+      "displayName": "召唤钻石",
+      "race": "neutral",
+      "path": "items/neutral/dsum.json",
+      "bytes": 3358,
+      "sha256": "3a3b9ec6e51d466cb582b8d36107ea8fba54ec82c997056ca63ba8fdf7ef776b"
+    },
+    {
+      "id": "dthb",
+      "displayName": "雷电花芯",
+      "race": "neutral",
+      "path": "items/neutral/dthb.json",
+      "bytes": 3274,
+      "sha256": "adcec2e209f6b8dd9f9e05977bc0aeb82c7644ab4ee8d967f3091508279fecc7"
+    },
+    {
+      "id": "dtsb",
+      "displayName": "德雷克萨尔魔法书",
+      "race": "neutral",
+      "path": "items/neutral/dtsb.json",
+      "bytes": 3994,
+      "sha256": "bc21a4c6c23018ec241e727db1523b6e1ed8c78fd10fa7524f3eda460d638b76"
+    },
+    {
+      "id": "dust",
+      "displayName": "尘土之影",
+      "race": "neutral",
+      "path": "items/neutral/dust.json",
+      "bytes": 3434,
+      "sha256": "27afad51401d7b821791560166f50f79c47336872327ad36cbc3c9cdf83a8a1c"
+    },
+    {
+      "id": "engs",
+      "displayName": "魔法宝石",
+      "race": "neutral",
+      "path": "items/neutral/engs.json",
+      "bytes": 3375,
+      "sha256": "33769195939dbbe65f0375905baf7c237031b3692eb24f44641f4d3126390ada"
+    },
+    {
+      "id": "envl",
+      "displayName": "魔法小瓶",
+      "race": "neutral",
+      "path": "items/neutral/envl.json",
+      "bytes": 3418,
+      "sha256": "cd0c817c5247a4492c572cb7d3246229ccdcfb95fc67224c85f38543b7fbf867"
+    },
+    {
+      "id": "esaz",
+      "displayName": "埃苏尼之精髓",
+      "race": "neutral",
+      "path": "items/neutral/esaz.json",
+      "bytes": 3564,
+      "sha256": "4fb7a5cb370f632d612ea0005363cabd27c9198ed493cecee9841679af6ec081"
+    },
+    {
+      "id": "evtl",
+      "displayName": "闪避护符",
+      "race": "neutral",
+      "path": "items/neutral/evtl.json",
+      "bytes": 3489,
+      "sha256": "bec7a13d1f5a331fe93ee29d5c0e9c8a9cd51d1450607dd43260e219aa2b517b"
+    },
+    {
+      "id": "fgdg",
+      "displayName": "恶魔雕像",
+      "race": "neutral",
+      "path": "items/neutral/fgdg.json",
+      "bytes": 3368,
+      "sha256": "c3b714afbc8612093359c1d2678488f53a4ca877710a635e7f5607ba6dbc1eae"
+    },
+    {
+      "id": "fgfh",
+      "displayName": "长钉衣领",
+      "race": "neutral",
+      "path": "items/neutral/fgfh.json",
+      "bytes": 3359,
+      "sha256": "d7741b3d75d1fe2d037c9f4f14d5aa1dd572598e87598e0abf3385bb06b34ea4"
+    },
+    {
+      "id": "fgrd",
+      "displayName": "红龙之卵",
+      "race": "neutral",
+      "path": "items/neutral/fgrd.json",
+      "bytes": 3435,
+      "sha256": "8eddff22407cf277acf95a5fd0287496d924fa2917b14849f2bd767c31bf86bd"
+    },
+    {
+      "id": "fgrg",
+      "displayName": "岩石印记",
+      "race": "neutral",
+      "path": "items/neutral/fgrg.json",
+      "bytes": 3353,
+      "sha256": "d349e40db8dffd368ec8ee3a2f8638a508b443d7ff958d0b838838e232507db2"
+    },
+    {
+      "id": "fgsk",
+      "displayName": "死亡之书",
+      "race": "neutral",
+      "path": "items/neutral/fgsk.json",
+      "bytes": 3438,
+      "sha256": "1b05a8f0596cb6df92ed7d1f313b704a9d70e424e7da7cadcbdbc82bf8926b2e"
+    },
+    {
+      "id": "fgun",
+      "displayName": "信号枪",
+      "race": "neutral",
+      "path": "items/neutral/fgun.json",
+      "bytes": 3249,
+      "sha256": "ed7344070d76adefc4b51a6b49a0d783bed42e83b9d60a739f016c1d2fbbb830"
+    },
+    {
+      "id": "flag",
+      "displayName": "人族旗帜",
+      "race": "neutral",
+      "path": "items/neutral/flag.json",
+      "bytes": 3377,
+      "sha256": "21384a0df17e4785a69db80e80a70564b13454687e4e9ac01fa5e64da24c433e"
+    },
+    {
+      "id": "frgd",
+      "displayName": "霜冻守卫",
+      "race": "neutral",
+      "path": "items/neutral/frgd.json",
+      "bytes": 3465,
+      "sha256": "df28442e7f886072083106a84739cd8db764148ab2049dbd32b0500b86ebba72"
+    },
+    {
+      "id": "frhg",
+      "displayName": "火焰手套",
+      "race": "neutral",
+      "path": "items/neutral/frhg.json",
+      "bytes": 3389,
+      "sha256": "3765e80ac03fb95b7e1a2eeabc9b1c590e4f845f6dcef22b99a6a4bcb35b4288"
+    },
+    {
+      "id": "fwss",
+      "displayName": "冰霜巨龙头骨护盾",
+      "race": "neutral",
+      "path": "items/neutral/fwss.json",
+      "bytes": 3561,
+      "sha256": "c704c62d94cee3eb6f6f88261eb417584174519e9e7ec413faecf0805268f1aa"
+    },
+    {
+      "id": "gcel",
+      "displayName": "加速手套",
+      "race": "neutral",
+      "path": "items/neutral/gcel.json",
+      "bytes": 3303,
+      "sha256": "0e95cd93d2d683d64e9e1bc4d1e473ba68b4a11fb2f9c8752d7c1e4bf5f9a759"
+    },
+    {
+      "id": "gemt",
+      "displayName": "显形宝石",
+      "race": "neutral",
+      "path": "items/neutral/gemt.json",
+      "bytes": 3365,
+      "sha256": "bde6ee9c9c37258e9ccdfd1b3efd1fe69c3a3a54a57b59351cf7bc44f80b560e"
+    },
+    {
+      "id": "gfor",
+      "displayName": "防御浮雕",
+      "race": "neutral",
+      "path": "items/neutral/gfor.json",
+      "bytes": 3198,
+      "sha256": "0d10039d7c5396ca445bc6eaae6e59c87d6ceec1e9740a1a92be55f4627d7f1f"
+    },
+    {
+      "id": "gldo",
+      "displayName": "基尔加丹之球",
+      "race": "neutral",
+      "path": "items/neutral/gldo.json",
+      "bytes": 3525,
+      "sha256": "fdcdc5c1735a9139683ef01fd5913e451a0753a3297b52ad950b844f226b52ec"
+    },
+    {
+      "id": "glsk",
+      "displayName": "古尔丹之颅",
+      "race": "neutral",
+      "path": "items/neutral/glsk.json",
+      "bytes": 3367,
+      "sha256": "7e3b46874134cff58e6f8b3d7a06cf976ff3284d0fa600fc75fde4c4db6bef88"
+    },
+    {
+      "id": "gmfr",
+      "displayName": "宝石碎片",
+      "race": "neutral",
+      "path": "items/neutral/gmfr.json",
+      "bytes": 3044,
+      "sha256": "4af73e7a7875b97f6494cc35f217ca6f8049c6945e3005d8348f7a8e9d623fb9"
+    },
+    {
+      "id": "gobm",
+      "displayName": "地精地雷",
+      "race": "neutral",
+      "path": "items/neutral/gobm.json",
+      "bytes": 3631,
+      "sha256": "253ed3fd4bdad6e2d4164482e9bcd0cc84b26cf880b3f07778043e25fd3f309f"
+    },
+    {
+      "id": "gold",
+      "displayName": "金币",
+      "race": "neutral",
+      "path": "items/neutral/gold.json",
+      "bytes": 3135,
+      "sha256": "6e67d74bc918987af80dca9c980ff7569a34b9336134640bbb5648441c8a8a1d"
+    },
+    {
+      "id": "gomn",
+      "displayName": "全知浮雕",
+      "race": "neutral",
+      "path": "items/neutral/gomn.json",
+      "bytes": 3168,
+      "sha256": "22180d85276bbd3feebd882797e52be1e82227a79b1e842c4c592833434384d5"
+    },
+    {
+      "id": "gopr",
+      "displayName": "净化浮雕",
+      "race": "neutral",
+      "path": "items/neutral/gopr.json",
+      "bytes": 3244,
+      "sha256": "d29f1dcf12ba5bb03fa0432afbabdf4cce2ffedb50fa131fc33ff6181c5b11dc"
+    },
+    {
+      "id": "grsl",
+      "displayName": "灵魂宝物",
+      "race": "neutral",
+      "path": "items/neutral/grsl.json",
+      "bytes": 3647,
+      "sha256": "e46a22e8b64b76420d78f7bdacf40634d543357da594e06cd74e52adf5fe1e12"
+    },
+    {
+      "id": "gsou",
+      "displayName": "灵魂宝石",
+      "race": "neutral",
+      "path": "items/neutral/gsou.json",
+      "bytes": 3851,
+      "sha256": "7b42833ca4512269fa52d6afc40b71e8d87c007f579ae1e9eadf7543d5adf9ee"
+    },
+    {
+      "id": "guvi",
+      "displayName": "夜视浮雕",
+      "race": "neutral",
+      "path": "items/neutral/guvi.json",
+      "bytes": 3198,
+      "sha256": "1594f63ae8ad36b3e616969c6dd2c342a1325a119dc04e550383593261148949"
+    },
+    {
+      "id": "gvsm",
+      "displayName": "法术大师手套",
+      "race": "neutral",
+      "path": "items/neutral/gvsm.json",
+      "bytes": 3495,
+      "sha256": "9346365b145661671e26787de37bebe560bebb11d1f1940b09e9b04c61e39da2"
+    },
+    {
+      "id": "hbth",
+      "displayName": "战舰之舵",
+      "race": "neutral",
+      "path": "items/neutral/hbth.json",
+      "bytes": 3733,
+      "sha256": "6e65849d09bbee0be948e4987151952446b081f8cb145bcfd8ada1a0d6d1d062"
+    },
+    {
+      "id": "hcun",
+      "displayName": "灵巧头巾",
+      "race": "neutral",
+      "path": "items/neutral/hcun.json",
+      "bytes": 3366,
+      "sha256": "98f1366d78dfd81f01029d48906c37f9cb772e031b11fcfd0444e1b97ee956e2"
+    },
+    {
+      "id": "hlst",
+      "displayName": "医疗石",
+      "race": "neutral",
+      "path": "items/neutral/hlst.json",
+      "bytes": 3639,
+      "sha256": "84d206c2b1258aa8f914180fd462def3b8d2f341dd40eac0dbe54227b55d9cf6"
+    },
+    {
+      "id": "horl",
+      "displayName": "稀有神器",
+      "race": "neutral",
+      "path": "items/neutral/horl.json",
+      "bytes": 3460,
+      "sha256": "2a8744006a2de036eb4c507756b75043a4765f0a2d75e185fa52358a6dd68840"
+    },
+    {
+      "id": "hslv",
+      "displayName": "医疗剂",
+      "race": "neutral",
+      "path": "items/neutral/hslv.json",
+      "bytes": 3539,
+      "sha256": "c5c0336a6e6f49b2f2d94cc1a04a22b03d65bc8e8be8c28e6c56f83551821988"
+    },
+    {
+      "id": "hval",
+      "displayName": "英勇面具",
+      "race": "neutral",
+      "path": "items/neutral/hval.json",
+      "bytes": 3354,
+      "sha256": "9957db5bd132edd76a4531bda04d12435f9dd166d7768d0daea83cae1f46d883"
+    },
+    {
+      "id": "infs",
+      "displayName": "恶魔岩石",
+      "race": "neutral",
+      "path": "items/neutral/infs.json",
+      "bytes": 3585,
+      "sha256": "f067f9aa0fbf30b164cbe7c87e1a34ca219fab5d725433134d7ab1b6b47c376c"
+    },
+    {
+      "id": "iwbr",
+      "displayName": "铁树枝干",
+      "race": "neutral",
+      "path": "items/neutral/iwbr.json",
+      "bytes": 3318,
+      "sha256": "86351a6a775a9eafd03f5b8b349e3b10f1e0aee9d9b6de41b8d98d6022fa87f0"
+    },
+    {
+      "id": "jdrn",
+      "displayName": "灵巧指环",
+      "race": "neutral",
+      "path": "items/neutral/jdrn.json",
+      "bytes": 3308,
+      "sha256": "fdc60362606e9383174849797d19fdafe297b6d4004cfb3d901e6a20554c4c26"
+    },
+    {
+      "id": "jpnt",
+      "displayName": "给吉安娜?普罗德摩尔的便条",
+      "race": "neutral",
+      "path": "items/neutral/jpnt.json",
+      "bytes": 3330,
+      "sha256": "fc822e965e9ffd71523933526284a876f748cf92fe660a20275a789210a2a494"
+    },
+    {
+      "id": "k3m1",
+      "displayName": "月亮水晶",
+      "race": "neutral",
+      "path": "items/neutral/k3m1.json",
+      "bytes": 3273,
+      "sha256": "5dcd2b6c7b9d486190eb0d484503a802c30693a26500ca2e8e0e98989259042d"
+    },
+    {
+      "id": "k3m2",
+      "displayName": "三月之钥的另外一个部分",
+      "race": "neutral",
+      "path": "items/neutral/k3m2.json",
+      "bytes": 3369,
+      "sha256": "18203ff4c1d669574be88dd5b9f4ec86c23dd3dceee0e8a321f370024b3a31e0"
+    },
+    {
+      "id": "k3m3",
+      "displayName": "三月之钥",
+      "race": "neutral",
+      "path": "items/neutral/k3m3.json",
+      "bytes": 3267,
+      "sha256": "af2087d8c9b374c596a2089a0b7eae137be182cbfad378dd008bcec6984a2602"
+    },
+    {
+      "id": "kgal",
+      "displayName": "麦酒桶",
+      "race": "neutral",
+      "path": "items/neutral/kgal.json",
+      "bytes": 3239,
+      "sha256": "f032d28ebd0d339016da2426f7d3dd46fcce0b6076ca67c86ce47337e2c5d304"
+    },
+    {
+      "id": "klmm",
+      "displayName": "远古战斧",
+      "race": "neutral",
+      "path": "items/neutral/klmm.json",
+      "bytes": 4263,
+      "sha256": "77b9e83a3207475a22b30bebd502141900d7e3f21262068c32797e518a97057f"
+    },
+    {
+      "id": "kpin",
+      "displayName": "卡嘉长萧",
+      "race": "neutral",
+      "path": "items/neutral/kpin.json",
+      "bytes": 3509,
+      "sha256": "4689e532005f12ac12ced41d86afd838de261a50f6908ba7b510da69a908257d"
+    },
+    {
+      "id": "ktrm",
+      "displayName": "泰瑞纳斯国王的骨灰瓮",
+      "race": "neutral",
+      "path": "items/neutral/ktrm.json",
+      "bytes": 3524,
+      "sha256": "b1145378c0a79107558d26f2a3b0941e962854a6bdadafcadc82004a0b28344b"
+    },
+    {
+      "id": "kybl",
+      "displayName": "鲜血钥匙",
+      "race": "neutral",
+      "path": "items/neutral/kybl.json",
+      "bytes": 3171,
+      "sha256": "580c2d432673490129cfb408eef3c87ef19bcb84f9d3e436d74d37594a83495f"
+    },
+    {
+      "id": "kygh",
+      "displayName": "魔鬼钥匙",
+      "race": "neutral",
+      "path": "items/neutral/kygh.json",
+      "bytes": 3192,
+      "sha256": "22fd406a679f9ddfb1de17d948db35d3ce8557cefb7b5b7040e9872b06e62268"
+    },
+    {
+      "id": "kymn",
+      "displayName": "月之钥匙",
+      "race": "neutral",
+      "path": "items/neutral/kymn.json",
+      "bytes": 3209,
+      "sha256": "4d4f8c43d8c1ddcc039952c41fdc45bbc2189ac450e1288367524dd0c8a77133"
+    },
+    {
+      "id": "kysn",
+      "displayName": "太阳钥匙",
+      "race": "neutral",
+      "path": "items/neutral/kysn.json",
+      "bytes": 3178,
+      "sha256": "89f7fe43d7a1144443d449d0c029006af473d5800f401522577aa11d2eb7f8b3"
+    },
+    {
+      "id": "ledg",
+      "displayName": "吉拉德的帐本",
+      "race": "neutral",
+      "path": "items/neutral/ledg.json",
+      "bytes": 3279,
+      "sha256": "e5ff4596ce066bd80348a217d3841e44e3d3b96af0e3f2ac8b7b2a8d76e57b64"
+    },
+    {
+      "id": "lgdh",
+      "displayName": "毁灭之角",
+      "race": "neutral",
+      "path": "items/neutral/lgdh.json",
+      "bytes": 3510,
+      "sha256": "e44184829b2096a4baff026a0d499288f93b09295b9f47a7ea8475959f34caf3"
+    },
+    {
+      "id": "lhst",
+      "displayName": "风暴狮角",
+      "race": "neutral",
+      "path": "items/neutral/lhst.json",
+      "bytes": 3482,
+      "sha256": "a6f8f38e99737948e3667f0171388e9cbf12b0dd2849b800ca871c4fac100f44"
+    },
+    {
+      "id": "lmbr",
+      "displayName": "木材堆",
+      "race": "neutral",
+      "path": "items/neutral/lmbr.json",
+      "bytes": 3208,
+      "sha256": "16b3c0604942c00b867df184003c32c2eaab105c67ff3fa88c71754c93442a72"
+    },
+    {
+      "id": "lnrn",
+      "displayName": "雄狮之戒",
+      "race": "neutral",
+      "path": "items/neutral/lnrn.json",
+      "bytes": 3304,
+      "sha256": "1bc428d75bee65bc41774a86e14d9447b322e9a368b449002bbc1cbaf9957425"
+    },
+    {
+      "id": "lure",
+      "displayName": "怪兽诱捕守卫",
+      "race": "neutral",
+      "path": "items/neutral/lure.json",
+      "bytes": 3316,
+      "sha256": "79159045f17cff594159d033b0761687a3ebdef6f2468cfd4e3242042c39cebf"
+    },
+    {
+      "id": "manh",
+      "displayName": "生命手册",
+      "race": "neutral",
+      "path": "items/neutral/manh.json",
+      "bytes": 3280,
+      "sha256": "0c41cfa2eac82db03bd1b9415dab704eb386a5a90f9ac07812e394436fbb6662"
+    },
+    {
+      "id": "mcou",
+      "displayName": "勇气勋章",
+      "race": "neutral",
+      "path": "items/neutral/mcou.json",
+      "bytes": 3379,
+      "sha256": "a08cb195c260dcaeabebaf95310edfe2e6f3e490be78c8bafd928037a1c99453"
+    },
+    {
+      "id": "mcri",
+      "displayName": "机械类的小玩艺",
+      "race": "neutral",
+      "path": "items/neutral/mcri.json",
+      "bytes": 3480,
+      "sha256": "2ed356be01a875a58b55891a6070c7890e52ea98b186373160e3600a78f71dea"
+    },
+    {
+      "id": "mgtk",
+      "displayName": "魔法钥匙串",
+      "race": "neutral",
+      "path": "items/neutral/mgtk.json",
+      "bytes": 3152,
+      "sha256": "bf58bad9df6fa361f7d116b1675b5ebb13d2ecdc11aa9b9b13ce634ebb11c975"
+    },
+    {
+      "id": "mlst",
+      "displayName": "力量之锤",
+      "race": "neutral",
+      "path": "items/neutral/mlst.json",
+      "bytes": 3283,
+      "sha256": "363d5278b6410596b46e8d808336cd0b4189e4ed163f616dde492e40249f3550"
+    },
+    {
+      "id": "mnsf",
+      "displayName": "心灵权杖",
+      "race": "neutral",
+      "path": "items/neutral/mnsf.json",
+      "bytes": 3356,
+      "sha256": "62efe7fba67bc7f9dd84b3778d2018296ff9da35f632a0e64b54cb88921da030"
+    },
+    {
+      "id": "mnst",
+      "displayName": "魔法石",
+      "race": "neutral",
+      "path": "items/neutral/mnst.json",
+      "bytes": 3587,
+      "sha256": "a65f5610b76865ddf01201ef5f3954026ea8e57043df0f0221ae46d0227a530d"
+    },
+    {
+      "id": "modt",
+      "displayName": "死亡面罩",
+      "race": "neutral",
+      "path": "items/neutral/modt.json",
+      "bytes": 3471,
+      "sha256": "698554a72536b356bc03a827b2707f4802d94281890c98e21ab9718bac1c73bf"
+    },
+    {
+      "id": "moon",
+      "displayName": "月亮石",
+      "race": "neutral",
+      "path": "items/neutral/moon.json",
+      "bytes": 3317,
+      "sha256": "02e0efe9dd176975d8ff4152a26dd73b6aa645f6584846dd6a436838e6a26568"
+    },
+    {
+      "id": "mort",
+      "displayName": "莫哥林的报告",
+      "race": "neutral",
+      "path": "items/neutral/mort.json",
+      "bytes": 3225,
+      "sha256": "0a5a54753348b10d11de8a8bcb1297126d412b764b949617caf50a78e488b2ae"
+    },
+    {
+      "id": "nflg",
+      "displayName": "暗夜精灵族旗帜",
+      "race": "neutral",
+      "path": "items/neutral/nflg.json",
+      "bytes": 3458,
+      "sha256": "df0e32e3a832e4e9b0962f7814c803069997cfc29bfcbeb553ed36199d8d06fb"
+    },
+    {
+      "id": "nspi",
+      "displayName": "魔法免疫项链",
+      "race": "neutral",
+      "path": "items/neutral/nspi.json",
+      "bytes": 3345,
+      "sha256": "b7a970c862699984cef6a6c7973ab4f7d52afea83ed1ee3462f6415ea603074c"
+    },
+    {
+      "id": "ocor",
+      "displayName": "腐蚀之球",
+      "race": "neutral",
+      "path": "items/neutral/ocor.json",
+      "bytes": 3587,
+      "sha256": "5ebfaa0b5f55039d89f4d5f4bc7c305be0687a4220ae0ee2acd60546a72940fb"
+    },
+    {
+      "id": "odef",
+      "displayName": "黑暗之球",
+      "race": "neutral",
+      "path": "items/neutral/odef.json",
+      "bytes": 3684,
+      "sha256": "7bcc086480d362161779addd9fdfa04e301ecab133f68fa8587f7a14fde5c5a0"
+    },
+    {
+      "id": "ofir",
+      "displayName": "火焰之球",
+      "race": "neutral",
+      "path": "items/neutral/ofir.json",
+      "bytes": 3754,
+      "sha256": "5c14b0c986f0b03fe6a806cfb2a716e5345998c3720e6d124f617aef4351e928"
+    },
+    {
+      "id": "oflg",
+      "displayName": "兽族旗帜",
+      "race": "neutral",
+      "path": "items/neutral/oflg.json",
+      "bytes": 3347,
+      "sha256": "73234020848b3c8116b650462265290bac07869f9bba9661c9d5d6c8d070da0a"
+    },
+    {
+      "id": "ofro",
+      "displayName": "霜冻之球",
+      "race": "neutral",
+      "path": "items/neutral/ofro.json",
+      "bytes": 3714,
+      "sha256": "245ea34416b3e6cd06f229153ae762c218be1ae78591b65dbd6fec3642c676bc"
+    },
+    {
+      "id": "oli2",
+      "displayName": "闪电之球",
+      "race": "neutral",
+      "path": "items/neutral/oli2.json",
+      "bytes": 3824,
+      "sha256": "f7de36ce96aada69460e281c4947386694ea65eb94d48b1dc728525d46e3d790"
+    },
+    {
+      "id": "olig",
+      "displayName": "闪电之球",
+      "race": "neutral",
+      "path": "items/neutral/olig.json",
+      "bytes": 4021,
+      "sha256": "c653ec39dca01b1824940bd03adaad3ba72551d5b9cd8e1218704fc72ab169d6"
+    },
+    {
+      "id": "oslo",
+      "displayName": "减速之球",
+      "race": "neutral",
+      "path": "items/neutral/oslo.json",
+      "bytes": 3593,
+      "sha256": "e59bfeb07187e5a75adc44477e623ba271a4590c83db0542ee10ed7649cee6ae"
+    },
+    {
+      "id": "oven",
+      "displayName": "毒液之球",
+      "race": "neutral",
+      "path": "items/neutral/oven.json",
+      "bytes": 3577,
+      "sha256": "7efb73899720e462f8c299035d6d3d0855ebc16f3d6e8775e2a73cb14b4bfb4a"
+    },
+    {
+      "id": "pams",
+      "displayName": "抗体药水",
+      "race": "neutral",
+      "path": "items/neutral/pams.json",
+      "bytes": 3538,
+      "sha256": "91ed796bae8f04a23acabd775a1889e2e72c65fe00045ffaf6568e03e48387ec"
+    },
+    {
+      "id": "pclr",
+      "displayName": "净化药水",
+      "race": "neutral",
+      "path": "items/neutral/pclr.json",
+      "bytes": 3510,
+      "sha256": "7a4a388df32f56b31234c3ea0486de7ee7cd10e1bffff074355b97c57f61c96a"
+    },
+    {
+      "id": "pdiv",
+      "displayName": "神圣药水",
+      "race": "neutral",
+      "path": "items/neutral/pdiv.json",
+      "bytes": 3267,
+      "sha256": "9570caf367fa7aa99bdf6ceb655f78ba06d8941f2a11d9e67f9507ce4f6e50a0"
+    },
+    {
+      "id": "penr",
+      "displayName": "能量垂饰",
+      "race": "neutral",
+      "path": "items/neutral/penr.json",
+      "bytes": 3355,
+      "sha256": "821a0bf13a4e1370876667ea1c60cebfc935b75740500a792e93360f79299646"
+    },
+    {
+      "id": "pghe",
+      "displayName": "大生命药水",
+      "race": "neutral",
+      "path": "items/neutral/pghe.json",
+      "bytes": 3439,
+      "sha256": "6b416459ab1298b59a9ee89ee0d8ea7ef1e52adb0cb1a8407e16f5cac1cdacc1"
+    },
+    {
+      "id": "pgin",
+      "displayName": "大隐形药水",
+      "race": "neutral",
+      "path": "items/neutral/pgin.json",
+      "bytes": 3789,
+      "sha256": "802893ce0a2c3704e43f0ee76d23702f2b7f862ba7375cc8f777451b2a9a09b7"
+    },
+    {
+      "id": "pgma",
+      "displayName": "大魔法药水",
+      "race": "neutral",
+      "path": "items/neutral/pgma.json",
+      "bytes": 3416,
+      "sha256": "8283147c51a1947be3e83e03201ed0e361ac6e07be738b89260b25231dd068a1"
+    },
+    {
+      "id": "phea",
+      "displayName": "生命药水",
+      "race": "neutral",
+      "path": "items/neutral/phea.json",
+      "bytes": 3516,
+      "sha256": "52fcd6066229e8f81d0865ceba51e5ccd38c79ebb5ce720a4618b757f7b7b31b"
+    },
+    {
+      "id": "phlt",
+      "displayName": "李维特",
+      "race": "neutral",
+      "path": "items/neutral/phlt.json",
+      "bytes": 3160,
+      "sha256": "c2505164ca95e2a14d3964bfc306c6183dbe8387aeedbfb6049c8677cf1c99bb"
+    },
+    {
+      "id": "pinv",
+      "displayName": "隐形药水",
+      "race": "neutral",
+      "path": "items/neutral/pinv.json",
+      "bytes": 3751,
+      "sha256": "c57b6ef42983a9c3b4c96c6447da653b9960f32f2fa9a3879ce0d8602be82490"
+    },
+    {
+      "id": "plcl",
+      "displayName": "小净化药水",
+      "race": "neutral",
+      "path": "items/neutral/plcl.json",
+      "bytes": 3513,
+      "sha256": "e74fa3ce8d6043ee0a39ffb2fe218f5f311cd4094d133690941c459f2dfe170e"
+    },
+    {
+      "id": "pman",
+      "displayName": "魔法药水",
+      "race": "neutral",
+      "path": "items/neutral/pman.json",
+      "bytes": 3491,
+      "sha256": "a8acadb123737dbafe670acb6fa136e3ef1000bc6d4e128b8a6556049968ce19"
+    },
+    {
+      "id": "pmna",
+      "displayName": "魔法垂饰",
+      "race": "neutral",
+      "path": "items/neutral/pmna.json",
+      "bytes": 3329,
+      "sha256": "015f9215520cc048b49cc61fe31667a82a9426ce46825112f82b80fc3e147634"
+    },
+    {
+      "id": "pnvl",
+      "displayName": "较小的无敌药水",
+      "race": "neutral",
+      "path": "items/neutral/pnvl.json",
+      "bytes": 3551,
+      "sha256": "b75528f35e4752284dde0466a154bd815d56ba42fea39b3db4f8a3b7e9044a89"
+    },
+    {
+      "id": "pnvu",
+      "displayName": "无敌药水",
+      "race": "neutral",
+      "path": "items/neutral/pnvu.json",
+      "bytes": 3613,
+      "sha256": "1c8b4460b9b26ff9c76a8bfe742a8df46c05907cbe2179c4a17f69eb0bb9dae8"
+    },
+    {
+      "id": "pomn",
+      "displayName": "全知药水",
+      "race": "neutral",
+      "path": "items/neutral/pomn.json",
+      "bytes": 3286,
+      "sha256": "1ab2df57d53ec00d6d084f3a836a602f2ff20230dcc9e616fb227073b822d738"
+    },
+    {
+      "id": "pres",
+      "displayName": "恢复药水",
+      "race": "neutral",
+      "path": "items/neutral/pres.json",
+      "bytes": 3519,
+      "sha256": "30ab17d4eb193df3a8757a7aec327e6ce8983b33e3b6519dadfc45767f6cb2c3"
+    },
+    {
+      "id": "prvt",
+      "displayName": "生命护身符",
+      "race": "neutral",
+      "path": "items/neutral/prvt.json",
+      "bytes": 3445,
+      "sha256": "dffbe098e1816ffac7e3bfade5b3fdbb2f0ee91c6ee113d79d60ac98c37614a6"
+    },
+    {
+      "id": "pspd",
+      "displayName": "速度药水",
+      "race": "neutral",
+      "path": "items/neutral/pspd.json",
+      "bytes": 3464,
+      "sha256": "9d6cbf784c905e264f8009729b744f5ffeac9224346cc6e2521f46ca58f43221"
+    },
+    {
+      "id": "rag1",
+      "displayName": "敏捷便鞋  +3",
+      "race": "neutral",
+      "path": "items/neutral/rag1.json",
+      "bytes": 3430,
+      "sha256": "c95293f94dd634b6cbe4978640f28d6ae1718f1a307d7d28a120b03f8116af73"
+    },
+    {
+      "id": "ram1",
+      "displayName": "大魔法师指环",
+      "race": "neutral",
+      "path": "items/neutral/ram1.json",
+      "bytes": 3526,
+      "sha256": "2a4ca6523d88fda10c4a50471fde1aef6743df2313099a3e8c5b9504fefdd8d2"
+    },
+    {
+      "id": "ram2",
+      "displayName": "大魔法师指环",
+      "race": "neutral",
+      "path": "items/neutral/ram2.json",
+      "bytes": 3529,
+      "sha256": "abb33a2c6e0c63bedd7e08003850dc993a38703c08d61f4a89e44d2ceef391f7"
+    },
+    {
+      "id": "ram3",
+      "displayName": "大魔法师指环",
+      "race": "neutral",
+      "path": "items/neutral/ram3.json",
+      "bytes": 3528,
+      "sha256": "c16f06eae643aed598886d19a4cba286e267b17405b1f7524a2288f8fe139894"
+    },
+    {
+      "id": "ram4",
+      "displayName": "大魔法师指环",
+      "race": "neutral",
+      "path": "items/neutral/ram4.json",
+      "bytes": 3658,
+      "sha256": "1ec2cddc4c5a1411d0fed82fbe272068640c198849fff75c5e89c50f65f1b710"
+    },
+    {
+      "id": "rat3",
+      "displayName": "攻击之爪 +3",
+      "race": "neutral",
+      "path": "items/neutral/rat3.json",
+      "bytes": 3393,
+      "sha256": "874c231aed451cbdd6cb486a4a3a609b36a19a8281104d01226935dcb0011f0b"
+    },
+    {
+      "id": "rat6",
+      "displayName": "攻击之爪 +6",
+      "race": "neutral",
+      "path": "items/neutral/rat6.json",
+      "bytes": 3336,
+      "sha256": "cee18b7ae3c1c0c1667440a9e42d10ac70a6ac81612b1108ca7d33af85a4a82d"
+    },
+    {
+      "id": "rat9",
+      "displayName": "攻击之爪 +9",
+      "race": "neutral",
+      "path": "items/neutral/rat9.json",
+      "bytes": 3398,
+      "sha256": "a71b88182609ba4f05a71b5707ffaa42647d7a230fbf85bcc93fd9b7aacfbe72"
+    },
+    {
+      "id": "ratc",
+      "displayName": "攻击之爪 +12",
+      "race": "neutral",
+      "path": "items/neutral/ratc.json",
+      "bytes": 3341,
+      "sha256": "6736f5fe0c99d128c547462b26bd92e654dcf14c799d03fa40b1e6e648947706"
+    },
+    {
+      "id": "ratf",
+      "displayName": "攻击之爪 +15",
+      "race": "neutral",
+      "path": "items/neutral/ratf.json",
+      "bytes": 3339,
+      "sha256": "6929649d3e6ac0037cb1808cbf86afac5c2e4da1ddffcc9c1104395f01a02740"
+    },
+    {
+      "id": "rde0",
+      "displayName": "守护指环 +1",
+      "race": "neutral",
+      "path": "items/neutral/rde0.json",
+      "bytes": 3384,
+      "sha256": "dda1cc8b7d90acdd02dd3f69d5c8f1fb51a8922cada95ada24aae023ac5b84e5"
+    },
+    {
+      "id": "rde1",
+      "displayName": "守护指环 +2",
+      "race": "neutral",
+      "path": "items/neutral/rde1.json",
+      "bytes": 3421,
+      "sha256": "c8c6edf629feb5200b06d5948390758ac14ca2e6162549c1eb6f4abbb3ed01af"
+    },
+    {
+      "id": "rde2",
+      "displayName": "守护指环 +3",
+      "race": "neutral",
+      "path": "items/neutral/rde2.json",
+      "bytes": 3379,
+      "sha256": "da2f31156cc33b13b57caef88b1c6541988ea756914ed50a714b180b16058403"
+    },
+    {
+      "id": "rde3",
+      "displayName": "守护指环 +4",
+      "race": "neutral",
+      "path": "items/neutral/rde3.json",
+      "bytes": 3379,
+      "sha256": "0c013f17b504c5a07a4e7780542946420cd16be5b65c2411cfe9a2ffb62a5f22"
+    },
+    {
+      "id": "rde4",
+      "displayName": "守护指环 +5",
+      "race": "neutral",
+      "path": "items/neutral/rde4.json",
+      "bytes": 3377,
+      "sha256": "4c7b9ec9542e25f8971dc96f9447624054ec4abfd6faea4e3fd6ceef232d8d50"
+    },
+    {
+      "id": "rdis",
+      "displayName": "驱魔神符",
+      "race": "neutral",
+      "path": "items/neutral/rdis.json",
+      "bytes": 3324,
+      "sha256": "2d248d6306365198e90fc85d35bf742cb39b8bdc36d2cead0445389ef7b05898"
+    },
+    {
+      "id": "rej1",
+      "displayName": "小型恢复药水",
+      "race": "neutral",
+      "path": "items/neutral/rej1.json",
+      "bytes": 3516,
+      "sha256": "6b38285df00badd0c7f67053eca2bc5fab0c4a7500a10b8cde8d32602123a92a"
+    },
+    {
+      "id": "rej2",
+      "displayName": "小型恢复药水",
+      "race": "neutral",
+      "path": "items/neutral/rej2.json",
+      "bytes": 3523,
+      "sha256": "28664d7c6b26a1bf7502e3b13480d1e061127caa07fd39eab69e3aabde91e72d"
+    },
+    {
+      "id": "rej3",
+      "displayName": "恢复药水",
+      "race": "neutral",
+      "path": "items/neutral/rej3.json",
+      "bytes": 3443,
+      "sha256": "9855cae7caee07e48799c03faf925f727da150b3af426b2376321f44af489a78"
+    },
+    {
+      "id": "rej4",
+      "displayName": "大型恢复药水",
+      "race": "neutral",
+      "path": "items/neutral/rej4.json",
+      "bytes": 3532,
+      "sha256": "b1488c1d41c3c73bd82bc59383f9d0e46b5702a541834570c18d579be5dd4c59"
+    },
+    {
+      "id": "rej5",
+      "displayName": "小型恢复卷轴",
+      "race": "neutral",
+      "path": "items/neutral/rej5.json",
+      "bytes": 3598,
+      "sha256": "b7bcac9601ea46572bd341252399491d90c9c633eac34e973b41d02eb36622c1"
+    },
+    {
+      "id": "rej6",
+      "displayName": "大型恢复卷轴",
+      "race": "neutral",
+      "path": "items/neutral/rej6.json",
+      "bytes": 3605,
+      "sha256": "e505fcec9ef4e4d50ba82fbfb6f891e60bb61ee17d827ca2d68edea9bde658c4"
+    },
+    {
+      "id": "rhe1",
+      "displayName": "小型治疗神符",
+      "race": "neutral",
+      "path": "items/neutral/rhe1.json",
+      "bytes": 3310,
+      "sha256": "257ff09a1334e8b071d1dc05db70af2765385de8f36487766cac3bfb63ecc7e1"
+    },
+    {
+      "id": "rhe2",
+      "displayName": "治疗神符",
+      "race": "neutral",
+      "path": "items/neutral/rhe2.json",
+      "bytes": 3267,
+      "sha256": "6eb4a6195ac1673529800726c5252cd7900acae186c65ec122e91496fc371e1c"
+    },
+    {
+      "id": "rhe3",
+      "displayName": "大型治疗神符",
+      "race": "neutral",
+      "path": "items/neutral/rhe3.json",
+      "bytes": 3319,
+      "sha256": "0e75daa0e69502de11f40087cdf452d1f2d3a4342183be985a019140ccb5ea2c"
+    },
+    {
+      "id": "rhth",
+      "displayName": "卡嘉医疗宝石",
+      "race": "neutral",
+      "path": "items/neutral/rhth.json",
+      "bytes": 3411,
+      "sha256": "f5c35736f9cdd4963fe482bec40fe194fb68ed06b938e6182505a369fb589363"
+    },
+    {
+      "id": "rin1",
+      "displayName": "智力斗篷 +3",
+      "race": "neutral",
+      "path": "items/neutral/rin1.json",
+      "bytes": 3435,
+      "sha256": "9ac9bb6f93bf2d269e1cef8c812c640e9830220b325d9f900aba07256b9af347"
+    },
+    {
+      "id": "rlif",
+      "displayName": "恢复指环",
+      "race": "neutral",
+      "path": "items/neutral/rlif.json",
+      "bytes": 3466,
+      "sha256": "c0775fd3c6b7341ea73b6e3ac923b7db444fc7600fc0ed3db53629895dc035c5"
+    },
+    {
+      "id": "rma2",
+      "displayName": "大型魔法神符",
+      "race": "neutral",
+      "path": "items/neutral/rma2.json",
+      "bytes": 3293,
+      "sha256": "f5cb137d4211e1b0c1e8e45343ebfea2247f6158434075171c0adf877571fc72"
+    },
+    {
+      "id": "rman",
+      "displayName": "魔法神符",
+      "race": "neutral",
+      "path": "items/neutral/rman.json",
+      "bytes": 3254,
+      "sha256": "bcbe0276a5dfd883a5881527c644e73be5b5f07fe9b03a33922b01790c1c6348"
+    },
+    {
+      "id": "rnec",
+      "displayName": "巫术妖棍",
+      "race": "neutral",
+      "path": "items/neutral/rnec.json",
+      "bytes": 3373,
+      "sha256": "a44ab96cad4004e50d5fc2acca57b4253b8a5678dad397facfeff6f8cc283e8a"
+    },
+    {
+      "id": "rnsp",
+      "displayName": "优越之戒",
+      "race": "neutral",
+      "path": "items/neutral/rnsp.json",
+      "bytes": 3382,
+      "sha256": "04b26f30cb5777ad48c73fc57c54da1e1462c14343c50f0e93fcf497e91b2379"
+    },
+    {
+      "id": "rots",
+      "displayName": "海之权杖",
+      "race": "neutral",
+      "path": "items/neutral/rots.json",
+      "bytes": 3663,
+      "sha256": "096b679df89d8a84a8aeedd4e07d09af437cf4b522e390136f21a0e66eb1e2c3"
+    },
+    {
+      "id": "rre1",
+      "displayName": "小型复活神符",
+      "race": "neutral",
+      "path": "items/neutral/rre1.json",
+      "bytes": 3257,
+      "sha256": "a0896a722d9fb61a180f130b6e563659b27796a7f3522a0a18fd9608cf1b007e"
+    },
+    {
+      "id": "rre2",
+      "displayName": "大型复活神符",
+      "race": "neutral",
+      "path": "items/neutral/rre2.json",
+      "bytes": 3260,
+      "sha256": "a28400568c92e1143372bdecac5136c14d951c4ece357420063513379f883bb7"
+    },
+    {
+      "id": "rreb",
+      "displayName": "重生神符",
+      "race": "neutral",
+      "path": "items/neutral/rreb.json",
+      "bytes": 3205,
+      "sha256": "646f86003aa9f3ae62dd2f9390de5c9e2fef2bde461584722730b0f82339d073"
+    },
+    {
+      "id": "rres",
+      "displayName": "恢复神符",
+      "race": "neutral",
+      "path": "items/neutral/rres.json",
+      "bytes": 3353,
+      "sha256": "d62a8a30f4037713ee800525ad827b8efb7c3d83f7723060b1c919b51abc74a2"
+    },
+    {
+      "id": "rspd",
+      "displayName": "速度神符",
+      "race": "neutral",
+      "path": "items/neutral/rspd.json",
+      "bytes": 3293,
+      "sha256": "7175de7fba821d2c5218ea75765f3acbf9e8e756db8c078dbc3e927f4d093fcd"
+    },
+    {
+      "id": "rspl",
+      "displayName": "灵魂锁链神符",
+      "race": "neutral",
+      "path": "items/neutral/rspl.json",
+      "bytes": 3415,
+      "sha256": "683f6aa93b6238fad9fcbb98463f64ce363553e2e3a43fdda2add8f6898ef528"
+    },
+    {
+      "id": "rsps",
+      "displayName": "护盾神符",
+      "race": "neutral",
+      "path": "items/neutral/rsps.json",
+      "bytes": 3387,
+      "sha256": "4c26c94925ba1928e2cf6cd9dbfb352253796a099ef1548080e1741e65561fa5"
+    },
+    {
+      "id": "rst1",
+      "displayName": "食人鬼手套 +3",
+      "race": "neutral",
+      "path": "items/neutral/rst1.json",
+      "bytes": 3457,
+      "sha256": "0b54a141d0814b5380b52f867ca19b2f310bd9bb22eeae41e94b31983bac0868"
+    },
+    {
+      "id": "rugt",
+      "displayName": "神秘手套",
+      "race": "neutral",
+      "path": "items/neutral/rugt.json",
+      "bytes": 3328,
+      "sha256": "b60b009e089d961b8d8dc2951d7420fd7c5317551ff3833ee7d0411623dd5e6e"
+    },
+    {
+      "id": "rump",
+      "displayName": "生锈的矿铲",
+      "race": "neutral",
+      "path": "items/neutral/rump.json",
+      "bytes": 3546,
+      "sha256": "29c2bbea03bf8d7e8db3ff9dec16e0f5184bc85085d7d45384eef99fbfaef20a"
+    },
+    {
+      "id": "rwat",
+      "displayName": "岗哨神符",
+      "race": "neutral",
+      "path": "items/neutral/rwat.json",
+      "bytes": 3249,
+      "sha256": "a5667e72832c2d9ce3e8af80549b4ac97df4badd8c1591ef12f578a4ce82b53b"
+    },
+    {
+      "id": "rwiz",
+      "displayName": "艺人面罩",
+      "race": "neutral",
+      "path": "items/neutral/rwiz.json",
+      "bytes": 3465,
+      "sha256": "553f6fc7c7ee8559e83b7e9e515c7ede3b9d48dcf28cf2fe95181887cd7cb1f7"
+    },
+    {
+      "id": "sand",
+      "displayName": "操作死尸卷轴",
+      "race": "neutral",
+      "path": "items/neutral/sand.json",
+      "bytes": 3498,
+      "sha256": "7b6f62b4383ba1f3f450aeb4e0deb136b53c1671a2a298c8d3aed3a1517b503f"
+    },
+    {
+      "id": "sbch",
+      "displayName": "天灾骨钟",
+      "race": "neutral",
+      "path": "items/neutral/sbch.json",
+      "bytes": 3609,
+      "sha256": "cb428d965b90015981225f8ebafde5c1fa392a511232de56e2d23027b11b5e30"
+    },
+    {
+      "id": "sbok",
+      "displayName": "魔法书",
+      "race": "neutral",
+      "path": "items/neutral/sbok.json",
+      "bytes": 3277,
+      "sha256": "f4daf2309e17825ae8892c827104e2a79e5c8611461f8f375efdeecfcc82b930"
+    },
+    {
+      "id": "schl",
+      "displayName": "医疗权杖",
+      "race": "neutral",
+      "path": "items/neutral/schl.json",
+      "bytes": 3424,
+      "sha256": "232efadd532edfb9f2ae411fd697f22b25a992026a7f2e6b31f2864a02d2853a"
+    },
+    {
+      "id": "sclp",
+      "displayName": "秘密关卡激活",
+      "race": "neutral",
+      "path": "items/neutral/sclp.json",
+      "bytes": 3102,
+      "sha256": "01d59717f8e8f36262a446f97cc3a4049084aca9221f9f9a71d8f99c14936552"
+    },
+    {
+      "id": "scul",
+      "displayName": "邪恶军团卷轴",
+      "race": "neutral",
+      "path": "items/neutral/scul.json",
+      "bytes": 3365,
+      "sha256": "289dd8533ab17632b963a06179f81f52ddf280851a7208917083fe61c21fe784"
+    },
+    {
+      "id": "sehr",
+      "displayName": "赛瑞诺克斯之心",
+      "race": "neutral",
+      "path": "items/neutral/sehr.json",
+      "bytes": 3305,
+      "sha256": "bbb0265c2931ba1c2364d05c45e36adf88c035cc07cce41bba6ce9bc63c11c2d"
+    },
+    {
+      "id": "sfog",
+      "displayName": "乌云号角",
+      "race": "neutral",
+      "path": "items/neutral/sfog.json",
+      "bytes": 3449,
+      "sha256": "bb1cda114d08e320ff75396196b19099dd214567ccbb9237c30158d4110a365e"
+    },
+    {
+      "id": "shar",
+      "displayName": "冰冻碎片",
+      "race": "neutral",
+      "path": "items/neutral/shar.json",
+      "bytes": 3174,
+      "sha256": "7a142a8ad7ebd2e982b3d8fdfe075fe80054479bee6188e3ae855e1e3ad144dc"
+    },
+    {
+      "id": "shas",
+      "displayName": "速度卷轴",
+      "race": "neutral",
+      "path": "items/neutral/shas.json",
+      "bytes": 3379,
+      "sha256": "273b5160fbe2729f79bf144cfe586e91601d31e2aab6722fdc58a0cba0f2d177"
+    },
+    {
+      "id": "shcw",
+      "displayName": "萨满利爪",
+      "race": "neutral",
+      "path": "items/neutral/shcw.json",
+      "bytes": 3654,
+      "sha256": "0bb30b053555313db0005847503c5462d8d995893c83d2316eb5cafc07735328"
+    },
+    {
+      "id": "shdt",
+      "displayName": "死亡领主护盾",
+      "race": "neutral",
+      "path": "items/neutral/shdt.json",
+      "bytes": 4180,
+      "sha256": "ffd9ca7e5c7db0684e8ce2d1ce4a8590b5932401f79e5549c2c7222dc7c15f97"
+    },
+    {
+      "id": "shea",
+      "displayName": "医疗卷轴",
+      "race": "neutral",
+      "path": "items/neutral/shea.json",
+      "bytes": 3608,
+      "sha256": "1d6dfb8b0bf9ae45b49f57dd0e2179695f149b352d510f5426e6d1d493cfad9b"
+    },
+    {
+      "id": "shen",
+      "displayName": "施魔护盾",
+      "race": "neutral",
+      "path": "items/neutral/shen.json",
+      "bytes": 3323,
+      "sha256": "bba3836f40a270de80bf49a9f6853076691ba86847d2ef78c57248c8621e613b"
+    },
+    {
+      "id": "shhn",
+      "displayName": "荣誉护盾",
+      "race": "neutral",
+      "path": "items/neutral/shhn.json",
+      "bytes": 3492,
+      "sha256": "62ca77fc67aa633e18f194df00b048342bd2eb0c73558645dcbbd21261c84b7f"
+    },
+    {
+      "id": "shrs",
+      "displayName": "烤肉",
+      "race": "neutral",
+      "path": "items/neutral/shrs.json",
+      "bytes": 3390,
+      "sha256": "ac83cc7b0b5c0f886a73f5049f8267080f2c84a7529908f84f91986d4f4a9de3"
+    },
+    {
+      "id": "shtm",
+      "displayName": "萨满图腾",
+      "race": "neutral",
+      "path": "items/neutral/shtm.json",
+      "bytes": 3363,
+      "sha256": "58920b31b6273501ca6f3fb25ed0a7061538f28f2b23685f22c661c1ac7a5f3d"
+    },
+    {
+      "id": "shwd",
+      "displayName": "荧光草",
+      "race": "neutral",
+      "path": "items/neutral/shwd.json",
+      "bytes": 3146,
+      "sha256": "b26866c87602a5968f6787d9657e2dcdaf67f291cf613596c4f7ede0e6a9172a"
+    },
+    {
+      "id": "silk",
+      "displayName": "蜘蛛丝饰针",
+      "race": "neutral",
+      "path": "items/neutral/silk.json",
+      "bytes": 3455,
+      "sha256": "4c53ca864126299d2c7a38ac123466297f058f85b53729b342b25547f2a8ab8b"
+    },
+    {
+      "id": "skrt",
+      "displayName": "骸骨宝物",
+      "race": "neutral",
+      "path": "items/neutral/skrt.json",
+      "bytes": 3293,
+      "sha256": "d243fd18c3eed5e5ccbe0362be2b1a3a8bde3f32eb8679d35a58b1f6e59745fb"
+    },
+    {
+      "id": "sksh",
+      "displayName": "防护面具",
+      "race": "neutral",
+      "path": "items/neutral/sksh.json",
+      "bytes": 3283,
+      "sha256": "c61057b49f2227e36ae8591152c9dc7a9e742ec54bd3ed190d8e793c224ced32"
+    },
+    {
+      "id": "skul",
+      "displayName": "献祭头骨",
+      "race": "neutral",
+      "path": "items/neutral/skul.json",
+      "bytes": 3419,
+      "sha256": "b11dc168f18b9943c45593ce5c1d09182250a0d17778d50f917947b27aa0b9ce"
+    },
+    {
+      "id": "sman",
+      "displayName": "魔法卷轴",
+      "race": "neutral",
+      "path": "items/neutral/sman.json",
+      "bytes": 3495,
+      "sha256": "ea3db6fc5a8621235b3a21a33977eb90b90101fb8309dbedf51db1e0622f8cae"
+    },
+    {
+      "id": "sneg",
+      "displayName": "否决权杖",
+      "race": "neutral",
+      "path": "items/neutral/sneg.json",
+      "bytes": 3424,
+      "sha256": "3a8814728278aa8a6af422b663b5b87f12c3181048ada35ac3dca40cd4e507c9"
+    },
+    {
+      "id": "sor1",
+      "displayName": "影子之球 +1",
+      "race": "neutral",
+      "path": "items/neutral/sor1.json",
+      "bytes": 3358,
+      "sha256": "d0f337c92477007385779b97d73e8543c38f78c2df59ace3415ff531c3dd6b45"
+    },
+    {
+      "id": "sor2",
+      "displayName": "影子之球 +2",
+      "race": "neutral",
+      "path": "items/neutral/sor2.json",
+      "bytes": 3362,
+      "sha256": "fc3d4960d8b117e53039e3fc6d61eb6a0233edcd43f38863d0f5530c08299f2c"
+    },
+    {
+      "id": "sor3",
+      "displayName": "影子之球 +3",
+      "race": "neutral",
+      "path": "items/neutral/sor3.json",
+      "bytes": 3362,
+      "sha256": "c3ebf604a850dad77a39e94b03c11f9403b32ec9dd324d75f15708ce7707b7fb"
+    },
+    {
+      "id": "sor4",
+      "displayName": "影子之球 +4",
+      "race": "neutral",
+      "path": "items/neutral/sor4.json",
+      "bytes": 3413,
+      "sha256": "b44074b3f179b0f87debae6b963d4a08130d76c5b51833b5794c8f82b061f944"
+    },
+    {
+      "id": "sor5",
+      "displayName": "影子之球 +5",
+      "race": "neutral",
+      "path": "items/neutral/sor5.json",
+      "bytes": 3413,
+      "sha256": "75a51bb31d73ac7f7acbcdca7235a37ccad481cfd4bb4853514326bcdb5f29ed"
+    },
+    {
+      "id": "sor6",
+      "displayName": "影子之球 +6",
+      "race": "neutral",
+      "path": "items/neutral/sor6.json",
+      "bytes": 3413,
+      "sha256": "db27aac4a42ea2144e7d0988a04ac77cb573788ff7c89107eb87a24bc869076a"
+    },
+    {
+      "id": "sor7",
+      "displayName": "影子之球 +7",
+      "race": "neutral",
+      "path": "items/neutral/sor7.json",
+      "bytes": 3413,
+      "sha256": "35f092df889e1f547f2358f97dc84cc7458036d41f7ab8e988134dc309d038fa"
+    },
+    {
+      "id": "sor8",
+      "displayName": "影子之球 +8",
+      "race": "neutral",
+      "path": "items/neutral/sor8.json",
+      "bytes": 3415,
+      "sha256": "281f99aca3f014ee0efd0c1d76c2df6d5dd9d9ad7c254dcb12bf0531cc08b622"
+    },
+    {
+      "id": "sor9",
+      "displayName": "影子之球 +9",
+      "race": "neutral",
+      "path": "items/neutral/sor9.json",
+      "bytes": 3506,
+      "sha256": "78b7accdf97b3cbe4313bf15d2b07b2bc95ab514c3de00010dd7844fd9e17598"
+    },
+    {
+      "id": "sora",
+      "displayName": "影子之球 +10",
+      "race": "neutral",
+      "path": "items/neutral/sora.json",
+      "bytes": 3515,
+      "sha256": "5bc1416408e3be8678ee71b44e3870979c39f6f4a2dcad129a0ba0c8c27bae37"
+    },
+    {
+      "id": "sorf",
+      "displayName": "影子之球碎片",
+      "race": "neutral",
+      "path": "items/neutral/sorf.json",
+      "bytes": 3134,
+      "sha256": "056bdf15aeef00d10ba9c9586e6c1b37e54511d4efdc06792ccf86731445b59f"
+    },
+    {
+      "id": "soul",
+      "displayName": "灵魂",
+      "race": "neutral",
+      "path": "items/neutral/soul.json",
+      "bytes": 3204,
+      "sha256": "5afe18fb1426329f983f4adeac1eb3720fbef102224b2a64d005ed7f755a3b8b"
+    },
+    {
+      "id": "spre",
+      "displayName": "保存权杖",
+      "race": "neutral",
+      "path": "items/neutral/spre.json",
+      "bytes": 3402,
+      "sha256": "132fd3dc4fab32306770a94e5dfacce7ce5701cf73b655267a12e5436b450abe"
+    },
+    {
+      "id": "sprn",
+      "displayName": "蜘蛛戒指",
+      "race": "neutral",
+      "path": "items/neutral/sprn.json",
+      "bytes": 3322,
+      "sha256": "4514b156a291e16b2effeffbd2da7df2dd36911df752f0a3ef0a6a88bab8a346"
+    },
+    {
+      "id": "spro",
+      "displayName": "守护卷轴",
+      "race": "neutral",
+      "path": "items/neutral/spro.json",
+      "bytes": 3487,
+      "sha256": "bdbcfb2189193795115b807bd774ccf512a2e43db6956010524ab00291145803"
+    },
+    {
+      "id": "spsh",
+      "displayName": "魔法护盾护身符",
+      "race": "neutral",
+      "path": "items/neutral/spsh.json",
+      "bytes": 3333,
+      "sha256": "6b001236b726d36a2557b269c3a1325ff35f3f5ae6eb986d1a6328ac7693c455"
+    },
+    {
+      "id": "srbd",
+      "displayName": "灼热之刀",
+      "race": "neutral",
+      "path": "items/neutral/srbd.json",
+      "bytes": 3636,
+      "sha256": "2ea66989811fb1cf5a00ceaf7bb3b3261c72c57f8c46f4f16f31aef84f9a7d5f"
+    },
+    {
+      "id": "sreg",
+      "displayName": "恢复卷轴",
+      "race": "neutral",
+      "path": "items/neutral/sreg.json",
+      "bytes": 3554,
+      "sha256": "1917806e58ac7068db8c8ca59106ad7a117f6c8180f0e36ddf49cb80682b98ec"
+    },
+    {
+      "id": "sres",
+      "displayName": "恢复卷轴",
+      "race": "neutral",
+      "path": "items/neutral/sres.json",
+      "bytes": 3587,
+      "sha256": "d656bdf2aa26e5810d3ee21563adcde71461b31b15499359afab2aace2428878"
+    },
+    {
+      "id": "sror",
+      "displayName": "野兽卷轴",
+      "race": "neutral",
+      "path": "items/neutral/sror.json",
+      "bytes": 3453,
+      "sha256": "ce79cb7fc1c05cdd92edc61b104c99c0eb708f991b8d27d56ad0b9f59f956a79"
+    },
+    {
+      "id": "srrc",
+      "displayName": "复活卷轴",
+      "race": "neutral",
+      "path": "items/neutral/srrc.json",
+      "bytes": 3412,
+      "sha256": "a49c4fbdd6e250db1982362a1768937996344a0b12ffd2d9cc699972d9fe4294"
+    },
+    {
+      "id": "srtl",
+      "displayName": "瑟拉思尔",
+      "race": "neutral",
+      "path": "items/neutral/srtl.json",
+      "bytes": 4003,
+      "sha256": "6d2a1561bfd248be09825aa4fcbe5cac40cd28672dbef9d8d47aaac443a851dd"
+    },
+    {
+      "id": "ssan",
+      "displayName": "避难权杖",
+      "race": "neutral",
+      "path": "items/neutral/ssan.json",
+      "bytes": 3611,
+      "sha256": "2e91f7e31cca155c2f271126583df618feb9fe34b43f7ef6d42e1757552fa37a"
+    },
+    {
+      "id": "ssil",
+      "displayName": "沉默权杖",
+      "race": "neutral",
+      "path": "items/neutral/ssil.json",
+      "bytes": 3252,
+      "sha256": "fbf21a0315ce4258bb799b67c721c4a795ae7b8993ec6c4fc56f7d702be72658"
+    },
+    {
+      "id": "stel",
+      "displayName": "传送权杖",
+      "race": "neutral",
+      "path": "items/neutral/stel.json",
+      "bytes": 3333,
+      "sha256": "886e4cedf8de0a0007095eee104a653c245a94b61d0dd7553f0e2201ca7ea4ae"
+    },
+    {
+      "id": "stpg",
+      "displayName": "时钟企鹅",
+      "race": "neutral",
+      "path": "items/neutral/stpg.json",
+      "bytes": 3542,
+      "sha256": "c13e60651d4f0b130f7199f0234cdb8a6f9b0bf8cd4d96a2b5b7d828691326ee"
+    },
+    {
+      "id": "stre",
+      "displayName": "鼓舞权杖",
+      "race": "neutral",
+      "path": "items/neutral/stre.json",
+      "bytes": 3283,
+      "sha256": "202ddbe014f649c5d7e571cafb1cbdbf48d48ede18b3588abb21e5c070a687d9"
+    },
+    {
+      "id": "stwa",
+      "displayName": "战斧",
+      "race": "neutral",
+      "path": "items/neutral/stwa.json",
+      "bytes": 3208,
+      "sha256": "202353ce08db6ed274e64846ac4da539fa55c6ff35ceabbe3ee23571d78795dc"
+    },
+    {
+      "id": "stwp",
+      "displayName": "回城卷轴",
+      "race": "neutral",
+      "path": "items/neutral/stwp.json",
+      "bytes": 3640,
+      "sha256": "79c5a2f37bc63615f7ab940631c41febaa780bf6e514bce6ac60463ee0910711"
+    },
+    {
+      "id": "tbak",
+      "displayName": "微型国王祭坛",
+      "race": "neutral",
+      "path": "items/neutral/tbak.json",
+      "bytes": 3281,
+      "sha256": "35dcd4e1041b6dc15198a2b06cbe19b3f4e25cf959560999c1954baafdc92df5"
+    },
+    {
+      "id": "tbar",
+      "displayName": "微型兵营",
+      "race": "neutral",
+      "path": "items/neutral/tbar.json",
+      "bytes": 3235,
+      "sha256": "cd7fceaa797f6b8da43eae198de2ddc8972bc159e4faaff16438842bdc2755d4"
+    },
+    {
+      "id": "tbsm",
+      "displayName": "微型铁匠铺",
+      "race": "neutral",
+      "path": "items/neutral/tbsm.json",
+      "bytes": 3253,
+      "sha256": "dbe74c7e1fe8994606dd7a1a6d1414cc6121f9a3550fdb44b440abda7f9a1b7a"
+    },
+    {
+      "id": "tcas",
+      "displayName": "小城堡",
+      "race": "neutral",
+      "path": "items/neutral/tcas.json",
+      "bytes": 3323,
+      "sha256": "4ba2b017f855cc739ff54b07d9ea7cd64b3161f2481600d27be61d562579c576"
+    },
+    {
+      "id": "tdex",
+      "displayName": "敏捷之书",
+      "race": "neutral",
+      "path": "items/neutral/tdex.json",
+      "bytes": 3390,
+      "sha256": "d12bca6e9f5e49fc62775200cad483b278046735e84f8c3d501c999f500a95c7"
+    },
+    {
+      "id": "tdx2",
+      "displayName": "敏捷之书 +2",
+      "race": "neutral",
+      "path": "items/neutral/tdx2.json",
+      "bytes": 3308,
+      "sha256": "77e7becf6e929807346678df963d985ae2981cd43c7371532d4083385f7f0152"
+    },
+    {
+      "id": "tels",
+      "displayName": "地精夜视镜",
+      "race": "neutral",
+      "path": "items/neutral/tels.json",
+      "bytes": 3419,
+      "sha256": "74dfeeadfb777dd58bea9de441f40e9f4dd5360c4dc5fe72bfee8fa7bc8302c0"
+    },
+    {
+      "id": "texp",
+      "displayName": "经验之书",
+      "race": "neutral",
+      "path": "items/neutral/texp.json",
+      "bytes": 3386,
+      "sha256": "60aa823726006058a114b02caa73ef79825a901e75697dbe21491b0899c3af70"
+    },
+    {
+      "id": "tfar",
+      "displayName": "微型农场",
+      "race": "neutral",
+      "path": "items/neutral/tfar.json",
+      "bytes": 3185,
+      "sha256": "1ef7190c59d6d7737c60df671214c16b862fb9c552a465f809e325377614d211"
+    },
+    {
+      "id": "tgrh",
+      "displayName": "小型的大厅",
+      "race": "neutral",
+      "path": "items/neutral/tgrh.json",
+      "bytes": 3581,
+      "sha256": "13a596f1aa63e12876c77c92be23c4f2bedc435135baadca86f74cf6effa5d66"
+    },
+    {
+      "id": "tgxp",
+      "displayName": "超级经验之书",
+      "race": "neutral",
+      "path": "items/neutral/tgxp.json",
+      "bytes": 3369,
+      "sha256": "7d2821c22b2122ee8a763d556918cbdf76e3df11b3071e4961dd62de5907d905"
+    },
+    {
+      "id": "thdm",
+      "displayName": "雷霆蜥蜴钻石",
+      "race": "neutral",
+      "path": "items/neutral/thdm.json",
+      "bytes": 3398,
+      "sha256": "e61e4658ff3653ec34690186e314647122909a9e7e83aaabeda6a8865c8d8e0a"
+    },
+    {
+      "id": "thle",
+      "displayName": "雷霆蜥蜴之蛋",
+      "race": "neutral",
+      "path": "items/neutral/thle.json",
+      "bytes": 3191,
+      "sha256": "300925186ac3a040360d55298756221b3bd674cd73d3e2535e1a638072c3dcb8"
+    },
+    {
+      "id": "tin2",
+      "displayName": "智力之书 +2",
+      "race": "neutral",
+      "path": "items/neutral/tin2.json",
+      "bytes": 3311,
+      "sha256": "caf80e55dfc313a363bf3e3b85b3cf798b1629e0cb66d83be94b8d65fd8c27d2"
+    },
+    {
+      "id": "tint",
+      "displayName": "智力之书",
+      "race": "neutral",
+      "path": "items/neutral/tint.json",
+      "bytes": 3386,
+      "sha256": "a55f8a571746380445d50fea987d563491ddcac34b2fad68607e326948284613"
+    },
+    {
+      "id": "tkno",
+      "displayName": "能量之书",
+      "race": "neutral",
+      "path": "items/neutral/tkno.json",
+      "bytes": 3359,
+      "sha256": "2fcb51d1c22b07c1d610d3d9ddcf276372e5a08ff57244899173791f70db606c"
+    },
+    {
+      "id": "tlum",
+      "displayName": "微型伐木场",
+      "race": "neutral",
+      "path": "items/neutral/tlum.json",
+      "bytes": 3272,
+      "sha256": "bbdfb884927e47eb895affc694c15248c48a32e2f66aeeec92bb2ed942ee0ee9"
+    },
+    {
+      "id": "tmmt",
+      "displayName": "力量图腾",
+      "race": "neutral",
+      "path": "items/neutral/tmmt.json",
+      "bytes": 3309,
+      "sha256": "ed394a4e4d8e866a4386b97032a5109c2d4bd9e6837bc5b5f81c36c5941d66f3"
+    },
+    {
+      "id": "tmsc",
+      "displayName": "牺牲之书",
+      "race": "neutral",
+      "path": "items/neutral/tmsc.json",
+      "bytes": 3650,
+      "sha256": "932cb9ff6120f096a168eebc0311cec19fb47e6dd5ad535bf7c58e8642e3f03b"
+    },
+    {
+      "id": "totw",
+      "displayName": "野性护符",
+      "race": "neutral",
+      "path": "items/neutral/totw.json",
+      "bytes": 3480,
+      "sha256": "3b78b12262240093ab426a5680ed8d47061b8faa87cb3aec94a0589962156128"
+    },
+    {
+      "id": "tpow",
+      "displayName": "知识之书",
+      "race": "neutral",
+      "path": "items/neutral/tpow.json",
+      "bytes": 3317,
+      "sha256": "9350c2ef4333a3f1f85405e983443adb9a21bf4a5f5b1fa1b11f332e8796b4aa"
+    },
+    {
+      "id": "tret",
+      "displayName": "再训练之书",
+      "race": "neutral",
+      "path": "items/neutral/tret.json",
+      "bytes": 3478,
+      "sha256": "d844534cc489c976e4ed501cf4721210515ccd79a0e93b00b1e89ebe53468818"
+    },
+    {
+      "id": "tsct",
+      "displayName": "象牙塔",
+      "race": "neutral",
+      "path": "items/neutral/tsct.json",
+      "bytes": 3395,
+      "sha256": "bf36fb1b4387484061aebcf0676c66e62a4b5ccbca4eb9c6109ee1102dac4f6a"
+    },
+    {
+      "id": "tst2",
+      "displayName": "力量之书 +2",
+      "race": "neutral",
+      "path": "items/neutral/tst2.json",
+      "bytes": 3261,
+      "sha256": "78f035858c271a128bf7cd6d2b9e8734f61965693f7c9949bb8d234864e0693e"
+    },
+    {
+      "id": "tstr",
+      "displayName": "力量之书",
+      "race": "neutral",
+      "path": "items/neutral/tstr.json",
+      "bytes": 3383,
+      "sha256": "9a1a8b119902f70a53a9421f7b406423ce8671d7c6de2e80ec0280df73991fc8"
+    },
+    {
+      "id": "uflg",
+      "displayName": "不死族旗帜",
+      "race": "neutral",
+      "path": "items/neutral/uflg.json",
+      "bytes": 3404,
+      "sha256": "2062919f96251595533283457f43198cc43b8f4674409aed0244064f4fdddddf"
+    },
+    {
+      "id": "vamp",
+      "displayName": "吸血药水",
+      "race": "neutral",
+      "path": "items/neutral/vamp.json",
+      "bytes": 3567,
+      "sha256": "808afb31cb88745a7ce3a5bd6ce3ab56d15d6e9aa1d0acabd27197ed6f3b52c8"
+    },
+    {
+      "id": "vddl",
+      "displayName": "巫毒玩偶",
+      "race": "neutral",
+      "path": "items/neutral/vddl.json",
+      "bytes": 3286,
+      "sha256": "84a44daafefba2970363f10839f6068c2ae11e6af32e48625700600a891c6885"
+    },
+    {
+      "id": "ward",
+      "displayName": "战歌之鼓",
+      "race": "neutral",
+      "path": "items/neutral/ward.json",
+      "bytes": 3490,
+      "sha256": "c536a35222ad038adc9ee78edc82f50919c4f423a77481dd2222fb06f13198c2"
+    },
+    {
+      "id": "wcyc",
+      "displayName": "飓风权杖",
+      "race": "neutral",
+      "path": "items/neutral/wcyc.json",
+      "bytes": 3648,
+      "sha256": "0535c74ae932f98d140b70ee6ce3abcdf0e0e27990fcb3758d1d95bf9fe0390c"
+    },
+    {
+      "id": "whwd",
+      "displayName": "治疗守卫",
+      "race": "neutral",
+      "path": "items/neutral/whwd.json",
+      "bytes": 3455,
+      "sha256": "05a3bf476684175204a789585ab1a2bd8dd7bf5ae37482221d794c8f05f7be1d"
+    },
+    {
+      "id": "wild",
+      "displayName": "野性护身符",
+      "race": "neutral",
+      "path": "items/neutral/wild.json",
+      "bytes": 3213,
+      "sha256": "589bf635d6c41abefb6f7cb7d9a27709f616a6bd5a9413a7f66ca1281c38264c"
+    },
+    {
+      "id": "will",
+      "displayName": "幻象权杖",
+      "race": "neutral",
+      "path": "items/neutral/will.json",
+      "bytes": 3794,
+      "sha256": "464488bd604016db177125c1295e9434c9fc0327d06298fd2a68373f6d4a85c8"
+    },
+    {
+      "id": "wlsd",
+      "displayName": "闪电护盾权杖",
+      "race": "neutral",
+      "path": "items/neutral/wlsd.json",
+      "bytes": 3718,
+      "sha256": "1843d9de734651b79fc3f10ef611a1a251b2e60921a9ad641a818d2577af4d8e"
+    },
+    {
+      "id": "wneg",
+      "displayName": "否决权杖",
+      "race": "neutral",
+      "path": "items/neutral/wneg.json",
+      "bytes": 3722,
+      "sha256": "5ff2adbb58e51f9e73816b153619718d7e82e92f3076a2646b88df47fe283f0f"
+    },
+    {
+      "id": "wneu",
+      "displayName": "中和权杖",
+      "race": "neutral",
+      "path": "items/neutral/wneu.json",
+      "bytes": 3490,
+      "sha256": "a592667745c90e544ef62a6b061502c309b79a41f8573757a5a9d2b7432fb9a2"
+    },
+    {
+      "id": "wolg",
+      "displayName": "怀特的另一条腿",
+      "race": "neutral",
+      "path": "items/neutral/wolg.json",
+      "bytes": 3426,
+      "sha256": "36149e7fc739205bf668ed347324cb21890c9985000a804588e09a9bd9a9692a"
+    },
+    {
+      "id": "woms",
+      "displayName": "魔法盗取权杖",
+      "race": "neutral",
+      "path": "items/neutral/woms.json",
+      "bytes": 3376,
+      "sha256": "9781d4139a7f0317e567e9c2f4a1d1ee5eb7413773f8832d8bc944aa63d905a6"
+    },
+    {
+      "id": "wshs",
+      "displayName": "影子权杖",
+      "race": "neutral",
+      "path": "items/neutral/wshs.json",
+      "bytes": 3540,
+      "sha256": "e7d6bbb1960de48ac13f060c93e91e7e96056476dc6a07cd37299cd9a8324869"
+    },
+    {
+      "id": "wswd",
+      "displayName": "岗哨守卫",
+      "race": "neutral",
+      "path": "items/neutral/wswd.json",
+      "bytes": 3438,
+      "sha256": "a37578d5817fb87ff74c5f09ec5169f598e4ff415f911cca74ffc9a94224201b"
+    },
+    {
+      "id": "wtlg",
+      "displayName": "怀特之腿",
+      "race": "neutral",
+      "path": "items/neutral/wtlg.json",
+      "bytes": 3558,
+      "sha256": "49656a9b5fde1be81131aa63d9473eaa5d6056ed1df028870d327f24bb623581"
+    }
+  ]
+}

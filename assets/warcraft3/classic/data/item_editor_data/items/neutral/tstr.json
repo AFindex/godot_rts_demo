@@ -1,0 +1,120 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "tstr",
+  "displayName": "力量之书",
+  "identity": {
+    "race": "neutral",
+    "class": "PowerUp",
+    "level": 1,
+    "legacyLevel": 1,
+    "scriptName": "TomeofStrength1"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNTome.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNTome.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btntome.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\tomeRed\\tomeRed.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\tomeRed\\tomeRed.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/tomered/tomered.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIsm"
+    ],
+    "cooldownAbilityId": "AIsm",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 200,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": false,
+    "randomDrop": true,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "S",
+    "tooltip": "购买力量之书(|cffffcc00S|r)",
+    "extendedTooltip": "\"能永久性地提高英雄<AIsm,DataC1>点的力量。\"",
+    "description": "能永久性地提高英雄的力量。"
+  },
+  "editorData": {
+    "itemID": "tstr",
+    "comment": "Tome of Strength +1",
+    "file": "Objects\\InventoryItems\\tomeRed\\tomeRed.mdl",
+    "Level": "1",
+    "uses": "1",
+    "prio": "200",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "PowerUp",
+    "oldLevel": "1",
+    "abilList": "AIsm",
+    "cooldownID": "AIsm",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "0",
+    "pickRandom": "1",
+    "powerup": "1",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "TomeofStrength1",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNTome.blp",
+    "Name": "力量之书",
+    "Hotkey": "S",
+    "Tip": "购买力量之书(|cffffcc00S|r)",
+    "Ubertip": "\"能永久性地提高英雄<AIsm,DataC1>点的力量。\"",
+    "Description": "能永久性地提高英雄的力量。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

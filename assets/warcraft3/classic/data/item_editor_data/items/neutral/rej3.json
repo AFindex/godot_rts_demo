@@ -1,0 +1,117 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "rej3",
+  "displayName": "恢复药水",
+  "identity": {
+    "race": "neutral",
+    "class": "Charged",
+    "level": 2,
+    "legacyLevel": 0,
+    "scriptName": "ReplenishmentPotion"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRejuvPotion.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRejuvPotion.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrejuvpotion.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIp3"
+    ],
+    "cooldownAbilityId": "AIrg",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 75,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 0,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "R",
+    "tooltip": "购买恢复药水(|cffffcc00R|r)",
+    "extendedTooltip": "\"|cff87ceeb非战斗类一次性物品|r|n在<AIp3,Dur1>秒内恢复英雄<AIp3,DataA1>点的生命值和<AIp3,DataB1>点的魔法值。\"",
+    "description": "恢复生命值和魔法值。"
+  },
+  "editorData": {
+    "itemID": "rej3",
+    "comment": "Replenishment Potion",
+    "version": "1",
+    "class": "Charged",
+    "Level": "2",
+    "oldLevel": "0",
+    "abilList": "AIp3",
+    "cooldownID": "AIrg",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "75",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "0",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "1",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "ReplenishmentPotion",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRejuvPotion.blp",
+    "Name": "恢复药水",
+    "Hotkey": "R",
+    "Tip": "购买恢复药水(|cffffcc00R|r)",
+    "Ubertip": "\"|cff87ceeb非战斗类一次性物品|r|n在<AIp3,Dur1>秒内恢复英雄<AIp3,DataA1>点的生命值和<AIp3,DataB1>点的魔法值。\"",
+    "Description": "恢复生命值和魔法值。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "gmfr",
+  "displayName": "宝石碎片",
+  "identity": {
+    "race": "neutral",
+    "class": "Campaign",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "GemFragment"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNGem.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNGem.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btngem.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [],
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": false,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "G",
+    "tooltip": "宝石碎片(|cffffcc00G|r)",
+    "extendedTooltip": "\"戒指宝石的碎片\"",
+    "description": "\"戒指宝石的碎片\""
+  },
+  "editorData": {
+    "itemID": "gmfr",
+    "comment": "Gem Fragment",
+    "version": "1",
+    "class": "Campaign",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "_",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "0",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "GemFragment",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNGem.blp",
+    "Name": "宝石碎片",
+    "Hotkey": "G",
+    "Tip": "宝石碎片(|cffffcc00G|r)",
+    "Ubertip": "\"戒指宝石的碎片\"",
+    "Description": "\"戒指宝石的碎片\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

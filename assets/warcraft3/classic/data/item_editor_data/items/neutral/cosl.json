@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "cosl",
+  "displayName": "灵魂之球",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "CelestialOrbofSouls"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnusedsoulgem.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIrx"
+    ],
+    "cooldownAbilityId": "AHre",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 10000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "C",
+    "tooltip": "购买灵魂之球(|cffffcc00C|r)",
+    "extendedTooltip": "\"|cffff8c00神器|r|n能将阵亡的<AIrx,DataA1>个非英雄单位复活。|n|cffffcc00历史|r|n|cffffdead这个神器由古代的泰坦巨人所造。神灵的灵魂之球从上天带来了伟大的力量来复活那些在战场上英雄牺牲的勇士。|r\"",
+    "description": "\"|cffff8c00宝物|r|n一个散发着白光的球，充满着宁静和祥和的气息。\""
+  },
+  "editorData": {
+    "itemID": "cosl",
+    "comment": "Celestial Orb of Souls",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIrx",
+    "cooldownID": "AHre",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "10000",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "CelestialOrbofSouls",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+    "Name": "灵魂之球",
+    "Hotkey": "C",
+    "Tip": "购买灵魂之球(|cffffcc00C|r)",
+    "Ubertip": "\"|cffff8c00神器|r|n能将阵亡的<AIrx,DataA1>个非英雄单位复活。|n|cffffcc00历史|r|n|cffffdead这个神器由古代的泰坦巨人所造。神灵的灵魂之球从上天带来了伟大的力量来复活那些在战场上英雄牺牲的勇士。|r\"",
+    "Description": "\"|cffff8c00宝物|r|n一个散发着白光的球，充满着宁静和祥和的气息。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

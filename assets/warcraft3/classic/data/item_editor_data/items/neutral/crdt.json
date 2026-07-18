@@ -1,0 +1,118 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "crdt",
+  "displayName": "死亡领主皇冠",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "CrownoftheDeathlord"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRevenant.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRevenant.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrevenant.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIfz",
+      "AIlf",
+      "AImz"
+    ],
+    "cooldownAbilityId": "ANfd",
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 180,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 6400,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "D",
+    "tooltip": "购买死亡领主皇冠(|cffffcc00D|r)",
+    "extendedTooltip": "\"|cffff8c00神器|r|n使得能射出痛苦之箭来对敌人造成<AIfz,DataC1>点的伤害。同时能增加<AIlf,DataA1>点的生命值和<AImz,DataA1>点的魔法值。|n|cffffcc00历史|r|n|cffffdead据说死亡领主曾经是一个光荣的圣骑士。在他弃明投暗之后残忍地杀害了自己的家人。|r\"",
+    "description": "\"|cffff8c00宝物|r|n一个结构简单的皇冠，上面刻着一些圣骑士的规章制度。\""
+  },
+  "editorData": {
+    "itemID": "crdt",
+    "comment": "Crown of the Deathlord",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIfz,AIlf,AImz",
+    "cooldownID": "ANfd",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "180",
+    "stockStart": "0",
+    "goldcost": "6400",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "CrownoftheDeathlord",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRevenant.blp",
+    "Name": "死亡领主皇冠",
+    "Hotkey": "D",
+    "Tip": "购买死亡领主皇冠(|cffffcc00D|r)",
+    "Ubertip": "\"|cffff8c00神器|r|n使得能射出痛苦之箭来对敌人造成<AIfz,DataC1>点的伤害。同时能增加<AIlf,DataA1>点的生命值和<AImz,DataA1>点的魔法值。|n|cffffcc00历史|r|n|cffffdead据说死亡领主曾经是一个光荣的圣骑士。在他弃明投暗之后残忍地杀害了自己的家人。|r\"",
+    "Description": "\"|cffff8c00宝物|r|n一个结构简单的皇冠，上面刻着一些圣骑士的规章制度。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

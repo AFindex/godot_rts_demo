@@ -148,6 +148,7 @@ public sealed partial class War3RtsHud : Control
     private bool _portraitBuildingView;
     private int _portraitTeam = int.MinValue;
     private bool _portraitAnimated;
+    private string _portraitAnimationProperties = string.Empty;
     private double _portraitTalkRemaining;
     private string _commandSignature = string.Empty;
     private string _queueSignature = string.Empty;
@@ -156,6 +157,7 @@ public sealed partial class War3RtsHud : Control
     public event Action<War3CommandSnapshot>? CommandRequested;
     public event Action<War3QueueItemSnapshot>? QueueItemCancelRequested;
     public event Action<War3SelectionGroupEntry>? SelectionGroupEntryRequested;
+    public event Action<int>? InventoryItemRequested;
     public event Action? ReturnRequested;
     public event Action<System.Numerics.Vector2>? MinimapFocusRequested;
 
@@ -1015,6 +1017,9 @@ public sealed partial class War3RtsHud : Control
                 new Color("05080cef"), Gold, 2, 2));
             _inventoryPanel.AddChild(frame);
             _inventorySlots[slot] = frame;
+            var inventorySlot = slot;
+            frame.Pressed += () =>
+                InventoryItemRequested?.Invoke(inventorySlot);
             var icon = new TextureRect
             {
                 Position = new Vector2(2f, 2f),
@@ -1191,14 +1196,18 @@ public sealed partial class War3RtsHud : Control
     private void UpdatePortrait(War3SelectionSnapshot selection)
     {
         if (_portraitWorld is null || _portraitCamera is null) return;
+        var animationProperties = string.Join(',',
+            selection.PortraitAnimationProperties);
         if (selection.PortraitSource == _portraitSource &&
             selection.PortraitIsBuilding == _portraitBuildingView &&
             selection.PortraitTeam == _portraitTeam &&
-            selection.PortraitAnimated == _portraitAnimated) return;
+            selection.PortraitAnimated == _portraitAnimated &&
+            animationProperties == _portraitAnimationProperties) return;
         _portraitSource = selection.PortraitSource;
         _portraitBuildingView = selection.PortraitIsBuilding;
         _portraitTeam = selection.PortraitTeam;
         _portraitAnimated = selection.PortraitAnimated;
+        _portraitAnimationProperties = animationProperties;
         _portraitTalkRemaining = 0d;
         _portraitActor?.QueueFree();
         _portraitActor = null;
@@ -1214,13 +1223,15 @@ public sealed partial class War3RtsHud : Control
             {
                 if (selection.PortraitIsBuilding)
                     _portraitActor.PlayRepeatedPreferred(
-                        "Portrait", "Stand Work", "Stand");
+                        War3AnimationPropertyResolver.Portrait(
+                            selection.PortraitAnimationProperties));
                 else
                     _portraitActor.PlayRepeatedPreferred("Portrait", "Stand");
             }
             else if (selection.PortraitIsBuilding)
                 _portraitActor.SetSequenceProgress(
-                    0f, "Portrait", "Stand Work", "Stand");
+                    0f, War3AnimationPropertyResolver.Portrait(
+                        selection.PortraitAnimationProperties));
             else
                 _portraitActor.SetSequenceProgress(0f, "Portrait", "Stand");
             _portraitActor.FrameCamera(
@@ -1320,23 +1331,33 @@ public sealed partial class War3RtsHud : Control
         if (_inventoryPanel is not null)
         {
             _inventoryPanel.Visible = selection.SupportsInventory;
+            var itemsBySlot = selection.InventoryItems
+                .Where(item => item.Slot >= 0)
+                .ToDictionary(item => item.Slot);
             for (var index = 0; index < _inventorySlots.Length; index++)
             {
                 var visible = selection.SupportsInventory &&
                               index < selection.InventorySlotCount;
                 _inventorySlots[index].Visible = visible;
-                if (!visible || index >= selection.InventoryItems.Length)
+                if (!visible || !itemsBySlot.TryGetValue(index, out var item))
                 {
                     _inventoryIcons[index].Texture = null;
                     _inventorySlots[index].TooltipText = "空物品栏";
+                    _inventorySlots[index].Disabled = true;
+                    _inventorySlots[index].Modulate = Colors.White;
                     continue;
                 }
-                var item = selection.InventoryItems[index];
                 _inventoryIcons[index].Texture =
                     War3RuntimeAssets.LoadTexture(item.IconPath);
+                _inventorySlots[index].Disabled = !item.Usable;
+                _inventorySlots[index].Modulate = item.Passive
+                    ? new Color("ffd77a")
+                    : item.CooldownRemaining > 0f
+                        ? new Color(0.55f, 0.55f, 0.55f, 0.82f)
+                        : Colors.White;
                 _inventorySlots[index].TooltipText = item.Name +
                     (item.Charges > 0 ? $" · {item.Charges} 次" : string.Empty) +
-                    $"\n{item.Tooltip}";
+                    $"\n{item.Tooltip}\n状态：{item.StateLabel}";
             }
         }
         if (_inventoryCover is not null)

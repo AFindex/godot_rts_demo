@@ -1,0 +1,123 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "ssan",
+  "displayName": "避难权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "StaffofSanctuary"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfSanctuary.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfSanctuary.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstaffofsanctuary.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "ANsa"
+    ],
+    "cooldownAbilityId": "ANsa",
+    "ignoreCooldown": false,
+    "priority": 3,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 250,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [
+      1,
+      2
+    ],
+    "requirements": [
+      "hcas"
+    ],
+    "hotkey": "N",
+    "tooltip": "购买避难权杖(|cffffcc00N|r)",
+    "extendedTooltip": "\"T将目标单位传送到你最高等级的主基地,让其处于昏晕状态并以每秒<ANsa,DataE1>点的速度来恢复其生命值直到该单位补满生命值为止。\"",
+    "description": "传送并医疗某个单位。"
+  },
+  "editorData": {
+    "itemID": "ssan",
+    "comment": "Staff of Sanctuary",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "ANsa",
+    "cooldownID": "ANsa",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "3",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "250",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "StaffofSanctuary",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStaffOfSanctuary.blp",
+    "Requires": "hcas",
+    "Buttonpos": "1,2",
+    "Name": "避难权杖",
+    "Hotkey": "N",
+    "Tip": "购买避难权杖(|cffffcc00N|r)",
+    "Ubertip": "\"T将目标单位传送到你最高等级的主基地,让其处于昏晕状态并以每秒<ANsa,DataE1>点的速度来恢复其生命值直到该单位补满生命值为止。\"",
+    "Description": "传送并医疗某个单位。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

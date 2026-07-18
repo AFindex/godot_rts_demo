@@ -1,0 +1,120 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "will",
+  "displayName": "幻象权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Charged",
+    "level": 2,
+    "legacyLevel": 3,
+    "scriptName": "WandofIllusion"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNWand.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNWand.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnwand.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIil"
+    ],
+    "cooldownAbilityId": "AIil",
+    "ignoreCooldown": false,
+    "charges": 3,
+    "priority": 14,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 150,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "I",
+    "tooltip": "购买幻象权杖(|cffffcc00I|r)",
+    "extendedTooltip": "\"能制造目标单位的一个幻象。幻象不具备任何的攻击力，遭受敌人进攻的伤害值也会翻成原有的<AIil,DataB1> 倍。在<AIil,Dur1>秒之后或者生命值达到零之后幻象会自动消失。|n一共可以使用<will,uses> 次。\"",
+    "description": "能制造幻象。"
+  },
+  "editorData": {
+    "itemID": "will",
+    "comment": "Wand of Illusion",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "Level": "2",
+    "uses": "3",
+    "prio": "14",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "150",
+    "lumbercost": "0",
+    "HP": "75",
+    "armor": "Wood",
+    "InBeta": "1",
+    "version": "0",
+    "class": "Charged",
+    "oldLevel": "3",
+    "abilList": "AIil",
+    "cooldownID": "AIil",
+    "ignoreCD": "0",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "morph": "0",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "scriptname": "WandofIllusion",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNWand.blp",
+    "Name": "幻象权杖",
+    "Hotkey": "I",
+    "Tip": "购买幻象权杖(|cffffcc00I|r)",
+    "Ubertip": "\"能制造目标单位的一个幻象。幻象不具备任何的攻击力，遭受敌人进攻的伤害值也会翻成原有的<AIil,DataB1> 倍。在<AIil,Dur1>秒之后或者生命值达到零之后幻象会自动消失。|n一共可以使用<will,uses> 次。\"",
+    "Description": "能制造幻象。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/roc/Units/ItemData.slk",
+      "extracted/raw/classic/roc/Units/ItemFunc.txt",
+      "extracted/raw/classic/roc/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

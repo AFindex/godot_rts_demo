@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "gldo",
+  "displayName": "基尔加丹之球",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "OrbofKiljaeden"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+        "sourceLayer": "roc",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnusedsoulgem.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIgd"
+    ],
+    "cooldownAbilityId": "AIfb",
+    "ignoreCooldown": false,
+    "priority": 95,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 450,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "K",
+    "tooltip": "购买基尔加丹之球(|cffffcc00K|r)",
+    "extendedTooltip": "\"让英雄的攻击带有<AIgd,DataA1>点的火焰伤害。而且英雄在攻击空中单位的时候会变成远程攻击，还有一定的溅射效果。\"",
+    "description": "能使得英雄的让攻击带有火焰伤害。"
+  },
+  "editorData": {
+    "itemID": "gldo",
+    "comment": "Orb of Kil'jaeden",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIgd",
+    "cooldownID": "AIfb",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "95",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "450",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "OrbofKiljaeden",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNUsedSoulGem.blp",
+    "Name": "基尔加丹之球",
+    "Hotkey": "K",
+    "Tip": "购买基尔加丹之球(|cffffcc00K|r)",
+    "Ubertip": "\"让英雄的攻击带有<AIgd,DataA1>点的火焰伤害。而且英雄在攻击空中单位的时候会变成远程攻击，还有一定的溅射效果。\"",
+    "Description": "能使得英雄的让攻击带有火焰伤害。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

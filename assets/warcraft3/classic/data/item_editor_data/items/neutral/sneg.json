@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "sneg",
+  "displayName": "否决权杖",
+  "identity": {
+    "race": "neutral",
+    "class": "Purchasable",
+    "level": 2,
+    "legacyLevel": 3,
+    "scriptName": "StaffofNegation"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfNegation.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNStaffOfNegation.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnstaffofnegation.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIds"
+    ],
+    "cooldownAbilityId": "AIds",
+    "ignoreCooldown": false,
+    "priority": 112,
+    "usable": true,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 2,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "N",
+    "tooltip": "购买否决权杖(|cffffcc00N|r)",
+    "extendedTooltip": "\"能驱散一定范围内所有的魔法效果。|n|cffffcc00对召唤出来的单位能造成<AIdi,DataB1>点的伤害。|r\"",
+    "description": "驱散一定区域内的魔法。"
+  },
+  "editorData": {
+    "itemID": "sneg",
+    "comment": "Staff of Negation",
+    "version": "1",
+    "class": "Purchasable",
+    "Level": "2",
+    "oldLevel": "3",
+    "abilList": "AIds",
+    "cooldownID": "AIds",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "112",
+    "usable": "1",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "2",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "StaffofNegation",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNStaffOfNegation.blp",
+    "Name": "否决权杖",
+    "Hotkey": "N",
+    "Tip": "购买否决权杖(|cffffcc00N|r)",
+    "Ubertip": "\"能驱散一定范围内所有的魔法效果。|n|cffffcc00对召唤出来的单位能造成<AIdi,DataB1>点的伤害。|r\"",
+    "Description": "驱散一定区域内的魔法。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

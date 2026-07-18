@@ -1,0 +1,115 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "wild",
+  "displayName": "野性护身符",
+  "identity": {
+    "race": "neutral",
+    "class": "Charged",
+    "level": 6,
+    "legacyLevel": 0,
+    "scriptName": "AmuletoftheWild"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNAmuletOftheWild.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNAmuletOftheWild.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnamuletofthewild.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIuw"
+    ],
+    "cooldownAbilityId": "AIfs",
+    "ignoreCooldown": false,
+    "charges": 1,
+    "priority": 136,
+    "usable": true,
+    "perishable": true,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 700,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买野性护身符",
+    "extendedTooltip": "\"召唤出一个熊怪战士。熊怪持续<AIuw,Dur1>秒。\"",
+    "description": "召唤熊怪。"
+  },
+  "editorData": {
+    "itemID": "wild",
+    "comment": "Amulet of the Wild",
+    "version": "1",
+    "class": "Charged",
+    "Level": "6",
+    "oldLevel": "0",
+    "abilList": "AIuw",
+    "cooldownID": "AIfs",
+    "ignoreCD": "0",
+    "uses": "1",
+    "prio": "136",
+    "usable": "1",
+    "perishable": "1",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "700",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "AmuletoftheWild",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNAmuletOftheWild.blp",
+    "Name": "野性护身符",
+    "Tip": "购买野性护身符",
+    "Ubertip": "\"召唤出一个熊怪战士。熊怪持续<AIuw,Dur1>秒。\"",
+    "Description": "召唤熊怪。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "shwd",
+  "displayName": "荧光草",
+  "identity": {
+    "race": "neutral",
+    "class": "Campaign",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "shimmerweed"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNShimmerWeed.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNShimmerWeed.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnshimmerweed.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\Shimmerweed\\Shimmerweed.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\Shimmerweed\\Shimmerweed.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/shimmerweed/shimmerweed.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [],
+    "ignoreCooldown": false,
+    "priority": 200,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": false,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": true,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 200,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "S",
+    "tooltip": "购买荧光草(|cffffcc00S|r)",
+    "extendedTooltip": "\"令人惊奇的植物，据说能够奇迹般地增强智力。\"",
+    "description": "\"一种荧光植物。\""
+  },
+  "editorData": {
+    "itemID": "shwd",
+    "comment": "shimmerweed",
+    "version": "1",
+    "class": "Campaign",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "_",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "200",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "0",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "1",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "200",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\Shimmerweed\\Shimmerweed.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "shimmerweed",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNShimmerWeed.blp",
+    "Name": "荧光草",
+    "Hotkey": "S",
+    "Tip": "购买荧光草(|cffffcc00S|r)",
+    "Ubertip": "\"令人惊奇的植物，据说能够奇迹般地增强智力。\"",
+    "Description": "\"一种荧光植物。\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "brac",
+  "displayName": "神秘腰带",
+  "identity": {
+    "race": "neutral",
+    "class": "Permanent",
+    "level": 4,
+    "legacyLevel": 4,
+    "scriptName": "RunedBracers"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNRunedBracers.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNRunedBracers.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnrunedbracers.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\treasurechest\\treasurechest.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/treasurechest/treasurechest.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIsr"
+    ],
+    "cooldownAbilityId": "AIsr",
+    "ignoreCooldown": false,
+    "priority": 114,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": true,
+    "sellable": true,
+    "randomDrop": true,
+    "powerup": false,
+    "droppedWhenCarrierDies": false,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 400,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 0,
+    "buttonPosition": [],
+    "requirements": [],
+    "hotkey": "R",
+    "tooltip": "购买神秘腰带(|cffffcc00R|r)",
+    "extendedTooltip": "\"减少<AIsr,DataB1,%>%英雄受到的魔法伤害。\"",
+    "description": "削弱英雄受到的魔法攻击。"
+  },
+  "editorData": {
+    "itemID": "brac",
+    "comment": "Runed Bracers",
+    "version": "1",
+    "class": "Permanent",
+    "Level": "4",
+    "oldLevel": "4",
+    "abilList": "AIsr",
+    "cooldownID": "AIsr",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "114",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "1",
+    "sellable": "1",
+    "pickRandom": "1",
+    "powerup": "0",
+    "drop": "0",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "400",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\TreasureChest\\treasurechest.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "1",
+    "scriptname": "RunedBracers",
+    "selSize": "0"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNRunedBracers.blp",
+    "Name": "神秘腰带",
+    "Hotkey": "R",
+    "Tip": "购买神秘腰带(|cffffcc00R|r)",
+    "Ubertip": "\"减少<AIsr,DataB1,%>%英雄受到的魔法伤害。\"",
+    "Description": "削弱英雄受到的魔法攻击。"
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

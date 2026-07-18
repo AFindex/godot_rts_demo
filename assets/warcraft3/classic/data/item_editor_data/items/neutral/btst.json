@@ -1,0 +1,112 @@
+{
+  "schema": "war3-item-editor-data/v1",
+  "id": "btst",
+  "displayName": "战斗标准",
+  "identity": {
+    "race": "neutral",
+    "class": "Miscellaneous",
+    "level": 0,
+    "legacyLevel": 0,
+    "scriptName": "orcishbattlestandard"
+  },
+  "assets": {
+    "art": [
+      {
+        "requestedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcBattleStandard.blp",
+        "resolvedPath": "ReplaceableTextures\\CommandButtons\\BTNOrcBattleStandard.blp",
+        "sourceLayer": "tft",
+        "godotPath": "textures/replaceabletextures/commandbuttons/btnorcbattlestandard.png"
+      }
+    ],
+    "worldModel": [
+      {
+        "requestedPath": "Objects\\InventoryItems\\BattleStandard\\BattleStandard.mdl",
+        "resolvedPath": "Objects\\InventoryItems\\BattleStandard\\BattleStandard.mdx",
+        "sourceLayer": "tft",
+        "godotPath": "models/objects/inventoryitems/battlestandard/battlestandard.glb"
+      }
+    ]
+  },
+  "summary": {
+    "abilities": [
+      "AIfx"
+    ],
+    "ignoreCooldown": false,
+    "priority": 0,
+    "usable": false,
+    "perishable": false,
+    "droppable": true,
+    "pawnable": false,
+    "sellable": false,
+    "randomDrop": false,
+    "powerup": false,
+    "droppedWhenCarrierDies": true,
+    "stockMaximum": 1,
+    "stockReplenishSeconds": 120,
+    "stockStartDelaySeconds": 0,
+    "goldCost": 1000,
+    "lumberCost": 0,
+    "hitPoints": 75,
+    "armorType": "Wood",
+    "scale": 1,
+    "selectionSize": 80,
+    "buttonPosition": [],
+    "requirements": [],
+    "tooltip": "购买战斗标准",
+    "extendedTooltip": "\"萨尔兽族氏族的战斗标准，骄傲地带上它吧。\"",
+    "description": "\"萨尔的战斗标准\""
+  },
+  "editorData": {
+    "itemID": "btst",
+    "comment": "orcish battle standard",
+    "version": "1",
+    "class": "Miscellaneous",
+    "Level": "0",
+    "oldLevel": "0",
+    "abilList": "AIfx",
+    "ignoreCD": "0",
+    "uses": "-",
+    "prio": "0",
+    "usable": "0",
+    "perishable": "0",
+    "droppable": "1",
+    "pawnable": "0",
+    "sellable": "0",
+    "pickRandom": "0",
+    "powerup": "0",
+    "drop": "1",
+    "stockMax": "1",
+    "stockRegen": "120",
+    "stockStart": "0",
+    "goldcost": "1000",
+    "lumbercost": "0",
+    "HP": "75",
+    "morph": "0",
+    "armor": "Wood",
+    "file": "Objects\\InventoryItems\\BattleStandard\\BattleStandard.mdl",
+    "scale": "1",
+    "colorR": "255",
+    "colorG": "255",
+    "colorB": "255",
+    "InBeta": "0",
+    "scriptname": "orcishbattlestandard",
+    "selSize": "80"
+  },
+  "profile": {
+    "Art": "ReplaceableTextures\\CommandButtons\\BTNOrcBattleStandard.blp",
+    "Name": "战斗标准",
+    "Tip": "购买战斗标准",
+    "Ubertip": "\"萨尔兽族氏族的战斗标准，骄傲地带上它吧。\"",
+    "Description": "\"萨尔的战斗标准\""
+  },
+  "provenance": {
+    "sourceFiles": [
+      "extracted/raw/classic/patch/Units/ItemData.slk",
+      "extracted/raw/classic/patch/Units/ItemFunc.txt",
+      "extracted/raw/classic/patch/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft-locale/Units/ItemStrings.txt",
+      "extracted/raw/classic/tft/Units/ItemData.slk",
+      "extracted/raw/classic/tft/Units/ItemFunc.txt"
+    ]
+  }
+}

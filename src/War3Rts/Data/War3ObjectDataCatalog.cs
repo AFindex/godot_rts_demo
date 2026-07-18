@@ -7,7 +7,8 @@ public enum War3ObjectDataKind : byte
 {
     Ability,
     Upgrade,
-    BuffEffect
+    BuffEffect,
+    Item
 }
 
 public sealed record War3ObjectDataIndexEntry(
@@ -32,6 +33,9 @@ public sealed class War3ObjectDataCatalog
         "war3-buff-effect-editor-manifest/v1";
     private const string BuffEffectObjectSchema =
         "war3-buff-effect-editor-data/v1";
+    private const string ItemManifestSchema =
+        "war3-item-editor-manifest/v1";
+    private const string ItemObjectSchema = "war3-item-editor-data/v1";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -100,6 +104,9 @@ public sealed class War3ObjectDataCatalog
     public static War3ObjectDataCatalog OpenBuffEffect(string rootPath) =>
         Open(War3ObjectDataKind.BuffEffect, rootPath);
 
+    public static War3ObjectDataCatalog OpenItem(string rootPath) =>
+        Open(War3ObjectDataKind.Item, rootPath);
+
     public static War3ObjectDataCatalog LoadAbility(string rootPath) =>
         Load(War3ObjectDataKind.Ability, rootPath);
 
@@ -108,6 +115,9 @@ public sealed class War3ObjectDataCatalog
 
     public static War3ObjectDataCatalog LoadBuffEffect(string rootPath) =>
         Load(War3ObjectDataKind.BuffEffect, rootPath);
+
+    public static War3ObjectDataCatalog LoadItem(string rootPath) =>
+        Load(War3ObjectDataKind.Item, rootPath);
 
     public bool Contains(string objectId) =>
         IsAvailable && _index.ContainsKey(objectId);
@@ -217,6 +227,7 @@ public sealed class War3ObjectDataCatalog
         War3ObjectDataKind.Ability => AbilityManifestSchema,
         War3ObjectDataKind.Upgrade => UpgradeManifestSchema,
         War3ObjectDataKind.BuffEffect => BuffEffectManifestSchema,
+        War3ObjectDataKind.Item => ItemManifestSchema,
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
 
@@ -225,6 +236,7 @@ public sealed class War3ObjectDataCatalog
         War3ObjectDataKind.Ability => AbilityObjectSchema,
         War3ObjectDataKind.Upgrade => UpgradeObjectSchema,
         War3ObjectDataKind.BuffEffect => BuffEffectObjectSchema,
+        War3ObjectDataKind.Item => ItemObjectSchema,
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
 
@@ -315,6 +327,23 @@ public sealed class War3ObjectSummary
 {
     public War3ObjectLevel[] Levels { get; init; } = [];
     public War3UpgradeEffect[] Effects { get; init; } = [];
+    public string[] Abilities { get; init; } = [];
+    public string CooldownAbilityId { get; init; } = string.Empty;
+    public int Charges { get; init; }
+    public bool Usable { get; init; }
+    public bool Perishable { get; init; }
+    public int StockMaximum { get; init; }
+    public float StockReplenishSeconds { get; init; }
+    public float StockStartDelaySeconds { get; init; }
+    public int GoldCost { get; init; }
+    public int LumberCost { get; init; }
+    public int[] ButtonPosition { get; init; } = [];
+    public string[] Requirements { get; init; } = [];
+    public int? RequirementLevel { get; init; }
+    public string Hotkey { get; init; } = string.Empty;
+    public string Tooltip { get; init; } = string.Empty;
+    public string ExtendedTooltip { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
 }
 
 public sealed class War3ObjectLevel

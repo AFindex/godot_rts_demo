@@ -11,7 +11,8 @@ public enum NavigationConnectivitySource : byte
 {
     RuntimeAnalysis,
     StaticBake,
-    IncrementalRuntimeAnalysis
+    IncrementalRuntimeAnalysis,
+    IncrementalRuntimePathfinding
 }
 
 /// <summary>
@@ -258,6 +259,55 @@ public sealed class NavigationConnectivityAnalyzer
             components);
     }
 
+    internal static NavigationConnectivitySnapshot BuildPathfindingSnapshot(
+        SimRect worldBounds,
+        float cellSize,
+        int columns,
+        int rows,
+        float navigationRadius,
+        int worldRevision,
+        bool[] walkable)
+    {
+        if (walkable.Length != columns * rows)
+        {
+            throw new ArgumentException(
+                "Walkability must match the declared connectivity grid.",
+                nameof(walkable));
+        }
+        // Runtime A* only needs a conservative rejection rule. Treat every
+        // walkable cell as one candidate component and let A* prove actual
+        // reachability. This avoids a whole-map flood fill whenever one
+        // building changes; authoritative components remain available through
+        // the explicit diagnostics/offline analyzer.
+        var componentIds = new int[walkable.Length];
+        var walkableCount = 0;
+        for (var node = 0; node < walkable.Length; node++)
+        {
+            if (walkable[node])
+                walkableCount++;
+            else
+                componentIds[node] = -1;
+        }
+        var components = walkableCount == 0
+            ? []
+            : new[]
+            {
+                new NavigationComponentSummary(
+                    0, walkableCount, worldBounds)
+            };
+        return new NavigationConnectivitySnapshot(
+            worldBounds,
+            cellSize,
+            columns,
+            rows,
+            navigationRadius,
+            worldRevision,
+            NavigationConnectivitySource.IncrementalRuntimePathfinding,
+            walkable,
+            componentIds,
+            components);
+    }
+
     private Vector2 CellCenter(int node)
     {
         var column = node % _columns;
@@ -300,8 +350,9 @@ public readonly record struct IncrementalConnectivityUpdate(
 }
 
 /// <summary>
-/// Reuses walkability outside dirty bake chunks, then globally relabels
-/// components so the result remains equivalent to a full runtime analysis.
+/// Reuses walkability outside dirty bake chunks. Offline/diagnostic callers
+/// can request exact global component labels; runtime pathfinding uses a
+/// conservative no-false-rejection snapshot and lets A* prove connectivity.
 /// </summary>
 public sealed class IncrementalNavigationConnectivityUpdater
 {
@@ -326,7 +377,7 @@ public sealed class IncrementalNavigationConnectivityUpdater
         SimRect changedWorldArea)
     {
         Validate(previous, changedWorldArea);
-        return UpdateCore(previous, [changedWorldArea]);
+        return UpdateCore(previous, [changedWorldArea], relabel: true);
     }
 
     public IncrementalConnectivityUpdate Update(
@@ -334,12 +385,21 @@ public sealed class IncrementalNavigationConnectivityUpdater
         IReadOnlyList<SimRect> changedWorldAreas)
     {
         Validate(previous, changedWorldAreas);
-        return UpdateCore(previous, changedWorldAreas);
+        return UpdateCore(previous, changedWorldAreas, relabel: true);
+    }
+
+    public IncrementalConnectivityUpdate UpdateForPathfinding(
+        NavigationConnectivitySnapshot previous,
+        IReadOnlyList<SimRect> changedWorldAreas)
+    {
+        Validate(previous, changedWorldAreas);
+        return UpdateCore(previous, changedWorldAreas, relabel: false);
     }
 
     private IncrementalConnectivityUpdate UpdateCore(
         NavigationConnectivitySnapshot previous,
-        IReadOnlyList<SimRect> changedWorldAreas)
+        IReadOnlyList<SimRect> changedWorldAreas,
+        bool relabel)
     {
         var dirtyChunkSet = new SortedSet<int>();
         for (var areaIndex = 0; areaIndex < changedWorldAreas.Count; areaIndex++)
@@ -363,6 +423,12 @@ public sealed class IncrementalNavigationConnectivityUpdater
 
         var resampled = 0;
         var changed = 0;
+        var movementClass = MovementClearance.FromPhysicalRadius(
+            previous.NavigationRadius).Class;
+        var staticLayer = _layout.Layer(movementClass);
+        var staticLayerMatches = MathF.Abs(
+            staticLayer.NavigationRadius - previous.NavigationRadius) <=
+            0.0001f;
         for (var dirtyIndex = 0; dirtyIndex < dirtyChunks.Length; dirtyIndex++)
         {
             var chunk = _layout.Chunk(dirtyChunks[dirtyIndex]);
@@ -375,8 +441,18 @@ public sealed class IncrementalNavigationConnectivityUpdater
                      column++)
                 {
                     var node = row * previous.Columns + column;
-                    var current = _world.IsDiscFree(
-                        previous.CellCenter(node), previous.NavigationRadius);
+                    // The bake already contains terrain and immutable static
+                    // obstacles. A runtime revision only changes dynamic
+                    // occupancy, so resampling the expensive terrain capsule
+                    // probes here was redundant.
+                    var current = staticLayerMatches
+                        ? staticLayer.IsWalkable(node) &&
+                          _world.DynamicOccupancy.IsDiscFree(
+                              previous.CellCenter(node),
+                              previous.NavigationRadius)
+                        : _world.IsDiscFree(
+                            previous.CellCenter(node),
+                            previous.NavigationRadius);
                     changed += current == walkable[node] ? 0 : 1;
                     walkable[node] = current;
                     resampled++;
@@ -384,15 +460,24 @@ public sealed class IncrementalNavigationConnectivityUpdater
             }
         }
 
-        var snapshot = NavigationConnectivityAnalyzer.BuildSnapshot(
-            previous.WorldBounds,
-            previous.CellSize,
-            previous.Columns,
-            previous.Rows,
-            previous.NavigationRadius,
-            _world.NavigationRevision,
-            NavigationConnectivitySource.IncrementalRuntimeAnalysis,
-            walkable);
+        var snapshot = relabel
+            ? NavigationConnectivityAnalyzer.BuildSnapshot(
+                previous.WorldBounds,
+                previous.CellSize,
+                previous.Columns,
+                previous.Rows,
+                previous.NavigationRadius,
+                _world.NavigationRevision,
+                NavigationConnectivitySource.IncrementalRuntimeAnalysis,
+                walkable)
+            : NavigationConnectivityAnalyzer.BuildPathfindingSnapshot(
+                previous.WorldBounds,
+                previous.CellSize,
+                previous.Columns,
+                previous.Rows,
+                previous.NavigationRadius,
+                _world.NavigationRevision,
+                walkable);
         return new IncrementalConnectivityUpdate(
             snapshot, dirtyChunks, resampled, changed);
     }
