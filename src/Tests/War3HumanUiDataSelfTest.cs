@@ -134,20 +134,45 @@ public static class War3HumanUiDataSelfTest
                     War3HumanContent.AbilityDataCatalog.TryGet(
                         rawId, out var ability) &&
                     !string.IsNullOrWhiteSpace(Profile(ability, "ResearchArt"))));
-            var inventoryPolicy = heroData && buildings.All(value =>
-                !War3HumanContent.DataCatalog.TryGet(value.ObjectId, out var data) ||
-                !data.Summary.Abilities.Contains("AInv", StringComparer.Ordinal)) &&
-                War3HumanContent.Technologies.Count(value =>
-                    value.SemanticKind ==
-                        War3TechnologySemanticKind.BackpackInventory &&
-                    value.GrantedInventorySlots == 2) == 1 &&
+            var backpackTechnology = War3HumanContent.Technologies.Single(
+                value => value.ObjectId == "Rhpm").TechnologyId;
+            var inventoryAbilities = War3HumanContent.InventoryAbilities;
+            var hasHeroInventory = inventoryAbilities.TryGetValue(
+                "AInv", out var heroInventory);
+            var hasUnitInventory = inventoryAbilities.TryGetValue(
+                "Aihn", out var unitInventory);
+            var inventoryProfiles =
+                hasHeroInventory && heroInventory is not null &&
+                heroInventory.Capacity == 6 &&
+                !heroInventory.DropItemsOnDeath &&
+                heroInventory.CanUseItems &&
+                heroInventory.CanGetItems &&
+                heroInventory.CanDropItems &&
+                heroInventory.Requirements.IsEmpty &&
+                hasUnitInventory && unitInventory is not null &&
+                unitInventory.Capacity == 2 &&
+                unitInventory.DropItemsOnDeath &&
+                !unitInventory.CanUseItems &&
+                unitInventory.CanGetItems &&
+                unitInventory.CanDropItems &&
+                unitInventory.Requirements.SequenceEqual([
+                    new AbilityRequirementProfile(
+                        AbilityRequirementKind.TechnologyLevel,
+                        backpackTechnology, 1)
+                ]);
+            var inventoryPolicy = heroData && inventoryProfiles &&
+                buildings.All(value =>
+                    !War3HumanContent.DataCatalog.TryGet(
+                        value.ObjectId, out var data) ||
+                    !data.Summary.Abilities.Contains(
+                        "AInv", StringComparer.Ordinal)) &&
                 units.Count(value => War3HumanContent.DataCatalog.TryGet(
                     value.ObjectId, out var data) &&
-                    War3HumanContent.Technologies.Any(technology =>
-                        technology.SemanticKind ==
-                            War3TechnologySemanticKind.BackpackInventory &&
-                        data.Summary.Upgrades.Contains(
-                            technology.ObjectId, StringComparer.Ordinal))) == 6;
+                    data.Summary.Abilities.Any(rawId =>
+                        inventoryAbilities.TryGetValue(
+                            rawId, out var profile) &&
+                        profile.Capacity == 2 &&
+                        !profile.CanUseItems)) == 6;
 
             var abilityPresentation =
                 War3HumanContent.TryAbility("AHbz", out var blizzard) &&
@@ -207,12 +232,42 @@ public static class War3HumanUiDataSelfTest
                               items.Single(value => value.ItemId == "ssan").Range ==
                                   700f &&
                               War3HumanContent.DataCatalog.TryGet("necr", out _);
+            var inventoryStore = new War3ItemShopRuntime();
+            var inventoryEconomy = new PlayerEconomyStore();
+            inventoryEconomy.RegisterPlayer(
+                0, minerals: 1_000, vespeneGas: 1_000,
+                supplyCapacity: 10);
+            var acquireDenied = inventoryStore.Offer(
+                shopBuilding: 0, itemRuntimeId: 0, buyerUnit: 1,
+                inventorySlots: unitInventory!.Capacity,
+                canGetItems: false, townTier: 2,
+                economy: inventoryEconomy, playerId: 0);
+            var carrierPurchase = inventoryStore.Purchase(
+                shopBuilding: 0, itemRuntimeId: 0, buyerUnit: 1,
+                inventorySlots: unitInventory.Capacity,
+                canGetItems: unitInventory.CanGetItems, townTier: 2,
+                economy: inventoryEconomy, playerId: 0);
+            var carrierSnapshot = inventoryStore.InventorySnapshot(
+                1, unitInventory.CanUseItems);
+            var carrierUse = inventoryStore.ValidateUse(
+                1, 0, unitInventory.CanUseItems, out _);
+            var heroSnapshot = inventoryStore.InventorySnapshot(
+                1, heroInventory!.CanUseItems);
+            var inventoryRuntime =
+                acquireDenied.Code ==
+                    War3ShopPurchaseCode.CannotAcquireItems &&
+                carrierPurchase.Succeeded &&
+                carrierSnapshot is [{ Usable: false }] &&
+                carrierSnapshot[0].StateLabel.Contains(
+                    "不能使用", StringComparison.Ordinal) &&
+                carrierUse == War3ItemUseCode.UnitCannotUseItems &&
+                heroSnapshot is [{ Usable: true }];
 
             var passed = units.Count == 17 && buildings.Count == 16 &&
                          buildLayout && researchCoverage && productionCoverage &&
                          buildingCards && towerLayout && towerAnimationProperties &&
                          heroData && inventoryPolicy && abilityPresentation &&
-                         itemRuntime;
+                         itemRuntime && inventoryRuntime;
             return new SelfTestResult(
                 passed,
                 $"content={units.Count}/{buildings.Count}/" +
@@ -220,7 +275,8 @@ public static class War3HumanUiDataSelfTest
                 $"research={researchCoverage}, production={productionCoverage}, " +
                 $"cards={buildingCards}, towers={towerLayout}, " +
                 $"towerAnimations={towerAnimationProperties}, " +
-                $"heroes={heroData}, inventory={inventoryPolicy}, " +
+                $"heroes={heroData}, inventory={inventoryPolicy}/" +
+                $"{inventoryRuntime}, " +
                 $"abilityPresentation={abilityPresentation}, " +
                 $"items={itemRuntime}[{string.Join(',', items.Select(value =>
                     $"{value.ItemId}:{value.AbilityRawId}:{value.CommandSlot}:" +

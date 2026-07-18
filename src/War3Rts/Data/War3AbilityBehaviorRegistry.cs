@@ -189,7 +189,8 @@ public static class War3AbilityBehaviorRegistry
         Prototype("Adef", AbilityActivationKind.Toggle,
             War3AbilityCompilerKind.Defend);
         Pending("AInv", AbilityActivationKind.Passive,
-            "依赖尚未落地的物品栏、拾取、丢弃和物品技能系统。");
+            "DataA..E 容量、死亡掉落、使用、取得、丢弃标志和科技前置已接入商店/HUD；" +
+            "地面物品实体、主动拾取/丢弃、死亡掉落及回放快照仍未完成。");
         result.Add("Ahar", new War3AbilityBehaviorDescriptor(
             "Ahar", AbilityActivationKind.Passive, false,
             War3AbilityCompilerKind.None,

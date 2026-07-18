@@ -259,7 +259,7 @@ public sealed class CombatSystem
                 continue;
             }
 
-            var distance = Vector2.Distance(
+            var distanceSquared = Vector2.DistanceSquared(
                 _units.Positions[unit], _units.Positions[target]);
             var range = _combat.AttackRanges[unit] +
                         _units.Radii[unit] + _units.Radii[target];
@@ -270,14 +270,18 @@ public sealed class CombatSystem
                 new SimRect(
                     _units.Positions[target],
                     _units.Positions[target]));
-            if (minimumRange > 0f && distance < minimumRange)
+            if (minimumRange > 0f &&
+                distanceSquared < minimumRange * minimumRange)
             {
                 if (intent == UnitCommandIntent.Hold)
                     Disengage(unit);
                 else
-                    RetreatFromUnit(unit, target, minimumRange - distance);
+                    RetreatFromUnit(
+                        unit,
+                        target,
+                        minimumRange - MathF.Sqrt(distanceSquared));
             }
-            else if (distance <= range)
+            else if (distanceSquared <= range * range)
             {
                 UpdateAttack(unit, target, delta, tick);
             }

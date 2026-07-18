@@ -3,12 +3,6 @@ using System.Collections.Immutable;
 
 namespace War3Rts.Data;
 
-public enum War3TechnologySemanticKind : byte
-{
-    None,
-    BackpackInventory
-}
-
 public sealed record War3TechnologyDefinition(
     int TechnologyId,
     string ObjectId,
@@ -18,15 +12,6 @@ public sealed record War3TechnologyDefinition(
     IReadOnlyList<War3ObjectLevel> Levels,
     IReadOnlyList<War3UpgradeEffect> Effects)
 {
-    public War3TechnologySemanticKind SemanticKind { get; init; }
-
-    // Warcraft's four racial backpack upgrades deliberately contain no
-    // UpgradeData effect rows. The classic engine assigns two non-hero slots
-    // to this semantic upgrade family, so keep that engine rule beside the
-    // data-derived classification instead of branching on a race rawcode.
-    public int GrantedInventorySlots =>
-        SemanticKind == War3TechnologySemanticKind.BackpackInventory ? 2 : 0;
-
     public string NameForLevel(int zeroBasedLevel)
     {
         if (Levels.Count == 0) return Name;
@@ -134,26 +119,8 @@ public sealed class War3TechnologyDataAdapter(
                 Text(first.ExtendedTooltip, first.Tooltip ?? string.Empty),
                 icon,
                 data.Summary.Levels,
-                data.Summary.Effects)
-            {
-                SemanticKind = SemanticKind(data)
-            },
+                data.Summary.Effects),
             true);
-    }
-
-    private static War3TechnologySemanticKind SemanticKind(
-        War3ObjectEditorData data)
-    {
-        var comments = data.EditorData.FirstOrDefault(pair =>
-            pair.Key.Equals("comments", StringComparison.OrdinalIgnoreCase))
-            .Value;
-        return (comments ?? string.Empty)
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries |
-                        StringSplitOptions.TrimEntries)
-            .Any(value => value.Equals(
-                "backpack", StringComparison.OrdinalIgnoreCase))
-            ? War3TechnologySemanticKind.BackpackInventory
-            : War3TechnologySemanticKind.None;
     }
 
     private TechnologyRequirementProfile? Requirement(

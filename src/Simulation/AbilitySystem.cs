@@ -372,6 +372,7 @@ public sealed class AbilitySystem
         _buildingToggles = [];
     private readonly List<AbilityBuildingRuntimeEntry> _buildings = [];
     private readonly List<AbilityProjectileSnapshot> _projectiles = [];
+    private CombatEvent[] _combatEventScratch = [];
     private AbilityCatalogSnapshot _catalog = AbilityCatalogSnapshot.Empty;
     private int _nextBuffInstanceId = 1;
     private int _nextPersistentEffectInstanceId = 1;
@@ -1537,10 +1538,14 @@ public sealed class AbilitySystem
         IAbilityRuntimeWorld world,
         AbilityEventStream abilityEvents)
     {
-        var batch = combatEvents.ReadAfter(_combatEventCursor);
+        var batch = combatEvents.CopyAfter(
+            _combatEventCursor, ref _combatEventScratch);
         _combatEventCursor = batch.LatestSequence;
-        foreach (var combatEvent in batch.Events)
+        for (var eventIndex = 0;
+             eventIndex < batch.Count;
+             eventIndex++)
         {
+            var combatEvent = _combatEventScratch[eventIndex];
             if (combatEvent.Kind == CombatEventKind.TargetDestroyed &&
                 combatEvent.TargetKind == CombatTargetKind.Unit)
             {

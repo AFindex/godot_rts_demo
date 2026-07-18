@@ -9,6 +9,8 @@ public sealed class SteeringSolver
         0f, -15f, 15f, -30f, 30f, -50f, 50f,
         -75f, 75f, -110f, 110f, 180f
     ];
+    private static readonly Vector2[] CandidateRotations =
+        BuildCandidateRotations();
 
     private readonly StaticWorld _world;
     private readonly SpatialHash _spatialHash;
@@ -123,15 +125,22 @@ public sealed class SteeringSolver
              candidateIndex < CandidateAngles.Length;
              candidateIndex++)
         {
-            var angle = CandidateAngles[candidateIndex] * MathF.PI / 180f;
-            var candidateDirection = Rotate(preferredDirection, angle);
-            var speedScale = MathF.Abs(CandidateAngles[candidateIndex]) >= 100f
+            var candidateAngle = CandidateAngles[candidateIndex];
+            var rotation = CandidateRotations[candidateIndex];
+            var candidateDirection = new Vector2(
+                preferredDirection.X * rotation.X -
+                preferredDirection.Y * rotation.Y,
+                preferredDirection.X * rotation.Y +
+                preferredDirection.Y * rotation.X);
+            var speedScale = MathF.Abs(candidateAngle) >= 100f
                 ? 0.45f
                 : 1f;
-            var candidate = candidateDirection * preferredSpeed * speedScale;
+            var candidateSpeed = preferredSpeed * speedScale;
+            var candidate = candidateDirection * candidateSpeed;
+            var candidateLength = candidate.Length();
             var candidateProbeSeconds = MathF.Min(
                 0.32f,
-                slotDistance / candidate.Length());
+                slotDistance / candidateLength);
             if (!_world.IsSegmentFree(
                     position,
                     position + candidate * candidateProbeSeconds,
@@ -143,18 +152,18 @@ public sealed class SteeringSolver
                 horizon);
             LastCandidateEvaluations++;
 
-            var angularCost = MathF.Abs(CandidateAngles[candidateIndex]) / 180f;
-            var speedLoss = 1f - candidate.Length() / preferredSpeed;
-            var side = MathF.Abs(angle) < 0.01f
+            var angularCost = MathF.Abs(candidateAngle) / 180f;
+            var speedLoss = 1f - candidateLength / preferredSpeed;
+            var side = MathF.Abs(candidateAngle) < 0.01f
                 ? (sbyte)0
-                : angle < 0f ? (sbyte)-1 : (sbyte)1;
+                : candidateAngle < 0f ? (sbyte)-1 : (sbyte)1;
             var sideSwitchCost = units.AvoidanceLockTicks[unit] > 0 &&
                                  units.AvoidanceSides[unit] != 0 &&
                                  side != 0 &&
                                  side != units.AvoidanceSides[unit]
                 ? 2.5f
                 : 0f;
-            var reverseCost = MathF.Abs(CandidateAngles[candidateIndex]) > 90f
+            var reverseCost = MathF.Abs(candidateAngle) > 90f
                 ? 1.5f
                 : 0f;
             var score = collisionRisk * 8f + angularCost * 2.2f +
@@ -297,11 +306,16 @@ public sealed class SteeringSolver
         }
     }
 
-    private static Vector2 Rotate(Vector2 value, float radians)
+    private static Vector2[] BuildCandidateRotations()
     {
-        var sin = MathF.Sin(radians);
-        var cos = MathF.Cos(radians);
-        return new Vector2(value.X * cos - value.Y * sin, value.X * sin + value.Y * cos);
+        var result = new Vector2[CandidateAngles.Length];
+        for (var index = 0; index < result.Length; index++)
+        {
+            var radians = CandidateAngles[index] * MathF.PI / 180f;
+            result[index] = new Vector2(
+                MathF.Cos(radians), MathF.Sin(radians));
+        }
+        return result;
     }
 
     private static Vector2 MoveTowards(Vector2 current, Vector2 target, float maximumDelta)

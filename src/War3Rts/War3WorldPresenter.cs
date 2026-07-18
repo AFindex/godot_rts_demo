@@ -62,7 +62,7 @@ public sealed partial class War3WorldPresenter : Node3D
     private const int MaximumProjectileImpactVisualsPerSync = 4;
     private const int MaximumNonCommandTransientVisuals = 256;
     private const int DenseUnitLodThreshold = 240;
-    private const int MaximumFullDetailUnits = 192;
+    private const int MaximumFullDetailUnitSurfaceBudget = 384;
     private readonly Dictionary<int, UnitVisual> _units = [];
     private readonly Dictionary<int, BuildingVisual> _buildings = [];
     private readonly Dictionary<int, ResourceVisual> _resources = [];
@@ -81,6 +81,12 @@ public sealed partial class War3WorldPresenter : Node3D
     private readonly HashSet<int> _seenProjectiles = [];
     private readonly HashSet<int> _seenBuildingProjectiles = [];
     private readonly HashSet<int> _seenAbilityProjectiles = [];
+    private CombatProjectileSnapshot[] _combatProjectileScratch = [];
+    private MultiMesh? _denseCombatProjectileMultiMesh;
+    private float[] _denseCombatProjectileBuffer = [];
+    private UnitDetailCandidate[] _unitDetailCandidates = [];
+    private bool[] _unitFullDetailScratch = [];
+    private bool[] _unitInFrustumScratch = [];
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
     private CylinderMesh? _unitShadowProxyMesh;
@@ -495,7 +501,8 @@ public sealed partial class War3WorldPresenter : Node3D
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
         var denseUnitLod = simulation.Units.Count >= DenseUnitLodThreshold;
-        var fullDetailUnits = 0;
+        if (denseUnitLod)
+            PrepareFullDetailUnitBudget(simulation, camera);
         for (var unit = 0; unit < simulation.Units.Count; unit++)
         {
             if (ProfilingEnabled) _profileUnitActorsVisited++;
@@ -578,7 +585,9 @@ public sealed partial class War3WorldPresenter : Node3D
             var frustumAllocationStart = ProfilingEnabled
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
-            var inFrustum = camera.IsPositionInFrustum(world);
+            var inFrustum = denseUnitLod
+                ? _unitInFrustumScratch[unit]
+                : camera.IsPositionInFrustum(world);
             if (ProfilingEnabled)
                 _profileUnitFrustumAllocatedBytes +=
                     GC.GetAllocatedBytesForCurrentThread() -
@@ -597,10 +606,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 AssignUnitLod(visual, simulation.Combat.Teams[unit]);
             var selected = _selectedUnits.Contains(unit);
             var fullDetail = !denseUnitLod ||
-                             inFrustum &&
-                             (selected ||
-                              fullDetailUnits < MaximumFullDetailUnits);
-            if (fullDetail) fullDetailUnits++;
+                             _unitFullDetailScratch[unit];
             var hiddenInsideGoldMine = IsGatheringGold(simulation, unit);
             var lodTransform = new Transform3D(
                 new Basis(Vector3.Up, angle), world);
@@ -672,6 +678,58 @@ public sealed partial class War3WorldPresenter : Node3D
         }
         foreach (var batch in _unitLodBatches.Values)
             batch.FlushDynamicBuffer();
+    }
+
+    private void PrepareFullDetailUnitBudget(
+        RtsSimulation simulation,
+        Camera3D camera)
+    {
+        var unitCount = simulation.Units.Count;
+        if (_unitDetailCandidates.Length < unitCount)
+            Array.Resize(ref _unitDetailCandidates, unitCount);
+        if (_unitFullDetailScratch.Length < unitCount)
+        {
+            Array.Resize(ref _unitFullDetailScratch, unitCount);
+            Array.Resize(ref _unitInFrustumScratch, unitCount);
+        }
+        Array.Clear(_unitFullDetailScratch, 0, unitCount);
+        Array.Clear(_unitInFrustumScratch, 0, unitCount);
+
+        var candidateCount = 0;
+        var cameraPosition = camera.GlobalPosition;
+        for (var unit = 0; unit < unitCount; unit++)
+        {
+            if (!simulation.Units.Alive[unit]) continue;
+            var world = ToWorldAtGround(simulation.Units.Positions[unit]);
+            var inFrustum = camera.IsPositionInFrustum(world);
+            _unitInFrustumScratch[unit] = inFrustum;
+            if (!inFrustum) continue;
+            var surfaceCost = _units.TryGetValue(unit, out var visual)
+                ? Math.Max(1, visual.Actor.RenderSurfaceCount)
+                : 8;
+            _unitDetailCandidates[candidateCount++] = new UnitDetailCandidate(
+                unit,
+                _selectedUnits.Contains(unit),
+                cameraPosition.DistanceSquaredTo(world),
+                surfaceCost);
+        }
+
+        Array.Sort(
+            _unitDetailCandidates,
+            0,
+            candidateCount,
+            UnitDetailCandidateComparer.Instance);
+        var surfaceBudgetUsed = 0;
+        for (var index = 0; index < candidateCount; index++)
+        {
+            var candidate = _unitDetailCandidates[index];
+            if (!candidate.Selected &&
+                surfaceBudgetUsed + candidate.SurfaceCost >
+                MaximumFullDetailUnitSurfaceBudget)
+                continue;
+            _unitFullDetailScratch[candidate.Unit] = true;
+            surfaceBudgetUsed += candidate.SurfaceCost;
+        }
     }
 
     private void AssignUnitLod(UnitVisual visual, int team)
@@ -1454,6 +1512,14 @@ public sealed partial class War3WorldPresenter : Node3D
         ProductionCatalogSnapshot production,
         Camera3D camera)
     {
+        if (simulation.Units.Count >= DenseUnitLodThreshold)
+        {
+            SyncDenseCombatProjectiles(simulation);
+            return;
+        }
+        if (_denseCombatProjectileMultiMesh is not null)
+            _denseCombatProjectileMultiMesh.VisibleInstanceCount = 0;
+
         _seenProjectiles.Clear();
         var visualCreations = 0;
         foreach (var projectile in simulation.CombatProjectiles.ObserveActive())
@@ -1512,6 +1578,106 @@ public sealed partial class War3WorldPresenter : Node3D
                 impactVisuals++;
             }
         }
+    }
+
+    private void SyncDenseCombatProjectiles(RtsSimulation simulation)
+    {
+        // Detailed projectile actors contain their own scene trees, animation
+        // players and effect callbacks. In a large battle their short lifetime
+        // turns model construction/destruction into recurring 50-100 ms
+        // presenter spikes. Dense mode keeps the authoritative projectile
+        // simulation untouched and renders all missiles through one low-cost
+        // MultiMesh draw instead.
+        if (_projectiles.Count > 0)
+        {
+            foreach (var visual in _projectiles.Values)
+                visual.Root.QueueFree();
+            _projectiles.Clear();
+        }
+
+        var activeCount = simulation.CombatProjectiles.ActiveCount;
+        EnsureDenseCombatProjectileCapacity(activeCount);
+        if (_denseCombatProjectileMultiMesh is null) return;
+        if (activeCount == 0)
+        {
+            _denseCombatProjectileMultiMesh.VisibleInstanceCount = 0;
+            return;
+        }
+
+        if (_combatProjectileScratch.Length < activeCount)
+            Array.Resize(
+                ref _combatProjectileScratch,
+                Math.Max(activeCount, _combatProjectileScratch.Length * 2));
+        var count = simulation.CombatProjectiles.CopyActiveTo(
+            _combatProjectileScratch);
+        for (var index = 0; index < count; index++)
+        {
+            var position = ToWorldAtGround(
+                _combatProjectileScratch[index].Position, 0.85f);
+            WriteDenseCombatProjectileTransform(index, position);
+        }
+        RenderingServer.MultimeshSetBuffer(
+            _denseCombatProjectileMultiMesh.GetRid(),
+            _denseCombatProjectileBuffer.AsSpan());
+        _denseCombatProjectileMultiMesh.VisibleInstanceCount = count;
+    }
+
+    private void EnsureDenseCombatProjectileCapacity(int required)
+    {
+        var capacity = Math.Max(32, _denseCombatProjectileBuffer.Length / 12);
+        while (capacity < required) capacity *= 2;
+        if (_denseCombatProjectileMultiMesh is null)
+        {
+            var material = Emissive(new Color("ffd46a"));
+            material.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+            var mesh = new SphereMesh
+            {
+                Radius = 0.075f,
+                Height = 0.15f,
+                RadialSegments = 8,
+                Rings = 4,
+                Material = material
+            };
+            _denseCombatProjectileMultiMesh = new MultiMesh
+            {
+                TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+                Mesh = mesh,
+                InstanceCount = capacity,
+                VisibleInstanceCount = 0
+            };
+            AddChild(new MultiMeshInstance3D
+            {
+                Name = "DenseCombatProjectiles",
+                Multimesh = _denseCombatProjectileMultiMesh,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+            });
+            _denseCombatProjectileBuffer = new float[capacity * 12];
+            return;
+        }
+
+        var currentCapacity = _denseCombatProjectileBuffer.Length / 12;
+        if (capacity <= currentCapacity) return;
+        _denseCombatProjectileMultiMesh.InstanceCount = capacity;
+        Array.Resize(ref _denseCombatProjectileBuffer, capacity * 12);
+    }
+
+    private void WriteDenseCombatProjectileTransform(
+        int index,
+        Vector3 position)
+    {
+        var offset = index * 12;
+        _denseCombatProjectileBuffer[offset] = 1f;
+        _denseCombatProjectileBuffer[offset + 1] = 0f;
+        _denseCombatProjectileBuffer[offset + 2] = 0f;
+        _denseCombatProjectileBuffer[offset + 3] = position.X;
+        _denseCombatProjectileBuffer[offset + 4] = 0f;
+        _denseCombatProjectileBuffer[offset + 5] = 1f;
+        _denseCombatProjectileBuffer[offset + 6] = 0f;
+        _denseCombatProjectileBuffer[offset + 7] = position.Y;
+        _denseCombatProjectileBuffer[offset + 8] = 0f;
+        _denseCombatProjectileBuffer[offset + 9] = 0f;
+        _denseCombatProjectileBuffer[offset + 10] = 1f;
+        _denseCombatProjectileBuffer[offset + 11] = position.Z;
     }
 
     private int NonCommandTransientCount()
@@ -2399,6 +2565,25 @@ public sealed partial class War3WorldPresenter : Node3D
         Node3D Root,
         ulong RemoveAt,
         bool CommandConfirmation = false);
+    private readonly record struct UnitDetailCandidate(
+        int Unit,
+        bool Selected,
+        float DistanceSquared,
+        int SurfaceCost);
+    private sealed class UnitDetailCandidateComparer :
+        IComparer<UnitDetailCandidate>
+    {
+        public static UnitDetailCandidateComparer Instance { get; } = new();
+
+        public int Compare(UnitDetailCandidate left, UnitDetailCandidate right)
+        {
+            var selected = right.Selected.CompareTo(left.Selected);
+            if (selected != 0) return selected;
+            var distance = left.DistanceSquared.CompareTo(
+                right.DistanceSquared);
+            return distance != 0 ? distance : left.Unit.CompareTo(right.Unit);
+        }
+    }
     private readonly record struct AbilityVisualInstance(
         string Model,
         string Attachment);

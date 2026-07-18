@@ -99,6 +99,7 @@ public sealed partial class War3Rts : Node3D
     private float _smokeAbilityTargetInitialHealth;
     private string _smokeExpectedSummonObjectId = string.Empty;
     private int _smokeSummonedUnit = -1;
+    private int _previousMaximumPhysicsStepsPerFrame = -1;
 
     public override void _Ready()
     {
@@ -110,9 +111,14 @@ public sealed partial class War3Rts : Node3D
             OS.GetCmdlineUserArgs());
         if (arguments.Contains(War3LaunchRequest.InteractiveStressArgument))
         {
+            _previousMaximumPhysicsStepsPerFrame =
+                Engine.MaxPhysicsStepsPerFrame;
+            Engine.MaxPhysicsStepsPerFrame = Math.Min(
+                _previousMaximumPhysicsStepsPerFrame, 2);
             GD.Print(
                 "WAR3_INTERACTIVE_STRESS_LAUNCH " +
-                "units=800 map=256x160 builders=48 slots=96 rendered=true");
+                "units=800 map=256x160 builders=48 slots=96 rendered=true " +
+                $"max_physics_steps={Engine.MaxPhysicsStepsPerFrame}");
         }
         _smoke = arguments.Contains("--war3-rts-smoke");
         _terrainCapture = arguments.Contains("--war3-rts-terrain-capture");
@@ -823,6 +829,16 @@ public sealed partial class War3Rts : Node3D
         GD.Print($"WAR3_MAP_SELECTION_CAPTURE success={result == Error.Ok} " +
                  $"path={ProjectSettings.GlobalizePath(path)}");
         GetTree().Quit(result == Error.Ok ? 0 : 1);
+    }
+
+    public override void _ExitTree()
+    {
+        if (_previousMaximumPhysicsStepsPerFrame > 0)
+        {
+            Engine.MaxPhysicsStepsPerFrame =
+                _previousMaximumPhysicsStepsPerFrame;
+            _previousMaximumPhysicsStepsPerFrame = -1;
+        }
     }
 
     public override void _PhysicsProcess(double delta)
@@ -1665,12 +1681,17 @@ public sealed partial class War3Rts : Node3D
         if (_simulation is null || _itemShops is null)
             return [];
         var inventorySlots = buyer >= 0 ? InventorySlotsForUnit(buyer) : 0;
+        var canGetItems = buyer >= 0 &&
+                          TryInventoryProfileForUnit(
+                              buyer, out var inventoryProfile) &&
+                          inventoryProfile.CanGetItems;
         var townTier = HighestHumanTownTier();
         return War3ItemShopRuntime.ArcaneVaultItems
             .Select(item =>
             {
                 var offer = _itemShops.Offer(
                     shop.Value, item.RuntimeId, buyer, inventorySlots,
+                    canGetItems,
                     townTier, _simulation.Economy.Players,
                     War3HumanScenario.PlayerId);
                 var lumber = item.Cost.VespeneGas > 0
@@ -1723,10 +1744,17 @@ public sealed partial class War3Rts : Node3D
         }
         var buyer = LocalShopUser(building);
         var slots = buyer >= 0 ? InventorySlotsForUnit(buyer) : 0;
+        War3InventoryAbilityProfile? inventoryProfile = null;
+        if (buyer >= 0 && TryInventoryProfileForUnit(
+                buyer, out var resolvedInventoryProfile))
+            inventoryProfile = resolvedInventoryProfile;
+        var canGetItems = inventoryProfile?.CanGetItems == true;
         var purchase = _itemShops.Purchase(
-            id.Value, itemRuntimeId, buyer, slots, HighestHumanTownTier(),
+            id.Value, itemRuntimeId, buyer, slots, canGetItems,
+            HighestHumanTownTier(),
             _simulation.Economy.Players, War3HumanScenario.PlayerId);
         if (purchase.Succeeded &&
+            inventoryProfile?.CanUseItems == true &&
             purchase.Item.UseKind == War3ItemUseKind.OrbOfFire)
             _itemEffects?.ApplyOrbOfFire(_simulation, buyer, purchase.Item);
         Report(purchase.Succeeded
@@ -1747,7 +1775,10 @@ public sealed partial class War3Rts : Node3D
             Report("只有己方当前单位可以使用物品");
             return;
         }
-        var validation = _itemShops.ValidateUse(unit, slot, out var item);
+        var canUseItems = TryInventoryProfileForUnit(
+            unit, out var inventoryProfile) && inventoryProfile.CanUseItems;
+        var validation = _itemShops.ValidateUse(
+            unit, slot, canUseItems, out var item);
         if (validation != War3ItemUseCode.Success)
         {
             Report($"{item.Name} 无法使用：{ItemUseReason(validation)}");
@@ -1797,7 +1828,10 @@ public sealed partial class War3Rts : Node3D
         }
         var unit = _pendingItemUnit;
         var slot = _pendingItemSlot;
-        var validation = _itemShops.ValidateUse(unit, slot, out var item);
+        var canUseItems = TryInventoryProfileForUnit(
+            unit, out var inventoryProfile) && inventoryProfile.CanUseItems;
+        var validation = _itemShops.ValidateUse(
+            unit, slot, canUseItems, out var item);
         if (validation != War3ItemUseCode.Success)
         {
             FinishItemUse(unit, slot, item, validation);
@@ -1935,6 +1969,8 @@ public sealed partial class War3Rts : Node3D
     {
         War3ItemUseCode.InvalidUnit => "单位无效",
         War3ItemUseCode.InvalidSlot => "物品栏位置为空",
+        War3ItemUseCode.UnitCannotUseItems =>
+            "该单位的物品栏配置禁止使用物品",
         War3ItemUseCode.PassiveItem => "这是自动生效的被动物品",
         War3ItemUseCode.Cooldown => "物品仍在冷却",
         War3ItemUseCode.InvalidTarget => "请选择有效的友军单位或主基地",
@@ -1951,7 +1987,9 @@ public sealed partial class War3Rts : Node3D
             .Where(unit => _simulation.Units.Alive[unit] &&
                            _simulation.Combat.Teams[unit] ==
                            War3HumanScenario.PlayerId &&
-                           InventorySlotsForUnit(unit) > 0)
+                           TryInventoryProfileForUnit(
+                               unit, out var inventory) &&
+                           inventory.CanGetItems)
             .Select(unit => new
             {
                 Unit = unit,
@@ -1969,14 +2007,58 @@ public sealed partial class War3Rts : Node3D
 
     private int InventorySlotsForUnit(int unit)
     {
+        return TryInventoryProfileForUnit(unit, out var profile)
+            ? profile.Capacity
+            : 0;
+    }
+
+    private bool TryInventoryProfileForUnit(
+        int unit,
+        out War3InventoryAbilityProfile profile)
+    {
+        profile = null!;
         if (_simulation is null || _production is null ||
             (uint)unit >= (uint)_simulation.Units.Count ||
             !_simulation.Units.Alive[unit])
-            return 0;
+            return false;
         var definition = War3HumanContent.ResolveUnit(
             _simulation, _production, unit);
-        return InventorySlotCount(
-            definition.ObjectId, _simulation.Abilities.Observe(unit).Hero);
+        if (!War3HumanContent.DataCatalog.TryGet(
+                definition.ObjectId, out var data))
+            return false;
+        var playerId = _simulation.Combat.Teams[unit];
+        foreach (var rawId in data.Summary.Abilities)
+        {
+            if (!War3HumanContent.TryInventoryAbility(
+                    rawId, out var candidate) ||
+                !InventoryRequirementsMet(candidate, playerId))
+                continue;
+            if (profile is null || candidate.Capacity > profile.Capacity)
+                profile = candidate;
+        }
+        return profile is not null;
+    }
+
+    private bool InventoryRequirementsMet(
+        War3InventoryAbilityProfile profile,
+        int playerId)
+    {
+        if (_simulation is null) return false;
+        foreach (var requirement in profile.Requirements)
+        {
+            var current = requirement.Kind switch
+            {
+                AbilityRequirementKind.CompletedBuilding =>
+                    _simulation.Construction.CountCompleted(
+                        playerId, requirement.TargetId),
+                AbilityRequirementKind.TechnologyLevel =>
+                    _simulation.Technology.Level(
+                        playerId, requirement.TargetId),
+                _ => 0
+            };
+            if (current < requirement.Value) return false;
+        }
+        return true;
     }
 
     private int HighestHumanTownTier()
@@ -2010,6 +2092,8 @@ public sealed partial class War3Rts : Node3D
         {
             War3ShopPurchaseCode.NoShopUser =>
                 "需要带物品栏的己方单位靠近商店",
+            War3ShopPurchaseCode.CannotAcquireItems =>
+                "该单位的物品栏配置禁止取得物品",
             War3ShopPurchaseCode.InventoryFull => "购买者物品栏已满",
             War3ShopPurchaseCode.RequirementMissing => "主基地等级不足",
             War3ShopPurchaseCode.OutOfStock => "商品正在补货",
@@ -2741,8 +2825,7 @@ public sealed partial class War3Rts : Node3D
                     : _simulation.Combat.AttackRanges[first] > 45f
                         ? "远程"
                         : "近战";
-            var inventorySlots = InventorySlotCount(
-                definition.ObjectId, abilityState.Hero);
+            var inventorySlots = InventorySlotsForUnit(first);
             var team = _simulation.Combat.Teams[first];
             var controllable = team == War3HumanScenario.PlayerId;
             return new War3SelectionSnapshot(
@@ -2797,7 +2880,11 @@ public sealed partial class War3Rts : Node3D
                 IsHero = abilityState.Hero,
                 SupportsInventory = inventorySlots > 0,
                 InventorySlotCount = inventorySlots,
-                InventoryItems = _itemShops?.InventorySnapshot(first) ?? [],
+                InventoryItems = _itemShops?.InventorySnapshot(
+                    first,
+                    TryInventoryProfileForUnit(
+                        first, out var inventoryProfile) &&
+                    inventoryProfile.CanUseItems) ?? [],
                 GroupEntries = CreateSelectionGroupEntries(),
                 PortraitTeam = team,
                 PortraitAnimated = controllable,
@@ -2933,23 +3020,6 @@ public sealed partial class War3Rts : Node3D
                 false));
         }
         return result.ToArray();
-    }
-
-    private int InventorySlotCount(string objectId, bool hero)
-    {
-        if (hero) return 6;
-        if (_simulation is null ||
-            !War3HumanContent.DataCatalog.TryGet(objectId, out var data))
-            return 0;
-        var backpack = War3HumanContent.Technologies.FirstOrDefault(value =>
-            value.SemanticKind ==
-                War3TechnologySemanticKind.BackpackInventory &&
-            data.Summary.Upgrades.Contains(
-                value.ObjectId, StringComparer.Ordinal));
-        return backpack is not null && _simulation.Technology.Level(
-            War3HumanScenario.PlayerId, backpack.TechnologyId) > 0
-            ? backpack.GrantedInventorySlots
-            : 0;
     }
 
     private static string SelectionPrefix(int playerId) => playerId switch
@@ -4031,6 +4101,8 @@ public sealed partial class War3Rts : Node3D
         {
             case "baseline":
             case "auto-skirmish":
+            case "interactive-rendered-800":
+            case "interactive-cap2":
                 break;
             case "terrain-hidden":
                 if (_terrainPresenter is not null) _terrainPresenter.Visible = false;

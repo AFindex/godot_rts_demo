@@ -876,11 +876,22 @@ public sealed class War3AbilityDataAdapter(
 
     private static float CastSeconds(
         War3AbilityCompilerKind compiler,
-        War3ObjectLevel level) => compiler ==
-            War3AbilityCompilerKind.MassTeleport
-        ? MathF.Max(
-            MathF.Max(0f, level.CastTime ?? 0f), Data(level, "B"))
-        : MathF.Max(0f, level.CastTime ?? 0f);
+        War3ObjectLevel level)
+    {
+        var castTime = MathF.Max(0f, level.CastTime ?? 0f);
+        if (compiler == War3AbilityCompilerKind.MassTeleport)
+            return MathF.Max(
+                castTime,
+                RequiredNonNegativeData(level, "B", compiler));
+        // Flare DataB is the authoritative delay before its reveal takes
+        // effect. AIta variants omit the field and therefore remain instant.
+        if (compiler == War3AbilityCompilerKind.Flare &&
+            HasDataText(level, "B"))
+            return MathF.Max(
+                castTime,
+                RequiredNonNegativeData(level, "B", compiler));
+        return castTime;
+    }
 
     private float Distance(float? value) =>
         MathF.Max(0f, value ?? 0f) * policy.WorldDistanceScale;
@@ -899,6 +910,12 @@ public sealed class War3AbilityDataAdapter(
         War3ObjectLevel level,
         string key,
         War3AbilityCompilerKind compiler) => RequiredPositive(
+        Data(level, key), $"Data{key}", compiler, level.Level);
+
+    private static float RequiredNonNegativeData(
+        War3ObjectLevel level,
+        string key,
+        War3AbilityCompilerKind compiler) => RequiredNonNegative(
         Data(level, key), $"Data{key}", compiler, level.Level);
 
     private static float FirstPositiveData(

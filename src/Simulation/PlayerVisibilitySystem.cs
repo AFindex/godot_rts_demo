@@ -200,7 +200,8 @@ public sealed class PlayerVisibilitySystem
             Array.Resize(ref _unitVisionCaches, units.Count);
         foreach (var grid in _players.Values)
         {
-            Array.Clear(grid.Visible);
+            Array.Clear(grid.BuildingVisible);
+            Array.Clear(grid.TemporaryVisible);
             Array.Clear(grid.Detected);
         }
         var clearEnd = ProfilingEnabled
@@ -210,16 +211,18 @@ public sealed class PlayerVisibilitySystem
         for (var unit = 0; unit < units.Count; unit++)
         {
             var playerId = combat.Teams[unit];
-            if (!units.Alive[unit] || playerId <= 0 ||
-                playerId >= MaximumPlayers)
-                continue;
-            RevealUnitVisionSource(
+            var active = units.Alive[unit] &&
+                         playerId > 0 &&
+                         playerId < MaximumPlayers;
+            SyncUnitVisionSource(
                 unit,
+                active,
                 playerId,
                 units.Positions[unit],
                 combat.VisionRanges[unit],
                 combat.ObservationHeights[unit],
                 combat.TerrainVisionModes[unit]);
+            if (!active) continue;
             if (combat.DetectionRanges[unit] > 0f)
             {
                 RevealDetectionSource(
@@ -253,7 +256,10 @@ public sealed class PlayerVisibilitySystem
         ConstructionSystem? construction = null)
     {
         foreach (var grid in _players.Values)
+        {
             Array.Clear(grid.Detected);
+            Array.Clear(grid.TemporaryVisible);
+        }
         for (var unit = 0; unit < units.Count; unit++)
         {
             var playerId = combat.Teams[unit];
@@ -278,7 +284,9 @@ public sealed class PlayerVisibilitySystem
         {
             return MapVisibility.Hidden;
         }
-        return grid.Visible[cell]
+        return grid.UnitVisibleCounts[cell] > 0 ||
+               grid.BuildingVisible[cell] ||
+               grid.TemporaryVisible[cell]
             ? MapVisibility.Visible
             : grid.Explored[cell]
                 ? MapVisibility.Explored
@@ -368,7 +376,9 @@ public sealed class PlayerVisibilitySystem
             return result;
         for (var index = 0; index < result.Length; index++)
         {
-            result[index] = grid.Visible[index]
+            result[index] = grid.UnitVisibleCounts[index] > 0 ||
+                            grid.BuildingVisible[index] ||
+                            grid.TemporaryVisible[index]
                 ? (byte)MapVisibility.Visible
                 : grid.Explored[index]
                     ? (byte)MapVisibility.Explored
@@ -394,6 +404,7 @@ public sealed class PlayerVisibilitySystem
             throw new InvalidOperationException("Visibility grid mismatch.");
         }
         _players.Clear();
+        _unitVisionCaches = [];
         var previousPlayer = 0;
         foreach (var entry in snapshot.Players)
         {
@@ -434,8 +445,9 @@ public sealed class PlayerVisibilitySystem
             TerrainVisionMode.Elevated);
     }
 
-    private void RevealUnitVisionSource(
+    private void SyncUnitVisionSource(
         int unit,
+        bool active,
         int sourcePlayerId,
         Vector2 center,
         float radius,
@@ -444,12 +456,20 @@ public sealed class PlayerVisibilitySystem
     {
         ref var cache = ref _unitVisionCaches[unit];
         var sourceCell = VisionUpdateCell(center);
-        var matches = cache.Matches(
-            sourceCell, radius, observationHeight, terrainVisionMode);
+        var matches = active && cache.Matches(
+            sourcePlayerId, sourceCell, radius,
+            observationHeight, terrainVisionMode);
         if (matches)
         {
             if (ProfilingEnabled) _profileUnitCacheHits++;
-            ApplyVisionCells(sourcePlayerId, cache.Cells!);
+            return;
+        }
+        if (cache.Applied && cache.Cells is not null)
+            RemoveUnitVisionCells(cache.SourcePlayerId, cache.Cells);
+        cache.Applied = false;
+        if (!active)
+        {
+            cache.Valid = false;
             return;
         }
         if (ProfilingEnabled) _profileUnitCacheRebuilds++;
@@ -461,15 +481,17 @@ public sealed class PlayerVisibilitySystem
             observationHeight,
             terrainVisionMode,
             cache.Cells);
-        ApplyVisionCells(sourcePlayerId, cache.Cells);
+        AddUnitVisionCells(sourcePlayerId, cache.Cells);
+        cache.Applied = true;
         cache.Valid = true;
+        cache.SourcePlayerId = sourcePlayerId;
         cache.SourceCell = sourceCell;
         cache.Radius = radius;
         cache.ObservationHeight = observationHeight;
         cache.TerrainVisionMode = terrainVisionMode;
     }
 
-    private void ApplyVisionCells(
+    private void AddUnitVisionCells(
         int sourcePlayerId,
         IReadOnlyList<int> cells)
     {
@@ -484,7 +506,47 @@ public sealed class PlayerVisibilitySystem
             for (var index = 0; index < cells.Count; index++)
             {
                 var cell = cells[index];
-                grid.Visible[cell] = true;
+                if (grid.UnitVisibleCounts[cell] < ushort.MaxValue)
+                    grid.UnitVisibleCounts[cell]++;
+                grid.Explored[cell] = true;
+            }
+        }
+    }
+
+    private void RemoveUnitVisionCells(
+        int sourcePlayerId,
+        IReadOnlyList<int> cells)
+    {
+        for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+        {
+            if (!_diplomacy.SharesVision(viewer, sourcePlayerId) ||
+                !_players.TryGetValue(viewer, out var grid))
+                continue;
+            for (var index = 0; index < cells.Count; index++)
+            {
+                var cell = cells[index];
+                if (grid.UnitVisibleCounts[cell] > 0)
+                    grid.UnitVisibleCounts[cell]--;
+            }
+        }
+    }
+
+    private void ApplyBuildingVisionCells(
+        int sourcePlayerId,
+        IReadOnlyList<int> cells)
+    {
+        for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+        {
+            if (!_diplomacy.SharesVision(viewer, sourcePlayerId)) continue;
+            if (!_players.TryGetValue(viewer, out var grid))
+            {
+                grid = new VisibilityGrid(Columns * Rows);
+                _players.Add(viewer, grid);
+            }
+            for (var index = 0; index < cells.Count; index++)
+            {
+                var cell = cells[index];
+                grid.BuildingVisible[cell] = true;
                 grid.Explored[cell] = true;
             }
         }
@@ -603,7 +665,7 @@ public sealed class PlayerVisibilitySystem
                 }
                 else
                 {
-                    grid.Visible[cell] = true;
+                    grid.TemporaryVisible[cell] = true;
                     grid.Explored[cell] = true;
                 }
             }
@@ -637,7 +699,7 @@ public sealed class PlayerVisibilitySystem
             cells = _visionCellScratch.ToArray();
             _staticVisionCells.Add(key, cells);
         }
-        ApplyVisionCells(playerId, cells);
+        ApplyBuildingVisionCells(playerId, cells);
     }
 
     private void RevealBuildingProfile(
@@ -697,7 +759,7 @@ public sealed class PlayerVisibilitySystem
             cells = _visionCellScratch.ToArray();
             _staticVisionCells.Add(key, cells);
         }
-        ApplyVisionCells(playerId, cells);
+        ApplyBuildingVisionCells(playerId, cells);
     }
 
     private bool TryCell(Vector2 position, out int cell)
@@ -769,7 +831,9 @@ public sealed class PlayerVisibilitySystem
     private sealed class VisibilityGrid(int cells)
     {
         public bool[] Explored { get; } = new bool[cells];
-        public bool[] Visible { get; } = new bool[cells];
+        public ushort[] UnitVisibleCounts { get; } = new ushort[cells];
+        public bool[] BuildingVisible { get; } = new bool[cells];
+        public bool[] TemporaryVisible { get; } = new bool[cells];
         public bool[] Detected { get; } = new bool[cells];
     }
 
@@ -785,6 +849,8 @@ public sealed class PlayerVisibilitySystem
     private struct VisionFootprintCache
     {
         public bool Valid;
+        public bool Applied;
+        public int SourcePlayerId;
         public int SourceCell;
         public float Radius;
         public float ObservationHeight;
@@ -792,11 +858,13 @@ public sealed class PlayerVisibilitySystem
         public List<int>? Cells;
 
         public bool Matches(
+            int sourcePlayerId,
             int sourceCell,
             float radius,
             float observationHeight,
             TerrainVisionMode terrainVisionMode) =>
-            Valid && SourceCell == sourceCell && Radius == radius &&
+            Valid && Applied && SourcePlayerId == sourcePlayerId &&
+            SourceCell == sourceCell && Radius == radius &&
             ObservationHeight == observationHeight &&
             TerrainVisionMode == terrainVisionMode;
     }

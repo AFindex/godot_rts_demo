@@ -82,11 +82,13 @@ third 配置、目标序列候选和建筑肖像候选。
 按英雄 rawcode 补最大法力和按英雄身份强改初始法力的分支。演示场景的完整性判断也由
 固定“44 个技能”改为 `Catalog.Count == RequestedCount`。
 
-非英雄物品栏也不再在 HUD 内判断人族 `Rhpm`。升级适配器从 Upgrade JSON 的
-`editorData.comments` 将四族的 backpack 对象归类为通用 `BackpackInventory` 语义，单位
-再通过自己的 `summary.upgrades` 关联实际科技。原始 UpgradeData 对这一特殊科技没有
-effect 行，因此“解锁两个非英雄物品槽”明确保留为经典引擎语义，集中在科技定义中，
-而不是散落成单位或种族 rawcode 分支。
+物品栏不再按英雄身份返回 6 格，也不再在 HUD 判断人族 `Rhpm` 或保留“两格背包”
+常量。`War3InventoryDataAdapter` 按 `AInv` 行为家族读取 Ability JSON：DataA 是容量，
+DataB..E 分别是死亡掉落、可使用、可取得、可丢弃；科技门槛使用同一 Ability requirement
+编译结果。由此英雄 `AInv` 的 6/0/1/1/1 与普通单位 `Aihn` 的 2/1/0/1/1 都是数据结果。
+商店购买检查 `CanGetItems`，物品按钮和运行时检查 `CanUseItems`，非法字段不再被 clamp
+或静默修正，而会让内容导入失败。地面物品实体、主动拾取/丢弃、死亡掉落及其回放/
+热快照仍未完成，所以 `AInv` 家族继续诚实标记为 blocked。
 
 这里保留的代码映射只有“baseCode 对应哪一种通用行为编译器”，例如 Heal、Flare、
 Summon。它决定怎样解释 JSON 字段，不保存任何单位/技能的内容数值。

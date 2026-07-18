@@ -101,14 +101,29 @@ public sealed class CombatProjectileSystem
     public CombatProjectileSnapshot[] ObserveActive()
     {
         var result = new CombatProjectileSnapshot[ActiveCount];
+        CopyActiveTo(result);
+        return result;
+    }
+
+    /// <summary>
+    /// Copies active projectiles in authoritative id order without allocating.
+    /// Presentation systems use this path because a large battle can otherwise
+    /// allocate a new snapshot array on every rendered frame.
+    /// </summary>
+    public int CopyActiveTo(Span<CombatProjectileSnapshot> destination)
+    {
+        if (destination.Length < ActiveCount)
+            throw new ArgumentException(
+                "Destination cannot hold every active projectile.",
+                nameof(destination));
         var index = 0;
         for (var id = _oldestId; id < _nextId; id++)
         {
             var slot = id % MaximumProjectiles;
             if (_active[slot] && _slots[slot].Id == id)
-                result[index++] = _slots[slot];
+                destination[index++] = _slots[slot];
         }
-        return result;
+        return index;
     }
 
     public CombatProjectileRuntimeSnapshot CaptureRuntimeState() =>

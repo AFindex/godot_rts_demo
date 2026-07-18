@@ -20,6 +20,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private const float MaximumArrivalStopRadius = 8f;
     private const int CollisionIterations = 3;
     private const int ResidualCollisionPassLimit = 18;
+    private const int ResidualCollisionBroadphaseBatchSize = 6;
     private const float ResidualCollisionTolerance = 0.005f;
     private const int DestinationReflowIntervalTicks = 12;
     private const int DestinationReflowCooldownTicks = 90;
@@ -98,6 +99,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private bool _issuingSystemOrder;
     private bool _issuingConstructionWorldMutation;
     private bool _detailedProfilingEnabled;
+    private long _combatBuildingOverviewTick = long.MinValue;
+    private GameplayBuildingSnapshot[] _combatBuildingOverview = [];
+    private long _combatObjectOverviewTick = long.MinValue;
+    private CombatObjectSnapshot[] _combatObjectOverview = [];
 
     public RtsSimulation(
         StaticWorld world,
@@ -518,6 +523,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
 
         Metrics.Tick = snapshot.Tick;
+        _combatBuildingOverviewTick = long.MinValue;
+        _combatObjectOverviewTick = long.MinValue;
         PathBudgetPerTick = snapshot.PrivateState.PathBudgetPerTick;
         _pendingNavigationInvalidations =
             snapshot.PrivateState.PendingNavigationInvalidations;
@@ -3706,6 +3713,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.CollisionMainIterations = 0;
         Metrics.CollisionResidualPasses = 0;
         Metrics.CollisionConstraintCalls = 0;
+        Metrics.WorldConstraintCalls = 0;
+        Metrics.DynamicFootprintCandidateChecks = 0;
+        World.DynamicOccupancy.ResetConstraintDiagnostics();
         Metrics.MaximumPenetration = 0f;
         Metrics.RepathRequests = 0;
         Metrics.NavigationRevision = World.NavigationRevision;
@@ -3922,6 +3932,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _chokeController?.ConstrainPositions(Units);
         AdoptDisplacedStationaryReservations();
         Metrics.CollisionMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.WorldConstraintCalls =
+            World.DynamicOccupancy.ConstraintCalls;
+        Metrics.DynamicFootprintCandidateChecks =
+            World.DynamicOccupancy.ConstraintCandidateChecks;
 
         phaseStart = Stopwatch.GetTimestamp();
         UpdateProgress(delta);
@@ -5547,23 +5561,49 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             return;
         }
 
-        for (var pass = 0; pass < ResidualCollisionPassLimit; pass++)
+        // A per-contact active queue looks attractive, but moving either side
+        // and immediately querying its neighbors amplifies a dense crowd into
+        // tens of thousands of repeated hash queries. It also queries buckets
+        // built from positions before the correction. Instead, collect a
+        // deterministic contact superset with one-radius guard space and run a
+        // small Gauss-Seidel batch over it. Rebuilding between batches admits
+        // contacts created by correction without paying a broadphase query for
+        // every moved pair.
+        var remainingPasses = ResidualCollisionPassLimit;
+        while (remainingPasses > 0)
         {
-            Metrics.CollisionResidualPasses++;
-            var corrected = false;
             _spatialHash.Rebuild(Units);
             var pairCount = CollectCollisionPairs(
-                ResidualCollisionTolerance);
-            Metrics.CollisionBroadphasePairs += pairCount;
-            for (var pairIndex = 0; pairIndex < pairCount; pairIndex++)
+                _spatialHash.MaximumRadius + ResidualCollisionTolerance);
+            if (pairCount == 0) return;
+
+            var batchPasses = Math.Min(
+                remainingPasses,
+                ResidualCollisionBroadphaseBatchSize);
+            for (var pass = 0; pass < batchPasses; pass++)
             {
-                var encodedPair = _collisionPairScratch[pairIndex];
-                var unit = (int)(encodedPair >> 32);
-                var neighbor = (int)encodedPair;
-                var result = ResolveResidualCollisionPair(unit, neighbor);
-                corrected |= result.Moved;
+                Metrics.CollisionResidualPasses++;
+                Metrics.CollisionBroadphasePairs += pairCount;
+                var moved = false;
+                for (var pairOffset = 0;
+                     pairOffset < pairCount;
+                     pairOffset++)
+                {
+                    // Alternating traversal prevents a long packed chain from
+                    // propagating separation in only one id direction. The
+                    // contact set and all corrections remain deterministic.
+                    var pairIndex = (Metrics.CollisionResidualPasses & 1) != 0
+                        ? pairOffset
+                        : pairCount - pairOffset - 1;
+                    var encodedPair = _collisionPairScratch[pairIndex];
+                    var unit = (int)(encodedPair >> 32);
+                    var neighbor = (int)encodedPair;
+                    moved |= ResolveResidualCollisionPair(
+                        unit, neighbor).Moved;
+                }
+                if (!moved) return;
             }
-            if (!corrected) return;
+            remainingPasses -= batchPasses;
         }
     }
 
@@ -7557,7 +7597,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         var bestDistance = float.PositiveInfinity;
         var playerId = Combat.Teams[attacker];
         var position = Units.Positions[attacker];
-        var buildings = Construction.CreateOverview();
+        var buildings = CombatBuildingOverviewForCurrentTick();
         for (var index = 0; index < buildings.Length; index++)
         {
             var building = buildings[index];
@@ -7624,7 +7664,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     GameplayBuildingSnapshot[]
         ICombatMovementDriver.CombatBuildingOverview() =>
-        Construction.CreateOverview();
+        CombatBuildingOverviewForCurrentTick();
 
     bool ICombatMovementDriver.IsCombatObjectTargetValid(
         int attacker,
@@ -7711,7 +7751,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     }
 
     CombatObjectSnapshot[] ICombatMovementDriver.CombatObjectOverview() =>
-        CombatObjects.CreateOverview();
+        CombatObjectOverviewForCurrentTick();
+
+    private GameplayBuildingSnapshot[] CombatBuildingOverviewForCurrentTick()
+    {
+        if (_combatBuildingOverviewTick == Metrics.Tick)
+            return _combatBuildingOverview;
+        _combatBuildingOverview = Construction.CreateOverview();
+        _combatBuildingOverviewTick = Metrics.Tick;
+        return _combatBuildingOverview;
+    }
+
+    private CombatObjectSnapshot[] CombatObjectOverviewForCurrentTick()
+    {
+        if (_combatObjectOverviewTick == Metrics.Tick)
+            return _combatObjectOverview;
+        _combatObjectOverview = CombatObjects.CreateOverview();
+        _combatObjectOverviewTick = Metrics.Tick;
+        return _combatObjectOverview;
+    }
 
     int ICombatMovementDriver.WeaponUpgradeLevel(int team) =>
         CombatWeaponUpgradeTechnologyId < 0

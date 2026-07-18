@@ -102,6 +102,8 @@ public sealed class SimulationMetrics
     public int SteeringCandidateEvaluations { get; internal set; }
     public double IntegrateMilliseconds { get; internal set; }
     public double CollisionMilliseconds { get; internal set; }
+    public long WorldConstraintCalls { get; internal set; }
+    public long DynamicFootprintCandidateChecks { get; internal set; }
     public double RecoveryMilliseconds { get; internal set; }
     public double QueueMilliseconds { get; internal set; }
     public double VisibilityMilliseconds { get; internal set; }

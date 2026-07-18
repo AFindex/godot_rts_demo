@@ -23,6 +23,10 @@ public sealed class DynamicOccupancyGrid
     private readonly ushort[] _occupancy;
     private readonly List<int>?[] _footprintsByCell;
     private readonly Dictionary<int, FootprintEntry> _footprints = new();
+    private int[] _constraintCandidates = new int[16];
+    private int[] _constraintCandidateMarks = new int[16];
+    private int _constraintQueryStamp;
+    private float _maximumFootprintSpan;
     private int _nextId = 1;
     private int _lastChangedRevision = -1;
     private SimRect _lastChangedBounds;
@@ -46,6 +50,14 @@ public sealed class DynamicOccupancyGrid
     public float CellSize { get; }
     public int Revision { get; private set; }
     public int Count => _footprints.Count;
+    internal long ConstraintCalls { get; private set; }
+    internal long ConstraintCandidateChecks { get; private set; }
+
+    internal void ResetConstraintDiagnostics()
+    {
+        ConstraintCalls = 0;
+        ConstraintCandidateChecks = 0;
+    }
 
     internal void AppendStateHash(ref StableHash64 hash)
     {
@@ -73,12 +85,14 @@ public sealed class DynamicOccupancyGrid
             _footprintsByCell[cell]?.Clear();
         }
         _footprints.Clear();
+        _maximumFootprintSpan = 0f;
         for (var index = 0; index < snapshot.Footprints.Length; index++)
         {
             var footprint = snapshot.Footprints[index];
             ValidateFootprint(footprint.Bounds);
             var cells = CollectCells(footprint.Bounds);
             _footprints.Add(footprint.Id.Value, new FootprintEntry(footprint, cells));
+            TrackMaximumFootprintSpan(footprint.Bounds);
             for (var cellIndex = 0; cellIndex < cells.Length; cellIndex++)
             {
                 var cell = cells[cellIndex];
@@ -104,6 +118,7 @@ public sealed class DynamicOccupancyGrid
         var cells = CollectCells(footprint);
         var value = new DynamicFootprint(id, footprint, Revision);
         _footprints.Add(id.Value, new FootprintEntry(value, cells));
+        TrackMaximumFootprintSpan(footprint);
 
         for (var index = 0; index < cells.Length; index++)
         {
@@ -154,6 +169,7 @@ public sealed class DynamicOccupancyGrid
             var cells = CollectCells(bounds);
             var value = new DynamicFootprint(id, bounds, Revision);
             _footprints.Add(id.Value, new FootprintEntry(value, cells));
+            TrackMaximumFootprintSpan(bounds);
             for (var cellIndex = 0; cellIndex < cells.Length; cellIndex++)
             {
                 var cell = cells[cellIndex];
@@ -324,9 +340,20 @@ public sealed class DynamicOccupancyGrid
 
     public Vector2 ConstrainDisc(Vector2 previous, Vector2 proposed, float radius)
     {
-        foreach (var entry in _footprints.Values)
+        ConstraintCalls++;
+        if (_footprints.Count == 0) return proposed;
+
+        var queryPadding = MathF.Max(0f, radius) +
+                           _maximumFootprintSpan;
+        var query = new SimRect(
+            Vector2.Min(previous, proposed),
+            Vector2.Max(previous, proposed)).Expanded(queryPadding);
+        var candidateCount = CollectConstraintCandidates(query);
+        ConstraintCandidateChecks += candidateCount;
+        for (var index = 0; index < candidateCount; index++)
         {
-            var footprint = entry.Value.Bounds;
+            var footprint = _footprints[_constraintCandidates[index]]
+                .Value.Bounds;
             if (!footprint.OverlapsDisc(proposed, radius))
             {
                 continue;
@@ -337,6 +364,57 @@ public sealed class DynamicOccupancyGrid
 
         return proposed;
     }
+
+    private int CollectConstraintCandidates(SimRect query)
+    {
+        if (++_constraintQueryStamp == int.MaxValue)
+        {
+            Array.Clear(_constraintCandidateMarks);
+            _constraintQueryStamp = 1;
+        }
+        var count = 0;
+        var range = GetCellRange(query);
+        for (var row = range.MinimumRow; row <= range.MaximumRow; row++)
+        {
+            for (var column = range.MinimumColumn;
+                 column <= range.MaximumColumn;
+                 column++)
+            {
+                var candidates = _footprintsByCell[
+                    row * _columns + column];
+                if (candidates is null) continue;
+                for (var index = 0; index < candidates.Count; index++)
+                {
+                    var id = candidates[index];
+                    EnsureConstraintMarkCapacity(id);
+                    if (_constraintCandidateMarks[id] ==
+                        _constraintQueryStamp)
+                        continue;
+                    _constraintCandidateMarks[id] = _constraintQueryStamp;
+                    if (count == _constraintCandidates.Length)
+                        Array.Resize(
+                            ref _constraintCandidates,
+                            _constraintCandidates.Length * 2);
+                    _constraintCandidates[count++] = id;
+                }
+            }
+        }
+        Array.Sort(_constraintCandidates, 0, count);
+        return count;
+    }
+
+    private void EnsureConstraintMarkCapacity(int id)
+    {
+        if (id < _constraintCandidateMarks.Length) return;
+        var capacity = _constraintCandidateMarks.Length;
+        while (capacity <= id) capacity *= 2;
+        Array.Resize(ref _constraintCandidateMarks, capacity);
+    }
+
+    private void TrackMaximumFootprintSpan(SimRect footprint) =>
+        _maximumFootprintSpan = MathF.Max(
+            _maximumFootprintSpan,
+            MathF.Max(footprint.Width, footprint.Height));
 
     private int[] CollectCells(SimRect footprint)
     {

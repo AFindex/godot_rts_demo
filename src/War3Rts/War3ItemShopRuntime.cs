@@ -7,6 +7,7 @@ public enum War3ShopPurchaseCode : byte
     Success,
     InvalidShop,
     NoShopUser,
+    CannotAcquireItems,
     InventoryFull,
     RequirementMissing,
     OutOfStock,
@@ -33,6 +34,7 @@ public enum War3ItemUseCode : byte
     Success,
     InvalidUnit,
     InvalidSlot,
+    UnitCannotUseItems,
     PassiveItem,
     Cooldown,
     InvalidTarget,
@@ -149,6 +151,7 @@ public sealed class War3ItemShopRuntime
         int itemRuntimeId,
         int buyerUnit,
         int inventorySlots,
+        bool canGetItems,
         int townTier,
         PlayerEconomyStore economy,
         int playerId)
@@ -161,6 +164,10 @@ public sealed class War3ItemShopRuntime
             return Unavailable(item, stock.Count,
                 War3ShopPurchaseCode.NoShopUser,
                 $"需要带物品栏的己方单位进入 {InteractionRange:0} 距离");
+        if (!canGetItems)
+            return Unavailable(item, stock.Count,
+                War3ShopPurchaseCode.CannotAcquireItems,
+                "该单位的物品栏配置禁止取得物品");
         if (inventorySlots <= 0 || InventoryCount(buyerUnit) >= inventorySlots)
             return Unavailable(item, stock.Count,
                 War3ShopPurchaseCode.InventoryFull, "购买者的物品栏已满");
@@ -188,6 +195,7 @@ public sealed class War3ItemShopRuntime
         int itemRuntimeId,
         int buyerUnit,
         int inventorySlots,
+        bool canGetItems,
         int townTier,
         PlayerEconomyStore economy,
         int playerId)
@@ -196,7 +204,7 @@ public sealed class War3ItemShopRuntime
             return new War3ShopPurchaseResult(
                 War3ShopPurchaseCode.InvalidShop, default, buyerUnit, 0);
         var offer = Offer(
-            shopBuilding, itemRuntimeId, buyerUnit, inventorySlots,
+            shopBuilding, itemRuntimeId, buyerUnit, inventorySlots, canGetItems,
             townTier, economy, playerId);
         if (!offer.Available)
             return new War3ShopPurchaseResult(
@@ -231,7 +239,9 @@ public sealed class War3ItemShopRuntime
             ? items.Count(value => value.HasValue)
             : 0;
 
-    public War3InventoryItemSnapshot[] InventorySnapshot(int unit) =>
+    public War3InventoryItemSnapshot[] InventorySnapshot(
+        int unit,
+        bool canUseItems) =>
         !_inventories.TryGetValue(unit, out var items)
             ? []
             : items.Select((value, slot) => (value, slot))
@@ -240,7 +250,9 @@ public sealed class War3ItemShopRuntime
                 {
                     var item = value.value!.Value;
                     var cooldown = CooldownRemaining(unit, item);
-                    var state = item.Passive
+                    var state = !canUseItems
+                        ? "该单位不能使用物品"
+                        : item.Passive
                         ? "被动生效"
                         : cooldown > 0f
                             ? $"冷却 {cooldown:0.0} 秒"
@@ -254,7 +266,7 @@ public sealed class War3ItemShopRuntime
                         item.Description,
                         item.Perishable ? Math.Max(1, item.Charges) : 0,
                         value.slot,
-                        !item.Passive && cooldown <= 0f,
+                        canUseItems && !item.Passive && cooldown <= 0f,
                         item.Passive,
                         cooldown,
                         state);
@@ -275,10 +287,12 @@ public sealed class War3ItemShopRuntime
     public War3ItemUseCode ValidateUse(
         int unit,
         int slot,
+        bool canUseItems,
         out War3ShopItemDefinition item)
     {
         if (!TryGetItem(unit, slot, out item))
             return War3ItemUseCode.InvalidSlot;
+        if (!canUseItems) return War3ItemUseCode.UnitCannotUseItems;
         if (item.Passive) return War3ItemUseCode.PassiveItem;
         return CooldownRemaining(unit, item) > 0f
             ? War3ItemUseCode.Cooldown
@@ -308,7 +322,8 @@ public sealed class War3ItemShopRuntime
 
     private War3ShopItemDefinition?[] EnsureInventory(int unit, int slots)
     {
-        slots = Math.Clamp(slots, 1, 6);
+        if (slots <= 0)
+            throw new ArgumentOutOfRangeException(nameof(slots));
         if (_inventories.TryGetValue(unit, out var inventory))
         {
             if (inventory.Length >= slots) return inventory;

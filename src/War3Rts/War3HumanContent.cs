@@ -130,6 +130,14 @@ public static class War3HumanContent
     public static IReadOnlyList<War3TechnologyDefinition> Technologies =>
         Runtime.Value.Technologies;
 
+    public static IReadOnlyDictionary<string, War3InventoryAbilityProfile>
+        InventoryAbilities => Runtime.Value.InventoryAbilities;
+
+    public static bool TryInventoryAbility(
+        string rawId,
+        out War3InventoryAbilityProfile profile) =>
+        Runtime.Value.InventoryAbilities.TryGetValue(rawId, out profile!);
+
     public static BuildingTypeCatalogSnapshot CreateBuildingCatalog() =>
         Runtime.Value.BuildingCatalog;
 
@@ -379,6 +387,9 @@ public static class War3HumanContent
             buildingIds,
             unitTypes)
             .Build(units, buildings);
+        var inventoryAbilities = new War3InventoryDataAdapter(
+                abilityCatalog, abilityMetadataCatalog)
+            .Build(abilityImport.Catalog);
         var report = adapter.CreateReport(
             units.Select(value => value.ObjectId),
             buildings.Select(value => value.ObjectId));
@@ -422,6 +433,7 @@ public static class War3HumanContent
             abilityMetadataCatalog,
             objectReport,
             technologyDefinitions,
+            inventoryAbilities,
             abilityImport.Definitions,
             abilityImport,
             buildingCatalog,
@@ -851,6 +863,8 @@ public static class War3HumanContent
         War3AbilityMetadataCatalog AbilityMetadataCatalog,
         War3ObjectDataImportReport ObjectDataStatus,
         IReadOnlyList<War3TechnologyDefinition> Technologies,
+        IReadOnlyDictionary<string, War3InventoryAbilityProfile>
+            InventoryAbilities,
         IReadOnlyList<War3AbilityDefinition> Abilities,
         War3AbilityImportResult AbilityImportStatus,
         BuildingTypeCatalogSnapshot BuildingCatalog,

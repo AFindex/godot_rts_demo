@@ -3,6 +3,7 @@ using War3Rts.Data;
 using RtsDemo.Demos.War3;
 using RtsDemo.GodotRuntime.Resources;
 using RtsDemo.Simulation;
+using System.Globalization;
 
 namespace RtsDemo.Tests;
 
@@ -212,6 +213,16 @@ public static class War3AbilityDataClosureSelfTest
                         "sprite,third", "sprite,fourth", "sprite,sixth"
                     ]);
             var runtimeEffectSemantics =
+                abilities.TryGet("Afla", out var sourceFlare) &&
+                float.TryParse(
+                    sourceFlare.Summary.Levels[0].Data["B"],
+                    NumberStyles.Float, CultureInfo.InvariantCulture,
+                    out var expectedFlareDelay) &&
+                runtimeImport.Catalog.TryFind("Afla", out var flare) &&
+                MathF.Abs(flare.Levels[0].CastSeconds -
+                          expectedFlareDelay) < 0.001f &&
+                runtimeImport.Catalog.TryFind("AHta", out var towerReveal) &&
+                towerReveal.Levels[0].CastSeconds == 0f &&
                 runtimeImport.Catalog.TryFind("AHtb", out var stormBolt) &&
                 stormBolt.Projectile.Enabled &&
                 MathF.Abs(stormBolt.Projectile.Speed -

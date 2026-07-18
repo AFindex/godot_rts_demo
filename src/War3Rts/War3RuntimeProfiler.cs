@@ -137,6 +137,8 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _simCollisionMainIterations = new();
     private readonly Series _simCollisionResidualPasses = new();
     private readonly Series _simCollisionConstraintCalls = new();
+    private readonly Series _simWorldConstraintCalls = new();
+    private readonly Series _simDynamicFootprintCandidateChecks = new();
     private readonly Series _simRecovery = new();
     private readonly Series _simQueue = new();
     private readonly Series _simVisibility = new();
@@ -336,6 +338,9 @@ internal sealed class War3RuntimeProfiler
         _simCollisionMainIterations.Add(metrics.CollisionMainIterations);
         _simCollisionResidualPasses.Add(metrics.CollisionResidualPasses);
         _simCollisionConstraintCalls.Add(metrics.CollisionConstraintCalls);
+        _simWorldConstraintCalls.Add(metrics.WorldConstraintCalls);
+        _simDynamicFootprintCandidateChecks.Add(
+            metrics.DynamicFootprintCandidateChecks);
         _simRecovery.Add(metrics.RecoveryMilliseconds);
         _simQueue.Add(metrics.QueueMilliseconds);
         _simVisibility.Add(metrics.VisibilityMilliseconds);
@@ -538,7 +543,9 @@ internal sealed class War3RuntimeProfiler
             $"collision_work={metrics.CollisionBroadphasePairs}/" +
             $"{metrics.CollisionMainIterations}/" +
             $"{metrics.CollisionResidualPasses}/" +
-            $"{metrics.CollisionConstraintCalls} " +
+            $"{metrics.CollisionConstraintCalls}/" +
+            $"{metrics.WorldConstraintCalls}/" +
+            $"{metrics.DynamicFootprintCandidateChecks} " +
             $"ai_detail={aiProfile.CaptureMilliseconds:0.###}/" +
             $"{aiProfile.DecisionMilliseconds:0.###}/" +
             $"{aiProfile.ExecutionMilliseconds:0.###}/" +
@@ -980,6 +987,9 @@ internal sealed class War3RuntimeProfiler
             _simCollisionResidualPasses);
         Print("sim_collision_constraint_calls",
             _simCollisionConstraintCalls);
+        Print("sim_world_constraint_calls", _simWorldConstraintCalls);
+        Print("sim_dynamic_footprint_candidate_checks",
+            _simDynamicFootprintCandidateChecks);
         Print("sim_recovery_ms", _simRecovery);
         Print("sim_queue_ms", _simQueue);
         Print("sim_visibility_ms", _simVisibility);
