@@ -84,6 +84,7 @@ public static class TestShowcaseCatalog
             M("combat-building-defense", "建筑护甲与防御科技", "战斗", "验证不同建筑护甲、Fortification 科技和正式建筑受击。"),
             M("attack-move-leash-resume", "攻击移动脱离追击", "战斗", "验证敌人离开 leash 后放弃追击并恢复原路线。"),
             M("attack-move-command-isolation", "Move 与 AttackMove 隔离", "战斗", "同图验证普通移动忽略敌人，攻击移动主动接敌。"),
+            M("attack-move-repeat-continuity", "重复攻击移动不中断", "战斗移动", "在绕障碍行军与接敌交战期间连续重发同一 AttackMove，验证路径、编队槽位、攻击前摇和续行均不被重置。"),
             M("attack-move-cancel", "交战命令取消", "战斗", "验证 Stop/Hold 取消 AttackMove，且保留各自不同的索敌语义。"),
             M("combat-ranged-ring", "远程原地开火", "战斗移动", "验证已在射程内的远程单位直接开火，不会为了环形站位而整体重排。"),
             M("combat-stop-hold-acquire", "Stop/Hold 索敌差异", "战斗", "验证 Stop 可局部追击，Hold 只攻击当前射程内目标。"),

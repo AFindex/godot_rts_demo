@@ -292,11 +292,20 @@ public static class War3AbilityDataClosureSelfTest
                     level.Effects[0].DamageKind == AbilityDamageKind.Magic &&
                     level.Effects[0].SecondaryValue == 200f) &&
                 runtimeImport.Catalog.TryFind("AHdr", out var drainMana) &&
-                drainMana.Levels.All(level =>
-                    level.Effects.Length == 1 &&
-                    level.Effects[0].Kind == AbilityEffectKind.TransferMana &&
-                    level.Effects[0].Value is 30f or 60f or 90f &&
-                    level.Effects[0].Interval == 1f) &&
+                abilities.TryGet("AHdr", out var sourceDrainMana) &&
+                drainMana.Levels.Zip(sourceDrainMana.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "H", out var bonusFactor) &&
+                        TryData(pair.Second, "I", out var bonusDecay) &&
+                        pair.First.Effects.Length == 1 &&
+                        pair.First.Effects[0].Kind ==
+                            AbilityEffectKind.TransferMana &&
+                        pair.First.Effects[0].Value is 30f or 60f or 90f &&
+                        pair.First.Effects[0].Interval == 1f &&
+                        Nearly(pair.First.Effects[0].SecondaryValue,
+                            bonusFactor) &&
+                        Nearly(pair.First.Effects[0].HeroValue,
+                            bonusDecay)) &&
                 runtimeImport.Catalog.TryFind("Afbk", out var feedback) &&
                 feedback.Levels.All(level =>
                     level.Effects[0].Value == -20f &&
@@ -538,6 +547,22 @@ public static class War3AbilityDataClosureSelfTest
                         flyingMachine.Weapons.AsSpan());
             var behaviorRegistryValid =
                 War3AbilityBehaviorRegistry.All.Count == 53 &&
+                War3AbilityBehaviorRegistry.Resolve("Ahea").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Ahea").AutoCastDefault &&
+                War3AbilityBehaviorRegistry.Resolve("Ainf").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Ainf").AutoCastDefault &&
+                War3AbilityBehaviorRegistry.Resolve("Afbk", "Afbt").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Asth").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Asth").Compiler ==
+                    War3AbilityCompilerKind.None &&
+                abilities.TryGet("Asth", out var stormHammersAbility) &&
+                stormHammersAbility.Summary.Levels.All(level =>
+                    level.Requirements.Contains("Rhhb",
+                        StringComparer.Ordinal)) &&
                 runtimeImport.RequestedCount == 47 &&
                 runtimeImport.BehaviorFamilyCount == 45 &&
                 runtimeImport.PrototypeCount == 39 &&
@@ -554,6 +579,12 @@ public static class War3AbilityDataClosureSelfTest
                 runtimeCoverage.CurrentRuntime.AbilityCount == 47 &&
                 runtimeCoverage.CurrentRuntime.BaseFamilyCount == 45 &&
                 runtimeCoverage.CurrentRuntime.PrototypeAbilityCount == 39 &&
+                runtimeCoverage.CurrentRuntime.StatusCounts[
+                    "implemented_gameplay"] == 36 &&
+                runtimeCoverage.CurrentRuntime.StatusCounts["delegated"] == 3 &&
+                runtimeCoverage.CurrentRuntime.StatusCounts[
+                    "presentation_only"] == 1 &&
+                runtimeCoverage.CurrentRuntime.StatusCounts["blocked"] == 7 &&
                 runtimeCoverage.CurrentRuntime.StatusCounts["unclassified"] == 0 &&
                 runtimeCoverage.OrphanRegisteredBaseCodes.Length == 0 &&
                 runtimeCoverage.Targeting.ExportedTokens.Length == 27 &&

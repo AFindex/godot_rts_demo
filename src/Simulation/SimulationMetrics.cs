@@ -46,6 +46,7 @@ public sealed class SimulationMetrics
     public int PendingUnitOrders { get; internal set; }
     public long CompletedQueuedOrders { get; internal set; }
     public int QueueOverflowEvents { get; internal set; }
+    public long RepeatedAttackMoveUnitsCoalesced { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
     public double EconomyMilliseconds { get; internal set; }
     public double ConstructionMilliseconds { get; internal set; }

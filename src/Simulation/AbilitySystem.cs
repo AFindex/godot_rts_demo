@@ -128,7 +128,8 @@ public readonly record struct AbilityBuffSnapshot(
     AbilityBuffDispelKind DispelKind,
     AbilityBuffStackingKind Stacking,
     AbilityStatusFlags Status,
-    AbilityStatModifier Modifier);
+    AbilityStatModifier Modifier,
+    AbilityCombatModifier CombatModifier);
 
 public readonly record struct AbilitySummonedUnitSnapshot(
     int Unit,
@@ -205,6 +206,8 @@ internal readonly record struct AbilityUnitRuntimeEntry(
     int UnspentSkillPoints,
     float Mana,
     float MaximumMana,
+    float BaseMaximumMana,
+    float ManaBonusDecayPerSecond,
     float BaseManaRegeneration,
     float EffectiveManaRegeneration,
     float BaseMaximumSpeed,
@@ -240,7 +243,8 @@ internal readonly record struct AbilityBuffRuntimeEntry(
     AbilityBuffDispelKind DispelKind,
     AbilityBuffStackingKind Stacking,
     AbilityStatusFlags Status,
-    AbilityStatModifier Modifier);
+    AbilityStatModifier Modifier,
+    AbilityCombatModifier CombatModifier);
 
 internal readonly record struct AbilitySummonRuntimeEntry(
     int Unit,
@@ -338,6 +342,8 @@ public sealed class AbilitySystem
     private int[] _unspentSkillPoints;
     private float[] _mana;
     private float[] _maximumMana;
+    private float[] _baseMaximumMana;
+    private float[] _manaBonusDecayPerSecond;
     private float[] _baseManaRegeneration;
     private float[] _effectiveManaRegeneration;
     private float[] _baseMaximumSpeed;
@@ -363,6 +369,7 @@ public sealed class AbilitySystem
     private int[] _pulsesRemaining;
     private AbilityCastTarget[] _targets;
     private AbilityStatModifier[] _modifierScratch;
+    private AbilityCombatModifier[] _combatModifierScratch;
     private readonly List<AbilityBuffRuntimeEntry> _buffs = [];
     private readonly List<AbilitySummonRuntimeEntry> _summons = [];
     private readonly List<AbilityPersistentEffectRuntimeEntry>
@@ -393,6 +400,8 @@ public sealed class AbilitySystem
         _unspentSkillPoints = new int[capacity];
         _mana = new float[capacity];
         _maximumMana = new float[capacity];
+        _baseMaximumMana = new float[capacity];
+        _manaBonusDecayPerSecond = new float[capacity];
         _baseManaRegeneration = new float[capacity];
         _effectiveManaRegeneration = new float[capacity];
         _baseMaximumSpeed = new float[capacity];
@@ -418,6 +427,7 @@ public sealed class AbilitySystem
         _pulsesRemaining = new int[capacity];
         _targets = new AbilityCastTarget[capacity];
         _modifierScratch = new AbilityStatModifier[capacity];
+        _combatModifierScratch = new AbilityCombatModifier[capacity];
         Array.Fill(_unitTypeIds, -1);
         Array.Fill(_activeSlots, -1);
         for (var unit = 0; unit < capacity; unit++)
@@ -457,6 +467,8 @@ public sealed class AbilitySystem
         Array.Resize(ref _unspentSkillPoints, capacity);
         Array.Resize(ref _mana, capacity);
         Array.Resize(ref _maximumMana, capacity);
+        Array.Resize(ref _baseMaximumMana, capacity);
+        Array.Resize(ref _manaBonusDecayPerSecond, capacity);
         Array.Resize(ref _baseManaRegeneration, capacity);
         Array.Resize(ref _effectiveManaRegeneration, capacity);
         Array.Resize(ref _baseMaximumSpeed, capacity);
@@ -482,6 +494,7 @@ public sealed class AbilitySystem
         Array.Resize(ref _pulsesRemaining, capacity);
         Array.Resize(ref _targets, capacity);
         Array.Resize(ref _modifierScratch, capacity);
+        Array.Resize(ref _combatModifierScratch, capacity);
         Array.Fill(_unitTypeIds, -1, previous, capacity - previous);
         Array.Fill(_activeSlots, -1, previous, capacity - previous);
         for (var unit = previous; unit < capacity; unit++)
@@ -528,6 +541,8 @@ public sealed class AbilitySystem
         _unspentSkillPoints[unit] = 0;
         _mana[unit] = 0f;
         _maximumMana[unit] = 0f;
+        _baseMaximumMana[unit] = 0f;
+        _manaBonusDecayPerSecond[unit] = 0f;
         _baseManaRegeneration[unit] = 0f;
         _effectiveManaRegeneration[unit] = 0f;
         _baseMaximumSpeed[unit] = units.MaxSpeeds[unit];
@@ -564,6 +579,8 @@ public sealed class AbilitySystem
         _unspentSkillPoints[unit] = binding.Hero ? 1 : 0;
         _mana[unit] = binding.Mana.Initial;
         _maximumMana[unit] = binding.Mana.Maximum;
+        _baseMaximumMana[unit] = binding.Mana.Maximum;
+        _manaBonusDecayPerSecond[unit] = 0f;
         _baseManaRegeneration[unit] = binding.Mana.RegenerationPerSecond;
         _effectiveManaRegeneration[unit] = binding.Mana.RegenerationPerSecond;
         _abilityIds[unit] = binding.Abilities.Select(value => value.AbilityId).ToArray();
@@ -691,7 +708,12 @@ public sealed class AbilitySystem
         value.InstanceId, value.AbilityId, value.SourceUnit,
         value.TargetUnit, value.BuffId, value.RemainingSeconds,
         value.Beneficial, value.Polarity, value.DispelKind, value.Stacking,
-        value.Status, value.Modifier);
+        value.Status, value.Modifier, value.CombatModifier);
+
+    public AbilityCombatModifier CombatModifier(int unit) =>
+        (uint)unit < (uint)_capacity
+            ? _combatModifierScratch[unit].Normalized
+            : AbilityCombatModifier.Identity;
 
     public bool TrySetLevel(int unit, int abilityId, int level)
     {
@@ -905,8 +927,7 @@ public sealed class AbilitySystem
 
     public bool CanCast(int unit) =>
         !HasStatus(unit, AbilityStatusFlags.Stunned |
-                         AbilityStatusFlags.Polymorphed |
-                         AbilityStatusFlags.Banished);
+                         AbilityStatusFlags.Polymorphed);
 
     internal AbilityCommandResult Preview(
         int playerId,
@@ -1338,6 +1359,17 @@ public sealed class AbilitySystem
             for (var slot = 0; slot < _cooldowns[unit].Length; slot++)
                 _cooldowns[unit][slot] = MathF.Max(
                     0f, _cooldowns[unit][slot] - delta);
+            if (_maximumMana[unit] > _baseMaximumMana[unit] &&
+                _manaBonusDecayPerSecond[unit] > 0f)
+            {
+                var decay = _manaBonusDecayPerSecond[unit] * delta;
+                _mana[unit] = MathF.Max(
+                    _baseMaximumMana[unit], _mana[unit] - decay);
+                _maximumMana[unit] = MathF.Max(
+                    _baseMaximumMana[unit], _mana[unit]);
+                if (_maximumMana[unit] <= _baseMaximumMana[unit])
+                    _manaBonusDecayPerSecond[unit] = 0f;
+            }
             if (world.AbilityUnitAlive(unit) && _maximumMana[unit] > 0f)
                 _mana[unit] = MathF.Min(
                     _maximumMana[unit],
@@ -2351,6 +2383,15 @@ public sealed class AbilitySystem
         _ => false
     };
 
+    private static bool EffectBlockedByInvulnerability(
+        in AbilityEffectProfile effect) => effect.Kind is
+        AbilityEffectKind.Damage or
+        AbilityEffectKind.Mana or
+        AbilityEffectKind.TransferMana or
+        AbilityEffectKind.TransferControl or
+        AbilityEffectKind.ApplyStatus or
+        AbilityEffectKind.ToggleStatus;
+
     private static AbilityRelationFilter RelationFilter(
         int playerId,
         int caster,
@@ -2574,7 +2615,8 @@ public sealed class AbilitySystem
         if ((effect.Relations & relation) == 0) return;
         if (!EffectTraitsMatch(target, effect)) return;
         if (relation == AbilityRelationFilter.Enemy &&
-            HasStatus(target, AbilityStatusFlags.Invulnerable))
+            HasStatus(target, AbilityStatusFlags.Invulnerable) &&
+            EffectBlockedByInvulnerability(effect))
             return;
         if (relation == AbilityRelationFilter.Enemy &&
             HasStatus(target, AbilityStatusFlags.MagicImmune) &&
@@ -2634,9 +2676,13 @@ public sealed class AbilitySystem
                 var amount = MathF.Max(0f, effect.Value);
                 if (relation is AbilityRelationFilter.Enemy or
                     AbilityRelationFilter.Neutral)
-                    TransferMana(target, caster, amount);
+                    TransferMana(
+                        target, caster, amount,
+                        effect.SecondaryValue, effect.HeroValue);
                 else
-                    TransferMana(caster, target, amount);
+                    TransferMana(
+                        caster, target, amount,
+                        effect.SecondaryValue, effect.HeroValue);
                 break;
             }
             case AbilityEffectKind.ApplyStatus:
@@ -2690,7 +2736,8 @@ public sealed class AbilitySystem
             }
             case AbilityEffectKind.TransferBuff:
                 TransferOneBuff(
-                    caster, target, relation, effect.BuffDispelKind);
+                    caster, target, relation, effect.BuffDispelKind,
+                    EffectRadius(effect, level), world);
                 break;
             case AbilityEffectKind.TransferControl:
                 world.AbilitySetUnitOwner(
@@ -2833,15 +2880,28 @@ public sealed class AbilitySystem
                (traits & effect.ExcludedUnitTraits) == 0;
     }
 
-    private void TransferMana(int source, int target, float amount)
+    private void TransferMana(
+        int source,
+        int target,
+        float amount,
+        float bonusFactor,
+        float bonusDecayPerSecond)
     {
-        if (amount <= 0f || _maximumMana[target] <= 0f) return;
+        if (amount <= 0f || _baseMaximumMana[target] <= 0f) return;
+        bonusFactor = MathF.Max(0f, bonusFactor);
+        var capacity = _baseMaximumMana[target] * (1f + bonusFactor);
         var transferred = MathF.Min(
             MathF.Min(_mana[source], amount),
-            _maximumMana[target] - _mana[target]);
+            capacity - _mana[target]);
         if (transferred <= 0f) return;
         _mana[source] -= transferred;
         _mana[target] += transferred;
+        if (_mana[target] > _baseMaximumMana[target])
+        {
+            _maximumMana[target] = _mana[target];
+            _manaBonusDecayPerSecond[target] = MathF.Max(
+                _manaBonusDecayPerSecond[target], bonusDecayPerSecond);
+        }
     }
 
     private bool DamageUnitAndAwardExperience(
@@ -2968,7 +3028,8 @@ public sealed class AbilitySystem
                     DispelKind = effect.BuffDispelKind,
                     Stacking = effect.BuffStacking,
                     Status = effect.Status,
-                    Modifier = modifier
+                    Modifier = modifier,
+                    CombatModifier = effect.CombatModifier.Normalized
                 };
                 return;
             }
@@ -2976,33 +3037,71 @@ public sealed class AbilitySystem
         _buffs.Add(new AbilityBuffRuntimeEntry(
             _nextBuffInstanceId++, ability.Id, source, target, buffId, duration,
             beneficial, polarity, effect.BuffDispelKind,
-            effect.BuffStacking, effect.Status, modifier));
+            effect.BuffStacking, effect.Status, modifier,
+            effect.CombatModifier.Normalized));
     }
 
     private void TransferOneBuff(
         int caster,
         int target,
         AbilityRelationFilter relation,
-        AbilityBuffDispelKind dispelKind)
+        AbilityBuffDispelKind dispelKind,
+        float range,
+        IAbilityRuntimeWorld world)
     {
+        var stealingBeneficial = relation is AbilityRelationFilter.Enemy or
+            AbilityRelationFilter.Neutral;
         var index = _buffs.FindIndex(value =>
             value.TargetUnit == target &&
             value.DispelKind != AbilityBuffDispelKind.None &&
             (value.DispelKind & dispelKind) != 0 &&
-            (relation == AbilityRelationFilter.Enemy
+            (stealingBeneficial
                 ? value.Beneficial
                 : !value.Beneficial));
         if (index < 0) return;
+        var receiver = stealingBeneficial
+            ? caster
+            : FindNearestHostileUnit(caster, range, world);
+        if (receiver < 0) return;
         var buff = _buffs[index];
         _buffs.RemoveAt(index);
         _buffs.Add(buff with
         {
             InstanceId = _nextBuffInstanceId++,
             SourceUnit = caster,
-            TargetUnit = caster,
-            Beneficial = true,
-            Polarity = AbilityBuffPolarity.Beneficial
+            TargetUnit = receiver,
+            Beneficial = stealingBeneficial,
+            Polarity = stealingBeneficial
+                ? AbilityBuffPolarity.Beneficial
+                : AbilityBuffPolarity.Harmful
         });
+    }
+
+    private static int FindNearestHostileUnit(
+        int caster,
+        float range,
+        IAbilityRuntimeWorld world)
+    {
+        var owner = world.AbilityUnitOwner(caster);
+        var center = world.AbilityUnitPosition(caster);
+        var rangeSquared = range * range;
+        var best = -1;
+        var bestDistance = float.PositiveInfinity;
+        for (var unit = 0; unit < world.AbilityUnitCount; unit++)
+        {
+            if (!world.AbilityUnitAlive(unit) || unit == caster ||
+                world.AbilityRelation(owner, world.AbilityUnitOwner(unit)) !=
+                PlayerEntityRelation.Enemy)
+                continue;
+            var distance = Vector2.DistanceSquared(
+                center, world.AbilityUnitPosition(unit));
+            if (distance > rangeSquared || distance > bestDistance ||
+                distance == bestDistance && unit >= best)
+                continue;
+            best = unit;
+            bestDistance = distance;
+        }
+        return best;
     }
 
     private void RebuildDerivedStats(
@@ -3022,9 +3121,11 @@ public sealed class AbilitySystem
         }
 
         var modifiers = _modifierScratch;
+        var combatModifiers = _combatModifierScratch;
         for (var unit = 0; unit < world.AbilityUnitCount; unit++)
         {
             modifiers[unit] = AbilityStatModifier.Identity;
+            combatModifiers[unit] = AbilityCombatModifier.Identity;
             _statuses[unit] = AbilityStatusFlags.None;
         }
         foreach (var buff in _buffs)
@@ -3033,8 +3134,10 @@ public sealed class AbilitySystem
             _statuses[buff.TargetUnit] |= buff.Status;
             modifiers[buff.TargetUnit] = Combine(
                 modifiers[buff.TargetUnit], buff.Modifier);
+            combatModifiers[buff.TargetUnit] = CombineCombat(
+                combatModifiers[buff.TargetUnit], buff.CombatModifier);
         }
-        ApplyPassiveAuras(world, modifiers);
+        ApplyPassiveAuras(world, modifiers, combatModifiers);
 
         for (var unit = 0; unit < world.AbilityUnitCount; unit++)
         {
@@ -3084,7 +3187,8 @@ public sealed class AbilitySystem
 
     private void ApplyPassiveAuras(
         IAbilityRuntimeWorld world,
-        AbilityStatModifier[] modifiers)
+        AbilityStatModifier[] modifiers,
+        AbilityCombatModifier[] combatModifiers)
     {
         var resolved = new Dictionary<
             (int Target, string BuffId),
@@ -3134,12 +3238,15 @@ public sealed class AbilitySystem
             _statuses[target] |= effect.Status;
             modifiers[target] = Combine(
                 modifiers[target], effect.Modifier.Normalized);
+            combatModifiers[target] = CombineCombat(
+                combatModifiers[target], effect.CombatModifier.Normalized);
         }
     }
 
     private static float AuraStrength(in AbilityEffectProfile effect)
     {
         var value = effect.Modifier.Normalized;
+        var combat = effect.CombatModifier.Normalized;
         return MathF.Abs(value.MovementSpeedMultiplier - 1f) +
                MathF.Abs(value.AttackCooldownMultiplier - 1f) +
                MathF.Abs(value.AttackDamageMultiplier - 1f) +
@@ -3149,6 +3256,11 @@ public sealed class AbilitySystem
                MathF.Abs(value.ManaRegenerationAdd) +
                MathF.Abs(value.DetectionRangeAdd) +
                MathF.Abs(value.HealthRegenerationAdd) +
+               MathF.Abs(combat.DamageTakenMultiplier - 1f) +
+               MathF.Abs(combat.DamageDealtMultiplier - 1f) +
+               MathF.Abs(combat.MagicDamageTakenMultiplier - 1f) +
+               combat.DeflectChancePercent +
+               combat.AttackMissChancePercent +
                (ushort)effect.Status;
     }
 
@@ -3192,6 +3304,27 @@ public sealed class AbilitySystem
             left.HealthRegenerationAdd + right.HealthRegenerationAdd);
     }
 
+    private static AbilityCombatModifier CombineCombat(
+        AbilityCombatModifier left,
+        AbilityCombatModifier right)
+    {
+        left = left.Normalized;
+        right = right.Normalized;
+        return new AbilityCombatModifier(
+            left.DamageTakenMultiplier * right.DamageTakenMultiplier,
+            left.DamageDealtMultiplier * right.DamageDealtMultiplier,
+            left.MagicDamageTakenMultiplier *
+            right.MagicDamageTakenMultiplier,
+            MathF.Max(left.DeflectChancePercent,
+                right.DeflectChancePercent),
+            left.DeflectedPiercingDamageMultiplier *
+            right.DeflectedPiercingDamageMultiplier,
+            left.DeflectedMagicDamageMultiplier *
+            right.DeflectedMagicDamageMultiplier,
+            MathF.Max(left.AttackMissChancePercent,
+                right.AttackMissChancePercent));
+    }
+
     private static bool DeterministicRoll(
         ulong sequence,
         int caster,
@@ -3219,7 +3352,9 @@ public sealed class AbilitySystem
                 _heroLevels[unit], _heroMaximumLevels[unit],
                 _heroExperience[unit], _experienceBounty[unit],
                 _unspentSkillPoints[unit], _mana[unit],
-                _maximumMana[unit], _baseManaRegeneration[unit],
+                _maximumMana[unit], _baseMaximumMana[unit],
+                _manaBonusDecayPerSecond[unit],
+                _baseManaRegeneration[unit],
                 _effectiveManaRegeneration[unit],
                 _baseMaximumSpeed[unit], _baseAttackDamage[unit],
                 _baseArmor[unit], _baseAttackCooldown[unit],
@@ -3304,6 +3439,8 @@ public sealed class AbilitySystem
             _unspentSkillPoints[unit] = value.UnspentSkillPoints;
             _mana[unit] = value.Mana;
             _maximumMana[unit] = value.MaximumMana;
+            _baseMaximumMana[unit] = value.BaseMaximumMana;
+            _manaBonusDecayPerSecond[unit] = value.ManaBonusDecayPerSecond;
             _baseManaRegeneration[unit] = value.BaseManaRegeneration;
             _effectiveManaRegeneration[unit] = value.EffectiveManaRegeneration;
             _baseMaximumSpeed[unit] = value.BaseMaximumSpeed;
@@ -3349,6 +3486,8 @@ public sealed class AbilitySystem
             hash.Add(_unspentSkillPoints[unit]);
             hash.Add(_mana[unit]);
             hash.Add(_maximumMana[unit]);
+            hash.Add(_baseMaximumMana[unit]);
+            hash.Add(_manaBonusDecayPerSecond[unit]);
             hash.Add(_baseManaRegeneration[unit]);
             hash.Add(_effectiveManaRegeneration[unit]);
             hash.Add(_baseMaximumSpeed[unit]);
@@ -3393,6 +3532,7 @@ public sealed class AbilitySystem
             hash.Add((byte)buff.Stacking);
             hash.Add((int)buff.Status);
             AppendModifier(ref hash, buff.Modifier);
+            AppendCombatModifier(ref hash, buff.CombatModifier);
         }
         hash.Add(_summons.Count);
         foreach (var summon in _summons.OrderBy(value => value.Unit))
@@ -3587,6 +3727,20 @@ public sealed class AbilitySystem
         hash.Add(modifier.HealthRegenerationAdd);
     }
 
+    private static void AppendCombatModifier(
+        ref StableHash64 hash,
+        AbilityCombatModifier modifier)
+    {
+        modifier = modifier.Normalized;
+        hash.Add(modifier.DamageTakenMultiplier);
+        hash.Add(modifier.DamageDealtMultiplier);
+        hash.Add(modifier.MagicDamageTakenMultiplier);
+        hash.Add(modifier.DeflectChancePercent);
+        hash.Add(modifier.DeflectedPiercingDamageMultiplier);
+        hash.Add(modifier.DeflectedMagicDamageMultiplier);
+        hash.Add(modifier.AttackMissChancePercent);
+    }
+
     private static long StableStringHash(string value)
     {
         var hash = new StableHash64();
@@ -3633,6 +3787,7 @@ internal static partial class AbilitySerialization
             writer.Write((byte)buff.Stacking);
             writer.Write((ushort)buff.Status);
             WriteRuntimeModifier(writer, buff.Modifier);
+            WriteRuntimeCombatModifier(writer, buff.CombatModifier);
         }
         writer.Write(snapshot.Summons.Length);
         foreach (var summon in snapshot.Summons)
@@ -3749,7 +3904,8 @@ internal static partial class AbilitySerialization
                 (AbilityBuffDispelKind)reader.ReadByte(),
                 (AbilityBuffStackingKind)reader.ReadByte(),
                 (AbilityStatusFlags)reader.ReadUInt16(),
-                ReadRuntimeModifier(reader));
+                ReadRuntimeModifier(reader),
+                ReadRuntimeCombatModifier(reader));
             if (buff.InstanceId <= previousBuff ||
                 (uint)buff.AbilityId >= (uint)catalog.Count ||
                 (uint)buff.SourceUnit >= (uint)unitCount ||
@@ -4005,6 +4161,8 @@ internal static partial class AbilitySerialization
         writer.Write(value.UnspentSkillPoints);
         writer.Write(value.Mana);
         writer.Write(value.MaximumMana);
+        writer.Write(value.BaseMaximumMana);
+        writer.Write(value.ManaBonusDecayPerSecond);
         writer.Write(value.BaseManaRegeneration);
         writer.Write(value.EffectiveManaRegeneration);
         writer.Write(value.BaseMaximumSpeed);
@@ -4052,6 +4210,8 @@ internal static partial class AbilitySerialization
         var unspentSkillPoints = reader.ReadInt32();
         var mana = reader.ReadSingle();
         var maximumMana = reader.ReadSingle();
+        var baseMaximumMana = reader.ReadSingle();
+        var manaBonusDecay = reader.ReadSingle();
         var regeneration = reader.ReadSingle();
         var effectiveRegeneration = reader.ReadSingle();
         var speed = reader.ReadSingle();
@@ -4077,7 +4237,11 @@ internal static partial class AbilitySerialization
                       heroExperience != 0 || unspentSkillPoints != 0) ||
             experienceBounty is < 0 or > 1_000_000 ||
             !float.IsFinite(mana) || !float.IsFinite(maximumMana) ||
-            mana < 0f || mana > maximumMana || maximumMana < 0f)
+            !float.IsFinite(baseMaximumMana) ||
+            !float.IsFinite(manaBonusDecay) ||
+            mana < 0f || mana > maximumMana || maximumMana < 0f ||
+            baseMaximumMana < 0f || baseMaximumMana > maximumMana ||
+            manaBonusDecay < 0f)
             throw new InvalidDataException("Invalid ability unit.");
         var ids = new int[slotCount];
         var levels = new int[slotCount];
@@ -4119,7 +4283,7 @@ internal static partial class AbilitySerialization
         return new AbilityUnitRuntimeEntry(
             unit, unitType, hero, traits, heroLevel, heroMaximumLevel,
             heroExperience, experienceBounty, unspentSkillPoints,
-            mana, maximumMana, regeneration,
+            mana, maximumMana, baseMaximumMana, manaBonusDecay, regeneration,
             effectiveRegeneration, speed,
             damage, armor, attackCooldown, maximumHealth, detection,
             concealment, concealmentPhase, ids, levels, cooldowns, toggles,
@@ -4147,6 +4311,26 @@ internal static partial class AbilitySerialization
         new(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+
+    private static void WriteRuntimeCombatModifier(
+        BinaryWriter writer,
+        AbilityCombatModifier value)
+    {
+        value = value.Normalized;
+        writer.Write(value.DamageTakenMultiplier);
+        writer.Write(value.DamageDealtMultiplier);
+        writer.Write(value.MagicDamageTakenMultiplier);
+        writer.Write(value.DeflectChancePercent);
+        writer.Write(value.DeflectedPiercingDamageMultiplier);
+        writer.Write(value.DeflectedMagicDamageMultiplier);
+        writer.Write(value.AttackMissChancePercent);
+    }
+
+    private static AbilityCombatModifier ReadRuntimeCombatModifier(
+        BinaryReader reader) => new(
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+        reader.ReadSingle());
 
     private static void WriteRuntimeString(BinaryWriter writer, string value)
     {

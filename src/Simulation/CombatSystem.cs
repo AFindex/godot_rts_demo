@@ -68,6 +68,14 @@ public sealed class CombatSystem
     private const float WeaponBonusScoreWeight = 6_000f;
     private const float ArmedThreatScoreWeight = 3_000f;
     private const float RetargetImprovementMargin = 2_500f;
+    // A claim is intentionally expressed in the same squared-distance units
+    // as the base score. One existing claimant is roughly equivalent to
+    // looking 48 world units farther, so nearby enemies still win while a
+    // whole formation no longer dog-piles the same front-most unit.
+    private const float TargetClaimScoreWeight = 48f * 48f;
+    private const float TargetOverkillScoreWeight = 32f;
+    private const float SaturatedTargetSearchExpansion = 160f;
+    private const int MaximumAutoTargetClaims = 4;
 
     private readonly UnitStore _units;
     private readonly CombatStore _combat;
@@ -78,10 +86,13 @@ public sealed class CombatSystem
     private readonly Func<int, int, bool> _isHostileTarget;
     private readonly Func<int, bool> _canAttack;
     private readonly Func<int, bool> _canTakeDamage;
+    private readonly Func<int, AbilityCombatModifier> _abilityModifier;
     private readonly Func<int, CombatTargetLayer> _unitTargetLayer;
     private readonly Func<int, int, bool> _hasTechnology;
     private readonly SpatialHash _spatialHash;
     private int[] _targetCandidates;
+    private int[] _targetClaimCounts;
+    private float[] _targetCommittedDamage;
     private double _targetSearchMilliseconds;
     private int _targetSearches;
     public CombatProjectileSystem Projectiles { get; } = new();
@@ -98,6 +109,7 @@ public sealed class CombatSystem
         Func<int, int, bool> isHostileTarget,
         Func<int, bool> canAttack,
         Func<int, bool> canTakeDamage,
+        Func<int, AbilityCombatModifier> abilityModifier,
         Func<int, CombatTargetLayer> unitTargetLayer,
         SpatialHash spatialHash)
     {
@@ -110,9 +122,12 @@ public sealed class CombatSystem
         _isHostileTarget = isHostileTarget;
         _canAttack = canAttack;
         _canTakeDamage = canTakeDamage;
+        _abilityModifier = abilityModifier;
         _unitTargetLayer = unitTargetLayer;
         _spatialHash = spatialHash;
         _targetCandidates = new int[units.Capacity];
+        _targetClaimCounts = new int[units.Capacity];
+        _targetCommittedDamage = new float[units.Capacity];
         _hasTechnology = HasTechnology;
     }
 
@@ -123,6 +138,7 @@ public sealed class CombatSystem
             : 0L;
         _targetSearchMilliseconds = 0d;
         _targetSearches = 0;
+        RebuildTargetPressure();
         Projectiles.Update(delta, ResolveProjectileTarget,
             value => ApplyProjectileImpact(value, tick),
             value => _events.Publish(
@@ -233,10 +249,18 @@ public sealed class CombatSystem
                 var currentScore = candidate >= 0 && candidate != target
                     ? TargetScore(unit, target)
                     : default;
+                var saturationRebalance = _units.Count > 256 &&
+                    candidate >= 0 && candidate != target &&
+                    TargetClaimsExcludingAttacker(unit, target) >=
+                    AutoTargetClaimCapacity(unit, target) &&
+                    TargetClaimsExcludingAttacker(unit, candidate) <
+                    AutoTargetClaimCapacity(unit, candidate) &&
+                    candidateScore.TotalScore < currentScore.TotalScore;
                 if (candidate >= 0 && candidate != target &&
-                    HasSemanticTargetAdvantage(candidateScore, currentScore) &&
-                    candidateScore.TotalScore + RetargetImprovementMargin <
-                    currentScore.TotalScore)
+                    (saturationRebalance ||
+                     HasSemanticTargetAdvantage(candidateScore, currentScore) &&
+                     candidateScore.TotalScore + RetargetImprovementMargin <
+                     currentScore.TotalScore))
                 {
                     BeginEngagement(unit, candidate);
                     target = candidate;
@@ -330,6 +354,7 @@ public sealed class CombatSystem
                 _hasTechnology))
             return;
         _slots.Release(unit);
+        ReleaseTargetClaim(unit);
         _combat.TargetUnits[unit] = -1;
         _combat.TargetBuildings[unit] = building.Value;
         _combat.TargetKinds[unit] = CombatTargetKind.Building;
@@ -349,6 +374,7 @@ public sealed class CombatSystem
     {
         if (!TrySelectTargetWeapon(unit, target)) return;
         _slots.Release(unit);
+        ReplaceTargetClaim(unit, target);
         _combat.TargetUnits[unit] = target;
         _combat.TargetBuildings[unit] = -1;
         _combat.TargetKinds[unit] = CombatTargetKind.Unit;
@@ -482,6 +508,17 @@ public sealed class CombatSystem
         Vector2? impactPosition = null)
     {
         if (!IsDamageableTarget(attacker, target)) return;
+        var factor = AbilityDamageFactor(
+            attacker, target, weapon.AttackType, tick, projectileId);
+        if (factor <= 0f)
+        {
+            _events.Publish(tick, CombatEventKind.Impact, attacker,
+                CombatTargetKind.Unit, target, 0f, _combat.Health[target],
+                projectileId: projectileId,
+                worldPosition: impactPosition ?? _units.Positions[target]);
+            return;
+        }
+        weapon = Scale(weapon, factor);
         var result = CombatDamageResolver.Resolve(
             weapon,
             UnitDefense(target),
@@ -506,6 +543,7 @@ public sealed class CombatSystem
     private void Disengage(int unit)
     {
         var intent = _combat.CommandIntents[unit];
+        ReleaseTargetClaim(unit);
         _combat.TargetUnits[unit] = -1;
         _combat.TargetBuildings[unit] = -1;
         _combat.TargetKinds[unit] = CombatTargetKind.None;
@@ -533,14 +571,22 @@ public sealed class CombatSystem
 
         var best = -1;
         var bestScore = float.PositiveInfinity;
+        var expandedBest = -1;
+        var expandedBestScore = float.PositiveInfinity;
+        var saturatedFallback = -1;
+        var saturatedFallbackScore = float.PositiveInfinity;
         var intent = _combat.CommandIntents[unit];
         if (_targetCandidates.Length < _units.Count)
             Array.Resize(ref _targetCandidates, _units.Capacity);
-        var queryRadius = intent == UnitCommandIntent.Hold
+        var baseQueryRadius = intent == UnitCommandIntent.Hold
             ? _combat.AttackRanges[unit] +
               _units.Radii[unit] +
               _spatialHash.MaximumRadius
             : _combat.AcquisitionRanges[unit];
+        var queryRadius = baseQueryRadius +
+                          (intent == UnitCommandIntent.Hold
+                              ? 0f
+                              : SaturatedTargetSearchExpansion);
         var candidateCount = _spatialHash.Query(
             _units.Positions[unit], queryRadius, unit,
             _targetCandidates.AsSpan(0, _units.Count));
@@ -558,11 +604,40 @@ public sealed class CombatSystem
                 ? _combat.AttackRanges[unit] +
                   _units.Radii[unit] + _units.Radii[candidate]
                 : _combat.AcquisitionRanges[unit];
-            if (distanceSquared > acquisitionRange * acquisitionRange)
+            var insideNormalRange =
+                distanceSquared <= acquisitionRange * acquisitionRange;
+            var expandedRange = acquisitionRange +
+                                (intent == UnitCommandIntent.Hold
+                                    ? 0f
+                                    : SaturatedTargetSearchExpansion);
+            if (distanceSquared > expandedRange * expandedRange)
             {
                 continue;
             }
             var score = TargetScore(unit, candidate).TotalScore;
+            if (TargetClaimsExcludingAttacker(unit, candidate) >=
+                AutoTargetClaimCapacity(unit, candidate))
+            {
+                if (insideNormalRange &&
+                    (score < saturatedFallbackScore ||
+                    score == saturatedFallbackScore &&
+                    candidate < saturatedFallback))
+                {
+                    saturatedFallback = candidate;
+                    saturatedFallbackScore = score;
+                }
+                continue;
+            }
+            if (!insideNormalRange)
+            {
+                if (score < expandedBestScore ||
+                    score == expandedBestScore && candidate < expandedBest)
+                {
+                    expandedBest = candidate;
+                    expandedBestScore = score;
+                }
+                continue;
+            }
             if (score < bestScore ||
                 (score == bestScore && candidate < best))
             {
@@ -571,7 +646,11 @@ public sealed class CombatSystem
             }
         }
 
-        return best;
+        return best >= 0
+            ? best
+            : expandedBest >= 0
+                ? expandedBest
+                : saturatedFallback;
     }
 
     private int FindBestTargetFullScan(int unit)
@@ -623,11 +702,85 @@ public sealed class CombatSystem
                          (bonusVs &
                           _combat.Attributes[target]) != 0;
         var armedThreat = _combat.AttackDamage[target] > 0f;
+        var claims = _targetClaimCounts[target];
+        var committedDamage = _targetCommittedDamage[target];
+        if (_combat.TargetKinds[attacker] == CombatTargetKind.Unit &&
+            _combat.TargetUnits[attacker] == target)
+        {
+            claims = Math.Max(0, claims - 1);
+            committedDamage = MathF.Max(
+                0f, committedDamage - _combat.AttackDamage[attacker]);
+        }
+        var overkill = MathF.Max(
+            0f, committedDamage - _combat.Health[target]);
+        var saturationPenalty = claims * TargetClaimScoreWeight +
+                                overkill * TargetOverkillScoreWeight;
         var total = distanceSquared - priority * PriorityScoreWeight -
                     (bonusMatch ? WeaponBonusScoreWeight : 0f) -
-                    (armedThreat ? ArmedThreatScoreWeight : 0f);
+                    (armedThreat ? ArmedThreatScoreWeight : 0f) +
+                    saturationPenalty;
         return new CombatAutoTargetScore(
             target, distanceSquared, priority, bonusMatch, armedThreat, total);
+    }
+
+    private int TargetClaimsExcludingAttacker(int attacker, int target)
+    {
+        var claims = _targetClaimCounts[target];
+        if (_combat.TargetKinds[attacker] == CombatTargetKind.Unit &&
+            _combat.TargetUnits[attacker] == target)
+            claims--;
+        return Math.Max(0, claims);
+    }
+
+    private int AutoTargetClaimCapacity(int attacker, int target)
+    {
+        // Four simultaneous auto-attackers are enough to preserve focus fire
+        // while keeping an 800-unit front distributed. If every visible enemy
+        // is at capacity, FindBestTarget deterministically falls back to the
+        // least costly saturated target, so units never lose a valid target.
+        return MaximumAutoTargetClaims;
+    }
+
+    private void RebuildTargetPressure()
+    {
+        if (_targetClaimCounts.Length < _units.Count)
+        {
+            Array.Resize(ref _targetClaimCounts, _units.Capacity);
+            Array.Resize(ref _targetCommittedDamage, _units.Capacity);
+        }
+        Array.Clear(_targetClaimCounts, 0, _units.Count);
+        Array.Clear(_targetCommittedDamage, 0, _units.Count);
+        for (var attacker = 0; attacker < _units.Count; attacker++)
+        {
+            if (!_units.Alive[attacker] ||
+                _combat.TargetKinds[attacker] != CombatTargetKind.Unit)
+                continue;
+            var target = _combat.TargetUnits[attacker];
+            if ((uint)target >= (uint)_units.Count || !_units.Alive[target])
+                continue;
+            _targetClaimCounts[target]++;
+            _targetCommittedDamage[target] += _combat.AttackDamage[attacker];
+        }
+    }
+
+    private void ReplaceTargetClaim(int attacker, int target)
+    {
+        ReleaseTargetClaim(attacker);
+        if ((uint)target >= (uint)_units.Count) return;
+        _targetClaimCounts[target]++;
+        _targetCommittedDamage[target] += _combat.AttackDamage[attacker];
+    }
+
+    private void ReleaseTargetClaim(int attacker)
+    {
+        if (_combat.TargetKinds[attacker] != CombatTargetKind.Unit) return;
+        var target = _combat.TargetUnits[attacker];
+        if ((uint)target >= (uint)_units.Count) return;
+        _targetClaimCounts[target] = Math.Max(
+            0, _targetClaimCounts[target] - 1);
+        _targetCommittedDamage[target] = MathF.Max(
+            0f,
+            _targetCommittedDamage[target] - _combat.AttackDamage[attacker]);
     }
 
     private CombatAttribute ResolveWeaponBonusAttributes(
@@ -1232,6 +1385,10 @@ public sealed class CombatSystem
         long tick,
         int projectileId)
     {
+        var factor = AbilityDamageFactor(
+            attacker, target, weapon.AttackType, tick, projectileId);
+        if (factor <= 0f) return;
+        weapon = Scale(weapon, factor);
         var result = CombatDamageResolver.Resolve(
             weapon, UnitDefense(target), _combat.Health[target]);
         _combat.Health[target] = result.RemainingHealth;
@@ -1524,6 +1681,7 @@ public sealed class CombatSystem
     private void KillUnit(
         int attacker, int target, float damage, long tick, Vector2 position)
     {
+        ReleaseTargetClaim(target);
         _units.Alive[target] = false;
         _combat.CommandIntents[target] = UnitCommandIntent.None;
         _combat.Phases[target] = CombatPhase.None;
@@ -1546,6 +1704,53 @@ public sealed class CombatSystem
         BaseUpgradeDamage = weapon.BaseUpgradeDamage * fraction,
         BonusUpgradeDamage = weapon.BonusUpgradeDamage * fraction
     };
+
+    private float AbilityDamageFactor(
+        int attacker,
+        int target,
+        CombatAttackType attackType,
+        long tick,
+        int projectileId)
+    {
+        var source = _abilityModifier(attacker).Normalized;
+        var defense = _abilityModifier(target).Normalized;
+        var factor = source.DamageDealtMultiplier *
+                     defense.DamageTakenMultiplier;
+        if (attackType is CombatAttackType.Magic or CombatAttackType.Spells)
+            factor *= defense.MagicDamageTakenMultiplier;
+        if (Roll(
+                source.AttackMissChancePercent, tick, attacker, target,
+                projectileId, 0x51))
+            return 0f;
+        if ((attackType is CombatAttackType.Pierce or CombatAttackType.Magic) &&
+            Roll(defense.DeflectChancePercent, tick, attacker, target,
+                projectileId, 0xA7))
+        {
+            factor *= attackType == CombatAttackType.Pierce
+                ? defense.DeflectedPiercingDamageMultiplier
+                : defense.DeflectedMagicDamageMultiplier;
+        }
+        return MathF.Max(0f, factor);
+    }
+
+    private static bool Roll(
+        float percent,
+        long tick,
+        int attacker,
+        int target,
+        int projectileId,
+        int salt)
+    {
+        if (percent <= 0f) return false;
+        if (percent >= 100f) return true;
+        ulong value = (ulong)tick ^ ((ulong)(uint)attacker << 32) ^
+                      (uint)target ^ ((ulong)(uint)projectileId << 17) ^
+                      (uint)salt;
+        value ^= value >> 33;
+        value *= 0xff51afd7ed558ccdUL;
+        value ^= value >> 33;
+        return value % 10_000UL < (ulong)MathF.Round(percent * 100f);
+    }
 
     private readonly record struct PropagationTarget(
         CombatTargetKind Kind,

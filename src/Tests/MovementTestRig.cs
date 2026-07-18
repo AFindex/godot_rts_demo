@@ -1297,7 +1297,8 @@ public readonly record struct TestMovementDiagnostics(
     long ReservationMigrationAttempts,
     long ReservationMigrationFailures,
     int LastReservationMigrationUnits,
-    float LastReservationMigrationClearance);
+    float LastReservationMigrationClearance,
+    long RepeatedAttackMoveUnitsCoalesced);
 
 public readonly record struct TestOperationInteractionSnapshot(
     int PointSelection,
@@ -2876,7 +2877,8 @@ public sealed partial class MovementTestRig
             metrics.ReservationMigrationAttempts,
             metrics.ReservationMigrationFailures,
             metrics.LastReservationMigrationUnits,
-            metrics.LastReservationMigrationClearance);
+            metrics.LastReservationMigrationClearance,
+            metrics.RepeatedAttackMoveUnitsCoalesced);
     }
 
     public TestOperationInteractionSnapshot VerifyOperationInteractions()

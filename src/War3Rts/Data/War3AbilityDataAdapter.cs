@@ -334,7 +334,25 @@ public sealed class War3AbilityDataAdapter(
                 Modifier: new AbilityStatModifier(
                     MovementSpeedMultiplier: Math.Clamp(
                         RequiredPositiveData(level, "C", compiler),
-                        0.1f, 1f)))),
+                        0.1f, 1f),
+                    AttackCooldownMultiplier: d > 0f
+                        ? 1f / d
+                        : 1f),
+                CombatModifier: new AbilityCombatModifier(
+                    DamageTakenMultiplier:
+                        RequiredPositiveData(level, "A", compiler),
+                    DamageDealtMultiplier:
+                        RequiredPositiveData(level, "B", compiler),
+                    MagicDamageTakenMultiplier:
+                        RequiredPositiveData(level, "E", compiler),
+                    DeflectChancePercent:
+                        RequiredNonNegativeData(level, "F", compiler),
+                    DeflectedPiercingDamageMultiplier:
+                        RequiredNonNegativeData(level, "G", compiler),
+                    DeflectedMagicDamageMultiplier:
+                        RequiredPositiveData(level, "H", compiler),
+                    AttackMissChancePercent:
+                        RequiredNonNegativeData(level, "I", compiler)))),
             War3AbilityCompilerKind.Heal => One(Heal(
                 RequiredPositiveData(level, "A", compiler))),
             War3AbilityCompilerKind.InnerFire => One(Status(
@@ -349,14 +367,18 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.Dispel => One(new AbilityEffectProfile(
                 AbilityEffectKind.Dispel, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Any,
-                SecondaryValue: MathF.Max(0f, b),
+                Value: RequiredZeroData(level, "A", compiler),
+                SecondaryValue: RequiredPositiveData(level, "B", compiler),
                 Radius: Distance(level.Area),
                 DamageKind: AbilityDamageKind.Magic,
                 BuffDispelKind: AbilityBuffDispelKind.Magic)),
             War3AbilityCompilerKind.Invisibility => One(Status(
                 AbilityEffectSelector.Primary,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
-                duration, AbilityStatusFlags.Invisible)),
+                duration, AbilityStatusFlags.Invisible) with
+                {
+                    StartDelay = RequiredZeroData(level, "A", compiler)
+                }),
             War3AbilityCompilerKind.Polymorph => One(Status(
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 duration,
@@ -375,13 +397,17 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.SpellSteal => One(new AbilityEffectProfile(
                 AbilityEffectKind.TransferBuff, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
+                Radius: Distance(level.Area),
                 BuffDispelKind: AbilityBuffDispelKind.Magic)),
             War3AbilityCompilerKind.Charm => One(new AbilityEffectProfile(
                 AbilityEffectKind.TransferControl, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy)),
             War3AbilityCompilerKind.MagicImmunity => One(Aura(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
-                status: AbilityStatusFlags.MagicImmune)),
+                status: AbilityStatusFlags.MagicImmune) with
+                {
+                    SecondaryValue = RequiredZeroData(level, "A", compiler)
+                }),
             War3AbilityCompilerKind.Feedback => One(new AbilityEffectProfile(
                 AbilityEffectKind.Mana, AbilityEffectTiming.AttackHit,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
@@ -395,17 +421,26 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.Flare => One(new AbilityEffectProfile(
                 AbilityEffectKind.Reveal, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Self,
-                Radius: Distance(level.Area), Duration: duration)),
+                Radius: Distance(level.Area), Duration: duration,
+                SecondaryValue:
+                    RequiredPositiveData(level, "A", compiler),
+                VisualCount: HasDataText(level, "C")
+                    ? (int)RequiredZeroData(level, "C", compiler)
+                    : 0)),
             War3AbilityCompilerKind.FragmentationShards => AttackBands(
                 Distance(level.Area), Distance(a), Distance(b),
                 RequiredPositiveData(level, "C", compiler),
                 RequiredPositiveData(level, "D", compiler),
                 RequiredPositiveData(level, "E", compiler)),
-            War3AbilityCompilerKind.DetectionAura => One(Aura(
+            War3AbilityCompilerKind.DetectionAura => One((Aura(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
                 modifier: new AbilityStatModifier(
                     DetectionRangeAdd: Distance(RequiredPositive(
-                        level.Range, "range", compiler, level.Level))))),
+                        level.Range, "range", compiler, level.Level))))) with
+                {
+                    SecondaryValue =
+                        RequiredPositiveData(level, "A", compiler)
+                }),
             War3AbilityCompilerKind.FlakCannons => AttackBands(
                 Distance(level.Area), Distance(a), Distance(b),
                 RequiredPositiveData(level, "C", compiler),
@@ -420,7 +455,18 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.Cloud => One(Status(
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Enemy,
                 duration, AbilityStatusFlags.AttackDisabled,
-                radius: Distance(level.Area))),
+                modifier: new AbilityStatModifier(
+                    MovementSpeedMultiplier: c > 0f ? c : 1f,
+                    AttackCooldownMultiplier: d > 0f ? 1f / d : 1f),
+                radius: Distance(level.Area)) with
+                {
+                    SecondaryValue =
+                        RequiredPositiveData(level, "A", compiler),
+                    CombatModifier = new AbilityCombatModifier(
+                        AttackMissChancePercent:
+                            RequiredNonNegativeData(level, "B", compiler)),
+                    AffectsBuildings = true
+                }),
             War3AbilityCompilerKind.SiphonMana => One(new AbilityEffectProfile(
                 AbilityEffectKind.Damage, AbilityEffectTiming.ChannelPulse,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
@@ -452,7 +498,12 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectSelector.AreaAtCaster,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Distance(level.Area),
-                new AbilityStatModifier(ManaRegenerationAdd: MathF.Max(0f, a)))),
+                new AbilityStatModifier(
+                    ManaRegenerationAdd:
+                        RequiredNonNegativeData(level, "A", compiler))) with
+                {
+                    SecondaryValue = RequiredZeroData(level, "B", compiler)
+                }),
             War3AbilityCompilerKind.MassTeleport => One(new AbilityEffectProfile(
                 AbilityEffectKind.Teleport, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtCaster,
@@ -481,7 +532,10 @@ public sealed class War3AbilityDataAdapter(
                         RequiredPositiveData(level, "D", compiler)),
                 value: RequiredPositiveData(level, "A", compiler),
                 radius: Distance(level.Area),
-                damageKind: AbilityDamageKind.Magic)),
+                damageKind: AbilityDamageKind.Magic) with
+                {
+                    SecondaryValue = RequiredZeroData(level, "B", compiler)
+                }),
             War3AbilityCompilerKind.Bash => One(new AbilityEffectProfile(
                 AbilityEffectKind.ApplyStatus, AbilityEffectTiming.AttackHit,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
@@ -489,7 +543,9 @@ public sealed class War3AbilityDataAdapter(
                 Duration: duration,
                 Interval: RequiredPositiveData(level, "A", compiler),
                 Status: AbilityStatusFlags.Stunned,
-                DamageKind: AbilityDamageKind.Physical)),
+                DamageKind: AbilityDamageKind.Physical,
+                SecondaryValue: RequiredZeroData(level, "B", compiler),
+                HeroSecondaryValue: RequiredZeroData(level, "D", compiler))),
             War3AbilityCompilerKind.Avatar => One(Status(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
                 duration,
@@ -499,7 +555,10 @@ public sealed class War3AbilityDataAdapter(
                         level, "C", compiler),
                     ArmorAdd: RequiredPositiveData(level, "A", compiler),
                     MaximumHealthAdd: RequiredPositiveData(
-                        level, "B", compiler)))),
+                        level, "B", compiler))) with
+                {
+                    SecondaryValue = RequiredZeroData(level, "D", compiler)
+                }),
             War3AbilityCompilerKind.HolyLight =>
             [
                 Heal(RequiredPositiveData(level, "A", compiler)) with
@@ -508,26 +567,37 @@ public sealed class War3AbilityDataAdapter(
                 },
                 new AbilityEffectProfile(
                     AbilityEffectKind.Damage, AbilityEffectTiming.Impact,
-                    AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy |
+                    AbilityRelationFilter.Neutral,
                     Value: RequiredPositiveData(level, "A", compiler) * 0.5f,
                     DamageKind: AbilityDamageKind.Magic,
                     RequiredUnitTraits: AbilityUnitTraits.Undead)
             ],
             War3AbilityCompilerKind.DivineShield => One(Status(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
-                duration, AbilityStatusFlags.Invulnerable)),
+                duration, AbilityStatusFlags.Invulnerable) with
+                {
+                    SecondaryValue = RequiredZeroData(level, "A", compiler)
+                }),
             War3AbilityCompilerKind.DevotionAura => One(Aura(
                 AbilityEffectSelector.AreaAtCaster,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Distance(level.Area),
-                new AbilityStatModifier(ArmorAdd: MathF.Max(0f, a)))),
+                new AbilityStatModifier(
+                    ArmorAdd:
+                        RequiredNonNegativeData(level, "A", compiler))) with
+                {
+                    SecondaryValue = RequiredZeroData(level, "B", compiler)
+                }),
             War3AbilityCompilerKind.Resurrection => One(new AbilityEffectProfile(
                 AbilityEffectKind.Revive, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtCaster,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Value: 1f, Radius: Distance(level.Area),
                 MaximumTargets: Math.Max(1, (int)MathF.Round(
-                    RequiredPositiveData(level, "A", compiler))))),
+                    RequiredPositiveData(level, "A", compiler))),
+                SecondaryValue: RequiredZeroData(level, "B", compiler))),
             War3AbilityCompilerKind.FlameStrike => FlameStrikeEffects(
                 level, duration, heroDuration),
             War3AbilityCompilerKind.Banish => One(Status(
@@ -543,12 +613,7 @@ public sealed class War3AbilityDataAdapter(
                         1f - RequiredNonNegativeData(
                             level, "B", compiler))))),
             War3AbilityCompilerKind.DrainMana =>
-                One(new AbilityEffectProfile(
-                    AbilityEffectKind.TransferMana,
-                    AbilityEffectTiming.ChannelPulse,
-                    AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
-                    Value: FirstPositiveData(level, compiler, "E", "B"),
-                    Interval: RequiredPositiveData(level, "C", compiler))),
+                One(DrainManaEffect(level)),
             War3AbilityCompilerKind.SummonPhoenix => One(new AbilityEffectProfile(
                 AbilityEffectKind.Summon, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtCaster, AbilityRelationFilter.Self,
@@ -596,6 +661,25 @@ public sealed class War3AbilityDataAdapter(
                 "duration", War3AbilityCompilerKind.MilitiaTransform,
                 source.Level),
             BuildingFunctionKind.TownHall);
+    }
+
+    private static AbilityEffectProfile DrainManaEffect(
+        War3ObjectLevel level)
+    {
+        const War3AbilityCompilerKind compiler =
+            War3AbilityCompilerKind.DrainMana;
+        _ = RequiredZeroData(level, "A", compiler);
+        _ = RequiredZeroData(level, "D", compiler);
+        _ = RequiredZeroData(level, "F", compiler);
+        _ = RequiredZeroData(level, "G", compiler);
+        return new AbilityEffectProfile(
+            AbilityEffectKind.TransferMana,
+            AbilityEffectTiming.ChannelPulse,
+            AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
+            Value: FirstPositiveData(level, compiler, "E", "B"),
+            SecondaryValue: RequiredNonNegativeData(level, "H", compiler),
+            Interval: RequiredPositiveData(level, "C", compiler),
+            HeroValue: RequiredNonNegativeData(level, "I", compiler));
     }
 
     private War3ObjectLevel FindUnitFormLevel()
@@ -944,6 +1028,18 @@ public sealed class War3AbilityDataAdapter(
                 $"{compiler} level {level.Level} requires finite JSON Data{key}.");
         return RequiredNonNegative(
             value, $"Data{key}", compiler, level.Level);
+    }
+
+    private static float RequiredZeroData(
+        War3ObjectLevel level,
+        string key,
+        War3AbilityCompilerKind compiler)
+    {
+        var value = RequiredNonNegativeData(level, key, compiler);
+        if (value <= 0.0001f) return 0f;
+        throw new InvalidDataException(
+            $"{compiler} level {level.Level} has unsupported non-zero " +
+            $"JSON Data{key}={value.ToString(CultureInfo.InvariantCulture)}.");
     }
 
     private static float FirstPositiveData(

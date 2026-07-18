@@ -117,7 +117,8 @@ public sealed partial class War3Rts : Node3D
                 _previousMaximumPhysicsStepsPerFrame, 2);
             GD.Print(
                 "WAR3_INTERACTIVE_STRESS_LAUNCH " +
-                "units=800 map=256x160 builders=48 slots=96 rendered=true " +
+                "units=800 map=320x160 long_march=true builders=48 slots=96 " +
+                "animations=all effects=all rendered=true " +
                 $"max_physics_steps={Engine.MaxPhysicsStepsPerFrame}");
         }
         _smoke = arguments.Contains("--war3-rts-smoke");
@@ -395,7 +396,9 @@ public sealed partial class War3Rts : Node3D
         _presenter = new War3WorldPresenter
         {
             Name = "War3World",
-            ProfilingEnabled = _runtimeProfiler is not null
+            ProfilingEnabled = _runtimeProfiler is not null,
+            ForceFullUnitPresentation = _stressTest is not null,
+            ForceFullCombatEffects = _stressTest is not null
         };
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
@@ -477,8 +480,17 @@ public sealed partial class War3Rts : Node3D
             _selectedUnits.Clear();
             _selectedBuildings.Clear();
             RefreshSelection();
+            _cameraController!.MaximumDistance = 90f;
+            _cameraController.InitialDistance = 62f;
+            _cameraController.InitialPitchDegrees = 68f;
+            _cameraController.InitialYawDegrees = 0f;
+            _cameraController.ResetView(immediate: true);
             _cameraController!.FocusAt(_stressTest.FocusPoint, immediate: true);
-            _status = "War3 压测：自动战斗、补兵、免费建造与定时自毁";
+            _status = "War3 表现压测：长距离对冲、全单位动画、完整战斗特效与运动质量诊断";
+            GD.Print(
+                "WAR3_STRESS_PRESENTATION full_unit_actors=true " +
+                "full_animation=true full_model_effects=true " +
+                "full_projectiles=true impact_budget=unbounded");
         }
         if (_automatedSkirmishRequested)
         {
@@ -650,8 +662,7 @@ public sealed partial class War3Rts : Node3D
                     throw new InvalidOperationException(error);
             }
 
-            if (_automatedSkirmishRequested &&
-                War3AutomatedSkirmishStressMap.IsRequested(arguments))
+            if (War3AutomatedSkirmishStressMap.IsRequested(arguments))
             {
                 runtime = War3AutomatedSkirmishStressMap.Create(arguments);
                 offlineCache = null;
@@ -881,7 +892,7 @@ public sealed partial class War3Rts : Node3D
                         automationProfile.AiMilliseconds);
                     aiMilliseconds += automationProfile.AiMilliseconds;
                 }
-                else
+                else if (_stressTest is null)
                 {
                     _runtime.AiDirector.Update(_simulation.Metrics.Tick);
                     var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -893,6 +904,7 @@ public sealed partial class War3Rts : Node3D
                 var simulationStart =
                     System.Diagnostics.Stopwatch.GetTimestamp();
                 _simulation.Tick(frame);
+                _stressTest?.ObserveAfterSimulation();
                 _itemShops?.Update(frame);
                 if (_itemEffects is not null)
                     _itemEffects.Update(frame, _simulation);

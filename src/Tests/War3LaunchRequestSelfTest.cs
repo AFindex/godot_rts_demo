@@ -17,9 +17,8 @@ public static class War3LaunchRequestSelfTest
         var required = new[]
         {
             War3LaunchRequest.InteractiveStressArgument,
-            War3AutomatedSkirmishStressMode.EnableArgument,
             War3AutomatedSkirmishStressMap.EnableArgument,
-            "--war3-auto-skirmish-map-columns=256",
+            "--war3-auto-skirmish-map-columns=320",
             "--war3-auto-skirmish-map-rows=160",
             "--war3-auto-skirmish-ticks-per-frame=1",
             "--war3-runtime-profile",
@@ -27,6 +26,8 @@ public static class War3LaunchRequestSelfTest
             "--war3-profile-no-quit",
             "--war3-stress-test",
             "--war3-stress-units-per-team=400",
+            "--war3-stress-army-inset=1050",
+            "--war3-stress-quality-report=300",
             "--war3-stress-builders=48",
             "--war3-stress-build-slots=96"
         };

@@ -203,6 +203,17 @@ public sealed partial class War3WorldPresenter : Node3D
             "UI\\Feedback\\RallyPoint\\RallyPoint.mdx",
             StringComparison.OrdinalIgnoreCase);
     public bool ProfilingEnabled { get; set; }
+    /// <summary>
+    /// Test-only presentation override. It keeps every unit actor processing so
+    /// animation players and model effect emitters participate in the 800-unit
+    /// visual stress scenario instead of being replaced by static LOD meshes.
+    /// </summary>
+    public bool ForceFullUnitPresentation { get; set; }
+    /// <summary>
+    /// Test-only presentation override for detailed projectile actors and all
+    /// impact visuals. Authoritative combat is unchanged either way.
+    /// </summary>
+    public bool ForceFullCombatEffects { get; set; }
     public War3PresenterSyncProfile LastSyncProfile { get; private set; }
 
     public void ApplyRuntimeProfileVariant(string variant)
@@ -500,7 +511,8 @@ public sealed partial class War3WorldPresenter : Node3D
         var creationProgressStart = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
-        var denseUnitLod = simulation.Units.Count >= DenseUnitLodThreshold;
+        var denseUnitLod = !ForceFullUnitPresentation &&
+                           simulation.Units.Count >= DenseUnitLodThreshold;
         if (denseUnitLod)
             PrepareFullDetailUnitBudget(simulation, camera);
         for (var unit = 0; unit < simulation.Units.Count; unit++)
@@ -1512,7 +1524,8 @@ public sealed partial class War3WorldPresenter : Node3D
         ProductionCatalogSnapshot production,
         Camera3D camera)
     {
-        if (simulation.Units.Count >= DenseUnitLodThreshold)
+        if (!ForceFullCombatEffects &&
+            simulation.Units.Count >= DenseUnitLodThreshold)
         {
             SyncDenseCombatProjectiles(simulation);
             return;
@@ -1539,7 +1552,8 @@ public sealed partial class War3WorldPresenter : Node3D
                 // trees at once caused 700+ ms cosmetic spikes. Missiles that
                 // exceed this visual budget remain fully simulated and can be
                 // picked up by a later frame if they are still active.
-                if (visualCreations >= MaximumProjectileVisualCreationsPerSync)
+                if (!ForceFullCombatEffects &&
+                    visualCreations >= MaximumProjectileVisualCreationsPerSync)
                     continue;
                 visual = CreateProjectile(
                     projectile.Id,
@@ -1566,8 +1580,10 @@ public sealed partial class War3WorldPresenter : Node3D
             _projectiles.Remove(id);
             if (visual.Definition.ImpactSource.Length > 0 &&
                 War3RuntimeAssets.Contains(visual.Definition.ImpactSource) &&
-                impactVisuals < MaximumProjectileImpactVisualsPerSync &&
-                NonCommandTransientCount() < MaximumNonCommandTransientVisuals)
+                (ForceFullCombatEffects ||
+                 impactVisuals < MaximumProjectileImpactVisualsPerSync &&
+                 NonCommandTransientCount() <
+                 MaximumNonCommandTransientVisuals))
             {
                 SpawnTransient(
                     visual.Definition.ImpactSource,
@@ -1708,7 +1724,8 @@ public sealed partial class War3WorldPresenter : Node3D
             if (!_buildingProjectiles.TryGetValue(
                     projectile.Id, out var visual))
             {
-                if (creations >= MaximumProjectileVisualCreationsPerSync)
+                if (!ForceFullCombatEffects &&
+                    creations >= MaximumProjectileVisualCreationsPerSync)
                     continue;
                 visual = CreateBuildingProjectile(
                     projectile.Id, definition, attacker.PlayerId, camera);
@@ -1734,8 +1751,10 @@ public sealed partial class War3WorldPresenter : Node3D
             _buildingProjectiles.Remove(id);
             if (visual.Definition.ImpactSource.Length == 0 ||
                 !War3RuntimeAssets.Contains(visual.Definition.ImpactSource) ||
-                impacts >= MaximumProjectileImpactVisualsPerSync ||
-                NonCommandTransientCount() >= MaximumNonCommandTransientVisuals)
+                !ForceFullCombatEffects &&
+                (impacts >= MaximumProjectileImpactVisualsPerSync ||
+                 NonCommandTransientCount() >=
+                 MaximumNonCommandTransientVisuals))
                 continue;
             SpawnTransient(
                 visual.Definition.ImpactSource,
@@ -1763,7 +1782,8 @@ public sealed partial class War3WorldPresenter : Node3D
             if (!_abilityProjectiles.TryGetValue(
                     projectile.Id, out var visual))
             {
-                if (creations >= MaximumProjectileVisualCreationsPerSync)
+                if (!ForceFullCombatEffects &&
+                    creations >= MaximumProjectileVisualCreationsPerSync)
                     continue;
                 var sourcePlayerId = (uint)projectile.CasterUnit <
                                      (uint)simulation.Units.Count

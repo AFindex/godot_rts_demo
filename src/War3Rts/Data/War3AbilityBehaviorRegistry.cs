@@ -152,10 +152,11 @@ public static class War3AbilityBehaviorRegistry
             string id,
             AbilityActivationKind activation,
             War3AbilityCompilerKind compiler,
-            string reason) => result.Add(
+            string reason,
+            bool autoCast = false) => result.Add(
             id,
             new War3AbilityBehaviorDescriptor(
-                id, activation, false, compiler,
+                id, activation, autoCast, compiler,
                 War3AbilityRuntimeSupportStatus.ImplementedGameplay,
                 reason));
 
@@ -207,37 +208,51 @@ public static class War3AbilityBehaviorRegistry
             "目标点、范围、持续时间、冷却、科技前置和揭露特效均由 Ability JSON 驱动；建筑与物品共用 Reveal 效果语义。");
         Pending("Arep", AbilityActivationKind.Passive,
             "缺少消耗资源的建筑/机械单位修理命令与自动施法行为。");
-        Prototype("Ahea", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.Heal, true);
-        Prototype("Ainf", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.InnerFire, true);
-        Prototype("Adis", AbilityActivationKind.TargetPoint,
-            War3AbilityCompilerKind.Dispel);
-        Prototype("Aivs", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.Invisibility);
+        Gameplay("Ahea", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Heal,
+            "生命恢复量、目标规则、魔法/冷却、自动施法和表现事件均由 Ability JSON 编译并通过运行时治疗验收。",
+            autoCast: true);
+        Gameplay("Ainf", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.InnerFire,
+            "攻击倍率、护甲、自动施法距离、生命恢复、持续时间和 Buff 均由 Ability JSON 编译并通过热载往返验收。",
+            autoCast: true);
+        Gameplay("Adis", AbilityActivationKind.TargetPoint,
+            War3AbilityCompilerKind.Dispel,
+            "范围、召唤物伤害、目标层、魔法消除、消耗和科技门槛均来自 Ability JSON；法力损失 DataA=0 由严格字段门槛验证。");
+        Gameplay("Aivs", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Invisibility,
+            "目标规则、持续时间、消耗、科技门槛、隐形状态和 Buff 表现均由 Ability JSON 编译；当前过渡 DataA=0 由严格字段门槛验证。");
         Prototype("Aply", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.Polymorph);
-        Prototype("Aslo", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.Slow, true);
-        Prototype("Asps", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.SpellSteal);
+        Gameplay("Aslo", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Slow,
+            "移动/攻击速率、普通/英雄持续时间、目标规则、自动施法、科技门槛与 Buff 均由 Ability JSON 驱动。",
+            autoCast: true);
+        Gameplay("Asps", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.SpellSteal,
+            "700 范围/搜索区域、消耗冷却、任意关系和魔法 Buff 类型由 JSON 驱动；敌方增益转给施法者，友方减益按距离与单位 ID 稳定选择敌方接收者，且可处理无敌目标。");
         Prototype("Acmg", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.Charm);
-        Prototype("Amim", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.MagicImmunity);
-        Prototype("Afbk", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.Feedback);
-        Prototype("Afla", AbilityActivationKind.TargetPoint,
-            War3AbilityCompilerKind.Flare);
-        Prototype("Afsh", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.FragmentationShards);
+        Gameplay("Amim", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.MagicImmunity,
+            "常驻魔法免疫由 Ability JSON 绑定为不可驱散被动状态；当前附加伤害系数 DataA=0 由严格字段门槛验证。");
+        Gameplay("Afbk", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.Feedback,
+            "单位与建筑反馈的法力燃烧、伤害系数、英雄折减、召唤物伤害和 Afbt 变体均由 Ability JSON/武器绑定驱动。重新装填与建筑命中已验收。");
+        Gameplay("Afla", AbilityActivationKind.TargetPoint,
+            War3AbilityCompilerKind.Flare,
+            "侦察类型、0.8 秒延迟、范围、持续时间、超远射程、冷却、科技门槛和揭露表现均来自 Ability JSON；Visibility 统一消费检测揭露源。");
+        Gameplay("Afsh", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.FragmentationShards,
+            "全伤/中圈/外圈半径和三段伤害、目标层与 Rhfs 门槛均来自 Ability/武器 JSON，并由互斥伤害环测试覆盖。");
         result.Add("Agyb", new War3AbilityBehaviorDescriptor(
             "Agyb", AbilityActivationKind.Passive, false,
             War3AbilityCompilerKind.None,
             War3AbilityRuntimeSupportStatus.Delegated,
             "飞行机器炸弹由 CombatStore 武器组承载；Rhgb 解锁第二武器的对地/建筑目标层。"));
-        Prototype("Agyv", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.DetectionAura);
+        Gameplay("Agyv", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.DetectionAura,
+            "侦察类型与 900 范围由 Ability JSON 编译为常驻检测感知，战争迷雾按玩家关系和隐形状态统一判定。");
         Gameplay("Adts", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.DetectionAura,
             "建筑侦测范围与科技前置由 Ability JSON 编译进建筑感知 profile，战争迷雾系统按玩家科技等级启用。");
@@ -249,12 +264,14 @@ public static class War3AbilityBehaviorRegistry
         Gameplay("Aroc", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.Barrage,
             "弹幕攻击由 Rhrt 解锁对空武器，并只在空中目标命中后触发 9 目标范围伤害。");
-        Pending("Asth", AbilityActivationKind.Passive,
-            "缺少攻击弹射目标选择、次数和伤害衰减。");
+        Gameplay("Asth", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.None,
+            "Asth 仅声明 Rhhb 科技门槛；弹射目标层、次数、半径和逐跳伤害衰减来自狮鹫骑士武器 JSON，由 CombatStore 的通用 Bounce 传播、科技门槛和热载快照承载。");
         Prototype("Aclf", AbilityActivationKind.TargetPoint,
             War3AbilityCompilerKind.Cloud);
-        Prototype("Amls", AbilityActivationKind.ChannelUnit,
-            War3AbilityCompilerKind.SiphonMana);
+        Gameplay("Amls", AbilityActivationKind.ChannelUnit,
+            War3AbilityCompilerKind.SiphonMana,
+            "对空目标、每秒伤害、普通/英雄引导时长、射程、冷却、消耗和双端表现 Buff 均由 Ability JSON 驱动并由可打断引导承载。");
         result.Add("Asph", new War3AbilityBehaviorDescriptor(
             "Asph", AbilityActivationKind.Passive, false,
             War3AbilityCompilerKind.None,
@@ -264,38 +281,51 @@ public static class War3AbilityBehaviorRegistry
         Gameplay("AHbz", AbilityActivationKind.ChannelPoint,
             War3AbilityCompilerKind.Blizzard,
             "波数、碎片表现数量、关系分组伤害上限、建筑折减和可打断引导已数据化。表现仍由事件层消费。");
-        Prototype("AHwe", AbilityActivationKind.Instant,
-            War3AbilityCompilerKind.SummonWaterElemental);
-        Prototype("AHab", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.BrillianceAura);
+        Gameplay("AHwe", AbilityActivationKind.Instant,
+            War3AbilityCompilerKind.SummonWaterElemental,
+            "每级召唤数量、hwat/hwt2/hwt3 完整单位 profile、60 秒寿命、消耗冷却和 Buff 表现均由 JSON 编译；召唤/驱散/热载已验收。");
+        Gameplay("AHab", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.BrillianceAura,
+            "每级法力恢复、900 范围、友军目标、Buff 与英雄学习数据均由 JSON 编译；当前百分比标志 DataB=0 由严格字段门槛验证。");
         Gameplay("AHmt", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.MassTeleport,
             "友军地面单位/建筑目标、施法延迟、附近单位上限和无重叠群组落点已落地。");
-        Prototype("AHtb", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.StormBolt);
-        Prototype("AHtc", AbilityActivationKind.Instant,
-            War3AbilityCompilerKind.ThunderClap);
-        Prototype("AHbh", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.Bash);
-        Prototype("AHav", AbilityActivationKind.Instant,
-            War3AbilityCompilerKind.Avatar);
-        Prototype("AHhb", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.HolyLight);
-        Prototype("AHds", AbilityActivationKind.Instant,
-            War3AbilityCompilerKind.DivineShield);
-        Prototype("AHad", AbilityActivationKind.Passive,
-            War3AbilityCompilerKind.DevotionAura);
-        Prototype("AHre", AbilityActivationKind.Instant,
-            War3AbilityCompilerKind.Resurrection);
+        Gameplay("AHtb", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.StormBolt,
+            "每级伤害、普通/英雄眩晕、目标、射程、弹道、消耗冷却和 BPSE 表现均由 Ability JSON 驱动。");
+        Gameplay("AHtc", AbilityActivationKind.Instant,
+            War3AbilityCompilerKind.ThunderClap,
+            "每级范围/伤害、移动与攻击速率、普通/英雄持续时间和 Buff 均由 JSON 编译；当前指定目标伤害 DataB=0 严格验证。");
+        Gameplay("AHbh", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.Bash,
+            "每级确定性命中概率、物理附伤、普通/英雄眩晕、目标层和 BPSE 物理 Buff 均由 JSON 驱动；当前倍率/失误字段为 0 并严格验证。");
+        Gameplay("AHav", AbilityActivationKind.Instant,
+            War3AbilityCompilerKind.Avatar,
+            "护甲、生命、攻击、持续时间、消耗冷却、免疫和体型表现均由 JSON/Buff 事件驱动；当前额外魔法减伤 DataD=0 严格验证。");
+        Gameplay("AHhb", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.HolyLight,
+            "每级治疗量、亡灵半伤、友军/敌军/中立关系、非远古目标、射程和消耗冷却均由 JSON 编译。");
+        Gameplay("AHds", AbilityActivationKind.Instant,
+            War3AbilityCompilerKind.DivineShield,
+            "每级持续时间、消耗冷却、无敌状态和 BHds 表现均由 JSON 编译；当前不可主动取消 DataA=0 严格验证。");
+        Gameplay("AHad", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.DevotionAura,
+            "每级护甲、900 范围、友军关系、Buff 和英雄学习数据均由 JSON 编译；当前百分比标志 DataB=0 严格验证。");
+        Gameplay("AHre", AbilityActivationKind.Instant,
+            War3AbilityCompilerKind.Resurrection,
+            "复活数量、900 范围、死亡友军筛选、生命比例、消耗冷却和事件均由 JSON 驱动；当前复活无敌 DataB=0 严格验证。");
         Gameplay("AHfs", AbilityActivationKind.TargetPoint,
             War3AbilityCompilerKind.FlameStrike,
             "全伤与部分伤害阶段、间隔、关系分组伤害上限和建筑折减已数据化。");
-        Prototype("AHbn", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.Banish);
-        Prototype("AHdr", AbilityActivationKind.ChannelUnit,
-            War3AbilityCompilerKind.DrainMana);
-        Prototype("AHpx", AbilityActivationKind.Instant,
-            War3AbilityCompilerKind.SummonPhoenix);
+        Gameplay("AHbn", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Banish,
+            "移动/攻击速率、普通/英雄持续时间、任意关系有机目标、消耗冷却和 BHbn 表现均由 JSON 驱动；放逐单位免疫物理攻击但仍可施法并承受魔法伤害。");
+        Gameplay("AHdr", AbilityActivationKind.ChannelUnit,
+            War3AbilityCompilerKind.DrainMana,
+            "每级转移量、1 秒脉冲、6 秒引导、任意关系流向、100% 超上限法力奖励、每秒 3 点衰减、消耗冷却和九组表现 Buff 均由 JSON 驱动；奖励状态已进入热载/回放哈希。");
+        Gameplay("AHpx", AbilityActivationKind.Instant,
+            War3AbilityCompilerKind.SummonPhoenix,
+            "召唤数量、hphx 完整单位 profile、永久寿命、消耗冷却和表现事件均由 JSON 编译；召唤生命周期与热载快照已覆盖。");
         return result;
     }
 

@@ -29,10 +29,17 @@ internal sealed class War3StressTestMode
     private readonly int _buildingLifetimeTicks;
     private readonly int _combatRefreshTicks;
     private readonly int _respawnTicks;
+    private readonly int _armyInset;
+    private readonly int _qualityReportTicks;
     private readonly List<int> _playerCombatUnits = [];
     private readonly List<int> _enemyCombatUnits = [];
     private readonly List<int> _builders = [];
     private readonly List<StressBuilding> _buildings = [];
+    private readonly Dictionary<int, UnitQualityProbe> _qualityProbes = [];
+    private readonly Dictionary<int, int> _targetClaims = [];
+    private readonly List<int> _pathReadyLatencies = [];
+    private readonly List<int> _preferredVelocityLatencies = [];
+    private readonly List<int> _actualMotionLatencies = [];
     private BuildSlot[] _slots = [];
     private RtsSimulation? _simulation;
     private ProductionCatalogSnapshot? _production;
@@ -57,6 +64,24 @@ internal sealed class War3StressTestMode
     private int _buildingsDestroyed;
     private int _combatUnitsSpawned;
     private int _combatOrdersIssued;
+    private int _combatOrderRefreshes;
+    private long _combatOrderCoalesces;
+    private int _supersededMotionProbes;
+    private long _qualitySamples;
+    private long _pathWaitingUnitTicks;
+    private long _preferredVelocityStallUnitTicks;
+    private long _targetAssignmentSamples;
+    private long _uniqueTargetSamples;
+    private int _movementStopEvents;
+    private int _headingReversalEvents;
+    private int _targetSwitchEvents;
+    private int _peakTargetClaimants;
+    private int _peakPendingPathRequests;
+    private int _currentTargetAssignments;
+    private int _currentUniqueTargets;
+    private int _currentMaximumTargetClaimants;
+    private int _currentOverfocusedTargets;
+    private float _initialArmySeparation;
     private bool _summaryPrinted;
 
     private War3StressTestMode(string[] arguments)
@@ -75,6 +100,10 @@ internal sealed class War3StressTestMode
             arguments, "--war3-stress-combat-refresh=", 180, 15, 1_800);
         _respawnTicks = IntegerArgument(
             arguments, "--war3-stress-respawn=", 60, 15, 1_800);
+        _armyInset = IntegerArgument(
+            arguments, "--war3-stress-army-inset=", 1_050, 400, 2_400);
+        _qualityReportTicks = IntegerArgument(
+            arguments, "--war3-stress-quality-report=", 300, 60, 3_600);
     }
 
     public War3StressUpdateProfile LastUpdateProfile { get; private set; }
@@ -98,11 +127,14 @@ internal sealed class War3StressTestMode
 
         var playerToEnemy = MathF.Sign(runtime.EnemyHome.X - runtime.PlayerHome.X);
         if (playerToEnemy == 0) playerToEnemy = 1;
-        var arena = (runtime.PlayerHome + runtime.EnemyHome) * 0.5f;
-        _playerCombatSpawn = arena + new Vector2(-playerToEnemy * 200f, -80f);
-        _enemyCombatSpawn = arena + new Vector2(playerToEnemy * 200f, 80f);
+        _playerCombatSpawn = runtime.PlayerHome +
+                             new Vector2(playerToEnemy * _armyInset, 0f);
+        _enemyCombatSpawn = runtime.EnemyHome -
+                            new Vector2(playerToEnemy * _armyInset, 0f);
         _playerCombatTarget = _enemyCombatSpawn;
         _enemyCombatTarget = _playerCombatSpawn;
+        _initialArmySeparation = Vector2.Distance(
+            _playerCombatSpawn, _enemyCombatSpawn);
 
         var farm = buildings.Type(War3HumanContent.Farm);
         _stressBuildingProfile = farm with
@@ -123,12 +155,15 @@ internal sealed class War3StressTestMode
         _nextBuildTick = tick + 1;
         _nextCombatRefreshTick = tick + _combatRefreshTicks;
         _nextRespawnTick = tick + _respawnTicks;
-        _nextStatusTick = tick + 300;
+        _nextStatusTick = tick + _qualityReportTicks;
         GD.Print(
             "WAR3_STRESS_READY " +
             $"units_per_team={_unitsPerTeam} " +
             $"spawned={_playerCombatUnits.Count}/{_enemyCombatUnits.Count} " +
             $"builders={_builders.Count} slots={_slots.Length} " +
+            $"army_centers={_playerCombatSpawn.X:0},{_playerCombatSpawn.Y:0}/" +
+            $"{_enemyCombatSpawn.X:0},{_enemyCombatSpawn.Y:0} " +
+            $"army_separation={_initialArmySeparation:0} " +
             $"build_interval_ticks={_buildIntervalTicks} " +
             $"building_lifetime_ticks={_buildingLifetimeTicks} " +
             "construction_cost=free auto_respawn=true auto_destroy=true");
@@ -158,8 +193,26 @@ internal sealed class War3StressTestMode
         if (_simulation.Metrics.Tick >= _nextStatusTick)
         {
             PrintStatus();
-            _nextStatusTick = _simulation.Metrics.Tick + 300;
+            _nextStatusTick =
+                _simulation.Metrics.Tick + _qualityReportTicks;
         }
+    }
+
+    /// <summary>
+    /// Samples the authoritative result after the simulation tick. Keeping this
+    /// out of Update makes command issue, path-ready, preferred-velocity and
+    /// actual-motion latency observable as separate stages.
+    /// </summary>
+    public void ObserveAfterSimulation()
+    {
+        if (_simulation is null) return;
+        ObserveTeamQuality(_playerCombatUnits);
+        ObserveTeamQuality(_enemyCombatUnits);
+        ObserveTargetDistribution();
+        _peakPendingPathRequests = Math.Max(
+            _peakPendingPathRequests,
+            _simulation.PendingPathRequestCountForDiagnostics);
+        _qualitySamples++;
     }
 
     public void PrintSummary()
@@ -174,12 +227,15 @@ internal sealed class War3StressTestMode
             $"combat_alive={AliveCount(_playerCombatUnits)}/" +
             $"{AliveCount(_enemyCombatUnits)} " +
             $"combat_orders={_combatOrdersIssued} " +
+            $"order_refreshes={_combatOrderRefreshes} " +
+            $"attack_move_coalesced={_combatOrderCoalesces} " +
             $"build_attempts={_buildIssueAttempts} " +
             $"build_accepted={_buildIssueAccepted} " +
             $"build_rejected={_buildIssueRejected} " +
             $"foundations={_foundationsStarted} " +
             $"completed={_buildingsCompleted} destroyed={_buildingsDestroyed} " +
-            $"active_buildings={_buildings.Count(value => !value.Released)}");
+            $"active_buildings={_buildings.Count(value => !value.Released)} " +
+            QualitySummary());
     }
 
     private void ProcessBuildingLifecycle()
@@ -253,7 +309,7 @@ internal sealed class War3StressTestMode
             return;
         _nextCombatRefreshTick =
             _simulation.Metrics.Tick + _combatRefreshTicks;
-        IssueCombatOrders();
+        IssueCombatOrders(refresh: true);
     }
 
     private void IssueNextConstruction()
@@ -327,6 +383,13 @@ internal sealed class War3StressTestMode
         while (AliveCount(units) < _unitsPerTeam &&
                TrySpawnCombatUnit(team, units, ref ordinal))
         {
+            var unit = units[^1];
+            IssueTeamCombatOrder(
+                [unit],
+                team == War3HumanScenario.PlayerId
+                    ? _playerCombatTarget
+                    : _enemyCombatTarget,
+                refresh: false);
         }
     }
 
@@ -358,21 +421,34 @@ internal sealed class War3StressTestMode
         return true;
     }
 
-    private void IssueCombatOrders()
+    private void IssueCombatOrders(bool refresh = false)
     {
         if (_simulation is null) return;
         var player = LivingUnits(_playerCombatUnits);
         var enemy = LivingUnits(_enemyCombatUnits);
-        if (player.Length > 0)
-        {
-            _simulation.IssueAttackMove(player, _playerCombatTarget);
-            _combatOrdersIssued += player.Length;
-        }
-        if (enemy.Length > 0)
-        {
-            _simulation.IssueAttackMove(enemy, _enemyCombatTarget);
-            _combatOrdersIssued += enemy.Length;
-        }
+        IssueTeamCombatOrder(player, _playerCombatTarget, refresh);
+        IssueTeamCombatOrder(enemy, _enemyCombatTarget, refresh);
+    }
+
+    private void IssueTeamCombatOrder(
+        ReadOnlySpan<int> units,
+        Vector2 target,
+        bool refresh)
+    {
+        if (_simulation is null || units.IsEmpty) return;
+        var coalescedBefore =
+            _simulation.Metrics.RepeatedAttackMoveUnitsCoalesced;
+        _simulation.IssueAttackMove(units, target);
+        var coalesced =
+            _simulation.Metrics.RepeatedAttackMoveUnitsCoalesced -
+            coalescedBefore;
+        _combatOrdersIssued += units.Length;
+        if (refresh) _combatOrderRefreshes += units.Length;
+        _combatOrderCoalesces += coalesced;
+        if (coalesced == units.Length)
+            return;
+        for (var index = 0; index < units.Length; index++)
+            BeginMotionProbe(units[index]);
     }
 
     private void CreateBuildSlots(
@@ -463,6 +539,268 @@ internal sealed class War3StressTestMode
             $"active_buildings={_buildings.Count(value => !value.Released)} " +
             $"foundations={_foundationsStarted} completed={_buildingsCompleted} " +
             $"destroyed={_buildingsDestroyed} rejected={_buildIssueRejected}");
+        PrintQualityStatus();
+    }
+
+    private void BeginMotionProbe(int unit)
+    {
+        if (_simulation is null) return;
+        if (!_qualityProbes.TryGetValue(unit, out var probe))
+        {
+            probe = new UnitQualityProbe();
+            _qualityProbes.Add(unit, probe);
+        }
+        probe.CommandTick = _simulation.Metrics.Tick;
+        probe.CommandVersion = _simulation.Units.CommandVersions[unit];
+        probe.CommandPosition = _simulation.Units.Positions[unit];
+        probe.PathReadyRecorded = false;
+        probe.PreferredVelocityRecorded = false;
+        probe.ActualMotionRecorded = false;
+        probe.AwaitingCommandMotion = true;
+    }
+
+    private void ObserveTeamQuality(List<int> units)
+    {
+        if (_simulation is null) return;
+        var tick = _simulation.Metrics.Tick;
+        for (var index = 0; index < units.Count; index++)
+        {
+            var unit = units[index];
+            if ((uint)unit >= (uint)_simulation.Units.Count ||
+                !_simulation.Units.Alive[unit])
+                continue;
+            if (!_qualityProbes.TryGetValue(unit, out var probe))
+            {
+                probe = new UnitQualityProbe();
+                _qualityProbes.Add(unit, probe);
+            }
+
+            if (probe.AwaitingCommandMotion)
+            {
+                if (_simulation.Units.CommandVersions[unit] !=
+                    probe.CommandVersion)
+                {
+                    probe.AwaitingCommandMotion = false;
+                    _supersededMotionProbes++;
+                }
+                else
+                {
+                    var latency = checked((int)Math.Max(
+                        0L, tick - probe.CommandTick));
+                    var path = _simulation.Units.Paths[unit];
+                    if (!probe.PathReadyRecorded &&
+                        path is not null &&
+                        path.CommandVersion == probe.CommandVersion &&
+                        !_simulation.Units.PathPending[unit])
+                    {
+                        probe.PathReadyRecorded = true;
+                        _pathReadyLatencies.Add(latency);
+                    }
+                    if (!probe.PreferredVelocityRecorded &&
+                        _simulation.Units.PreferredVelocities[unit]
+                            .LengthSquared() > 4f)
+                    {
+                        probe.PreferredVelocityRecorded = true;
+                        _preferredVelocityLatencies.Add(latency);
+                    }
+                    if (!probe.ActualMotionRecorded &&
+                        (Vector2.DistanceSquared(
+                             probe.CommandPosition,
+                             _simulation.Units.Positions[unit]) > 1f ||
+                         _simulation.Units.Velocities[unit].LengthSquared() >
+                         4f))
+                    {
+                        probe.ActualMotionRecorded = true;
+                        _actualMotionLatencies.Add(latency);
+                    }
+                    if (probe.PathReadyRecorded &&
+                        probe.PreferredVelocityRecorded &&
+                        probe.ActualMotionRecorded)
+                        probe.AwaitingCommandMotion = false;
+                }
+            }
+
+            var movementActive =
+                _simulation.Units.MovementLegResults[unit] ==
+                UnitMovementLegResult.InProgress &&
+                _simulation.Units.Modes[unit] is
+                    UnitMoveMode.Moving or UnitMoveMode.WaitingForPath;
+            if (movementActive &&
+                _simulation.Units.Modes[unit] == UnitMoveMode.WaitingForPath)
+                _pathWaitingUnitTicks++;
+
+            var marching = movementActive &&
+                           _simulation.Combat.CommandIntents[unit] ==
+                           UnitCommandIntent.AttackMove &&
+                           _simulation.Combat.TargetKinds[unit] ==
+                           CombatTargetKind.None &&
+                           Vector2.DistanceSquared(
+                               _simulation.Units.Positions[unit],
+                               _simulation.Units.SlotTargets[unit]) >
+                           64f * 64f;
+            var velocity = _simulation.Units.Velocities[unit];
+            var moving = velocity.LengthSquared() > 4f;
+            if (marching &&
+                _simulation.Units.Modes[unit] == UnitMoveMode.Moving &&
+                _simulation.Units.PreferredVelocities[unit]
+                    .LengthSquared() <= 4f)
+                _preferredVelocityStallUnitTicks++;
+            if (probe.StateInitialized && marching &&
+                probe.WasMarchMoving && !moving)
+                _movementStopEvents++;
+            if (probe.StateInitialized && marching &&
+                probe.WasMarchMoving && moving &&
+                Vector2.Dot(probe.LastVelocity, velocity) <
+                -0.25f * MathF.Sqrt(
+                    probe.LastVelocity.LengthSquared() *
+                    velocity.LengthSquared()))
+                _headingReversalEvents++;
+
+            var target = _simulation.Combat.TargetKinds[unit] ==
+                         CombatTargetKind.Unit
+                ? _simulation.Combat.TargetUnits[unit]
+                : -1;
+            if (probe.StateInitialized && probe.LastTarget >= 0 &&
+                target >= 0 && target != probe.LastTarget)
+                _targetSwitchEvents++;
+            probe.LastTarget = target;
+            probe.LastVelocity = velocity;
+            probe.WasMarchMoving = marching && moving;
+            probe.StateInitialized = true;
+        }
+    }
+
+    private void ObserveTargetDistribution()
+    {
+        if (_simulation is null) return;
+        _targetClaims.Clear();
+        CountTargetClaims(_playerCombatUnits);
+        CountTargetClaims(_enemyCombatUnits);
+        _currentTargetAssignments = 0;
+        _currentMaximumTargetClaimants = 0;
+        _currentOverfocusedTargets = 0;
+        foreach (var claims in _targetClaims.Values)
+        {
+            _currentTargetAssignments += claims;
+            _currentMaximumTargetClaimants = Math.Max(
+                _currentMaximumTargetClaimants, claims);
+            if (claims > 4) _currentOverfocusedTargets++;
+        }
+        _currentUniqueTargets = _targetClaims.Count;
+        _peakTargetClaimants = Math.Max(
+            _peakTargetClaimants, _currentMaximumTargetClaimants);
+        _targetAssignmentSamples += _currentTargetAssignments;
+        _uniqueTargetSamples += _currentUniqueTargets;
+    }
+
+    private void CountTargetClaims(List<int> units)
+    {
+        if (_simulation is null) return;
+        for (var index = 0; index < units.Count; index++)
+        {
+            var unit = units[index];
+            if ((uint)unit >= (uint)_simulation.Units.Count ||
+                !_simulation.Units.Alive[unit] ||
+                _simulation.Combat.TargetKinds[unit] != CombatTargetKind.Unit)
+                continue;
+            var target = _simulation.Combat.TargetUnits[unit];
+            if (target < 0) continue;
+            _targetClaims[target] =
+                _targetClaims.GetValueOrDefault(target) + 1;
+        }
+    }
+
+    private void PrintQualityStatus()
+    {
+        if (_simulation is null) return;
+        GD.Print(
+            "WAR3_STRESS_QUALITY " +
+            $"tick={_simulation.Metrics.Tick} " +
+            $"path_ready={LatencySummary(_pathReadyLatencies)} " +
+            $"preferred={LatencySummary(_preferredVelocityLatencies)} " +
+            $"motion={LatencySummary(_actualMotionLatencies)} " +
+            $"pending_probes={PendingMotionProbeCount()} " +
+            $"superseded={_supersededMotionProbes} " +
+            $"path_wait_unit_ticks={_pathWaitingUnitTicks} " +
+            $"preferred_stall_unit_ticks={_preferredVelocityStallUnitTicks} " +
+            $"stops={_movementStopEvents} reversals={_headingReversalEvents} " +
+            $"targets={_currentTargetAssignments}/" +
+            $"{_currentUniqueTargets}/max{_currentMaximumTargetClaimants}/" +
+            $"over4={_currentOverfocusedTargets} " +
+            $"target_switches={_targetSwitchEvents} " +
+            $"separation={CurrentArmySeparation():0}/" +
+            $"{_initialArmySeparation:0} " +
+            $"path_queue={_simulation.PendingPathRequestCountForDiagnostics}/" +
+            $"peak{_peakPendingPathRequests}");
+    }
+
+    private string QualitySummary()
+    {
+        var averageAssignments = _qualitySamples == 0
+            ? 0d
+            : (double)_targetAssignmentSamples / _qualitySamples;
+        var averageUniqueTargets = _qualitySamples == 0
+            ? 0d
+            : (double)_uniqueTargetSamples / _qualitySamples;
+        return
+            $"quality_path={LatencySummary(_pathReadyLatencies)} " +
+            $"quality_preferred={LatencySummary(_preferredVelocityLatencies)} " +
+            $"quality_motion={LatencySummary(_actualMotionLatencies)} " +
+            $"quality_pending={PendingMotionProbeCount()} " +
+            $"quality_wait_ticks={_pathWaitingUnitTicks} " +
+            $"quality_stall_ticks={_preferredVelocityStallUnitTicks} " +
+            $"quality_stops={_movementStopEvents} " +
+            $"quality_reversals={_headingReversalEvents} " +
+            $"quality_target_avg={averageAssignments:0.0}/" +
+            $"{averageUniqueTargets:0.0} " +
+            $"quality_target_peak={_peakTargetClaimants} " +
+            $"quality_target_switches={_targetSwitchEvents} " +
+            $"quality_path_queue_peak={_peakPendingPathRequests}";
+    }
+
+    private int PendingMotionProbeCount() =>
+        _qualityProbes.Values.Count(value => value.AwaitingCommandMotion);
+
+    private float CurrentArmySeparation()
+    {
+        if (!TryTeamCentroid(_playerCombatUnits, out var player) ||
+            !TryTeamCentroid(_enemyCombatUnits, out var enemy))
+            return 0f;
+        return Vector2.Distance(player, enemy);
+    }
+
+    private bool TryTeamCentroid(List<int> units, out Vector2 centroid)
+    {
+        centroid = Vector2.Zero;
+        if (_simulation is null) return false;
+        var count = 0;
+        for (var index = 0; index < units.Count; index++)
+        {
+            var unit = units[index];
+            if ((uint)unit >= (uint)_simulation.Units.Count ||
+                !_simulation.Units.Alive[unit])
+                continue;
+            centroid += _simulation.Units.Positions[unit];
+            count++;
+        }
+        if (count == 0) return false;
+        centroid /= count;
+        return true;
+    }
+
+    private static string LatencySummary(List<int> values)
+    {
+        if (values.Count == 0) return "0/p50-1/p95-1/max-1";
+        var sorted = values.ToArray();
+        Array.Sort(sorted);
+        return $"{sorted.Length}/p50{Percentile(sorted, 0.50f)}/" +
+               $"p95{Percentile(sorted, 0.95f)}/max{sorted[^1]}";
+    }
+
+    private static int Percentile(int[] sorted, float percentile)
+    {
+        var index = (int)MathF.Ceiling(sorted.Length * percentile) - 1;
+        return sorted[Math.Clamp(index, 0, sorted.Length - 1)];
     }
 
     private int AliveCount(List<int> units)
@@ -534,5 +872,20 @@ internal sealed class War3StressTestMode
         public bool FoundationObserved { get; set; }
         public bool CompletionObserved { get; set; }
         public bool Released { get; set; }
+    }
+
+    private sealed class UnitQualityProbe
+    {
+        public long CommandTick { get; set; }
+        public int CommandVersion { get; set; }
+        public Vector2 CommandPosition { get; set; }
+        public bool AwaitingCommandMotion { get; set; }
+        public bool PathReadyRecorded { get; set; }
+        public bool PreferredVelocityRecorded { get; set; }
+        public bool ActualMotionRecorded { get; set; }
+        public bool StateInitialized { get; set; }
+        public bool WasMarchMoving { get; set; }
+        public Vector2 LastVelocity { get; set; }
+        public int LastTarget { get; set; } = -1;
     }
 }

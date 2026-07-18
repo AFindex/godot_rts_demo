@@ -154,6 +154,7 @@ public static class AbilitySystemSelfTest
                                  projectileImpacted &&
                                  simulation.Abilities.ActiveProjectileCount == 0 &&
                                  simulation.Combat.Health[enemy] == 70f;
+        simulation.Abilities.RestoreMana(caster, 100f);
         var enemyManaBefore = simulation.Abilities.Observe(enemy).Mana;
         var enemyManaTransfer = simulation.IssueAbility(
             1, caster, 19,
@@ -163,7 +164,8 @@ public static class AbilitySystemSelfTest
             simulation.Abilities.Observe(caster).Mana;
         var enemyManaTransferWorked = enemyManaTransfer.Succeeded &&
             enemyManaBefore == 100f && enemyManaAfter == 70f &&
-            casterManaAfterEnemyTransfer == 100f;
+            casterManaAfterEnemyTransfer == 130f &&
+            simulation.Abilities.Observe(caster).MaximumMana == 130f;
         var feedbackUnit = simulation.IssueAbility(
             1, caster, 20,
             AbilityCastTarget.Unit(
@@ -263,6 +265,29 @@ public static class AbilitySystemSelfTest
             buffState.Count(value => value.BuffId == "BTST") == 1 &&
             buffState.Single(value => value.BuffId == "BTST").SourceUnit ==
             secondEnemy;
+        var harmfulSteal = simulation.IssueAbility(
+            1, caster, 29,
+            AbilityCastTarget.Unit(
+                buffTarget, simulation.Units.Positions[buffTarget]));
+        var harmfulReceiver = new[] { enemy, secondEnemy }
+            .SingleOrDefault(unit => simulation.Abilities.ObserveBuffs(unit)
+                .Any(value => value.BuffId == "BTST"), -1);
+        var enemyShield = simulation.IssueAbility(
+            2, enemy, 1,
+            AbilityCastTarget.Unit(enemy, simulation.Units.Positions[enemy]));
+        var beneficialSteal = simulation.IssueAbility(
+            1, caster, 29,
+            AbilityCastTarget.Unit(enemy, simulation.Units.Positions[enemy]));
+        var harmfulGone = simulation.Abilities.ObserveBuffs(buffTarget)
+            .All(value => value.BuffId != "BTST");
+        var beneficialGone = simulation.Abilities.ObserveBuffs(enemy)
+            .All(value => value.BuffId != "T002");
+        var beneficialReceived = simulation.Abilities.ObserveBuffs(caster)
+            .Any(value => value.BuffId == "T002" && value.Beneficial);
+        var spellStealWorked = harmfulSteal.Succeeded &&
+            harmfulReceiver >= 0 && harmfulGone &&
+            enemyShield.Succeeded && beneficialSteal.Succeeded &&
+            beneficialGone && beneficialReceived;
         var dispel = simulation.IssueAbility(
             1, caster, 8,
             AbilityCastTarget.Unit(
@@ -323,13 +348,17 @@ public static class AbilitySystemSelfTest
             1, caster, 19,
             AbilityCastTarget.Unit(
                 alliedHero, simulation.Units.Positions[alliedHero]));
+        var allyManaAfterFriendlyTransfer =
+            simulation.Abilities.Observe(alliedHero).Mana;
+        var casterManaAfterFriendlyTransfer =
+            simulation.Abilities.Observe(caster).Mana;
         var manaTransferWorked = enemyManaTransferWorked &&
             alliedSpend.Succeeded && friendlyManaTransfer.Succeeded &&
-            simulation.Abilities.Observe(alliedHero).Mana ==
-            MathF.Min(100f, allyManaBeforeTransfer + 30f) &&
-            simulation.Abilities.Observe(caster).Mana ==
-            casterManaBeforeFriendlyTransfer -
-            MathF.Min(30f, 100f - allyManaBeforeTransfer);
+            MathF.Abs(allyManaAfterFriendlyTransfer -
+                MathF.Min(200f, allyManaBeforeTransfer + 30f)) < 0.001f &&
+            MathF.Abs(casterManaAfterFriendlyTransfer -
+                (casterManaBeforeFriendlyTransfer -
+                 MathF.Min(30f, 200f - allyManaBeforeTransfer))) < 0.001f;
         var victimType = new UnitTypeProfile(
             5, "experience-victim", movement with { Id = 5 },
             combat with { MaximumHealth = 1f }, false);
@@ -473,11 +502,12 @@ public static class AbilitySystemSelfTest
                                   value.Kind == AbilityEventKind.Impact &&
                                   value.AbilityId == "T001");
 
-        var passed = catalog.Count == 29 && autoHealWorked && previewWorked &&
+        var passed = catalog.Count == 30 && autoHealWorked && previewWorked &&
                      directDamageWorked && shieldApplied && blocked && expired &&
                      lifecycleWorked && snapshotWorked && requirementGateWorked &&
                      heroLearningWorked && damageClassificationWorked &&
-                     buffIdentityWorked && dispelWorked && unitTraitsWorked &&
+                     buffIdentityWorked && spellStealWorked && dispelWorked &&
+                     unitTraitsWorked &&
                      heroExperienceWorked && auraStackingWorked;
         passed &= summonDispelWorked && permanentSummonWorked;
         passed &= manaTransferWorked;
@@ -502,12 +532,24 @@ public static class AbilitySystemSelfTest
             $"damage_kind_detail={immunity.Code}/{blockedMagic.Code}/" +
             $"{physical.Code}/{classifiedHealth}, " +
             $"buff_identity={buffIdentityWorked}, dispel={dispelWorked}, " +
+            $"spell_steal={spellStealWorked}/{harmfulReceiver}/" +
+            $"{harmfulSteal.Code}/{enemyShield.Code}/" +
+            $"{beneficialSteal.Code}/g={harmfulGone}/" +
+            $"{beneficialGone}/{beneficialReceived}/" +
+            $"enemy={string.Join('|', simulation.Abilities.ObserveBuffs(enemy).Select(value => value.BuffId))}/" +
+            $"caster={string.Join('|', simulation.Abilities.ObserveBuffs(caster).Select(value => value.BuffId))}, " +
             $"unit_traits={unitTraitsWorked}, " +
             $"hero_xp={heroExperienceWorked}, " +
             $"aura_stack={auraStackingWorked}, " +
             $"summon_dispel={summonDispelWorked}, " +
             $"permanent_summon={permanentSummonWorked}, " +
-            $"mana_transfer={manaTransferWorked}, " +
+            $"mana_transfer={manaTransferWorked}/" +
+            $"{enemyManaBefore}->{enemyManaAfter}/" +
+            $"caster={casterManaAfterEnemyTransfer}/" +
+            $"{simulation.Abilities.Observe(caster).Mana:0.###}/" +
+            $"friend={allyManaBeforeTransfer}->" +
+            $"{simulation.Abilities.Observe(alliedHero).Mana:0.###}/" +
+            $"source={casterManaBeforeFriendlyTransfer:0.###}, " +
             $"feedback={feedbackWorked}, " +
             $"holy_light={holyLightWorked}, " +
             $"damage_bands={damageBandsWorked}, " +
@@ -952,7 +994,8 @@ public static class AbilitySystemSelfTest
                 AbilityEffectSelector.Primary,
                 AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
                 Duration: 0.5f,
-                Status: AbilityStatusFlags.Invulnerable)));
+                Status: AbilityStatusFlags.Invulnerable,
+                BuffDispelKind: AbilityBuffDispelKind.Magic)));
         var heal = new AbilityProfile(
             2, "T003", "Test Heal", string.Empty, string.Empty, "H",
             AbilityActivationKind.TargetUnit,
@@ -1133,7 +1176,7 @@ public static class AbilitySystemSelfTest
             Level(0f, 0f, new AbilityEffectProfile(
                 AbilityEffectKind.TransferMana, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
-                Value: 30f)));
+                Value: 30f, SecondaryValue: 1f, HeroValue: 3f)));
         var feedback = new AbilityProfile(
             20, "T021", "Test Feedback", string.Empty, string.Empty,
             string.Empty, AbilityActivationKind.TargetUnit,
@@ -1316,6 +1359,20 @@ public static class AbilitySystemSelfTest
                     UnitForm: new AbilityUnitFormProfile(
                         normalForm, alternateForm, 1f,
                         BuildingFunctionKind.TownHall))])]);
+        var spellSteal = new AbilityProfile(
+            29, "T030", "Test Spell Steal", string.Empty,
+            string.Empty, string.Empty, AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Self |
+            AbilityTargetFlags.Friendly | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Neutral | AbilityTargetFlags.Alive |
+            AbilityTargetFlags.Ground | AbilityTargetFlags.Vulnerable |
+            AbilityTargetFlags.Invulnerable,
+            false, false,
+            Level(0f, 0f, new AbilityEffectProfile(
+                AbilityEffectKind.TransferBuff, AbilityEffectTiming.Impact,
+                AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
+                Radius: 500f,
+                BuffDispelKind: AbilityBuffDispelKind.Magic)));
         var binding = new UnitAbilityBindingProfile(
             0, true, new UnitManaProfile(100f, 100f, 0f),
             [
@@ -1345,7 +1402,8 @@ public static class AbilitySystemSelfTest
                 new UnitAbilityEntryProfile(23, 1),
                 new UnitAbilityEntryProfile(24, 1),
                 new UnitAbilityEntryProfile(25, 1),
-                new UnitAbilityEntryProfile(28, 1)
+                new UnitAbilityEntryProfile(28, 1),
+                new UnitAbilityEntryProfile(29, 1)
             ]);
         var airAttackHit = new AbilityProfile(
             28, "T029", "Test Air Attack Hit", string.Empty,
@@ -1371,7 +1429,7 @@ public static class AbilitySystemSelfTest
                 experienceKill, aura, summon, summonDispel, manaTransfer,
                 feedback, holyLight, damageBands, persistentDamage,
                 countedWaves, clusteredTeleport, unitForm,
-                buildingUnitForm, airAttackHit
+                buildingUnitForm, airAttackHit, spellSteal
             ],
             [
                 binding,

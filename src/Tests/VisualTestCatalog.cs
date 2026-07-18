@@ -47,6 +47,7 @@ public static partial class VisualTestCatalog
         "combat-building-defense",
         "attack-move-leash-resume",
         "attack-move-command-isolation",
+        "attack-move-repeat-continuity",
         "attack-move-cancel",
         "combat-ranged-ring",
         "combat-stop-hold-acquire",
@@ -205,6 +206,8 @@ public static partial class VisualTestCatalog
             buildingTypes, technologyCatalog),
         "attack-move-leash-resume" => CreateAttackMoveLeashResume(),
         "attack-move-command-isolation" => CreateAttackMoveCommandIsolation(),
+        "attack-move-repeat-continuity" =>
+            CreateAttackMoveRepeatContinuity(),
         "attack-move-cancel" => CreateAttackMoveCancel(),
         "combat-ranged-ring" => CreateCombatRangedRing(),
         "combat-stop-hold-acquire" => CreateCombatStopHoldAcquire(),
@@ -2170,6 +2173,71 @@ public static partial class VisualTestCatalog
                     $"move_x={moverSnapshot.Position.X:F1}, " +
                     $"attack_x={attackSnapshot.Position.X:F1}");
             });
+    }
+
+    private static VisualTestSession CreateAttackMoveRepeatContinuity()
+    {
+        var rig = MovementTestRig.CreateObstacleField(
+            new Vector2(1200f, 700f),
+            64,
+            new SimRect(
+                new Vector2(520f, 0f),
+                new Vector2(620f, 520f)));
+        var units = Enumerable.Range(0, 48)
+            .Select(index => rig.SpawnCombat(
+                new Vector2(
+                    80f + index % 8 * 20f,
+                    150f + index / 8 * 20f),
+                team: 1))
+            .ToArray();
+        var target = new Vector2(1080f, 300f);
+        var engagingUnit = rig.SpawnCombat(
+            new Vector2(90f, 620f), team: 1);
+        var defender = rig.SpawnCombat(
+            new Vector2(350f, 620f), team: 2);
+        var engagementTarget = new Vector2(1080f, 620f);
+        const int repeatTicks = 240;
+        rig.AttackMove(units, target);
+        rig.AttackMove([engagingUnit], engagementTarget);
+
+        var session = new VisualTestSession(
+            "attack-move-repeat-continuity",
+            "Identical AttackMove refreshes preserve active paths and motion",
+            900,
+            rig,
+            units.Append(engagingUnit).Append(defender).ToArray(),
+            runtime =>
+            {
+                var snapshots = runtime.Observe(units);
+                var progressed = snapshots.Count(value =>
+                    value.Position.X >= 900f);
+                var coalesced = runtime.ObserveMovementDiagnostics()
+                    .RepeatedAttackMoveUnitsCoalesced;
+                var expectedCoalesced =
+                    (long)(units.Length + 1) * repeatTicks;
+                var passed = progressed >= 44 &&
+                             !runtime.ObserveCombat(defender).Alive &&
+                             runtime.Observe(engagingUnit).Position.X >= 1000f &&
+                             coalesced == expectedCoalesced;
+                return new ScenarioResult(
+                    passed,
+                    $"progressed={progressed}/{units.Length}, " +
+                    $"engagement={runtime.ObserveCombat(defender).Alive}/" +
+                    $"{runtime.Observe(engagingUnit).Position.X:0.0}, " +
+                    $"coalesced={coalesced}/{expectedCoalesced}");
+            });
+        for (var tick = 1; tick <= repeatTicks; tick++)
+        {
+            session.At(
+                tick,
+                "Refresh identical AttackMove without replacing movement",
+                runtime =>
+                {
+                    runtime.AttackMove(units, target);
+                    runtime.AttackMove([engagingUnit], engagementTarget);
+                });
+        }
+        return session;
     }
 
     private static VisualTestSession CreateAttackMoveCancel()

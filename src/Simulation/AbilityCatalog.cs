@@ -178,6 +178,37 @@ public readonly record struct AbilityStatModifier(
         HealthRegenerationAdd >= 0f;
 }
 
+public readonly record struct AbilityCombatModifier(
+    float DamageTakenMultiplier = 1f,
+    float DamageDealtMultiplier = 1f,
+    float MagicDamageTakenMultiplier = 1f,
+    float DeflectChancePercent = 0f,
+    float DeflectedPiercingDamageMultiplier = 1f,
+    float DeflectedMagicDamageMultiplier = 1f,
+    float AttackMissChancePercent = 0f)
+{
+    public static AbilityCombatModifier Identity =>
+        new(1f, 1f, 1f, 0f, 1f, 1f, 0f);
+    public AbilityCombatModifier Normalized =>
+        this == default ? Identity : this;
+    public bool IsIdentity => Normalized == Identity;
+    public bool IsValid => this == default ||
+        float.IsFinite(DamageTakenMultiplier) &&
+        DamageTakenMultiplier is >= 0f and <= 10f &&
+        float.IsFinite(DamageDealtMultiplier) &&
+        DamageDealtMultiplier is >= 0f and <= 10f &&
+        float.IsFinite(MagicDamageTakenMultiplier) &&
+        MagicDamageTakenMultiplier is >= 0f and <= 10f &&
+        float.IsFinite(DeflectChancePercent) &&
+        DeflectChancePercent is >= 0f and <= 100f &&
+        float.IsFinite(DeflectedPiercingDamageMultiplier) &&
+        DeflectedPiercingDamageMultiplier is >= 0f and <= 10f &&
+        float.IsFinite(DeflectedMagicDamageMultiplier) &&
+        DeflectedMagicDamageMultiplier is >= 0f and <= 10f &&
+        float.IsFinite(AttackMissChancePercent) &&
+        AttackMissChancePercent is >= 0f and <= 100f;
+}
+
 public readonly record struct AbilitySummonProfile(
     string ObjectId,
     UnitMovementProfileSnapshot Movement,
@@ -290,7 +321,9 @@ public readonly record struct AbilityEffectProfile(
     int VisualCount = 0,
     bool ClusteredPlacement = false,
     AbilityUnitFormProfile UnitForm = default,
-    float SummonedValue = 0f)
+    float SummonedValue = 0f,
+    AbilityCombatModifier CombatModifier = default,
+    bool AffectsBuildings = false)
 {
     public bool IsValid =>
         Enum.IsDefined(Kind) && Enum.IsDefined(Timing) &&
@@ -331,6 +364,7 @@ public readonly record struct AbilityEffectProfile(
         BuildingValueMultiplier is >= 0f and <= 10f &&
         VisualCount is >= 0 and <= 100_000 &&
         float.IsFinite(SummonedValue) && SummonedValue >= 0f &&
+        CombatModifier.IsValid &&
         (Timing != AbilityEffectTiming.PersistentPulse ||
          Kind == AbilityEffectKind.Damage && Duration > 0f &&
          Interval > 0f && PulseCount > 0) &&
@@ -535,7 +569,7 @@ public readonly record struct BuildingAbilityBindingProfile(
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 20;
+    public const int CurrentFormatVersion = 21;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
     private readonly Dictionary<int, BuildingAbilityBindingProfile>
@@ -812,6 +846,8 @@ internal static partial class AbilitySerialization
         writer.Write(hasUnitForm);
         if (hasUnitForm) WriteUnitForm(writer, value.UnitForm);
         writer.Write(value.SummonedValue);
+        WriteCombatModifier(writer, value.CombatModifier);
+        writer.Write(value.AffectsBuildings);
     }
 
     private static AbilityEffectProfile ReadEffect(BinaryReader reader)
@@ -847,6 +883,8 @@ internal static partial class AbilitySerialization
         var clusteredPlacement = reader.ReadBoolean();
         var unitForm = reader.ReadBoolean() ? ReadUnitForm(reader) : default;
         var summonedValue = reader.ReadSingle();
+        var combatModifier = ReadCombatModifier(reader);
+        var affectsBuildings = reader.ReadBoolean();
         return new AbilityEffectProfile(
             kind, timing, selector, relations, value, secondary, radius,
             duration, interval, maximumTargets, status, modifier, summon,
@@ -854,7 +892,8 @@ internal static partial class AbilitySerialization
             heroValue, heroSecondaryValue, requiredUnitTraits,
             excludedUnitTraits, innerRadius, pulseCount, startDelay,
             maximumTotalValue, buildingValueMultiplier, visualCount,
-            clusteredPlacement, unitForm, summonedValue);
+            clusteredPlacement, unitForm, summonedValue, combatModifier,
+            affectsBuildings);
     }
 
     private static void WriteUnitForm(
@@ -1134,6 +1173,26 @@ internal static partial class AbilitySerialization
             unitType, hero, mana, abilities.ToImmutableArray(), traits,
             unitLevel, experienceBounty, heroMaximumLevel);
     }
+
+    private static void WriteCombatModifier(
+        BinaryWriter writer,
+        AbilityCombatModifier value)
+    {
+        value = value.Normalized;
+        writer.Write(value.DamageTakenMultiplier);
+        writer.Write(value.DamageDealtMultiplier);
+        writer.Write(value.MagicDamageTakenMultiplier);
+        writer.Write(value.DeflectChancePercent);
+        writer.Write(value.DeflectedPiercingDamageMultiplier);
+        writer.Write(value.DeflectedMagicDamageMultiplier);
+        writer.Write(value.AttackMissChancePercent);
+    }
+
+    private static AbilityCombatModifier ReadCombatModifier(
+        BinaryReader reader) => new(
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+        reader.ReadSingle());
 
     private static void WriteBuildingBinding(
         BinaryWriter writer,

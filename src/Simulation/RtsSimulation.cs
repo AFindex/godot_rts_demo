@@ -164,6 +164,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _combatSystem = new CombatSystem(
             Units, Combat, this, world, CombatEvents, CanCombatPerceiveUnit,
             Diplomacy.IsEnemy, CanUnitAttack, CanUnitTakeDamage,
+            Abilities.CombatModifier,
             CombatTargetLayerForUnit, _spatialHash);
         _economyMoveWorker = MoveEconomyWorker;
         _economyStopWorker = StopEconomyWorker;
@@ -3104,8 +3105,28 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Units.RecoveryEventCounts[unit] = 0;
             Units.RecoveryStableTimers[unit] = 0f;
             Units.RecoveryRetryCounts[unit] = 0;
+            if (goalKind == UnitMovementGoalKind.GroundPoint &&
+                unitIndices.Length > PathBudgetPerTick &&
+                TryStartDirectGroupPath(unit, assignedTarget))
+                continue;
             EnqueuePathRequest(unit);
         }
+    }
+
+    private bool TryStartDirectGroupPath(int unit, Vector2 target)
+    {
+        var start = Units.Positions[unit];
+        var navigationRadius = Units.NavigationRadii[unit];
+        if (!World.IsDiscFree(start, navigationRadius) ||
+            !World.IsDiscFree(target, navigationRadius) ||
+            !World.IsSegmentFree(start, target, navigationRadius))
+            return false;
+
+        Units.Paths[unit] = new UnitPath(
+            [start, target], Units.CommandVersions[unit]);
+        Units.PathPending[unit] = false;
+        Units.Modes[unit] = UnitMoveMode.Moving;
+        return true;
     }
 
     private void ExecuteBuildingBoundaryMove(
@@ -3369,6 +3390,34 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         {
             ValidateUnitIndex(unitIndices[index]);
             ValidateLivingUnit(unitIndices[index]);
+        }
+
+        // A repeated non-queued AttackMove to the exact same command point is
+        // an input refresh, not a replacement movement leg.  Replacing it used
+        // to cancel combat/abilities, discard formation slots and paths, bump
+        // command versions and put the whole selection back into the path
+        // budget.  Large selections could therefore be kept permanently in
+        // WaitingForPath by an otherwise harmless command repeat.
+        //
+        // Only coalesce when every selected unit still owns a valid execution
+        // of that command. A failed or prematurely settled member makes the
+        // group command a real retry; queued orders and different destinations
+        // retain normal replacement semantics.
+        if (!_issuingSystemOrder &&
+            !queued &&
+            order.Kind == UnitOrderKind.AttackMove &&
+            CanCoalesceRepeatedAttackMove(unitIndices, order.TargetPosition))
+        {
+            _commandRecorder?.Record(
+                Metrics.Tick, unitIndices, order, queued: false);
+            for (var index = 0; index < unitIndices.Length; index++)
+                CommandQueues.ClearPending(unitIndices[index]);
+            Metrics.RepeatedAttackMoveUnitsCoalesced += unitIndices.Length;
+            return;
+        }
+
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
             if (!_issuingSystemOrder)
                 Abilities.CancelCaster(
                     unitIndices[index], Metrics.Tick,
@@ -3422,6 +3471,34 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 order,
                 wasQueued: true);
         }
+    }
+
+    private bool CanCoalesceRepeatedAttackMove(
+        ReadOnlySpan<int> unitIndices,
+        Vector2 target)
+    {
+        for (var index = 0; index < unitIndices.Length; index++)
+        {
+            var unit = unitIndices[index];
+            if (!CommandQueues.HasActiveOrders[unit] ||
+                CommandQueues.ActiveKinds[unit] != UnitOrderKind.AttackMove ||
+                CommandQueues.ActivePositions[unit] != target ||
+                Combat.CommandIntents[unit] != UnitCommandIntent.AttackMove ||
+                Units.MovementLegResults[unit] is
+                    UnitMovementLegResult.Unreachable or
+                    UnitMovementLegResult.TargetInvalidated or
+                    UnitMovementLegResult.Canceled ||
+                MovementLegFinished(unit) &&
+                Combat.TargetKinds[unit] == CombatTargetKind.None &&
+                Vector2.DistanceSquared(
+                    Units.Positions[unit], Units.SlotTargets[unit]) >
+                ArrivalStopDistance(unit) * ArrivalStopDistance(unit))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void ExecuteOrderGroup(
