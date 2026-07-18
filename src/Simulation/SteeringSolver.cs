@@ -9,8 +9,8 @@ public sealed class SteeringSolver
         0f, -15f, 15f, -30f, 30f, -50f, 50f,
         -75f, 75f, -110f, 110f, 180f
     ];
-    private static readonly Vector2[] CandidateRotations =
-        BuildCandidateRotations();
+    private static readonly CandidateSample[] CandidateSamples =
+        BuildCandidateSamples();
 
     private readonly StaticWorld _world;
     private readonly SpatialHash _spatialHash;
@@ -23,6 +23,13 @@ public sealed class SteeringSolver
 
     public int LastNeighborPairs { get; private set; }
     public int LastCandidateEvaluations { get; private set; }
+    public int LastMovingUnits { get; private set; }
+    public int LastPreferredFastPaths { get; private set; }
+    public int LastAvoidingUnits { get; private set; }
+    public int LastWorldSegmentProbes { get; private set; }
+    public int LastCollisionRiskNeighborChecks { get; private set; }
+    public int LastPredictedCollisionHits { get; private set; }
+    public int LastOverlappingNeighborHits { get; private set; }
 
     public SteeringSolver(StaticWorld world, SpatialHash spatialHash)
     {
@@ -40,6 +47,13 @@ public sealed class SteeringSolver
     {
         LastNeighborPairs = 0;
         LastCandidateEvaluations = 0;
+        LastMovingUnits = 0;
+        LastPreferredFastPaths = 0;
+        LastAvoidingUnits = 0;
+        LastWorldSegmentProbes = 0;
+        LastCollisionRiskNeighborChecks = 0;
+        LastPredictedCollisionHits = 0;
+        LastOverlappingNeighborHits = 0;
         for (var unit = 0; unit < units.Count; unit++)
         {
             if (!units.Alive[unit])
@@ -59,6 +73,7 @@ public sealed class SteeringSolver
                 continue;
             }
 
+            LastMovingUnits++;
             units.NextVelocities[unit] = SolveUnit(
                 units, unit, delta, unitCollisionSuppressed, concealmentKinds,
                 combatContacts, combatTargets);
@@ -103,12 +118,18 @@ public sealed class SteeringSolver
             neighborCount,
             horizon);
         LastCandidateEvaluations++;
-        if (preferredRisk < 0.02f &&
-            _world.IsSegmentFree(
+        var preferredSegmentFree = false;
+        if (preferredRisk < 0.02f)
+        {
+            LastWorldSegmentProbes++;
+            preferredSegmentFree = _world.IsSegmentFree(
                 position,
                 position + preferred * preferredProbeSeconds,
-                radius))
+                radius);
+        }
+        if (preferredRisk < 0.02f && preferredSegmentFree)
         {
+            LastPreferredFastPaths++;
             TickAvoidanceMemory(units, unit, 0);
             return MoveTowards(
                 units.Velocities[unit],
@@ -120,60 +141,60 @@ public sealed class SteeringSolver
         var best = Vector2.Zero;
         var bestScore = float.PositiveInfinity;
         var bestSide = (sbyte)0;
+        LastAvoidingUnits++;
 
         for (var candidateIndex = 0;
-             candidateIndex < CandidateAngles.Length;
+             candidateIndex < CandidateSamples.Length;
              candidateIndex++)
         {
-            var candidateAngle = CandidateAngles[candidateIndex];
-            var rotation = CandidateRotations[candidateIndex];
+            var sample = CandidateSamples[candidateIndex];
+            var rotation = sample.Rotation;
             var candidateDirection = new Vector2(
                 preferredDirection.X * rotation.X -
                 preferredDirection.Y * rotation.Y,
                 preferredDirection.X * rotation.Y +
                 preferredDirection.Y * rotation.X);
-            var speedScale = MathF.Abs(candidateAngle) >= 100f
-                ? 0.45f
-                : 1f;
-            var candidateSpeed = preferredSpeed * speedScale;
+            var candidateSpeed = preferredSpeed * sample.SpeedScale;
             var candidate = candidateDirection * candidateSpeed;
-            var candidateLength = candidate.Length();
             var candidateProbeSeconds = MathF.Min(
                 0.32f,
-                slotDistance / candidateLength);
-            if (!_world.IsSegmentFree(
-                    position,
-                    position + candidate * candidateProbeSeconds,
-                    radius))
-                continue;
-            var collisionRisk = CollisionRisk(
-                candidate,
-                neighborCount,
-                horizon);
-            LastCandidateEvaluations++;
-
-            var angularCost = MathF.Abs(candidateAngle) / 180f;
-            var speedLoss = 1f - candidateLength / preferredSpeed;
-            var side = MathF.Abs(candidateAngle) < 0.01f
-                ? (sbyte)0
-                : candidateAngle < 0f ? (sbyte)-1 : (sbyte)1;
+                slotDistance / candidateSpeed);
             var sideSwitchCost = units.AvoidanceLockTicks[unit] > 0 &&
                                  units.AvoidanceSides[unit] != 0 &&
-                                 side != 0 &&
-                                 side != units.AvoidanceSides[unit]
+                                 sample.Side != 0 &&
+                                 sample.Side != units.AvoidanceSides[unit]
                 ? 2.5f
                 : 0f;
-            var reverseCost = MathF.Abs(candidateAngle) > 90f
-                ? 1.5f
-                : 0f;
-            var score = collisionRisk * 8f + angularCost * 2.2f +
-                        speedLoss * 0.8f + sideSwitchCost + reverseCost;
+            var staticScore = sample.StaticScore + sideSwitchCost;
+            // Collision risk is non-negative. Once static costs alone cannot
+            // beat the current result, avoid both the world query and the
+            // neighbor time-of-impact sweep without changing the winner.
+            if (staticScore >= bestScore)
+                continue;
+            var segmentFree = candidateIndex == 0 &&
+                              preferredRisk < 0.02f
+                ? preferredSegmentFree
+                : ProbeSegment(
+                    position,
+                    position + candidate * candidateProbeSeconds,
+                    radius);
+            if (!segmentFree) continue;
+            var collisionRisk = candidateIndex == 0
+                ? preferredRisk
+                : CollisionRisk(
+                    candidate,
+                    neighborCount,
+                    horizon,
+                    staticScore,
+                    bestScore);
+            if (candidateIndex != 0) LastCandidateEvaluations++;
+            var score = collisionRisk * 8f + staticScore;
 
             if (score < bestScore)
             {
                 bestScore = score;
                 best = candidate;
-                bestSide = side;
+                bestSide = sample.Side;
             }
         }
 
@@ -242,23 +263,31 @@ public sealed class SteeringSolver
     private float CollisionRisk(
         Vector2 candidate,
         int neighborCount,
-        float horizon)
+        float horizon,
+        float staticScore = 0f,
+        float bestScore = float.PositiveInfinity)
     {
         var risk = 0f;
+        var candidateLengthSquared = candidate.LengthSquared();
+        var horizonSquared = horizon * horizon;
 
         for (var i = 0; i < neighborCount; i++)
         {
+            LastCollisionRiskNeighborChecks++;
             var offset = _neighborOffsets[i];
             var distanceSquared = _neighborDistancesSquared[i];
-            var responsibility =
-                UnitPushPriorityPolicy.IsAvoidanceDirectedToward(
-                    candidate, offset)
-                    ? _neighborForwardResponsibilities[i]
-                    : 1f;
-
             if (distanceSquared < _neighborCombinedRadiiSquared[i])
             {
+                LastOverlappingNeighborHits++;
+                var responsibility = AvoidanceResponsibility(
+                    candidate,
+                    candidateLengthSquared,
+                    offset,
+                    distanceSquared,
+                    i);
                 risk += 3f * responsibility;
+                if (risk * 8f + staticScore >= bestScore)
+                    return risk;
                 continue;
             }
 
@@ -269,7 +298,26 @@ public sealed class SteeringSolver
                 continue;
             }
 
-            var b = 2f * Vector2.Dot(offset, relativeVelocity);
+            var offsetVelocity = Vector2.Dot(offset, relativeVelocity);
+            if (offsetVelocity >= 0f)
+                continue;
+            // Reject the overwhelmingly common near miss without evaluating
+            // the quadratic root. If closest approach lies inside the time
+            // horizon, compare squared distance using a multiplied form that
+            // avoids division; otherwise compare distance at the horizon.
+            var closestInsideHorizon = -offsetVelocity <= a * horizon;
+            var misses = closestInsideHorizon
+                ? distanceSquared * a -
+                  offsetVelocity * offsetVelocity >
+                  _neighborCombinedRadiiSquared[i] * a
+                : distanceSquared +
+                  2f * offsetVelocity * horizon +
+                  a * horizonSquared >
+                  _neighborCombinedRadiiSquared[i];
+            if (misses)
+                continue;
+
+            var b = 2f * offsetVelocity;
             var c = distanceSquared - _neighborCombinedRadiiSquared[i];
             var discriminant = b * b - 4f * a * c;
             if (discriminant < 0f)
@@ -280,12 +328,43 @@ public sealed class SteeringSolver
             var time = (-b - MathF.Sqrt(discriminant)) / (2f * a);
             if (time >= 0f && time <= horizon)
             {
+                LastPredictedCollisionHits++;
+                var responsibility = AvoidanceResponsibility(
+                    candidate,
+                    candidateLengthSquared,
+                    offset,
+                    distanceSquared,
+                    i);
                 risk += (1f + (horizon - time) / horizon) * responsibility;
+                if (risk * 8f + staticScore >= bestScore)
+                    return risk;
             }
 
         }
 
         return risk;
+    }
+
+    private float AvoidanceResponsibility(
+        Vector2 candidate,
+        float candidateLengthSquared,
+        Vector2 offset,
+        float offsetLengthSquared,
+        int neighborIndex)
+    {
+        return UnitPushPriorityPolicy.IsAvoidanceDirectedToward(
+            candidate,
+            offset,
+            candidateLengthSquared,
+            offsetLengthSquared)
+            ? _neighborForwardResponsibilities[neighborIndex]
+            : 1f;
+    }
+
+    private bool ProbeSegment(Vector2 start, Vector2 end, float radius)
+    {
+        LastWorldSegmentProbes++;
+        return _world.IsSegmentFree(start, end, radius);
     }
 
     private static void TickAvoidanceMemory(UnitStore units, int unit, sbyte selectedSide)
@@ -306,17 +385,35 @@ public sealed class SteeringSolver
         }
     }
 
-    private static Vector2[] BuildCandidateRotations()
+    private static CandidateSample[] BuildCandidateSamples()
     {
-        var result = new Vector2[CandidateAngles.Length];
+        var result = new CandidateSample[CandidateAngles.Length];
         for (var index = 0; index < result.Length; index++)
         {
-            var radians = CandidateAngles[index] * MathF.PI / 180f;
-            result[index] = new Vector2(
-                MathF.Cos(radians), MathF.Sin(radians));
+            var angle = CandidateAngles[index];
+            var absoluteAngle = MathF.Abs(angle);
+            var radians = angle * MathF.PI / 180f;
+            var speedScale = absoluteAngle >= 100f ? 0.45f : 1f;
+            var angularCost = absoluteAngle / 180f;
+            var speedLoss = 1f - speedScale;
+            var reverseCost = absoluteAngle > 90f ? 1.5f : 0f;
+            var side = absoluteAngle < 0.01f
+                ? (sbyte)0
+                : angle < 0f ? (sbyte)-1 : (sbyte)1;
+            result[index] = new CandidateSample(
+                new Vector2(MathF.Cos(radians), MathF.Sin(radians)),
+                speedScale,
+                angularCost * 2.2f + speedLoss * 0.8f + reverseCost,
+                side);
         }
         return result;
     }
+
+    private readonly record struct CandidateSample(
+        Vector2 Rotation,
+        float SpeedScale,
+        float StaticScore,
+        sbyte Side);
 
     private static Vector2 MoveTowards(Vector2 current, Vector2 target, float maximumDelta)
     {

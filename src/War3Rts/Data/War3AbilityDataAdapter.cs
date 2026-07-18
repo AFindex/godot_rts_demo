@@ -287,7 +287,8 @@ public sealed class War3AbilityDataAdapter(
             duration,
             heroDuration,
             effects,
-            Requirements(level));
+            Requirements(level),
+            AutoCastRange(behavior.Compiler, level));
     }
 
     private ImmutableArray<AbilityRequirementProfile> Requirements(
@@ -342,7 +343,9 @@ public sealed class War3AbilityDataAdapter(
                 duration,
                 modifier: new AbilityStatModifier(
                     AttackDamageMultiplier: 1f + MathF.Max(0f, a),
-                    ArmorAdd: MathF.Max(0f, b)))),
+                    ArmorAdd: MathF.Max(0f, b),
+                    HealthRegenerationAdd:
+                        RequiredNonNegativeData(level, "D", compiler)))),
             War3AbilityCompilerKind.Dispel => One(new AbilityEffectProfile(
                 AbilityEffectKind.Dispel, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Any,
@@ -386,7 +389,9 @@ public sealed class War3AbilityDataAdapter(
                 SecondaryValue: MathF.Max(0f, b),
                 DamageKind: AbilityDamageKind.Magic,
                 HeroValue: -RequiredPositiveData(level, "C", compiler),
-                HeroSecondaryValue: MathF.Max(0f, d))),
+                HeroSecondaryValue: MathF.Max(0f, d),
+                SummonedValue:
+                    RequiredNonNegativeData(level, "E", compiler))),
             War3AbilityCompilerKind.Flare => One(new AbilityEffectProfile(
                 AbilityEffectKind.Reveal, AbilityEffectTiming.Impact,
                 AbilityEffectSelector.AreaAtTarget, AbilityRelationFilter.Self,
@@ -532,7 +537,11 @@ public sealed class War3AbilityDataAdapter(
                 AbilityStatusFlags.AttackDisabled,
                 new AbilityStatModifier(
                     MovementSpeedMultiplier:
-                        RequiredPositiveData(level, "A", compiler)))),
+                        RequiredPositiveData(level, "A", compiler),
+                    AttackCooldownMultiplier: 1f / MathF.Max(
+                        0.1f,
+                        1f - RequiredNonNegativeData(
+                            level, "B", compiler))))),
             War3AbilityCompilerKind.DrainMana =>
                 One(new AbilityEffectProfile(
                     AbilityEffectKind.TransferMana,
@@ -893,6 +902,15 @@ public sealed class War3AbilityDataAdapter(
         return castTime;
     }
 
+    private float AutoCastRange(
+        War3AbilityCompilerKind compiler,
+        War3ObjectLevel level) => compiler switch
+    {
+        War3AbilityCompilerKind.InnerFire => Distance(
+            RequiredNonNegativeData(level, "C", compiler)),
+        _ => 0f
+    };
+
     private float Distance(float? value) =>
         MathF.Max(0f, value ?? 0f) * policy.WorldDistanceScale;
 
@@ -915,8 +933,18 @@ public sealed class War3AbilityDataAdapter(
     private static float RequiredNonNegativeData(
         War3ObjectLevel level,
         string key,
-        War3AbilityCompilerKind compiler) => RequiredNonNegative(
-        Data(level, key), $"Data{key}", compiler, level.Level);
+        War3AbilityCompilerKind compiler)
+    {
+        if (!HasDataText(level, key) ||
+            !float.TryParse(
+                level.Data[key], NumberStyles.Float,
+                CultureInfo.InvariantCulture, out var value) ||
+            !float.IsFinite(value))
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} requires finite JSON Data{key}.");
+        return RequiredNonNegative(
+            value, $"Data{key}", compiler, level.Level);
+    }
 
     private static float FirstPositiveData(
         War3ObjectLevel level,

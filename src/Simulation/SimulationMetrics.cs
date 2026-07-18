@@ -14,6 +14,10 @@ public sealed class SimulationMetrics
     public int CollisionMainIterations { get; internal set; }
     public int CollisionResidualPasses { get; internal set; }
     public int CollisionConstraintCalls { get; internal set; }
+    public int CollisionResidualPairChecks { get; internal set; }
+    public int CollisionResidualPairMoves { get; internal set; }
+    public int CollisionVelocityProjections { get; internal set; }
+    public int WorldVelocityProjections { get; internal set; }
     public float MaximumPenetration { get; internal set; }
     public int RepathRequests { get; internal set; }
     public int NavigationRevision { get; internal set; }
@@ -100,6 +104,13 @@ public sealed class SimulationMetrics
     public long SteeringAllocatedBytes { get; internal set; }
     public int SteeringNeighborPairs { get; internal set; }
     public int SteeringCandidateEvaluations { get; internal set; }
+    public int SteeringMovingUnits { get; internal set; }
+    public int SteeringPreferredFastPaths { get; internal set; }
+    public int SteeringAvoidingUnits { get; internal set; }
+    public int SteeringWorldSegmentProbes { get; internal set; }
+    public int SteeringCollisionRiskNeighborChecks { get; internal set; }
+    public int SteeringPredictedCollisionHits { get; internal set; }
+    public int SteeringOverlappingNeighborHits { get; internal set; }
     public double IntegrateMilliseconds { get; internal set; }
     public double CollisionMilliseconds { get; internal set; }
     public long WorldConstraintCalls { get; internal set; }

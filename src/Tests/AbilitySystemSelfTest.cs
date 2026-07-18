@@ -14,6 +14,7 @@ public static class AbilitySystemSelfTest
         simulation.Abilities.ConfigureCatalog(catalog);
         var unitFormResult = TestUnitForm(catalog);
         var buildingFormResult = TestBuildingUnitForm(catalog);
+        var configuredScalarResult = TestConfiguredScalarEffects();
 
         var movement = new UnitMovementProfileSnapshot(
             0, "ability-test", 7.5f, 90f, 400f,
@@ -489,6 +490,7 @@ public static class AbilitySystemSelfTest
         passed &= clusteredTeleportWorked;
         passed &= unitFormResult.Passed;
         passed &= buildingFormResult.Passed;
+        passed &= configuredScalarResult.Passed;
         return new SelfTestResult(
             passed,
             $"catalog={catalog.Count}, auto_heal={autoHealWorked}, " +
@@ -523,7 +525,137 @@ public static class AbilitySystemSelfTest
             $"unit_form={unitFormResult.Passed}/{unitFormResult.Summary}, " +
             $"building_form={buildingFormResult.Passed}/" +
             $"{buildingFormResult.Summary}, " +
+            $"configured_scalars={configuredScalarResult.Passed}/" +
+            $"{configuredScalarResult.Summary}, " +
             $"events={events.Length}, snapshot={snapshotWorked}");
+    }
+
+    private static SelfTestResult TestConfiguredScalarEffects()
+    {
+        var rig = MovementTestRig.CreateOpenField(new Vector2(220f), 22);
+        var simulation = rig.RenderSimulation;
+        var regeneration = new AbilityProfile(
+            0, "TREG", "Configured Regeneration", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Friendly |
+            AbilityTargetFlags.NotSelf | AbilityTargetFlags.Alive,
+            false, true,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 120f, 0f, 5f, 5f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Friendly,
+                    Duration: 5f,
+                    Modifier: new AbilityStatModifier(
+                        HealthRegenerationAdd: 12f),
+                    BuffId: "BREG",
+                    BuffPolarity: AbilityBuffPolarity.Beneficial,
+                    BuffDispelKind: AbilityBuffDispelKind.Magic)],
+                AutoCastRange: 30f)]);
+        var feedback = new AbilityProfile(
+            1, "TFBK", "Configured Feedback", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Alive,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 120f, 0f, 0f, 0f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.Mana,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy,
+                    Value: -20f,
+                    SecondaryValue: 1f,
+                    DamageKind: AbilityDamageKind.Magic,
+                    SummonedValue: 12f)])]);
+        var catalog = new AbilityCatalogSnapshot(
+            [regeneration, feedback],
+            [new UnitAbilityBindingProfile(
+                0, false, UnitManaProfile.None,
+                [
+                    new UnitAbilityEntryProfile(0, 1, true),
+                    new UnitAbilityEntryProfile(1, 1)
+                ]),
+             new UnitAbilityBindingProfile(
+                 1, false, UnitManaProfile.None, [])]);
+        simulation.Abilities.ConfigureCatalog(catalog);
+        var movement = new UnitMovementProfileSnapshot(
+            0, "configured-scalar", 7.5f, 90f, 400f,
+            MovementClass.Small, 8f);
+        var combat = CombatProfileSnapshot.Standard with
+        {
+            MaximumHealth = 100f,
+            AttackDamage = 0f
+        };
+        var casterType = new UnitTypeProfile(
+            0, "configured-caster", movement, combat, false);
+        var targetType = new UnitTypeProfile(
+            1, "configured-target", movement with { Id = 1 }, combat, false);
+        var caster = simulation.AddUnit(new Vector2(60f, 60f), casterType, 1);
+        var nearby = simulation.AddUnit(new Vector2(90f, 60f), targetType, 1);
+        var outsideAutoCast = simulation.AddUnit(
+            new Vector2(110f, 60f), targetType, 1);
+        var summoned = simulation.AddUnit(
+            new Vector2(75f, 80f), targetType, 2);
+        simulation.Abilities.RegisterExternalSummon(
+            summoned, caster, "configured-summon");
+        simulation.DamageUnit(nearby, 50f);
+        simulation.DamageUnit(outsideAutoCast, 50f);
+        rig.Step();
+        var feedbackCast = simulation.IssueAbility(
+            1, caster, 1,
+            AbilityCastTarget.Unit(
+                summoned, simulation.Units.Positions[summoned]));
+        var selectedByConfiguredRange =
+            simulation.Abilities.ObserveBuffs(nearby).SingleOrDefault()
+                .Modifier.HealthRegenerationAdd == 12f &&
+            simulation.Abilities.ObserveBuffs(outsideAutoCast).Length == 0;
+        var regenerated = simulation.Combat.Health[nearby] > 50f &&
+                          simulation.Combat.Health[outsideAutoCast] == 50f;
+        var summonedDamage = feedbackCast.Succeeded &&
+                            simulation.Combat.Health[summoned] == 88f;
+
+        var hot = new SimulationHotSnapshot(
+            0xA81F20UL, simulation.CaptureRuntimeState());
+        var binaryRoundTrip = SimulationHotSnapshot.TryDeserialize(
+            hot.CanonicalBytes, out var parsed, out var validation) &&
+            parsed is not null &&
+            validation == HotSnapshotValidationCode.Success &&
+            parsed.State.Abilities.Catalog.Ability(0).Levels[0]
+                .AutoCastRange == 30f &&
+            parsed.State.Abilities.Catalog.Ability(1).Levels[0].Effects[0]
+                .SummonedValue == 12f &&
+            parsed.State.Abilities.Buffs.Single().Modifier
+                .HealthRegenerationAdd == 12f;
+        var restoredRig = MovementTestRig.CreateOpenField(
+            new Vector2(220f), 22);
+        if (parsed is not null)
+            restoredRig.RenderSimulation.RestoreRuntimeState(parsed.State);
+        for (var index = 0; index < 30 && parsed is not null; index++)
+        {
+            rig.Step();
+            restoredRig.Step();
+        }
+        var restoredExact = parsed is not null &&
+                            simulation.ComputeStateHash() ==
+                            restoredRig.RenderSimulation.ComputeStateHash();
+        var passed = selectedByConfiguredRange && regenerated &&
+                     summonedDamage && binaryRoundTrip && restoredExact;
+        return new SelfTestResult(
+            passed,
+            $"range={selectedByConfiguredRange}, regen={regenerated}/" +
+            $"{simulation.Combat.Health[nearby]:F2}/" +
+            $"{simulation.Combat.Health[outsideAutoCast]:F2}, " +
+            $"summoned={summonedDamage}/" +
+            $"{feedbackCast.Code}/" +
+            $"{simulation.Abilities.IsSummoned(summoned)}/" +
+            $"{simulation.Combat.Health[summoned]:F2}, " +
+            $"binary={binaryRoundTrip}/{validation}, exact={restoredExact}");
     }
 
     private static SelfTestResult TestBuildingUnitForm(

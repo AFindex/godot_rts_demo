@@ -152,7 +152,8 @@ public readonly record struct AbilityStatModifier(
     float ArmorAdd = 0f,
     float MaximumHealthAdd = 0f,
     float ManaRegenerationAdd = 0f,
-    float DetectionRangeAdd = 0f)
+    float DetectionRangeAdd = 0f,
+    float HealthRegenerationAdd = 0f)
 {
     public static AbilityStatModifier Identity => new(1f, 1f, 1f);
 
@@ -172,7 +173,9 @@ public readonly record struct AbilityStatModifier(
         float.IsFinite(ArmorAdd) &&
         float.IsFinite(MaximumHealthAdd) &&
         float.IsFinite(ManaRegenerationAdd) &&
-        float.IsFinite(DetectionRangeAdd);
+        float.IsFinite(DetectionRangeAdd) &&
+        float.IsFinite(HealthRegenerationAdd) &&
+        HealthRegenerationAdd >= 0f;
 }
 
 public readonly record struct AbilitySummonProfile(
@@ -286,7 +289,8 @@ public readonly record struct AbilityEffectProfile(
     float BuildingValueMultiplier = 0f,
     int VisualCount = 0,
     bool ClusteredPlacement = false,
-    AbilityUnitFormProfile UnitForm = default)
+    AbilityUnitFormProfile UnitForm = default,
+    float SummonedValue = 0f)
 {
     public bool IsValid =>
         Enum.IsDefined(Kind) && Enum.IsDefined(Timing) &&
@@ -326,11 +330,13 @@ public readonly record struct AbilityEffectProfile(
         float.IsFinite(BuildingValueMultiplier) &&
         BuildingValueMultiplier is >= 0f and <= 10f &&
         VisualCount is >= 0 and <= 100_000 &&
+        float.IsFinite(SummonedValue) && SummonedValue >= 0f &&
         (Timing != AbilityEffectTiming.PersistentPulse ||
          Kind == AbilityEffectKind.Damage && Duration > 0f &&
          Interval > 0f && PulseCount > 0) &&
         (MaximumTotalValue <= 0f || Kind == AbilityEffectKind.Damage) &&
         (BuildingValueMultiplier <= 0f || Kind == AbilityEffectKind.Damage) &&
+        (SummonedValue <= 0f || Kind == AbilityEffectKind.Mana) &&
         (!ClusteredPlacement || Kind == AbilityEffectKind.Teleport) &&
         (Kind != AbilityEffectKind.TransformUnit || UnitForm.IsValid) &&
         (Kind == AbilityEffectKind.TransformUnit || UnitForm == default);
@@ -362,7 +368,8 @@ public readonly record struct AbilityLevelProfile(
     float Duration,
     float HeroDuration,
     ImmutableArray<AbilityEffectProfile> Effects,
-    ImmutableArray<AbilityRequirementProfile> Requirements = default)
+    ImmutableArray<AbilityRequirementProfile> Requirements = default,
+    float AutoCastRange = 0f)
 {
     public bool IsValid =>
         Level > 0 && float.IsFinite(ManaCost) && ManaCost >= 0f &&
@@ -373,6 +380,7 @@ public readonly record struct AbilityLevelProfile(
         float.IsFinite(Area) && Area >= 0f &&
         float.IsFinite(Duration) && Duration >= 0f &&
         float.IsFinite(HeroDuration) && HeroDuration >= 0f &&
+        float.IsFinite(AutoCastRange) && AutoCastRange >= 0f &&
         !Effects.IsDefault && Effects.Length <= 32 &&
         Effects.All(value => value.IsValid) &&
         (Requirements.IsDefault || Requirements.Length <= 64 &&
@@ -527,7 +535,7 @@ public readonly record struct BuildingAbilityBindingProfile(
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 19;
+    public const int CurrentFormatVersion = 20;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
     private readonly Dictionary<int, BuildingAbilityBindingProfile>
@@ -723,6 +731,7 @@ internal static partial class AbilitySerialization
         writer.Write(value.Area);
         writer.Write(value.Duration);
         writer.Write(value.HeroDuration);
+        writer.Write(value.AutoCastRange);
         var requirements = value.Requirements.IsDefault
             ? ImmutableArray<AbilityRequirementProfile>.Empty
             : value.Requirements;
@@ -748,6 +757,7 @@ internal static partial class AbilitySerialization
         var area = reader.ReadSingle();
         var duration = reader.ReadSingle();
         var heroDuration = reader.ReadSingle();
+        var autoCastRange = reader.ReadSingle();
         var requirementCount = ReadCount(reader, 64);
         var requirements = new AbilityRequirementProfile[requirementCount];
         for (var index = 0; index < requirementCount; index++)
@@ -762,7 +772,7 @@ internal static partial class AbilitySerialization
         return new AbilityLevelProfile(
             level, mana, cooldown, cast, channel, range, area, duration,
             heroDuration, effects.ToImmutableArray(),
-            requirements.ToImmutableArray());
+            requirements.ToImmutableArray(), autoCastRange);
     }
 
     private static void WriteEffect(BinaryWriter writer, AbilityEffectProfile value)
@@ -801,6 +811,7 @@ internal static partial class AbilitySerialization
         var hasUnitForm = value.Kind == AbilityEffectKind.TransformUnit;
         writer.Write(hasUnitForm);
         if (hasUnitForm) WriteUnitForm(writer, value.UnitForm);
+        writer.Write(value.SummonedValue);
     }
 
     private static AbilityEffectProfile ReadEffect(BinaryReader reader)
@@ -835,6 +846,7 @@ internal static partial class AbilitySerialization
         var visualCount = reader.ReadInt32();
         var clusteredPlacement = reader.ReadBoolean();
         var unitForm = reader.ReadBoolean() ? ReadUnitForm(reader) : default;
+        var summonedValue = reader.ReadSingle();
         return new AbilityEffectProfile(
             kind, timing, selector, relations, value, secondary, radius,
             duration, interval, maximumTargets, status, modifier, summon,
@@ -842,7 +854,7 @@ internal static partial class AbilitySerialization
             heroValue, heroSecondaryValue, requiredUnitTraits,
             excludedUnitTraits, innerRadius, pulseCount, startDelay,
             maximumTotalValue, buildingValueMultiplier, visualCount,
-            clusteredPlacement, unitForm);
+            clusteredPlacement, unitForm, summonedValue);
     }
 
     private static void WriteUnitForm(
@@ -913,12 +925,13 @@ internal static partial class AbilitySerialization
         writer.Write(value.MaximumHealthAdd);
         writer.Write(value.ManaRegenerationAdd);
         writer.Write(value.DetectionRangeAdd);
+        writer.Write(value.HealthRegenerationAdd);
     }
 
     private static AbilityStatModifier ReadModifier(BinaryReader reader) => new(
         reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
         reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-        reader.ReadSingle(), reader.ReadSingle());
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
 
     private static void WriteSummon(BinaryWriter writer, AbilitySummonProfile value)
     {

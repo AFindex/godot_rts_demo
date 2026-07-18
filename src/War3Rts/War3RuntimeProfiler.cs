@@ -131,12 +131,23 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _simSteeringAllocated = new();
     private readonly Series _simSteeringNeighborPairs = new();
     private readonly Series _simSteeringCandidateEvaluations = new();
+    private readonly Series _simSteeringMovingUnits = new();
+    private readonly Series _simSteeringPreferredFastPaths = new();
+    private readonly Series _simSteeringAvoidingUnits = new();
+    private readonly Series _simSteeringWorldSegmentProbes = new();
+    private readonly Series _simSteeringRiskNeighborChecks = new();
+    private readonly Series _simSteeringPredictedCollisionHits = new();
+    private readonly Series _simSteeringOverlappingNeighborHits = new();
     private readonly Series _simIntegrate = new();
     private readonly Series _simCollision = new();
     private readonly Series _simCollisionBroadphasePairs = new();
     private readonly Series _simCollisionMainIterations = new();
     private readonly Series _simCollisionResidualPasses = new();
     private readonly Series _simCollisionConstraintCalls = new();
+    private readonly Series _simCollisionResidualPairChecks = new();
+    private readonly Series _simCollisionResidualPairMoves = new();
+    private readonly Series _simCollisionVelocityProjections = new();
+    private readonly Series _simWorldVelocityProjections = new();
     private readonly Series _simWorldConstraintCalls = new();
     private readonly Series _simDynamicFootprintCandidateChecks = new();
     private readonly Series _simRecovery = new();
@@ -331,6 +342,18 @@ internal sealed class War3RuntimeProfiler
         _simSteeringNeighborPairs.Add(metrics.SteeringNeighborPairs);
         _simSteeringCandidateEvaluations.Add(
             metrics.SteeringCandidateEvaluations);
+        _simSteeringMovingUnits.Add(metrics.SteeringMovingUnits);
+        _simSteeringPreferredFastPaths.Add(
+            metrics.SteeringPreferredFastPaths);
+        _simSteeringAvoidingUnits.Add(metrics.SteeringAvoidingUnits);
+        _simSteeringWorldSegmentProbes.Add(
+            metrics.SteeringWorldSegmentProbes);
+        _simSteeringRiskNeighborChecks.Add(
+            metrics.SteeringCollisionRiskNeighborChecks);
+        _simSteeringPredictedCollisionHits.Add(
+            metrics.SteeringPredictedCollisionHits);
+        _simSteeringOverlappingNeighborHits.Add(
+            metrics.SteeringOverlappingNeighborHits);
         _simIntegrate.Add(metrics.IntegrateMilliseconds);
         _simCollision.Add(metrics.CollisionMilliseconds);
         _simCollisionBroadphasePairs.Add(
@@ -338,6 +361,13 @@ internal sealed class War3RuntimeProfiler
         _simCollisionMainIterations.Add(metrics.CollisionMainIterations);
         _simCollisionResidualPasses.Add(metrics.CollisionResidualPasses);
         _simCollisionConstraintCalls.Add(metrics.CollisionConstraintCalls);
+        _simCollisionResidualPairChecks.Add(
+            metrics.CollisionResidualPairChecks);
+        _simCollisionResidualPairMoves.Add(
+            metrics.CollisionResidualPairMoves);
+        _simCollisionVelocityProjections.Add(
+            metrics.CollisionVelocityProjections);
+        _simWorldVelocityProjections.Add(metrics.WorldVelocityProjections);
         _simWorldConstraintCalls.Add(metrics.WorldConstraintCalls);
         _simDynamicFootprintCandidateChecks.Add(
             metrics.DynamicFootprintCandidateChecks);
@@ -538,12 +568,23 @@ internal sealed class War3RuntimeProfiler
             $"steering_ms={metrics.SteeringMilliseconds:0.###} " +
             $"steering_alloc={metrics.SteeringAllocatedBytes} " +
             $"steering_work={metrics.SteeringNeighborPairs}/" +
-            $"{metrics.SteeringCandidateEvaluations} " +
+            $"{metrics.SteeringCandidateEvaluations}/" +
+            $"{metrics.SteeringMovingUnits}/" +
+            $"{metrics.SteeringPreferredFastPaths}/" +
+            $"{metrics.SteeringAvoidingUnits}/" +
+            $"{metrics.SteeringWorldSegmentProbes}/" +
+            $"{metrics.SteeringCollisionRiskNeighborChecks}/" +
+            $"{metrics.SteeringPredictedCollisionHits}/" +
+            $"{metrics.SteeringOverlappingNeighborHits} " +
             $"collision_ms={metrics.CollisionMilliseconds:0.###} " +
             $"collision_work={metrics.CollisionBroadphasePairs}/" +
             $"{metrics.CollisionMainIterations}/" +
             $"{metrics.CollisionResidualPasses}/" +
             $"{metrics.CollisionConstraintCalls}/" +
+            $"{metrics.CollisionResidualPairChecks}/" +
+            $"{metrics.CollisionResidualPairMoves}/" +
+            $"{metrics.CollisionVelocityProjections}/" +
+            $"{metrics.WorldVelocityProjections}/" +
             $"{metrics.WorldConstraintCalls}/" +
             $"{metrics.DynamicFootprintCandidateChecks} " +
             $"ai_detail={aiProfile.CaptureMilliseconds:0.###}/" +
@@ -977,6 +1018,18 @@ internal sealed class War3RuntimeProfiler
         Print("sim_steering_neighbor_pairs", _simSteeringNeighborPairs);
         Print("sim_steering_candidate_evaluations",
             _simSteeringCandidateEvaluations);
+        Print("sim_steering_moving_units", _simSteeringMovingUnits);
+        Print("sim_steering_preferred_fast_paths",
+            _simSteeringPreferredFastPaths);
+        Print("sim_steering_avoiding_units", _simSteeringAvoidingUnits);
+        Print("sim_steering_world_segment_probes",
+            _simSteeringWorldSegmentProbes);
+        Print("sim_steering_risk_neighbor_checks",
+            _simSteeringRiskNeighborChecks);
+        Print("sim_steering_predicted_collision_hits",
+            _simSteeringPredictedCollisionHits);
+        Print("sim_steering_overlapping_neighbor_hits",
+            _simSteeringOverlappingNeighborHits);
         Print("sim_integrate_ms", _simIntegrate);
         Print("sim_collision_ms", _simCollision);
         Print("sim_collision_broadphase_pairs",
@@ -987,6 +1040,14 @@ internal sealed class War3RuntimeProfiler
             _simCollisionResidualPasses);
         Print("sim_collision_constraint_calls",
             _simCollisionConstraintCalls);
+        Print("sim_collision_residual_pair_checks",
+            _simCollisionResidualPairChecks);
+        Print("sim_collision_residual_pair_moves",
+            _simCollisionResidualPairMoves);
+        Print("sim_collision_velocity_projections",
+            _simCollisionVelocityProjections);
+        Print("sim_world_velocity_projections",
+            _simWorldVelocityProjections);
         Print("sim_world_constraint_calls", _simWorldConstraintCalls);
         Print("sim_dynamic_footprint_candidate_checks",
             _simDynamicFootprintCandidateChecks);

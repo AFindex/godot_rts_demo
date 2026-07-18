@@ -212,6 +212,42 @@ public static class War3AbilityDataClosureSelfTest
                         "sprite,first", "sprite,second", "sprite,fifth",
                         "sprite,third", "sprite,fourth", "sprite,sixth"
                     ]);
+            var runtimeConfiguredScalars =
+                abilities.TryGet("Ainf", out var sourceInnerFire) &&
+                runtimeImport.Catalog.TryFind("Ainf", out var innerFireScalar) &&
+                innerFireScalar.Levels.Zip(sourceInnerFire.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "A", out var attack) &&
+                        TryData(pair.Second, "B", out var armor) &&
+                        TryData(pair.Second, "C", out var autoCastRange) &&
+                        TryData(pair.Second, "D", out var healthRegeneration) &&
+                        pair.Second.Range is > 0f and var sourceRange &&
+                        Nearly(pair.First.Effects.Single().Modifier
+                            .AttackDamageMultiplier, 1f + attack) &&
+                        Nearly(pair.First.Effects.Single().Modifier.ArmorAdd,
+                            armor) &&
+                        Nearly(pair.First.Effects.Single().Modifier
+                            .HealthRegenerationAdd, healthRegeneration) &&
+                        Nearly(pair.First.AutoCastRange,
+                            autoCastRange * pair.First.Range / sourceRange)) &&
+                abilities.TryGet("Afbk", out var sourceFeedback) &&
+                runtimeImport.Catalog.TryFind("Afbk", out var feedbackScalar) &&
+                feedbackScalar.Levels.Zip(sourceFeedback.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "E", out var summonedDamage) &&
+                        Nearly(pair.First.Effects.Single().SummonedValue,
+                            summonedDamage)) &&
+                abilities.TryGet("AHbn", out var sourceBanish) &&
+                runtimeImport.Catalog.TryFind("AHbn", out var banishScalar) &&
+                banishScalar.Levels.Zip(sourceBanish.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "A", out var movementReduction) &&
+                        TryData(pair.Second, "B", out var attackReduction) &&
+                        Nearly(pair.First.Effects.Single().Modifier
+                            .MovementSpeedMultiplier, movementReduction) &&
+                        Nearly(pair.First.Effects.Single().Modifier
+                            .AttackCooldownMultiplier,
+                            1f / MathF.Max(0.1f, 1f - attackReduction)));
             var runtimeEffectSemantics =
                 abilities.TryGet("Afla", out var sourceFlare) &&
                 float.TryParse(
@@ -539,7 +575,8 @@ public static class War3AbilityDataClosureSelfTest
                     .Distinct().Count() == 36 &&
                 runtimeCompilerMatrix.All(value => value.HasEffects) &&
                 runtimeRequirementsPreserved && heroLearningBindings &&
-                runtimeEffectSemantics && runtimeUnitTraits &&
+                runtimeEffectSemantics && runtimeConfiguredScalars &&
+                runtimeUnitTraits &&
                 runtimeHeroExperienceData && weaponProfilesValid &&
                 weaponSelectionValid && weaponTechnologyRequirementsValid &&
                 weaponBehaviorStatusValid && weaponCommandRoundTrip &&
@@ -580,6 +617,7 @@ public static class War3AbilityDataClosureSelfTest
                 $"requirements={runtimeRequirementsPreserved}, " +
                 $"hero_learning={heroLearningBindings}, " +
                 $"effect_semantics={runtimeEffectSemantics}, " +
+                $"configured_scalars={runtimeConfiguredScalars}, " +
                 $"mana_json={runtimeManaFromJson}, " +
                 $"summon_json={runtimeSummonsFromJson}, " +
                 $"attachments_json={runtimePresentationAttachments}, " +
@@ -606,6 +644,22 @@ public static class War3AbilityDataClosureSelfTest
                 $"{exception.GetType().Name}: {exception.Message}");
         }
     }
+
+    private static bool TryData(
+        War3ObjectLevel level,
+        string key,
+        out float value)
+    {
+        value = 0f;
+        return level.Data.TryGetValue(key, out var text) &&
+               float.TryParse(
+            text, NumberStyles.Float, CultureInfo.InvariantCulture,
+            out value) &&
+               float.IsFinite(value);
+    }
+
+    private static bool Nearly(float left, float right) =>
+        MathF.Abs(left - right) < 0.001f;
 
     private static bool SummonMatchesUnitJson(
         War3UnitDataCatalog units,

@@ -1465,6 +1465,18 @@ public sealed class AbilitySystem
             {
                 var castTarget = AbilityCastTarget.Unit(
                     target, world.AbilityUnitPosition(target));
+                var autoCastRange = level.AutoCastRange > 0f
+                    ? level.AutoCastRange
+                    : level.Range;
+                if (autoCastRange > 0f)
+                {
+                    var allowance = autoCastRange +
+                                    world.AbilityUnitRadius(caster);
+                    if (Vector2.DistanceSquared(
+                            world.AbilityUnitPosition(caster),
+                            castTarget.Position) > allowance * allowance)
+                        continue;
+                }
                 if (ValidateTarget(
                         world.AbilityUnitOwner(caster), caster, ability, level,
                         castTarget, world) != AbilityCommandCode.Success ||
@@ -2601,6 +2613,14 @@ public sealed class AbilitySystem
                             effect.DamageKind == AbilityDamageKind.None
                                 ? AbilityDamageKind.Magic
                                 : effect.DamageKind);
+                    if (effect.SummonedValue > 0f && IsSummoned(target) &&
+                        world.AbilityUnitAlive(target))
+                        DamageUnitAndAwardExperience(
+                            world,
+                            caster, target, effect.SummonedValue,
+                            effect.DamageKind == AbilityDamageKind.None
+                                ? AbilityDamageKind.Magic
+                                : effect.DamageKind);
                 }
                 else
                 {
@@ -3037,6 +3057,10 @@ public sealed class AbilitySystem
             _effectiveManaRegeneration[unit] = MathF.Max(
                 0f, _baseManaRegeneration[unit] +
                     modifier.ManaRegenerationAdd);
+            if (delta > 0f && modifier.HealthRegenerationAdd > 0f &&
+                world.AbilityUnitAlive(unit))
+                world.AbilityHealUnit(
+                    unit, modifier.HealthRegenerationAdd * delta);
             if ((_statuses[unit] & AbilityStatusFlags.Invisible) != 0)
             {
                 combat.ConcealmentKinds[unit] = UnitConcealmentKind.Cloaked;
@@ -3124,6 +3148,7 @@ public sealed class AbilitySystem
                MathF.Abs(value.MaximumHealthAdd) +
                MathF.Abs(value.ManaRegenerationAdd) +
                MathF.Abs(value.DetectionRangeAdd) +
+               MathF.Abs(value.HealthRegenerationAdd) +
                (ushort)effect.Status;
     }
 
@@ -3163,7 +3188,8 @@ public sealed class AbilitySystem
             left.ArmorAdd + right.ArmorAdd,
             left.MaximumHealthAdd + right.MaximumHealthAdd,
             left.ManaRegenerationAdd + right.ManaRegenerationAdd,
-            left.DetectionRangeAdd + right.DetectionRangeAdd);
+            left.DetectionRangeAdd + right.DetectionRangeAdd,
+            left.HealthRegenerationAdd + right.HealthRegenerationAdd);
     }
 
     private static bool DeterministicRoll(
@@ -3558,6 +3584,7 @@ public sealed class AbilitySystem
         hash.Add(modifier.MaximumHealthAdd);
         hash.Add(modifier.ManaRegenerationAdd);
         hash.Add(modifier.DetectionRangeAdd);
+        hash.Add(modifier.HealthRegenerationAdd);
     }
 
     private static long StableStringHash(string value)
@@ -4113,12 +4140,13 @@ internal static partial class AbilitySerialization
         writer.Write(value.MaximumHealthAdd);
         writer.Write(value.ManaRegenerationAdd);
         writer.Write(value.DetectionRangeAdd);
+        writer.Write(value.HealthRegenerationAdd);
     }
 
     private static AbilityStatModifier ReadRuntimeModifier(BinaryReader reader) =>
         new(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
             reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-            reader.ReadSingle(), reader.ReadSingle());
+            reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
 
     private static void WriteRuntimeString(BinaryWriter writer, string value)
     {

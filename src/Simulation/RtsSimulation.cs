@@ -79,6 +79,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         _productionEvacuateExitBlocker;
     private readonly int[] _collisionNeighbors = new int[64];
     private long[] _collisionPairScratch = new long[4096];
+    private bool[] _collisionPairApplicableScratch = new bool[4096];
+    private bool[] _collisionResidualMovedUnits = [];
     private CombatContactSnapshot[] _combatContacts;
     private bool[] _unitCollisionSuppressed;
     private int[] _orderReadyUnits;
@@ -3713,6 +3715,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.CollisionMainIterations = 0;
         Metrics.CollisionResidualPasses = 0;
         Metrics.CollisionConstraintCalls = 0;
+        Metrics.CollisionResidualPairChecks = 0;
+        Metrics.CollisionResidualPairMoves = 0;
+        Metrics.CollisionVelocityProjections = 0;
+        Metrics.WorldVelocityProjections = 0;
         Metrics.WorldConstraintCalls = 0;
         Metrics.DynamicFootprintCandidateChecks = 0;
         World.DynamicOccupancy.ResetConstraintDiagnostics();
@@ -3918,6 +3924,18 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.SteeringNeighborPairs = _steeringSolver.LastNeighborPairs;
         Metrics.SteeringCandidateEvaluations =
             _steeringSolver.LastCandidateEvaluations;
+        Metrics.SteeringMovingUnits = _steeringSolver.LastMovingUnits;
+        Metrics.SteeringPreferredFastPaths =
+            _steeringSolver.LastPreferredFastPaths;
+        Metrics.SteeringAvoidingUnits = _steeringSolver.LastAvoidingUnits;
+        Metrics.SteeringWorldSegmentProbes =
+            _steeringSolver.LastWorldSegmentProbes;
+        Metrics.SteeringCollisionRiskNeighborChecks =
+            _steeringSolver.LastCollisionRiskNeighborChecks;
+        Metrics.SteeringPredictedCollisionHits =
+            _steeringSolver.LastPredictedCollisionHits;
+        Metrics.SteeringOverlappingNeighborHits =
+            _steeringSolver.LastOverlappingNeighborHits;
         _chokeController?.ConstrainSolvedVelocities(Units);
         Metrics.SteeringMilliseconds = ElapsedMilliseconds(phaseStart);
         Metrics.SteeringAllocatedBytes =
@@ -5288,10 +5306,21 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 CompleteMovementLeg(unit);
                 continue;
             }
-            Units.Positions[unit] = World.ConstrainDisc(
-                Units.Positions[unit],
-                proposed,
-                Units.Radii[unit]);
+            var previous = Units.Positions[unit];
+            var constrained = World.ConstrainDisc(
+                previous, proposed, Units.Radii[unit]);
+            Units.Positions[unit] = constrained;
+            if (Units.Count > 256 &&
+                Vector2.DistanceSquared(constrained, proposed) > 0.000001f)
+            {
+                // Preserve tangential motion but discard the component that a
+                // wall/building actually rejected. Otherwise the next tick
+                // starts from a velocity pointing into the obstacle and the
+                // unit repeatedly sticks, turns and gets projected back out.
+                Units.Velocities[unit] = (constrained - previous) / delta;
+                Units.NextVelocities[unit] = Units.Velocities[unit];
+                Metrics.WorldVelocityProjections++;
+            }
         }
     }
 
@@ -5404,6 +5433,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 {
                     continue;
                 }
+
+                ProjectClosingCollisionVelocity(
+                    unit, neighbor, normal, resolution);
 
                 var correctionMagnitude = (penetration + 0.01f) * 0.72f;
                 var correction = normal * correctionMagnitude;
@@ -5576,6 +5608,14 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             var pairCount = CollectCollisionPairs(
                 _spatialHash.MaximumRadius + ResidualCollisionTolerance);
             if (pairCount == 0) return;
+            if (_collisionPairApplicableScratch.Length < pairCount)
+                Array.Resize(
+                    ref _collisionPairApplicableScratch,
+                    _collisionPairScratch.Length);
+            if (_collisionResidualMovedUnits.Length < Units.Count)
+                Array.Resize(
+                    ref _collisionResidualMovedUnits,
+                    Units.Capacity);
 
             var batchPasses = Math.Min(
                 remainingPasses,
@@ -5584,6 +5624,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             {
                 Metrics.CollisionResidualPasses++;
                 Metrics.CollisionBroadphasePairs += pairCount;
+                Array.Clear(
+                    _collisionResidualMovedUnits, 0, Units.Count);
                 var moved = false;
                 for (var pairOffset = 0;
                      pairOffset < pairCount;
@@ -5598,10 +5640,40 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                     var encodedPair = _collisionPairScratch[pairIndex];
                     var unit = (int)(encodedPair >> 32);
                     var neighbor = (int)encodedPair;
-                    moved |= ResolveResidualCollisionPair(
-                        unit, neighbor).Moved;
+                    Metrics.CollisionResidualPairChecks++;
+                    var result = ResolveResidualCollisionPair(unit, neighbor);
+                    _collisionPairApplicableScratch[pairIndex] =
+                        result.Applicable;
+                    moved |= result.Moved;
+                    if (result.Moved)
+                    {
+                        Metrics.CollisionResidualPairMoves++;
+                        // The result intentionally does not expose which side
+                        // moved. Marking both is conservative and still lets
+                        // the next pass discard every provably unaffected
+                        // contact candidate.
+                        _collisionResidualMovedUnits[unit] = true;
+                        _collisionResidualMovedUnits[neighbor] = true;
+                    }
                 }
                 if (!moved) return;
+
+                var nextPairCount = 0;
+                for (var pairIndex = 0;
+                     pairIndex < pairCount;
+                     pairIndex++)
+                {
+                    var encodedPair = _collisionPairScratch[pairIndex];
+                    var unit = (int)(encodedPair >> 32);
+                    var neighbor = (int)encodedPair;
+                    if (!_collisionPairApplicableScratch[pairIndex] &&
+                        !_collisionResidualMovedUnits[unit] &&
+                        !_collisionResidualMovedUnits[neighbor])
+                        continue;
+                    _collisionPairScratch[nextPairCount++] = encodedPair;
+                }
+                pairCount = nextPairCount;
+                if (pairCount == 0) return;
             }
             remainingPasses -= batchPasses;
         }
@@ -5694,7 +5766,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         var remaining = minimumDistance - distance +
                         ResidualCollisionTolerance;
         if (remaining <= 0f)
+        {
+            ProjectClosingCollisionVelocity(
+                unit, neighbor, normal, resolution);
             return (true, pairMoved);
+        }
         normal = distance > 0.0001f
             ? offset / distance
             : DeterministicNormal(unit, neighbor);
@@ -5719,7 +5795,36 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 pairMoved |= ApplyResidualCollisionCorrection(
                     neighbor, normal * remaining);
         }
+        offset = Units.Positions[neighbor] - Units.Positions[unit];
+        if (offset.LengthSquared() > 0.000001f)
+            normal = Vector2.Normalize(offset);
+        ProjectClosingCollisionVelocity(unit, neighbor, normal, resolution);
         return (true, pairMoved);
+    }
+
+    private void ProjectClosingCollisionVelocity(
+        int unit,
+        int neighbor,
+        Vector2 normal,
+        UnitPushResolution resolution)
+    {
+        // Keep established small/medium deterministic movement snapshots
+        // unchanged while the large-crowd response is validated separately.
+        if (Units.Count <= 256) return;
+        var closingSpeed = Vector2.Dot(
+            Units.Velocities[neighbor] - Units.Velocities[unit], normal);
+        if (closingSpeed >= -0.001f) return;
+        var shareTotal = resolution.LeftCorrectionShare +
+                         resolution.RightCorrectionShare;
+        if (shareTotal <= 0f) return;
+        var cancellation = -closingSpeed;
+        Units.Velocities[unit] -= normal * cancellation *
+            (resolution.LeftCorrectionShare / shareTotal);
+        Units.Velocities[neighbor] += normal * cancellation *
+            (resolution.RightCorrectionShare / shareTotal);
+        Units.NextVelocities[unit] = Units.Velocities[unit];
+        Units.NextVelocities[neighbor] = Units.Velocities[neighbor];
+        Metrics.CollisionVelocityProjections++;
     }
 
     private bool ApplyResidualCollisionCorrection(int unit, Vector2 correction)

@@ -57,6 +57,19 @@ public static class UnitPushPriorityPolicy
     {
         var candidateLengthSquared = candidateVelocity.LengthSquared();
         var offsetLengthSquared = offset.LengthSquared();
+        return IsAvoidanceDirectedToward(
+            candidateVelocity,
+            offset,
+            candidateLengthSquared,
+            offsetLengthSquared);
+    }
+
+    public static bool IsAvoidanceDirectedToward(
+        Vector2 candidateVelocity,
+        Vector2 offset,
+        float candidateLengthSquared,
+        float offsetLengthSquared)
+    {
         if (candidateLengthSquared <= 0.0001f ||
             offsetLengthSquared <= 0.0001f)
             return false;
