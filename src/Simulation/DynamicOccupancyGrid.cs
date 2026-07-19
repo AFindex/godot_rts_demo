@@ -306,8 +306,27 @@ public sealed class DynamicOccupancyGrid
 
     public bool IsSegmentFree(Vector2 from, Vector2 to, float radius)
     {
+        if (_footprints.Count == 0) return true;
         var query = new SimRect(Vector2.Min(from, to), Vector2.Max(from, to)).Expanded(radius);
         var range = GetCellRange(query);
+        var cellsInQuery =
+            (range.MaximumRow - range.MinimumRow + 1) *
+            (range.MaximumColumn - range.MinimumColumn + 1);
+        // Long diagonal commands can cover most of a large map's AABB even
+        // when only a few dozen building footprints exist. In that case the
+        // exact swept-disc test over each footprint is dramatically cheaper
+        // than visiting tens of thousands of empty grid cells. Both branches
+        // use the same final geometry predicate, so occupancy semantics do not
+        // change.
+        if (_footprints.Count <= cellsInQuery)
+        {
+            foreach (var entry in _footprints.Values)
+            {
+                if (entry.Value.Bounds.IntersectsSweptDisc(from, to, radius))
+                    return false;
+            }
+            return true;
+        }
         for (var row = range.MinimumRow; row <= range.MaximumRow; row++)
         {
             for (var column = range.MinimumColumn; column <= range.MaximumColumn; column++)

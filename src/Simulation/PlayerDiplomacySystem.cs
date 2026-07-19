@@ -16,6 +16,7 @@ public sealed class PlayerDiplomacySystem
 {
     private const int DefaultAllianceBase = 1_000_000;
     private readonly Dictionary<int, Entry> _players = [];
+    public int Revision { get; private set; }
 
     public void ConfigureAlliance(
         int allianceId,
@@ -52,8 +53,18 @@ public sealed class PlayerDiplomacySystem
                     $"Player {playerId} already belongs to alliance {existing.AllianceId}.");
             }
         }
+        var changed = false;
         for (var index = 0; index < ordered.Length; index++)
-            _players[ordered[index]] = new Entry(allianceId, sharedVision);
+        {
+            var entry = new Entry(allianceId, sharedVision);
+            if (!_players.TryGetValue(ordered[index], out var existing) ||
+                existing != entry)
+            {
+                changed = true;
+            }
+            _players[ordered[index]] = entry;
+        }
+        if (changed) Revision++;
     }
 
     public PlayerEntityRelation Relation(int viewerPlayerId, int ownerPlayerId)
@@ -126,6 +137,7 @@ public sealed class PlayerDiplomacySystem
                     "Shared vision is an alliance-wide setting.");
             }
         }
+        Revision++;
     }
 
     internal void AppendStateHash(ref StableHash64 hash)

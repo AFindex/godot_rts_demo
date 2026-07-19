@@ -51,7 +51,13 @@ public enum War3AbilityCompilerKind : byte
     DrainMana,
     SummonPhoenix,
     MilitiaTransform,
-    BuildingMilitiaCall
+    BuildingMilitiaCall,
+    Repair,
+    Ensnare,
+    Cripple,
+    Bloodlust,
+    Rejuvenation,
+    FaerieFire
 }
 
 public sealed record War3AbilityBehaviorDescriptor(
@@ -74,9 +80,6 @@ public sealed record War3AbilityBehaviorDescriptor(
 /// </summary>
 public static class War3AbilityBehaviorRegistry
 {
-    private const string PrototypeReason =
-        "已具备确定性玩法原型；仍需完成原始语义、目标、科技与表现一致性验收。";
-
     private static readonly Dictionary<string, War3AbilityBehaviorDescriptor>
         Values = Create();
     private static readonly Dictionary<string, War3AbilityBehaviorDescriptor>
@@ -127,17 +130,6 @@ public static class War3AbilityBehaviorRegistry
         var result = new Dictionary<string, War3AbilityBehaviorDescriptor>(
             StringComparer.Ordinal);
 
-        void Prototype(
-            string id,
-            AbilityActivationKind activation,
-            War3AbilityCompilerKind compiler,
-            bool autoCast = false) => result.Add(
-            id,
-            new War3AbilityBehaviorDescriptor(
-                id, activation, autoCast, compiler,
-                War3AbilityRuntimeSupportStatus.Blocked,
-                PrototypeReason));
-
         void Pending(
             string id,
             AbilityActivationKind activation,
@@ -152,11 +144,10 @@ public static class War3AbilityBehaviorRegistry
             string id,
             AbilityActivationKind activation,
             War3AbilityCompilerKind compiler,
-            string reason,
-            bool autoCast = false) => result.Add(
+            string reason) => result.Add(
             id,
             new War3AbilityBehaviorDescriptor(
-                id, activation, autoCast, compiler,
+                id, activation, false, compiler,
                 War3AbilityRuntimeSupportStatus.ImplementedGameplay,
                 reason));
 
@@ -187,11 +178,12 @@ public static class War3AbilityBehaviorRegistry
         Delegated("ANsa", AbilityActivationKind.TargetUnit,
             "避难权杖由物品模块承载，范围、冷却、恢复延迟和每秒生命来自 Ability JSON。");
 
-        Prototype("Adef", AbilityActivationKind.Toggle,
-            War3AbilityCompilerKind.Defend);
-        Pending("AInv", AbilityActivationKind.Passive,
-            "DataA..E 容量、死亡掉落、使用、取得、丢弃标志和科技前置已接入商店/HUD；" +
-            "地面物品实体、主动拾取/丢弃、死亡掉落及回放快照仍未完成。");
+        Gameplay("Adef", AbilityActivationKind.Toggle,
+            War3AbilityCompilerKind.Defend,
+            "减伤、输出、移速、投射/魔法偏转概率与倍率、失误率和科技需求均由 JSON 编译；开关状态已接入确定性战斗结算、热载与回放。");
+        Gameplay("AInv", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.None,
+            "AInv/Aihn 的容量、死亡掉落、使用、取得、丢弃标志和科技前置均由 JSON/元数据编译；商店、HUD、地面物品、距离拾取、主动丢弃、死亡散落及确定性运行时快照已落地。");
         result.Add("Ahar", new War3AbilityBehaviorDescriptor(
             "Ahar", AbilityActivationKind.Passive, false,
             War3AbilityCompilerKind.None,
@@ -206,33 +198,48 @@ public static class War3AbilityBehaviorRegistry
         Gameplay("AIta", AbilityActivationKind.TargetPoint,
             War3AbilityCompilerKind.Flare,
             "目标点、范围、持续时间、冷却、科技前置和揭露特效均由 Ability JSON 驱动；建筑与物品共用 Reveal 效果语义。");
-        Pending("Arep", AbilityActivationKind.Passive,
-            "缺少消耗资源的建筑/机械单位修理命令与自动施法行为。");
+        Gameplay("Arep", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Repair,
+            "资源成本率、修理耗时率、协助建造成本/速率和海上修理距离均由 JSON 编译；建筑/机械单位持续修理、自动寻找受损目标、比例扣费、在建协作、取消、热载与回放已落地。");
+        Gameplay("Aens", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Ensnare,
+            "普通/英雄持续时间、空军坠落时间/高度、近战攻击范围、目标层、科技前置与 Bena/Beng 表现均由 JSON 编译；目标禁行并临时按地面层承受攻击。");
+        Gameplay("Acri", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Cripple,
+            "移动、攻击速度和攻击力削减、普通/英雄持续时间、目标层、消耗冷却、科技前置与 Bcri 表现均由 JSON 编译。");
+        Gameplay("Ablo", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Bloodlust,
+            "攻击/移动速度增益、体型表现系数、持续时间、目标层、消耗冷却、科技前置与 Bblo 表现均由 JSON 编译并接入自动施法。");
+        Gameplay("Arej", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Rejuvenation,
+            "总生命/魔法恢复量按 JSON 持续时间换算为确定性恢复速率；完整资源标志、无目标要求、目标层、消耗冷却与 Brej 表现均保留。");
+        Gameplay("Afae", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.FaerieFire,
+            "护甲削减、持续时间、始终自动施法标志、目标层、消耗冷却、科技前置与 Bfae 表现均由 JSON 编译；负护甲和跟随目标的共享视野已落地。");
         Gameplay("Ahea", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.Heal,
-            "生命恢复量、目标规则、魔法/冷却、自动施法和表现事件均由 Ability JSON 编译并通过运行时治疗验收。",
-            autoCast: true);
+            "生命恢复量、目标规则、魔法/冷却、自动施法和表现事件均由 Ability JSON 编译并通过运行时治疗验收。");
         Gameplay("Ainf", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.InnerFire,
-            "攻击倍率、护甲、自动施法距离、生命恢复、持续时间和 Buff 均由 Ability JSON 编译并通过热载往返验收。",
-            autoCast: true);
+            "攻击倍率、护甲、自动施法距离、生命恢复、持续时间和 Buff 均由 Ability JSON 编译并通过热载往返验收。");
         Gameplay("Adis", AbilityActivationKind.TargetPoint,
             War3AbilityCompilerKind.Dispel,
             "范围、召唤物伤害、目标层、魔法消除、消耗和科技门槛均来自 Ability JSON；法力损失 DataA=0 由严格字段门槛验证。");
         Gameplay("Aivs", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.Invisibility,
             "目标规则、持续时间、消耗、科技门槛、隐形状态和 Buff 表现均由 Ability JSON 编译；当前过渡 DataA=0 由严格字段门槛验证。");
-        Prototype("Aply", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.Polymorph);
+        Gameplay("Aply", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Polymorph,
+            "最大目标等级、地面/空中/两栖/水中替换单位、替换移动速度、非英雄有机目标、持续时间、科技需求和 Bply/模型表现均由 JSON 驱动；变形后可移动但不能攻击或施法，解除后恢复原模型与属性。");
         Gameplay("Aslo", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.Slow,
-            "移动/攻击速率、普通/英雄持续时间、目标规则、自动施法、科技门槛与 Buff 均由 Ability JSON 驱动。",
-            autoCast: true);
+            "移动/攻击速率、普通/英雄持续时间、目标规则、自动施法、科技门槛与 Buff 均由 Ability JSON 驱动。");
         Gameplay("Asps", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.SpellSteal,
             "700 范围/搜索区域、消耗冷却、任意关系和魔法 Buff 类型由 JSON 驱动；敌方增益转给施法者，友方减益按距离与单位 ID 稳定选择敌方接收者，且可处理无敌目标。");
-        Prototype("Acmg", AbilityActivationKind.TargetUnit,
-            War3AbilityCompilerKind.Charm);
+        Gameplay("Acmg", AbilityActivationKind.TargetUnit,
+            War3AbilityCompilerKind.Charm,
+            "召唤物限定、最大单位等级、基础耗蓝与 DataB×DataC×目标当前生命的动态耗蓝、关系目标、科技需求和 Bcmg 表现均由 JSON 驱动；控制权与热载/回放统一落地。");
         Gameplay("Amim", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.MagicImmunity,
             "常驻魔法免疫由 Ability JSON 绑定为不可驱散被动状态；当前附加伤害系数 DataA=0 由严格字段门槛验证。");
@@ -267,8 +274,9 @@ public static class War3AbilityBehaviorRegistry
         Gameplay("Asth", AbilityActivationKind.Passive,
             War3AbilityCompilerKind.None,
             "Asth 仅声明 Rhhb 科技门槛；弹射目标层、次数、半径和逐跳伤害衰减来自狮鹫骑士武器 JSON，由 CombatStore 的通用 Bounce 传播、科技门槛和热载快照承载。");
-        Prototype("Aclf", AbilityActivationKind.TargetPoint,
-            War3AbilityCompilerKind.Cloud);
+        Gameplay("Aclf", AbilityActivationKind.TargetPoint,
+            War3AbilityCompilerKind.Cloud,
+            "范围、持续时间、攻击阻断类型、失误/速率字段、科技需求和 Bclf/Xclf 表现均由 JSON 编译；敌方建筑禁攻状态已接入建筑战斗、热载与回放。");
         Gameplay("Amls", AbilityActivationKind.ChannelUnit,
             War3AbilityCompilerKind.SiphonMana,
             "对空目标、每秒伤害、普通/英雄引导时长、射程、冷却、消耗和双端表现 Buff 均由 Ability JSON 驱动并由可打断引导承载。");

@@ -34,6 +34,7 @@ public sealed record War3AbilityDefinition(
     public int BuffAttachmentCount { get; init; }
     public string EffectSound { get; init; } = string.Empty;
     public string EffectSoundLooped { get; init; } = string.Empty;
+    public bool SupportsAutoCast { get; init; }
 }
 
 public sealed record War3AbilityImportResult(
@@ -132,9 +133,9 @@ public sealed class War3AbilityDataAdapter(
                     new UnitAbilityEntryProfile(
                         rawToDense[rawId],
                         1,
-                        rawId.Equals(
-                            unitData.Summary.DefaultActiveAbility,
-                            StringComparison.Ordinal)))
+                        DefaultAutoCastEnabled(
+                            rawId,
+                            unitData.Summary.DefaultActiveAbility)))
                 .Concat(heroIds.Select(rawId =>
                     new UnitAbilityEntryProfile(rawToDense[rawId], 0)))
                 .ToImmutableArray();
@@ -146,7 +147,8 @@ public sealed class War3AbilityDataAdapter(
                 AdaptUnitTraits(unitData),
                 Math.Max(1, unitData.Summary.Level ?? 1),
                 ExperienceBountyForUnitLevel(unitData.Summary.Level ?? 1),
-                HeroMaximumLevel: 10));
+                HeroMaximumLevel: 10,
+                Repair: RepairTargetProfile(unitData)));
         }
 
         var buildingBindings = new List<BuildingAbilityBindingProfile>();
@@ -175,6 +177,25 @@ public sealed class War3AbilityDataAdapter(
             unresolvedRequirements.Order(StringComparer.Ordinal).ToArray(),
             families.Count, prototypeCount,
             unclassified.Order(StringComparer.Ordinal).ToArray());
+    }
+
+    /// <summary>
+    /// Compiles one exported rawcode with the same path used by live catalogs.
+    /// Full-race importers and closure tests use this entry point so an ability
+    /// family cannot be marked implemented without compiling every variant.
+    /// </summary>
+    public bool TryCompileAbility(
+        string rawId,
+        int id,
+        out AbilityProfile profile)
+    {
+        if (!abilities.TryGet(rawId, out var data))
+        {
+            profile = default;
+            return false;
+        }
+        profile = AdaptProfile(id, data);
+        return true;
     }
 
     private string[] CollectReferencedAbilityIds(
@@ -209,6 +230,23 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.Flare;
     }
 
+    internal bool DefaultAutoCastEnabled(
+        string rawId,
+        string? defaultActiveAbility)
+    {
+        if (string.IsNullOrWhiteSpace(defaultActiveAbility))
+            return false;
+        if (rawId.Equals(defaultActiveAbility, StringComparison.Ordinal))
+            return true;
+        if (!abilities.TryGet(rawId, out var data))
+            return false;
+        var baseCode = string.IsNullOrWhiteSpace(data.Identity.BaseCode)
+            ? data.Id
+            : data.Identity.BaseCode;
+        return baseCode.Equals(
+            defaultActiveAbility, StringComparison.Ordinal);
+    }
+
     private AbilityProfile AdaptProfile(int id, War3ObjectEditorData data)
     {
         var behaviorId = string.IsNullOrWhiteSpace(data.Identity.BaseCode)
@@ -236,7 +274,7 @@ public sealed class War3AbilityDataAdapter(
             activation,
             TargetFlags(behavior.Compiler, activation, first.Targets),
             data.Identity.Hero,
-            behavior.AutoCastDefault,
+            false,
             levels,
             data.Identity.RequiredHeroLevel,
             data.Identity.HeroLevelSkip,
@@ -379,11 +417,8 @@ public sealed class War3AbilityDataAdapter(
                 {
                     StartDelay = RequiredZeroData(level, "A", compiler)
                 }),
-            War3AbilityCompilerKind.Polymorph => One(Status(
-                AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
-                duration,
-                AbilityStatusFlags.Polymorphed |
-                AbilityStatusFlags.AttackDisabled)),
+            War3AbilityCompilerKind.Polymorph =>
+                One(PolymorphEffect(level, duration)),
             War3AbilityCompilerKind.Slow => One(Status(
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 duration,
@@ -401,7 +436,14 @@ public sealed class War3AbilityDataAdapter(
                 BuffDispelKind: AbilityBuffDispelKind.Magic)),
             War3AbilityCompilerKind.Charm => One(new AbilityEffectProfile(
                 AbilityEffectKind.TransferControl, AbilityEffectTiming.Impact,
-                AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy)),
+                AbilityEffectSelector.Primary,
+                AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
+                SecondaryValue:
+                    RequiredPositiveData(level, "B", compiler),
+                HeroValue:
+                    RequiredNonNegativeData(level, "C", compiler),
+                MaximumTargetUnitLevel: (int)MathF.Round(
+                    RequiredPositiveData(level, "A", compiler)))),
             War3AbilityCompilerKind.MagicImmunity => One(Aura(
                 AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
                 status: AbilityStatusFlags.MagicImmune) with
@@ -540,7 +582,7 @@ public sealed class War3AbilityDataAdapter(
                 AbilityEffectKind.ApplyStatus, AbilityEffectTiming.AttackHit,
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Enemy,
                 Value: RequiredPositiveData(level, "C", compiler),
-                Duration: duration,
+                Duration: 0f,
                 Interval: RequiredPositiveData(level, "A", compiler),
                 Status: AbilityStatusFlags.Stunned,
                 DamageKind: AbilityDamageKind.Physical,
@@ -636,6 +678,98 @@ public sealed class War3AbilityDataAdapter(
                     AbilityRelationFilter.Friendly,
                     Radius: Distance(level.Area),
                     UnitForm: MilitiaForm(level, duration))),
+            War3AbilityCompilerKind.Repair => One(
+                new AbilityEffectProfile(
+                    AbilityEffectKind.Repair,
+                    AbilityEffectTiming.PersistentPulse,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Self |
+                    AbilityRelationFilter.Friendly,
+                    Value: RequiredPositiveData(level, "A", compiler),
+                    SecondaryValue:
+                        RequiredPositiveData(level, "B", compiler),
+                    Radius: Distance(
+                        RequiredPositiveData(level, "E", compiler)),
+                    Interval: 1f,
+                    HeroValue:
+                        RequiredNonNegativeData(level, "C", compiler),
+                    HeroSecondaryValue:
+                        RequiredNonNegativeData(level, "D", compiler),
+                    AffectsBuildings: true)),
+            War3AbilityCompilerKind.Ensnare => One(Status(
+                AbilityEffectSelector.Primary,
+                AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
+                duration,
+                AbilityStatusFlags.MovementDisabled |
+                AbilityStatusFlags.Grounded) with
+                {
+                    SecondaryValue =
+                        RequiredPositiveData(level, "A", compiler),
+                    HeroValue = Distance(
+                        RequiredPositiveData(level, "B", compiler)),
+                    HeroSecondaryValue = Distance(
+                        RequiredPositiveData(level, "C", compiler))
+                }),
+            War3AbilityCompilerKind.Cripple => One(Status(
+                AbilityEffectSelector.Primary,
+                AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
+                duration,
+                modifier: new AbilityStatModifier(
+                    MovementSpeedMultiplier: 1f - RequiredFractionData(
+                        level, "A", compiler),
+                    AttackCooldownMultiplier: 1f / MathF.Max(
+                        0.05f,
+                        1f - RequiredFractionData(level, "B", compiler)),
+                    AttackDamageMultiplier: 1f - RequiredFractionData(
+                        level, "C", compiler)))),
+            War3AbilityCompilerKind.Bloodlust => One(Status(
+                AbilityEffectSelector.Primary,
+                AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
+                duration,
+                modifier: new AbilityStatModifier(
+                    MovementSpeedMultiplier: 1f +
+                        RequiredNonNegativeData(level, "B", compiler),
+                    AttackCooldownMultiplier: 1f / MathF.Max(
+                        0.05f,
+                        1f + RequiredNonNegativeData(
+                            level, "A", compiler)))) with
+                {
+                    SecondaryValue =
+                        RequiredNonNegativeData(level, "C", compiler)
+                }),
+            War3AbilityCompilerKind.Rejuvenation => One(Status(
+                AbilityEffectSelector.Primary,
+                AbilityRelationFilter.Self | AbilityRelationFilter.Friendly,
+                RequiredPositive(
+                    duration, "duration", compiler, level.Level),
+                modifier: new AbilityStatModifier(
+                    ManaRegenerationAdd:
+                        RequiredNonNegativeData(level, "B", compiler) /
+                        RequiredPositive(
+                            duration, "duration", compiler, level.Level),
+                    HealthRegenerationAdd:
+                        RequiredNonNegativeData(level, "A", compiler) /
+                        RequiredPositive(
+                            duration, "duration", compiler, level.Level))) with
+                {
+                    SecondaryValue = RequiredIntegerData(
+                        level, "C", 0, 3, compiler),
+                    HeroValue = RequiredIntegerData(
+                        level, "D", 0, 1, compiler)
+                }),
+            War3AbilityCompilerKind.FaerieFire => One(Status(
+                AbilityEffectSelector.Primary,
+                AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
+                duration,
+                AbilityStatusFlags.Revealed,
+                new AbilityStatModifier(
+                    ArmorAdd: -RequiredPositiveData(
+                        level, "A", compiler))) with
+                {
+                    SecondaryValue = HasDataText(level, "B")
+                        ? RequiredIntegerData(level, "B", 0, 1, compiler)
+                        : 0f
+                }),
             _ => ImmutableArray<AbilityEffectProfile>.Empty
         };
     }
@@ -682,6 +816,55 @@ public sealed class War3AbilityDataAdapter(
             HeroValue: RequiredNonNegativeData(level, "I", compiler));
     }
 
+    private AbilityEffectProfile PolymorphEffect(
+        War3ObjectLevel level,
+        float duration)
+    {
+        const War3AbilityCompilerKind compiler =
+            War3AbilityCompilerKind.Polymorph;
+        var replacement = new AbilityReplacementProfile(
+            RequiredUnitRawcode(level, "B", compiler),
+            RequiredUnitRawcode(level, "C", compiler),
+            RequiredUnitRawcode(level, "D", compiler),
+            RequiredUnitRawcode(level, "E", compiler));
+        if (!units.TryGet(replacement.GroundObjectId, out var ground))
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} references missing unit JSON " +
+                replacement.GroundObjectId + ".");
+        var movementSpeed = RequiredPositive(
+            ground.Summary.Movement.Speed,
+            "replacement unit movement speed", compiler, level.Level);
+        return Status(
+            AbilityEffectSelector.Primary,
+            AbilityRelationFilter.Enemy | AbilityRelationFilter.Neutral,
+            duration,
+            AbilityStatusFlags.Polymorphed |
+            AbilityStatusFlags.AttackDisabled) with
+        {
+            SecondaryValue = Distance(movementSpeed),
+            Replacement = replacement,
+            MaximumTargetUnitLevel = (int)MathF.Round(
+                RequiredPositiveData(level, "A", compiler))
+        };
+    }
+
+    private string RequiredUnitRawcode(
+        War3ObjectLevel level,
+        string key,
+        War3AbilityCompilerKind compiler)
+    {
+        if (!level.Data.TryGetValue(key, out var value) ||
+            string.IsNullOrWhiteSpace(value))
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} requires JSON Data{key}.");
+        value = value.Trim();
+        if (value.Length != 4 || !units.TryGet(value, out _))
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} references missing unit JSON " +
+                $"Data{key}={value}.");
+        return value;
+    }
+
     private War3ObjectLevel FindUnitFormLevel()
     {
         foreach (var entry in abilities.Entries.OrderBy(
@@ -719,7 +902,7 @@ public sealed class War3AbilityDataAdapter(
         int maximumTargets = 0,
         AbilityDamageKind damageKind = AbilityDamageKind.None) => new(
         AbilityEffectKind.ApplyStatus, AbilityEffectTiming.Impact,
-        selector, relations, value, Radius: radius, Duration: duration,
+        selector, relations, value, Radius: radius, Duration: 0f,
         MaximumTargets: maximumTargets, Status: status, Modifier: modifier,
         DamageKind: damageKind);
 
@@ -856,7 +1039,8 @@ public sealed class War3AbilityDataAdapter(
                 BuffPolarity = Polarity(effect.Relations),
                 BuffDispelKind = IsNonDispellable(compiler, effect)
                     ? AbilityBuffDispelKind.None
-                    : compiler == War3AbilityCompilerKind.Bash
+                    : compiler is War3AbilityCompilerKind.Bash or
+                        War3AbilityCompilerKind.Ensnare
                         ? AbilityBuffDispelKind.Physical
                         : AbilityBuffDispelKind.Magic,
                 BuffStacking = AbilityBuffStackingKind.Refresh
@@ -950,6 +1134,13 @@ public sealed class War3AbilityDataAdapter(
                       AbilityTargetFlags.Enemy | AbilityTargetFlags.Neutral)) == 0)
             flags |= AbilityTargetFlags.Self | AbilityTargetFlags.Friendly |
                      AbilityTargetFlags.Enemy | AbilityTargetFlags.Neutral;
+        if (compiler == War3AbilityCompilerKind.Repair)
+        {
+            // Warcraft's Repair target list carries the generic "dead" token,
+            // but the actual order cannot restore a destroyed runtime entity.
+            flags &= ~AbilityTargetFlags.Dead;
+            flags |= AbilityTargetFlags.Alive;
+        }
         if (compiler == War3AbilityCompilerKind.Resurrection)
             flags |= AbilityTargetFlags.Dead;
         return flags;
@@ -1013,6 +1204,36 @@ public sealed class War3AbilityDataAdapter(
         string key,
         War3AbilityCompilerKind compiler) => RequiredPositive(
         Data(level, key), $"Data{key}", compiler, level.Level);
+
+    private static float RequiredFractionData(
+        War3ObjectLevel level,
+        string key,
+        War3AbilityCompilerKind compiler)
+    {
+        var value = RequiredNonNegativeData(level, key, compiler);
+        if (value <= 1f) return value;
+        throw new InvalidOperationException(
+            $"{compiler} level {level.Level} requires Data{key} in [0,1], " +
+            $"got {value.ToString(CultureInfo.InvariantCulture)}.");
+    }
+
+    private static float RequiredIntegerData(
+        War3ObjectLevel level,
+        string key,
+        int minimum,
+        int maximum,
+        War3AbilityCompilerKind compiler)
+    {
+        var value = RequiredNonNegativeData(level, key, compiler);
+        var integer = MathF.Round(value);
+        if (MathF.Abs(value - integer) <= 0.0001f &&
+            integer >= minimum && integer <= maximum)
+            return integer;
+        throw new InvalidOperationException(
+            $"{compiler} level {level.Level} requires integer Data{key} in " +
+            $"[{minimum},{maximum}], got " +
+            value.ToString(CultureInfo.InvariantCulture) + ".");
+    }
 
     private static float RequiredNonNegativeData(
         War3ObjectLevel level,
@@ -1112,6 +1333,21 @@ public sealed class War3AbilityDataAdapter(
                 : maximum;
         return new UnitManaProfile(
             initial, maximum, MathF.Max(0f, mana.Regeneration ?? 0f));
+    }
+
+    private static AbilityRepairTargetProfile RepairTargetProfile(
+        War3UnitData data)
+    {
+        var cost = data.Summary.Cost;
+        if (cost.RepairGold is not >= 0 ||
+            cost.RepairLumber is not >= 0 ||
+            cost.RepairTime is not > 0f ||
+            !float.IsFinite(cost.RepairTime.Value))
+            return default;
+        return new AbilityRepairTargetProfile(
+            new EconomyCost(
+                cost.RepairGold.Value, cost.RepairLumber.Value),
+            cost.RepairTime.Value);
     }
 
     internal static AbilityUnitTraits AdaptUnitTraits(War3UnitData data)
@@ -1257,7 +1493,10 @@ public sealed class War3AbilityDataAdapter(
                 buffs, "Targetattachcount", "Specialattachcount"),
             EffectSound = Value(data.Profile, "Effectsound") ?? string.Empty,
             EffectSoundLooped = Value(data.Profile, "Effectsoundlooped") ??
-                                  string.Empty
+                                  string.Empty,
+            SupportsAutoCast =
+                !string.IsNullOrWhiteSpace(Value(data.Profile, "Orderon")) &&
+                !string.IsNullOrWhiteSpace(Value(data.Profile, "Orderoff"))
         };
     }
 

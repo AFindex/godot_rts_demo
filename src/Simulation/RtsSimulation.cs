@@ -87,6 +87,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private UnitOrder[] _orderReadyOrders;
     private bool[] _orderReadyProcessed;
     private int[] _orderDispatchUnits;
+    private int[] _attackMoveRetryUnits;
     private int[] _displacedStationaryUnits;
     private Vector2[] _reservationTargetScratch;
     private int[] _reservationSelectionScratch;
@@ -101,10 +102,17 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private bool _issuingSystemOrder;
     private bool _issuingConstructionWorldMutation;
     private bool _detailedProfilingEnabled;
+    private bool _runtimeMetricsProfilingEnabled = true;
     private long _combatBuildingOverviewTick = long.MinValue;
     private GameplayBuildingSnapshot[] _combatBuildingOverview = [];
+    private int _combatBuildingOverviewCount;
+    private GameplayBuildingSnapshot[] _playerViewBuildingScratch = [];
+    private readonly List<PlayerUnitViewSnapshot> _playerViewUnitScratch = [];
+    private readonly List<PlayerBuildingViewSnapshot> _playerViewVisibleBuildingScratch = [];
+    private readonly List<PlayerResourceViewSnapshot> _playerViewResourceScratch = [];
     private long _combatObjectOverviewTick = long.MinValue;
     private CombatObjectSnapshot[] _combatObjectOverview = [];
+    private readonly HashSet<int> _settledMovementGroupsSeen = [];
 
     public RtsSimulation(
         StaticWorld world,
@@ -140,17 +148,19 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         BuildingCombat = new BuildingCombatSystem(
             Units, Combat, Construction, Technology, Diplomacy, Visibility,
             CombatTargetLayerForUnit, DamageUnit, Abilities.RemoveMana,
-            Abilities.IsHero, Abilities.IsSummoned);
+            Abilities.IsHero, Abilities.IsSummoned,
+            building => !Abilities.IsBuildingAttackDisabled(building));
         _orderReadyUnits = new int[capacity];
         _orderReadyOrders = new UnitOrder[capacity];
         _orderReadyProcessed = new bool[capacity];
         _orderDispatchUnits = new int[capacity];
+        _attackMoveRetryUnits = new int[capacity];
         _displacedStationaryUnits = new int[capacity];
         _reservationTargetScratch = new Vector2[capacity];
         _reservationSelectionScratch = new int[capacity];
         _combatContacts = new CombatContactSnapshot[capacity];
         _unitCollisionSuppressed = new bool[capacity];
-        _spatialHash = new SpatialHash(40f);
+        _spatialHash = new SpatialHash(40f, world.Bounds);
         _slotAllocator = new DestinationSlotAllocator(world);
         _slotReflow = new DestinationSlotReflow(world);
         _localRematcher = new DestinationLocalRematcher(world);
@@ -223,6 +233,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             _combatSystem.ProfilingEnabled = value;
             Visibility.ProfilingEnabled = value;
         }
+    }
+    public bool RuntimeMetricsProfilingEnabled
+    {
+        get => _runtimeMetricsProfilingEnabled;
+        set => _runtimeMetricsProfilingEnabled = value;
     }
 
     public void WarmPathingCaches()
@@ -370,6 +385,27 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
         return snapshots;
     }
+
+    /// <summary>
+    /// Copies the same snapshots as <see cref="CreateGameplayBuildingOverview"/>
+    /// into caller-owned storage. Presentation and profiling code can reuse a
+    /// buffer without changing the authoritative building snapshot semantics.
+    /// </summary>
+    public int CopyGameplayBuildingOverview(
+        Span<GameplayBuildingSnapshot> destination)
+    {
+        var count = Construction.CopyOverview(destination);
+        for (var index = 0; index < count; index++)
+        {
+            destination[index] = destination[index] with
+            {
+                EffectiveArmor = EffectiveBuildingArmor(destination[index])
+            };
+        }
+        return count;
+    }
+
+    public int GameplayBuildingSlotCount => Construction.SlotCount;
 
     public ClearanceBakeCommitResult TryCommitClearanceBake(
         ClearanceBakeSnapshot candidate)
@@ -1344,6 +1380,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Array.Resize(ref _orderReadyOrders, capacity);
         Array.Resize(ref _orderReadyProcessed, capacity);
         Array.Resize(ref _orderDispatchUnits, capacity);
+        Array.Resize(ref _attackMoveRetryUnits, capacity);
         Array.Resize(ref _displacedStationaryUnits, capacity);
         Array.Resize(ref _reservationTargetScratch, capacity);
         Array.Resize(ref _reservationSelectionScratch, capacity);
@@ -2283,7 +2320,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     {
         if (!Economy.Players.IsRegistered(playerId))
             throw new ArgumentOutOfRangeException(nameof(playerId));
-        var units = new List<PlayerUnitViewSnapshot>();
+        var units = _playerViewUnitScratch;
+        units.Clear();
         for (var unit = 0; unit < Units.Count; unit++)
         {
             if (!Units.Alive[unit])
@@ -2307,9 +2345,24 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 concealment.CapabilityKind != UnitConcealmentKind.None &&
                 relation == PlayerEntityRelation.Own));
         }
-        var buildings = new List<PlayerBuildingViewSnapshot>();
-        foreach (var building in Construction.CreateOverview())
+        var requiredBuildingSlots = Construction.SlotCount;
+        if (_playerViewBuildingScratch.Length < requiredBuildingSlots)
         {
+            Array.Resize(
+                ref _playerViewBuildingScratch,
+                Math.Max(
+                    requiredBuildingSlots,
+                    Math.Max(16, _playerViewBuildingScratch.Length * 2)));
+        }
+        var buildingSnapshotCount = Construction.CopyOverview(
+            _playerViewBuildingScratch);
+        var buildings = _playerViewVisibleBuildingScratch;
+        buildings.Clear();
+        for (var buildingIndex = 0;
+             buildingIndex < buildingSnapshotCount;
+             buildingIndex++)
+        {
+            var building = _playerViewBuildingScratch[buildingIndex];
             if (building.IsTerminal)
                 continue;
             var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
@@ -2325,7 +2378,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 building.Health, building.MaximumHealth,
                 PublicConstructionStatusFor(playerId, building)));
         }
-        var resources = new List<PlayerResourceViewSnapshot>();
+        var resources = _playerViewResourceScratch;
+        resources.Clear();
         for (var index = 0; index < Economy.ResourceNodeCount; index++)
         {
             var node = Economy.ObserveResourceNode(
@@ -3006,6 +3060,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         float goalRadius = 0f,
         int goalTargetId = -1)
     {
+        var profileOrder = _detailedProfilingEnabled;
+        var orderPhaseStart = profileOrder ? Stopwatch.GetTimestamp() : 0L;
         if (unitIndices.IsEmpty)
         {
             return;
@@ -3031,11 +3087,29 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
         centroid /= unitIndices.Length;
         var groupGoal = World.Bounds.Inset(maximumRadius + 2f).Clamp(target);
+        if (profileOrder)
+        {
+            Metrics.MoveOrderPreparationMilliseconds +=
+                ElapsedMilliseconds(orderPhaseStart);
+            orderPhaseStart = Stopwatch.GetTimestamp();
+        }
         var assignments = exactDestination
             ? null
             : _slotAllocator.Allocate(Units, unitIndices, groupGoal);
+        if (profileOrder)
+        {
+            Metrics.MoveOrderSlotAllocationMilliseconds +=
+                ElapsedMilliseconds(orderPhaseStart);
+            orderPhaseStart = Stopwatch.GetTimestamp();
+        }
         LastIssuedGroupRoute = PlanGroupRoute(
             centroid, groupGoal, maximumNavigationRadius);
+        if (profileOrder)
+        {
+            Metrics.MoveOrderGroupRouteMilliseconds +=
+                ElapsedMilliseconds(orderPhaseStart);
+            orderPhaseStart = Stopwatch.GetTimestamp();
+        }
         var movementGroupId = exactDestination ? 0 : NextMovementGroupId();
         if (unitIndices.Length > 1 && LastIssuedGroupRoute.Waypoints.Length > 0)
         {
@@ -3047,6 +3121,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             centroid,
             groupGoal,
             LastIssuedGroupRoute.ChokeIds);
+        if (profileOrder)
+        {
+            Metrics.MoveOrderChokeAssignmentMilliseconds +=
+                ElapsedMilliseconds(orderPhaseStart);
+            orderPhaseStart = Stopwatch.GetTimestamp();
+        }
 
         for (var i = 0; i < unitIndices.Length; i++)
         {
@@ -3111,21 +3191,43 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 continue;
             EnqueuePathRequest(unit);
         }
+        if (profileOrder)
+            Metrics.MoveOrderUnitSetupMilliseconds +=
+                ElapsedMilliseconds(orderPhaseStart);
     }
 
     private bool TryStartDirectGroupPath(int unit, Vector2 target)
     {
         var start = Units.Positions[unit];
         var navigationRadius = Units.NavigationRadii[unit];
-        if (!World.IsDiscFree(start, navigationRadius) ||
-            !World.IsDiscFree(target, navigationRadius) ||
-            !World.IsSegmentFree(start, target, navigationRadius))
+        var profileOrder = _detailedProfilingEnabled;
+        var phaseStart = profileOrder ? Stopwatch.GetTimestamp() : 0L;
+        var endpointsFree = World.IsDiscFree(start, navigationRadius) &&
+                            World.IsDiscFree(target, navigationRadius);
+        if (profileOrder)
+        {
+            Metrics.MoveOrderDirectDiscCheckMilliseconds +=
+                ElapsedMilliseconds(phaseStart);
+            phaseStart = Stopwatch.GetTimestamp();
+        }
+        if (!endpointsFree)
             return false;
+        var segmentFree = World.IsSegmentFree(start, target, navigationRadius);
+        if (profileOrder)
+        {
+            Metrics.MoveOrderDirectSegmentCheckMilliseconds +=
+                ElapsedMilliseconds(phaseStart);
+            phaseStart = Stopwatch.GetTimestamp();
+        }
+        if (!segmentFree) return false;
 
         Units.Paths[unit] = new UnitPath(
             [start, target], Units.CommandVersions[unit]);
         Units.PathPending[unit] = false;
         Units.Modes[unit] = UnitMoveMode.Moving;
+        if (profileOrder)
+            Metrics.MoveOrderDirectPathCreationMilliseconds +=
+                ElapsedMilliseconds(phaseStart);
         return true;
     }
 
@@ -3377,6 +3479,19 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         UnitOrder order,
         bool queued)
     {
+        if (_detailedProfilingEnabled &&
+            order.Kind is UnitOrderKind.Move or UnitOrderKind.AttackMove)
+        {
+            Metrics.MoveOrderPreparationMilliseconds = 0d;
+            Metrics.MoveOrderSlotAllocationMilliseconds = 0d;
+            Metrics.MoveOrderGroupRouteMilliseconds = 0d;
+            Metrics.MoveOrderChokeAssignmentMilliseconds = 0d;
+            Metrics.MoveOrderUnitSetupMilliseconds = 0d;
+            Metrics.MoveOrderCommandQueueMilliseconds = 0d;
+            Metrics.MoveOrderDirectDiscCheckMilliseconds = 0d;
+            Metrics.MoveOrderDirectSegmentCheckMilliseconds = 0d;
+            Metrics.MoveOrderDirectPathCreationMilliseconds = 0d;
+        }
         if (unitIndices.IsEmpty)
         {
             return;
@@ -3399,23 +3514,33 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         // budget.  Large selections could therefore be kept permanently in
         // WaitingForPath by an otherwise harmless command repeat.
         //
-        // Only coalesce when every selected unit still owns a valid execution
-        // of that command. A failed or prematurely settled member makes the
-        // group command a real retry; queued orders and different destinations
-        // retain normal replacement semantics.
+        // Coalesce each member that still owns a valid execution. A failed or
+        // prematurely settled member is retried without canceling movement or
+        // throwing away the paths of the rest of a large selection. Queued
+        // orders and different destinations retain replacement semantics.
+        var commandRecorded = false;
         if (!_issuingSystemOrder &&
             !queued &&
-            order.Kind == UnitOrderKind.AttackMove &&
-            CanCoalesceRepeatedAttackMove(unitIndices, order.TargetPosition))
+            order.Kind == UnitOrderKind.AttackMove)
         {
+            var originalUnits = unitIndices;
+            var retryCount = CollectRepeatedAttackMoveRetries(
+                originalUnits, order.TargetPosition);
+            var coalescedCount = originalUnits.Length - retryCount;
+            if (coalescedCount == 0)
+                goto DispatchOrder;
+
             _commandRecorder?.Record(
-                Metrics.Tick, unitIndices, order, queued: false);
-            for (var index = 0; index < unitIndices.Length; index++)
-                CommandQueues.ClearPending(unitIndices[index]);
-            Metrics.RepeatedAttackMoveUnitsCoalesced += unitIndices.Length;
-            return;
+                Metrics.Tick, originalUnits, order, queued: false);
+            commandRecorded = true;
+            for (var index = 0; index < originalUnits.Length; index++)
+                CommandQueues.ClearPending(originalUnits[index]);
+            Metrics.RepeatedAttackMoveUnitsCoalesced += coalescedCount;
+            if (retryCount == 0) return;
+            unitIndices = _attackMoveRetryUnits.AsSpan(0, retryCount);
         }
 
+    DispatchOrder:
         for (var index = 0; index < unitIndices.Length; index++)
         {
             if (!_issuingSystemOrder)
@@ -3432,7 +3557,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Construction.InterruptBuilders(unitIndices);
         }
 
-        if (!_issuingSystemOrder)
+        if (!_issuingSystemOrder && !commandRecorded)
         {
             _commandRecorder?.Record(Metrics.Tick, unitIndices, order, queued);
         }
@@ -3473,39 +3598,44 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         }
     }
 
-    private bool CanCoalesceRepeatedAttackMove(
+    private int CollectRepeatedAttackMoveRetries(
         ReadOnlySpan<int> unitIndices,
         Vector2 target)
     {
+        var retryCount = 0;
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
-            if (!CommandQueues.HasActiveOrders[unit] ||
-                CommandQueues.ActiveKinds[unit] != UnitOrderKind.AttackMove ||
-                CommandQueues.ActivePositions[unit] != target ||
-                Combat.CommandIntents[unit] != UnitCommandIntent.AttackMove ||
-                Units.MovementLegResults[unit] is
-                    UnitMovementLegResult.Unreachable or
-                    UnitMovementLegResult.TargetInvalidated or
-                    UnitMovementLegResult.Canceled ||
-                MovementLegFinished(unit) &&
-                Combat.TargetKinds[unit] == CombatTargetKind.None &&
-                Vector2.DistanceSquared(
-                    Units.Positions[unit], Units.SlotTargets[unit]) >
-                ArrivalStopDistance(unit) * ArrivalStopDistance(unit))
-            {
-                return false;
-            }
+            if (!CanCoalesceRepeatedAttackMove(unit, target))
+                _attackMoveRetryUnits[retryCount++] = unit;
         }
 
-        return true;
+        return retryCount;
     }
+
+    private bool CanCoalesceRepeatedAttackMove(int unit, Vector2 target) =>
+        CommandQueues.HasActiveOrders[unit] &&
+        CommandQueues.ActiveKinds[unit] == UnitOrderKind.AttackMove &&
+        CommandQueues.ActivePositions[unit] == target &&
+        Combat.CommandIntents[unit] == UnitCommandIntent.AttackMove &&
+        Units.MovementLegResults[unit] is not
+            (UnitMovementLegResult.Unreachable or
+             UnitMovementLegResult.TargetInvalidated or
+             UnitMovementLegResult.Canceled) &&
+        (!MovementLegFinished(unit) ||
+         Combat.TargetKinds[unit] != CombatTargetKind.None ||
+         Vector2.DistanceSquared(
+             Units.Positions[unit], Units.SlotTargets[unit]) <=
+         ArrivalStopDistance(unit) * ArrivalStopDistance(unit));
 
     private void ExecuteOrderGroup(
         ReadOnlySpan<int> unitIndices,
         UnitOrder order,
         bool wasQueued)
     {
+        var profileMoveOrder = _detailedProfilingEnabled &&
+                               order.Kind is UnitOrderKind.Move or
+                                   UnitOrderKind.AttackMove;
         switch (order.Kind)
         {
             case UnitOrderKind.Move:
@@ -3581,6 +3711,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 throw new ArgumentOutOfRangeException(nameof(order));
         }
 
+        var commandQueueStart = profileMoveOrder
+            ? Stopwatch.GetTimestamp()
+            : 0L;
         for (var index = 0; index < unitIndices.Length; index++)
         {
             var unit = unitIndices[index];
@@ -3589,6 +3722,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 CommandQueues.Begin(unit, order, wasQueued);
             }
         }
+        if (profileMoveOrder)
+            Metrics.MoveOrderCommandQueueMilliseconds +=
+                ElapsedMilliseconds(commandQueueStart);
     }
 
     private void ExecuteGatherResourceTask(
@@ -3767,8 +3903,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             throw new ArgumentOutOfRangeException(nameof(delta));
         }
 
-        var tickStart = Stopwatch.GetTimestamp();
-        var allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var profileMetrics = MetricsProfilingActive;
+        var tickStart = profileMetrics ? Stopwatch.GetTimestamp() : 0L;
+        var allocationStart = profileMetrics
+            ? GC.GetAllocatedBytesForCurrentThread()
+            : 0L;
         Metrics.Tick++;
         Metrics.PathsCompleted = 0;
         Metrics.PathsFailed = 0;
@@ -3818,9 +3957,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.ConstructionPathInvalidationMilliseconds = 0d;
         _pendingNavigationInvalidations = 0;
 
-        var phaseStart = Stopwatch.GetTimestamp();
+        var phaseStart = profileMetrics ? Stopwatch.GetTimestamp() : 0L;
         var lifecycleStart = phaseStart;
-        var phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var phaseAllocationStart = profileMetrics
+            ? GC.GetAllocatedBytesForCurrentThread()
+            : 0L;
         UpdateConstructionEvacuations();
         Construction.Update(
             delta,
@@ -3832,9 +3973,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             _constructionStopWorker,
             _constructionCommitFootprint,
             EvacuateConstructionStartOccupant);
-        Metrics.ConstructionMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.ConstructionAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.ConstructionMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.ConstructionAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
 
         BuildingUpgrades.Update(
             delta,
@@ -3843,8 +3984,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Construction,
             Economy);
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         UpdateProductionEvacuations();
         Production.Update(
             delta,
@@ -3859,24 +4000,24 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             _productionApplyRally,
             ProductionExitPathCost,
             _productionEvacuateExitBlocker);
-        Metrics.ProductionMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.ProductionAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.ProductionMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.ProductionAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         Technology.Update(
             delta,
             Metrics.Tick,
             GameplayEvents,
             Construction,
             Economy.Players);
-        Metrics.TechnologyMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.TechnologyAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.TechnologyMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.TechnologyAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         Economy.Update(
             delta,
             Metrics.Tick,
@@ -3886,34 +4027,37 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             _economyStopWorker,
             _economyFinishDropOffMovement);
         SyncLinkedCombatObjects();
-        Metrics.EconomySystemMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.EconomySystemAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.EconomySystemMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.EconomySystemAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         UpdateProducedUnitRallyFollowers();
         Concealment.Update(delta, _concealmentTransitionCompleted);
+        var abilityAllocationStart = ProfileAllocatedBytes();
         Abilities.Update(
             delta, Metrics.Tick, this, Units, Combat, AbilityEvents);
+        Metrics.AbilityAllocatedBytes = ProfileAllocatedSince(
+            abilityAllocationStart);
         FreezeConcealmentRestrictedUnits();
         FreezeAbilityRestrictedUnits();
         for (var unit = 0; unit < Units.Count; unit++)
             _unitCollisionSuppressed[unit] =
                 Economy.SuppressesUnitCollision(unit) ||
                 Construction.SuppressesBuilderUnitCollision(unit);
-        Metrics.LifecycleFinalizeMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.LifecycleFinalizeAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
-        Metrics.EconomyMilliseconds = ElapsedMilliseconds(lifecycleStart);
+        Metrics.LifecycleFinalizeMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.LifecycleFinalizeAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
+        Metrics.EconomyMilliseconds = ProfileElapsed(lifecycleStart);
 
         // Combat acquisition uses the same deterministic unit broadphase as
         // steering. Refresh it after lifecycle/spawn work so target searches
         // inspect nearby cells instead of scanning every unit in the match.
         _spatialHash.Rebuild(Units);
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         var detectionStart = phaseStart;
         // A freshly prepared scenario can receive orders before its first tick.
         // Seed the complete visibility state before combat authority is checked;
@@ -3923,17 +4067,17 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Visibility.Update(Units, Combat, Construction);
         else
             Visibility.UpdateDetection(Units, Combat, Construction);
-        Abilities.ApplyVisibilitySources(Visibility);
-        Metrics.VisibilityDetectionMilliseconds =
-            ElapsedMilliseconds(detectionStart);
+        Abilities.ApplyVisibilitySources(Visibility, this);
+        Metrics.VisibilityDetectionMilliseconds = ProfileElapsed(
+            detectionStart);
         UpdateUnitFacings(delta);
         _combatSystem.Update(delta, Metrics.Tick);
         BuildingCombat.Update(delta, Metrics.Tick);
         Abilities.ProcessCombatEvents(
             Metrics.Tick, CombatEvents, this, AbilityEvents);
-        Metrics.CombatMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.CombatAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.CombatMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.CombatAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
         if (_detailedProfilingEnabled)
         {
             var combatProfile = _combatSystem.LastUpdateProfile;
@@ -3946,14 +4090,14 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Metrics.CombatTargetSearches = combatProfile.TargetSearches;
         }
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         if (_pathProvider is GridPathProvider pathDiagnostics)
             pathDiagnostics.ResetPathDiagnostics();
         ProcessPathRequests();
-        Metrics.PathMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.PathAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.PathMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.PathAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
         if (_pathProvider is GridPathProvider gridPathProvider)
         {
             Metrics.PathFullConnectivityRebuilds =
@@ -3980,20 +4124,20 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 gridPathProvider.LastCompletedPathCacheHits;
         }
 
-        phaseStart = Stopwatch.GetTimestamp();
+        phaseStart = ProfileTimestamp();
         UpdatePreferredVelocities();
-        Metrics.PreferredVelocityMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.PreferredVelocityMilliseconds = ProfileElapsed(phaseStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
+        phaseStart = ProfileTimestamp();
         _chokeController?.ApplyPreferredVelocities(Units);
-        Metrics.ChokeMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.ChokeMilliseconds = ProfileElapsed(phaseStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
+        phaseStart = ProfileTimestamp();
         _spatialHash.Rebuild(Units);
-        Metrics.SpatialHashMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.SpatialHashMilliseconds = ProfileElapsed(phaseStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         UpdateCombatContacts();
         _steeringSolver.Solve(
             Units, delta, _unitCollisionSuppressed, Combat.ConcealmentKinds,
@@ -4014,25 +4158,25 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.SteeringOverlappingNeighborHits =
             _steeringSolver.LastOverlappingNeighborHits;
         _chokeController?.ConstrainSolvedVelocities(Units);
-        Metrics.SteeringMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.SteeringAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.SteeringMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.SteeringAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
+        phaseStart = ProfileTimestamp();
         Integrate(delta);
-        Metrics.IntegrateMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.IntegrateMilliseconds = ProfileElapsed(phaseStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
+        phaseStart = ProfileTimestamp();
         SolveCollisions();
         _chokeController?.ConstrainPositions(Units);
         AdoptDisplacedStationaryReservations();
-        Metrics.CollisionMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.CollisionMilliseconds = ProfileElapsed(phaseStart);
         Metrics.WorldConstraintCalls =
             World.DynamicOccupancy.ConstraintCalls;
         Metrics.DynamicFootprintCandidateChecks =
             World.DynamicOccupancy.ConstraintCandidateChecks;
 
-        phaseStart = Stopwatch.GetTimestamp();
+        phaseStart = ProfileTimestamp();
         UpdateProgress(delta);
         UpdateDynamicBlockageProgress();
         _overflowResolver.UpdateStallTracking(Units, Combat.TargetKinds);
@@ -4044,19 +4188,19 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         FinalizeSettledMovementGroups();
         RecoverFailedExplicitBuildingAttackChases();
         UpdateMetrics();
-        Metrics.RecoveryMilliseconds = ElapsedMilliseconds(phaseStart);
+        Metrics.RecoveryMilliseconds = ProfileElapsed(phaseStart);
 
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         AdvanceQueuedOrders();
-        Metrics.QueueMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.QueueAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        Metrics.QueueMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.QueueAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         Visibility.Update(Units, Combat, Construction);
-        Abilities.ApplyVisibilitySources(Visibility);
-        Metrics.VisibilityMilliseconds = ElapsedMilliseconds(phaseStart);
+        Abilities.ApplyVisibilitySources(Visibility, this);
+        Metrics.VisibilityMilliseconds = ProfileElapsed(phaseStart);
         if (_detailedProfilingEnabled)
         {
             var visibilityProfile = Visibility.LastUpdateProfile;
@@ -4073,19 +4217,19 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Metrics.VisibilityCandidateCells =
                 visibilityProfile.CandidateCells;
         }
-        Metrics.VisibilityAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
-        phaseStart = Stopwatch.GetTimestamp();
-        phaseAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        Metrics.VisibilityAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
+        phaseStart = ProfileTimestamp();
+        phaseAllocationStart = ProfileAllocatedBytes();
         Match.Update(Metrics.Tick, Construction, Diplomacy);
-        Metrics.MatchMilliseconds = ElapsedMilliseconds(phaseStart);
-        Metrics.MatchAllocatedBytes =
-            GC.GetAllocatedBytesForCurrentThread() - phaseAllocationStart;
+        Metrics.MatchMilliseconds = ProfileElapsed(phaseStart);
+        Metrics.MatchAllocatedBytes = ProfileAllocatedSince(
+            phaseAllocationStart);
         Metrics.CommandMilliseconds =
             Metrics.QueueMilliseconds + Metrics.VisibilityMilliseconds +
             Metrics.MatchMilliseconds;
-        Metrics.TotalMilliseconds = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
-        Metrics.AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
+        Metrics.TotalMilliseconds = ProfileElapsed(tickStart);
+        Metrics.AllocatedBytes = ProfileAllocatedSince(allocationStart);
     }
 
     private int SpawnProducedUnit(
@@ -4382,7 +4526,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             var commandVersion = Units.CommandVersions[unit];
             var start = Units.Positions[unit];
             var goal = Units.SlotTargets[unit];
-            var requestStart = Stopwatch.GetTimestamp();
+            var requestStart = ProfileTimestamp();
             var pathDiagnostics = _pathProvider as GridPathProvider;
             var expandedBefore = pathDiagnostics?.LastExpandedNodes ?? 0;
             var rawPointsBefore = pathDiagnostics?.LastRawPathPoints ?? 0;
@@ -4399,7 +4543,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 Units.RouteWaypoints[unit] = [];
                 points = BuildUnitPath(unit, start, goal);
             }
-            var requestMilliseconds = ElapsedMilliseconds(requestStart);
+            var requestMilliseconds = ProfileElapsed(requestStart);
             var expandedNodes = Math.Max(
                 0,
                 (pathDiagnostics?.LastExpandedNodes ?? expandedBefore) -
@@ -4481,11 +4625,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
         if (!World.IsDiscFree(start, navigationRadius))
         {
-            var escapeStart = Stopwatch.GetTimestamp();
+            var escapeStart = ProfileTimestamp();
             var escaped = TryResolveNavigationStartEscape(
                 unit, start, finalGoal, out var escape);
             Metrics.PathStartEscapeMilliseconds +=
-                ElapsedMilliseconds(escapeStart);
+                ProfileElapsed(escapeStart);
             if (!escaped)
             {
                 return [];
@@ -4572,7 +4716,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             }
             if (!segmentAlreadyValidated)
             {
-                var normalizationStart = Stopwatch.GetTimestamp();
+                var normalizationStart = ProfileTimestamp();
                 var normalized = NavigationPathTransition.TryNormalize(
                     World,
                     segment,
@@ -4586,7 +4730,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                         : null,
                     out segment);
                 Metrics.PathNormalizationMilliseconds +=
-                    ElapsedMilliseconds(normalizationStart);
+                    ProfileElapsed(normalizationStart);
                 if (!normalized)
                     return [];
             }
@@ -5281,6 +5425,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     {
         if ((Abilities.UnitTraits(unit) & AbilityUnitTraits.Ward) != 0)
             return CombatTargetLayer.Ward;
+        if (Abilities.HasStatus(unit, AbilityStatusFlags.Grounded))
+            return CombatTargetLayer.GroundUnit;
         return Combat.TerrainVisionModes[unit] == TerrainVisionMode.Elevated
             ? CombatTargetLayer.AirUnit
             : CombatTargetLayer.GroundUnit;
@@ -6495,13 +6641,16 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void FinalizeSettledMovementGroups()
     {
+        _settledMovementGroupsSeen.Clear();
         for (var leader = 0; leader < Units.Count; leader++)
         {
             var groupId = Units.MovementGroupIds[leader];
-            if (!Units.Alive[leader] || groupId <= 0 ||
+            if (!Units.Alive[leader] || groupId <= 0)
+                continue;
+            var firstGroupMember = _settledMovementGroupsSeen.Add(groupId);
+            if (!firstGroupMember ||
                 Units.MovementGroupSizes[leader] < TerminalSettleMinimumGroupSize ||
-                Units.SlotReflowCooldownTicks[leader] > Metrics.Tick ||
-                HasEarlierGroupMember(leader, groupId))
+                Units.SlotReflowCooldownTicks[leader] > Metrics.Tick)
                 continue;
 
             var members = 0;
@@ -6754,17 +6903,6 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             }
         }
         return minimum;
-    }
-
-    private bool HasEarlierGroupMember(int unit, int groupId)
-    {
-        for (var candidate = 0; candidate < unit; candidate++)
-        {
-            if (Units.Alive[candidate] &&
-                Units.MovementGroupIds[candidate] == groupId)
-                return true;
-        }
-        return false;
     }
 
     private void UpdateDestinationYielding()
@@ -7455,7 +7593,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Combat.Attributes[unit];
 
     bool IAbilityRuntimeWorld.AbilityUnitIsAir(int unit) =>
-        Combat.TerrainVisionModes[unit] == TerrainVisionMode.Elevated;
+        Combat.TerrainVisionModes[unit] == TerrainVisionMode.Elevated &&
+        !Abilities.HasStatus(unit, AbilityStatusFlags.Grounded);
 
     bool IAbilityRuntimeWorld.AbilityCanSeeUnit(int playerId, int unit) =>
         Visibility.IsUnitVisible(playerId, unit, Units, Combat);
@@ -7487,6 +7626,13 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     SimRect IAbilityRuntimeWorld.AbilityBuildingBounds(
         GameplayBuildingId building) => Construction.Observe(building).Bounds;
+
+    float IAbilityRuntimeWorld.AbilityBuildingHealth(
+        GameplayBuildingId building) => Construction.Observe(building).Health;
+
+    float IAbilityRuntimeWorld.AbilityBuildingMaximumHealth(
+        GameplayBuildingId building) =>
+        Construction.Observe(building).MaximumHealth;
 
     bool IAbilityRuntimeWorld.AbilityCanSeePosition(
         int playerId,
@@ -7546,6 +7692,140 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 snapshot.Health).TotalDamage;
         }
         return DamageBuilding(building, damage);
+    }
+
+    bool IAbilityRuntimeWorld.AbilityRepairBuilding(
+        int sourceUnit,
+        GameplayBuildingId building,
+        float repairCostRatio,
+        float repairTimeRatio,
+        float powerBuildCostRatio,
+        float powerBuildRate,
+        float workSeconds,
+        float maximumRange)
+    {
+        if ((uint)sourceUnit >= (uint)Units.Count || !Units.Alive[sourceUnit] ||
+            !Construction.IsAlive(building) ||
+            !float.IsFinite(repairCostRatio) || repairCostRatio <= 0f ||
+            !float.IsFinite(repairTimeRatio) || repairTimeRatio <= 0f ||
+            !float.IsFinite(powerBuildCostRatio) || powerBuildCostRatio < 0f ||
+            !float.IsFinite(powerBuildRate) || powerBuildRate < 0f ||
+            !float.IsFinite(workSeconds) || workSeconds <= 0f ||
+            !float.IsFinite(maximumRange) || maximumRange < 0f)
+            return false;
+
+        var snapshot = Construction.Observe(building);
+        var sourcePlayer = Combat.Teams[sourceUnit];
+        if (Diplomacy.Relation(sourcePlayer, snapshot.PlayerId) is not
+                (PlayerEntityRelation.Own or PlayerEntityRelation.Ally))
+            return false;
+        var closest = snapshot.Bounds.Clamp(Units.Positions[sourceUnit]);
+        var allowance = maximumRange + Units.Radii[sourceUnit];
+        if (Vector2.DistanceSquared(Units.Positions[sourceUnit], closest) >
+            allowance * allowance)
+            return false;
+
+        if (snapshot.State == BuildingLifecycleState.Completed)
+        {
+            if (snapshot.Health >= snapshot.MaximumHealth - 0.0001f)
+                return false;
+            var fullRepairSeconds = snapshot.Type.BuildSeconds *
+                                    repairTimeRatio;
+            var restored = MathF.Min(
+                snapshot.MaximumHealth - snapshot.Health,
+                snapshot.MaximumHealth / fullRepairSeconds * workSeconds);
+            var afterHealth = snapshot.Health + restored;
+            var cost = ProportionalRepairCost(
+                snapshot.Type.Cost,
+                repairCostRatio,
+                snapshot.Health / snapshot.MaximumHealth,
+                afterHealth / snapshot.MaximumHealth);
+            if (!Economy.Players.TrySpend(sourcePlayer, cost).Succeeded)
+                return false;
+            return Construction.RestoreHealth(building, restored) > 0f;
+        }
+
+        if (snapshot.State != BuildingLifecycleState.Constructing ||
+            powerBuildRate <= 0f)
+            return false;
+        var progress = MathF.Min(
+            1f - snapshot.Progress,
+            workSeconds / snapshot.Type.BuildSeconds * powerBuildRate);
+        if (progress <= 0f) return false;
+        var powerCost = ProportionalRepairCost(
+            snapshot.Type.Cost,
+            powerBuildCostRatio,
+            snapshot.Progress,
+            snapshot.Progress + progress);
+        if (!Economy.Players.TrySpend(sourcePlayer, powerCost).Succeeded)
+            return false;
+        return Construction.ApplyPowerBuild(building, progress) > 0f;
+    }
+
+    bool IAbilityRuntimeWorld.AbilityRepairUnit(
+        int sourceUnit,
+        int targetUnit,
+        float repairCostRatio,
+        float repairTimeRatio,
+        float workSeconds,
+        float maximumRange)
+    {
+        if ((uint)sourceUnit >= (uint)Units.Count || !Units.Alive[sourceUnit] ||
+            (uint)targetUnit >= (uint)Units.Count || !Units.Alive[targetUnit] ||
+            (Combat.Attributes[targetUnit] & CombatAttribute.Mechanical) == 0 ||
+            !float.IsFinite(repairCostRatio) || repairCostRatio <= 0f ||
+            !float.IsFinite(repairTimeRatio) || repairTimeRatio <= 0f ||
+            !float.IsFinite(workSeconds) || workSeconds <= 0f ||
+            !float.IsFinite(maximumRange) || maximumRange < 0f ||
+            !Abilities.TryRepairTargetProfile(targetUnit, out var profile))
+            return false;
+        var sourcePlayer = Combat.Teams[sourceUnit];
+        if (Diplomacy.Relation(sourcePlayer, Combat.Teams[targetUnit]) is not
+                (PlayerEntityRelation.Own or PlayerEntityRelation.Ally))
+            return false;
+        var allowance = maximumRange + Units.Radii[sourceUnit] +
+                        Units.Radii[targetUnit];
+        if (Vector2.DistanceSquared(
+                Units.Positions[sourceUnit], Units.Positions[targetUnit]) >
+            allowance * allowance)
+            return false;
+        var maximumHealth = Combat.MaximumHealth[targetUnit];
+        var health = Combat.Health[targetUnit];
+        if (health >= maximumHealth - 0.0001f) return false;
+        var restored = MathF.Min(
+            maximumHealth - health,
+            maximumHealth /
+            (profile.BaseRepairSeconds * repairTimeRatio) * workSeconds);
+        var cost = ProportionalRepairCost(
+            profile.BaseCost,
+            repairCostRatio,
+            health / maximumHealth,
+            (health + restored) / maximumHealth);
+        if (!Economy.Players.TrySpend(sourcePlayer, cost).Succeeded)
+            return false;
+        return ((IAbilityRuntimeWorld)this).AbilityHealUnit(
+            targetUnit, restored);
+    }
+
+    private static EconomyCost ProportionalRepairCost(
+        in EconomyCost baseCost,
+        float ratio,
+        float beforeFraction,
+        float afterFraction)
+    {
+        beforeFraction = Math.Clamp(beforeFraction, 0f, 1f);
+        afterFraction = Math.Clamp(afterFraction, beforeFraction, 1f);
+        static int Delta(int value, float ratio, float before, float after)
+        {
+            var total = value * ratio;
+            return Math.Max(
+                0,
+                (int)MathF.Floor(total * after + 0.0001f) -
+                (int)MathF.Floor(total * before + 0.0001f));
+        }
+        return new EconomyCost(
+            Delta(baseCost.Minerals, ratio, beforeFraction, afterFraction),
+            Delta(baseCost.VespeneGas, ratio, beforeFraction, afterFraction));
     }
 
     bool IAbilityRuntimeWorld.AbilityReviveUnit(int unit, float healthFraction)
@@ -7784,7 +8064,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         {
             var building = buildings[index];
             if (building.IsTerminal ||
-                !IsHostileBuilding(building.Id, playerId))
+                !Diplomacy.IsEnemy(playerId, building.PlayerId))
                 continue;
             var nearest = building.Bounds.Clamp(position);
             if (!Visibility.IsVisible(playerId, nearest))
@@ -7844,7 +8124,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             damage.BonusApplied);
     }
 
-    GameplayBuildingSnapshot[]
+    ReadOnlySpan<GameplayBuildingSnapshot>
         ICombatMovementDriver.CombatBuildingOverview() =>
         CombatBuildingOverviewForCurrentTick();
 
@@ -7935,13 +8215,24 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     CombatObjectSnapshot[] ICombatMovementDriver.CombatObjectOverview() =>
         CombatObjectOverviewForCurrentTick();
 
-    private GameplayBuildingSnapshot[] CombatBuildingOverviewForCurrentTick()
+    private ReadOnlySpan<GameplayBuildingSnapshot>
+        CombatBuildingOverviewForCurrentTick()
     {
         if (_combatBuildingOverviewTick == Metrics.Tick)
-            return _combatBuildingOverview;
-        _combatBuildingOverview = Construction.CreateOverview();
+            return _combatBuildingOverview.AsSpan(
+                0, _combatBuildingOverviewCount);
+        if (_combatBuildingOverview.Length < Construction.SlotCount)
+        {
+            var capacity = Math.Max(
+                Construction.SlotCount,
+                Math.Max(16, _combatBuildingOverview.Length * 2));
+            Array.Resize(ref _combatBuildingOverview, capacity);
+        }
+        _combatBuildingOverviewCount = Construction.CopyOverview(
+            _combatBuildingOverview);
         _combatBuildingOverviewTick = Metrics.Tick;
-        return _combatBuildingOverview;
+        return _combatBuildingOverview.AsSpan(
+            0, _combatBuildingOverviewCount);
     }
 
     private CombatObjectSnapshot[] CombatObjectOverviewForCurrentTick()
@@ -8125,6 +8416,26 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         long startTimestamp,
         long endTimestamp) =>
         (endTimestamp - startTimestamp) * 1_000d / Stopwatch.Frequency;
+
+    private bool MetricsProfilingActive =>
+        _runtimeMetricsProfilingEnabled || _detailedProfilingEnabled;
+
+    private long ProfileTimestamp() =>
+        MetricsProfilingActive ? Stopwatch.GetTimestamp() : 0L;
+
+    private long ProfileAllocatedBytes() => MetricsProfilingActive
+        ? GC.GetAllocatedBytesForCurrentThread()
+        : 0L;
+
+    private double ProfileElapsed(long startTimestamp) =>
+        MetricsProfilingActive
+            ? Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds
+            : 0d;
+
+    private long ProfileAllocatedSince(long startBytes) =>
+        MetricsProfilingActive
+            ? GC.GetAllocatedBytesForCurrentThread() - startBytes
+            : 0L;
 
     private void MoveEconomyWorker(int unit, Vector2 target)
     {

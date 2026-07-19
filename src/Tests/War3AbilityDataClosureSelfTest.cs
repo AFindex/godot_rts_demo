@@ -94,11 +94,27 @@ public static class War3AbilityDataClosureSelfTest
                 waterElemental.Summary.Levels.SelectMany(value => value.UnitIds)
                     .SequenceEqual(["hwat", "hwt2", "hwt3"]);
             var runtimeImport = War3HumanContent.AbilityImportStatus;
+            var inventoryProfilesValid =
+                War3HumanContent.TryInventoryAbility(
+                    "AInv", out var heroInventory) &&
+                heroInventory.Capacity == 6 &&
+                !heroInventory.DropItemsOnDeath &&
+                heroInventory.CanUseItems && heroInventory.CanGetItems &&
+                heroInventory.CanDropItems &&
+                War3HumanContent.TryInventoryAbility(
+                    "Aihn", out var unitInventory) &&
+                unitInventory.Capacity == 2 &&
+                unitInventory.DropItemsOnDeath &&
+                !unitInventory.CanUseItems && unitInventory.CanGetItems &&
+                unitInventory.CanDropItems;
+            var inventoryLifecycle = VerifyInventoryLifecycle();
             var runtimeCoverage = War3AbilityRuntimeCoverageAudit.Analyze(
                 abilities,
                 units,
                 runtimeImport.Definitions.Select(value => value.ObjectId),
                 War3HumanContent.Technologies.Select(value => value.ObjectId));
+            var extendedFamilyCompilers = VerifyExtendedFamilyCompilers(
+                abilities, buffEffects, units, out var extendedFamilySummary);
             var runtimeCompilerMatrix = runtimeImport.Catalog.Abilities
                 .Select(profile =>
                 {
@@ -136,6 +152,27 @@ public static class War3AbilityDataClosureSelfTest
                 archmageBinding.Hero &&
                 archmageBinding.Abilities.Any(value =>
                     value.AbilityId == waterSkill.Id && value.Level == 0);
+            var runtimeAutoCastBindingsFromJson =
+                runtimeImport.Catalog.TryFind("Ahea", out var healAuto) &&
+                runtimeImport.Catalog.TryFind("Ainf", out var innerFireAuto) &&
+                runtimeImport.Catalog.TryFind("Aslo", out var slowAuto) &&
+                runtimeImport.Catalog.TryFind("Ahrp", out var repairAuto) &&
+                !healAuto.AutoCastDefault && !innerFireAuto.AutoCastDefault &&
+                !slowAuto.AutoCastDefault && !repairAuto.AutoCastDefault &&
+                runtimeImport.Catalog.TryBinding(
+                    War3HumanContent.Priest, out var priestAutoBinding) &&
+                priestAutoBinding.Abilities.Single(value =>
+                    value.AbilityId == healAuto.Id).AutoCastEnabled &&
+                !priestAutoBinding.Abilities.Single(value =>
+                    value.AbilityId == innerFireAuto.Id).AutoCastEnabled &&
+                runtimeImport.Catalog.TryBinding(
+                    War3HumanContent.Sorceress, out var sorceressAutoBinding) &&
+                sorceressAutoBinding.Abilities.Single(value =>
+                    value.AbilityId == slowAuto.Id).AutoCastEnabled &&
+                runtimeImport.Catalog.TryBinding(
+                    War3HumanContent.Peasant, out var peasantAutoBinding) &&
+                !peasantAutoBinding.Abilities.Single(value =>
+                    value.AbilityId == repairAuto.Id).AutoCastEnabled;
             var runtimeManaFromJson = runtimeImport.Catalog.Bindings.All(binding =>
             {
                 var definition = War3HumanContent.Units[binding.UnitTypeId];
@@ -182,6 +219,25 @@ public static class War3AbilityDataClosureSelfTest
                        MathF.Abs(binding.Mana.RegenerationPerSecond -
                                  expectedRegeneration) < 0.001f;
             });
+            var runtimeRepairTargetsFromJson =
+                runtimeImport.Catalog.Bindings.All(binding =>
+                {
+                    var definition = War3HumanContent.Units[
+                        binding.UnitTypeId];
+                    if (!units.TryGet(definition.ObjectId, out var source))
+                        return false;
+                    var cost = source.Summary.Cost;
+                    if (cost.RepairGold is not >= 0 ||
+                        cost.RepairLumber is not >= 0 ||
+                        cost.RepairTime is not > 0f)
+                        return !binding.Repair.Enabled;
+                    return binding.Repair.Enabled &&
+                           binding.Repair.BaseCost == new EconomyCost(
+                               cost.RepairGold.Value,
+                               cost.RepairLumber.Value) &&
+                           Nearly(binding.Repair.BaseRepairSeconds,
+                               cost.RepairTime.Value);
+                });
             var runtimeSummonsFromJson =
                 runtimeImport.Catalog.TryFind("AHwe", out var runtimeWater) &&
                 abilities.TryGet("AHwe", out var sourceWater) &&
@@ -211,7 +267,10 @@ public static class War3AbilityDataClosureSelfTest
                     .SequenceEqual([
                         "sprite,first", "sprite,second", "sprite,fifth",
                         "sprite,third", "sprite,fourth", "sprite,sixth"
-                    ]);
+                    ]) &&
+                War3HumanContent.TryAbility(
+                    "Ahrp", out var repairPresentation) &&
+                repairPresentation is { SupportsAutoCast: true };
             var runtimeConfiguredScalars =
                 abilities.TryGet("Ainf", out var sourceInnerFire) &&
                 runtimeImport.Catalog.TryFind("Ainf", out var innerFireScalar) &&
@@ -247,7 +306,58 @@ public static class War3AbilityDataClosureSelfTest
                             .MovementSpeedMultiplier, movementReduction) &&
                         Nearly(pair.First.Effects.Single().Modifier
                             .AttackCooldownMultiplier,
-                            1f / MathF.Max(0.1f, 1f - attackReduction)));
+                            1f / MathF.Max(0.1f, 1f - attackReduction))) &&
+                abilities.TryGet("Adef", out var sourceDefend) &&
+                runtimeImport.Catalog.TryFind("Adef", out var defendScalar) &&
+                defendScalar.Levels.Zip(sourceDefend.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "A", out var received) &&
+                        TryData(pair.Second, "B", out var dealt) &&
+                        TryData(pair.Second, "C", out var movement) &&
+                        TryData(pair.Second, "E", out var magicReceived) &&
+                        TryData(pair.Second, "F", out var deflect) &&
+                        TryData(pair.Second, "G", out var piercing) &&
+                        TryData(pair.Second, "H", out var magic) &&
+                        TryData(pair.Second, "I", out var miss) &&
+                        pair.First.Effects.Length == 1 &&
+                        Nearly(pair.First.Effects[0].Modifier
+                            .MovementSpeedMultiplier, movement) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .DamageTakenMultiplier, received) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .DamageDealtMultiplier, dealt) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .MagicDamageTakenMultiplier, magicReceived) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .DeflectChancePercent, deflect) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .DeflectedPiercingDamageMultiplier, piercing) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .DeflectedMagicDamageMultiplier, magic) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .AttackMissChancePercent, miss)) &&
+                abilities.TryGet("Aclf", out var sourceCloud) &&
+                runtimeImport.Catalog.TryFind("Aclf", out var cloudScalar) &&
+                cloudScalar.Levels.Zip(sourceCloud.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "A", out var preventionType) &&
+                        TryData(pair.Second, "B", out var missChance) &&
+                        TryData(pair.Second, "C", out var movement) &&
+                        TryData(pair.Second, "D", out var attackRate) &&
+                        pair.First.Effects.Length == 1 &&
+                        pair.First.Effects[0].AffectsBuildings &&
+                        pair.First.Effects[0].Status ==
+                            AbilityStatusFlags.AttackDisabled &&
+                        Nearly(pair.First.Effects[0].SecondaryValue,
+                            preventionType) &&
+                        Nearly(pair.First.Effects[0].CombatModifier
+                            .AttackMissChancePercent, missChance) &&
+                        Nearly(pair.First.Effects[0].Modifier
+                            .MovementSpeedMultiplier,
+                            movement > 0f ? movement : 1f) &&
+                        Nearly(pair.First.Effects[0].Modifier
+                            .AttackCooldownMultiplier,
+                            attackRate > 0f ? 1f / attackRate : 1f));
             var runtimeEffectSemantics =
                 abilities.TryGet("Afla", out var sourceFlare) &&
                 float.TryParse(
@@ -306,6 +416,80 @@ public static class War3AbilityDataClosureSelfTest
                             bonusFactor) &&
                         Nearly(pair.First.Effects[0].HeroValue,
                             bonusDecay)) &&
+                runtimeImport.Catalog.TryFind("Acmg", out var controlMagic) &&
+                abilities.TryGet("Acmg", out var sourceControlMagic) &&
+                controlMagic.Levels.Zip(sourceControlMagic.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "A", out var maximumLevel) &&
+                        TryData(pair.Second, "B", out var manaPerLife) &&
+                        TryData(pair.Second, "C", out var chargeCurrentLife) &&
+                        pair.First.Effects.Length == 1 &&
+                        pair.First.Effects[0].Kind ==
+                            AbilityEffectKind.TransferControl &&
+                        pair.First.Effects[0].MaximumTargetUnitLevel ==
+                            (int)maximumLevel &&
+                        Nearly(pair.First.Effects[0].SecondaryValue,
+                            manaPerLife) &&
+                        Nearly(pair.First.Effects[0].HeroValue,
+                            chargeCurrentLife)) &&
+                runtimeImport.Catalog.TryFind("Aply", out var polymorph) &&
+                abilities.TryGet("Aply", out var sourcePolymorph) &&
+                units.TryGet("nshe", out var sheep) &&
+                sheep.Summary.Movement.Speed is > 0f and var sheepSpeed &&
+                polymorph.Levels.Zip(sourcePolymorph.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "A", out var maximumLevel) &&
+                        pair.Second.Data.TryGetValue("B", out var ground) &&
+                        pair.Second.Data.TryGetValue("C", out var air) &&
+                        pair.Second.Data.TryGetValue("D", out var amphibious) &&
+                        pair.Second.Data.TryGetValue("E", out var water) &&
+                        pair.First.Effects.Length == 1 &&
+                        pair.First.Effects[0].MaximumTargetUnitLevel ==
+                            (int)maximumLevel &&
+                        pair.First.Effects[0].Replacement ==
+                            new AbilityReplacementProfile(
+                                ground, air, amphibious, water) &&
+                        Nearly(pair.First.Effects[0].SecondaryValue,
+                            sheepSpeed * 4f / 15f) &&
+                        (pair.First.Effects[0].Status &
+                         (AbilityStatusFlags.Polymorphed |
+                          AbilityStatusFlags.AttackDisabled)) ==
+                         (AbilityStatusFlags.Polymorphed |
+                          AbilityStatusFlags.AttackDisabled)) &&
+                runtimeImport.Catalog.TryFind("Ahrp", out var repair) &&
+                abilities.TryGet("Ahrp", out var sourceRepair) &&
+                repair.Activation == AbilityActivationKind.TargetUnit &&
+                (repair.Targets &
+                 (AbilityTargetFlags.Building |
+                  AbilityTargetFlags.Friendly |
+                  AbilityTargetFlags.Mechanical)) ==
+                (AbilityTargetFlags.Building |
+                 AbilityTargetFlags.Friendly |
+                 AbilityTargetFlags.Mechanical) &&
+                (repair.Targets & AbilityTargetFlags.Dead) == 0 &&
+                repair.Levels.Zip(sourceRepair.Summary.Levels)
+                    .All(pair =>
+                        TryData(pair.Second, "A", out var costRatio) &&
+                        TryData(pair.Second, "B", out var timeRatio) &&
+                        TryData(pair.Second, "C", out var powerCost) &&
+                        TryData(pair.Second, "D", out var powerRate) &&
+                        TryData(pair.Second, "E", out var navalRange) &&
+                        pair.Second.Range is > 0f and var sourceRange &&
+                        pair.First.Effects.Length == 1 &&
+                        pair.First.Effects[0].Kind ==
+                            AbilityEffectKind.Repair &&
+                        pair.First.Effects[0].Timing ==
+                            AbilityEffectTiming.PersistentPulse &&
+                        pair.First.Effects[0].AffectsBuildings &&
+                        Nearly(pair.First.Effects[0].Value, costRatio) &&
+                        Nearly(pair.First.Effects[0].SecondaryValue,
+                            timeRatio) &&
+                        Nearly(pair.First.Effects[0].HeroValue,
+                            powerCost) &&
+                        Nearly(pair.First.Effects[0].HeroSecondaryValue,
+                            powerRate) &&
+                        Nearly(pair.First.Effects[0].Radius,
+                            navalRange * pair.First.Range / sourceRange)) &&
                 runtimeImport.Catalog.TryFind("Afbk", out var feedback) &&
                 feedback.Levels.All(level =>
                     level.Effects[0].Value == -20f &&
@@ -546,45 +730,70 @@ public static class War3AbilityDataClosureSelfTest
                     .Combat.Weapons.AsSpan().SequenceEqual(
                         flyingMachine.Weapons.AsSpan());
             var behaviorRegistryValid =
-                War3AbilityBehaviorRegistry.All.Count == 53 &&
+                War3AbilityBehaviorRegistry.All.Count == 58 &&
                 War3AbilityBehaviorRegistry.Resolve("Ahea").Status ==
                     War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
-                War3AbilityBehaviorRegistry.Resolve("Ahea").AutoCastDefault &&
+                !War3AbilityBehaviorRegistry.Resolve("Ahea").AutoCastDefault &&
                 War3AbilityBehaviorRegistry.Resolve("Ainf").Status ==
                     War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
-                War3AbilityBehaviorRegistry.Resolve("Ainf").AutoCastDefault &&
+                !War3AbilityBehaviorRegistry.Resolve("Ainf").AutoCastDefault &&
                 War3AbilityBehaviorRegistry.Resolve("Afbk", "Afbt").Status ==
                     War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
                 War3AbilityBehaviorRegistry.Resolve("Asth").Status ==
                     War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
                 War3AbilityBehaviorRegistry.Resolve("Asth").Compiler ==
                     War3AbilityCompilerKind.None &&
+                War3AbilityBehaviorRegistry.Resolve("Adef").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Aclf").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Acmg").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Aply").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("AInv").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Arep", "Ahrp").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Arep").Compiler ==
+                    War3AbilityCompilerKind.Repair &&
+                War3AbilityBehaviorRegistry.Resolve("Aens").Compiler ==
+                    War3AbilityCompilerKind.Ensnare &&
+                War3AbilityBehaviorRegistry.Resolve("Acri").Compiler ==
+                    War3AbilityCompilerKind.Cripple &&
+                War3AbilityBehaviorRegistry.Resolve("Ablo").Compiler ==
+                    War3AbilityCompilerKind.Bloodlust &&
+                War3AbilityBehaviorRegistry.Resolve("Arej").Compiler ==
+                    War3AbilityCompilerKind.Rejuvenation &&
+                War3AbilityBehaviorRegistry.Resolve("Afae").Compiler ==
+                    War3AbilityCompilerKind.FaerieFire &&
                 abilities.TryGet("Asth", out var stormHammersAbility) &&
                 stormHammersAbility.Summary.Levels.All(level =>
                     level.Requirements.Contains("Rhhb",
                         StringComparer.Ordinal)) &&
                 runtimeImport.RequestedCount == 47 &&
                 runtimeImport.BehaviorFamilyCount == 45 &&
-                runtimeImport.PrototypeCount == 39 &&
+                runtimeImport.PrototypeCount == 40 &&
                 runtimeImport.UnclassifiedBaseCodes.Length == 0 &&
                 runtimeImport.UnresolvedRequirementIds.Length == 0 &&
-                runtimeCoverage.RegistryBaseFamilyCount == 53 &&
+                runtimeCoverage.RegistryBaseFamilyCount == 58 &&
                 runtimeCoverage.All.AbilityCount == 801 &&
                 runtimeCoverage.All.BaseFamilyCount == 415 &&
-                runtimeCoverage.All.ClassifiedBaseFamilyCount == 53 &&
+                runtimeCoverage.All.ClassifiedAbilityCount == 152 &&
+                runtimeCoverage.All.ClassifiedBaseFamilyCount == 58 &&
                 runtimeCoverage.UnitReferenced.AbilityCount == 461 &&
                 runtimeCoverage.UnitReferenced.BaseFamilyCount == 285 &&
                 runtimeCoverage.Items.AbilityCount == 234 &&
                 runtimeCoverage.Items.BaseFamilyCount == 129 &&
                 runtimeCoverage.CurrentRuntime.AbilityCount == 47 &&
                 runtimeCoverage.CurrentRuntime.BaseFamilyCount == 45 &&
-                runtimeCoverage.CurrentRuntime.PrototypeAbilityCount == 39 &&
+                runtimeCoverage.CurrentRuntime.PrototypeAbilityCount == 40 &&
                 runtimeCoverage.CurrentRuntime.StatusCounts[
-                    "implemented_gameplay"] == 36 &&
+                    "implemented_gameplay"] == 43 &&
                 runtimeCoverage.CurrentRuntime.StatusCounts["delegated"] == 3 &&
                 runtimeCoverage.CurrentRuntime.StatusCounts[
                     "presentation_only"] == 1 &&
-                runtimeCoverage.CurrentRuntime.StatusCounts["blocked"] == 7 &&
+                runtimeCoverage.CurrentRuntime.StatusCounts["blocked"] == 0 &&
                 runtimeCoverage.CurrentRuntime.StatusCounts["unclassified"] == 0 &&
                 runtimeCoverage.OrphanRegisteredBaseCodes.Length == 0 &&
                 runtimeCoverage.Targeting.ExportedTokens.Length == 27 &&
@@ -601,18 +810,23 @@ public static class War3AbilityDataClosureSelfTest
                     .CurrentRuntimeResolvedRequirementIds.Length == 13 &&
                 runtimeCoverage.TechnologyRequirements
                     .CurrentRuntimeUnresolvedRequirementIds.Length == 0 &&
-                runtimeCompilerMatrix.Length == 39 &&
+                runtimeCompilerMatrix.Length == 40 &&
                 runtimeCompilerMatrix.Select(value => value.Compiler)
-                    .Distinct().Count() == 36 &&
+                    .Distinct().Count() == 37 &&
                 runtimeCompilerMatrix.All(value => value.HasEffects) &&
                 runtimeRequirementsPreserved && heroLearningBindings &&
+                runtimeAutoCastBindingsFromJson &&
                 runtimeEffectSemantics && runtimeConfiguredScalars &&
+                extendedFamilyCompilers &&
                 runtimeUnitTraits &&
                 runtimeHeroExperienceData && weaponProfilesValid &&
                 weaponSelectionValid && weaponTechnologyRequirementsValid &&
                 weaponBehaviorStatusValid && weaponCommandRoundTrip &&
                 weaponResourceRoundTrip && runtimeManaFromJson &&
+                runtimeRepairTargetsFromJson &&
                 runtimeSummonsFromJson && runtimePresentationAttachments;
+            behaviorRegistryValid &=
+                inventoryProfilesValid && inventoryLifecycle;
             var references = normalReferences
                 .Concat(heroReferences)
                 .ToHashSet(StringComparer.Ordinal);
@@ -647,11 +861,16 @@ public static class War3AbilityDataClosureSelfTest
                 $"{runtimeCoverage.All.ClassifiedBaseFamilyCount}, " +
                 $"requirements={runtimeRequirementsPreserved}, " +
                 $"hero_learning={heroLearningBindings}, " +
+                $"autocast_json={runtimeAutoCastBindingsFromJson}, " +
                 $"effect_semantics={runtimeEffectSemantics}, " +
                 $"configured_scalars={runtimeConfiguredScalars}, " +
+                $"extended_families={extendedFamilyCompilers}/" +
+                $"{extendedFamilySummary}, " +
                 $"mana_json={runtimeManaFromJson}, " +
+                $"repair_targets_json={runtimeRepairTargetsFromJson}, " +
                 $"summon_json={runtimeSummonsFromJson}, " +
                 $"attachments_json={runtimePresentationAttachments}, " +
+                $"inventory={inventoryProfilesValid}/{inventoryLifecycle}, " +
                 $"unit_traits={runtimeUnitTraits}, " +
                 $"hero_xp_data={runtimeHeroExperienceData}, " +
                 $"weapons={weaponProfilesValid}/{weaponSelectionValid}/" +
@@ -687,6 +906,163 @@ public static class War3AbilityDataClosureSelfTest
             text, NumberStyles.Float, CultureInfo.InvariantCulture,
             out value) &&
                float.IsFinite(value);
+    }
+
+    private static bool VerifyExtendedFamilyCompilers(
+        War3ObjectDataCatalog abilities,
+        War3ObjectDataCatalog buffEffects,
+        IWar3UnitDataCatalog units,
+        out string summary)
+    {
+        var expected = new Dictionary<string, War3AbilityCompilerKind>(
+            StringComparer.Ordinal)
+        {
+            ["Aens"] = War3AbilityCompilerKind.Ensnare,
+            ["Acri"] = War3AbilityCompilerKind.Cripple,
+            ["Ablo"] = War3AbilityCompilerKind.Bloodlust,
+            ["Arej"] = War3AbilityCompilerKind.Rejuvenation,
+            ["Afae"] = War3AbilityCompilerKind.FaerieFire
+        };
+        var policy = War3GameplayImportPolicy.Default;
+        var adapter = new War3AbilityDataAdapter(
+            abilities,
+            buffEffects,
+            units,
+            policy,
+            new Dictionary<string, int>(StringComparer.Ordinal),
+            new Dictionary<string, int>(StringComparer.Ordinal),
+            new Dictionary<string, UnitTypeProfile>(StringComparer.Ordinal));
+        var familyCounts = expected.Keys.ToDictionary(
+            value => value, _ => 0, StringComparer.Ordinal);
+        var compiled = 0;
+        foreach (var entry in abilities.Entries)
+        {
+            if (!abilities.TryGet(entry.Id, out var source))
+                continue;
+            var baseCode = string.IsNullOrWhiteSpace(source.Identity.BaseCode)
+                ? source.Id
+                : source.Identity.BaseCode;
+            if (!expected.TryGetValue(baseCode, out var compiler))
+                continue;
+            familyCounts[baseCode]++;
+            if (!adapter.TryCompileAbility(source.Id, compiled, out var profile) ||
+                War3AbilityBehaviorRegistry.Resolve(baseCode, source.Id)
+                    .Compiler != compiler ||
+                profile.Levels.Length != source.Summary.Levels.Length ||
+                !profile.Levels.Zip(source.Summary.Levels).All(pair =>
+                    ExtendedFamilyLevelMatches(
+                        compiler, pair.First, pair.Second,
+                        policy.WorldDistanceScale)))
+            {
+                summary = $"failed={source.Id}/{baseCode}/{compiler}";
+                return false;
+            }
+            compiled++;
+        }
+        var countsValid = familyCounts.Values.All(value => value == 3);
+        var variantAutoCastValid =
+            adapter.DefaultAutoCastEnabled("ACbb", "Ablo") &&
+            adapter.DefaultAutoCastEnabled("Afa2", "Afae") &&
+            !adapter.DefaultAutoCastEnabled("Aens", "Ablo");
+        summary = $"compiled={compiled}, families=" +
+                  string.Join('|', familyCounts.OrderBy(value => value.Key)
+                      .Select(value => $"{value.Key}:{value.Value}")) +
+                  $", variant_auto={variantAutoCastValid}";
+        return compiled == 15 && countsValid && variantAutoCastValid;
+    }
+
+    private static bool ExtendedFamilyLevelMatches(
+        War3AbilityCompilerKind compiler,
+        AbilityLevelProfile runtime,
+        War3ObjectLevel source,
+        float distanceScale)
+    {
+        if (runtime.Effects.Length != 1 ||
+            !TryData(source, "A", out var a))
+            return false;
+        var effect = runtime.Effects[0];
+        return compiler switch
+        {
+            War3AbilityCompilerKind.Ensnare =>
+                TryData(source, "B", out var ensnareHeight) &&
+                TryData(source, "C", out var ensnareMeleeRange) &&
+                effect.Kind == AbilityEffectKind.ApplyStatus &&
+                effect.Duration == 0f &&
+                (effect.Status & (AbilityStatusFlags.MovementDisabled |
+                                  AbilityStatusFlags.Grounded)) ==
+                (AbilityStatusFlags.MovementDisabled |
+                 AbilityStatusFlags.Grounded) &&
+                effect.BuffDispelKind == AbilityBuffDispelKind.Physical &&
+                Nearly(effect.SecondaryValue, a) &&
+                Nearly(effect.HeroValue, ensnareHeight * distanceScale) &&
+                Nearly(effect.HeroSecondaryValue,
+                    ensnareMeleeRange * distanceScale),
+            War3AbilityCompilerKind.Cripple =>
+                TryData(source, "B", out var attackReduction) &&
+                TryData(source, "C", out var damageReduction) &&
+                Nearly(effect.Modifier.MovementSpeedMultiplier, 1f - a) &&
+                Nearly(effect.Modifier.AttackCooldownMultiplier,
+                    1f / (1f - attackReduction)) &&
+                Nearly(effect.Modifier.AttackDamageMultiplier,
+                    1f - damageReduction),
+            War3AbilityCompilerKind.Bloodlust =>
+                TryData(source, "B", out var movementIncrease) &&
+                TryData(source, "C", out var scaleIncrease) &&
+                Nearly(effect.Modifier.AttackCooldownMultiplier,
+                    1f / (1f + a)) &&
+                Nearly(effect.Modifier.MovementSpeedMultiplier,
+                    1f + movementIncrease) &&
+                Nearly(effect.SecondaryValue, scaleIncrease),
+            War3AbilityCompilerKind.Rejuvenation =>
+                TryData(source, "B", out var manaGain) &&
+                TryData(source, "C", out var fullFlags) &&
+                TryData(source, "D", out var noTargetRequired) &&
+                source.Duration is > 0f and var duration &&
+                Nearly(effect.Modifier.HealthRegenerationAdd, a / duration) &&
+                Nearly(effect.Modifier.ManaRegenerationAdd,
+                    manaGain / duration) &&
+                Nearly(effect.SecondaryValue, fullFlags) &&
+                Nearly(effect.HeroValue, noTargetRequired),
+            War3AbilityCompilerKind.FaerieFire =>
+                (effect.Status & AbilityStatusFlags.Revealed) != 0 &&
+                Nearly(effect.Modifier.ArmorAdd, -a) &&
+                Nearly(effect.SecondaryValue,
+                    TryData(source, "B", out var alwaysAuto)
+                        ? alwaysAuto
+                        : 0f),
+            _ => false
+        };
+    }
+
+    private static bool VerifyInventoryLifecycle()
+    {
+        var runtime = new War3ItemShopRuntime();
+        var economy = new PlayerEconomyStore();
+        economy.RegisterPlayer(1, 10_000, 10_000, 20);
+        var purchase = runtime.Purchase(
+            0, 0, 7, 2, true, 3, economy, 1);
+        if (!purchase.Succeeded || runtime.InventoryCount(7) != 1)
+            return false;
+        if (!runtime.TryDropItem(
+                7, 0, new System.Numerics.Vector2(10f, 20f), true,
+                out var dropped) || runtime.InventoryCount(7) != 0)
+            return false;
+        if (!runtime.TryPickupItem(
+                7, dropped.Id, new System.Numerics.Vector2(10f, 20f),
+                2, true, 8f, out var slot) || slot != 0 ||
+            runtime.InventoryCount(7) != 1)
+            return false;
+        var deathDrops = runtime.DropInventoryOnDeath(
+            7, new System.Numerics.Vector2(30f, 40f), true);
+        if (deathDrops.Length != 1 || runtime.InventoryCount(7) != 0)
+            return false;
+        var snapshot = runtime.CaptureRuntimeState();
+        var restored = new War3ItemShopRuntime();
+        restored.RestoreRuntimeState(snapshot);
+        var ground = restored.GroundItems();
+        return snapshot.NextGroundItemId > deathDrops[0].Id &&
+               ground.Length == 1 && ground[0] == deathDrops[0] &&
+               restored.InventoryCount(7) == 0;
     }
 
     private static bool Nearly(float left, float right) =>

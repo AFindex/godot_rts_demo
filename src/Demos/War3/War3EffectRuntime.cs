@@ -11,6 +11,11 @@ public sealed partial class War3EffectRuntime : Node3D
 {
     private const double FixedStepMilliseconds = 1000d / 30d;
     private const float WarcraftUnitScale = 0.01f;
+    private static readonly Dictionary<string, Texture2D?> TextureCache =
+        new(StringComparer.OrdinalIgnoreCase);
+    private static Camera3D? _preparedCamera;
+    private static Basis _preparedCameraBasis;
+    private static int _nextRandomSeed;
     private readonly List<ParticleEmitterRuntime> _particles = [];
     private readonly List<RibbonEmitterRuntime> _ribbons = [];
     private War3ModelMetadata? _metadata;
@@ -19,6 +24,12 @@ public sealed partial class War3EffectRuntime : Node3D
     private double _simulatedMilliseconds;
     private double _accumulatorMilliseconds;
     private int _teamColor;
+    private uint _randomState = 0x9E3779B9u ^
+        (uint)Interlocked.Increment(ref _nextRandomSeed) * 0x85EBCA6Bu;
+    private Basis _preparedWorldBasis;
+    private Transform3D _preparedWorldInverse;
+    private bool _hasPreparedWorldBasis;
+    private bool _externalWorldTransformPrepared;
 
     public int LiveParticleCount
     {
@@ -46,6 +57,26 @@ public sealed partial class War3EffectRuntime : Node3D
         _particles.Count(runtime => runtime.Binding is not null) +
         _ribbons.Count(runtime => runtime.Binding is not null);
 
+    public static void PrepareCameraFrame(Camera3D camera, Basis basis)
+    {
+        _preparedCamera = camera;
+        _preparedCameraBasis = basis;
+    }
+
+    public void PrepareWorldBasis(Basis basis)
+    {
+        _preparedWorldBasis = basis;
+        _hasPreparedWorldBasis = true;
+    }
+
+    public void PrepareWorldTransform(Transform3D transform)
+    {
+        _preparedWorldBasis = transform.Basis;
+        _preparedWorldInverse = transform.AffineInverse();
+        _hasPreparedWorldBasis = true;
+        _externalWorldTransformPrepared = true;
+    }
+
     public void Initialize(Node modelRoot, Camera3D camera, War3ModelMetadata metadata)
     {
         ClearRuntime();
@@ -60,6 +91,7 @@ public sealed partial class War3EffectRuntime : Node3D
                 CreateMeshVisual(definition.Name),
                 CreateParticleMaterial(metadata, definition));
             runtime.Visual.Mesh = runtime.Mesh;
+            runtime.Visual.MaterialOverride = runtime.Material;
             AddChild(runtime.Visual);
             _particles.Add(runtime);
         }
@@ -72,6 +104,7 @@ public sealed partial class War3EffectRuntime : Node3D
                 CreateMeshVisual(definition.Name),
                 CreateRibbonMaterial(metadata, definition));
             runtime.Visual.Mesh = runtime.Mesh;
+            runtime.Visual.MaterialOverride = runtime.Material;
             AddChild(runtime.Visual);
             _ribbons.Add(runtime);
         }
@@ -105,12 +138,14 @@ public sealed partial class War3EffectRuntime : Node3D
             emitter.SpawnRemainder = 0d;
             emitter.LastSquirtFrame = null;
             emitter.Mesh.ClearSurfaces();
+            emitter.HasSurface = false;
         }
         foreach (var emitter in _ribbons)
         {
             emitter.Points.Clear();
             emitter.SpawnRemainder = 0d;
             emitter.Mesh.ClearSurfaces();
+            emitter.HasSurface = false;
         }
     }
 
@@ -119,6 +154,7 @@ public sealed partial class War3EffectRuntime : Node3D
         Action<double>? sampleAnimation = null)
     {
         if (_sequence is null || _metadata is null || _camera is null) return;
+        PrepareWorldTransformForSync();
         localMilliseconds = Math.Clamp(localMilliseconds, 0d, _sequence.DurationMilliseconds);
         if (localMilliseconds + 0.5d < _simulatedMilliseconds) Reset();
         var delta = localMilliseconds - _simulatedMilliseconds;
@@ -144,6 +180,7 @@ public sealed partial class War3EffectRuntime : Node3D
     public void Seek(double localMilliseconds, Action<double>? sampleAnimation = null)
     {
         if (_sequence is null) return;
+        PrepareWorldTransformForSync();
         Reset();
         var target = Math.Clamp(localMilliseconds, 0d, _sequence.DurationMilliseconds);
         while (_simulatedMilliseconds + FixedStepMilliseconds <= target)
@@ -187,22 +224,25 @@ public sealed partial class War3EffectRuntime : Node3D
                     runtime.SpawnRemainder = desired - spawnCount;
                 }
                 spawnCount = Math.Min(spawnCount, 96);
+                var emitterTransform = runtime.Binding.GlobalTransform;
                 for (var index = 0; index < spawnCount; index++)
-                    SpawnParticle(runtime, frame);
+                    SpawnParticle(runtime, frame, emitterTransform);
             }
 
-            for (var index = runtime.Particles.Count - 1; index >= 0; index--)
+            var survivingParticles = 0;
+            var particleCount = runtime.Particles.Count;
+            for (var index = 0; index < particleCount; index++)
             {
                 var particle = runtime.Particles[index];
                 particle.Age += deltaSeconds;
-                if (particle.Age >= particle.Life)
-                {
-                    runtime.Particles.RemoveAt(index);
-                    continue;
-                }
+                if (particle.Age >= particle.Life) continue;
                 particle.Velocity += particle.Gravity * (float)deltaSeconds;
                 particle.Position += particle.Velocity * (float)deltaSeconds;
+                runtime.Particles[survivingParticles++] = particle;
             }
+            if (survivingParticles < particleCount)
+                runtime.Particles.RemoveRange(
+                    survivingParticles, particleCount - survivingParticles);
         }
 
         foreach (var runtime in _ribbons)
@@ -215,10 +255,15 @@ public sealed partial class War3EffectRuntime : Node3D
                               runtime.SpawnRemainder;
                 var count = (int)Math.Floor(desired);
                 runtime.SpawnRemainder = desired - count;
+                var emitterTransform = runtime.Binding.GlobalTransform;
                 for (var index = 0; index < Math.Min(count, 8); index++)
-                    SpawnRibbonPoint(runtime, frame);
+                    SpawnRibbonPoint(runtime, frame, emitterTransform);
+                if (runtime.Points.Count > 512)
+                    runtime.Points.RemoveRange(0, runtime.Points.Count - 512);
             }
-            for (var index = runtime.Points.Count - 1; index >= 0; index--)
+            var survivingPoints = 0;
+            var pointCount = runtime.Points.Count;
+            for (var index = 0; index < pointCount; index++)
             {
                 var point = runtime.Points[index];
                 point.Age += deltaSeconds;
@@ -228,9 +273,12 @@ public sealed partial class War3EffectRuntime : Node3D
                 point.Center += gravityOffset;
                 point.Above += gravityOffset;
                 point.Below += gravityOffset;
-                if (point.Age >= Math.Max(0.05d, definition.LifeSpan))
-                    runtime.Points.RemoveAt(index);
+                if (point.Age >= Math.Max(0.05d, definition.LifeSpan)) continue;
+                runtime.Points[survivingPoints++] = point;
             }
+            if (survivingPoints < pointCount)
+                runtime.Points.RemoveRange(
+                    survivingPoints, pointCount - survivingPoints);
         }
     }
 
@@ -263,7 +311,10 @@ public sealed partial class War3EffectRuntime : Node3D
         return latest;
     }
 
-    private void SpawnParticle(ParticleEmitterRuntime runtime, double frame)
+    private void SpawnParticle(
+        ParticleEmitterRuntime runtime,
+        double frame,
+        Transform3D emitterTransform)
     {
         var definition = runtime.Definition;
         var speed = definition.Speed.Sample(frame, _sequence!, _metadata!.GlobalSequences);
@@ -278,8 +329,8 @@ public sealed partial class War3EffectRuntime : Node3D
             MathF.Sin(polar) * MathF.Sin(yaw),
             MathF.Cos(polar));
         if ((definition.Flags & 131072) != 0) direction.X = 0f;
-        var emitter = runtime.Binding!;
-        direction = (emitter.GlobalBasis.Orthonormalized() * direction).Normalized();
+        direction = (emitterTransform.Basis.Orthonormalized() * direction)
+            .Normalized();
         // Width/Length remain in MDX node-local units. ToGlobal applies the
         // WarcraftRoot scale; multiplying by 0.01 here would scale twice.
         var width = (float)definition.Width.Sample(frame, _sequence!, _metadata.GlobalSequences);
@@ -288,8 +339,8 @@ public sealed partial class War3EffectRuntime : Node3D
             (float)RandomRange(-width, width),
             (float)RandomRange(-length, length),
             0f);
-        var origin = ToLocal(emitter.ToGlobal(localOffset));
-        var worldScale = WorldScale(emitter);
+        var origin = ToEffectLocal(emitterTransform * localOffset);
+        var worldScale = WorldScale(emitterTransform.Basis);
         runtime.Particles.Add(new Particle
         {
             Position = origin,
@@ -302,32 +353,57 @@ public sealed partial class War3EffectRuntime : Node3D
         });
     }
 
-    private void SpawnRibbonPoint(RibbonEmitterRuntime runtime, double frame)
+    private void SpawnRibbonPoint(
+        RibbonEmitterRuntime runtime,
+        double frame,
+        Transform3D transform)
     {
-        var node = runtime.Binding!;
         var definition = runtime.Definition;
         var above = (float)definition.HeightAbove.Sample(
             frame, _sequence!, _metadata!.GlobalSequences);
         var below = (float)definition.HeightBelow.Sample(
             frame, _sequence!, _metadata.GlobalSequences);
-        var center = ToLocal(node.GlobalPosition);
+        var center = ToEffectLocal(transform.Origin);
         runtime.Points.Add(new RibbonPoint
         {
             Center = center,
-            Above = ToLocal(node.ToGlobal(new Vector3(0f, above, 0f))),
-            Below = ToLocal(node.ToGlobal(new Vector3(0f, -below, 0f))),
+            Above = ToEffectLocal(transform * new Vector3(0f, above, 0f)),
+            Below = ToEffectLocal(transform * new Vector3(0f, -below, 0f)),
             Alpha = (float)Math.Clamp(definition.Alpha.Sample(
                 frame, _sequence!, _metadata.GlobalSequences), 0d, 1d),
             Age = 0d
         });
-        if (runtime.Points.Count > 512) runtime.Points.RemoveAt(0);
+    }
+
+    private Vector3 ToEffectLocal(Vector3 globalPosition) =>
+        _hasPreparedWorldBasis
+            ? _preparedWorldInverse * globalPosition
+            : ToLocal(globalPosition);
+
+    private void PrepareWorldTransformForSync()
+    {
+        if (!_externalWorldTransformPrepared)
+        {
+            var transform = GlobalTransform;
+            _preparedWorldBasis = transform.Basis;
+            _preparedWorldInverse = transform.AffineInverse();
+            _hasPreparedWorldBasis = true;
+        }
+        _externalWorldTransformPrepared = false;
     }
 
     private void RebuildMeshes()
     {
         if (_camera is null) return;
-        var right = GlobalBasis.Inverse() * _camera.GlobalBasis.X.Normalized();
-        var up = GlobalBasis.Inverse() * _camera.GlobalBasis.Y.Normalized();
+        var cameraBasis = ReferenceEquals(_camera, _preparedCamera)
+            ? _preparedCameraBasis
+            : _camera.GlobalBasis;
+        var worldBasis = _hasPreparedWorldBasis
+            ? _preparedWorldBasis
+            : GlobalBasis;
+        var inverseBasis = worldBasis.Inverse();
+        var right = inverseBasis * cameraBasis.X.Normalized();
+        var up = inverseBasis * cameraBasis.Y.Normalized();
         foreach (var runtime in _particles) RebuildParticleMesh(runtime, right, up);
         foreach (var runtime in _ribbons) RebuildRibbonMesh(runtime);
     }
@@ -337,8 +413,15 @@ public sealed partial class War3EffectRuntime : Node3D
         Vector3 cameraRight,
         Vector3 cameraUp)
     {
-        runtime.Mesh.ClearSurfaces();
-        if (runtime.Particles.Count == 0) return;
+        if (runtime.Particles.Count == 0)
+        {
+            if (runtime.HasSurface)
+            {
+                runtime.Mesh.ClearSurfaces();
+                runtime.HasSurface = false;
+            }
+            return;
+        }
         var rendersHead = (runtime.Definition.FrameFlags & 1) != 0 ||
                           runtime.Definition.FrameFlags == 0;
         var rendersTail = false;
@@ -353,14 +436,29 @@ public sealed partial class War3EffectRuntime : Node3D
                 break;
             }
         }
-        if (!rendersHead && !rendersTail) return;
-        runtime.Mesh.SurfaceBegin(Mesh.PrimitiveType.Triangles, runtime.Material);
+        if (!rendersHead && !rendersTail)
+        {
+            if (runtime.HasSurface) runtime.Mesh.ClearSurfaces();
+            runtime.HasSurface = false;
+            return;
+        }
+        var vertexCount = rendersHead ? runtime.Particles.Count * 6 : 0;
+        if (rendersTail)
+        {
+            for (var index = 0; index < runtime.Particles.Count; index++)
+                if (runtime.Particles[index].Velocity.LengthSquared() >
+                    0.00001f)
+                    vertexCount += 6;
+        }
+        runtime.Mesh.ClearSurfaces();
+        runtime.Geometry.Prepare(vertexCount);
+        var emitterWorldScale = WorldScale(runtime.Binding);
         foreach (var particle in runtime.Particles)
         {
             var progress = (float)Math.Clamp(particle.Age / particle.Life, 0d, 1d);
             var color = ParticleColor(runtime.Definition, progress);
             var size = ParticleScale(runtime.Definition, progress) *
-                       WorldScale(runtime.Binding);
+                       emitterWorldScale;
             var (uv0, uv1) = ParticleUv(runtime.Definition, progress);
             if ((runtime.Definition.FrameFlags & 1) != 0 || runtime.Definition.FrameFlags == 0)
             {
@@ -374,25 +472,34 @@ public sealed partial class War3EffectRuntime : Node3D
                     : cameraUp;
                 var rotatedRight = baseRight * cos + baseUp * sin;
                 var rotatedUp = -baseRight * sin + baseUp * cos;
-                AppendQuad(runtime.Mesh, particle.Position, rotatedRight * size,
+                AppendQuad(runtime.Geometry, particle.Position, rotatedRight * size,
                     rotatedUp * size, color, uv0, uv1);
             }
             if ((runtime.Definition.FrameFlags & 2) != 0 && particle.Velocity.LengthSquared() > 0.00001f)
             {
                 var tail = particle.Velocity * (float)runtime.Definition.TailLength;
                 var side = tail.Cross(cameraUp).Normalized() * Math.Max(0.004f, size * 0.45f);
-                AppendTrailQuad(runtime.Mesh, particle.Position, particle.Position - tail,
+                AppendTrailQuad(runtime.Geometry, particle.Position, particle.Position - tail,
                     side, color, uv0, uv1);
             }
         }
-        runtime.Mesh.SurfaceEnd();
+        runtime.Geometry.Commit(runtime.Mesh);
+        runtime.HasSurface = true;
     }
 
     private static void RebuildRibbonMesh(RibbonEmitterRuntime runtime)
     {
+        if (runtime.Points.Count < 2)
+        {
+            if (runtime.HasSurface)
+            {
+                runtime.Mesh.ClearSurfaces();
+                runtime.HasSurface = false;
+            }
+            return;
+        }
         runtime.Mesh.ClearSurfaces();
-        if (runtime.Points.Count < 2) return;
-        runtime.Mesh.SurfaceBegin(Mesh.PrimitiveType.Triangles, runtime.Material);
+        runtime.Geometry.Prepare((runtime.Points.Count - 1) * 6);
         for (var index = 1; index < runtime.Points.Count; index++)
         {
             var previous = runtime.Points[index - 1];
@@ -409,14 +516,15 @@ public sealed partial class War3EffectRuntime : Node3D
             {
                 A = current.Alpha * (1f - currentProgress)
             };
-            AppendRibbonSegment(runtime.Mesh, previous, current,
+            AppendRibbonSegment(runtime.Geometry, previous, current,
                 previousColor, currentColor, index - 1, runtime.Points.Count - 1);
         }
-        runtime.Mesh.SurfaceEnd();
+        runtime.Geometry.Commit(runtime.Mesh);
+        runtime.HasSurface = true;
     }
 
     private static void AppendQuad(
-        ImmediateMesh mesh,
+        EffectGeometryBuffer geometry,
         Vector3 center,
         Vector3 right,
         Vector3 up,
@@ -428,14 +536,14 @@ public sealed partial class War3EffectRuntime : Node3D
         var b = center + right - up;
         var c = center + right + up;
         var d = center - right + up;
-        AddTriangle(mesh, a, b, c, color,
+        AddTriangle(geometry, a, b, c, color,
             new Vector2(uv0.X, uv1.Y), uv1, new Vector2(uv1.X, uv0.Y));
-        AddTriangle(mesh, a, c, d, color,
+        AddTriangle(geometry, a, c, d, color,
             new Vector2(uv0.X, uv1.Y), new Vector2(uv1.X, uv0.Y), uv0);
     }
 
     private static void AppendTrailQuad(
-        ImmediateMesh mesh,
+        EffectGeometryBuffer geometry,
         Vector3 head,
         Vector3 tail,
         Vector3 side,
@@ -443,14 +551,14 @@ public sealed partial class War3EffectRuntime : Node3D
         Vector2 uv0,
         Vector2 uv1)
     {
-        AddTriangle(mesh, head - side, head + side, tail + side, color,
+        AddTriangle(geometry, head - side, head + side, tail + side, color,
             new Vector2(uv0.X, uv0.Y), new Vector2(uv0.X, uv1.Y), uv1);
-        AddTriangle(mesh, head - side, tail + side, tail - side, color,
+        AddTriangle(geometry, head - side, tail + side, tail - side, color,
             new Vector2(uv0.X, uv0.Y), uv1, new Vector2(uv1.X, uv0.Y));
     }
 
     private static void AppendRibbonSegment(
-        ImmediateMesh mesh,
+        EffectGeometryBuffer geometry,
         RibbonPoint previous,
         RibbonPoint current,
         Color previousColor,
@@ -460,16 +568,16 @@ public sealed partial class War3EffectRuntime : Node3D
     {
         var u0 = total <= 0 ? 0f : index / (float)total;
         var u1 = total <= 0 ? 1f : (index + 1f) / total;
-        AddVertex(mesh, previous.Above, previousColor, new Vector2(u0, 0f));
-        AddVertex(mesh, previous.Below, previousColor, new Vector2(u0, 1f));
-        AddVertex(mesh, current.Below, currentColor, new Vector2(u1, 1f));
-        AddVertex(mesh, previous.Above, previousColor, new Vector2(u0, 0f));
-        AddVertex(mesh, current.Below, currentColor, new Vector2(u1, 1f));
-        AddVertex(mesh, current.Above, currentColor, new Vector2(u1, 0f));
+        geometry.Add(previous.Above, previousColor, new Vector2(u0, 0f));
+        geometry.Add(previous.Below, previousColor, new Vector2(u0, 1f));
+        geometry.Add(current.Below, currentColor, new Vector2(u1, 1f));
+        geometry.Add(previous.Above, previousColor, new Vector2(u0, 0f));
+        geometry.Add(current.Below, currentColor, new Vector2(u1, 1f));
+        geometry.Add(current.Above, currentColor, new Vector2(u1, 0f));
     }
 
     private static void AddTriangle(
-        ImmediateMesh mesh,
+        EffectGeometryBuffer geometry,
         Vector3 a,
         Vector3 b,
         Vector3 c,
@@ -478,16 +586,9 @@ public sealed partial class War3EffectRuntime : Node3D
         Vector2 uvB,
         Vector2 uvC)
     {
-        AddVertex(mesh, a, color, uvA);
-        AddVertex(mesh, b, color, uvB);
-        AddVertex(mesh, c, color, uvC);
-    }
-
-    private static void AddVertex(ImmediateMesh mesh, Vector3 vertex, Color color, Vector2 uv)
-    {
-        mesh.SurfaceSetColor(color);
-        mesh.SurfaceSetUV(uv);
-        mesh.SurfaceAddVertex(vertex);
+        geometry.Add(a, color, uvA);
+        geometry.Add(b, color, uvB);
+        geometry.Add(c, color, uvC);
     }
 
     private static Color ParticleColor(War3ParticleEmitterDefinition definition, float progress)
@@ -612,10 +713,18 @@ public sealed partial class War3EffectRuntime : Node3D
         var relative = image.Replace('\\', '/');
         relative = Path.ChangeExtension(relative, ".png").Replace('\\', '/');
         var path = War3AssetPack.AbsolutePath($"textures/{relative}");
-        if (!File.Exists(path)) return null;
+        if (TextureCache.TryGetValue(path, out var cached)) return cached;
+        if (!File.Exists(path))
+        {
+            TextureCache[path] = null;
+            return null;
+        }
         var loaded = Image.LoadFromFile(path);
-        if (loaded is null || loaded.IsEmpty()) return null;
-        return ImageTexture.CreateFromImage(loaded);
+        var texture = loaded is null || loaded.IsEmpty()
+            ? null
+            : ImageTexture.CreateFromImage(loaded);
+        TextureCache[path] = texture;
+        return texture;
     }
 
     private static MeshInstance3D CreateMeshVisual(string name) => new()
@@ -669,7 +778,11 @@ public sealed partial class War3EffectRuntime : Node3D
     private static float WorldScale(EmitterBinding? binding)
     {
         if (binding is null) return WarcraftUnitScale;
-        var basis = binding.GlobalBasis;
+        return WorldScale(binding.GlobalBasis);
+    }
+
+    private static float WorldScale(Basis basis)
+    {
         return (basis.X.Length() + basis.Y.Length() + basis.Z.Length()) / 3f;
     }
 
@@ -682,8 +795,66 @@ public sealed partial class War3EffectRuntime : Node3D
         _sequence = null;
     }
 
-    private static double RandomRange(double minimum, double maximum) =>
-        minimum + GD.Randf() * (maximum - minimum);
+    private double RandomRange(double minimum, double maximum)
+    {
+        // Effect randomness is presentation-only. Keep it local so hundreds
+        // of emitters do not cross the managed/native boundary or perturb
+        // Godot's global random stream for every spawned particle.
+        var value = _randomState;
+        value ^= value << 13;
+        value ^= value >> 17;
+        value ^= value << 5;
+        _randomState = value;
+        var unit = (value >> 8) * (1d / 16_777_216d);
+        return minimum + unit * (maximum - minimum);
+    }
+
+    /// <summary>
+    /// Reuses managed vertex arrays while reducing a dynamic emitter rebuild
+    /// from three Godot interop calls per vertex to one surface submission.
+    /// </summary>
+    private sealed class EffectGeometryBuffer
+    {
+        private readonly Godot.Collections.Array _surfaceArrays = [];
+        private Vector3[] _vertices = [];
+        private Color[] _colors = [];
+        private Vector2[] _uvs = [];
+        private int _writeIndex;
+
+        public EffectGeometryBuffer() =>
+            _surfaceArrays.Resize((int)Mesh.ArrayType.Max);
+
+        public void Prepare(int vertexCount)
+        {
+            if (_vertices.Length != vertexCount)
+            {
+                _vertices = new Vector3[vertexCount];
+                _colors = new Color[vertexCount];
+                _uvs = new Vector2[vertexCount];
+            }
+            _writeIndex = 0;
+        }
+
+        public void Add(Vector3 vertex, Color color, Vector2 uv)
+        {
+            _vertices[_writeIndex] = vertex;
+            _colors[_writeIndex] = color;
+            _uvs[_writeIndex] = uv;
+            _writeIndex++;
+        }
+
+        public void Commit(ArrayMesh mesh)
+        {
+            if (_writeIndex != _vertices.Length)
+                throw new InvalidOperationException(
+                    "Effect geometry vertex count changed during rebuild.");
+            _surfaceArrays[(int)Mesh.ArrayType.Vertex] = _vertices;
+            _surfaceArrays[(int)Mesh.ArrayType.Color] = _colors;
+            _surfaceArrays[(int)Mesh.ArrayType.TexUV] = _uvs;
+            mesh.AddSurfaceFromArrays(
+                Mesh.PrimitiveType.Triangles, _surfaceArrays);
+        }
+    }
 
     private sealed class ParticleEmitterRuntime(
         War3ParticleEmitterDefinition definition,
@@ -694,11 +865,13 @@ public sealed partial class War3EffectRuntime : Node3D
         public War3ParticleEmitterDefinition Definition { get; } = definition;
         public EmitterBinding? Binding { get; } = binding;
         public MeshInstance3D Visual { get; } = visual;
-        public ImmediateMesh Mesh { get; } = new();
+        public ArrayMesh Mesh { get; } = new();
+        public EffectGeometryBuffer Geometry { get; } = new();
         public StandardMaterial3D Material { get; } = material;
         public List<Particle> Particles { get; } = [];
         public double SpawnRemainder { get; set; }
         public double? LastSquirtFrame { get; set; }
+        public bool HasSurface { get; set; }
     }
 
     private sealed class RibbonEmitterRuntime(
@@ -710,10 +883,12 @@ public sealed partial class War3EffectRuntime : Node3D
         public War3RibbonEmitterDefinition Definition { get; } = definition;
         public EmitterBinding? Binding { get; } = binding;
         public MeshInstance3D Visual { get; } = visual;
-        public ImmediateMesh Mesh { get; } = new();
+        public ArrayMesh Mesh { get; } = new();
+        public EffectGeometryBuffer Geometry { get; } = new();
         public StandardMaterial3D Material { get; } = material;
         public List<RibbonPoint> Points { get; } = [];
         public double SpawnRemainder { get; set; }
+        public bool HasSurface { get; set; }
     }
 
     private sealed class EmitterBinding
@@ -735,8 +910,6 @@ public sealed partial class War3EffectRuntime : Node3D
             : _skeleton!.GlobalTransform * _skeleton.GetBoneGlobalPose(_boneIndex);
 
         public Basis GlobalBasis => GlobalTransform.Basis;
-        public Vector3 GlobalPosition => GlobalTransform.Origin;
-        public Vector3 ToGlobal(Vector3 localPosition) => GlobalTransform * localPosition;
     }
 
     private sealed class Particle

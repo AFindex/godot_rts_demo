@@ -6,6 +6,9 @@ namespace RtsDemo.Tests;
 
 public static class AbilitySystemSelfTest
 {
+    private static bool Nearly(float left, float right) =>
+        MathF.Abs(left - right) < 0.001f;
+
     public static SelfTestResult Run()
     {
         var rig = MovementTestRig.CreateOpenField(new Vector2(240f), 24);
@@ -103,6 +106,25 @@ public static class AbilitySystemSelfTest
             AbilityCastTarget.Self(caster, simulation.Units.Positions[caster]));
         var requirementGateWorked =
             gated.Code == AbilityCommandCode.RequirementsNotMet;
+
+        var defendOn = simulation.IssueAbility(
+            1, caster, 30,
+            AbilityCastTarget.Self(caster, simulation.Units.Positions[caster]));
+        var defendModifier = simulation.Abilities.ObserveBuffs(caster)
+            .Single(value => value.AbilityId == 30).CombatModifier;
+        var defendOff = simulation.IssueAbility(
+            1, caster, 30,
+            AbilityCastTarget.Self(caster, simulation.Units.Positions[caster]));
+        var defendToggleWorked = defendOn.Succeeded && defendOff.Succeeded &&
+            Nearly(defendModifier.DamageTakenMultiplier, 0.5f) &&
+            Nearly(defendModifier.DamageDealtMultiplier, 0.8f) &&
+            Nearly(defendModifier.MagicDamageTakenMultiplier, 1.2f) &&
+            Nearly(defendModifier.DeflectChancePercent, 100f) &&
+            Nearly(defendModifier.DeflectedPiercingDamageMultiplier, 0.2f) &&
+            Nearly(defendModifier.DeflectedMagicDamageMultiplier, 0.6f) &&
+            Nearly(defendModifier.AttackMissChancePercent, 10f) &&
+            simulation.Abilities.ObserveBuffs(caster)
+                .All(value => value.AbilityId != 30);
 
         simulation.DamageUnit(ally, 40f);
         rig.Step();
@@ -502,13 +524,14 @@ public static class AbilitySystemSelfTest
                                   value.Kind == AbilityEventKind.Impact &&
                                   value.AbilityId == "T001");
 
-        var passed = catalog.Count == 30 && autoHealWorked && previewWorked &&
+        var passed = catalog.Count == 31 && autoHealWorked && previewWorked &&
                      directDamageWorked && shieldApplied && blocked && expired &&
                      lifecycleWorked && snapshotWorked && requirementGateWorked &&
                      heroLearningWorked && damageClassificationWorked &&
                      buffIdentityWorked && spellStealWorked && dispelWorked &&
                      unitTraitsWorked &&
-                     heroExperienceWorked && auraStackingWorked;
+                     heroExperienceWorked && auraStackingWorked &&
+                     defendToggleWorked;
         passed &= summonDispelWorked && permanentSummonWorked;
         passed &= manaTransferWorked;
         passed &= feedbackWorked;
@@ -524,6 +547,15 @@ public static class AbilitySystemSelfTest
         return new SelfTestResult(
             passed,
             $"catalog={catalog.Count}, auto_heal={autoHealWorked}, " +
+            $"defend={defendToggleWorked}/on={defendOn.Code}/" +
+            $"off={defendOff.Code}/m=" +
+            $"{defendModifier.DamageTakenMultiplier}/" +
+            $"{defendModifier.DamageDealtMultiplier}/" +
+            $"{defendModifier.MagicDamageTakenMultiplier}/" +
+            $"{defendModifier.DeflectChancePercent}/" +
+            $"{defendModifier.DeflectedPiercingDamageMultiplier}/" +
+            $"{defendModifier.DeflectedMagicDamageMultiplier}/" +
+            $"{defendModifier.AttackMissChancePercent}, " +
             $"preview={previewWorked}/{firePreview.Code}/{invalidPreview.Code}, " +
             $"damage={directDamageWorked}, shield={shieldApplied && blocked}, " +
             $"expiry={expired}, requirement={requirementGateWorked}, " +
@@ -615,16 +647,104 @@ public static class AbilitySystemSelfTest
                     SecondaryValue: 1f,
                     DamageKind: AbilityDamageKind.Magic,
                     SummonedValue: 12f)])]);
+        var controlMagic = new AbilityProfile(
+            2, "TCMG", "Configured Control Magic", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Neutral | AbilityTargetFlags.Alive,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 25f, 0f, 0f, 0f, 120f, 0f, 0f, 0f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.TransferControl,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy |
+                    AbilityRelationFilter.Neutral,
+                    Value: 5f,
+                    SecondaryValue: 0.45f,
+                    HeroValue: 1f)])]);
+        var polymorph = new AbilityProfile(
+            3, "TPLY", "Configured Polymorph", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Neutral | AbilityTargetFlags.Alive |
+            AbilityTargetFlags.NonHero,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 120f, 0f, 5f, 5f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy |
+                    AbilityRelationFilter.Neutral,
+                    SecondaryValue: 40f,
+                    Duration: 5f,
+                    Status: AbilityStatusFlags.Polymorphed |
+                            AbilityStatusFlags.AttackDisabled,
+                    Replacement: new AbilityReplacementProfile(
+                        "nshe", "nshf", "nsha", "nshw"),
+                    MaximumTargetUnitLevel: 5)])]);
+        var ensnare = new AbilityProfile(
+            4, "TENS", "Configured Ensnare", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Alive | AbilityTargetFlags.Air,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 120f, 0f, 10f, 4f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy,
+                    Status: AbilityStatusFlags.MovementDisabled |
+                            AbilityStatusFlags.Grounded,
+                    BuffId: "BENS",
+                    BuffPolarity: AbilityBuffPolarity.Harmful,
+                    BuffDispelKind: AbilityBuffDispelKind.Physical)])]);
+        var faerieFire = new AbilityProfile(
+            5, "TFAE", "Configured Faerie Fire", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Alive,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 120f, 0f, 10f, 4f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy,
+                    Status: AbilityStatusFlags.Revealed,
+                    Modifier: new AbilityStatModifier(ArmorAdd: -6f),
+                    BuffId: "BFAE",
+                    BuffPolarity: AbilityBuffPolarity.Harmful,
+                    BuffDispelKind: AbilityBuffDispelKind.Magic)])]);
         var catalog = new AbilityCatalogSnapshot(
-            [regeneration, feedback],
+            [
+                regeneration, feedback, controlMagic, polymorph,
+                ensnare, faerieFire
+            ],
             [new UnitAbilityBindingProfile(
-                0, false, UnitManaProfile.None,
+                0, false, new UnitManaProfile(100f, 100f, 0f),
                 [
                     new UnitAbilityEntryProfile(0, 1, true),
-                    new UnitAbilityEntryProfile(1, 1)
+                    new UnitAbilityEntryProfile(1, 1),
+                    new UnitAbilityEntryProfile(2, 1),
+                    new UnitAbilityEntryProfile(3, 1),
+                    new UnitAbilityEntryProfile(4, 1),
+                    new UnitAbilityEntryProfile(5, 1)
                 ]),
              new UnitAbilityBindingProfile(
-                 1, false, UnitManaProfile.None, [])]);
+                 1, false, UnitManaProfile.None, [], UnitLevel: 1),
+             new UnitAbilityBindingProfile(
+                 2, false, UnitManaProfile.None, [], UnitLevel: 6)]);
         simulation.Abilities.ConfigureCatalog(catalog);
         var movement = new UnitMovementProfileSnapshot(
             0, "configured-scalar", 7.5f, 90f, 400f,
@@ -638,12 +758,26 @@ public static class AbilitySystemSelfTest
             0, "configured-caster", movement, combat, false);
         var targetType = new UnitTypeProfile(
             1, "configured-target", movement with { Id = 1 }, combat, false);
+        var highLevelType = new UnitTypeProfile(
+            2, "configured-high-level", movement with { Id = 2 },
+            combat, false);
         var caster = simulation.AddUnit(new Vector2(60f, 60f), casterType, 1);
         var nearby = simulation.AddUnit(new Vector2(90f, 60f), targetType, 1);
         var outsideAutoCast = simulation.AddUnit(
             new Vector2(110f, 60f), targetType, 1);
         var summoned = simulation.AddUnit(
             new Vector2(75f, 80f), targetType, 2);
+        var notSummoned = simulation.AddUnit(
+            new Vector2(85f, 80f), targetType, 2);
+        var highLevel = simulation.AddUnit(
+            new Vector2(95f, 80f), highLevelType, 2);
+        var airTarget = simulation.AddUnit(
+            new Vector2(105f, 90f),
+            targetType with
+            {
+                Perception = UnitPerceptionProfileSnapshot.ElevatedObserver()
+            },
+            2);
         simulation.Abilities.RegisterExternalSummon(
             summoned, caster, "configured-summon");
         simulation.DamageUnit(nearby, 50f);
@@ -661,6 +795,61 @@ public static class AbilitySystemSelfTest
                           simulation.Combat.Health[outsideAutoCast] == 50f;
         var summonedDamage = feedbackCast.Succeeded &&
                             simulation.Combat.Health[summoned] == 88f;
+        var abilityWorld = (IAbilityRuntimeWorld)simulation;
+        var wasAir = abilityWorld.AbilityUnitIsAir(airTarget);
+        var ensnareCast = simulation.IssueAbility(
+            1, caster, 4,
+            AbilityCastTarget.Unit(
+                airTarget, simulation.Units.Positions[airTarget]));
+        var faerieCast = simulation.IssueAbility(
+            1, caster, 5,
+            AbilityCastTarget.Unit(
+                notSummoned, simulation.Units.Positions[notSummoned]));
+        rig.Step();
+        var configuredStatusesWorked =
+            ensnareCast.Succeeded && faerieCast.Succeeded && wasAir &&
+            !abilityWorld.AbilityUnitIsAir(airTarget) &&
+            !simulation.Abilities.CanMove(airTarget) &&
+            simulation.Abilities.HasStatus(
+                airTarget, AbilityStatusFlags.Grounded) &&
+            simulation.Abilities.HasStatus(
+                notSummoned, AbilityStatusFlags.Revealed) &&
+            Nearly(simulation.Combat.Armor[notSummoned], -6f);
+        var invalidControl = simulation.IssueAbility(
+            1, caster, 2,
+            AbilityCastTarget.Unit(
+                notSummoned, simulation.Units.Positions[notSummoned]));
+        var controlCast = simulation.IssueAbility(
+            1, caster, 2,
+            AbilityCastTarget.Unit(
+                summoned, simulation.Units.Positions[summoned]));
+        var controlMagicWorked =
+            invalidControl.Code == AbilityCommandCode.InvalidTarget &&
+            controlCast.Succeeded &&
+            simulation.Combat.Teams[summoned] == 1 &&
+            Nearly(simulation.Abilities.Observe(caster).Mana, 35.4f);
+        var polymorphCast = simulation.IssueAbility(
+            1, caster, 3,
+            AbilityCastTarget.Unit(
+                notSummoned, simulation.Units.Positions[notSummoned]));
+        var highLevelPolymorph = simulation.IssueAbility(
+            1, caster, 3,
+            AbilityCastTarget.Unit(
+                highLevel, simulation.Units.Positions[highLevel]));
+        rig.Step();
+        var replacementResolved =
+            simulation.Abilities.TryReplacementObjectId(
+                notSummoned, false, out var replacementObjectId) &&
+            replacementObjectId == "nshe";
+        var polymorphWorked = polymorphCast.Succeeded &&
+            highLevelPolymorph.Code == AbilityCommandCode.InvalidTarget &&
+            simulation.Abilities.HasStatus(
+                notSummoned, AbilityStatusFlags.Polymorphed) &&
+            simulation.Abilities.CanMove(notSummoned) &&
+            !simulation.Abilities.CanAttack(notSummoned) &&
+            !simulation.Abilities.CanCast(notSummoned) &&
+            Nearly(simulation.Units.MaxSpeeds[notSummoned], 40f) &&
+            replacementResolved;
 
         var hot = new SimulationHotSnapshot(
             0xA81F20UL, simulation.CaptureRuntimeState());
@@ -672,8 +861,15 @@ public static class AbilitySystemSelfTest
                 .AutoCastRange == 30f &&
             parsed.State.Abilities.Catalog.Ability(1).Levels[0].Effects[0]
                 .SummonedValue == 12f &&
-            parsed.State.Abilities.Buffs.Single().Modifier
-                .HealthRegenerationAdd == 12f;
+            parsed.State.Abilities.Buffs.Any(value =>
+                value.AbilityId == 0 &&
+                value.Modifier.HealthRegenerationAdd == 12f) &&
+            parsed.State.Abilities.Buffs.Any(value =>
+                value.AbilityId == 4 &&
+                (value.Status & AbilityStatusFlags.Grounded) != 0) &&
+            parsed.State.Abilities.Buffs.Any(value =>
+                value.AbilityId == 5 &&
+                value.Modifier.ArmorAdd == -6f);
         var restoredRig = MovementTestRig.CreateOpenField(
             new Vector2(220f), 22);
         if (parsed is not null)
@@ -687,7 +883,9 @@ public static class AbilitySystemSelfTest
                             simulation.ComputeStateHash() ==
                             restoredRig.RenderSimulation.ComputeStateHash();
         var passed = selectedByConfiguredRange && regenerated &&
-                     summonedDamage && binaryRoundTrip && restoredExact;
+                     summonedDamage && controlMagicWorked &&
+                     polymorphWorked && configuredStatusesWorked &&
+                     binaryRoundTrip && restoredExact;
         return new SelfTestResult(
             passed,
             $"range={selectedByConfiguredRange}, regen={regenerated}/" +
@@ -697,6 +895,16 @@ public static class AbilitySystemSelfTest
             $"{feedbackCast.Code}/" +
             $"{simulation.Abilities.IsSummoned(summoned)}/" +
             $"{simulation.Combat.Health[summoned]:F2}, " +
+            $"control={controlMagicWorked}/{invalidControl.Code}/" +
+            $"{controlCast.Code}/mana=" +
+            $"{simulation.Abilities.Observe(caster).Mana:F2}, " +
+            $"polymorph={polymorphWorked}/{polymorphCast.Code}/" +
+            $"{highLevelPolymorph.Code}/{replacementObjectId}/" +
+            $"speed={simulation.Units.MaxSpeeds[notSummoned]:F2}, " +
+            $"status={configuredStatusesWorked}/" +
+            $"{ensnareCast.Code}/{faerieCast.Code}/" +
+            $"air={wasAir}->{abilityWorld.AbilityUnitIsAir(airTarget)}/" +
+            $"armor={simulation.Combat.Armor[notSummoned]:F2}, " +
             $"binary={binaryRoundTrip}/{validation}, exact={restoredExact}");
     }
 
@@ -1373,6 +1581,19 @@ public static class AbilitySystemSelfTest
                 AbilityEffectSelector.Primary, AbilityRelationFilter.Any,
                 Radius: 500f,
                 BuffDispelKind: AbilityBuffDispelKind.Magic)));
+        var defend = new AbilityProfile(
+            30, "T031", "Test Defend", string.Empty,
+            string.Empty, string.Empty, AbilityActivationKind.Toggle,
+            AbilityTargetFlags.Self | AbilityTargetFlags.Alive |
+            AbilityTargetFlags.Ground,
+            false, false,
+            Level(0f, 0f, new AbilityEffectProfile(
+                AbilityEffectKind.ToggleStatus, AbilityEffectTiming.Impact,
+                AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
+                Modifier: new AbilityStatModifier(
+                    MovementSpeedMultiplier: 0.7f),
+                CombatModifier: new AbilityCombatModifier(
+                    0.5f, 0.8f, 1.2f, 100f, 0.2f, 0.6f, 10f))));
         var binding = new UnitAbilityBindingProfile(
             0, true, new UnitManaProfile(100f, 100f, 0f),
             [
@@ -1403,7 +1624,8 @@ public static class AbilitySystemSelfTest
                 new UnitAbilityEntryProfile(24, 1),
                 new UnitAbilityEntryProfile(25, 1),
                 new UnitAbilityEntryProfile(28, 1),
-                new UnitAbilityEntryProfile(29, 1)
+                new UnitAbilityEntryProfile(29, 1),
+                new UnitAbilityEntryProfile(30, 1)
             ]);
         var airAttackHit = new AbilityProfile(
             28, "T029", "Test Air Attack Hit", string.Empty,
@@ -1429,7 +1651,7 @@ public static class AbilitySystemSelfTest
                 experienceKill, aura, summon, summonDispel, manaTransfer,
                 feedback, holyLight, damageBands, persistentDamage,
                 countedWaves, clusteredTeleport, unitForm,
-                buildingUnitForm, airAttackHit, spellSteal
+                buildingUnitForm, airAttackHit, spellSteal, defend
             ],
             [
                 binding,

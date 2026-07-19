@@ -2214,7 +2214,7 @@ public static partial class VisualTestCatalog
                 var coalesced = runtime.ObserveMovementDiagnostics()
                     .RepeatedAttackMoveUnitsCoalesced;
                 var expectedCoalesced =
-                    (long)(units.Length + 1) * repeatTicks;
+                    (long)(units.Length + 1) * repeatTicks - 1;
                 var passed = progressed >= 44 &&
                              !runtime.ObserveCombat(defender).Alive &&
                              runtime.Observe(engagingUnit).Position.X >= 1000f &&
@@ -2228,11 +2228,17 @@ public static partial class VisualTestCatalog
             });
         for (var tick = 1; tick <= repeatTicks; tick++)
         {
+            var scheduledTick = tick;
             session.At(
-                tick,
+                scheduledTick,
                 "Refresh identical AttackMove without replacing movement",
                 runtime =>
                 {
+                    // Force one member to require a real retry midway through
+                    // the repeated group command. The other 47 must retain
+                    // their paths and continuous motion.
+                    if (scheduledTick == repeatTicks / 2)
+                        runtime.Stop([units[0]]);
                     runtime.AttackMove(units, target);
                     runtime.AttackMove([engagingUnit], engagementTarget);
                 });

@@ -36,15 +36,19 @@ public static class War3LaunchRequestSelfTest
         var oneShot = !consumed.Contains(
             War3LaunchRequest.InteractiveStressArgument);
         var profilerEnabled = War3RuntimeProfiler.TryCreate(launched) is not null;
+        var externalProfilerDisabled = War3RuntimeProfiler.TryCreate(
+            [.. launched, War3RuntimeProfiler.ExternalDotnetArgument]) is null;
         var baselineUntouched = ReferenceEquals(untouched, processArguments);
         War3LaunchRequest.Clear();
 
         var passed = complete && processPreserved && oneShot &&
-                     profilerEnabled && baselineUntouched;
+                     profilerEnabled && externalProfilerDisabled &&
+                     baselineUntouched;
         return new SelfTestResult(
             passed,
             $"complete={complete}, process={processPreserved}, " +
             $"oneShot={oneShot}, profilerEnabled={profilerEnabled}, " +
+            $"externalDisabled={externalProfilerDisabled}, " +
             $"baseline={baselineUntouched}, args={launched.Length}");
     }
 }

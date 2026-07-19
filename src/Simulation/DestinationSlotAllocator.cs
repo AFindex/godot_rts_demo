@@ -6,6 +6,7 @@ public sealed class DestinationSlotAllocator
 {
     private const int ExactAssignmentLimit = 96;
     private readonly StaticWorld _world;
+    private CandidatePoint[] _candidateScratch = [];
 
     public DestinationSlotAllocator(StaticWorld world)
     {
@@ -74,10 +75,12 @@ public sealed class DestinationSlotAllocator
                 $"Could not allocate {unitIndices.Length} statically legal destination slots near {target}.");
         }
 
-        var selectedSlots = candidates
-            .OrderBy(point => Vector2.DistanceSquared(point, target))
-            .Take(unitIndices.Length)
-            .ToArray();
+        // GenerateCandidates already visits the exact row-major candidate set
+        // in the same stable distance order previously produced by
+        // OrderBy(...).Take(...). Avoid testing the thousands of farther cells
+        // that cannot affect the selected formation once enough nearer legal
+        // slots have been found.
+        var selectedSlots = candidates.ToArray();
 
         var orderedUnits = unitIndices.ToArray();
         Array.Sort(orderedUnits);
@@ -104,27 +107,62 @@ public sealed class DestinationSlotAllocator
         int required,
         bool ignoreExternalReservations)
     {
-        var result = new List<Vector2>(required * 2);
+        var result = new List<Vector2>(required);
         var maxRing = Math.Max(4, (int)MathF.Ceiling(MathF.Sqrt(required)) + 8);
         var rowHeight = spacing * 0.8660254f;
-
+        var diameter = maxRing * 2 + 1;
+        var candidateCount = diameter * diameter;
+        if (_candidateScratch.Length < candidateCount)
+            Array.Resize(ref _candidateScratch, candidateCount);
+        var ordinal = 0;
         for (var row = -maxRing; row <= maxRing; row++)
         {
             var offset = (Math.Abs(row) & 1) == 1 ? spacing * 0.5f : 0f;
             for (var column = -maxRing; column <= maxRing; column++)
             {
                 var point = center + new Vector2(column * spacing + offset, row * rowHeight);
-                if (_world.IsDiscFree(point, navigationRadius) &&
-                    (ignoreExternalReservations ||
-                     !ConflictsWithExistingReservation(
-                         units, selectedMembership, point, physicalRadius)))
-                {
-                    result.Add(point);
-                }
+                _candidateScratch[ordinal] = new CandidatePoint(
+                    point,
+                    Vector2.DistanceSquared(point, center),
+                    ordinal);
+                ordinal++;
             }
         }
 
+        Array.Sort(
+            _candidateScratch,
+            0,
+            candidateCount,
+            CandidatePointComparer.Instance);
+        for (var index = 0; index < candidateCount; index++)
+        {
+            var point = _candidateScratch[index].Point;
+            if (!_world.IsDiscFree(point, navigationRadius) ||
+                !ignoreExternalReservations &&
+                ConflictsWithExistingReservation(
+                    units, selectedMembership, point, physicalRadius))
+                continue;
+            result.Add(point);
+            if (result.Count == required) break;
+        }
+
         return result;
+    }
+
+    private readonly record struct CandidatePoint(
+        Vector2 Point,
+        float DistanceSquared,
+        int Ordinal);
+
+    private sealed class CandidatePointComparer : IComparer<CandidatePoint>
+    {
+        public static CandidatePointComparer Instance { get; } = new();
+
+        public int Compare(CandidatePoint left, CandidatePoint right)
+        {
+            var distance = left.DistanceSquared.CompareTo(right.DistanceSquared);
+            return distance != 0 ? distance : left.Ordinal.CompareTo(right.Ordinal);
+        }
     }
 
     private static bool ConflictsWithExistingReservation(

@@ -334,6 +334,11 @@ public sealed class ConstructionSystem
 {
     private readonly List<BuildingEntity> _buildings = [];
     private readonly HashSet<int> _boundRefineryNodes = [];
+    private readonly HashSet<int> _assignedBuilders = [];
+    private readonly HashSet<int> _collisionSuppressedBuilders = [];
+    private readonly HashSet<int> _busyBuilders = [];
+    private readonly Dictionary<int, int> _assignedBuildingByBuilder = [];
+    private bool _builderIndexesDirty = true;
 
     public ConstructionReservationStore Reservations { get; } = new();
 
@@ -346,29 +351,22 @@ public sealed class ConstructionSystem
         out ConstructionReservationEntry conflict) =>
         Reservations.TryFindOverlap(bounds, out conflict);
 
-    public bool IsAssignedBuilder(int unit) =>
-        _buildings.Any(value =>
-            value.BuilderUnit == unit && HasActiveBuilderAssignment(value));
+    public bool IsAssignedBuilder(int unit)
+    {
+        EnsureBuilderIndexes();
+        return _assignedBuilders.Contains(unit);
+    }
 
-    public bool SuppressesBuilderCombat(int unit) =>
-        _buildings.Any(value =>
-            value.BuilderUnit == unit && value.State is
-                BuildingLifecycleState.ReservedApproach or
-                BuildingLifecycleState.BlockedAtStart or
-                BuildingLifecycleState.Approaching or
-                BuildingLifecycleState.Constructing);
+    public bool SuppressesBuilderCombat(int unit)
+    {
+        EnsureBuilderIndexes();
+        return _assignedBuilders.Contains(unit);
+    }
 
     public bool SuppressesBuilderUnitCollision(int unit)
     {
-        for (var index = 0; index < _buildings.Count; index++)
-        {
-            var value = _buildings[index];
-            if (value.BuilderUnit == unit && value.State is
-                    BuildingLifecycleState.ReservedApproach or
-                    BuildingLifecycleState.BlockedAtStart)
-                return true;
-        }
-        return false;
+        EnsureBuilderIndexes();
+        return _collisionSuppressedBuilders.Contains(unit);
     }
 
     public ConstructionCommandResult ValidateRequest(
@@ -393,9 +391,8 @@ public sealed class ConstructionSystem
         {
             return Failure(ConstructionCommandCode.WrongOwner);
         }
-        if (!allowBusyBuilder && _buildings.Any(value =>
-                !value.IsTerminal && value.BuilderUnit == builderUnit &&
-                value.State != BuildingLifecycleState.Completed))
+        EnsureBuilderIndexes();
+        if (!allowBusyBuilder && _busyBuilders.Contains(builderUnit))
         {
             return Failure(ConstructionCommandCode.BuilderBusy);
         }
@@ -437,6 +434,7 @@ public sealed class ConstructionSystem
         _buildings.Add(new BuildingEntity(
             id, playerId, profile, bounds, reservationId, default, builderUnit,
             refineryNode, accessPoint));
+        InvalidateBuilderIndexes();
         if (refineryNode.Value >= 0)
         {
             _boundRefineryNodes.Add(refineryNode.Value);
@@ -460,6 +458,7 @@ public sealed class ConstructionSystem
         {
             State = BuildingLifecycleState.WaitingForBuilder
         });
+        InvalidateBuilderIndexes();
         if (refineryNode.Value >= 0)
         {
             _boundRefineryNodes.Add(refineryNode.Value);
@@ -490,6 +489,7 @@ public sealed class ConstructionSystem
             Progress = 1f,
             Health = profile.MaximumHealth
         });
+        InvalidateBuilderIndexes();
         return id;
     }
 
@@ -516,6 +516,7 @@ public sealed class ConstructionSystem
             Progress = 0f,
             Health = profile.MaximumHealth * 0.1f
         });
+        InvalidateBuilderIndexes();
         return id;
     }
 
@@ -540,6 +541,7 @@ public sealed class ConstructionSystem
         economy.Players.Refund(playerId, building.Type.Cost, 1f);
         ReleaseRefinery(building, economy);
         building.State = BuildingLifecycleState.Canceled;
+        InvalidateBuilderIndexes();
         return true;
     }
 
@@ -557,6 +559,7 @@ public sealed class ConstructionSystem
         Action<int, int, GameplayBuildingId, SimRect, BuildingPlacementRules, int>
             evacuateStartOccupant)
     {
+        InvalidateBuilderIndexes();
         for (var index = 0; index < _buildings.Count; index++)
         {
             var building = _buildings[index];
@@ -721,10 +724,12 @@ public sealed class ConstructionSystem
                     building.RefineryNode, true, building.Bounds);
             }
         }
+        InvalidateBuilderIndexes();
     }
 
     public void InterruptBuilders(ReadOnlySpan<int> units)
     {
+        var changed = false;
         for (var index = 0; index < _buildings.Count; index++)
         {
             var building = _buildings[index];
@@ -741,10 +746,12 @@ public sealed class ConstructionSystem
                 if (building.BuilderUnit == units[unitIndex])
                 {
                     building.State = BuildingLifecycleState.WaitingForBuilder;
+                    changed = true;
                     break;
                 }
             }
         }
+        if (changed) InvalidateBuilderIndexes();
     }
 
     public bool Resume(
@@ -769,6 +776,7 @@ public sealed class ConstructionSystem
         building.State = building.FootprintId.Value > 0
             ? BuildingLifecycleState.Approaching
             : BuildingLifecycleState.ReservedApproach;
+        InvalidateBuilderIndexes();
         moveBuilder(builderUnit, building.AccessPoint);
         return true;
     }
@@ -784,12 +792,7 @@ public sealed class ConstructionSystem
         building.State == BuildingLifecycleState.WaitingForBuilder &&
         (uint)builderUnit < (uint)units.Count && units.Alive[builderUnit] &&
         economy.IsWorkerOwnedBy(builderUnit, playerId) &&
-        !_buildings.Any(value =>
-            value.Id != buildingId && value.BuilderUnit == builderUnit &&
-            value.State is BuildingLifecycleState.ReservedApproach or
-                BuildingLifecycleState.BlockedAtStart or
-                BuildingLifecycleState.Approaching or
-                BuildingLifecycleState.Constructing);
+        !IsAssignedBuilder(builderUnit);
 
     private static bool BuilderHasArrived(
         BuildingEntity building,
@@ -836,6 +839,7 @@ public sealed class ConstructionSystem
             playerId, building.Type.Cost, building.Type.CancelRefundFraction);
         ReleaseRefinery(building, economy);
         building.State = BuildingLifecycleState.Canceled;
+        InvalidateBuilderIndexes();
         return true;
     }
 
@@ -874,7 +878,46 @@ public sealed class ConstructionSystem
         }
         ReleaseRefinery(building, economy);
         building.State = BuildingLifecycleState.Destroyed;
+        InvalidateBuilderIndexes();
         return true;
+    }
+
+    /// <summary>
+    /// Restores an existing building without changing its lifecycle. Resource
+    /// charging is owned by the caller so payment and mutation remain one
+    /// deterministic transaction.
+    /// </summary>
+    public float RestoreHealth(GameplayBuildingId id, float amount)
+    {
+        if (!float.IsFinite(amount) || amount <= 0f ||
+            !TryGet(id, out var building) || building.IsTerminal)
+            return 0f;
+        var before = building.Health;
+        building.Health = MathF.Min(
+            building.Type.MaximumHealth, building.Health + amount);
+        return building.Health - before;
+    }
+
+    /// <summary>
+    /// Applies extra progress from a repairing worker. Completion remains in
+    /// Update(), preserving normal events, supply, town-hall and refinery work.
+    /// </summary>
+    public float ApplyPowerBuild(
+        GameplayBuildingId id,
+        float progressDelta)
+    {
+        if (!float.IsFinite(progressDelta) || progressDelta <= 0f ||
+            !TryGet(id, out var building) ||
+            building.State != BuildingLifecycleState.Constructing)
+            return 0f;
+        var before = building.Progress;
+        building.Progress = Math.Clamp(
+            building.Progress + progressDelta, 0f, 1f);
+        building.Health = MathF.Max(
+            building.Health,
+            building.Type.MaximumHealth *
+            (0.1f + 0.9f * building.Progress));
+        return building.Progress - before;
     }
 
     public GameplayBuildingSnapshot Observe(GameplayBuildingId id)
@@ -914,16 +957,26 @@ public sealed class ConstructionSystem
     public GameplayBuildingSnapshot[] CreateOverview() =>
         _buildings.Select(value => value.Snapshot()).ToArray();
 
+    internal int CopyOverview(Span<GameplayBuildingSnapshot> destination)
+    {
+        if (destination.Length < _buildings.Count)
+            throw new ArgumentException(
+                "Destination is smaller than the building store.",
+                nameof(destination));
+        for (var index = 0; index < _buildings.Count; index++)
+            destination[index] = _buildings[index].Snapshot();
+        return _buildings.Count;
+    }
+
     public bool TryObserveAssignedBuilding(
         int builderUnit,
         out GameplayBuildingSnapshot snapshot)
     {
-        for (var index = 0; index < _buildings.Count; index++)
+        EnsureBuilderIndexes();
+        if (_assignedBuildingByBuilder.TryGetValue(
+                builderUnit, out var buildingId))
         {
-            var building = _buildings[index];
-            if (building.BuilderUnit != builderUnit ||
-                !HasActiveBuilderAssignment(building))
-                continue;
+            var building = _buildings[buildingId];
             snapshot = building.Snapshot();
             return true;
         }
@@ -933,12 +986,11 @@ public sealed class ConstructionSystem
 
     public bool TryUpdateBuilderAccessPoint(int builderUnit, Vector2 accessPoint)
     {
-        for (var index = 0; index < _buildings.Count; index++)
+        EnsureBuilderIndexes();
+        if (_assignedBuildingByBuilder.TryGetValue(
+                builderUnit, out var buildingId))
         {
-            var building = _buildings[index];
-            if (building.BuilderUnit != builderUnit ||
-                !HasActiveBuilderAssignment(building))
-                continue;
+            var building = _buildings[buildingId];
             building.AccessPoint = accessPoint;
             return true;
         }
@@ -947,14 +999,14 @@ public sealed class ConstructionSystem
 
     public bool MarkBuilderApproachUnavailable(int builderUnit)
     {
-        for (var index = 0; index < _buildings.Count; index++)
+        EnsureBuilderIndexes();
+        if (_assignedBuildingByBuilder.TryGetValue(
+                builderUnit, out var buildingId))
         {
-            var building = _buildings[index];
-            if (building.BuilderUnit != builderUnit ||
-                !HasActiveBuilderAssignment(building))
-                continue;
+            var building = _buildings[buildingId];
             building.BuilderUnit = -1;
             building.State = BuildingLifecycleState.WaitingForBuilder;
+            InvalidateBuilderIndexes();
             return true;
         }
         return false;
@@ -1069,6 +1121,7 @@ public sealed class ConstructionSystem
     {
         _buildings.Clear();
         _boundRefineryNodes.Clear();
+        InvalidateBuilderIndexes();
         Reservations.RestoreRuntimeState(snapshot.Reservations);
         for (var index = 0; index < snapshot.Buildings.Length; index++)
         {
@@ -1133,6 +1186,7 @@ public sealed class ConstructionSystem
                 !value.IsTerminal && value.ReservationId.IsValid))
             throw new InvalidOperationException(
                 "Construction reservation count does not match buildings.");
+        InvalidateBuilderIndexes();
     }
 
     public bool OwnsActiveFootprint(DynamicFootprintId footprintId) =>
@@ -1196,6 +1250,33 @@ public sealed class ConstructionSystem
         }
         building = null!;
         return false;
+    }
+
+    private void InvalidateBuilderIndexes() => _builderIndexesDirty = true;
+
+    private void EnsureBuilderIndexes()
+    {
+        if (!_builderIndexesDirty) return;
+        _assignedBuilders.Clear();
+        _collisionSuppressedBuilders.Clear();
+        _busyBuilders.Clear();
+        _assignedBuildingByBuilder.Clear();
+        for (var index = 0; index < _buildings.Count; index++)
+        {
+            var building = _buildings[index];
+            var builder = building.BuilderUnit;
+            if (builder < 0) continue;
+            if (!building.IsTerminal &&
+                building.State != BuildingLifecycleState.Completed)
+                _busyBuilders.Add(builder);
+            if (!HasActiveBuilderAssignment(building)) continue;
+            _assignedBuilders.Add(builder);
+            _assignedBuildingByBuilder.TryAdd(builder, index);
+            if (building.State is BuildingLifecycleState.ReservedApproach or
+                BuildingLifecycleState.BlockedAtStart)
+                _collisionSuppressedBuilders.Add(builder);
+        }
+        _builderIndexesDirty = false;
     }
 
     private void ReleaseRefinery(BuildingEntity building, EconomySystem economy)

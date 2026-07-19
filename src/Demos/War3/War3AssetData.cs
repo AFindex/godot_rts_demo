@@ -593,32 +593,52 @@ public sealed class War3ScalarTrack
     {
         if (Keys.Count == 0) return Constant;
         var localFrame = frame;
-        Key[] keys;
-        if (GlobalSequenceId is int globalId && globalId >= 0 && globalId < globalSequences.Count)
+        var globalId = GlobalSequenceId ?? -1;
+        var global = globalId >= 0 && globalId < globalSequences.Count;
+        if (global)
         {
             var duration = Math.Max(1d, globalSequences[globalId]);
             localFrame = ((frame % duration) + duration) % duration;
-            keys = Keys as Key[] ?? Keys.ToArray();
         }
-        else
+
+        var firstIndex = -1;
+        var lastIndex = -1;
+        for (var index = 0; index < Keys.Count; index++)
         {
-            keys = Keys.Where(key =>
-                    key.Frame >= sequence.StartFrame &&
-                    key.Frame <= sequence.EndFrame)
-                .ToArray();
-            // Warcraft scopes non-global tracks to a sequence. Missing keys do
-            // not inherit a value from Birth, Upgrade, Death, or Decay; the
-            // property returns to its model default. This is especially
-            // important for TownHall: its base Stand deliberately omits alpha
-            // keys for the completed-building geosets, which means visible.
-            if (keys.Length == 0) return Constant;
+            var key = Keys[index];
+            if (!global && (key.Frame < sequence.StartFrame ||
+                            key.Frame > sequence.EndFrame))
+                continue;
+            if (firstIndex < 0) firstIndex = index;
+            lastIndex = index;
         }
-        if (localFrame <= keys[0].Frame) return keys[0].Value;
-        if (localFrame >= keys[^1].Frame) return keys[^1].Value;
-        var rightIndex = Array.FindIndex(keys, key => key.Frame >= localFrame);
-        if (rightIndex <= 0) return keys[0].Value;
-        var left = keys[rightIndex - 1];
-        var right = keys[rightIndex];
+        // Warcraft scopes non-global tracks to a sequence. Missing keys do not
+        // inherit a value from Birth, Upgrade, Death, or Decay. Keep the exact
+        // source-order semantics while avoiding the per-sample LINQ array.
+        if (firstIndex < 0) return Constant;
+        var first = Keys[firstIndex];
+        var last = Keys[lastIndex];
+        if (localFrame <= first.Frame) return first.Value;
+        if (localFrame >= last.Frame) return last.Value;
+
+        var leftIndex = firstIndex;
+        var rightIndex = -1;
+        for (var index = firstIndex; index <= lastIndex; index++)
+        {
+            var key = Keys[index];
+            if (!global && (key.Frame < sequence.StartFrame ||
+                            key.Frame > sequence.EndFrame))
+                continue;
+            if (key.Frame >= localFrame)
+            {
+                rightIndex = index;
+                break;
+            }
+            leftIndex = index;
+        }
+        if (rightIndex < 0) return last.Value;
+        var left = Keys[leftIndex];
+        var right = Keys[rightIndex];
         if (LineType == 0) return left.Value;
         var t = Math.Clamp((localFrame - left.Frame) /
                            Math.Max(1d, right.Frame - left.Frame), 0d, 1d);

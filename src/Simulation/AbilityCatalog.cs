@@ -64,7 +64,8 @@ public enum AbilityEffectKind : byte
     TransferBuff,
     ToggleStatus,
     TransferMana,
-    TransformUnit
+    TransformUnit,
+    Repair
 }
 
 public enum AbilityEffectTiming : byte
@@ -141,7 +142,9 @@ public enum AbilityStatusFlags : ushort
     Polymorphed = 1 << 4,
     Banished = 1 << 5,
     AttackDisabled = 1 << 6,
-    MovementDisabled = 1 << 7
+    MovementDisabled = 1 << 7,
+    Revealed = 1 << 8,
+    Grounded = 1 << 9
 }
 
 public readonly record struct AbilityStatModifier(
@@ -192,6 +195,13 @@ public readonly record struct AbilityCombatModifier(
     public AbilityCombatModifier Normalized =>
         this == default ? Identity : this;
     public bool IsIdentity => Normalized == Identity;
+    public override string ToString() =>
+        $"AbilityCombatModifier {{ Taken={DamageTakenMultiplier}, " +
+        $"Dealt={DamageDealtMultiplier}, MagicTaken=" +
+        $"{MagicDamageTakenMultiplier}, Deflect={DeflectChancePercent}, " +
+        $"PierceDeflect={DeflectedPiercingDamageMultiplier}, " +
+        $"MagicDeflect={DeflectedMagicDamageMultiplier}, " +
+        $"Miss={AttackMissChancePercent} }}";
     public bool IsValid => this == default ||
         float.IsFinite(DamageTakenMultiplier) &&
         DamageTakenMultiplier is >= 0f and <= 10f &&
@@ -207,6 +217,25 @@ public readonly record struct AbilityCombatModifier(
         DeflectedMagicDamageMultiplier is >= 0f and <= 10f &&
         float.IsFinite(AttackMissChancePercent) &&
         AttackMissChancePercent is >= 0f and <= 100f;
+}
+
+public readonly record struct AbilityReplacementProfile(
+    string GroundObjectId,
+    string AirObjectId,
+    string AmphibiousObjectId,
+    string WaterObjectId)
+{
+    public bool Enabled => !string.IsNullOrWhiteSpace(GroundObjectId);
+    public bool IsValid => !Enabled
+        ? string.IsNullOrWhiteSpace(AirObjectId) &&
+          string.IsNullOrWhiteSpace(AmphibiousObjectId) &&
+          string.IsNullOrWhiteSpace(WaterObjectId)
+        : new[]
+        {
+            GroundObjectId, AirObjectId, AmphibiousObjectId, WaterObjectId
+        }.All(value => !string.IsNullOrWhiteSpace(value));
+
+    public string Select(bool air) => air ? AirObjectId : GroundObjectId;
 }
 
 public readonly record struct AbilitySummonProfile(
@@ -323,7 +352,9 @@ public readonly record struct AbilityEffectProfile(
     AbilityUnitFormProfile UnitForm = default,
     float SummonedValue = 0f,
     AbilityCombatModifier CombatModifier = default,
-    bool AffectsBuildings = false)
+    bool AffectsBuildings = false,
+    AbilityReplacementProfile Replacement = default,
+    int MaximumTargetUnitLevel = 0)
 {
     public bool IsValid =>
         Enum.IsDefined(Kind) && Enum.IsDefined(Timing) &&
@@ -343,7 +374,9 @@ public readonly record struct AbilityEffectProfile(
                     AbilityStatusFlags.Polymorphed |
                     AbilityStatusFlags.Banished |
                     AbilityStatusFlags.AttackDisabled |
-                    AbilityStatusFlags.MovementDisabled)) == 0 &&
+                    AbilityStatusFlags.MovementDisabled |
+                    AbilityStatusFlags.Revealed |
+                    AbilityStatusFlags.Grounded)) == 0 &&
         Modifier.IsValid &&
         (Kind != AbilityEffectKind.Summon || Summon.IsValid) &&
         Enum.IsDefined(DamageKind) &&
@@ -365,9 +398,13 @@ public readonly record struct AbilityEffectProfile(
         VisualCount is >= 0 and <= 100_000 &&
         float.IsFinite(SummonedValue) && SummonedValue >= 0f &&
         CombatModifier.IsValid &&
+        Replacement.IsValid &&
+        MaximumTargetUnitLevel is >= 0 and <= 100 &&
         (Timing != AbilityEffectTiming.PersistentPulse ||
          Kind == AbilityEffectKind.Damage && Duration > 0f &&
-         Interval > 0f && PulseCount > 0) &&
+         Interval > 0f && PulseCount > 0 ||
+         Kind == AbilityEffectKind.Repair && Duration == 0f &&
+         Interval > 0f && PulseCount == 0) &&
         (MaximumTotalValue <= 0f || Kind == AbilityEffectKind.Damage) &&
         (BuildingValueMultiplier <= 0f || Kind == AbilityEffectKind.Damage) &&
         (SummonedValue <= 0f || Kind == AbilityEffectKind.Mana) &&
@@ -497,6 +534,16 @@ public readonly record struct UnitAbilityEntryProfile(
     int Level,
     bool AutoCastEnabled = false);
 
+public readonly record struct AbilityRepairTargetProfile(
+    EconomyCost BaseCost,
+    float BaseRepairSeconds)
+{
+    public bool Enabled => BaseRepairSeconds > 0f;
+    public bool IsValid =>
+        BaseCost.IsValid && BaseCost.Supply == 0 &&
+        float.IsFinite(BaseRepairSeconds) && BaseRepairSeconds >= 0f;
+}
+
 [Flags]
 public enum AbilityUnitTraits : byte
 {
@@ -516,7 +563,8 @@ public readonly record struct UnitAbilityBindingProfile(
     AbilityUnitTraits Traits = AbilityUnitTraits.None,
     int UnitLevel = 1,
     int ExperienceBounty = 0,
-    int HeroMaximumLevel = 10)
+    int HeroMaximumLevel = 10,
+    AbilityRepairTargetProfile Repair = default)
 {
     public bool IsValid(AbilityProfile[] profiles)
     {
@@ -525,6 +573,7 @@ public readonly record struct UnitAbilityBindingProfile(
             UnitLevel is < 0 or > 100 ||
             ExperienceBounty is < 0 or > 1_000_000 ||
             HeroMaximumLevel is < 1 or > 100 ||
+            !Repair.IsValid ||
             Abilities.Length > 32)
             return false;
         var seen = new HashSet<int>();
@@ -569,7 +618,7 @@ public readonly record struct BuildingAbilityBindingProfile(
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 21;
+    public const int CurrentFormatVersion = 24;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
     private readonly Dictionary<int, BuildingAbilityBindingProfile>
@@ -848,6 +897,15 @@ internal static partial class AbilitySerialization
         writer.Write(value.SummonedValue);
         WriteCombatModifier(writer, value.CombatModifier);
         writer.Write(value.AffectsBuildings);
+        writer.Write(value.Replacement.Enabled);
+        if (value.Replacement.Enabled)
+        {
+            WriteString(writer, value.Replacement.GroundObjectId);
+            WriteString(writer, value.Replacement.AirObjectId);
+            WriteString(writer, value.Replacement.AmphibiousObjectId);
+            WriteString(writer, value.Replacement.WaterObjectId);
+        }
+        writer.Write(value.MaximumTargetUnitLevel);
     }
 
     private static AbilityEffectProfile ReadEffect(BinaryReader reader)
@@ -885,6 +943,12 @@ internal static partial class AbilitySerialization
         var summonedValue = reader.ReadSingle();
         var combatModifier = ReadCombatModifier(reader);
         var affectsBuildings = reader.ReadBoolean();
+        var replacement = reader.ReadBoolean()
+            ? new AbilityReplacementProfile(
+                ReadString(reader), ReadString(reader),
+                ReadString(reader), ReadString(reader))
+            : default;
+        var maximumTargetUnitLevel = reader.ReadInt32();
         return new AbilityEffectProfile(
             kind, timing, selector, relations, value, secondary, radius,
             duration, interval, maximumTargets, status, modifier, summon,
@@ -893,7 +957,7 @@ internal static partial class AbilitySerialization
             excludedUnitTraits, innerRadius, pulseCount, startDelay,
             maximumTotalValue, buildingValueMultiplier, visualCount,
             clusteredPlacement, unitForm, summonedValue, combatModifier,
-            affectsBuildings);
+            affectsBuildings, replacement, maximumTargetUnitLevel);
     }
 
     private static void WriteUnitForm(
@@ -1145,6 +1209,9 @@ internal static partial class AbilitySerialization
         writer.Write(value.UnitLevel);
         writer.Write(value.ExperienceBounty);
         writer.Write(value.HeroMaximumLevel);
+        writer.Write(value.Repair.BaseCost.Minerals);
+        writer.Write(value.Repair.BaseCost.VespeneGas);
+        writer.Write(value.Repair.BaseRepairSeconds);
         writer.Write(value.Abilities.Length);
         foreach (var ability in value.Abilities)
         {
@@ -1164,6 +1231,9 @@ internal static partial class AbilitySerialization
         var unitLevel = reader.ReadInt32();
         var experienceBounty = reader.ReadInt32();
         var heroMaximumLevel = reader.ReadInt32();
+        var repair = new AbilityRepairTargetProfile(
+            new EconomyCost(reader.ReadInt32(), reader.ReadInt32()),
+            reader.ReadSingle());
         var count = ReadCount(reader, 32);
         var abilities = new UnitAbilityEntryProfile[count];
         for (var index = 0; index < count; index++)
@@ -1171,7 +1241,7 @@ internal static partial class AbilitySerialization
                 reader.ReadInt32(), reader.ReadInt32(), reader.ReadBoolean());
         return new UnitAbilityBindingProfile(
             unitType, hero, mana, abilities.ToImmutableArray(), traits,
-            unitLevel, experienceBounty, heroMaximumLevel);
+            unitLevel, experienceBounty, heroMaximumLevel, repair);
     }
 
     private static void WriteCombatModifier(

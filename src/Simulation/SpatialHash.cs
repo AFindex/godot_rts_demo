@@ -6,9 +6,16 @@ public sealed class SpatialHash
 {
     private readonly float _cellSize;
     private readonly Dictionary<long, List<int>> _buckets = new();
+    private readonly List<int> _activeDenseBuckets = [];
+    private readonly List<long> _activeOverflowBuckets = [];
+    private readonly List<int>?[] _denseBuckets;
+    private readonly int _minimumCellX;
+    private readonly int _minimumCellY;
+    private readonly int _denseColumns;
+    private readonly int _denseRows;
     private float _maximumRadius;
 
-    public SpatialHash(float cellSize)
+    public SpatialHash(float cellSize, SimRect? bounds = null)
     {
         if (cellSize <= 0f)
         {
@@ -16,6 +23,18 @@ public sealed class SpatialHash
         }
 
         _cellSize = cellSize;
+        if (bounds is not { } denseBounds)
+        {
+            _denseBuckets = [];
+            return;
+        }
+        _minimumCellX = (int)MathF.Floor(denseBounds.Min.X / cellSize);
+        _minimumCellY = (int)MathF.Floor(denseBounds.Min.Y / cellSize);
+        var maximumCellX = (int)MathF.Floor(denseBounds.Max.X / cellSize);
+        var maximumCellY = (int)MathF.Floor(denseBounds.Max.Y / cellSize);
+        _denseColumns = maximumCellX - _minimumCellX + 1;
+        _denseRows = maximumCellY - _minimumCellY + 1;
+        _denseBuckets = new List<int>?[_denseColumns * _denseRows];
     }
 
     public float MaximumRadius => _maximumRadius;
@@ -23,10 +42,16 @@ public sealed class SpatialHash
     public void Rebuild(UnitStore units)
     {
         _maximumRadius = 0f;
-        foreach (var bucket in _buckets.Values)
+        for (var index = 0; index < _activeDenseBuckets.Count; index++)
+            _denseBuckets[_activeDenseBuckets[index]]!.Clear();
+        _activeDenseBuckets.Clear();
+        for (var index = 0; index < _activeOverflowBuckets.Count; index++)
         {
-            bucket.Clear();
+            if (_buckets.TryGetValue(
+                    _activeOverflowBuckets[index], out var overflow))
+                overflow.Clear();
         }
+        _activeOverflowBuckets.Clear();
 
         for (var i = 0; i < units.Count; i++)
         {
@@ -36,13 +61,7 @@ public sealed class SpatialHash
             }
             _maximumRadius = MathF.Max(_maximumRadius, units.Radii[i]);
             var (x, y) = Cell(units.Positions[i]);
-            var key = Key(x, y);
-            if (!_buckets.TryGetValue(key, out var bucket))
-            {
-                bucket = new List<int>(16);
-                _buckets.Add(key, bucket);
-            }
-
+            var bucket = GetOrCreateBucket(x, y);
             bucket.Add(i);
         }
     }
@@ -57,7 +76,8 @@ public sealed class SpatialHash
         {
             for (var x = minimum.X; x <= maximum.X; x++)
             {
-                if (!_buckets.TryGetValue(Key(x, y), out var bucket))
+                var bucket = GetBucket(x, y);
+                if (bucket is null)
                 {
                     continue;
                 }
@@ -98,40 +118,99 @@ public sealed class SpatialHash
             (int)MathF.Ceiling(maximumDistance / _cellSize));
         var count = 0;
 
-        foreach (var entry in _buckets)
+        for (var index = 0; index < _activeDenseBuckets.Count; index++)
         {
-            var bucket = entry.Value;
-            if (bucket.Count == 0)
-                continue;
-
-            CollectWithinBucket(
-                units, bucket, maximumDistanceSquared,
-                ref output, ref count);
-
-            var cellX = (int)(entry.Key >> 32);
-            var cellY = (int)entry.Key;
-            for (var deltaY = 0; deltaY <= cellRange; deltaY++)
-            {
-                var minimumDeltaX = deltaY == 0 ? 1 : -cellRange;
-                for (var deltaX = minimumDeltaX;
-                     deltaX <= cellRange;
-                     deltaX++)
-                {
-                    if (!_buckets.TryGetValue(
-                            Key(cellX + deltaX, cellY + deltaY),
-                            out var neighborBucket) ||
-                        neighborBucket.Count == 0)
-                        continue;
-                    CollectAcrossBuckets(
-                        units, bucket, neighborBucket,
-                        maximumDistanceSquared,
-                        ref output, ref count);
-                }
-            }
+            var denseIndex = _activeDenseBuckets[index];
+            var cellX = denseIndex % _denseColumns + _minimumCellX;
+            var cellY = denseIndex / _denseColumns + _minimumCellY;
+            CollectBucketPairs(
+                units, _denseBuckets[denseIndex]!, cellX, cellY,
+                cellRange, maximumDistanceSquared, ref output, ref count);
+        }
+        for (var index = 0; index < _activeOverflowBuckets.Count; index++)
+        {
+            var key = _activeOverflowBuckets[index];
+            CollectBucketPairs(
+                units, _buckets[key], (int)(key >> 32), (int)key,
+                cellRange, maximumDistanceSquared, ref output, ref count);
         }
 
         Array.Sort(output, 0, count);
         return count;
+    }
+
+    private void CollectBucketPairs(
+        UnitStore units,
+        List<int> bucket,
+        int cellX,
+        int cellY,
+        int cellRange,
+        float maximumDistanceSquared,
+        ref long[] output,
+        ref int count)
+    {
+        CollectWithinBucket(
+            units, bucket, maximumDistanceSquared, ref output, ref count);
+        for (var deltaY = 0; deltaY <= cellRange; deltaY++)
+        {
+            var minimumDeltaX = deltaY == 0 ? 1 : -cellRange;
+            for (var deltaX = minimumDeltaX;
+                 deltaX <= cellRange;
+                 deltaX++)
+            {
+                var neighborBucket = GetBucket(
+                    cellX + deltaX, cellY + deltaY);
+                if (neighborBucket is null) continue;
+                CollectAcrossBuckets(
+                    units, bucket, neighborBucket,
+                    maximumDistanceSquared, ref output, ref count);
+            }
+        }
+    }
+
+    private List<int> GetOrCreateBucket(int x, int y)
+    {
+        if (TryDenseIndex(x, y, out var index))
+        {
+            var bucket = _denseBuckets[index] ??= new List<int>(16);
+            if (bucket.Count == 0) _activeDenseBuckets.Add(index);
+            return bucket;
+        }
+        var key = Key(x, y);
+        if (!_buckets.TryGetValue(key, out var overflow))
+        {
+            overflow = new List<int>(16);
+            _buckets.Add(key, overflow);
+        }
+        if (overflow.Count == 0) _activeOverflowBuckets.Add(key);
+        return overflow;
+    }
+
+    private List<int>? GetBucket(int x, int y)
+    {
+        if (TryDenseIndex(x, y, out var index))
+        {
+            var bucket = _denseBuckets[index];
+            return bucket is { Count: > 0 } ? bucket : null;
+        }
+        return _buckets.TryGetValue(Key(x, y), out var overflow) &&
+               overflow.Count > 0
+            ? overflow
+            : null;
+    }
+
+    private bool TryDenseIndex(int x, int y, out int index)
+    {
+        var column = x - _minimumCellX;
+        var row = y - _minimumCellY;
+        if ((uint)column >= (uint)_denseColumns ||
+            (uint)row >= (uint)_denseRows)
+        {
+            index = -1;
+            return false;
+        }
+        index = row * _denseColumns + column;
+        return true;
     }
 
     private static void CollectWithinBucket(

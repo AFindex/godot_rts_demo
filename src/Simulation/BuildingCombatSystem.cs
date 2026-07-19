@@ -144,6 +144,7 @@ public sealed class BuildingCombatSystem
     private readonly Func<int, float, float> _removeMana;
     private readonly Func<int, bool> _isHero;
     private readonly Func<int, bool> _isSummoned;
+    private readonly Func<GameplayBuildingId, bool> _canAttack;
     private BuildingCombatStateSnapshot[] _states = [];
     private readonly List<BuildingCombatProjectileSnapshot> _projectiles = [];
     private int _nextProjectileId = 1;
@@ -159,7 +160,8 @@ public sealed class BuildingCombatSystem
         Func<int, float, bool> damageUnit,
         Func<int, float, float> removeMana,
         Func<int, bool> isHero,
-        Func<int, bool> isSummoned)
+        Func<int, bool> isSummoned,
+        Func<GameplayBuildingId, bool> canAttack)
     {
         _units = units;
         _combat = combat;
@@ -172,6 +174,7 @@ public sealed class BuildingCombatSystem
         _removeMana = removeMana;
         _isHero = isHero;
         _isSummoned = isSummoned;
+        _canAttack = canAttack;
     }
 
     public BuildingCombatEventStream Events { get; } = new();
@@ -214,7 +217,7 @@ public sealed class BuildingCombatSystem
         var building = _construction.Observe(id);
         var profile = building.Type.Combat;
         if (building.State != BuildingLifecycleState.Completed ||
-            !profile.Enabled)
+            !profile.Enabled || !_canAttack(id))
         {
             _states[id.Value] = Idle(id);
             return;

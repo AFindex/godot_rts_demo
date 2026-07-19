@@ -48,6 +48,7 @@ internal sealed class War3AutomatedSkirmishStressMode
     private readonly int _attackArmySize;
     private readonly int _decisionIntervalTicks;
     private readonly int _attackIntervalTicks;
+    private readonly bool _externalDotnetProfiling;
     private readonly long[] _activityCounts = new long[ActivityCount];
     private readonly ProbedAiRuntime _aiRuntime;
     private readonly RtsAiDirector _director;
@@ -94,6 +95,8 @@ internal sealed class War3AutomatedSkirmishStressMode
             arguments, "--war3-auto-skirmish-decision-interval=", 6, 1, 60);
         _attackIntervalTicks = IntegerArgument(
             arguments, "--war3-auto-skirmish-attack-interval=", 90, 6, 1_800);
+        _externalDotnetProfiling = arguments.Contains(
+            War3RuntimeProfiler.ExternalDotnetArgument);
 
         var adapter = new RtsSimulationAiAdapter(simulation, technologies);
         _aiRuntime = new ProbedAiRuntime(adapter);
@@ -243,7 +246,8 @@ internal sealed class War3AutomatedSkirmishStressMode
         _nextBankRefreshTick = simulation.Metrics.Tick;
         _nextSupportConstructionTick = simulation.Metrics.Tick + 1;
         _nextStatusTick = simulation.Metrics.Tick + _statusIntervalTicks;
-        simulation.DetailedProfilingEnabled = true;
+        if (!_externalDotnetProfiling)
+            simulation.DetailedProfilingEnabled = true;
         TopUpBanks();
         GD.Print(
             "WAR3_AUTO_SKIRMISH_READY " +

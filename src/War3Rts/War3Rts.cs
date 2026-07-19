@@ -31,6 +31,13 @@ public sealed partial class War3Rts : Node3D
     private War3RtsHud? _hud;
     private War3ItemShopRuntime? _itemShops;
     private War3ItemEffectRuntime? _itemEffects;
+    private readonly Dictionary<int, War3InventoryAbilityProfile>
+        _knownInventoryProfiles = [];
+    private readonly Dictionary<string, War3UnitData?>
+        _inventoryUnitDataByObjectId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, War3InventoryAbilityProfile[]>
+        _inventoryCandidatesByObjectId = new(StringComparer.Ordinal);
+    private readonly HashSet<int> _inventoryAliveUnits = [];
     private War3MapRuntime? _activeMap;
     private CanvasLayer? _mapSelectionLayer;
     private War3MapLoadingOverlay? _mapLoadingOverlay;
@@ -381,6 +388,10 @@ public sealed partial class War3Rts : Node3D
 
         _simulation.WarmPathingCaches();
         _itemShops = new War3ItemShopRuntime();
+        _knownInventoryProfiles.Clear();
+        _inventoryUnitDataByObjectId.Clear();
+        _inventoryCandidatesByObjectId.Clear();
+        _inventoryAliveUnits.Clear();
         _itemEffects = new War3ItemEffectRuntime();
 
         await AdvanceMapLoadingAsync(
@@ -402,9 +413,20 @@ public sealed partial class War3Rts : Node3D
         };
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
+        var externalDotnetProfiling = arguments.Contains(
+            War3RuntimeProfiler.ExternalDotnetArgument);
+        _simulation.RuntimeMetricsProfilingEnabled =
+            !externalDotnetProfiling &&
+            (_runtimeProfiler is not null || _stressTest is not null ||
+             _automatedSkirmishRequested);
         _simulation.DetailedProfilingEnabled =
-            _runtimeProfiler is not null || _stressTest is not null ||
-            _automatedSkirmishRequested;
+            !externalDotnetProfiling &&
+            (_runtimeProfiler is not null || _stressTest is not null ||
+             _automatedSkirmishRequested);
+        if (externalDotnetProfiling)
+            GD.Print(
+                "WAR3_EXTERNAL_DOTNET_PROFILE in_game_probes=false " +
+                "stress_workload=true");
         CreateHud();
         _navigationDebugger = new War3NavigationDebugger
         {
@@ -477,6 +499,8 @@ public sealed partial class War3Rts : Node3D
         {
             _stressTest.Initialize(
                 _simulation, _production, _buildings, _runtime);
+            if (externalDotnetProfiling)
+                _simulation.DetailedProfilingEnabled = false;
             _selectedUnits.Clear();
             _selectedBuildings.Clear();
             RefreshSelection();
@@ -904,6 +928,7 @@ public sealed partial class War3Rts : Node3D
                 var simulationStart =
                     System.Diagnostics.Stopwatch.GetTimestamp();
                 _simulation.Tick(frame);
+                UpdateGroundItemLifecycle();
                 _stressTest?.ObserveAfterSimulation();
                 _itemShops?.Update(frame);
                 if (_itemEffects is not null)
@@ -1189,6 +1214,32 @@ public sealed partial class War3Rts : Node3D
                 CancelMode();
                 break;
         }
+        UpdateHud();
+    }
+
+    private void ToggleCommandAutoCast(War3CommandSnapshot command)
+    {
+        if (_simulation is null || !command.AutoCastAvailable ||
+            command.Kind != War3CommandKind.Ability)
+            return;
+        var enabled = !command.Toggled;
+        var changed = 0;
+        foreach (var unit in ActiveSubgroupUnits())
+        {
+            if (!_simulation.Units.Alive[unit] ||
+                _simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId ||
+                !_simulation.Abilities.Observe(unit).Abilities.Any(value =>
+                    value.AbilityId == command.DataId))
+                continue;
+            if (_simulation.IssueSetAbilityAutoCast(
+                    War3HumanScenario.PlayerId, unit,
+                    command.DataId, enabled).Succeeded)
+                changed++;
+        }
+        PlayInterfaceAudio();
+        Report(changed > 0
+            ? $"{command.Label} 自动施放已{(enabled ? "开启" : "关闭")}"
+            : $"{command.Label} 自动施放切换失败");
         UpdateHud();
     }
 
@@ -2024,6 +2075,26 @@ public sealed partial class War3Rts : Node3D
             : 0;
     }
 
+    private void UpdateGroundItemLifecycle()
+    {
+        if (_simulation is null || _itemShops is null) return;
+        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        {
+            if (_simulation.Units.Alive[unit])
+            {
+                _inventoryAliveUnits.Add(unit);
+                if (TryInventoryProfileForUnit(unit, out var profile))
+                    _knownInventoryProfiles[unit] = profile;
+                continue;
+            }
+            if (!_inventoryAliveUnits.Remove(unit)) continue;
+            if (_knownInventoryProfiles.TryGetValue(unit, out var previous))
+                _itemShops.DropInventoryOnDeath(
+                    unit, _simulation.Units.Positions[unit],
+                    previous.DropItemsOnDeath);
+        }
+    }
+
     private bool TryInventoryProfileForUnit(
         int unit,
         out War3InventoryAbilityProfile profile)
@@ -2035,15 +2106,41 @@ public sealed partial class War3Rts : Node3D
             return false;
         var definition = War3HumanContent.ResolveUnit(
             _simulation, _production, unit);
-        if (!War3HumanContent.DataCatalog.TryGet(
-                definition.ObjectId, out var data))
-            return false;
-        var playerId = _simulation.Combat.Teams[unit];
-        foreach (var rawId in data.Summary.Abilities)
+        if (!_inventoryCandidatesByObjectId.TryGetValue(
+                definition.ObjectId, out var candidates))
         {
-            if (!War3HumanContent.TryInventoryAbility(
-                    rawId, out var candidate) ||
-                !InventoryRequirementsMet(candidate, playerId))
+            _inventoryUnitDataByObjectId.TryGetValue(
+                definition.ObjectId, out var data);
+            if (!_inventoryUnitDataByObjectId.ContainsKey(definition.ObjectId))
+            {
+                War3HumanContent.DataCatalog.TryGet(
+                    definition.ObjectId, out data);
+                _inventoryUnitDataByObjectId.Add(definition.ObjectId, data);
+            }
+            if (data is null)
+            {
+                candidates = [];
+            }
+            else
+            {
+                var resolved = new List<War3InventoryAbilityProfile>();
+                foreach (var rawId in data.Summary.Abilities)
+                {
+                    if (War3HumanContent.TryInventoryAbility(
+                            rawId, out var candidate))
+                        resolved.Add(candidate);
+                }
+                candidates = resolved.ToArray();
+            }
+            _inventoryCandidatesByObjectId.Add(
+                definition.ObjectId, candidates);
+        }
+        if (candidates.Length == 0) return false;
+        var playerId = _simulation.Combat.Teams[unit];
+        for (var index = 0; index < candidates.Length; index++)
+        {
+            var candidate = candidates[index];
+            if (!InventoryRequirementsMet(candidate, playerId))
                 continue;
             if (profile is null || candidate.Capacity > profile.Capacity)
                 profile = candidate;
@@ -3493,22 +3590,29 @@ public sealed partial class War3Rts : Node3D
                                                 formEffect.UnitForm.Alternate.Id;
                         War3HumanContent.TryAbility(
                             ability.RawId, out var presentation);
-                        var label = alternateForm &&
+                        var autoCastAvailable =
+                            presentation?.SupportsAutoCast == true;
+                        var commandToggled = learned.Toggled ||
+                            autoCastAvailable && learned.AutoCastEnabled;
+                        var alternatePresentation = learned.Toggled ||
+                            autoCastAvailable && !learned.AutoCastEnabled;
+                        var label = (alternateForm || alternatePresentation) &&
                                     !string.IsNullOrWhiteSpace(
                                         presentation?.AlternateName)
                             ? presentation.AlternateName
                             : ability.Name;
-                        var description = alternateForm &&
+                        var description = (alternateForm ||
+                                           alternatePresentation) &&
                                           !string.IsNullOrWhiteSpace(
                                               presentation?.AlternateDescription)
                             ? presentation.AlternateDescription
                             : ability.Description;
-                        var icon = alternateForm &&
+                        var icon = (alternateForm || alternatePresentation) &&
                                    !string.IsNullOrWhiteSpace(
                                        presentation?.AlternateIconPath)
                             ? presentation.AlternateIconPath
                             : ability.IconPath;
-                        var hotkey = alternateForm &&
+                        var hotkey = (alternateForm || alternatePresentation) &&
                                      !string.IsNullOrWhiteSpace(
                                          presentation?.AlternateHotkey)
                             ? presentation.AlternateHotkey
@@ -3522,7 +3626,10 @@ public sealed partial class War3Rts : Node3D
                             label,
                             $"{description}\n等级 {learned.Level} · " +
                             $"法力 {level.ManaCost:0} · 冷却 " +
-                            $"{level.CooldownSeconds:0.#} 秒{range}{cooldown}",
+                            $"{level.CooldownSeconds:0.#} 秒{range}{cooldown}" +
+                            (autoCastAvailable
+                                ? "\n右键切换自动施放"
+                                : string.Empty),
                             icon,
                             ability.IsPassive
                                 ? string.Empty
@@ -3532,15 +3639,16 @@ public sealed partial class War3Rts : Node3D
                             ready,
                             learned.CooldownRemaining,
                             level.ManaCost,
-                            learned.Toggled,
+                            commandToggled,
                             ability.IsPassive
                                 ? War3CommandVisualState.Passive
-                                : learned.Toggled
+                                : commandToggled
                                     ? War3CommandVisualState.Active
                                     : ready
                                         ? War3CommandVisualState.Ready
                                         : War3CommandVisualState.Unavailable,
-                            $"{learned.Level}"));
+                            $"{learned.Level}",
+                            autoCastAvailable));
                     }
                     if (state.Hero && state.UnspentSkillPoints > 0)
                         commands.Add(new War3CommandSnapshot(
@@ -4159,6 +4267,7 @@ public sealed partial class War3Rts : Node3D
         AddChild(layer);
         _hud = new War3RtsHud { Name = "HumanHud" };
         _hud.CommandRequested += ExecuteCommand;
+        _hud.CommandAutoCastRequested += ToggleCommandAutoCast;
         _hud.QueueItemCancelRequested += CancelQueueItem;
         _hud.InventoryItemRequested += UseInventoryItem;
         _hud.SelectionGroupEntryRequested += SelectGroupEntry;

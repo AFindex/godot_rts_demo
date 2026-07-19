@@ -1,4 +1,5 @@
 using RtsDemo.Simulation;
+using System.Numerics;
 
 namespace War3Rts;
 
@@ -100,6 +101,34 @@ public readonly record struct War3ShopPurchaseResult(
     public bool Succeeded => Code == War3ShopPurchaseCode.Success;
 }
 
+public readonly record struct War3GroundItemSnapshot(
+    int Id,
+    War3ShopItemDefinition Item,
+    Vector2 Position,
+    int SourceUnit);
+
+public readonly record struct War3ItemStockRuntimeSnapshot(
+    int ShopBuilding,
+    int ItemRuntimeId,
+    int Count,
+    float RestockRemaining);
+
+public readonly record struct War3ItemInventoryRuntimeSnapshot(
+    int Unit,
+    War3ShopItemDefinition?[] Items);
+
+public readonly record struct War3ItemCooldownRuntimeSnapshot(
+    int Unit,
+    string Group,
+    float RemainingSeconds);
+
+public sealed record War3ItemShopRuntimeSnapshot(
+    int NextGroundItemId,
+    War3ItemStockRuntimeSnapshot[] Stock,
+    War3ItemInventoryRuntimeSnapshot[] Inventories,
+    War3ItemCooldownRuntimeSnapshot[] Cooldowns,
+    War3GroundItemSnapshot[] GroundItems);
+
 /// <summary>
 /// Warcraft-specific shop stock and inventory state. The scene composition
 /// supplies authority, proximity and town-tier facts; this runtime only owns
@@ -110,6 +139,8 @@ public sealed class War3ItemShopRuntime
     private readonly Dictionary<StockKey, StockState> _stock = [];
     private readonly Dictionary<int, War3ShopItemDefinition?[]> _inventories = [];
     private readonly Dictionary<CooldownKey, float> _cooldowns = [];
+    private readonly List<War3GroundItemSnapshot> _groundItems = [];
+    private int _nextGroundItemId = 1;
 
     public const float InteractionRange = 150f;
 
@@ -118,6 +149,9 @@ public sealed class War3ItemShopRuntime
 
     public static IReadOnlyList<War3ShopItemDefinition> ArcaneVaultItems =>
         ArcaneVaultItemDefinitions.Value;
+
+    public War3GroundItemSnapshot[] GroundItems() =>
+        _groundItems.OrderBy(value => value.Id).ToArray();
 
     public void Update(float deltaSeconds)
     {
@@ -308,6 +342,145 @@ public sealed class War3ItemShopRuntime
         if (item.Perishable)
             _inventories[unit][slot] = null;
         return true;
+    }
+
+    public bool TryDropItem(
+        int unit,
+        int slot,
+        Vector2 position,
+        bool canDropItems,
+        out War3GroundItemSnapshot groundItem)
+    {
+        groundItem = default;
+        if (!canDropItems || !float.IsFinite(position.X) ||
+            !float.IsFinite(position.Y) ||
+            !_inventories.TryGetValue(unit, out var inventory) ||
+            (uint)slot >= (uint)inventory.Length ||
+            inventory[slot] is not { } item)
+            return false;
+        inventory[slot] = null;
+        groundItem = new War3GroundItemSnapshot(
+            _nextGroundItemId++, item, position, unit);
+        _groundItems.Add(groundItem);
+        return true;
+    }
+
+    public bool TryPickupItem(
+        int unit,
+        int groundItemId,
+        Vector2 unitPosition,
+        int inventorySlots,
+        bool canGetItems,
+        float maximumDistance,
+        out int inventorySlot)
+    {
+        inventorySlot = -1;
+        if (!canGetItems || inventorySlots <= 0 ||
+            !float.IsFinite(unitPosition.X) ||
+            !float.IsFinite(unitPosition.Y) ||
+            !float.IsFinite(maximumDistance) || maximumDistance < 0f)
+            return false;
+        var index = _groundItems.FindIndex(value => value.Id == groundItemId);
+        if (index < 0 || Vector2.DistanceSquared(
+                unitPosition, _groundItems[index].Position) >
+            maximumDistance * maximumDistance)
+            return false;
+        var inventory = EnsureInventory(unit, inventorySlots);
+        inventorySlot = Array.FindIndex(inventory, value => !value.HasValue);
+        if (inventorySlot < 0) return false;
+        inventory[inventorySlot] = _groundItems[index].Item;
+        _groundItems.RemoveAt(index);
+        return true;
+    }
+
+    public War3GroundItemSnapshot[] DropInventoryOnDeath(
+        int unit,
+        Vector2 position,
+        bool dropItemsOnDeath)
+    {
+        if (!dropItemsOnDeath ||
+            !_inventories.TryGetValue(unit, out var inventory) ||
+            !float.IsFinite(position.X) || !float.IsFinite(position.Y))
+            return [];
+        var dropped = new List<War3GroundItemSnapshot>();
+        for (var slot = 0; slot < inventory.Length; slot++)
+        {
+            if (inventory[slot] is not { } item) continue;
+            var angle = slot * MathF.PI * 2f /
+                        Math.Max(1, inventory.Length);
+            var dropPosition = position + new Vector2(
+                MathF.Cos(angle), MathF.Sin(angle)) * 12f;
+            var ground = new War3GroundItemSnapshot(
+                _nextGroundItemId++, item, dropPosition, unit);
+            inventory[slot] = null;
+            _groundItems.Add(ground);
+            dropped.Add(ground);
+        }
+        return dropped.ToArray();
+    }
+
+    public War3ItemShopRuntimeSnapshot CaptureRuntimeState() => new(
+        _nextGroundItemId,
+        _stock.OrderBy(value => value.Key.ShopBuilding)
+            .ThenBy(value => value.Key.ItemRuntimeId)
+            .Select(value => new War3ItemStockRuntimeSnapshot(
+                value.Key.ShopBuilding, value.Key.ItemRuntimeId,
+                value.Value.Count, value.Value.RestockRemaining)).ToArray(),
+        _inventories.OrderBy(value => value.Key)
+            .Select(value => new War3ItemInventoryRuntimeSnapshot(
+                value.Key, value.Value.ToArray())).ToArray(),
+        _cooldowns.OrderBy(value => value.Key.Unit)
+            .ThenBy(value => value.Key.Group, StringComparer.Ordinal)
+            .Select(value => new War3ItemCooldownRuntimeSnapshot(
+                value.Key.Unit, value.Key.Group, value.Value)).ToArray(),
+        GroundItems());
+
+    public void RestoreRuntimeState(War3ItemShopRuntimeSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot.NextGroundItemId <= 0 ||
+            snapshot.GroundItems.Any(value =>
+                value.Id <= 0 || value.Id >= snapshot.NextGroundItemId ||
+                !float.IsFinite(value.Position.X) ||
+                !float.IsFinite(value.Position.Y)) ||
+            snapshot.GroundItems.Select(value => value.Id).Distinct().Count() !=
+                snapshot.GroundItems.Length)
+            throw new InvalidDataException("Invalid ground item runtime state.");
+        _stock.Clear();
+        foreach (var value in snapshot.Stock)
+        {
+            if (value.ShopBuilding < 0 ||
+                (uint)value.ItemRuntimeId >= (uint)ArcaneVaultItems.Count ||
+                value.Count < 0 ||
+                value.Count > ArcaneVaultItems[value.ItemRuntimeId].MaximumStock ||
+                !float.IsFinite(value.RestockRemaining) ||
+                value.RestockRemaining < 0f)
+                throw new InvalidDataException("Invalid item stock state.");
+            _stock.Add(
+                new StockKey(value.ShopBuilding, value.ItemRuntimeId),
+                new StockState(value.Count, value.RestockRemaining));
+        }
+        _inventories.Clear();
+        foreach (var value in snapshot.Inventories)
+        {
+            if (value.Unit < 0 || value.Items.Length is <= 0 or > 64)
+                throw new InvalidDataException("Invalid inventory state.");
+            _inventories.Add(value.Unit, value.Items.ToArray());
+        }
+        _cooldowns.Clear();
+        foreach (var value in snapshot.Cooldowns)
+        {
+            if (value.Unit < 0 || string.IsNullOrWhiteSpace(value.Group) ||
+                !float.IsFinite(value.RemainingSeconds) ||
+                value.RemainingSeconds <= 0f)
+                throw new InvalidDataException("Invalid item cooldown state.");
+            _cooldowns.Add(
+                new CooldownKey(value.Unit, value.Group),
+                value.RemainingSeconds);
+        }
+        _groundItems.Clear();
+        _groundItems.AddRange(snapshot.GroundItems.OrderBy(value => value.Id));
+        _nextGroundItemId = snapshot.NextGroundItemId;
     }
 
     public bool HasItem(int unit, War3ItemUseKind kind) =>

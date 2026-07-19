@@ -828,12 +828,30 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         var steps = Math.Max(
             1, (int)MathF.Ceiling(distance / MathF.Max(2f, CellSize * 0.2f)));
         var previous = from;
+        if (!TryCellAt(
+                previous, out var previousColumn, out var previousRow) ||
+            !Allows(Cell(previousColumn, previousRow), mode))
+            return false;
         for (var step = 1; step <= steps; step++)
         {
             var current = Vector2.Lerp(from, to, step / (float)steps);
+            if (!TryCellAt(current, out var column, out var row))
+                return false;
+            // CanStep is guaranteed true while both samples remain in the
+            // same already-validated terrain cell. Long segments previously
+            // repeated two cell lookups and the full cliff/ramp policy for
+            // every sub-cell sample; only cell-boundary transitions can alter
+            // the answer.
+            if (column == previousColumn && row == previousRow)
+            {
+                previous = current;
+                continue;
+            }
             if (!CanStep(previous, current, mode))
                 return false;
             previous = current;
+            previousColumn = column;
+            previousRow = row;
         }
         return true;
     }

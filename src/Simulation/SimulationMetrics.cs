@@ -47,6 +47,15 @@ public sealed class SimulationMetrics
     public long CompletedQueuedOrders { get; internal set; }
     public int QueueOverflowEvents { get; internal set; }
     public long RepeatedAttackMoveUnitsCoalesced { get; internal set; }
+    public double MoveOrderPreparationMilliseconds { get; internal set; }
+    public double MoveOrderSlotAllocationMilliseconds { get; internal set; }
+    public double MoveOrderGroupRouteMilliseconds { get; internal set; }
+    public double MoveOrderChokeAssignmentMilliseconds { get; internal set; }
+    public double MoveOrderUnitSetupMilliseconds { get; internal set; }
+    public double MoveOrderCommandQueueMilliseconds { get; internal set; }
+    public double MoveOrderDirectDiscCheckMilliseconds { get; internal set; }
+    public double MoveOrderDirectSegmentCheckMilliseconds { get; internal set; }
+    public double MoveOrderDirectPathCreationMilliseconds { get; internal set; }
     public double TotalMilliseconds { get; internal set; }
     public double EconomyMilliseconds { get; internal set; }
     public double ConstructionMilliseconds { get; internal set; }
@@ -136,5 +145,6 @@ public sealed class SimulationMetrics
     public long TechnologyAllocatedBytes { get; internal set; }
     public long EconomySystemAllocatedBytes { get; internal set; }
     public long LifecycleFinalizeAllocatedBytes { get; internal set; }
+    public long AbilityAllocatedBytes { get; internal set; }
     public long AllocatedBytes { get; internal set; }
 }

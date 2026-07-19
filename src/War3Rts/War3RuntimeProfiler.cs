@@ -11,6 +11,8 @@ namespace War3Rts;
 /// </summary>
 internal sealed class War3RuntimeProfiler
 {
+    public const string ExternalDotnetArgument =
+        "--war3-external-dotnet-profile";
     private const double DefaultWarmupSeconds = 5d;
     private const double DefaultSampleSeconds = 15d;
     private const double DefaultSpikeMilliseconds = 25d;
@@ -186,6 +188,9 @@ internal sealed class War3RuntimeProfiler
     private int _lastGen0Collections;
     private int _lastGen1Collections;
     private int _lastGen2Collections;
+    private int _lastAutomatedGen0Collections;
+    private int _lastAutomatedGen1Collections;
+    private int _lastAutomatedGen2Collections;
     private long _lastAutomatedSkirmishSpikeTick = -1;
     private long _lastAutomatedSkirmishSpikeBurstTick = -1;
     private int _automatedSkirmishSpikeCount;
@@ -220,6 +225,11 @@ internal sealed class War3RuntimeProfiler
 
     public static War3RuntimeProfiler? TryCreate(string[] arguments)
     {
+        // EventPipe sampling is deliberately able to run without the
+        // fine-grained in-game Stopwatch probes. At 800 rendered actors those
+        // probes measurably perturb the main thread and distort the trace.
+        if (arguments.Contains(ExternalDotnetArgument))
+            return null;
         var automatedSkirmish =
             War3AutomatedSkirmishStressMode.IsRequested(arguments);
         if (!arguments.Contains("--war3-runtime-profile") &&
@@ -255,6 +265,9 @@ internal sealed class War3RuntimeProfiler
         _lastGen0Collections = GC.CollectionCount(0);
         _lastGen1Collections = GC.CollectionCount(1);
         _lastGen2Collections = GC.CollectionCount(2);
+        _lastAutomatedGen0Collections = _lastGen0Collections;
+        _lastAutomatedGen1Collections = _lastGen1Collections;
+        _lastAutomatedGen2Collections = _lastGen2Collections;
         GD.Print($"WAR3_RUNTIME_PROFILE map_ready variant={Variant}");
     }
 
@@ -431,6 +444,16 @@ internal sealed class War3RuntimeProfiler
         _automatedSkirmishCollision.Add(metrics.CollisionMilliseconds);
         _automatedSkirmishSteering.Add(metrics.SteeringMilliseconds);
 
+        var gen0 = GC.CollectionCount(0);
+        var gen1 = GC.CollectionCount(1);
+        var gen2 = GC.CollectionCount(2);
+        var gen0Delta = gen0 - _lastAutomatedGen0Collections;
+        var gen1Delta = gen1 - _lastAutomatedGen1Collections;
+        var gen2Delta = gen2 - _lastAutomatedGen2Collections;
+        _lastAutomatedGen0Collections = gen0;
+        _lastAutomatedGen1Collections = gen1;
+        _lastAutomatedGen2Collections = gen2;
+
         if (totalMilliseconds < _automatedSkirmishSpikeMilliseconds)
         {
             _automatedSkirmishConsecutiveSpikes = 0;
@@ -470,6 +493,7 @@ internal sealed class War3RuntimeProfiler
             $"status_ms={automationProfile.StatusSampleMilliseconds:0.###} " +
             $"simulation_ms={simulationMilliseconds:0.###} " +
             $"allocated={allocatedBytes} " +
+            $"gc={gen0Delta}/{gen1Delta}/{gen2Delta} " +
             $"activities={ActivityText(automationProfile.Activities)} " +
             $"intents={automationProfile.ExecutedIntents} " +
             $"ai_detail={aiProfile.CaptureMilliseconds:0.###}/" +
@@ -478,10 +502,22 @@ internal sealed class War3RuntimeProfiler
             $"{aiProfile.AllocatedBytes}/" +
             $"{aiProfile.SlowestIntent}/" +
             $"{aiProfile.SlowestIntentMilliseconds:0.###} " +
+            $"move_order_detail=" +
+            $"{metrics.MoveOrderPreparationMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderSlotAllocationMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderGroupRouteMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderChokeAssignmentMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderUnitSetupMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderCommandQueueMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderDirectDiscCheckMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderDirectSegmentCheckMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderDirectPathCreationMilliseconds:0.###} " +
             $"economy_ms={metrics.EconomyMilliseconds:0.###} " +
             $"construction_ms={metrics.ConstructionMilliseconds:0.###} " +
             $"production_ms={metrics.ProductionMilliseconds:0.###} " +
             $"technology_ms={metrics.TechnologyMilliseconds:0.###} " +
+            $"ability_alloc={metrics.AbilityAllocatedBytes} " +
+            $"lifecycle_alloc={metrics.LifecycleFinalizeAllocatedBytes} " +
             $"combat_ms={metrics.CombatMilliseconds:0.###} " +
             $"path_ms={metrics.PathMilliseconds:0.###} " +
             $"path_detail={metrics.PathDirectCheckMilliseconds:0.###}/" +
@@ -507,6 +543,16 @@ internal sealed class War3RuntimeProfiler
             $"{metrics.PathConnectivityRefreshMilliseconds:0.###} " +
             $"steering_ms={metrics.SteeringMilliseconds:0.###} " +
             $"collision_ms={metrics.CollisionMilliseconds:0.###} " +
+            $"collision_work={metrics.CollisionBroadphasePairs}/" +
+            $"{metrics.CollisionMainIterations}/" +
+            $"{metrics.CollisionResidualPasses}/" +
+            $"{metrics.CollisionConstraintCalls}/" +
+            $"{metrics.CollisionResidualPairChecks}/" +
+            $"{metrics.CollisionResidualPairMoves}/" +
+            $"{metrics.CollisionVelocityProjections}/" +
+            $"{metrics.WorldVelocityProjections}/" +
+            $"{metrics.WorldConstraintCalls}/" +
+            $"{metrics.DynamicFootprintCandidateChecks} " +
             $"visibility_ms={metrics.VisibilityMilliseconds:0.###} " +
             $"visibility_cells={metrics.VisibilityCandidateCells} " +
             $"paths={metrics.PathsCompleted}/{metrics.PathsFailed}/" +
@@ -591,6 +637,16 @@ internal sealed class War3RuntimeProfiler
             $"{aiProfile.DecisionMilliseconds:0.###}/" +
             $"{aiProfile.ExecutionMilliseconds:0.###}/" +
             $"{aiProfile.AllocatedBytes} " +
+            $"move_order_detail=" +
+            $"{metrics.MoveOrderPreparationMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderSlotAllocationMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderGroupRouteMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderChokeAssignmentMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderUnitSetupMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderCommandQueueMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderDirectDiscCheckMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderDirectSegmentCheckMilliseconds:0.###}/" +
+            $"{metrics.MoveOrderDirectPathCreationMilliseconds:0.###} " +
             $"stress_detail={stressProfile.BuildingLifecycleMilliseconds:0.###}/" +
             $"{stressProfile.UnitRespawnMilliseconds:0.###}/" +
             $"{stressProfile.CombatOrderMilliseconds:0.###}/" +

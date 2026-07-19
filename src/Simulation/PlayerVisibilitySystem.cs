@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace RtsDemo.Simulation;
 
@@ -127,6 +128,11 @@ public sealed class PlayerVisibilitySystem
     private readonly float _visionUpdateCellSize;
     private readonly int _visionUpdateColumns;
     private readonly int _visionUpdateRows;
+    private readonly float[] _cellCentersX;
+    private readonly float[] _cellCentersY;
+    private readonly ushort[] _sharedVisionMasks =
+        new ushort[MaximumPlayers];
+    private int _sharedVisionRevision = -1;
     private readonly Dictionary<int, VisibilityGrid> _players = [];
     private readonly Dictionary<StaticVisionSourceKey, int[]>
         _staticVisionCells = [];
@@ -161,6 +167,14 @@ public sealed class PlayerVisibilitySystem
         CellSize = cellSize;
         Columns = (int)MathF.Ceiling(bounds.Width / cellSize);
         Rows = (int)MathF.Ceiling(bounds.Height / cellSize);
+        _cellCentersX = new float[Columns];
+        _cellCentersY = new float[Rows];
+        for (var column = 0; column < Columns; column++)
+            _cellCentersX[column] =
+                bounds.Min.X + (column + 0.5f) * cellSize;
+        for (var row = 0; row < Rows; row++)
+            _cellCentersY[row] =
+                bounds.Min.Y + (row + 0.5f) * cellSize;
         var authorityCellSize = terrain is null
             ? cellSize
             : MathF.Min(cellSize, terrain.CellSize);
@@ -190,6 +204,7 @@ public sealed class PlayerVisibilitySystem
         CombatStore combat,
         ConstructionSystem construction)
     {
+        RefreshSharedVisionMasks();
         var updateStart = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
@@ -255,6 +270,7 @@ public sealed class PlayerVisibilitySystem
         CombatStore combat,
         ConstructionSystem? construction = null)
     {
+        RefreshSharedVisionMasks();
         foreach (var grid in _players.Values)
         {
             Array.Clear(grid.Detected);
@@ -338,7 +354,7 @@ public sealed class PlayerVisibilitySystem
             return;
         for (var viewer = 1; viewer < MaximumPlayers; viewer++)
         {
-            if (!_diplomacy.SharesVision(viewer, sourcePlayerId)) continue;
+            if (!SharesVisionCached(viewer, sourcePlayerId)) continue;
             RevealCircle(
                 viewer, center, radius, detection: false,
                 DefaultGroundObservationHeight, TerrainVisionMode.Elevated);
@@ -465,7 +481,9 @@ public sealed class PlayerVisibilitySystem
             return;
         }
         if (cache.Applied && cache.Cells is not null)
-            RemoveUnitVisionCells(cache.SourcePlayerId, cache.Cells);
+            RemoveUnitVisionCells(
+                cache.SourcePlayerId,
+                CollectionsMarshal.AsSpan(cache.Cells));
         cache.Applied = false;
         if (!active)
         {
@@ -481,7 +499,8 @@ public sealed class PlayerVisibilitySystem
             observationHeight,
             terrainVisionMode,
             cache.Cells);
-        AddUnitVisionCells(sourcePlayerId, cache.Cells);
+        AddUnitVisionCells(
+            sourcePlayerId, CollectionsMarshal.AsSpan(cache.Cells));
         cache.Applied = true;
         cache.Valid = true;
         cache.SourcePlayerId = sourcePlayerId;
@@ -493,17 +512,19 @@ public sealed class PlayerVisibilitySystem
 
     private void AddUnitVisionCells(
         int sourcePlayerId,
-        IReadOnlyList<int> cells)
+        ReadOnlySpan<int> cells)
     {
-        for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+        var viewers = (uint)_sharedVisionMasks[sourcePlayerId];
+        while (viewers != 0)
         {
-            if (!_diplomacy.SharesVision(viewer, sourcePlayerId)) continue;
+            var viewer = System.Numerics.BitOperations.TrailingZeroCount(viewers);
+            viewers &= viewers - 1;
             if (!_players.TryGetValue(viewer, out var grid))
             {
                 grid = new VisibilityGrid(Columns * Rows);
                 _players.Add(viewer, grid);
             }
-            for (var index = 0; index < cells.Count; index++)
+            for (var index = 0; index < cells.Length; index++)
             {
                 var cell = cells[index];
                 if (grid.UnitVisibleCounts[cell] < ushort.MaxValue)
@@ -515,14 +536,16 @@ public sealed class PlayerVisibilitySystem
 
     private void RemoveUnitVisionCells(
         int sourcePlayerId,
-        IReadOnlyList<int> cells)
+        ReadOnlySpan<int> cells)
     {
-        for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+        var viewers = (uint)_sharedVisionMasks[sourcePlayerId];
+        while (viewers != 0)
         {
-            if (!_diplomacy.SharesVision(viewer, sourcePlayerId) ||
-                !_players.TryGetValue(viewer, out var grid))
+            var viewer = System.Numerics.BitOperations.TrailingZeroCount(viewers);
+            viewers &= viewers - 1;
+            if (!_players.TryGetValue(viewer, out var grid))
                 continue;
-            for (var index = 0; index < cells.Count; index++)
+            for (var index = 0; index < cells.Length; index++)
             {
                 var cell = cells[index];
                 if (grid.UnitVisibleCounts[cell] > 0)
@@ -533,17 +556,17 @@ public sealed class PlayerVisibilitySystem
 
     private void ApplyBuildingVisionCells(
         int sourcePlayerId,
-        IReadOnlyList<int> cells)
+        ReadOnlySpan<int> cells)
     {
         for (var viewer = 1; viewer < MaximumPlayers; viewer++)
         {
-            if (!_diplomacy.SharesVision(viewer, sourcePlayerId)) continue;
+            if (!SharesVisionCached(viewer, sourcePlayerId)) continue;
             if (!_players.TryGetValue(viewer, out var grid))
             {
                 grid = new VisibilityGrid(Columns * Rows);
                 _players.Add(viewer, grid);
             }
-            for (var index = 0; index < cells.Count; index++)
+            for (var index = 0; index < cells.Length; index++)
             {
                 var cell = cells[index];
                 grid.BuildingVisible[cell] = true;
@@ -582,21 +605,26 @@ public sealed class PlayerVisibilitySystem
         var terrainOcclusion = _terrain is not null &&
             (_terrain.HasHeightVariation || _terrain.HasVisionBlockers);
         for (var row = minimumRow; row <= maximumRow; row++)
-        for (var column = minimumColumn; column <= maximumColumn; column++)
         {
-            var position = new Vector2(
-                _bounds.Min.X + (column + 0.5f) * CellSize,
-                _bounds.Min.Y + (row + 0.5f) * CellSize);
-            if (Vector2.DistanceSquared(position, center) > radiusSquared ||
-                terrainOcclusion && !_terrain!.IsVisibleFrom(
-                    center,
-                    position,
-                    observationHeight,
-                    terrainVisionMode))
+            var y = _cellCentersY[row];
+            var deltaY = y - center.Y;
+            var deltaYSquared = deltaY * deltaY;
+            for (var column = minimumColumn; column <= maximumColumn; column++)
             {
-                continue;
+                var x = _cellCentersX[column];
+                var deltaX = x - center.X;
+                if (deltaX * deltaX + deltaYSquared > radiusSquared)
+                    continue;
+                if (terrainOcclusion && !_terrain!.IsVisibleFrom(
+                        center,
+                        new Vector2(x, y),
+                        observationHeight,
+                        terrainVisionMode))
+                {
+                    continue;
+                }
+                output.Add(row * Columns + column);
             }
-            output.Add(row * Columns + column);
         }
     }
 
@@ -607,7 +635,7 @@ public sealed class PlayerVisibilitySystem
     {
         for (var viewer = 1; viewer < MaximumPlayers; viewer++)
         {
-            if (_diplomacy.SharesVision(viewer, sourcePlayerId))
+            if (SharesVisionCached(viewer, sourcePlayerId))
                 RevealDetectionCircle(viewer, center, radius);
         }
     }
@@ -646,8 +674,7 @@ public sealed class PlayerVisibilitySystem
             for (var column = minimumColumn; column <= maximumColumn; column++)
             {
                 var position = new Vector2(
-                    _bounds.Min.X + (column + 0.5f) * CellSize,
-                    _bounds.Min.Y + (row + 0.5f) * CellSize);
+                    _cellCentersX[column], _cellCentersY[row]);
                 if (Vector2.DistanceSquared(position, center) > radiusSquared)
                     continue;
                 if (terrainOcclusion && !_terrain!.IsVisibleFrom(
@@ -699,7 +726,7 @@ public sealed class PlayerVisibilitySystem
             cells = _visionCellScratch.ToArray();
             _staticVisionCells.Add(key, cells);
         }
-        ApplyBuildingVisionCells(playerId, cells);
+        ApplyBuildingVisionCells(playerId, cells.AsSpan());
     }
 
     private void RevealBuildingProfile(
@@ -759,7 +786,7 @@ public sealed class PlayerVisibilitySystem
             cells = _visionCellScratch.ToArray();
             _staticVisionCells.Add(key, cells);
         }
-        ApplyBuildingVisionCells(playerId, cells);
+        ApplyBuildingVisionCells(playerId, cells.AsSpan());
     }
 
     private bool TryCell(Vector2 position, out int cell)
@@ -801,6 +828,29 @@ public sealed class PlayerVisibilitySystem
             minimum + new Vector2(_visionUpdateCellSize),
             _bounds.Max);
         return (minimum + maximum) * 0.5f;
+    }
+
+    private void RefreshSharedVisionMasks()
+    {
+        if (_sharedVisionRevision == _diplomacy.Revision) return;
+        for (var source = 1; source < MaximumPlayers; source++)
+        {
+            ushort mask = 0;
+            for (var viewer = 1; viewer < MaximumPlayers; viewer++)
+            {
+                if (_diplomacy.SharesVision(viewer, source))
+                    mask |= (ushort)(1 << viewer);
+            }
+            _sharedVisionMasks[source] = mask;
+        }
+        _sharedVisionRevision = _diplomacy.Revision;
+    }
+
+    private bool SharesVisionCached(int viewer, int source)
+    {
+        RefreshSharedVisionMasks();
+        return (uint)source < (uint)_sharedVisionMasks.Length &&
+               (_sharedVisionMasks[source] & (1 << viewer)) != 0;
     }
 
     private static byte[] PackBits(bool[] source)

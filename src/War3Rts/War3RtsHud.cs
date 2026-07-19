@@ -155,6 +155,7 @@ public sealed partial class War3RtsHud : Control
     private War3SelectionOverlay? _selectionOverlay;
 
     public event Action<War3CommandSnapshot>? CommandRequested;
+    public event Action<War3CommandSnapshot>? CommandAutoCastRequested;
     public event Action<War3QueueItemSnapshot>? QueueItemCancelRequested;
     public event Action<War3SelectionGroupEntry>? SelectionGroupEntryRequested;
     public event Action<int>? InventoryItemRequested;
@@ -1162,6 +1163,16 @@ public sealed partial class War3RtsHud : Control
                 if (_slotCommands[slot] is { Enabled: true } command)
                     CommandRequested?.Invoke(command);
             };
+            button.GuiInput += inputEvent =>
+            {
+                if (inputEvent is not InputEventMouseButton
+                    { ButtonIndex: MouseButton.Right, Pressed: true } ||
+                    _slotCommands[slot] is not
+                    { AutoCastAvailable: true } command)
+                    return;
+                CommandAutoCastRequested?.Invoke(command);
+                button.AcceptEvent();
+            };
             _commandGrid.AddChild(button);
         }
     }
@@ -1604,7 +1615,8 @@ public sealed partial class War3RtsHud : Control
         var signature = string.Join(';', commands.Select(value =>
             $"{value.Slot}:{value.Kind}:{value.DataId}:{value.Enabled}:" +
             $"{MathF.Ceiling(value.CooldownRemaining * 10f)}:{value.Toggled}:" +
-            $"{value.State}:{value.Badge}:{value.IconPath}:{value.Hotkey}"));
+            $"{value.State}:{value.Badge}:{value.IconPath}:{value.Hotkey}:" +
+            $"{value.AutoCastAvailable}"));
         if (signature == _commandSignature) return;
         _commandSignature = signature;
         _hotkeys.Clear();
@@ -1621,7 +1633,7 @@ public sealed partial class War3RtsHud : Control
         {
             var button = _commandButtons[command.Slot];
             button.Visible = true;
-            button.Disabled = !command.Enabled;
+            button.Disabled = !command.Enabled && !command.AutoCastAvailable;
             button.Modulate = command.State switch
             {
                 War3CommandVisualState.Unavailable =>
@@ -1864,10 +1876,18 @@ public sealed partial class War3RtsHud : Control
     private sealed partial class War3MinimapControl : Control
     {
         private const float ContentInset = 4f;
+        private const int MarkerBufferStride = 12;
+        private const int CircleSegmentCount = 32;
         private SimRect _bounds;
         private SimRect _cameraBounds;
         private War3MinimapEntity[] _entities = [];
         private War3MinimapResource[] _resources = [];
+        private ArrayMesh? _circleMarkerMesh;
+        private ArrayMesh? _squareMarkerMesh;
+        private MultiMesh? _circleMarkers;
+        private MultiMesh? _squareMarkers;
+        private float[] _circleMarkerBuffer = [];
+        private float[] _squareMarkerBuffer = [];
 
         public event Action<System.Numerics.Vector2>? FocusRequested;
 
@@ -1900,6 +1920,8 @@ public sealed partial class War3RtsHud : Control
             // Expanding to FullRect here would silently turn the minimap into
             // a 1000x208 overlay across the entire bottom console.
             MouseDefaultCursorShape = CursorShape.Arrow;
+            _circleMarkerMesh = CreateMarkerMesh(circle: true);
+            _squareMarkerMesh = CreateMarkerMesh(circle: false);
         }
 
         public void SetSnapshot(
@@ -1968,27 +1990,80 @@ public sealed partial class War3RtsHud : Control
                         mapRect.Position.Y + mapRect.Size.Y * y / 4f),
                     new Color("23362e88"), 1f);
             DrawRect(mapRect, new Color("52635a"), false, 1f);
-            foreach (var resource in _resources.Where(value => !value.Depleted))
+            var resourceCount = 0;
+            for (var index = 0; index < _resources.Length; index++)
             {
+                var resource = _resources[index];
+                if (resource.Depleted) continue;
+                resourceCount++;
+            }
+            var unitCount = 0;
+            for (var index = 0; index < _entities.Length; index++)
+            {
+                if (!_entities[index].Building) unitCount++;
+            }
+            var circleCount = resourceCount + unitCount;
+            var buildingCount = _entities.Length - unitCount;
+            EnsureMarkerCapacity(
+                ref _circleMarkers,
+                ref _circleMarkerBuffer,
+                circleCount,
+                _circleMarkerMesh!);
+            EnsureMarkerCapacity(
+                ref _squareMarkers,
+                ref _squareMarkerBuffer,
+                buildingCount,
+                _squareMarkerMesh!);
+
+            var circleIndex = 0;
+            for (var index = 0; index < _resources.Length; index++)
+            {
+                var resource = _resources[index];
+                if (resource.Depleted) continue;
                 var point = ToMap(resource.Position);
-                DrawCircle(point, resource.Kind == RtsDemo.Simulation.EconomyResourceKind.Minerals
-                    ? 3.2f : 1.8f,
+                WriteMarker(
+                    _circleMarkerBuffer,
+                    circleIndex++,
+                    point,
+                    resource.Kind == RtsDemo.Simulation.EconomyResourceKind.Minerals
+                        ? 3.2f : 1.8f,
                     resource.Kind == RtsDemo.Simulation.EconomyResourceKind.Minerals
                         ? new Color("efc74f") : new Color("4d9a5c"));
             }
-            foreach (var entity in _entities)
+            for (var index = 0; index < _entities.Length; index++)
             {
+                var entity = _entities[index];
+                if (entity.Building) continue;
                 var color = entity.Team == War3HumanScenario.PlayerId
                     ? new Color("42bff5")
                     : new Color("ef5f5f");
-                var point = ToMap(entity.Position);
-                if (entity.Building)
-                    DrawRect(new Rect2(
-                        point - new Vector2(2.8f, 2.8f),
-                        new Vector2(5.6f, 5.6f)), color, true);
-                else
-                    DrawCircle(point, 2f, color);
+                WriteMarker(
+                    _circleMarkerBuffer,
+                    circleIndex++,
+                    ToMap(entity.Position),
+                    2f,
+                    color);
             }
+            SubmitMarkers(_circleMarkers!, _circleMarkerBuffer, circleIndex);
+            DrawMultimesh(_circleMarkers!, null!);
+
+            var squareIndex = 0;
+            for (var index = 0; index < _entities.Length; index++)
+            {
+                var entity = _entities[index];
+                if (!entity.Building) continue;
+                var color = entity.Team == War3HumanScenario.PlayerId
+                    ? new Color("42bff5")
+                    : new Color("ef5f5f");
+                WriteMarker(
+                    _squareMarkerBuffer,
+                    squareIndex++,
+                    ToMap(entity.Position),
+                    2.8f,
+                    color);
+            }
+            SubmitMarkers(_squareMarkers!, _squareMarkerBuffer, squareIndex);
+            DrawMultimesh(_squareMarkers!, null!);
             if (_cameraBounds.Width > 0f && _cameraBounds.Height > 0f)
             {
                 var minimum = ToMap(_cameraBounds.Min);
@@ -2002,6 +2077,88 @@ public sealed partial class War3RtsHud : Control
                         new Color("08110ca0"), false, 1f);
                 }
             }
+        }
+
+        private static void EnsureMarkerCapacity(
+            ref MultiMesh? markers,
+            ref float[] buffer,
+            int required,
+            ArrayMesh mesh)
+        {
+            if (markers is not null && markers.InstanceCount >= required) return;
+            var capacity = 16;
+            while (capacity < required) capacity *= 2;
+            markers = new MultiMesh
+            {
+                TransformFormat = MultiMesh.TransformFormatEnum.Transform2D,
+                UseColors = true,
+                Mesh = mesh,
+                InstanceCount = capacity,
+                VisibleInstanceCount = 0
+            };
+            buffer = new float[capacity * MarkerBufferStride];
+        }
+
+        private static void WriteMarker(
+            float[] buffer,
+            int index,
+            Vector2 point,
+            float scale,
+            Color color)
+        {
+            var offset = index * MarkerBufferStride;
+            buffer[offset] = scale;
+            buffer[offset + 1] = 0f;
+            buffer[offset + 2] = 0f;
+            buffer[offset + 3] = point.X;
+            buffer[offset + 4] = 0f;
+            buffer[offset + 5] = scale;
+            buffer[offset + 6] = 0f;
+            buffer[offset + 7] = point.Y;
+            buffer[offset + 8] = color.R;
+            buffer[offset + 9] = color.G;
+            buffer[offset + 10] = color.B;
+            buffer[offset + 11] = color.A;
+        }
+
+        private static void SubmitMarkers(
+            MultiMesh markers,
+            float[] buffer,
+            int count)
+        {
+            if (count > 0)
+                RenderingServer.MultimeshSetBuffer(markers.GetRid(), buffer);
+            markers.VisibleInstanceCount = count;
+        }
+
+        private static ArrayMesh CreateMarkerMesh(bool circle)
+        {
+            var tool = new SurfaceTool();
+            tool.Begin(Mesh.PrimitiveType.Triangles);
+            tool.SetColor(Colors.White);
+            if (circle)
+            {
+                for (var segment = 0; segment < CircleSegmentCount; segment++)
+                {
+                    var angle0 = Mathf.Tau * segment / CircleSegmentCount;
+                    var angle1 = Mathf.Tau * (segment + 1) / CircleSegmentCount;
+                    tool.AddVertex(Vector3.Zero);
+                    tool.AddVertex(new Vector3(
+                        MathF.Cos(angle0), MathF.Sin(angle0), 0f));
+                    tool.AddVertex(new Vector3(
+                        MathF.Cos(angle1), MathF.Sin(angle1), 0f));
+                }
+            }
+            else
+            {
+                tool.AddVertex(new Vector3(-1f, -1f, 0f));
+                tool.AddVertex(new Vector3(1f, -1f, 0f));
+                tool.AddVertex(new Vector3(1f, 1f, 0f));
+                tool.AddVertex(new Vector3(-1f, -1f, 0f));
+                tool.AddVertex(new Vector3(1f, 1f, 0f));
+                tool.AddVertex(new Vector3(-1f, 1f, 0f));
+            }
+            return tool.Commit();
         }
 
         private Vector2 ToMap(System.Numerics.Vector2 point)

@@ -41,7 +41,7 @@ public interface ICombatMovementDriver
         int attacker, GameplayBuildingId building, out Vector2 target);
     CombatBuildingDamageResult DamageBuilding(
         GameplayBuildingId building, CombatWeaponDamageSnapshot weapon);
-    GameplayBuildingSnapshot[] CombatBuildingOverview();
+    ReadOnlySpan<GameplayBuildingSnapshot> CombatBuildingOverview();
     bool IsCombatObjectTargetValid(int attacker, CombatObjectId target);
     CombatObjectSnapshot CombatObject(CombatObjectId target);
     bool TryResolveCombatObjectChaseTarget(
@@ -59,6 +59,7 @@ public interface ICombatMovementDriver
 /// </summary>
 public sealed class CombatSystem
 {
+    private const int TargetSearchProfilingStride = 32;
     private const int AcquisitionTickStride = 6;
     private const int RetargetTickStride = 12;
     private const float ChaseRepathSeconds = 0.2f;
@@ -95,6 +96,7 @@ public sealed class CombatSystem
     private float[] _targetCommittedDamage;
     private double _targetSearchMilliseconds;
     private int _targetSearches;
+    private int _profiledTargetSearches;
     public CombatProjectileSystem Projectiles { get; } = new();
     internal bool ProfilingEnabled { get; set; }
     internal CombatUpdateProfile LastUpdateProfile { get; private set; }
@@ -138,7 +140,9 @@ public sealed class CombatSystem
             : 0L;
         _targetSearchMilliseconds = 0d;
         _targetSearches = 0;
+        _profiledTargetSearches = 0;
         RebuildTargetPressure();
+        _slots.RebuildIndex();
         Projectiles.Update(delta, ResolveProjectileTarget,
             value => ApplyProjectileImpact(value, tick),
             value => _events.Publish(
@@ -324,7 +328,10 @@ public sealed class CombatSystem
             LastUpdateProfile = new CombatUpdateProfile(
                 ElapsedMilliseconds(updateStart, projectileEnd),
                 ElapsedMilliseconds(projectileEnd, updateEnd),
-                _targetSearchMilliseconds,
+                _profiledTargetSearches == 0
+                    ? 0d
+                    : _targetSearchMilliseconds * _targetSearches /
+                      _profiledTargetSearches,
                 _targetSearches);
         }
     }
@@ -333,11 +340,14 @@ public sealed class CombatSystem
     {
         if (!ProfilingEnabled)
             return FindBestTarget(unit);
+        _targetSearches++;
+        if ((_targetSearches - 1) % TargetSearchProfilingStride != 0)
+            return FindBestTarget(unit);
         var start = System.Diagnostics.Stopwatch.GetTimestamp();
         var target = FindBestTarget(unit);
         _targetSearchMilliseconds += ElapsedMilliseconds(
             start, System.Diagnostics.Stopwatch.GetTimestamp());
-        _targetSearches++;
+        _profiledTargetSearches++;
         return target;
     }
 

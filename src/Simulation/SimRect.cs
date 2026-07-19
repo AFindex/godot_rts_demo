@@ -43,19 +43,51 @@ public readonly record struct SimRect(Vector2 Min, Vector2 Max)
         if (radius <= 0f)
             return false;
 
+        // Exact broad phase for the rounded rectangle (this rectangle swept
+        // by the disc radius). Equality is a tangent and the narrow phase
+        // below uses a strict distance comparison, so it is also a miss.
+        // Long movement probes commonly inspect sparse building footprints;
+        // reject the distant ones before the twelve projection calculations.
+        if (MathF.Max(from.X, to.X) <= Min.X - radius ||
+            MathF.Min(from.X, to.X) >= Max.X + radius ||
+            MathF.Max(from.Y, to.Y) <= Min.Y - radius ||
+            MathF.Min(from.Y, to.Y) >= Max.Y + radius)
+        {
+            return false;
+        }
+
         var topLeft = Min;
         var topRight = new Vector2(Max.X, Min.Y);
         var bottomRight = Max;
         var bottomLeft = new Vector2(Min.X, Max.Y);
-        var distanceSquared = MathF.Min(
-            SegmentDistanceSquared(from, to, topLeft, topRight),
-            MathF.Min(
-                SegmentDistanceSquared(from, to, topRight, bottomRight),
-                MathF.Min(
-                    SegmentDistanceSquared(
-                        from, to, bottomRight, bottomLeft),
-                    SegmentDistanceSquared(
-                        from, to, bottomLeft, topLeft))));
+        // Each edge-to-segment query includes both edge corners, so the four
+        // corners were evaluated twice. Keep the exact same unique point to
+        // segment candidates while avoiding those duplicate projections.
+        var distanceSquared = float.PositiveInfinity;
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(from, topLeft, topRight));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(to, topLeft, topRight));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(from, topRight, bottomRight));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(to, topRight, bottomRight));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(from, bottomRight, bottomLeft));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(to, bottomRight, bottomLeft));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(from, bottomLeft, topLeft));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(to, bottomLeft, topLeft));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(topLeft, from, to));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(topRight, from, to));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(bottomRight, from, to));
+        distanceSquared = MathF.Min(distanceSquared,
+            PointSegmentDistanceSquared(bottomLeft, from, to));
         return distanceSquared < radius * radius;
     }
 
@@ -172,25 +204,6 @@ public readonly record struct SimRect(Vector2 Min, Vector2 Max)
         tMin = MathF.Max(tMin, a);
         tMax = MathF.Min(tMax, b);
         return tMin <= tMax;
-    }
-
-    private static float SegmentDistanceSquared(
-        Vector2 firstStart,
-        Vector2 firstEnd,
-        Vector2 secondStart,
-        Vector2 secondEnd)
-    {
-        return MathF.Min(
-            MathF.Min(
-                PointSegmentDistanceSquared(
-                    firstStart, secondStart, secondEnd),
-                PointSegmentDistanceSquared(
-                    firstEnd, secondStart, secondEnd)),
-            MathF.Min(
-                PointSegmentDistanceSquared(
-                    secondStart, firstStart, firstEnd),
-                PointSegmentDistanceSquared(
-                    secondEnd, firstStart, firstEnd)));
     }
 
     private static float PointSegmentDistanceSquared(

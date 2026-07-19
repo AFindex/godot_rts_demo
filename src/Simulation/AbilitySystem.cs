@@ -158,6 +158,8 @@ internal interface IAbilityRuntimeWorld
     bool AbilityBuildingCompleted(GameplayBuildingId building);
     int AbilityBuildingOwner(GameplayBuildingId building);
     SimRect AbilityBuildingBounds(GameplayBuildingId building);
+    float AbilityBuildingHealth(GameplayBuildingId building);
+    float AbilityBuildingMaximumHealth(GameplayBuildingId building);
     bool AbilityCanSeePosition(int playerId, Vector2 position);
     bool AbilityDamageUnit(
         int sourceUnit,
@@ -170,6 +172,22 @@ internal interface IAbilityRuntimeWorld
         GameplayBuildingId building,
         float damage,
         AbilityDamageKind damageKind);
+    bool AbilityRepairBuilding(
+        int sourceUnit,
+        GameplayBuildingId building,
+        float repairCostRatio,
+        float repairTimeRatio,
+        float powerBuildCostRatio,
+        float powerBuildRate,
+        float workSeconds,
+        float maximumRange);
+    bool AbilityRepairUnit(
+        int sourceUnit,
+        int targetUnit,
+        float repairCostRatio,
+        float repairTimeRatio,
+        float workSeconds,
+        float maximumRange);
     bool AbilityReviveUnit(int unit, float healthFraction);
     void AbilitySetUnitOwner(int unit, int playerId);
     void AbilityTeleportUnit(int unit, Vector2 position);
@@ -203,6 +221,7 @@ internal readonly record struct AbilityUnitRuntimeEntry(
     int HeroMaximumLevel,
     int HeroExperience,
     int ExperienceBounty,
+    int UnitLevel,
     int UnspentSkillPoints,
     float Mana,
     float MaximumMana,
@@ -288,6 +307,13 @@ internal readonly record struct AbilityBuildingToggleRuntimeEntry(
     int Building,
     int AbilityId);
 
+internal readonly record struct AbilityBuildingStatusRuntimeEntry(
+    int Building,
+    int AbilityId,
+    int SourceUnit,
+    float RemainingSeconds,
+    AbilityStatusFlags Status);
+
 internal readonly record struct AbilityBuildingRuntimeEntry(
     int Building,
     int BuildingTypeId,
@@ -322,7 +348,8 @@ internal sealed record AbilityRuntimeSnapshot(
     AbilityUnitFormRuntimeEntry[] UnitForms,
     AbilityProjectileSnapshot[] Projectiles,
     AbilityBuildingRuntimeEntry[] Buildings,
-    AbilityBuildingToggleRuntimeEntry[] BuildingToggles);
+    AbilityBuildingToggleRuntimeEntry[] BuildingToggles,
+    AbilityBuildingStatusRuntimeEntry[] BuildingStatuses);
 
 /// <summary>
 /// Deterministic, content-neutral ability authority. It owns mana, cooldowns,
@@ -339,6 +366,7 @@ public sealed class AbilitySystem
     private int[] _heroMaximumLevels;
     private int[] _heroExperience;
     private int[] _experienceBounty;
+    private int[] _unitLevels;
     private int[] _unspentSkillPoints;
     private float[] _mana;
     private float[] _maximumMana;
@@ -360,6 +388,7 @@ public sealed class AbilitySystem
     private bool[][] _toggles;
     private bool[][] _autoCast;
     private AbilityStatusFlags[] _statuses;
+    private string?[] _summonedObjectIds;
     private bool[] _abilityAppliedInvisibility;
     private AbilityCastPhase[] _castPhases;
     private int[] _activeSlots;
@@ -377,8 +406,13 @@ public sealed class AbilitySystem
     private readonly List<AbilityUnitFormRuntimeEntry> _unitForms = [];
     private readonly List<AbilityBuildingToggleRuntimeEntry>
         _buildingToggles = [];
+    private readonly List<AbilityBuildingStatusRuntimeEntry>
+        _buildingStatuses = [];
     private readonly List<AbilityBuildingRuntimeEntry> _buildings = [];
     private readonly List<AbilityProjectileSnapshot> _projectiles = [];
+    private readonly Dictionary<(int Target, string BuffId), AbilityEffectProfile>
+        _resolvedAuraEffects = [];
+    private readonly List<(int Target, string BuffId)> _resolvedAuraOrder = [];
     private CombatEvent[] _combatEventScratch = [];
     private AbilityCatalogSnapshot _catalog = AbilityCatalogSnapshot.Empty;
     private int _nextBuffInstanceId = 1;
@@ -397,6 +431,7 @@ public sealed class AbilitySystem
         _heroMaximumLevels = new int[capacity];
         _heroExperience = new int[capacity];
         _experienceBounty = new int[capacity];
+        _unitLevels = new int[capacity];
         _unspentSkillPoints = new int[capacity];
         _mana = new float[capacity];
         _maximumMana = new float[capacity];
@@ -418,6 +453,7 @@ public sealed class AbilitySystem
         _toggles = new bool[capacity][];
         _autoCast = new bool[capacity][];
         _statuses = new AbilityStatusFlags[capacity];
+        _summonedObjectIds = new string?[capacity];
         _abilityAppliedInvisibility = new bool[capacity];
         _castPhases = new AbilityCastPhase[capacity];
         _activeSlots = new int[capacity];
@@ -447,6 +483,12 @@ public sealed class AbilitySystem
     public int ActiveUnitFormCount => _unitForms.Count;
     public int ActiveBuildingToggleCount => _buildingToggles.Count;
     public int ActiveBuildingRuntimeCount => _buildings.Count;
+    public int ActiveBuildingStatusCount => _buildingStatuses.Count;
+
+    public bool IsBuildingAttackDisabled(GameplayBuildingId building) =>
+        _buildingStatuses.Any(value =>
+            value.Building == building.Value &&
+            (value.Status & AbilityStatusFlags.AttackDisabled) != 0);
     public int ActiveProjectileCount => _projectiles.Count;
 
     internal void EnsureCapacity(int capacity)
@@ -464,6 +506,7 @@ public sealed class AbilitySystem
         Array.Resize(ref _heroMaximumLevels, capacity);
         Array.Resize(ref _heroExperience, capacity);
         Array.Resize(ref _experienceBounty, capacity);
+        Array.Resize(ref _unitLevels, capacity);
         Array.Resize(ref _unspentSkillPoints, capacity);
         Array.Resize(ref _mana, capacity);
         Array.Resize(ref _maximumMana, capacity);
@@ -485,6 +528,7 @@ public sealed class AbilitySystem
         Array.Resize(ref _toggles, capacity);
         Array.Resize(ref _autoCast, capacity);
         Array.Resize(ref _statuses, capacity);
+        Array.Resize(ref _summonedObjectIds, capacity);
         Array.Resize(ref _abilityAppliedInvisibility, capacity);
         Array.Resize(ref _castPhases, capacity);
         Array.Resize(ref _activeSlots, capacity);
@@ -518,7 +562,8 @@ public sealed class AbilitySystem
         ArgumentNullException.ThrowIfNull(catalog);
         if (unitCount != 0 || _buffs.Count != 0 || _summons.Count != 0 ||
             _persistentEffects.Count != 0 || _unitForms.Count != 0 ||
-            _buildingToggles.Count != 0 || _buildings.Count != 0 ||
+            _buildingToggles.Count != 0 || _buildingStatuses.Count != 0 ||
+            _buildings.Count != 0 ||
             _projectiles.Count != 0)
             throw new InvalidOperationException(
                 "Ability catalog must be configured before units are spawned.");
@@ -538,6 +583,7 @@ public sealed class AbilitySystem
         _heroMaximumLevels[unit] = 0;
         _heroExperience[unit] = 0;
         _experienceBounty[unit] = 0;
+        _unitLevels[unit] = 1;
         _unspentSkillPoints[unit] = 0;
         _mana[unit] = 0f;
         _maximumMana[unit] = 0f;
@@ -559,6 +605,7 @@ public sealed class AbilitySystem
         _toggles[unit] = [];
         _autoCast[unit] = [];
         _statuses[unit] = AbilityStatusFlags.None;
+        _summonedObjectIds[unit] = null;
         _abilityAppliedInvisibility[unit] = false;
         ClearCast(unit);
     }
@@ -576,6 +623,7 @@ public sealed class AbilitySystem
             : 0;
         _heroExperience[unit] = 0;
         _experienceBounty[unit] = binding.ExperienceBounty;
+        _unitLevels[unit] = binding.UnitLevel;
         _unspentSkillPoints[unit] = binding.Hero ? 1 : 0;
         _mana[unit] = binding.Mana.Initial;
         _maximumMana[unit] = binding.Mana.Maximum;
@@ -846,13 +894,51 @@ public sealed class AbilitySystem
 
     public bool TrySummonedObjectId(int unit, out string objectId)
     {
-        for (var index = 0; index < _summons.Count; index++)
+        if ((uint)unit < (uint)_summonedObjectIds.Length &&
+            _summonedObjectIds[unit] is { Length: > 0 } value)
         {
-            if (_summons[index].Unit != unit) continue;
-            objectId = _summons[index].ObjectId;
-            return !string.IsNullOrEmpty(objectId);
+            objectId = value;
+            return true;
         }
         objectId = string.Empty;
+        return false;
+    }
+
+    public bool TryReplacementObjectId(
+        int unit,
+        bool air,
+        out string objectId)
+    {
+        foreach (var buff in _buffs)
+        {
+            if (buff.TargetUnit != unit ||
+                (buff.Status & AbilityStatusFlags.Polymorphed) == 0)
+                continue;
+            var ability = _catalog.Ability(buff.AbilityId);
+            foreach (var level in ability.Levels)
+            foreach (var effect in level.Effects)
+            {
+                if (!effect.Replacement.Enabled) continue;
+                objectId = effect.Replacement.Select(air);
+                return objectId.Length > 0;
+            }
+        }
+        objectId = string.Empty;
+        return false;
+    }
+
+    public bool TryRepairTargetProfile(
+        int unit,
+        out AbilityRepairTargetProfile profile)
+    {
+        if ((uint)unit < (uint)_capacity &&
+            _catalog.TryBinding(_unitTypeIds[unit], out var binding) &&
+            binding.Repair.Enabled)
+        {
+            profile = binding.Repair;
+            return true;
+        }
+        profile = default;
         return false;
     }
 
@@ -885,7 +971,7 @@ public sealed class AbilitySystem
 
     public bool IsSummoned(int unit) =>
         (uint)unit < (uint)_capacity &&
-        _summons.Any(value => value.Unit == unit);
+        _summonedObjectIds[unit] is not null;
 
     public AbilityUnitTraits Traits(int unit) =>
         (uint)unit < (uint)_capacity
@@ -907,8 +993,15 @@ public sealed class AbilitySystem
             !float.IsFinite(lifetimeSeconds) || lifetimeSeconds <= 0f)
             throw new ArgumentOutOfRangeException(nameof(unit));
         _summons.RemoveAll(value => value.Unit == unit);
-        _summons.Add(new AbilitySummonRuntimeEntry(
+        _summonedObjectIds[unit] = null;
+        AddSummon(new AbilitySummonRuntimeEntry(
             unit, sourceUnit, objectId, lifetimeSeconds));
+    }
+
+    private void AddSummon(in AbilitySummonRuntimeEntry summon)
+    {
+        _summons.Add(summon);
+        _summonedObjectIds[summon.Unit] ??= summon.ObjectId;
     }
 
     public bool HasStatus(int unit, AbilityStatusFlags status) =>
@@ -916,8 +1009,7 @@ public sealed class AbilitySystem
 
     public bool CanMove(int unit) =>
         !HasStatus(unit, AbilityStatusFlags.Stunned |
-                         AbilityStatusFlags.MovementDisabled |
-                         AbilityStatusFlags.Polymorphed);
+                         AbilityStatusFlags.MovementDisabled);
 
     public bool CanAttack(int unit) =>
         !HasStatus(unit, AbilityStatusFlags.Stunned |
@@ -958,9 +1050,12 @@ public sealed class AbilitySystem
             playerId, caster, ability, level, target, world);
         if (targetCode != AbilityCommandCode.Success)
             return new(targetCode, caster, abilityId);
+        if (!RuntimeEffectTargetValid(level, target))
+            return new(AbilityCommandCode.InvalidTarget, caster, abilityId);
         if (_cooldowns[caster][slot] > 0f)
             return new(AbilityCommandCode.Cooldown, caster, abilityId);
-        if (_mana[caster] + 0.0001f < level.ManaCost)
+        if (_mana[caster] + 0.0001f <
+            EffectiveManaCost(level, target, world))
             return new(AbilityCommandCode.InsufficientMana, caster, abilityId);
         return new(AbilityCommandCode.Success, caster, abilityId);
     }
@@ -981,7 +1076,8 @@ public sealed class AbilitySystem
         var level = ability.Levels[_levels[caster][slot] - 1];
 
         CancelCast(caster, tick, AbilityEndReason.Canceled, world, events);
-        _mana[caster] = MathF.Max(0f, _mana[caster] - level.ManaCost);
+        _mana[caster] = MathF.Max(
+            0f, _mana[caster] - EffectiveManaCost(level, target, world));
         _cooldowns[caster][slot] = level.CooldownSeconds;
         world.AbilityPrepareCaster(caster);
         events.Publish(
@@ -1006,6 +1102,45 @@ public sealed class AbilitySystem
             BeginImpact(caster, tick, world, events);
         }
         return new(AbilityCommandCode.Success, caster, abilityId);
+    }
+
+    private bool RuntimeEffectTargetValid(
+        in AbilityLevelProfile level,
+        in AbilityCastTarget target)
+    {
+        foreach (var effect in level.Effects)
+        {
+            if (effect.MaximumTargetUnitLevel > 0 &&
+                target.Kind == AbilityTargetKind.Unit &&
+                _unitLevels[target.Id] > effect.MaximumTargetUnitLevel)
+                return false;
+            if (effect.Kind != AbilityEffectKind.TransferControl ||
+                effect.SecondaryValue <= 0f)
+                continue;
+            if (target.Kind != AbilityTargetKind.Unit ||
+                !IsSummoned(target.Id))
+                return false;
+        }
+        return true;
+    }
+
+    private static float EffectiveManaCost(
+        in AbilityLevelProfile level,
+        in AbilityCastTarget target,
+        IAbilityRuntimeWorld world)
+    {
+        var cost = level.ManaCost;
+        if (target.Kind != AbilityTargetKind.Unit) return cost;
+        foreach (var effect in level.Effects)
+        {
+            if (effect.Kind != AbilityEffectKind.TransferControl ||
+                effect.SecondaryValue <= 0f)
+                continue;
+            cost += MathF.Max(0f, world.AbilityUnitHealth(target.Id)) *
+                    effect.SecondaryValue *
+                    MathF.Max(0f, effect.HeroValue);
+        }
+        return cost;
     }
 
     internal AbilityCommandResult PreviewBuilding(
@@ -1429,6 +1564,7 @@ public sealed class AbilitySystem
             var summon = _summons[index];
             if (!world.AbilityUnitAlive(summon.Unit))
             {
+                _summonedObjectIds[summon.Unit] = null;
                 _summons.RemoveAt(index);
                 continue;
             }
@@ -1438,6 +1574,7 @@ public sealed class AbilitySystem
             if (summon.RemainingSeconds <= 0f)
             {
                 world.AbilityKillSummon(summon.Unit);
+                _summonedObjectIds[summon.Unit] = null;
                 _summons.RemoveAt(index);
             }
             else
@@ -1469,9 +1606,30 @@ public sealed class AbilitySystem
             };
             _buildings[index] = runtime;
         }
-        _buildingToggles.RemoveAll(value =>
-            !world.AbilityBuildingAlive(
-                new GameplayBuildingId(value.Building)));
+        for (var index = _buildingToggles.Count - 1; index >= 0; index--)
+        {
+            if (!world.AbilityBuildingAlive(
+                    new GameplayBuildingId(_buildingToggles[index].Building)))
+                _buildingToggles.RemoveAt(index);
+        }
+        for (var index = _buildingStatuses.Count - 1; index >= 0; index--)
+        {
+            var status = _buildingStatuses[index];
+            if (!world.AbilityBuildingAlive(
+                    new GameplayBuildingId(status.Building)))
+            {
+                _buildingStatuses.RemoveAt(index);
+                continue;
+            }
+            status = status with
+            {
+                RemainingSeconds = status.RemainingSeconds - delta
+            };
+            if (status.RemainingSeconds <= 0f)
+                _buildingStatuses.RemoveAt(index);
+            else
+                _buildingStatuses[index] = status;
+        }
 
         RebuildDerivedStats(delta, world, units, combat);
     }
@@ -1493,6 +1651,10 @@ public sealed class AbilitySystem
                 continue;
             var level = ability.Levels[_levels[caster][slot] - 1];
             if (_mana[caster] + 0.0001f < level.ManaCost) continue;
+            var repairs = ContainsEffectKind(
+                level.Effects, AbilityEffectKind.Repair);
+            if (repairs && HasActiveRepairEffect(caster))
+                continue;
             for (var target = 0; target < world.AbilityUnitCount; target++)
             {
                 var castTarget = AbilityCastTarget.Unit(
@@ -1513,6 +1675,27 @@ public sealed class AbilitySystem
                         world.AbilityUnitOwner(caster), caster, ability, level,
                         castTarget, world) != AbilityCommandCode.Success ||
                     !ShouldAutoCast(caster, target, ability, level, world))
+                    continue;
+                return Issue(
+                    world.AbilityUnitOwner(caster), caster, ability.Id,
+                    castTarget, tick, world, events).Succeeded;
+            }
+            if ((ability.Targets & AbilityTargetFlags.Building) == 0 ||
+                !repairs)
+                continue;
+            for (var target = 0; target < world.AbilityBuildingCount; target++)
+            {
+                var building = new GameplayBuildingId(target);
+                if (!world.AbilityBuildingAlive(building) ||
+                    world.AbilityBuildingHealth(building) + 0.5f >=
+                    world.AbilityBuildingMaximumHealth(building))
+                    continue;
+                var bounds = world.AbilityBuildingBounds(building);
+                var castTarget = AbilityCastTarget.Building(
+                    building, (bounds.Min + bounds.Max) * 0.5f);
+                if (ValidateTarget(
+                        world.AbilityUnitOwner(caster), caster, ability, level,
+                        castTarget, world) != AbilityCommandCode.Success)
                     continue;
                 return Issue(
                     world.AbilityUnitOwner(caster), caster, ability.Id,
@@ -1539,6 +1722,24 @@ public sealed class AbilitySystem
                 world.AbilityUnitHealth(target) + 0.5f <
                 world.AbilityUnitMaximumHealth(target))
                 return true;
+            if (effect.Kind == AbilityEffectKind.Repair &&
+                (world.AbilityUnitAttributes(target) &
+                 CombatAttribute.Mechanical) != 0 &&
+                world.AbilityUnitHealth(target) + 0.5f <
+                world.AbilityUnitMaximumHealth(target))
+                return true;
+            if (effect.Kind == AbilityEffectKind.ApplyStatus &&
+                (effect.Modifier.HealthRegenerationAdd > 0f ||
+                 effect.Modifier.ManaRegenerationAdd > 0f))
+            {
+                if (effect.Modifier.HealthRegenerationAdd > 0f &&
+                    world.AbilityUnitHealth(target) + 0.5f <
+                    world.AbilityUnitMaximumHealth(target) ||
+                    effect.Modifier.ManaRegenerationAdd > 0f &&
+                    _mana[target] + 0.5f < _maximumMana[target])
+                    return true;
+                continue;
+            }
             if (effect.Kind == AbilityEffectKind.TransferMana)
             {
                 if (relation is AbilityRelationFilter.Enemy or
@@ -1560,10 +1761,7 @@ public sealed class AbilitySystem
                 var buffId = string.IsNullOrWhiteSpace(effect.BuffId)
                     ? ability.RawId
                     : effect.BuffId;
-                if (!_buffs.Any(value =>
-                        value.BuffId.Equals(
-                            buffId, StringComparison.Ordinal) &&
-                        value.TargetUnit == target))
+                if (!HasBuff(target, buffId))
                     return true;
             }
             if (relation == AbilityRelationFilter.Enemy &&
@@ -1660,14 +1858,45 @@ public sealed class AbilitySystem
         long tick,
         AbilityEndReason reason,
         IAbilityRuntimeWorld world,
-        AbilityEventStream events) =>
+        AbilityEventStream events)
+    {
         CancelCast(caster, tick, reason, world, events);
+        _persistentEffects.RemoveAll(value =>
+            value.SourceUnit == caster &&
+            IsRepairEffect(value));
+    }
 
-    public void ApplyVisibilitySources(PlayerVisibilitySystem visibility)
+    private bool IsRepairEffect(
+        in AbilityPersistentEffectRuntimeEntry entry)
+    {
+        if ((uint)entry.AbilityId >= (uint)_catalog.Count)
+            return false;
+        var ability = _catalog.Ability(entry.AbilityId);
+        if ((uint)(entry.Level - 1) >= (uint)ability.Levels.Length)
+            return false;
+        var effects = ability.Levels[entry.Level - 1].Effects;
+        return (uint)entry.EffectIndex < (uint)effects.Length &&
+               effects[entry.EffectIndex].Kind == AbilityEffectKind.Repair;
+    }
+
+    internal void ApplyVisibilitySources(
+        PlayerVisibilitySystem visibility,
+        IAbilityRuntimeWorld world)
     {
         foreach (var source in _revealSources)
             visibility.RevealAbilityArea(
                 source.PlayerId, source.Position, source.Radius, detection: true);
+        foreach (var buff in _buffs)
+        {
+            if ((buff.Status & AbilityStatusFlags.Revealed) == 0 ||
+                !world.AbilityUnitAlive(buff.TargetUnit))
+                continue;
+            visibility.RevealAbilityArea(
+                world.AbilityUnitOwner(buff.SourceUnit),
+                world.AbilityUnitPosition(buff.TargetUnit),
+                MathF.Max(1f, world.AbilityUnitRadius(buff.TargetUnit)),
+                detection: true);
+        }
     }
 
     private readonly List<AbilityRevealRuntimeEntry> _revealSources = [];
@@ -1983,13 +2212,21 @@ public sealed class AbilitySystem
             var effect = level.Effects[effectIndex];
             if (effect.Timing != AbilityEffectTiming.PersistentPulse)
                 continue;
+            if (effect.Kind == AbilityEffectKind.Repair)
+                _persistentEffects.RemoveAll(value =>
+                    value.SourceUnit == caster && IsRepairEffect(value));
+            var continuous = effect.Kind == AbilityEffectKind.Repair &&
+                             effect.Duration == 0f &&
+                             effect.PulseCount == 0;
             _persistentEffects.Add(new AbilityPersistentEffectRuntimeEntry(
                 _nextPersistentEffectInstanceId++, ability.Id, caster,
                 level.Level, effectIndex, target,
-                effect.StartDelay + effect.Duration,
+                continuous
+                    ? float.MaxValue
+                    : effect.StartDelay + effect.Duration,
                 effect.StartDelay,
                 effect.StartDelay > 0f ? effect.Interval : 0f,
-                effect.PulseCount));
+                continuous ? int.MaxValue : effect.PulseCount));
         }
     }
 
@@ -2044,9 +2281,37 @@ public sealed class AbilitySystem
                     tick, AbilityEventKind.Impact, ability.RawId,
                     entry.SourceUnit, entry.Target.Kind, entry.Target.Id,
                     entry.Target.Position);
-                ApplyEffect(
-                    entry.SourceUnit, ability, level, effect,
-                    entry.Target, world);
+                var keepRunning = effect.Kind != AbilityEffectKind.Repair ||
+                    entry.Target.Kind switch
+                    {
+                        AbilityTargetKind.Building =>
+                            world.AbilityRepairBuilding(
+                                entry.SourceUnit,
+                                new GameplayBuildingId(entry.Target.Id),
+                                effect.Value,
+                                effect.SecondaryValue,
+                                effect.HeroValue,
+                                effect.HeroSecondaryValue,
+                                effect.Interval,
+                                level.Range),
+                        AbilityTargetKind.Unit => world.AbilityRepairUnit(
+                            entry.SourceUnit,
+                            entry.Target.Id,
+                            effect.Value,
+                            effect.SecondaryValue,
+                            effect.Interval,
+                            level.Range),
+                        _ => false
+                    };
+                if (effect.Kind != AbilityEffectKind.Repair)
+                    ApplyEffect(
+                        entry.SourceUnit, ability, level, effect,
+                        entry.Target, world);
+                if (!keepRunning)
+                {
+                    pulses = 0;
+                    break;
+                }
                 pulses--;
                 pulse += MathF.Max(0.05f, effect.Interval);
             }
@@ -2449,7 +2714,7 @@ public sealed class AbilitySystem
                     effect.Summon);
                 if (summoned >= 0)
                 {
-                    _summons.Add(new AbilitySummonRuntimeEntry(
+                    AddSummon(new AbilitySummonRuntimeEntry(
                         summoned, caster, effect.Summon.ObjectId,
                         effect.Summon.LifetimeSeconds > 0f
                             ? effect.Summon.LifetimeSeconds
@@ -2492,6 +2757,13 @@ public sealed class AbilitySystem
             return;
         }
 
+        if (effect.AffectsBuildings)
+        {
+            ApplyEffectToBuildings(
+                caster, ability, level, effect, target, world);
+            return;
+        }
+
         if (effect.Selector == AbilityEffectSelector.Primary &&
             target.Kind == AbilityTargetKind.Building)
         {
@@ -2507,6 +2779,34 @@ public sealed class AbilitySystem
         {
             ApplyEffectToUnit(
                 caster, ability, level, effect, target, targetUnit, world, toggle);
+        }
+    }
+
+    private void ApplyEffectToBuildings(
+        int caster,
+        in AbilityProfile ability,
+        in AbilityLevelProfile level,
+        in AbilityEffectProfile effect,
+        in AbilityCastTarget target,
+        IAbilityRuntimeWorld world)
+    {
+        if (effect.Kind != AbilityEffectKind.ApplyStatus)
+            throw new InvalidOperationException(
+                "Only status effects can currently target buildings.");
+        var duration = EffectDuration(effect, level, false);
+        var abilityId = ability.Id;
+        foreach (var building in SelectBuildings(
+                     caster, level, effect, target, world))
+        {
+            var index = _buildingStatuses.FindIndex(value =>
+                value.Building == building.Value &&
+                value.AbilityId == abilityId);
+            var status = new AbilityBuildingStatusRuntimeEntry(
+                building.Value, abilityId, caster, duration, effect.Status);
+            if (index >= 0)
+                _buildingStatuses[index] = status;
+            else
+                _buildingStatuses.Add(status);
         }
     }
 
@@ -2575,7 +2875,7 @@ public sealed class AbilitySystem
         in AbilityCastTarget target,
         IAbilityRuntimeWorld world)
     {
-        if (effect.BuildingValueMultiplier <= 0f)
+        if (!effect.AffectsBuildings && effect.BuildingValueMultiplier <= 0f)
             return [];
         var center = effect.Selector == AbilityEffectSelector.AreaAtCaster
             ? world.AbilityUnitPosition(caster)
@@ -2697,6 +2997,19 @@ public sealed class AbilitySystem
                         effect.DamageKind == AbilityDamageKind.None
                             ? AbilityDamageKind.Magic
                             : effect.DamageKind);
+                var appliedEffect = effect;
+                if ((effect.Status & AbilityStatusFlags.Polymorphed) != 0 &&
+                    effect.SecondaryValue > 0f)
+                {
+                    var modifier = effect.Modifier.Normalized with
+                    {
+                        MovementSpeedMultiplier = Math.Clamp(
+                            effect.SecondaryValue /
+                            MathF.Max(0.001f, _baseMaximumSpeed[target]),
+                            0f, 10f)
+                    };
+                    appliedEffect = effect with { Modifier = modifier };
+                }
                 AddOrRefreshBuff(
                     caster, ability, target,
                     toggle
@@ -2704,7 +3017,7 @@ public sealed class AbilitySystem
                         : EffectDuration(effect, level, _heroes[target]),
                     relation is AbilityRelationFilter.Self or
                         AbilityRelationFilter.Friendly,
-                    effect);
+                    appliedEffect);
                 break;
             case AbilityEffectKind.ToggleStatus:
                 AddOrRefreshBuff(
@@ -2724,7 +3037,7 @@ public sealed class AbilitySystem
                 if (effect.SecondaryValue > 0f &&
                     relation is (AbilityRelationFilter.Enemy or
                         AbilityRelationFilter.Neutral) &&
-                    _summons.Any(value => value.Unit == target))
+                    IsSummoned(target))
                 {
                     DamageUnitAndAwardExperience(
                         world, caster, target, effect.SecondaryValue,
@@ -3149,8 +3462,7 @@ public sealed class AbilitySystem
                 modifier.AttackDamageMultiplier,
                 modifier.AttackDamageAdd,
                 modifier.AttackCooldownMultiplier);
-            combat.Armor[unit] = MathF.Max(
-                0f, _baseArmor[unit] + modifier.ArmorAdd);
+            combat.Armor[unit] = _baseArmor[unit] + modifier.ArmorAdd;
             combat.MaximumHealth[unit] = MathF.Max(
                 1f, _baseMaximumHealth[unit] + modifier.MaximumHealthAdd);
             combat.Health[unit] = MathF.Min(
@@ -3190,9 +3502,8 @@ public sealed class AbilitySystem
         AbilityStatModifier[] modifiers,
         AbilityCombatModifier[] combatModifiers)
     {
-        var resolved = new Dictionary<
-            (int Target, string BuffId),
-            AbilityEffectProfile>();
+        _resolvedAuraEffects.Clear();
+        _resolvedAuraOrder.Clear();
         for (var caster = 0; caster < world.AbilityUnitCount; caster++)
         {
             if (!world.AbilityUnitAlive(caster)) continue;
@@ -3221,26 +3532,67 @@ public sealed class AbilitySystem
                             AbilityBuffStackingKind.Stack)
                             buffId += $"\0{caster}";
                         var key = (target, buffId);
-                        if (!resolved.TryGetValue(key, out var current) ||
+                        if (!_resolvedAuraEffects.TryGetValue(
+                                key, out var current) ||
                             AuraStrength(effect) >
                             AuraStrength(current))
-                            resolved[key] = effect;
+                            _resolvedAuraEffects[key] = effect;
                     }
                 }
             }
         }
-        foreach (var pair in resolved
-                     .OrderBy(pair => pair.Key.Target)
-                     .ThenBy(pair => pair.Key.BuffId, StringComparer.Ordinal))
+        foreach (var key in _resolvedAuraEffects.Keys)
+            _resolvedAuraOrder.Add(key);
+        _resolvedAuraOrder.Sort(static (left, right) =>
         {
-            var effect = pair.Value;
-            var target = pair.Key.Target;
+            var target = left.Target.CompareTo(right.Target);
+            return target != 0
+                ? target
+                : StringComparer.Ordinal.Compare(left.BuffId, right.BuffId);
+        });
+        foreach (var key in _resolvedAuraOrder)
+        {
+            var effect = _resolvedAuraEffects[key];
+            var target = key.Target;
             _statuses[target] |= effect.Status;
             modifiers[target] = Combine(
                 modifiers[target], effect.Modifier.Normalized);
             combatModifiers[target] = CombineCombat(
                 combatModifiers[target], effect.CombatModifier.Normalized);
         }
+    }
+
+    private static bool ContainsEffectKind(
+        ImmutableArray<AbilityEffectProfile> effects,
+        AbilityEffectKind kind)
+    {
+        foreach (var effect in effects)
+            if (effect.Kind == kind)
+                return true;
+        return false;
+    }
+
+    private bool HasActiveRepairEffect(int caster)
+    {
+        for (var index = 0; index < _persistentEffects.Count; index++)
+        {
+            var effect = _persistentEffects[index];
+            if (effect.SourceUnit == caster && IsRepairEffect(effect))
+                return true;
+        }
+        return false;
+    }
+
+    private bool HasBuff(int target, string buffId)
+    {
+        for (var index = 0; index < _buffs.Count; index++)
+        {
+            var buff = _buffs[index];
+            if (buff.TargetUnit == target && buff.BuffId.Equals(
+                    buffId, StringComparison.Ordinal))
+                return true;
+        }
+        return false;
     }
 
     private static float AuraStrength(in AbilityEffectProfile effect)
@@ -3351,7 +3703,7 @@ public sealed class AbilitySystem
                 unit, _unitTypeIds[unit], _heroes[unit], _traits[unit],
                 _heroLevels[unit], _heroMaximumLevels[unit],
                 _heroExperience[unit], _experienceBounty[unit],
-                _unspentSkillPoints[unit], _mana[unit],
+                _unitLevels[unit], _unspentSkillPoints[unit], _mana[unit],
                 _maximumMana[unit], _baseMaximumMana[unit],
                 _manaBonusDecayPerSecond[unit],
                 _baseManaRegeneration[unit],
@@ -3385,6 +3737,8 @@ public sealed class AbilitySystem
                     Cooldowns = value.Cooldowns.ToArray()
                 }).ToArray(),
             _buildingToggles.OrderBy(value => value.Building)
+                .ThenBy(value => value.AbilityId).ToArray(),
+            _buildingStatuses.OrderBy(value => value.Building)
                 .ThenBy(value => value.AbilityId).ToArray());
     }
 
@@ -3402,7 +3756,15 @@ public sealed class AbilitySystem
         _buffs.Clear();
         _buffs.AddRange(snapshot.Buffs);
         _summons.Clear();
-        _summons.AddRange(snapshot.Summons);
+        Array.Clear(_summonedObjectIds);
+        for (var index = 0; index < snapshot.Summons.Length; index++)
+        {
+            if ((uint)snapshot.Summons[index].Unit >= (uint)unitCount ||
+                string.IsNullOrWhiteSpace(snapshot.Summons[index].ObjectId))
+                throw new InvalidOperationException(
+                    "Invalid summoned-unit runtime entry.");
+            AddSummon(snapshot.Summons[index]);
+        }
         _revealSources.Clear();
         _revealSources.AddRange(snapshot.Reveals);
         _persistentEffects.Clear();
@@ -3419,6 +3781,8 @@ public sealed class AbilitySystem
         }));
         _buildingToggles.Clear();
         _buildingToggles.AddRange(snapshot.BuildingToggles);
+        _buildingStatuses.Clear();
+        _buildingStatuses.AddRange(snapshot.BuildingStatuses);
         Array.Clear(_abilityAppliedInvisibility);
         for (var unit = 0; unit < unitCount; unit++)
         {
@@ -3436,6 +3800,7 @@ public sealed class AbilitySystem
             _heroMaximumLevels[unit] = value.HeroMaximumLevel;
             _heroExperience[unit] = value.HeroExperience;
             _experienceBounty[unit] = value.ExperienceBounty;
+            _unitLevels[unit] = value.UnitLevel;
             _unspentSkillPoints[unit] = value.UnspentSkillPoints;
             _mana[unit] = value.Mana;
             _maximumMana[unit] = value.MaximumMana;
@@ -3483,6 +3848,7 @@ public sealed class AbilitySystem
             hash.Add(_heroMaximumLevels[unit]);
             hash.Add(_heroExperience[unit]);
             hash.Add(_experienceBounty[unit]);
+            hash.Add(_unitLevels[unit]);
             hash.Add(_unspentSkillPoints[unit]);
             hash.Add(_mana[unit]);
             hash.Add(_maximumMana[unit]);
@@ -3617,6 +3983,17 @@ public sealed class AbilitySystem
         {
             hash.Add(toggle.Building);
             hash.Add(toggle.AbilityId);
+        }
+        hash.Add(_buildingStatuses.Count);
+        foreach (var status in _buildingStatuses
+                     .OrderBy(value => value.Building)
+                     .ThenBy(value => value.AbilityId))
+        {
+            hash.Add(status.Building);
+            hash.Add(status.AbilityId);
+            hash.Add(status.SourceUnit);
+            hash.Add(status.RemainingSeconds);
+            hash.Add((ushort)status.Status);
         }
     }
 
@@ -3872,6 +4249,15 @@ internal static partial class AbilitySerialization
         {
             writer.Write(toggle.Building);
             writer.Write(toggle.AbilityId);
+        }
+        writer.Write(snapshot.BuildingStatuses.Length);
+        foreach (var status in snapshot.BuildingStatuses)
+        {
+            writer.Write(status.Building);
+            writer.Write(status.AbilityId);
+            writer.Write(status.SourceUnit);
+            writer.Write(status.RemainingSeconds);
+            writer.Write((ushort)status.Status);
         }
     }
 
@@ -4140,10 +4526,38 @@ internal static partial class AbilitySerialization
             previousBuilding = toggle.Building;
             previousAbility = toggle.AbilityId;
         }
+        var buildingStatusCount = reader.ReadInt32();
+        if (buildingStatusCount is < 0 or > 100_000)
+            throw new InvalidDataException();
+        var buildingStatuses =
+            new AbilityBuildingStatusRuntimeEntry[buildingStatusCount];
+        previousBuilding = -1;
+        previousAbility = -1;
+        for (var index = 0; index < buildingStatusCount; index++)
+        {
+            var status = new AbilityBuildingStatusRuntimeEntry(
+                reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(),
+                reader.ReadSingle(),
+                (AbilityStatusFlags)reader.ReadUInt16());
+            if (status.Building < 0 ||
+                (uint)status.AbilityId >= (uint)catalog.Count ||
+                status.SourceUnit < 0 || status.SourceUnit >= unitCount ||
+                !float.IsFinite(status.RemainingSeconds) ||
+                status.RemainingSeconds <= 0f ||
+                status.Status == AbilityStatusFlags.None ||
+                status.Building < previousBuilding ||
+                status.Building == previousBuilding &&
+                status.AbilityId <= previousAbility)
+                throw new InvalidDataException(
+                    "Invalid building ability status.");
+            buildingStatuses[index] = status;
+            previousBuilding = status.Building;
+            previousAbility = status.AbilityId;
+        }
         return new AbilityRuntimeSnapshot(
             catalog, nextBuff, nextPersistentEffect, nextProjectile,
             units, buffs, summons, reveals, persistent, forms, projectiles,
-            buildings, buildingToggles);
+            buildings, buildingToggles, buildingStatuses);
     }
 
     private static void WriteRuntimeUnit(
@@ -4158,6 +4572,7 @@ internal static partial class AbilitySerialization
         writer.Write(value.HeroMaximumLevel);
         writer.Write(value.HeroExperience);
         writer.Write(value.ExperienceBounty);
+        writer.Write(value.UnitLevel);
         writer.Write(value.UnspentSkillPoints);
         writer.Write(value.Mana);
         writer.Write(value.MaximumMana);
@@ -4207,6 +4622,7 @@ internal static partial class AbilitySerialization
         var heroMaximumLevel = reader.ReadInt32();
         var heroExperience = reader.ReadInt32();
         var experienceBounty = reader.ReadInt32();
+        var unitLevel = reader.ReadInt32();
         var unspentSkillPoints = reader.ReadInt32();
         var mana = reader.ReadSingle();
         var maximumMana = reader.ReadSingle();
@@ -4236,6 +4652,7 @@ internal static partial class AbilitySerialization
             !hero && (heroLevel != 0 || heroMaximumLevel != 0 ||
                       heroExperience != 0 || unspentSkillPoints != 0) ||
             experienceBounty is < 0 or > 1_000_000 ||
+            unitLevel is < 0 or > 100 ||
             !float.IsFinite(mana) || !float.IsFinite(maximumMana) ||
             !float.IsFinite(baseMaximumMana) ||
             !float.IsFinite(manaBonusDecay) ||
@@ -4282,7 +4699,7 @@ internal static partial class AbilitySerialization
             throw new InvalidDataException("Invalid active ability cast.");
         return new AbilityUnitRuntimeEntry(
             unit, unitType, hero, traits, heroLevel, heroMaximumLevel,
-            heroExperience, experienceBounty, unspentSkillPoints,
+            heroExperience, experienceBounty, unitLevel, unspentSkillPoints,
             mana, maximumMana, baseMaximumMana, manaBonusDecay, regeneration,
             effectiveRegeneration, speed,
             damage, armor, attackCooldown, maximumHealth, detection,

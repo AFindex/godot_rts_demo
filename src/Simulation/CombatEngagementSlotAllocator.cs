@@ -14,6 +14,10 @@ public sealed class CombatEngagementSlotAllocator
     private readonly UnitStore _units;
     private readonly CombatStore _combat;
     private readonly StaticWorld _world;
+    private List<int>?[] _unitsByTarget;
+    private int[] _activeTargets;
+    private bool[] _targetActive;
+    private int _activeTargetCount;
 
     public CombatEngagementSlotAllocator(
         UnitStore units,
@@ -23,6 +27,33 @@ public sealed class CombatEngagementSlotAllocator
         _units = units;
         _combat = combat;
         _world = world;
+        _unitsByTarget = new List<int>?[units.Capacity];
+        _activeTargets = new int[units.Capacity];
+        _targetActive = new bool[units.Capacity];
+    }
+
+    public void RebuildIndex()
+    {
+        if (_unitsByTarget.Length < _units.Capacity)
+        {
+            Array.Resize(ref _unitsByTarget, _units.Capacity);
+            Array.Resize(ref _activeTargets, _units.Capacity);
+            Array.Resize(ref _targetActive, _units.Capacity);
+        }
+        for (var index = 0; index < _activeTargetCount; index++)
+        {
+            var target = _activeTargets[index];
+            _unitsByTarget[target]!.Clear();
+            _targetActive[target] = false;
+        }
+        _activeTargetCount = 0;
+        for (var unit = 0; unit < _units.Count; unit++)
+        {
+            if (!_units.Alive[unit] || !_combat.HasAttackSlots[unit]) continue;
+            var target = _combat.TargetUnits[unit];
+            if ((uint)target >= (uint)_units.Count) continue;
+            AddToTargetIndex(unit, target);
+        }
     }
 
     public void Assign(int unit, int target)
@@ -109,6 +140,8 @@ public sealed class CombatEngagementSlotAllocator
 
     public void Release(int unit)
     {
+        if (_combat.HasAttackSlots[unit])
+            RemoveFromTargetIndex(unit, _combat.TargetUnits[unit]);
         _combat.HasAttackSlots[unit] = false;
     }
 
@@ -146,8 +179,12 @@ public sealed class CombatEngagementSlotAllocator
 
     private bool Conflicts(int unit, int target, Vector2 candidate)
     {
-        for (var other = 0; other < _units.Count; other++)
+        if ((uint)target >= (uint)_unitsByTarget.Length ||
+            _unitsByTarget[target] is not { } occupants)
+            return false;
+        for (var index = 0; index < occupants.Count; index++)
         {
+            var other = occupants[index];
             if (other == unit || !_units.Alive[other] ||
                 !_combat.HasAttackSlots[other] ||
                 _combat.TargetUnits[other] != target)
@@ -245,6 +282,35 @@ public sealed class CombatEngagementSlotAllocator
         _combat.AttackSlotRadii[unit] = radius;
         _combat.AttackSlotTargets[unit] = target;
         _combat.HasAttackSlots[unit] = true;
+        AddToTargetIndex(unit, _combat.TargetUnits[unit]);
+    }
+
+    private void AddToTargetIndex(int unit, int target)
+    {
+        if ((uint)target >= (uint)_unitsByTarget.Length) return;
+        var occupants = _unitsByTarget[target];
+        if (occupants is null)
+        {
+            occupants = [];
+            _unitsByTarget[target] = occupants;
+        }
+        if (!_targetActive[target])
+        {
+            _activeTargets[_activeTargetCount++] = target;
+            _targetActive[target] = true;
+        }
+        var insert = occupants.BinarySearch(unit);
+        if (insert >= 0) return;
+        occupants.Insert(~insert, unit);
+    }
+
+    private void RemoveFromTargetIndex(int unit, int target)
+    {
+        if ((uint)target >= (uint)_unitsByTarget.Length ||
+            _unitsByTarget[target] is not { } occupants)
+            return;
+        var index = occupants.BinarySearch(unit);
+        if (index >= 0) occupants.RemoveAt(index);
     }
 
     private static int NormalizeIndex(int index)

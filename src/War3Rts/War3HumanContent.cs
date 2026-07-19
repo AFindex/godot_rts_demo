@@ -170,6 +170,10 @@ public static class War3HumanContent
         ProductionCatalogSnapshot catalog,
         int unit)
     {
+        if (simulation.Abilities.HasStatus(
+                unit, AbilityStatusFlags.Polymorphed) &&
+            TryResolveReplacementUnit(simulation, unit, out var replacement))
+            return replacement;
         if (TryResolveSummonedUnit(simulation, unit, out var summoned))
             return summoned;
         var unitTypeId = simulation.Abilities.UnitTypeId(unit);
@@ -178,13 +182,59 @@ public static class War3HumanContent
         var isWorker = simulation.Economy.IsWorker(unit);
         var radius = simulation.Units.Radii[unit];
         var health = simulation.Combat.MaximumHealth[unit];
-        var profile = catalog.UnitTypes.ToArray()
-            .Where(value => value.IsWorker == isWorker)
-            .OrderBy(value => MathF.Abs(value.Movement.PhysicalRadius - radius) * 20f +
-                              MathF.Abs(value.Combat.MaximumHealth - health))
-            .ThenBy(value => value.Id)
-            .First();
-        return Units[profile.Id];
+        var profiles = catalog.UnitTypes;
+        var bestId = -1;
+        var bestScore = float.PositiveInfinity;
+        for (var index = 0; index < profiles.Length; index++)
+        {
+            var profile = profiles[index];
+            if (profile.IsWorker != isWorker) continue;
+            var score =
+                MathF.Abs(profile.Movement.PhysicalRadius - radius) * 20f +
+                MathF.Abs(profile.Combat.MaximumHealth - health);
+            if (score < bestScore || score == bestScore && profile.Id < bestId)
+            {
+                bestScore = score;
+                bestId = profile.Id;
+            }
+        }
+        if (bestId < 0)
+            throw new InvalidOperationException(
+                "Production catalog has no compatible unit profile.");
+        return Units[bestId];
+    }
+
+    public static bool TryResolveReplacementUnit(
+        RtsSimulation simulation,
+        int unit,
+        out War3UnitDefinition definition)
+    {
+        if (!simulation.Abilities.HasStatus(
+                unit, AbilityStatusFlags.Polymorphed))
+        {
+            definition = null!;
+            return false;
+        }
+        War3UnitDefinition? source = null;
+        if (TryResolveSummonedUnit(simulation, unit, out var summoned))
+            source = summoned;
+        else
+        {
+            var unitTypeId = simulation.Abilities.UnitTypeId(unit);
+            if ((uint)unitTypeId < (uint)Units.Count)
+                source = Units[unitTypeId];
+        }
+        if (source is not null &&
+            simulation.Abilities.TryReplacementObjectId(
+                unit, source.FlyingHeight > 0f, out var objectId) &&
+            Runtime.Value.SummonedUnits.TryGetValue(
+                objectId, out var replacement))
+        {
+            definition = replacement;
+            return true;
+        }
+        definition = null!;
+        return false;
     }
 
     public static bool TryResolveSummonedUnit(
@@ -451,7 +501,8 @@ public static class War3HumanContent
             StringComparer.Ordinal);
         foreach (var objectId in new[]
                  {
-                     "hwat", "hwt2", "hwt3", "hphx", "necr"
+                     "hwat", "hwt2", "hwt3", "hphx", "necr",
+                     "nshe", "nshf", "nsha", "nshw"
                  })
         {
             if (!catalog.TryGet(objectId, out var data)) continue;

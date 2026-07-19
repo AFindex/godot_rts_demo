@@ -55,7 +55,8 @@ public readonly record struct War3CommandSnapshot(
     float ManaCost = 0f,
     bool Toggled = false,
     War3CommandVisualState State = War3CommandVisualState.Ready,
-    string Badge = "");
+    string Badge = "",
+    bool AutoCastAvailable = false);
 
 public enum War3QueueItemKind : byte
 {

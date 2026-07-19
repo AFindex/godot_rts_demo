@@ -151,6 +151,8 @@ public static class War3CombatRulesSelfTest
             var buildingFeedback = VerifyBuildingFeedback(
                 arcaneTower, production);
             var buildingReveal = VerifyBuildingReveal(arcaneTower);
+            var buildingCloud = VerifyBuildingCloud(guardTower);
+            var repair = VerifyRepair(guardTower, production);
             var matrix = Nearly(normalMedium, 15f) &&
                          Nearly(pierceSmall, 20f) &&
                          Nearly(siegeFort, 15f / 1.3f) &&
@@ -164,6 +166,8 @@ public static class War3CombatRulesSelfTest
                          facing.Passed && combatObjects.Passed &&
                          combatObjectReplay.Passed && buildingCombat.Passed &&
                          buildingFeedback.Passed && buildingReveal.Passed;
+            passed &= buildingCloud.Passed;
+            passed &= repair.Passed;
             passed &= hotRoundTrip;
             return new SelfTestResult(
                 passed,
@@ -193,6 +197,8 @@ public static class War3CombatRulesSelfTest
                 $"building={buildingCombat.Summary}, " +
                 $"feedback={buildingFeedback.Summary}, " +
                 $"reveal={buildingReveal.Summary}, " +
+                $"cloud={buildingCloud.Summary}, " +
+                $"repair={repair.Summary}, " +
                 $"hot={hotRoundTrip}");
         }
         catch (Exception exception)
@@ -821,6 +827,244 @@ public static class War3CombatRulesSelfTest
             phase.Phase == BuildingCombatPhase.Cooldown && hot && hit && staged,
             $"phase={phase.Phase} hot={hot} hit={hit} stages={staged}/" +
             $"impact={impactCount} hp={simulation.Combat.Health[target]:0.###}");
+    }
+
+    private static (bool Passed, string Summary) VerifyBuildingCloud(
+        BuildingTypeProfile tower)
+    {
+        var simulation = CreateSimulation();
+        var cloud = new AbilityProfile(
+            0, "TCLF", "Test Building Cloud", string.Empty,
+            string.Empty, string.Empty, AbilityActivationKind.TargetPoint,
+            AbilityTargetFlags.Point, false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 500f, 80f, 0.5f, 0.5f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.AreaAtTarget,
+                    AbilityRelationFilter.Enemy,
+                    Radius: 80f,
+                    Duration: 0.5f,
+                    Status: AbilityStatusFlags.AttackDisabled,
+                    AffectsBuildings: true)])]);
+        simulation.Abilities.ConfigureCatalog(new AbilityCatalogSnapshot(
+            [cloud],
+            [new UnitAbilityBindingProfile(
+                0, false, UnitManaProfile.None,
+                [new UnitAbilityEntryProfile(0, 1)])]));
+        var bounds = new SimRect(
+            new Vector2(240f, 240f), new Vector2(288f, 288f));
+        var footprint = simulation.PlaceBuilding(bounds);
+        var building = new GameplayBuildingId(0);
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    building, 1, tower, bounds, default, footprint,
+                    BuildingLifecycleState.Completed, -1, bounds.Min, 1f,
+                    tower.MaximumHealth, new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        var movement = new UnitMovementProfileSnapshot(
+            0, "cloud-caster", 2f, 128f, 720f,
+            MovementClass.Small, 2f);
+        var caster = simulation.AddUnit(
+            new Vector2(330f, 264f),
+            new UnitTypeProfile(
+                0, "cloud-caster", movement, PassiveProfile(), false),
+            2);
+        _ = Add(simulation, new Vector2(380f, 264f), 2, PassiveProfile());
+        simulation.Visibility.Update(
+            simulation.Units, simulation.Combat, simulation.Construction);
+        var cast = simulation.IssueAbility(
+            2, caster, 0,
+            AbilityCastTarget.Point((bounds.Min + bounds.Max) * 0.5f));
+        var disabled = cast.Succeeded &&
+            simulation.Abilities.IsBuildingAttackDisabled(building) &&
+            simulation.Abilities.ActiveBuildingStatusCount == 1;
+        var payload = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion, 0UL,
+            simulation.CaptureRuntimeState());
+        var hot = RuntimeHotSnapshotCodec.TryDeserialize(
+                      payload, SimulationHotSnapshot.CurrentFormatVersion,
+                      out _, out var restored, out var validation) &&
+                  restored is not null &&
+                  validation == HotSnapshotValidationCode.Success &&
+                  restored.Abilities.BuildingStatuses.Length == 1;
+        if (restored is not null)
+            simulation.RestoreRuntimeState(restored);
+        for (var tick = 0; tick < 8; tick++) simulation.Tick(Delta);
+        var suppressed =
+            simulation.BuildingCombat.ActiveProjectileCount == 0 &&
+            simulation.BuildingCombat.Observe(building).Phase ==
+                BuildingCombatPhase.Idle;
+        var resumed = TickUntil(
+            simulation, 90,
+            () => simulation.BuildingCombat.ActiveProjectileCount > 0);
+        return (
+            disabled && hot && suppressed && resumed,
+            $"cast={cast.Code} disabled={disabled} hot={hot} " +
+            $"suppressed={suppressed} resumed={resumed}");
+    }
+
+    private static (bool Passed, string Summary) VerifyRepair(
+        BuildingTypeProfile tower,
+        ProductionCatalogSnapshot production)
+    {
+        var simulation = CreateSimulation();
+        simulation.Economy.Players.RegisterPlayer(1, 1_000, 1_000, 200);
+        simulation.Abilities.ConfigureCatalog(
+            War3HumanContent.CreateAbilityCatalog());
+        if (!simulation.Abilities.Catalog.TryFind("Ahrp", out var repair))
+            return (false, "missing-Ahrp");
+        var effect = repair.Levels.Single().Effects.Single();
+        var bounds = new SimRect(
+            new Vector2(240f, 240f), new Vector2(288f, 288f));
+        var footprint = simulation.PlaceBuilding(bounds);
+        var building = new GameplayBuildingId(0);
+        var initialHealth = tower.MaximumHealth * 0.5f;
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    building, 1, tower, bounds, default, footprint,
+                    BuildingLifecycleState.Completed, -1, bounds.Min, 1f,
+                    initialHealth, new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        var caster = simulation.AddUnit(
+            new Vector2(bounds.Max.X + 1f, 264f),
+            production.UnitType(War3HumanContent.Peasant), 1);
+        simulation.Visibility.Update(
+            simulation.Units, simulation.Combat, simulation.Construction);
+        var beforeWallet = simulation.Economy.Players.Snapshot(1);
+        var cast = simulation.IssueAbility(
+            1, caster, repair.Id,
+            AbilityCastTarget.Building(
+                building, (bounds.Min + bounds.Max) * 0.5f));
+        simulation.Tick(Delta);
+        var repairing = cast.Succeeded &&
+                        simulation.Abilities.ActivePersistentEffectCount == 1 &&
+                        simulation.Construction.Observe(building).Health >
+                        initialHealth;
+
+        var sourceHash = simulation.ComputeStateHash();
+        var payload = RuntimeHotSnapshotCodec.Serialize(
+            SimulationHotSnapshot.CurrentFormatVersion, 0UL,
+            simulation.CaptureRuntimeState());
+        var hot = RuntimeHotSnapshotCodec.TryDeserialize(
+                      payload, SimulationHotSnapshot.CurrentFormatVersion,
+                      out _, out var restored, out var validation) &&
+                  restored is not null &&
+                  validation == HotSnapshotValidationCode.Success &&
+                  restored.Abilities.PersistentEffects.Length == 1;
+        if (restored is not null) simulation.RestoreRuntimeState(restored);
+        var exact = sourceHash == simulation.ComputeStateHash();
+        for (var tick = 0; tick < 90; tick++) simulation.Tick(Delta);
+        var repairedBuilding = simulation.Construction.Observe(building);
+        var afterWallet = simulation.Economy.Players.Snapshot(1);
+        var expectedMinerals = (int)MathF.Floor(
+            tower.Cost.Minerals * effect.Value *
+            repairedBuilding.Health / tower.MaximumHealth + 0.0001f) -
+            (int)MathF.Floor(
+                tower.Cost.Minerals * effect.Value *
+                initialHealth / tower.MaximumHealth + 0.0001f);
+        var expectedVespene = (int)MathF.Floor(
+            tower.Cost.VespeneGas * effect.Value *
+            repairedBuilding.Health / tower.MaximumHealth + 0.0001f) -
+            (int)MathF.Floor(
+                tower.Cost.VespeneGas * effect.Value *
+                initialHealth / tower.MaximumHealth + 0.0001f);
+        var charged = beforeWallet.Minerals - afterWallet.Minerals ==
+                          expectedMinerals &&
+                      beforeWallet.VespeneGas - afterWallet.VespeneGas ==
+                          expectedVespene;
+
+        simulation.IssueMove([caster], new Vector2(500f, 264f));
+        var canceled = simulation.Abilities.ActivePersistentEffectCount == 0;
+
+        const float initialProgress = 0.4f;
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    building, 1, tower, bounds, default, footprint,
+                    BuildingLifecycleState.Constructing, caster, bounds.Min,
+                    initialProgress,
+                    tower.MaximumHealth *
+                    (0.1f + 0.9f * initialProgress),
+                    new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        var powerApplied = ((IAbilityRuntimeWorld)simulation)
+            .AbilityRepairBuilding(
+                caster, building, effect.Value, effect.SecondaryValue,
+                effect.HeroValue, effect.HeroSecondaryValue,
+                effect.Interval, repair.Levels.Single().Range);
+        var expectedProgress = initialProgress +
+            effect.Interval / tower.BuildSeconds * effect.HeroSecondaryValue;
+        var powerBuild = powerApplied && Nearly(
+            simulation.Construction.Observe(building).Progress,
+            expectedProgress);
+
+        var mechanicalType = production.UnitType(
+            War3HumanContent.FlyingMachine);
+        var mechanical = simulation.AddUnit(
+            new Vector2(bounds.Max.X + 4f, 264f), mechanicalType, 1);
+        simulation.Combat.Health[mechanical] =
+            simulation.Combat.MaximumHealth[mechanical] * 0.5f;
+        var mechanicalBefore = simulation.Combat.Health[mechanical];
+        var mechanicalCast = simulation.IssueAbility(
+            1, caster, repair.Id,
+            AbilityCastTarget.Unit(
+                mechanical, simulation.Units.Positions[mechanical]));
+        simulation.Tick(Delta);
+        var mechanicalRepair = mechanicalCast.Succeeded &&
+            simulation.Combat.Health[mechanical] > mechanicalBefore &&
+            simulation.Abilities.TryRepairTargetProfile(
+                mechanical, out var mechanicalRepairProfile) &&
+            mechanicalRepairProfile.Enabled;
+        simulation.IssueMove([caster], simulation.Units.Positions[caster]);
+
+        simulation.Combat.Health[mechanical] =
+            simulation.Combat.MaximumHealth[mechanical];
+        const float autoRepairHealthFraction = 0.65f;
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    building, 1, tower, bounds, default, footprint,
+                    BuildingLifecycleState.Completed, -1, bounds.Min, 1f,
+                    tower.MaximumHealth * autoRepairHealthFraction,
+                    new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        simulation.Units.Positions[caster] =
+            new Vector2(bounds.Max.X + 1f, 264f);
+        simulation.Units.PreviousPositions[caster] =
+            simulation.Units.Positions[caster];
+        var autoToggle = simulation.IssueSetAbilityAutoCast(
+            1, caster, repair.Id, true);
+        simulation.Tick(Delta);
+        var autoState = simulation.Abilities.Observe(caster);
+        var autoRepair = autoToggle.Succeeded &&
+            autoState.Abilities.Single(value =>
+                value.AbilityId == repair.Id).AutoCastEnabled &&
+            simulation.Construction.Observe(building).Health >
+            tower.MaximumHealth * autoRepairHealthFraction &&
+            simulation.Abilities.ActivePersistentEffectCount == 1;
+        return (
+            repairing && hot && exact && charged && canceled && powerBuild &&
+            mechanicalRepair && autoRepair,
+            $"cast={cast.Code} active={repairing} hot={hot}/{exact} " +
+            $"hp={repairedBuilding.Health:0.###} cost=" +
+            $"{beforeWallet.Minerals - afterWallet.Minerals}/" +
+            $"{beforeWallet.VespeneGas - afterWallet.VespeneGas} " +
+            $"cancel={canceled} power={powerBuild}/" +
+            $"{expectedProgress:0.###} mechanical=" +
+            $"{mechanicalCast.Code}/{mechanicalRepair} auto=" +
+            $"{autoToggle.Code}/{autoRepair}");
     }
 
     private static (bool Passed, string Summary) VerifyBuildingFeedback(
