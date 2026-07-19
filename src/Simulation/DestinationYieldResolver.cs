@@ -29,10 +29,9 @@ public sealed class DestinationYieldResolver
         out int blockerUnit,
         out Vector2 yieldPoint)
     {
-        for (var candidate = 0; candidate < units.Count; candidate++)
+        foreach (var candidate in units.AliveUnits)
         {
-            if (!units.Alive[candidate] ||
-                combatTargets[candidate] != CombatTargetKind.None ||
+            if (combatTargets[candidate] != CombatTargetKind.None ||
                 units.Modes[candidate] != UnitMoveMode.Moving ||
                 units.PathPending[candidate] ||
                 units.MovementGroupSizes[candidate] < MinimumGroupSize ||
@@ -77,9 +76,9 @@ public sealed class DestinationYieldResolver
         }
 
         var bestScore = float.PositiveInfinity;
-        for (var other = 0; other < units.Count; other++)
+        foreach (var other in units.AliveUnits)
         {
-            if (other == blockedUnit || !units.Alive[other] ||
+            if (other == blockedUnit ||
                 combatTargets[other] != CombatTargetKind.None ||
                 !IsSettledBlocker(units, other) ||
                 !UnitPushPriorityPolicy.CanDisplace(
@@ -197,9 +196,9 @@ public sealed class DestinationYieldResolver
         int blockerUnit,
         Vector2 candidate)
     {
-        for (var other = 0; other < units.Count; other++)
+        foreach (var other in units.AliveUnits)
         {
-            if (other == blockerUnit || !units.Alive[other])
+            if (other == blockerUnit)
             {
                 continue;
             }

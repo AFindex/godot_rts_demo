@@ -60,18 +60,39 @@ public static class UnitCapacityGrowthSelfTest
                 simulation.Combat.Teams.Length == simulation.Units.Capacity &&
                 simulation.CommandQueues.PendingCounts.Length ==
                     simulation.Units.Capacity;
+            var denseIndex = new UnitStore(8);
+            for (var index = 0; index < 5; index++)
+            {
+                denseIndex.Add(
+                    new Vector2(index, index),
+                    radius: 4f,
+                    maxSpeed: 10f,
+                    acceleration: 20f);
+            }
+            denseIndex.SetAlive(1, false);
+            denseIndex.SetAlive(3, false);
+            denseIndex.SetAlive(1, true);
+            var denseIndexConsistent = denseIndex.AliveCount == 4 &&
+                denseIndex.AliveUnits.SequenceEqual([0, 1, 2, 4]);
+            var restoredAliveIndexConsistent =
+                restored.Units.AliveCount == unitCount &&
+                restored.Units.AliveUnits.SequenceEqual(
+                    Enumerable.Range(0, unitCount).ToArray());
             var passed = command.Succeeded &&
                 units.SequenceEqual(Enumerable.Range(0, unitCount)) &&
                 capacityConsistent && decoded && identity == 123UL &&
                 validation == HotSnapshotValidationCode.Success &&
                 restored.Units.Count == unitCount &&
                 restored.Units.Capacity == simulation.Units.Capacity &&
+                denseIndexConsistent && restoredAliveIndexConsistent &&
                 restored.ComputeStateHash() == simulation.ComputeStateHash();
             return new SelfTestResult(
                 passed,
                 $"units={simulation.Units.Count},capacity=" +
                 $"{initialCapacity}->{simulation.Units.Capacity}," +
                 $"command={command.Code},consistent={capacityConsistent}," +
+                $"aliveIndex={denseIndexConsistent}/" +
+                $"{restoredAliveIndexConsistent}," +
                 $"hot={decoded}/{validation},hash=" +
                 $"{(decoded && restored.ComputeStateHash() == simulation.ComputeStateHash())}");
         }

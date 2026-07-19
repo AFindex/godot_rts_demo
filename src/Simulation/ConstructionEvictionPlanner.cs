@@ -244,9 +244,9 @@ public static class ConstructionEvictionPlanner
         ReadOnlySpan<ConstructionBlocker> blockers,
         UnitStore units)
     {
-        for (var other = 0; other < units.Count; other++)
+        foreach (var other in units.AliveUnits)
         {
-            if (other == movingUnit || !units.Alive[other] ||
+            if (other == movingUnit ||
                 IsEvacuatingBlocker(other, blockers))
             {
                 continue;

@@ -68,6 +68,7 @@ internal sealed class War3StressTestMode
     private int _combatOrdersIssued;
     private int _combatOrderRefreshes;
     private long _combatOrderCoalesces;
+    private int _attackMoveRefreshDiagnosticsPrinted;
     private int _supersededMotionProbes;
     private long _qualitySamples;
     private long _pathWaitingUnitTicks;
@@ -455,6 +456,11 @@ internal sealed class War3StressTestMode
         bool refresh)
     {
         if (_simulation is null || units.IsEmpty) return;
+        if (refresh && _attackMoveRefreshDiagnosticsPrinted < 6)
+        {
+            PrintAttackMoveRefreshDiagnostics(units, target);
+            _attackMoveRefreshDiagnosticsPrinted++;
+        }
         var coalescedBefore =
             _simulation.Metrics.RepeatedAttackMoveUnitsCoalesced;
         _simulation.IssueAttackMove(units, target);
@@ -468,6 +474,54 @@ internal sealed class War3StressTestMode
             return;
         for (var index = 0; index < units.Length; index++)
             BeginMotionProbe(units[index]);
+    }
+
+    private void PrintAttackMoveRefreshDiagnostics(
+        ReadOnlySpan<int> units,
+        Vector2 target)
+    {
+        if (_simulation is null) return;
+        var inactive = 0;
+        var wrongOrder = 0;
+        var differentPoint = 0;
+        var wrongIntent = 0;
+        var invalidLeg = 0;
+        var finishedWithoutTarget = 0;
+        var eligible = 0;
+        for (var index = 0; index < units.Length; index++)
+        {
+            var unit = units[index];
+            if (!_simulation.CommandQueues.HasActiveOrders[unit])
+                inactive++;
+            else if (_simulation.CommandQueues.ActiveKinds[unit] !=
+                     UnitOrderKind.AttackMove)
+                wrongOrder++;
+            else if (_simulation.CommandQueues.ActivePositions[unit] != target)
+                differentPoint++;
+            else if (_simulation.Combat.CommandIntents[unit] !=
+                     UnitCommandIntent.AttackMove)
+                wrongIntent++;
+            else if (_simulation.Units.MovementLegResults[unit] is
+                     UnitMovementLegResult.Unreachable or
+                     UnitMovementLegResult.TargetInvalidated or
+                     UnitMovementLegResult.Canceled)
+                invalidLeg++;
+            else if (_simulation.Units.MovementLegResults[unit] is
+                         UnitMovementLegResult.Reached or
+                         UnitMovementLegResult.SettledShort &&
+                     _simulation.Combat.TargetKinds[unit] ==
+                         CombatTargetKind.None)
+                finishedWithoutTarget++;
+            else
+                eligible++;
+        }
+        GD.Print(
+            "WAR3_STRESS_ATTACK_MOVE_REFRESH_DIAGNOSTIC " +
+            $"tick={_simulation.Metrics.Tick} units={units.Length} " +
+            $"eligible={eligible} inactive={inactive} " +
+            $"wrong_order={wrongOrder} point={differentPoint} " +
+            $"intent={wrongIntent} invalid_leg={invalidLeg} " +
+            $"finished_no_target={finishedWithoutTarget}");
     }
 
     private void CreateBuildSlots(

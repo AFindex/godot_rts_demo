@@ -151,7 +151,7 @@ public sealed class ChokeTrafficCoordinator
             _negativeCandidates[choke].Clear();
         }
 
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
             var chokeId = units.ActiveChokeIds[unit];
             var direction = units.ChokeDirections[unit];
@@ -188,7 +188,7 @@ public sealed class ChokeTrafficCoordinator
             }
         }
 
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
             if (units.Modes[unit] != UnitMoveMode.Hold)
             {

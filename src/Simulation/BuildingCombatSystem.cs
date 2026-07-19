@@ -440,7 +440,7 @@ public sealed class BuildingCombatSystem
     {
         if (!weapon.Area.Enabled) return;
         var scaled = weapon with { Area = default, Propagation = default };
-        for (var target = 0; target < _units.Count; target++)
+        foreach (var target in _units.AliveUnits)
         {
             if (target == primary || !ValidTargetForOwner(attacker, target) ||
                 (weapon.Area.TargetLayers & _targetLayer(target)) == 0)
@@ -477,7 +477,7 @@ public sealed class BuildingCombatSystem
         weapon = default;
         var center = Center(building.Bounds);
         var bestDistance = float.PositiveInfinity;
-        for (var unit = 0; unit < _units.Count; unit++)
+        foreach (var unit in _units.AliveUnits)
         {
             if (!TrySelectWeapon(building, unit, true, out var candidate))
                 continue;

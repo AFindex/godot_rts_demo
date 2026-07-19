@@ -90,13 +90,25 @@ public sealed class CombatSystem
     private readonly Func<int, AbilityCombatModifier> _abilityModifier;
     private readonly Func<int, CombatTargetLayer> _unitTargetLayer;
     private readonly Func<int, int, bool> _hasTechnology;
+    private readonly Func<CombatTargetKind, int, (bool Valid, Vector2 Position)>
+        _resolveProjectileTarget;
+    private readonly Action<CombatProjectileSnapshot> _applyProjectileImpact;
+    private readonly Action<CombatProjectileSnapshot> _expireProjectile;
     private readonly SpatialHash _spatialHash;
     private int[] _targetCandidates;
     private int[] _targetClaimCounts;
+    private int[] _targetClaimRanks;
     private float[] _targetCommittedDamage;
+    private CombatTargetLayer[] _searchTargetLayers;
+    private CombatTargetLayer[] _searchAttackableLayers;
+    private CombatAttribute[] _searchGroundBonuses;
+    private CombatAttribute[] _searchAirBonuses;
+    private int[] _searchPerceptionTeams;
+    private bool[] _searchPerceptionResults;
     private double _targetSearchMilliseconds;
     private int _targetSearches;
     private int _profiledTargetSearches;
+    private long _projectileUpdateTick;
     public CombatProjectileSystem Projectiles { get; } = new();
     internal bool ProfilingEnabled { get; set; }
     internal CombatUpdateProfile LastUpdateProfile { get; private set; }
@@ -129,8 +141,18 @@ public sealed class CombatSystem
         _spatialHash = spatialHash;
         _targetCandidates = new int[units.Capacity];
         _targetClaimCounts = new int[units.Capacity];
+        _targetClaimRanks = new int[units.Capacity];
         _targetCommittedDamage = new float[units.Capacity];
+        _searchTargetLayers = new CombatTargetLayer[units.Capacity];
+        _searchAttackableLayers = new CombatTargetLayer[units.Capacity];
+        _searchGroundBonuses = new CombatAttribute[units.Capacity];
+        _searchAirBonuses = new CombatAttribute[units.Capacity];
+        _searchPerceptionTeams = new int[units.Capacity];
+        _searchPerceptionResults = new bool[units.Capacity];
         _hasTechnology = HasTechnology;
+        _resolveProjectileTarget = ResolveProjectileTarget;
+        _applyProjectileImpact = ApplyCurrentProjectileImpact;
+        _expireProjectile = ExpireCurrentProjectile;
     }
 
     public void Update(float delta, long tick)
@@ -143,23 +165,18 @@ public sealed class CombatSystem
         _profiledTargetSearches = 0;
         RebuildTargetPressure();
         _slots.RebuildIndex();
-        Projectiles.Update(delta, ResolveProjectileTarget,
-            value => ApplyProjectileImpact(value, tick),
-            value => _events.Publish(
-                tick, CombatEventKind.ProjectileExpired,
-                value.AttackerUnit, value.TargetKind, value.TargetId,
-                projectileId: value.Id,
-                worldPosition: value.Position));
+        _projectileUpdateTick = tick;
+        Projectiles.Update(
+            delta,
+            _resolveProjectileTarget,
+            _applyProjectileImpact,
+            _expireProjectile);
+        PrepareTargetSearchCache();
         var projectileEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
-        for (var unit = 0; unit < _units.Count; unit++)
+        foreach (var unit in _units.AliveUnits)
         {
-            if (!_units.Alive[unit])
-            {
-                continue;
-            }
-
             _combat.CooldownRemaining[unit] = MathF.Max(
                 0f, _combat.CooldownRemaining[unit] - delta);
             _combat.ChaseRepathRemaining[unit] = MathF.Max(
@@ -253,9 +270,9 @@ public sealed class CombatSystem
                 var currentScore = candidate >= 0 && candidate != target
                     ? TargetScore(unit, target)
                     : default;
-                var saturationRebalance = _units.Count > 256 &&
+                var saturationRebalance = _units.AliveCount > 256 &&
                     candidate >= 0 && candidate != target &&
-                    TargetClaimsExcludingAttacker(unit, target) >=
+                    _targetClaimRanks[unit] >=
                     AutoTargetClaimCapacity(unit, target) &&
                     TargetClaimsExcludingAttacker(unit, candidate) <
                     AutoTargetClaimCapacity(unit, candidate) &&
@@ -353,6 +370,21 @@ public sealed class CombatSystem
 
     private static double ElapsedMilliseconds(long start, long end) =>
         (end - start) * 1_000d / System.Diagnostics.Stopwatch.Frequency;
+
+    private void ApplyCurrentProjectileImpact(
+        CombatProjectileSnapshot projectile) =>
+        ApplyProjectileImpact(projectile, _projectileUpdateTick);
+
+    private void ExpireCurrentProjectile(
+        CombatProjectileSnapshot projectile) =>
+        _events.Publish(
+            _projectileUpdateTick,
+            CombatEventKind.ProjectileExpired,
+            projectile.AttackerUnit,
+            projectile.TargetKind,
+            projectile.TargetId,
+            projectileId: projectile.Id,
+            worldPosition: projectile.Position);
 
     private void BeginBuildingEngagement(
         int unit,
@@ -576,7 +608,7 @@ public sealed class CombatSystem
     {
         // Preserve the established small/medium-match traversal exactly;
         // large battles are where the O(attackers * all units) scan dominates.
-        if (_units.Count <= 256)
+        if (_units.AliveCount <= 256)
             return FindBestTargetFullScan(unit);
 
         var best = -1;
@@ -599,11 +631,11 @@ public sealed class CombatSystem
                               : SaturatedTargetSearchExpansion);
         var candidateCount = _spatialHash.Query(
             _units.Positions[unit], queryRadius, unit,
-            _targetCandidates.AsSpan(0, _units.Count));
+            _targetCandidates.AsSpan(0, _units.AliveCount));
         for (var index = 0; index < candidateCount; index++)
         {
             var candidate = _targetCandidates[index];
-            if (!IsValidTarget(unit, candidate))
+            if (!IsValidSearchTarget(unit, candidate))
             {
                 continue;
             }
@@ -624,7 +656,7 @@ public sealed class CombatSystem
             {
                 continue;
             }
-            var score = TargetScore(unit, candidate).TotalScore;
+            var score = SearchTargetScore(unit, candidate).TotalScore;
             if (TargetClaimsExcludingAttacker(unit, candidate) >=
                 AutoTargetClaimCapacity(unit, candidate))
             {
@@ -668,9 +700,9 @@ public sealed class CombatSystem
         var best = -1;
         var bestScore = float.PositiveInfinity;
         var intent = _combat.CommandIntents[unit];
-        for (var candidate = 0; candidate < _units.Count; candidate++)
+        foreach (var candidate in _units.AliveUnits)
         {
-            if (!IsValidTarget(unit, candidate))
+            if (!IsValidSearchTarget(unit, candidate))
                 continue;
             var distanceSquared = Vector2.DistanceSquared(
                 _units.Positions[unit], _units.Positions[candidate]);
@@ -680,7 +712,7 @@ public sealed class CombatSystem
                 : _combat.AcquisitionRanges[unit];
             if (distanceSquared > acquisitionRange * acquisitionRange)
                 continue;
-            var score = TargetScore(unit, candidate).TotalScore;
+            var score = SearchTargetScore(unit, candidate).TotalScore;
             if (score < bestScore ||
                 score == bestScore && candidate < best)
             {
@@ -703,11 +735,32 @@ public sealed class CombatSystem
 
     private CombatAutoTargetScore TargetScore(int attacker, int target)
     {
+        return TargetScore(
+            attacker,
+            target,
+            ResolveWeaponBonusAttributes(attacker, TargetLayer(target)));
+    }
+
+    private CombatAutoTargetScore SearchTargetScore(int attacker, int target)
+    {
+        var layer = _searchTargetLayers[target];
+        var bonus = layer switch
+        {
+            CombatTargetLayer.GroundUnit => _searchGroundBonuses[attacker],
+            CombatTargetLayer.AirUnit => _searchAirBonuses[attacker],
+            _ => ResolveWeaponBonusAttributes(attacker, layer)
+        };
+        return TargetScore(attacker, target, bonus);
+    }
+
+    private CombatAutoTargetScore TargetScore(
+        int attacker,
+        int target,
+        CombatAttribute bonusVs)
+    {
         var distanceSquared = Vector2.DistanceSquared(
             _units.Positions[attacker], _units.Positions[target]);
         var priority = _combat.AutoTargetPriority[target];
-        var bonusVs = ResolveWeaponBonusAttributes(
-            attacker, TargetLayer(target));
         var bonusMatch = bonusVs != CombatAttribute.None &&
                          (bonusVs &
                           _combat.Attributes[target]) != 0;
@@ -733,6 +786,74 @@ public sealed class CombatSystem
             target, distanceSquared, priority, bonusMatch, armedThreat, total);
     }
 
+    private void PrepareTargetSearchCache()
+    {
+        if (_searchTargetLayers.Length < _units.Count)
+        {
+            var capacity = _units.Capacity;
+            Array.Resize(ref _searchTargetLayers, capacity);
+            Array.Resize(ref _searchAttackableLayers, capacity);
+            Array.Resize(ref _searchGroundBonuses, capacity);
+            Array.Resize(ref _searchAirBonuses, capacity);
+            Array.Resize(ref _searchPerceptionTeams, capacity);
+            Array.Resize(ref _searchPerceptionResults, capacity);
+        }
+
+        foreach (var unit in _units.AliveUnits)
+        {
+            _searchTargetLayers[unit] = _unitTargetLayer(unit);
+            _searchPerceptionTeams[unit] = int.MinValue;
+            ResolveSearchWeaponProfile(
+                unit,
+                out _searchAttackableLayers[unit],
+                out _searchGroundBonuses[unit],
+                out _searchAirBonuses[unit]);
+        }
+    }
+
+    private void ResolveSearchWeaponProfile(
+        int unit,
+        out CombatTargetLayer targetLayers,
+        out CombatAttribute groundBonus,
+        out CombatAttribute airBonus)
+    {
+        targetLayers = CombatTargetLayer.None;
+        groundBonus = CombatAttribute.None;
+        airBonus = CombatAttribute.None;
+        var profiles = _combat.WeaponProfiles[unit];
+        for (var index = 0; index < profiles.Length; index++)
+        {
+            var profile = profiles[index];
+            if (!profile.EnabledByDefault &&
+                (profile.RequiredTechnologyId < 0 ||
+                 !HasTechnology(unit, profile.RequiredTechnologyId)))
+                continue;
+            var newlySupported = profile.TargetLayers & ~targetLayers;
+            if ((newlySupported & CombatTargetLayer.GroundUnit) != 0)
+                groundBonus = profile.BonusVs;
+            if ((newlySupported & CombatTargetLayer.AirUnit) != 0)
+                airBonus = profile.BonusVs;
+            targetLayers |= profile.TargetLayers;
+        }
+    }
+
+    private bool IsValidSearchTarget(int unit, int target)
+    {
+        if ((uint)target >= (uint)_units.Count || target == unit ||
+            !_units.Alive[target] || !_canTakeDamage(target) ||
+            !_isHostileTarget(_combat.Teams[unit], _combat.Teams[target]) ||
+            (_searchAttackableLayers[unit] & _searchTargetLayers[target]) == 0)
+            return false;
+
+        var team = _combat.Teams[unit];
+        if (_searchPerceptionTeams[target] == team)
+            return _searchPerceptionResults[target];
+        var result = _canPerceiveTarget(team, target);
+        _searchPerceptionTeams[target] = team;
+        _searchPerceptionResults[target] = result;
+        return result;
+    }
+
     private int TargetClaimsExcludingAttacker(int attacker, int target)
     {
         var claims = _targetClaimCounts[target];
@@ -756,18 +877,23 @@ public sealed class CombatSystem
         if (_targetClaimCounts.Length < _units.Count)
         {
             Array.Resize(ref _targetClaimCounts, _units.Capacity);
+            Array.Resize(ref _targetClaimRanks, _units.Capacity);
             Array.Resize(ref _targetCommittedDamage, _units.Capacity);
         }
-        Array.Clear(_targetClaimCounts, 0, _units.Count);
-        Array.Clear(_targetCommittedDamage, 0, _units.Count);
-        for (var attacker = 0; attacker < _units.Count; attacker++)
+        foreach (var target in _units.AliveUnits)
         {
-            if (!_units.Alive[attacker] ||
-                _combat.TargetKinds[attacker] != CombatTargetKind.Unit)
+            _targetClaimCounts[target] = 0;
+            _targetClaimRanks[target] = -1;
+            _targetCommittedDamage[target] = 0f;
+        }
+        foreach (var attacker in _units.AliveUnits)
+        {
+            if (_combat.TargetKinds[attacker] != CombatTargetKind.Unit)
                 continue;
             var target = _combat.TargetUnits[attacker];
             if ((uint)target >= (uint)_units.Count || !_units.Alive[target])
                 continue;
+            _targetClaimRanks[attacker] = _targetClaimCounts[target];
             _targetClaimCounts[target]++;
             _targetCommittedDamage[target] += _combat.AttackDamage[attacker];
         }
@@ -1336,11 +1462,10 @@ public sealed class CombatSystem
     {
         if (!weapon.Area.Enabled) return;
         var scaled = weapon with { Area = CombatWeaponAreaSnapshot.None };
-        for (var target = 0; target < _units.Count; target++)
+        foreach (var target in _units.AliveUnits)
         {
             if (primaryKind == CombatTargetKind.Unit && target == primaryId ||
-                target == attacker || !_units.Alive[target] ||
-                !_canTakeDamage(target) ||
+                target == attacker || !_canTakeDamage(target) ||
                 !_isHostileTarget(
                     _combat.Teams[attacker], _combat.Teams[target]))
                 continue;
@@ -1495,7 +1620,7 @@ public sealed class CombatSystem
             direction = Vector2.Normalize(direction);
 
         var candidates = new List<PropagationTarget>();
-        for (var target = 0; target < _units.Count; target++)
+        foreach (var target in _units.AliveUnits)
         {
             if (primaryKind == CombatTargetKind.Unit && target == primaryId ||
                 target == attacker || !IsDamageableTarget(attacker, target) ||
@@ -1612,7 +1737,7 @@ public sealed class CombatSystem
     {
         var best = default(PropagationTarget);
         var radiusSquared = propagation.Radius * propagation.Radius;
-        for (var target = 0; target < _units.Count; target++)
+        foreach (var target in _units.AliveUnits)
         {
             if (target == attacker || visitedUnits.Contains(target) ||
                 !IsDamageableTarget(attacker, target) ||
@@ -1692,7 +1817,7 @@ public sealed class CombatSystem
         int attacker, int target, float damage, long tick, Vector2 position)
     {
         ReleaseTargetClaim(target);
-        _units.Alive[target] = false;
+        _units.SetAlive(target, false);
         _combat.CommandIntents[target] = UnitCommandIntent.None;
         _combat.Phases[target] = CombatPhase.None;
         _combat.TargetUnits[target] = -1;

@@ -88,10 +88,8 @@ public sealed class UnitConcealmentController
         float delta,
         Action<int, bool>? transitionCompleted = null)
     {
-        for (var unit = 0; unit < _units.Count; unit++)
+        foreach (var unit in _units.AliveUnits)
         {
-            if (!_units.Alive[unit])
-                continue;
             var phase = _combat.ConcealmentPhases[unit];
             if (phase is not (UnitConcealmentPhase.Activating or
                 UnitConcealmentPhase.Deactivating))

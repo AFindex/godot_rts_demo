@@ -308,10 +308,8 @@ public static class BuildingPlacementValidator
                 DynamicStartValidationCode.InvalidFootprint, -1);
         }
 
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
-            if (!units.Alive[unit])
-                continue;
             if (includeUnit is not null && !includeUnit(unit))
                 continue;
             if (footprint.Expanded(units.Radii[unit] + rules.UnitPadding)

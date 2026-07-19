@@ -451,10 +451,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         pathTarget.CommitClearanceBake(candidate);
         _buildingConnectivityGuard.CommitClearanceBake(candidate);
         var affectedUnits = new List<int>();
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (Units.Alive[unit] &&
-                Units.Modes[unit] is UnitMoveMode.Moving or
+            if (Units.Modes[unit] is UnitMoveMode.Moving or
                     UnitMoveMode.WaitingForPath)
             {
                 affectedUnits.Add(unit);
@@ -1333,7 +1332,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             _replayPackageRecorder?.RecordRemove(Metrics.Tick, id, removedBounds);
         }
 
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
             if (Units.BlockedByNavigation[unit])
             {
@@ -1920,7 +1919,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             return false;
         Combat.Health[unit] = MathF.Max(0f, Combat.Health[unit] - damage);
         if (Combat.Health[unit] > 0f) return true;
-        Units.Alive[unit] = false;
+        Units.SetAlive(unit, false);
         Combat.CommandIntents[unit] = UnitCommandIntent.None;
         Combat.Phases[unit] = CombatPhase.None;
         Combat.TargetUnits[unit] = -1;
@@ -2328,10 +2327,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             throw new ArgumentOutOfRangeException(nameof(playerId));
         var units = _playerViewUnitScratch;
         units.Clear();
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit])
-                continue;
             var owner = Combat.Teams[unit];
             var relation = Diplomacy.Relation(playerId, owner);
             if (relation != PlayerEntityRelation.Own &&
@@ -2934,9 +2931,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         if (building.State != BuildingLifecycleState.BlockedAtStart)
             return PublicConstructionStatus.None;
         var knownOccupant = false;
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] || unit == building.BuilderUnit ||
+            if (unit == building.BuilderUnit ||
                 !building.Bounds.Expanded(
                         Units.Radii[unit] +
                         building.Type.PlacementProfile.UnitPadding)
@@ -3441,9 +3438,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void FreezeConcealmentRestrictedUnits()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] || Concealment.CanMove(unit))
+            if (Concealment.CanMove(unit))
                 continue;
             Units.Paths[unit] = null;
             Units.RouteWaypoints[unit] = [];
@@ -3462,9 +3459,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void FreezeAbilityRestrictedUnits()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] || Abilities.CanMove(unit)) continue;
+            if (Abilities.CanMove(unit)) continue;
             Units.Paths[unit] = null;
             Units.RouteWaypoints[unit] = [];
             Units.PathPending[unit] = false;
@@ -4048,7 +4045,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             abilityAllocationStart);
         FreezeConcealmentRestrictedUnits();
         FreezeAbilityRestrictedUnits();
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
             _unitCollisionSuppressed[unit] =
                 Economy.SuppressesUnitCollision(unit) ||
                 Construction.SuppressesBuilderUnitCollision(unit);
@@ -4157,6 +4154,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.SteeringAvoidingUnits = _steeringSolver.LastAvoidingUnits;
         Metrics.SteeringWorldSegmentProbes =
             _steeringSolver.LastWorldSegmentProbes;
+        Metrics.SteeringWorldNeighborhoodProbes =
+            _steeringSolver.LastWorldNeighborhoodProbes;
         Metrics.SteeringCollisionRiskNeighborChecks =
             _steeringSolver.LastCollisionRiskNeighborChecks;
         Metrics.SteeringPredictedCollisionHits =
@@ -4324,9 +4323,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private void UpdateProducedUnitRallyFollowers()
     {
         Span<int> follower = stackalloc int[1];
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] || !CommandQueues.HasActiveOrders[unit] ||
+            if (!CommandQueues.HasActiveOrders[unit] ||
                 CommandQueues.ActiveKinds[unit] != UnitOrderKind.FollowFriendly)
             {
                 continue;
@@ -4979,7 +4978,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private void InvalidatePathsIntersecting(SimRect footprint)
     {
         var affectedUnits = new List<int>();
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
             if (Units.Modes[unit] is UnitMoveMode.Idle or UnitMoveMode.Hold or UnitMoveMode.Arrived ||
                 !RemainingPathIntersects(unit, footprint))
@@ -5289,13 +5288,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void UpdatePreferredVelocities()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
             Units.PreferredVelocities[unit] = Vector2.Zero;
-            if (!Units.Alive[unit])
-            {
-                continue;
-            }
             if (Units.Modes[unit] != UnitMoveMode.Moving)
             {
                 continue;
@@ -5440,10 +5435,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void UpdateUnitFacings(float delta)
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
             Units.PreviousFacings[unit] = Units.Facings[unit];
-            if (!Units.Alive[unit]) continue;
 
             var desired = Vector2.Zero;
             var navigationOwnsFacing = TryNavigationFacing(unit, out desired);
@@ -5547,17 +5541,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void Integrate(float delta)
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
             Units.PreviousPositions[unit] = Units.Positions[unit];
 
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit])
-            {
-                Units.Velocities[unit] = Vector2.Zero;
-                Units.NextVelocities[unit] = Vector2.Zero;
-                continue;
-            }
             Units.Velocities[unit] = Units.NextVelocities[unit];
             var displacement = Units.Velocities[unit] * delta;
             var proposed = Units.Positions[unit] + displacement;
@@ -5591,7 +5579,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             var constrained = World.ConstrainDisc(
                 previous, proposed, Units.Radii[unit]);
             Units.Positions[unit] = constrained;
-            if (Units.Count > 256 &&
+            if (Units.AliveCount > 256 &&
                 Vector2.DistanceSquared(constrained, proposed) > 0.000001f)
             {
                 // Preserve tangential motion but discard the component that a
@@ -5654,7 +5642,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void SolveCollisions()
     {
-        if (Units.Count <= 256)
+        if (Units.AliveCount <= 256)
         {
             SolveCollisionsEstablishedOrder();
             return;
@@ -5663,7 +5651,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         for (var iteration = 0; iteration < CollisionIterations; iteration++)
         {
             Metrics.CollisionMainIterations++;
-            Array.Clear(Units.CollisionCorrections, 0, Units.Count);
+            foreach (var unit in Units.AliveUnits)
+                Units.CollisionCorrections[unit] = Vector2.Zero;
             _spatialHash.Rebuild(Units);
             var pairCount = CollectCollisionPairs(0f);
             Metrics.CollisionBroadphasePairs += pairCount;
@@ -5735,12 +5724,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             }
 
             var moved = false;
-            for (var unit = 0; unit < Units.Count; unit++)
+            foreach (var unit in Units.AliveUnits)
             {
-                if (!Units.Alive[unit])
-                {
-                    continue;
-                }
                 var correction = Units.CollisionCorrections[unit];
                 if (correction.LengthSquared() <= 0.0000001f)
                     continue;
@@ -5765,13 +5750,12 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         for (var iteration = 0; iteration < CollisionIterations; iteration++)
         {
             Metrics.CollisionMainIterations++;
-            Array.Clear(Units.CollisionCorrections, 0, Units.Count);
+            foreach (var unit in Units.AliveUnits)
+                Units.CollisionCorrections[unit] = Vector2.Zero;
             _spatialHash.Rebuild(Units);
 
-            for (var unit = 0; unit < Units.Count; unit++)
+            foreach (var unit in Units.AliveUnits)
             {
-                if (!Units.Alive[unit])
-                    continue;
                 var neighborCount = _spatialHash.Query(
                     Units.Positions[unit],
                     Units.Radii[unit] * 4f + 8f,
@@ -5844,10 +5828,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 }
             }
 
-            for (var unit = 0; unit < Units.Count; unit++)
+            foreach (var unit in Units.AliveUnits)
             {
-                if (!Units.Alive[unit])
-                    continue;
                 var previous = Units.Positions[unit];
                 Metrics.CollisionConstraintCalls++;
                 Units.Positions[unit] = World.ConstrainDisc(
@@ -5868,7 +5850,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     /// </summary>
     private void ResolveResidualCollisionPenetrations()
     {
-        if (Units.Count <= 256)
+        if (Units.AliveCount <= 256)
         {
             ResolveResidualCollisionPenetrationsEstablishedOrder();
             return;
@@ -5905,8 +5887,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             {
                 Metrics.CollisionResidualPasses++;
                 Metrics.CollisionBroadphasePairs += pairCount;
-                Array.Clear(
-                    _collisionResidualMovedUnits, 0, Units.Count);
+                foreach (var unit in Units.AliveUnits)
+                    _collisionResidualMovedUnits[unit] = false;
                 var moved = false;
                 for (var pairOffset = 0;
                      pairOffset < pairCount;
@@ -5967,10 +5949,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             Metrics.CollisionResidualPasses++;
             var corrected = false;
             _spatialHash.Rebuild(Units);
-            for (var unit = 0; unit < Units.Count; unit++)
+            foreach (var unit in Units.AliveUnits)
             {
-                if (!Units.Alive[unit])
-                    continue;
                 var neighborCount = _spatialHash.Query(
                     Units.Positions[unit],
                     Units.Radii[unit] * 4f + 8f,
@@ -6091,7 +6071,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     {
         // Keep established small/medium deterministic movement snapshots
         // unchanged while the large-crowd response is validated separately.
-        if (Units.Count <= 256) return;
+        if (Units.AliveCount <= 256) return;
         var closingSpeed = Vector2.Dot(
             Units.Velocities[neighbor] - Units.Velocities[unit], normal);
         if (closingSpeed >= -0.001f) return;
@@ -6128,15 +6108,13 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         // regression scenes. Large crowds switch to the bucket-pair traversal,
         // which removes the duplicated per-unit neighborhood scans that
         // dominate the 800-unit workload.
-        if (Units.Count > 256)
+        if (Units.AliveCount > 256)
             return _spatialHash.CollectPotentialCollisionPairs(
                 Units, tolerance, ref _collisionPairScratch);
 
         var count = 0;
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit])
-                continue;
             var neighborCount = _spatialHash.Query(
                 Units.Positions[unit],
                 Units.Radii[unit] * 4f + 8f + tolerance,
@@ -6167,21 +6145,18 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void UpdateCombatContacts()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            _combatContacts[unit] = Units.Alive[unit]
-                ? EvaluateCombatContact(unit)
-                : default;
+            _combatContacts[unit] = EvaluateCombatContact(unit);
         }
     }
 
     private void AdoptDisplacedStationaryReservations()
     {
         var displacedCount = 0;
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] ||
-                Units.Modes[unit] is not
+            if (Units.Modes[unit] is not
                     (UnitMoveMode.Idle or UnitMoveMode.Arrived) ||
                 Combat.TargetKinds[unit] != CombatTargetKind.None ||
                 Units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
@@ -6268,7 +6243,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private bool ExpandReservationMigrationComponent(ref int selectedCount)
     {
-        _reservationSelectionScratch.AsSpan(0, Units.Count).Fill(-1);
+        foreach (var unit in Units.AliveUnits)
+            _reservationSelectionScratch[unit] = -1;
         for (var index = 0; index < selectedCount; index++)
             _reservationSelectionScratch[_displacedStationaryUnits[index]] = index;
 
@@ -6278,7 +6254,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
              selectedIndex++)
         {
             var selected = _displacedStationaryUnits[selectedIndex];
-            for (var candidate = 0; candidate < Units.Count; candidate++)
+            foreach (var candidate in Units.AliveUnits)
             {
                 if (_reservationSelectionScratch[candidate] >= 0 ||
                     !IsStationaryReservationCandidate(candidate))
@@ -6325,10 +6301,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void UpdateDynamicBlockageProgress()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] ||
-                Units.Modes[unit] != UnitMoveMode.Moving ||
+            if (Units.Modes[unit] != UnitMoveMode.Moving ||
                 Units.PathPending[unit] ||
                 Units.ChokePhases[unit] != ChokePhase.None ||
                 _unitCollisionSuppressed[unit])
@@ -6429,10 +6404,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void ResolveDynamicBlockageTimeouts()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] ||
-                Units.DynamicBlockageTicks[unit] <
+            if (Units.DynamicBlockageTicks[unit] <
                     DynamicBlockageTimeoutTicks ||
                 Units.Modes[unit] != UnitMoveMode.Moving ||
                 Units.DestinationYieldPhases[unit] != DestinationYieldPhase.None)
@@ -6496,12 +6470,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void UpdateProgress(float delta)
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit])
-            {
-                continue;
-            }
             Units.RepathCooldowns[unit] = MathF.Max(0f, Units.RepathCooldowns[unit] - delta);
             if (Units.Modes[unit] != UnitMoveMode.Moving)
             {
@@ -6700,10 +6670,10 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private void FinalizeSettledMovementGroups()
     {
         _settledMovementGroupsSeen.Clear();
-        for (var leader = 0; leader < Units.Count; leader++)
+        foreach (var leader in Units.AliveUnits)
         {
             var groupId = Units.MovementGroupIds[leader];
-            if (!Units.Alive[leader] || groupId <= 0)
+            if (groupId <= 0)
                 continue;
             var firstGroupMember = _settledMovementGroupsSeen.Add(groupId);
             if (!firstGroupMember ||
@@ -6715,10 +6685,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             var arrived = 0;
             var remainingEligible = true;
             var compactGroup = Units.MovementGroupSizes[leader] <= 8;
-            for (var unit = leader; unit < Units.Count; unit++)
+            foreach (var unit in Units.AliveUnits)
             {
-                if (!Units.Alive[unit] ||
-                    Units.MovementGroupIds[unit] != groupId)
+                if (Units.MovementGroupIds[unit] != groupId)
                     continue;
                 members++;
                 if (Combat.TargetKinds[unit] != CombatTargetKind.None)
@@ -6751,10 +6720,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
             var groupUnits = new int[members];
             var memberIndex = 0;
-            for (var unit = leader; unit < Units.Count; unit++)
+            foreach (var unit in Units.AliveUnits)
             {
-                if (!Units.Alive[unit] ||
-                    Units.MovementGroupIds[unit] != groupId)
+                if (Units.MovementGroupIds[unit] != groupId)
                     continue;
                 groupUnits[memberIndex++] = unit;
             }
@@ -6810,7 +6778,8 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 "Reservation target buffer is too small.", nameof(targets));
         if (groupUnits.IsEmpty)
             return true;
-        _reservationSelectionScratch.AsSpan(0, Units.Count).Fill(-1);
+        foreach (var unit in Units.AliveUnits)
+            _reservationSelectionScratch[unit] = -1;
         for (var index = 0; index < groupUnits.Length; index++)
         {
             var unit = groupUnits[index];
@@ -6825,9 +6794,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             for (var leftIndex = 0; leftIndex < groupUnits.Length; leftIndex++)
             {
                 var left = groupUnits[leftIndex];
-                for (var right = 0; right < Units.Count; right++)
+                foreach (var right in Units.AliveUnits)
                 {
-                    if (right == left || !Units.Alive[right])
+                    if (right == left)
                         continue;
                     var rightIndex = _reservationSelectionScratch[right];
                     if (rightIndex >= 0 && rightIndex <= leftIndex)
@@ -6913,9 +6882,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         for (var leftIndex = 0; leftIndex < groupUnits.Length; leftIndex++)
         {
             var left = groupUnits[leftIndex];
-            for (var right = 0; right < Units.Count; right++)
+            foreach (var right in Units.AliveUnits)
             {
-                if (right == left || !Units.Alive[right])
+                if (right == left)
                     continue;
                 var rightIndex = _reservationSelectionScratch[right];
                 if (rightIndex >= 0 && rightIndex <= leftIndex)
@@ -6944,9 +6913,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         for (var leftIndex = 0; leftIndex < groupUnits.Length; leftIndex++)
         {
             var left = groupUnits[leftIndex];
-            for (var right = 0; right < Units.Count; right++)
+            foreach (var right in Units.AliveUnits)
             {
-                if (right == left || !Units.Alive[right])
+                if (right == left)
                     continue;
                 var rightIndex = _reservationSelectionScratch[right];
                 if (rightIndex >= 0 && rightIndex <= leftIndex)
@@ -6966,7 +6935,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private void UpdateDestinationYielding()
     {
         var activeYields = 0;
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
             var phase = Units.DestinationYieldPhases[unit];
             if (phase == DestinationYieldPhase.None)
@@ -7156,15 +7125,11 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Metrics.PendingUnitOrders = 0;
         Metrics.CompletedQueuedOrders = 0;
         Metrics.QueueOverflowEvents = 0;
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
             Metrics.PendingUnitOrders += CommandQueues.PendingCounts[unit];
             Metrics.CompletedQueuedOrders += CommandQueues.CompletedQueuedOrders[unit];
             Metrics.QueueOverflowEvents += CommandQueues.QueueOverflowCounts[unit];
-            if (!Units.Alive[unit])
-            {
-                continue;
-            }
             Metrics.MaximumDestinationStallTicks = Math.Max(
                 Metrics.MaximumDestinationStallTicks,
                 Units.DestinationStallTicks[unit]);
@@ -7219,10 +7184,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     private void AdvanceQueuedOrders()
     {
         var readyCount = 0;
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] ||
-                CommandQueues.ConstructionEvacuationActive[unit] ||
+            if (CommandQueues.ConstructionEvacuationActive[unit] ||
                 CommandQueues.ProductionEvacuationActive[unit] ||
                 !IsActiveOrderComplete(unit))
             {
@@ -7349,10 +7313,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
 
     private void RecoverFailedExplicitBuildingAttackChases()
     {
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] ||
-                !CommandQueues.HasActiveOrders[unit] ||
+            if (!CommandQueues.HasActiveOrders[unit] ||
                 CommandQueues.ActiveKinds[unit] != UnitOrderKind.AttackBuilding ||
                 Units.MovementGoalKinds[unit] != UnitMovementGoalKind.AttackRange)
             {
@@ -7447,9 +7410,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         float radius)
     {
         var team = Combat.Teams[attacker];
-        for (var other = 0; other < Units.Count; other++)
+        foreach (var other in Units.AliveUnits)
         {
-            if (other == attacker || !Units.Alive[other] ||
+            if (other == attacker ||
                 Combat.Teams[other] != team)
             {
                 continue;
@@ -7891,7 +7854,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         if ((uint)unit >= (uint)Units.Count || Units.Alive[unit] ||
             !float.IsFinite(healthFraction) || healthFraction <= 0f)
             return false;
-        Units.Alive[unit] = true;
+        Units.SetAlive(unit, true);
         Combat.Health[unit] = MathF.Max(
             1f, Combat.MaximumHealth[unit] * MathF.Min(1f, healthFraction));
         Units.PreviousPositions[unit] = Units.Positions[unit];
@@ -8079,7 +8042,7 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
     {
         if ((uint)unit >= (uint)Units.Count || !Units.Alive[unit]) return;
         Combat.Health[unit] = 0f;
-        Units.Alive[unit] = false;
+        Units.SetAlive(unit, false);
         Combat.CommandIntents[unit] = UnitCommandIntent.None;
         Combat.Phases[unit] = CombatPhase.None;
         Combat.TargetUnits[unit] = -1;
@@ -8933,9 +8896,9 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         Span<ConstructionBlocker> blockers = stackalloc ConstructionBlocker[
             ConstructionEvictionPlanner.MaximumBlockers];
         var blockerCount = 0;
-        for (var unit = 0; unit < Units.Count; unit++)
+        foreach (var unit in Units.AliveUnits)
         {
-            if (!Units.Alive[unit] || unit == builderUnit ||
+            if (unit == builderUnit ||
                 !footprint.Expanded(Units.Radii[unit] + rules.UnitPadding)
                     .Contains(Units.Positions[unit]))
             {

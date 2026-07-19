@@ -152,6 +152,7 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
     private readonly TerrainSurfaceDefinition[] _surfaces;
     private readonly TerrainCell[] _cells;
     private readonly float[] _fineHeightPoints;
+    private readonly bool[] _rampNeighborhoods;
     private readonly byte[] _canonicalBytes;
     private readonly SimRect _visionBlockerBounds;
 
@@ -175,6 +176,7 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         _surfaces = surfaces;
         _cells = cells;
         _fineHeightPoints = fineHeightPoints;
+        _rampNeighborhoods = BuildRampNeighborhoods(cells, columns, rows);
         MinimumFineHeight = fineHeightPoints.Min();
         MaximumFineHeight = fineHeightPoints.Max();
         MinimumCellLevel = cells.Min(value => value.CliffLevel);
@@ -458,17 +460,20 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
     {
         if (!TryCellAt(position, out var column, out var row))
             return 0f;
-        if (TryClassicRampHeightAt(position, column, row, out var rampHeight))
-            return rampHeight + FineHeightAt(position);
         var bounds = CellBounds(column, row);
+        var cellIndex = row * Columns + column;
+        if (_rampNeighborhoods[cellIndex] &&
+            TryClassicRampHeightAt(position, column, row, out var rampHeight))
+            return rampHeight + FineHeightAt(
+                position, column, row, bounds);
         var localX = bounds.Width <= 0f
             ? 0f
             : Math.Clamp((position.X - bounds.Min.X) / bounds.Width, 0f, 1f);
         var localY = bounds.Height <= 0f
             ? 0f
             : Math.Clamp((position.Y - bounds.Min.Y) / bounds.Height, 0f, 1f);
-        return CellHeight(Cell(column, row), localX, localY) +
-               FineHeightAt(position);
+        return CellHeight(_cells[cellIndex], localX, localY) +
+               FineHeightAt(position, column, row, bounds);
     }
 
     public bool TryClassicRampHeightAt(
@@ -476,6 +481,11 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         out float height)
     {
         if (!TryCellAt(position, out var column, out var row))
+        {
+            height = 0f;
+            return false;
+        }
+        if (!_rampNeighborhoods[row * Columns + column])
         {
             height = 0f;
             return false;
@@ -556,6 +566,15 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
         if (!TryCellAt(position, out var column, out var row))
             return 0f;
         var bounds = CellBounds(column, row);
+        return FineHeightAt(position, column, row, bounds);
+    }
+
+    private float FineHeightAt(
+        Vector2 position,
+        int column,
+        int row,
+        SimRect bounds)
+    {
         var localX = bounds.Width <= 0f
             ? 0f
             : Math.Clamp((position.X - bounds.Min.X) / bounds.Width, 0f, 1f);
@@ -571,6 +590,27 @@ public sealed class TerrainMapSnapshot : ITerrainMapQuery
             FineHeightPoint(column + 1, row + 1),
             localX);
         return Lerp(bottom, top, localY);
+    }
+
+    private static bool[] BuildRampNeighborhoods(
+        TerrainCell[] cells,
+        int columns,
+        int rows)
+    {
+        var result = new bool[cells.Length];
+        for (var row = 0; row < rows; row++)
+        for (var column = 0; column < columns; column++)
+        {
+            if (!cells[row * columns + column].IsRamp) continue;
+            for (var targetRow = Math.Max(0, row - 2);
+                 targetRow <= Math.Min(rows - 1, row + 2);
+                 targetRow++)
+            for (var targetColumn = Math.Max(0, column - 2);
+                 targetColumn <= Math.Min(columns - 1, column + 2);
+                 targetColumn++)
+                result[targetRow * columns + targetColumn] = true;
+        }
+        return result;
     }
 
     public bool IsVisibleFrom(

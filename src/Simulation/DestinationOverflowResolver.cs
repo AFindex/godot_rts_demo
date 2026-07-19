@@ -29,12 +29,8 @@ public sealed class DestinationOverflowResolver
         UnitStore units,
         ReadOnlySpan<CombatTargetKind> combatTargets)
     {
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
-            if (!units.Alive[unit])
-            {
-                continue;
-            }
             if (combatTargets[unit] != CombatTargetKind.None)
             {
                 units.DestinationStallTicks[unit] = 0;
@@ -108,10 +104,9 @@ public sealed class DestinationOverflowResolver
         out int unit,
         out Vector2 overflowTarget)
     {
-        for (var candidateUnit = 0; candidateUnit < units.Count; candidateUnit++)
+        foreach (var candidateUnit in units.AliveUnits)
         {
-            if (!units.Alive[candidateUnit] ||
-                combatTargets[candidateUnit] != CombatTargetKind.None)
+            if (combatTargets[candidateUnit] != CombatTargetKind.None)
             {
                 continue;
             }
@@ -145,12 +140,11 @@ public sealed class DestinationOverflowResolver
         var groupId = units.MovementGroupIds[unit];
         var groupGoal = units.MoveGoals[unit];
         var largestRadius = units.Radii[unit];
-        for (var candidate = 0; candidate < units.Count; candidate++)
+        foreach (var candidate in units.AliveUnits)
         {
-            if (units.Alive[candidate] &&
-                (units.MovementGroupIds[candidate] == groupId ||
+            if (units.MovementGroupIds[candidate] == groupId ||
                 (units.MovementGroupIds[candidate] > 0 &&
-                 Vector2.DistanceSquared(units.MoveGoals[candidate], groupGoal) <= 2f * 2f)))
+                 Vector2.DistanceSquared(units.MoveGoals[candidate], groupGoal) <= 2f * 2f))
             {
                 largestRadius = MathF.Max(largestRadius, units.Radii[candidate]);
             }
@@ -158,10 +152,9 @@ public sealed class DestinationOverflowResolver
 
         var spacing = largestRadius * 2f + 4f;
         var goalPopulation = 0;
-        for (var candidate = 0; candidate < units.Count; candidate++)
+        foreach (var candidate in units.AliveUnits)
         {
-            if (units.Alive[candidate] &&
-                units.MovementGroupIds[candidate] > 0 &&
+            if (units.MovementGroupIds[candidate] > 0 &&
                 Vector2.DistanceSquared(units.MoveGoals[candidate], groupGoal) <= 2f * 2f)
             {
                 goalPopulation++;
@@ -215,9 +208,9 @@ public sealed class DestinationOverflowResolver
         int unit,
         Vector2 candidate)
     {
-        for (var other = 0; other < units.Count; other++)
+        foreach (var other in units.AliveUnits)
         {
-            if (other == unit || !units.Alive[other])
+            if (other == unit)
             {
                 continue;
             }
@@ -263,9 +256,9 @@ public sealed class DestinationOverflowResolver
         }
 
         var nearbyBlockers = 0;
-        for (var other = 0; other < units.Count; other++)
+        foreach (var other in units.AliveUnits)
         {
-            if (other == unit || !units.Alive[other] ||
+            if (other == unit ||
                 !IsSettledBlocker(units, other))
             {
                 continue;

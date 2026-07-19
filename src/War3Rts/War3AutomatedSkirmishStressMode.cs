@@ -99,7 +99,10 @@ internal sealed class War3AutomatedSkirmishStressMode
             War3RuntimeProfiler.ExternalDotnetArgument);
 
         var adapter = new RtsSimulationAiAdapter(simulation, technologies);
-        _aiRuntime = new ProbedAiRuntime(adapter);
+        _aiRuntime = new ProbedAiRuntime(
+            adapter,
+            stressDirectorOwnsCombat:
+                War3StressTestMode.IsRequested(arguments));
         _director = new RtsAiDirector(_aiRuntime, _aiRuntime);
         var config = new ModularAiConfig(
             buildings,
@@ -257,6 +260,8 @@ internal sealed class War3AutomatedSkirmishStressMode
             $"decision_interval={_decisionIntervalTicks} " +
             $"attack_interval={_attackIntervalTicks} " +
             "players=both real_ai=true real_commands=true " +
+            $"combat_owner={(_aiRuntime.StressDirectorOwnsCombat ?
+                "stress-director" : "production-ai")} " +
             "supply_construction=real-command catalog_mutation=false");
     }
 
@@ -443,8 +448,18 @@ internal sealed class War3AutomatedSkirmishStressMode
         IRtsAiIntentExecutor
     {
         private readonly RtsSimulationAiAdapter _inner;
+        private readonly bool _stressDirectorOwnsCombat;
 
-        public ProbedAiRuntime(RtsSimulationAiAdapter inner) => _inner = inner;
+        public ProbedAiRuntime(
+            RtsSimulationAiAdapter inner,
+            bool stressDirectorOwnsCombat)
+        {
+            _inner = inner;
+            _stressDirectorOwnsCombat = stressDirectorOwnsCombat;
+        }
+
+        public bool StressDirectorOwnsCombat =>
+            _stressDirectorOwnsCombat;
 
         public War3AutomatedSkirmishActivity Activities { get; private set; }
 
@@ -470,6 +485,20 @@ internal sealed class War3AutomatedSkirmishStressMode
                     War3AutomatedSkirmishActivity.Combat,
                 _ => War3AutomatedSkirmishActivity.None
             };
+            if (_stressDirectorOwnsCombat && intent.Kind is
+                    AiIntentKind.Move or
+                    AiIntentKind.AttackMove or
+                    AiIntentKind.AttackUnit or
+                    AiIntentKind.AttackBuilding)
+            {
+                // The combined 800-unit workload has a dedicated combat
+                // director. Let the production AI continue the entire
+                // economy/tech loop, but acknowledge its combat intents
+                // without issuing a second, conflicting order to the same
+                // stress army.
+                return new AiIntentExecutionResult(
+                    AiIntentExecutionCode.Success);
+            }
             return _inner.Execute(playerId, intent);
         }
     }

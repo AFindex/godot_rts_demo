@@ -119,11 +119,18 @@ public readonly record struct UnitMovementSnapshot(
 
 public sealed class UnitStore
 {
+    private int[] _aliveUnits;
+    private int[] _alivePositions;
+    private int _aliveCount;
+
     public UnitStore(int capacity)
     {
         Capacity = capacity;
         Positions = new Vector2[capacity];
         Alive = new bool[capacity];
+        _aliveUnits = new int[capacity];
+        _alivePositions = new int[capacity];
+        Array.Fill(_alivePositions, -1);
         PreviousPositions = new Vector2[capacity];
         Facings = new float[capacity];
         PreviousFacings = new float[capacity];
@@ -190,6 +197,9 @@ public sealed class UnitStore
     }
 
     public int Count { get; private set; }
+    public int AliveCount => _aliveCount;
+    public ReadOnlySpan<int> AliveUnits =>
+        _aliveUnits.AsSpan(0, _aliveCount);
     public int Capacity { get; private set; }
     public Vector2[] Positions { get; private set; }
     public bool[] Alive { get; private set; }
@@ -264,6 +274,9 @@ public sealed class UnitStore
         var previous = Capacity;
         Positions = Grow(Positions, capacity);
         Alive = Grow(Alive, capacity);
+        _aliveUnits = Grow(_aliveUnits, capacity);
+        _alivePositions = Grow(_alivePositions, capacity);
+        Array.Fill(_alivePositions, -1, previous, capacity - previous);
         PreviousPositions = Grow(PreviousPositions, capacity);
         Facings = Grow(Facings, capacity);
         PreviousFacings = Grow(PreviousFacings, capacity);
@@ -362,7 +375,7 @@ public sealed class UnitStore
         }
 
         var index = Count++;
-        Alive[index] = true;
+        SetAlive(index, true);
         Positions[index] = position;
         PreviousPositions[index] = position;
         Facings[index] = UnitFacing.Normalize(facingRadians);
@@ -430,6 +443,7 @@ public sealed class UnitStore
         Count = source.Count;
         Copy(source.Positions, Positions);
         Copy(source.Alive, Alive);
+        RebuildAliveIndex();
         Copy(source.PreviousPositions, PreviousPositions);
         Copy(source.Facings, Facings);
         Copy(source.PreviousFacings, PreviousFacings);
@@ -515,6 +529,54 @@ public sealed class UnitStore
             throw new ArgumentOutOfRangeException(nameof(count));
         }
         Count = count;
+    }
+
+    internal void SetAlive(int unit, bool alive)
+    {
+        if ((uint)unit >= (uint)Count)
+            throw new ArgumentOutOfRangeException(nameof(unit));
+        if (Alive[unit] == alive) return;
+        Alive[unit] = alive;
+        if (alive)
+        {
+            var insert = _aliveCount;
+            while (insert > 0 && _aliveUnits[insert - 1] > unit)
+            {
+                _aliveUnits[insert] = _aliveUnits[insert - 1];
+                _alivePositions[_aliveUnits[insert]] = insert;
+                insert--;
+            }
+            _aliveUnits[insert] = unit;
+            _alivePositions[unit] = insert;
+            _aliveCount++;
+            return;
+        }
+
+        var position = _alivePositions[unit];
+        if ((uint)position >= (uint)_aliveCount)
+            throw new InvalidOperationException(
+                $"Alive unit index is inconsistent for unit {unit}.");
+        for (var index = position; index < _aliveCount - 1; index++)
+        {
+            _aliveUnits[index] = _aliveUnits[index + 1];
+            _alivePositions[_aliveUnits[index]] = index;
+        }
+        _aliveCount--;
+        _aliveUnits[_aliveCount] = 0;
+        _alivePositions[unit] = -1;
+    }
+
+    internal void RebuildAliveIndex()
+    {
+        _aliveCount = 0;
+        Array.Fill(_alivePositions, -1);
+        for (var unit = 0; unit < Count; unit++)
+        {
+            if (!Alive[unit]) continue;
+            _alivePositions[unit] = _aliveCount;
+            _aliveUnits[_aliveCount++] = unit;
+        }
+        Array.Clear(_aliveUnits, _aliveCount, Capacity - _aliveCount);
     }
 
     private static void Copy<T>(T[] source, T[] destination) =>

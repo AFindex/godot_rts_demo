@@ -53,12 +53,8 @@ public sealed class SpatialHash
         }
         _activeOverflowBuckets.Clear();
 
-        for (var i = 0; i < units.Count; i++)
+        foreach (var i in units.AliveUnits)
         {
-            if (!units.Alive[i])
-            {
-                continue;
-            }
             _maximumRadius = MathF.Max(_maximumRadius, units.Radii[i]);
             var (x, y) = Cell(units.Positions[i]);
             var bucket = GetOrCreateBucket(x, y);

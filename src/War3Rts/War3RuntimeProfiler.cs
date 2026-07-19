@@ -145,6 +145,7 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _simSteeringPreferredFastPaths = new();
     private readonly Series _simSteeringAvoidingUnits = new();
     private readonly Series _simSteeringWorldSegmentProbes = new();
+    private readonly Series _simSteeringWorldNeighborhoodProbes = new();
     private readonly Series _simSteeringRiskNeighborChecks = new();
     private readonly Series _simSteeringPredictedCollisionHits = new();
     private readonly Series _simSteeringOverlappingNeighborHits = new();
@@ -201,6 +202,8 @@ internal sealed class War3RuntimeProfiler
     private int _lastAutomatedGen2Collections;
     private long _lastAutomatedSkirmishSpikeTick = -1;
     private long _lastAutomatedSkirmishSpikeBurstTick = -1;
+    private long _lastAutomatedSkirmishSpikeReportTick = -1;
+    private long _lastFrameSpikeReportTick = -1;
     private int _automatedSkirmishSpikeCount;
     private int _automatedSkirmishSpikeBurstCount;
     private int _automatedSkirmishConsecutiveSpikes;
@@ -369,6 +372,8 @@ internal sealed class War3RuntimeProfiler
         _simSteeringAvoidingUnits.Add(metrics.SteeringAvoidingUnits);
         _simSteeringWorldSegmentProbes.Add(
             metrics.SteeringWorldSegmentProbes);
+        _simSteeringWorldNeighborhoodProbes.Add(
+            metrics.SteeringWorldNeighborhoodProbes);
         _simSteeringRiskNeighborChecks.Add(
             metrics.SteeringCollisionRiskNeighborChecks);
         _simSteeringPredictedCollisionHits.Add(
@@ -489,6 +494,15 @@ internal sealed class War3RuntimeProfiler
             _automatedSkirmishMaximumConsecutiveSpikes,
             _automatedSkirmishConsecutiveSpikes);
         _lastAutomatedSkirmishSpikeTick = metrics.Tick;
+
+        // Printing a multi-kilobyte diagnostic for every over-budget tick can
+        // itself consume a large share of the Godot main thread. Keep all
+        // spike counters/series exact, but emit at most one detailed sample per
+        // simulated second. The summary remains the authoritative distribution.
+        if (_lastAutomatedSkirmishSpikeReportTick >= 0 &&
+            metrics.Tick - _lastAutomatedSkirmishSpikeReportTick < 60)
+            return;
+        _lastAutomatedSkirmishSpikeReportTick = metrics.Tick;
 
         GD.Print(
             $"WAR3_AUTO_SKIRMISH_TICK_SPIKE tick={metrics.Tick} " +
@@ -627,6 +641,7 @@ internal sealed class War3RuntimeProfiler
             $"{metrics.SteeringPreferredFastPaths}/" +
             $"{metrics.SteeringAvoidingUnits}/" +
             $"{metrics.SteeringWorldSegmentProbes}/" +
+            $"{metrics.SteeringWorldNeighborhoodProbes}/" +
             $"{metrics.SteeringCollisionRiskNeighborChecks}/" +
             $"{metrics.SteeringPredictedCollisionHits}/" +
             $"{metrics.SteeringOverlappingNeighborHits} " +
@@ -846,6 +861,11 @@ internal sealed class War3RuntimeProfiler
         _lastGen1Collections = gen1;
         _lastGen2Collections = gen2;
         if (frameMilliseconds < _spikeMilliseconds) return;
+        var tick = _lastSimulationMetrics.Tick;
+        if (_lastFrameSpikeReportTick >= 0 &&
+            tick - _lastFrameSpikeReportTick < 60)
+            return;
+        _lastFrameSpikeReportTick = tick;
         GD.Print(
             $"WAR3_RUNTIME_SPIKE tick={_lastSimulationMetrics.Tick} " +
             $"frame_ms={frameMilliseconds:0.###} " +
@@ -1127,6 +1147,8 @@ internal sealed class War3RuntimeProfiler
         Print("sim_steering_avoiding_units", _simSteeringAvoidingUnits);
         Print("sim_steering_world_segment_probes",
             _simSteeringWorldSegmentProbes);
+        Print("sim_steering_world_neighborhood_probes",
+            _simSteeringWorldNeighborhoodProbes);
         Print("sim_steering_risk_neighbor_checks",
             _simSteeringRiskNeighborChecks);
         Print("sim_steering_predicted_collision_hits",

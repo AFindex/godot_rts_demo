@@ -118,6 +118,7 @@ public sealed class SimulationMetrics
     public int SteeringPreferredFastPaths { get; internal set; }
     public int SteeringAvoidingUnits { get; internal set; }
     public int SteeringWorldSegmentProbes { get; internal set; }
+    public int SteeringWorldNeighborhoodProbes { get; internal set; }
     public int SteeringCollisionRiskNeighborChecks { get; internal set; }
     public int SteeringPredictedCollisionHits { get; internal set; }
     public int SteeringOverlappingNeighborHits { get; internal set; }

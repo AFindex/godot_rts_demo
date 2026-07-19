@@ -143,6 +143,8 @@ public sealed class PlayerVisibilitySystem
     private readonly Action<int, Vector2, BuildingTypeProfile>
         _revealBuildingDetection;
     private VisionFootprintCache[] _unitVisionCaches = [];
+    private readonly HashSet<int> _activeUnitVisionSources = [];
+    private readonly List<int> _retiredUnitVisionSources = [];
     private int _profileUnitCacheHits;
     private int _profileUnitCacheRebuilds;
     private int _profileCandidateCells;
@@ -224,11 +226,29 @@ public sealed class PlayerVisibilitySystem
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
 
-        for (var unit = 0; unit < units.Count; unit++)
+        _retiredUnitVisionSources.Clear();
+        foreach (var unit in _activeUnitVisionSources)
+        {
+            if ((uint)unit < (uint)units.Count && units.Alive[unit])
+                continue;
+            ref var cache = ref _unitVisionCaches[unit];
+            SyncUnitVisionSource(
+                unit,
+                active: false,
+                cache.SourcePlayerId,
+                units.Positions[unit],
+                combat.VisionRanges[unit],
+                combat.ObservationHeights[unit],
+                combat.TerrainVisionModes[unit]);
+            _retiredUnitVisionSources.Add(unit);
+        }
+        foreach (var unit in _retiredUnitVisionSources)
+            _activeUnitVisionSources.Remove(unit);
+
+        foreach (var unit in units.AliveUnits)
         {
             var playerId = combat.Teams[unit];
-            var active = units.Alive[unit] &&
-                         playerId > 0 &&
+            var active = playerId > 0 &&
                          playerId < MaximumPlayers;
             SyncUnitVisionSource(
                 unit,
@@ -238,6 +258,8 @@ public sealed class PlayerVisibilitySystem
                 combat.VisionRanges[unit],
                 combat.ObservationHeights[unit],
                 combat.TerrainVisionModes[unit]);
+            if (active) _activeUnitVisionSources.Add(unit);
+            else _activeUnitVisionSources.Remove(unit);
             if (!active) continue;
             if (combat.DetectionRanges[unit] > 0f)
             {
@@ -277,10 +299,10 @@ public sealed class PlayerVisibilitySystem
             Array.Clear(grid.Detected);
             Array.Clear(grid.TemporaryVisible);
         }
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
             var playerId = combat.Teams[unit];
-            if (!units.Alive[unit] || playerId <= 0 ||
+            if (playerId <= 0 ||
                 playerId >= MaximumPlayers ||
                 combat.DetectionRanges[unit] <= 0f)
             {
@@ -437,6 +459,8 @@ public sealed class PlayerVisibilitySystem
         }
         _players.Clear();
         _unitVisionCaches = [];
+        _activeUnitVisionSources.Clear();
+        _retiredUnitVisionSources.Clear();
         var previousPlayer = 0;
         foreach (var entry in snapshot.Players)
         {

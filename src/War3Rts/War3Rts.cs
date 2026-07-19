@@ -428,6 +428,33 @@ public sealed partial class War3Rts : Node3D
                 "stress_default_unchanged=true");
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
+        var prewarmModels = War3HumanContent.Units
+            .Where(value =>
+                (uint)value.TypeId < (uint)_production.UnitTypes.Length)
+            .GroupBy(value => value.ModelSource, StringComparer.OrdinalIgnoreCase)
+            .Select(value => value.First())
+            .ToArray();
+        var prewarmStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        var prewarmedAssets = 0;
+        for (var index = 0; index < prewarmModels.Length; index++)
+        {
+            var definition = prewarmModels[index];
+            if (_presenter.PrewarmModelAsset(
+                    definition.ModelSource, War3HumanScenario.PlayerId))
+                prewarmedAssets++;
+            if (_presenter.PrewarmModelAsset(
+                    definition.ModelSource, War3HumanScenario.EnemyId))
+                prewarmedAssets++;
+            await AdvanceMapLoadingAsync(
+                7,
+                0.88d + 0.07d * (index + 1) / prewarmModels.Length,
+                $"预热单位动画 {index + 1}/{prewarmModels.Length}：" +
+                definition.Name);
+        }
+        GD.Print(
+            $"WAR3_VAT_PREWARM models={prewarmModels.Length} " +
+            $"assets={prewarmedAssets} elapsed_ms=" +
+            $"{ElapsedMilliseconds(prewarmStart, System.Diagnostics.Stopwatch.GetTimestamp()):0.###}");
         var externalDotnetProfiling = arguments.Contains(
             War3RuntimeProfiler.ExternalDotnetArgument);
         _simulation.RuntimeMetricsProfilingEnabled =
@@ -2136,7 +2163,11 @@ public sealed partial class War3Rts : Node3D
         {
             if (_simulation.Units.Alive[unit])
             {
-                _inventoryAliveUnits.Add(unit);
+                // Inventory capabilities are immutable for a unit's lifetime.
+                // Only resolve the Warcraft object definition when a unit first
+                // becomes alive; resolving it for every one of 800 units on
+                // every physics tick was showing up prominently in EventPipe.
+                if (!_inventoryAliveUnits.Add(unit)) continue;
                 if (TryInventoryProfileForUnit(unit, out var profile))
                     _knownInventoryProfiles[unit] = profile;
                 continue;

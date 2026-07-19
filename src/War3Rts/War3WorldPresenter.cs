@@ -349,6 +349,9 @@ public sealed partial class War3WorldPresenter : Node3D
         if (ProfilingEnabled) PrintRuntimeRenderLayout();
     }
 
+    public bool PrewarmModelAsset(string modelSource, int playerId) =>
+        _ridWorld?.PrewarmAsset(modelSource, playerId) ?? false;
+
     public void SetSelection(
         IEnumerable<int> units,
         IEnumerable<int> buildings)
@@ -482,6 +485,7 @@ public sealed partial class War3WorldPresenter : Node3D
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
         var presenterTransform = GlobalTransform;
+        var frameTicksMsec = Time.GetTicksMsec();
         var presenterBasis = presenterTransform.Basis;
         var cameraTransform = _camera.GlobalTransform;
         War3EffectRuntime.PrepareCameraFrame(_camera, cameraTransform.Basis);
@@ -501,7 +505,7 @@ public sealed partial class War3WorldPresenter : Node3D
             : 0L;
         SyncUnits(
             _simulation, _production, _camera, presenterTransform,
-            interpolation);
+            interpolation, frameTicksMsec);
         var unitsEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
@@ -597,14 +601,50 @@ public sealed partial class War3WorldPresenter : Node3D
         ProductionCatalogSnapshot production,
         Camera3D camera,
         Transform3D presenterTransform,
-        float interpolation)
+        float interpolation,
+        ulong frameTicksMsec)
     {
         const int detailedProfileSampleStride = 64;
         var presenterBasis = presenterTransform.Basis;
         var creationProgressStart = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
-        for (var unit = 0; unit < simulation.Units.Count; unit++)
+        foreach (var pair in _units)
+        {
+            var unit = pair.Key;
+            if ((uint)unit < (uint)simulation.Units.Count &&
+                simulation.Units.Alive[unit])
+                continue;
+            var dead = pair.Value;
+            if (ProfilingEnabled) _profileUnitActorsVisited++;
+            if (!dead.Dying)
+            {
+                dead.Dying = true;
+                if (dead.SelectionVisible)
+                {
+                    dead.Selection.Visible = false;
+                    dead.SelectionVisible = false;
+                }
+                dead.Actor.PlayDeath();
+                if (dead.Definition.SpecialEffectSource.Length > 0 &&
+                    War3RuntimeAssets.Contains(
+                        dead.Definition.SpecialEffectSource))
+                    SpawnTransient(
+                        dead.Definition.SpecialEffectSource,
+                        dead.LastPosition,
+                        camera,
+                        1_600,
+                        simulation.Combat.Teams[unit]);
+            }
+            _sawUnitDeathAnimation |= dead.Actor.DeathPhase ==
+                                      War3DeathPresentationPhase.Death;
+            _sawUnitDecayFlesh |= dead.Actor.DeathPhase ==
+                                  War3DeathPresentationPhase.DecayFlesh;
+            _sawUnitDecayBone |= dead.Actor.DeathPhase ==
+                                 War3DeathPresentationPhase.DecayBone;
+        }
+
+        foreach (var unit in simulation.Units.AliveUnits)
         {
             // Per-unit timestamp/GC probes materially perturb an 800-unit
             // profile. Sample a stable 1/64 subset and scale aggregate-only
@@ -613,38 +653,6 @@ public sealed partial class War3WorldPresenter : Node3D
                                         (unit &
                                          (detailedProfileSampleStride - 1)) == 0;
             if (ProfilingEnabled) _profileUnitActorsVisited++;
-            if (!simulation.Units.Alive[unit])
-            {
-                if (_units.TryGetValue(unit, out var dead) && !dead.Dying)
-                {
-                    dead.Dying = true;
-                    if (dead.SelectionVisible)
-                    {
-                        dead.Selection.Visible = false;
-                        dead.SelectionVisible = false;
-                    }
-                    dead.Actor.PlayDeath();
-                    if (dead.Definition.SpecialEffectSource.Length > 0 &&
-                        War3RuntimeAssets.Contains(
-                            dead.Definition.SpecialEffectSource))
-                        SpawnTransient(
-                            dead.Definition.SpecialEffectSource,
-                            dead.LastPosition,
-                            camera,
-                            1_600,
-                            simulation.Combat.Teams[unit]);
-                }
-                if (_units.TryGetValue(unit, out dead))
-                {
-                    _sawUnitDeathAnimation |= dead.Actor.DeathPhase ==
-                                              War3DeathPresentationPhase.Death;
-                    _sawUnitDecayFlesh |= dead.Actor.DeathPhase ==
-                                          War3DeathPresentationPhase.DecayFlesh;
-                    _sawUnitDecayBone |= dead.Actor.DeathPhase ==
-                                         War3DeathPresentationPhase.DecayBone;
-                }
-                continue;
-            }
             var resolveAllocationStart = detailedProfileSample
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
@@ -690,6 +698,8 @@ public sealed partial class War3WorldPresenter : Node3D
             {
                 visual.Dying = false;
                 visual.Actor.Revive();
+                visual.AnimationState = UnitAnimationState.None;
+                visual.AnimationVariant = -1;
             }
             var definition = visual.Definition;
             if (ProfilingEnabled) _profileUnitActorsAlive++;
@@ -777,7 +787,8 @@ public sealed partial class War3WorldPresenter : Node3D
             var animationStart = detailedProfileSample
                 ? System.Diagnostics.Stopwatch.GetTimestamp()
                 : 0L;
-            UpdateUnitAnimation(simulation, unit, visual);
+            UpdateUnitAnimation(
+                simulation, unit, visual, frameTicksMsec);
             if (detailedProfileSample)
             {
                 _profileUnitAnimationMilliseconds += ElapsedMilliseconds(
@@ -834,7 +845,8 @@ public sealed partial class War3WorldPresenter : Node3D
     private void UpdateUnitAnimation(
         RtsSimulation simulation,
         int unit,
-        UnitVisual visual)
+        UnitVisual visual,
+        ulong frameTicksMsec)
     {
         var moving = simulation.Units.Velocities[unit].LengthSquared() > 4f;
         var windup = simulation.Combat.WindupRemaining[unit];
@@ -848,25 +860,44 @@ public sealed partial class War3WorldPresenter : Node3D
         var abilityState = simulation.Abilities.ObservePresentation(unit);
         if (abilityState.CastPhase != AbilityCastPhase.None)
         {
-            var candidates = (uint)abilityState.ActiveAbilityId <
-                             (uint)War3HumanContent.Abilities.Count
-                ? War3HumanContent.Ability(
-                    abilityState.ActiveAbilityId).AnimationNames
-                : ["Spell Channel", "Spell", "Spell Slam", "Attack"];
-            visual.Actor.PlayRepeatedPreferred(candidates);
+            if (EnterUnitAnimationState(
+                    visual,
+                    UnitAnimationState.Ability,
+                    abilityState.ActiveAbilityId))
+            {
+                var candidates = (uint)abilityState.ActiveAbilityId <
+                                 (uint)War3HumanContent.Abilities.Count
+                    ? War3HumanContent.Ability(
+                        abilityState.ActiveAbilityId).AnimationNames
+                    : ["Spell Channel", "Spell", "Spell Slam", "Attack"];
+                visual.Actor.PlayRepeatedPreferred(candidates);
+            }
             return;
         }
-        if (Time.GetTicksMsec() < visual.AbilityAnimationUntil)
+        if (frameTicksMsec < visual.AbilityAnimationUntil)
+        {
+            EnterUnitAnimationState(
+                visual, UnitAnimationState.AbilityLock);
             return;
+        }
         if (simulation.Economy.IsWorker(unit))
         {
             if (simulation.Construction.IsAssignedBuilder(unit))
             {
                 ResetTreeHarvestFeedback(visual);
                 if (moving)
-                    visual.Actor.PlayPreferred(true, "Walk", "Stand");
+                {
+                    if (EnterUnitAnimationState(
+                            visual, UnitAnimationState.BuilderWalk))
+                        visual.Actor.PlayPreferred(true, "Walk", "Stand");
+                }
                 else
-                    visual.Actor.PlayPreferred(true, "Stand Work", "Attack", "Stand");
+                {
+                    if (EnterUnitAnimationState(
+                            visual, UnitAnimationState.BuilderWork))
+                        visual.Actor.PlayPreferred(
+                            true, "Stand Work", "Attack", "Stand");
+                }
                 return;
             }
             var worker = simulation.Economy.Worker(unit);
@@ -879,8 +910,11 @@ public sealed partial class War3WorldPresenter : Node3D
                 var resource = simulation.Economy.ObserveResourceNode(worker.TargetNode);
                 if (resource.Kind == EconomyResourceKind.VespeneGas)
                 {
-                    visual.Actor.PlayRepeatedPreferred(
-                        "Attack Lumber", "Stand Work Lumber", "Attack", "Stand Work");
+                    if (EnterUnitAnimationState(
+                            visual, UnitAnimationState.GatherLumber))
+                        visual.Actor.PlayRepeatedPreferred(
+                            "Attack Lumber", "Stand Work Lumber",
+                            "Attack", "Stand Work");
                     _sawLumberGatherAnimation |= visual.Actor.CurrentSequence.Contains(
                         "Lumber", StringComparison.OrdinalIgnoreCase);
                     _sawRepeatedLumberCycle |=
@@ -893,8 +927,10 @@ public sealed partial class War3WorldPresenter : Node3D
                 else
                 {
                     ResetTreeHarvestFeedback(visual);
-                    visual.Actor.PlayPreferred(true,
-                        "Stand Gold", "Stand");
+                    if (EnterUnitAnimationState(
+                            visual, UnitAnimationState.GatherGold))
+                        visual.Actor.PlayPreferred(true,
+                            "Stand Gold", "Stand");
                     _sawGoldGatherAnimation |= visual.Actor.CurrentSequence.Contains(
                         "Gold", StringComparison.OrdinalIgnoreCase);
                     _goldGatherUsedAttackAnimation |=
@@ -909,9 +945,15 @@ public sealed partial class War3WorldPresenter : Node3D
             {
                 if (moving)
                 {
-                    visual.Actor.PlayPreferred(true,
-                        carriesLumber ? "Walk Lumber" : carriesGold ? "Walk Gold" : "Walk",
-                        "Walk");
+                    if (EnterUnitAnimationState(
+                            visual,
+                            UnitAnimationState.WorkerWalk,
+                            CargoAnimationVariant(carriesLumber, carriesGold)))
+                        visual.Actor.PlayPreferred(true,
+                            carriesLumber
+                                ? "Walk Lumber"
+                                : carriesGold ? "Walk Gold" : "Walk",
+                            "Walk");
                     _sawCarriedLumberAnimation |= carriesLumber &&
                         visual.Actor.CurrentSequence.Contains(
                             "Lumber", StringComparison.OrdinalIgnoreCase);
@@ -921,9 +963,15 @@ public sealed partial class War3WorldPresenter : Node3D
                 }
                 else
                 {
-                    visual.Actor.PlayPreferred(true,
-                        carriesLumber ? "Stand Lumber" : carriesGold ? "Stand Gold" : "Stand",
-                        "Stand");
+                    if (EnterUnitAnimationState(
+                            visual,
+                            UnitAnimationState.WorkerStand,
+                            CargoAnimationVariant(carriesLumber, carriesGold)))
+                        visual.Actor.PlayPreferred(true,
+                            carriesLumber
+                                ? "Stand Lumber"
+                                : carriesGold ? "Stand Gold" : "Stand",
+                            "Stand");
                 }
                 return;
             }
@@ -931,11 +979,22 @@ public sealed partial class War3WorldPresenter : Node3D
         if (simulation.Combat.Phases[unit] == CombatPhase.Attacking)
         {
             if (attackCycleStarted)
+            {
+                EnterUnitAnimationState(visual, UnitAnimationState.Attack);
                 visual.Actor.ReplayPreferred("Attack", "Spell Attack", "Spell");
+            }
             else if (!visual.Actor.IsAnimationPlaying ||
                      !visual.Actor.CurrentSequence.StartsWith(
                          "Attack", StringComparison.OrdinalIgnoreCase))
-                visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
+            {
+                if (EnterUnitAnimationState(
+                        visual, UnitAnimationState.AttackReady))
+                    visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
+            }
+            else
+            {
+                EnterUnitAnimationState(visual, UnitAnimationState.Attack);
+            }
             return;
         }
         if (simulation.Economy.IsWorker(unit))
@@ -947,9 +1006,15 @@ public sealed partial class War3WorldPresenter : Node3D
                               worker.CargoKind == EconomyResourceKind.Minerals;
             if (moving)
             {
-                visual.Actor.PlayPreferred(true,
-                    carriesLumber ? "Walk Lumber" : carriesGold ? "Walk Gold" : "Walk",
-                    "Walk");
+                if (EnterUnitAnimationState(
+                        visual,
+                        UnitAnimationState.WorkerWalk,
+                        CargoAnimationVariant(carriesLumber, carriesGold)))
+                    visual.Actor.PlayPreferred(true,
+                        carriesLumber
+                            ? "Walk Lumber"
+                            : carriesGold ? "Walk Gold" : "Walk",
+                        "Walk");
                 _sawCarriedLumberAnimation |= carriesLumber &&
                     visual.Actor.CurrentSequence.Contains(
                         "Lumber", StringComparison.OrdinalIgnoreCase);
@@ -958,18 +1023,51 @@ public sealed partial class War3WorldPresenter : Node3D
                         "Gold", StringComparison.OrdinalIgnoreCase);
                 return;
             }
-            visual.Actor.PlayPreferred(true,
-                carriesLumber ? "Stand Lumber" : carriesGold ? "Stand Gold" : "Stand",
-                "Stand");
+            if (EnterUnitAnimationState(
+                    visual,
+                    UnitAnimationState.WorkerStand,
+                    CargoAnimationVariant(carriesLumber, carriesGold)))
+                visual.Actor.PlayPreferred(true,
+                    carriesLumber
+                        ? "Stand Lumber"
+                        : carriesGold ? "Stand Gold" : "Stand",
+                    "Stand");
             return;
         }
         if (moving)
-            visual.Actor.PlayPreferred(true, "Walk", "Stand");
+        {
+            if (EnterUnitAnimationState(visual, UnitAnimationState.Walk))
+                visual.Actor.PlayPreferred(true, "Walk", "Stand");
+        }
         else if (simulation.Combat.Phases[unit] != CombatPhase.None)
-            visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
+        {
+            if (EnterUnitAnimationState(
+                    visual, UnitAnimationState.CombatReady))
+                visual.Actor.PlayPreferred(true, "Stand Ready", "Stand");
+        }
         else
-            visual.Actor.PlayPreferred(true, "Stand");
+        {
+            if (EnterUnitAnimationState(visual, UnitAnimationState.Stand))
+                visual.Actor.PlayPreferred(true, "Stand");
+        }
     }
+
+    private static bool EnterUnitAnimationState(
+        UnitVisual visual,
+        UnitAnimationState state,
+        int variant = 0)
+    {
+        if (visual.AnimationState == state &&
+            visual.AnimationVariant == variant)
+            return false;
+        visual.AnimationState = state;
+        visual.AnimationVariant = variant;
+        return true;
+    }
+
+    private static int CargoAnimationVariant(
+        bool carriesLumber,
+        bool carriesGold) => carriesLumber ? 1 : carriesGold ? 2 : 0;
 
     private void SyncAbilityEvents(
         RtsSimulation simulation,
@@ -2108,6 +2206,8 @@ public sealed partial class War3WorldPresenter : Node3D
         visual.Selection.Visible = _selectedUnits.Contains(id);
         visual.LastWindup = 0f;
         visual.LastCooldown = 0f;
+        visual.AnimationState = UnitAnimationState.None;
+        visual.AnimationVariant = -1;
         visual.LastPosition = default;
         visual.Dying = false;
         visual.AbilityAnimationUntil = 0;
@@ -2759,6 +2859,24 @@ public sealed partial class War3WorldPresenter : Node3D
         CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
     };
 
+    private enum UnitAnimationState : byte
+    {
+        None,
+        Ability,
+        AbilityLock,
+        BuilderWalk,
+        BuilderWork,
+        GatherLumber,
+        GatherGold,
+        WorkerWalk,
+        WorkerStand,
+        Attack,
+        AttackReady,
+        Walk,
+        CombatReady,
+        Stand
+    }
+
     private sealed class UnitVisual(
         War3RidModelActor actor,
         War3RidGeometryInstance selection,
@@ -2774,6 +2892,8 @@ public sealed partial class War3WorldPresenter : Node3D
         public Action<War3ModelSoundTimelineEvent>? SoundHandler { get; set; }
         public float LastWindup { get; set; }
         public float LastCooldown { get; set; }
+        public UnitAnimationState AnimationState { get; set; }
+        public int AnimationVariant { get; set; } = -1;
         public NVector2 LastPosition { get; set; }
         public bool Dying { get; set; }
         public ulong AbilityAnimationUntil { get; set; }

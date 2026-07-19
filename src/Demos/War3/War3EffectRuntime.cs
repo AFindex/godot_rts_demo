@@ -18,6 +18,8 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     private static Camera3D? _preparedCamera;
     private static Basis _preparedCameraBasis;
     private static int _nextRandomSeed;
+    private static int _nodeFreeFrameBufferUploads;
+    private static long _nodeFreeFrameUploadedBytes;
     private readonly List<ParticleEmitterRuntime> _particles = [];
     private readonly List<RibbonEmitterRuntime> _ribbons = [];
     private War3ModelMetadata? _metadata;
@@ -33,6 +35,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     private Transform3D _preparedWorldTransform = Transform3D.Identity;
     private Transform3D _preparedWorldInverse;
     private bool _hasPreparedWorldBasis;
+    private bool _requiresLocalEffectSpace;
     private Basis _lastRebuildCameraBasis;
     private Basis _lastRebuildWorldBasis;
     private bool _hasRebuildBasis;
@@ -46,7 +49,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     // ParticleEmitter2 and material layers use two different Warcraft filter
     // mode enums. Keep their resolved blend semantics explicit instead of
     // passing the raw integer through one shared, ambiguous switch.
-    private enum EffectBlendMode
+    internal enum EffectBlendMode
     {
         AlphaBlend,
         Additive,
@@ -81,6 +84,15 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         _particles.Count(runtime => runtime.Binding is not null) +
         _ribbons.Count(runtime => runtime.Binding is not null);
 
+    public static void BeginNodeFreeFrameMetrics()
+    {
+        _nodeFreeFrameBufferUploads = 0;
+        _nodeFreeFrameUploadedBytes = 0;
+    }
+
+    public static (int Uploads, long Bytes) NodeFreeFrameMetrics() =>
+        (_nodeFreeFrameBufferUploads, _nodeFreeFrameUploadedBytes);
+
     public static void PrepareCameraFrame(Camera3D camera, Basis basis)
     {
         _preparedCamera = camera;
@@ -95,32 +107,20 @@ internal sealed class War3EffectRuntimeCore : IDisposable
 
     public void PrepareWorldTransform(Transform3D transform)
     {
-        if (_hasPreparedWorldBasis &&
-            transform.Origin != _preparedWorldTransform.Origin)
-        {
-            for (var index = 0; index < _particles.Count; index++)
-            {
-                var emitter = _particles[index];
-                if (emitter.Particles.Count == 0 ||
-                    (emitter.Definition.Flags &
-                     ParticleEmitterModelSpaceFlag) != 0)
-                    continue;
-                // World-space particles are uploaded relative to their
-                // current actor instance. A moving actor therefore needs new
-                // local positions even between fixed particle steps.
-                _geometryDirty = true;
-                break;
-            }
-        }
+        var transformChanged = !_hasPreparedWorldBasis ||
+                               transform != _preparedWorldTransform;
         _preparedWorldTransform = transform;
         _preparedWorldBasis = transform.Basis;
-        _preparedWorldInverse = transform.AffineInverse();
+        if (_requiresLocalEffectSpace)
+            _preparedWorldInverse = transform.AffineInverse();
         _hasPreparedWorldBasis = true;
         _externalWorldTransformPrepared = true;
-        if (_nodeFree)
+        if (_nodeFree && transformChanged)
         {
             foreach (var emitter in _particles)
-                if (emitter.HasSurface && _nodeFreeVisible)
+                if (emitter.HasSurface && _nodeFreeVisible &&
+                    IsModelSpace(emitter.Definition) &&
+                    emitter.Batch is { IsShared: false })
                     RenderingServer.InstanceSetTransform(
                         emitter.Instance, transform);
             foreach (var emitter in _ribbons)
@@ -136,9 +136,17 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         if (!_nodeFree) return;
         foreach (var emitter in _particles)
         {
+            if (emitter.Batch is { IsShared: true } sharedBatch)
+            {
+                sharedBatch.SetVisible(visible && emitter.HasSurface);
+                continue;
+            }
             if (visible && emitter.HasSurface)
                 RenderingServer.InstanceSetTransform(
-                    emitter.Instance, _preparedWorldTransform);
+                    emitter.Instance,
+                    IsModelSpace(emitter.Definition)
+                        ? _preparedWorldTransform
+                        : Transform3D.Identity);
             RenderingServer.InstanceSetVisible(
                 emitter.Instance, visible && emitter.HasSurface);
         }
@@ -160,6 +168,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     {
         ClearRuntime();
         _legacyHost = legacyHost;
+        _requiresLocalEffectSpace = true;
         _metadata = metadata;
         _camera = camera;
 
@@ -203,29 +212,36 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         Camera3D camera,
         War3ModelMetadata metadata,
         Rid scenario,
-        Func<int, string, double, Transform3D> resolveEmitter)
+        Func<int, string, int> resolveEmitterIndex,
+        Func<int, double, Transform3D> resolveEmitter,
+        NodeFreeParticleBatchHub particleBatchHub)
     {
         ClearRuntime();
         _legacyHost = null;
         _nodeFree = true;
         _metadata = metadata;
         _camera = camera;
+        _requiresLocalEffectSpace = metadata.Ribbons.Count > 0 ||
+            metadata.Particles.Any(IsModelSpace);
         foreach (var definition in metadata.Particles)
         {
+            var emitterIndex = resolveEmitterIndex(
+                definition.ObjectId, definition.Name);
             var material = CreateParticleMaterial(metadata, definition);
             var batch = new NodeFreeParticleBatch(
                 scenario,
                 material,
-                ParticleBlendMode(definition.FilterMode));
+                ParticleBlendMode(definition.FilterMode),
+                IsModelSpace(definition) ? null : particleBatchHub);
             var instance = batch.Instance;
             // Empty emitters stay out of the RenderingServer visible set.
             // They become visible lazily when their first surface is built.
-            RenderingServer.InstanceSetVisible(instance, false);
+            if (!batch.IsShared)
+                RenderingServer.InstanceSetVisible(instance, false);
             _particles.Add(new ParticleEmitterRuntime(
                 definition,
                 new EmitterBinding(() => resolveEmitter(
-                    definition.ObjectId,
-                    definition.Name,
+                    emitterIndex,
                     _simulatedMilliseconds)),
                 null,
                 instance,
@@ -235,6 +251,8 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         }
         foreach (var definition in metadata.Ribbons)
         {
+            var emitterIndex = resolveEmitterIndex(
+                definition.ObjectId, definition.Name);
             var mesh = new ArrayMesh();
             var material = CreateRibbonMaterial(metadata, definition);
             var instance = RenderingServer.InstanceCreate2(
@@ -247,8 +265,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             _ribbons.Add(new RibbonEmitterRuntime(
                 definition,
                 new EmitterBinding(() => resolveEmitter(
-                    definition.ObjectId,
-                    definition.Name,
+                    emitterIndex,
                     _simulatedMilliseconds)),
                 null,
                 instance,
@@ -292,7 +309,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             else
                 emitter.Mesh.ClearSurfaces();
             emitter.HasSurface = false;
-            if (_nodeFree)
+            if (_nodeFree && emitter.Batch is not { IsShared: true })
                 RenderingServer.InstanceSetVisible(emitter.Instance, false);
         }
         foreach (var emitter in _ribbons)
@@ -575,7 +592,8 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             var transform = _legacyHost?.GlobalTransform ?? Transform3D.Identity;
             _preparedWorldTransform = transform;
             _preparedWorldBasis = transform.Basis;
-            _preparedWorldInverse = transform.AffineInverse();
+            if (_requiresLocalEffectSpace)
+                _preparedWorldInverse = transform.AffineInverse();
             _hasPreparedWorldBasis = true;
         }
         _externalWorldTransformPrepared = false;
@@ -604,8 +622,10 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     private void RebuildMeshes(Basis cameraBasis, Basis worldBasis)
     {
         var inverseBasis = worldBasis.Inverse();
-        var right = inverseBasis * cameraBasis.X.Normalized();
-        var up = inverseBasis * cameraBasis.Y.Normalized();
+        var worldRight = cameraBasis.X.Normalized();
+        var worldUp = cameraBasis.Y.Normalized();
+        var right = inverseBasis * worldRight;
+        var up = inverseBasis * worldUp;
         Skeleton3D? cachedSkeleton = null;
         var cachedSkeletonTransform = Transform3D.Identity;
         foreach (var runtime in _particles)
@@ -614,7 +634,13 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                 ? WarcraftUnitScale
                 : WorldScale(runtime.Binding.ResolveGlobalTransform(
                     ref cachedSkeleton, ref cachedSkeletonTransform).Basis);
-            RebuildParticleMesh(runtime, right, up, emitterWorldScale);
+            var worldSpaceBatch = runtime.Batch is not null &&
+                                  !IsModelSpace(runtime.Definition);
+            RebuildParticleMesh(
+                runtime,
+                worldSpaceBatch ? worldRight : right,
+                worldSpaceBatch ? worldUp : up,
+                emitterWorldScale);
         }
         foreach (var runtime in _ribbons) RebuildRibbonMesh(runtime);
     }
@@ -634,7 +660,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                 else
                     runtime.Mesh.ClearSurfaces();
                 runtime.HasSurface = false;
-                SetNodeFreeSurfaceVisible(runtime.Instance, false);
+                SetParticleSurfaceVisible(runtime, false);
             }
             return;
         }
@@ -662,7 +688,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                     runtime.Mesh.ClearSurfaces();
             }
             runtime.HasSurface = false;
-            SetNodeFreeSurfaceVisible(runtime.Instance, false);
+            SetParticleSurfaceVisible(runtime, false);
             return;
         }
         if (runtime.Batch is not null)
@@ -684,8 +710,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         runtime.Geometry.Prepare(vertexCount);
         foreach (var particle in runtime.Particles)
         {
-            var modelSpace =
-                (runtime.Definition.Flags & ParticleEmitterModelSpaceFlag) != 0;
+            var modelSpace = IsModelSpace(runtime.Definition);
             var position = modelSpace
                 ? particle.Position
                 : ToEffectLocal(particle.Position);
@@ -696,7 +721,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             var color = ParticleColor(runtime.Definition, progress);
             var size = ParticleScale(runtime.Definition, progress) *
                        emitterWorldScale;
-            var (uv0, uv1) = ParticleUv(runtime.Definition, progress);
+            ParticleUv(runtime, progress, out var uv0, out var uv1);
             if ((runtime.Definition.FrameFlags & 1) != 0 || runtime.Definition.FrameFlags == 0)
             {
                 var rotatesInPlane =
@@ -744,22 +769,21 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                     0.00001f)
                     instanceCount++;
         batch.Prepare(instanceCount);
+        var modelSpace = IsModelSpace(runtime.Definition);
         foreach (var particle in runtime.Particles)
         {
-            var modelSpace =
-                (runtime.Definition.Flags & ParticleEmitterModelSpaceFlag) != 0;
-            var position = modelSpace
-                ? particle.Position
-                : ToEffectLocal(particle.Position);
-            var velocity = modelSpace
-                ? particle.Velocity
-                : ToEffectLocalVector(particle.Velocity);
+            // Ordinary PE2 particles are already simulated in world space.
+            // Node-free batches upload them directly under an identity
+            // instance transform, avoiding an inverse transform per particle
+            // and an InstanceSetTransform call for every moving actor.
+            var position = particle.Position;
+            var velocity = particle.Velocity;
             var progress = (float)Math.Clamp(
                 particle.Age / particle.Life, 0d, 1d);
             var color = ParticleColor(runtime.Definition, progress);
             var size = ParticleScale(runtime.Definition, progress) *
                        emitterWorldScale;
-            var (uv0, uv1) = ParticleUv(runtime.Definition, progress);
+            ParticleUv(runtime, progress, out var uv0, out var uv1);
             if (rendersHead)
             {
                 var rotatesInPlane =
@@ -774,8 +798,8 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                     : cameraUp;
                 var right = (baseRight * cos + baseUp * sin) * size;
                 var up = (-baseRight * sin + baseUp * cos) * size;
-                batch.Add(QuadTransform(
-                    position, right, up), color, uv0, uv1);
+                batch.Add(BillboardQuadTransform(
+                    position, right, up, size), color, uv0, uv1);
             }
             if (rendersTail &&
                 velocity.LengthSquared() > 0.00001f)
@@ -796,7 +820,12 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         }
         batch.Commit();
         if (!runtime.HasSurface)
-            ActivateNodeFreeSurface(runtime.Instance);
+        {
+            if (batch.IsShared)
+                batch.SetVisible(_nodeFreeVisible);
+            else
+                ActivateNodeFreeSurface(runtime.Instance, modelSpace);
+        }
         runtime.HasSurface = true;
     }
 
@@ -806,13 +835,33 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         Vector3 up)
     {
         var forward = right.Cross(up);
-        if (forward.LengthSquared() <= 0.0000001f)
-            forward = Vector3.Back * Math.Max(
-                0.0001f, MathF.Max(right.Length(), up.Length()));
+        var scale = MathF.Sqrt(MathF.Max(
+            0.00000001f,
+            MathF.Max(right.LengthSquared(), up.LengthSquared())));
+        var forwardLengthSquared = forward.LengthSquared();
+        forward = forwardLengthSquared <= 0.0000001f
+            ? Vector3.Back * scale
+            : forward * (scale / MathF.Sqrt(forwardLengthSquared));
         return new Transform3D(
-            new Basis(right, up, forward.Normalized() *
-                Math.Max(0.0001f, MathF.Max(right.Length(), up.Length()))),
+            new Basis(right, up, forward),
             center);
+    }
+
+    private static Transform3D BillboardQuadTransform(
+        Vector3 center,
+        Vector3 right,
+        Vector3 up,
+        float scale)
+    {
+        // Billboard axes are orthogonal unit camera axes multiplied by the
+        // same particle size. Their cross product therefore has length
+        // size^2; divide once by size to obtain the third basis axis without
+        // three per-particle square roots/normalizations.
+        scale = MathF.Max(0.0001f, scale);
+        var forward = right.Cross(up) / scale;
+        if (forward.LengthSquared() <= 0.0000001f)
+            forward = Vector3.Back * scale;
+        return new Transform3D(new Basis(right, up, forward), center);
     }
 
     private void RebuildRibbonMesh(RibbonEmitterRuntime runtime)
@@ -854,10 +903,16 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         runtime.HasSurface = true;
     }
 
-    private void ActivateNodeFreeSurface(Rid instance)
+    private void ActivateNodeFreeSurface(
+        Rid instance,
+        bool followsActorTransform = true)
     {
         if (!_nodeFree) return;
-        RenderingServer.InstanceSetTransform(instance, _preparedWorldTransform);
+        RenderingServer.InstanceSetTransform(
+            instance,
+            followsActorTransform
+                ? _preparedWorldTransform
+                : Transform3D.Identity);
         RenderingServer.InstanceSetVisible(instance, _nodeFreeVisible);
     }
 
@@ -866,6 +921,18 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         if (_nodeFree)
             RenderingServer.InstanceSetVisible(
                 instance, visible && _nodeFreeVisible);
+    }
+
+    private void SetParticleSurfaceVisible(
+        ParticleEmitterRuntime runtime,
+        bool visible)
+    {
+        if (runtime.Batch is { IsShared: true } sharedBatch)
+        {
+            sharedBatch.SetVisible(visible && _nodeFreeVisible);
+            return;
+        }
+        SetNodeFreeSurfaceVisible(runtime.Instance, visible);
     }
 
     private static void AppendQuad(
@@ -971,10 +1038,13 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         return Mathf.Lerp(scaling[1], scaling[2], t2);
     }
 
-    private static (Vector2 Start, Vector2 End) ParticleUv(
-        War3ParticleEmitterDefinition definition,
-        float progress)
+    private static void ParticleUv(
+        ParticleEmitterRuntime runtime,
+        float progress,
+        out Vector2 startUv,
+        out Vector2 endUv)
     {
+        var definition = runtime.Definition;
         var firstHalf = progress <= definition.Time;
         var animation = firstHalf
             ? definition.LifeSpanUv
@@ -990,11 +1060,31 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                 Math.Max(0.001d, 1d - definition.Time), 0d, 1d);
         var frame = (int)MathF.Round(Mathf.Lerp(start, end, phaseProgress));
         frame = Math.Clamp(frame, Math.Min(start, end), Math.Max(start, end));
-        var column = frame % definition.Columns;
-        var row = frame / definition.Columns;
-        return (
-            new Vector2(column / (float)definition.Columns, row / (float)definition.Rows),
-            new Vector2((column + 1f) / definition.Columns, (row + 1f) / definition.Rows));
+        frame = Math.Clamp(frame, 0, runtime.UvStarts.Length - 1);
+        startUv = runtime.UvStarts[frame];
+        endUv = runtime.UvEnds[frame];
+    }
+
+    private static Vector2[] BuildParticleUvs(
+        War3ParticleEmitterDefinition definition,
+        bool ends)
+    {
+        var columns = Math.Max(1, definition.Columns);
+        var rows = Math.Max(1, definition.Rows);
+        var result = new Vector2[columns * rows];
+        for (var frame = 0; frame < result.Length; frame++)
+        {
+            var column = frame % columns;
+            var row = frame / columns;
+            result[frame] = ends
+                ? new Vector2(
+                    (column + 1f) / columns,
+                    (row + 1f) / rows)
+                : new Vector2(
+                    column / (float)columns,
+                    row / (float)rows);
+        }
+        return result;
     }
 
     private StandardMaterial3D CreateParticleMaterial(
@@ -1156,7 +1246,16 @@ internal sealed class War3EffectRuntimeCore : IDisposable
 
     private static float WorldScale(Basis basis)
     {
-        return (basis.X.Length() + basis.Y.Length() + basis.Z.Length()) / 3f;
+        var xSquared = basis.X.LengthSquared();
+        var ySquared = basis.Y.LengthSquared();
+        var zSquared = basis.Z.LengthSquared();
+        var maximum = MathF.Max(xSquared, MathF.Max(ySquared, zSquared));
+        var minimum = MathF.Min(xSquared, MathF.Min(ySquared, zSquared));
+        if (maximum - minimum <=
+            MathF.Max(0.0000001f, maximum * 0.0001f))
+            return MathF.Sqrt((xSquared + ySquared + zSquared) / 3f);
+        return (MathF.Sqrt(xSquared) + MathF.Sqrt(ySquared) +
+                MathF.Sqrt(zSquared)) / 3f;
     }
 
     private void ClearRuntime()
@@ -1177,9 +1276,16 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         _sequence = null;
         _nodeFree = false;
         _legacyHost = null;
+        _requiresLocalEffectSpace = false;
+        _hasPreparedWorldBasis = false;
+        _externalWorldTransformPrepared = false;
         _hasRebuildBasis = false;
         _geometryDirty = true;
     }
+
+    private static bool IsModelSpace(
+        War3ParticleEmitterDefinition definition) =>
+        (definition.Flags & ParticleEmitterModelSpaceFlag) != 0;
 
     public void Dispose()
     {
@@ -1295,17 +1401,303 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     }
 
     /// <summary>
+    /// Consolidates ordinary world-space emitters by texture and blend mode.
+    /// Each emitter keeps a small managed slice, while a group performs one
+    /// MultiMesh upload for all matching actors after their effect steps.
+    /// Model-space particles retain an individual actor-relative batch.
+    /// </summary>
+    internal sealed class NodeFreeParticleBatchHub : IDisposable
+    {
+        private readonly Rid _scenario;
+        private readonly Dictionary<GroupKey, SharedGroup> _groups = [];
+        private bool _disposed;
+
+        public NodeFreeParticleBatchHub(Rid scenario) =>
+            _scenario = scenario;
+
+        internal Registration Register(
+            Texture2D? texture,
+            EffectBlendMode blendMode)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var key = Key(texture, blendMode);
+            if (!_groups.TryGetValue(key, out var group))
+            {
+                group = new SharedGroup(
+                    _scenario, texture, blendMode);
+                _groups.Add(key, group);
+            }
+            return new Registration(this, group, texture, blendMode);
+        }
+
+        public void Flush()
+        {
+            if (_disposed) return;
+            foreach (var group in _groups.Values) group.Flush();
+        }
+
+        private void Rebind(Registration registration, Texture2D? texture)
+        {
+            var key = Key(texture, registration.BlendMode);
+            if (registration.Key == key) return;
+            registration.Group.Remove(registration);
+            if (!_groups.TryGetValue(key, out var group))
+            {
+                group = new SharedGroup(
+                    _scenario, texture, registration.BlendMode);
+                _groups.Add(key, group);
+            }
+            registration.Texture = texture;
+            registration.Group = group;
+            group.Add(registration);
+        }
+
+        private static GroupKey Key(
+            Texture2D? texture,
+            EffectBlendMode blendMode) =>
+            new(texture?.GetInstanceId() ?? 0UL, blendMode);
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            foreach (var group in _groups.Values) group.Dispose();
+            _groups.Clear();
+        }
+
+        internal sealed class Registration : IDisposable
+        {
+            private readonly NodeFreeParticleBatchHub _owner;
+            private bool _disposed;
+
+            internal Registration(
+                NodeFreeParticleBatchHub owner,
+                SharedGroup group,
+                Texture2D? texture,
+                EffectBlendMode blendMode)
+            {
+                _owner = owner;
+                Group = group;
+                Texture = texture;
+                BlendMode = blendMode;
+                group.Add(this);
+            }
+
+            internal SharedGroup Group { get; set; }
+            internal Texture2D? Texture { get; set; }
+            internal EffectBlendMode BlendMode { get; }
+            internal float[] Buffer { get; private set; } = [];
+            internal int Count { get; private set; }
+            internal bool Visible { get; private set; }
+            internal GroupKey Key =>
+                NodeFreeParticleBatchHub.Key(Texture, BlendMode);
+            internal ArrayMesh Mesh => Group.Mesh;
+
+            internal void Update(float[] buffer, int count)
+            {
+                if (_disposed) return;
+                Buffer = buffer;
+                Count = count;
+                Group.Dirty = true;
+            }
+
+            internal void SetVisible(bool visible)
+            {
+                if (_disposed || Visible == visible) return;
+                Visible = visible;
+                Group.Dirty = true;
+            }
+
+            internal void SetTexture(Texture2D? texture)
+            {
+                if (_disposed) return;
+                _owner.Rebind(this, texture);
+            }
+
+            public void Dispose()
+            {
+                if (_disposed) return;
+                _disposed = true;
+                Group.Remove(this);
+                Buffer = [];
+                Count = 0;
+            }
+        }
+
+        internal sealed class SharedGroup : IDisposable
+        {
+            private readonly List<Registration> _registrations = [];
+            private readonly MultiMesh _multiMesh;
+            private Rid _instance;
+            private float[] _buffer = [];
+            private int _capacity;
+            private int _visibleCount = -1;
+            private int _underutilizedFrames;
+            private bool _disposed;
+
+            internal SharedGroup(
+                Rid scenario,
+                Texture2D? texture,
+                EffectBlendMode blendMode)
+            {
+                var material = NodeFreeParticleBatch.CreateMaterial(
+                    texture, blendMode);
+                Mesh = NodeFreeParticleBatch.CreateQuadMesh(material);
+                _multiMesh = new MultiMesh
+                {
+                    TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+                    UseColors = true,
+                    UseCustomData = true,
+                    Mesh = Mesh,
+                    InstanceCount = 0
+                };
+                _instance = RenderingServer.InstanceCreate2(
+                    _multiMesh.GetRid(), scenario);
+                RenderingServer.InstanceGeometrySetCastShadowsSetting(
+                    _instance, RenderingServer.ShadowCastingSetting.Off);
+                RenderingServer.InstanceSetIgnoreCulling(_instance, true);
+            }
+
+            internal ArrayMesh Mesh { get; }
+            internal bool Dirty { get; set; } = true;
+
+            internal void Add(Registration registration)
+            {
+                _registrations.Add(registration);
+                Dirty = true;
+            }
+
+            internal void Remove(Registration registration)
+            {
+                _registrations.Remove(registration);
+                Dirty = true;
+            }
+
+            internal void Flush()
+            {
+                if (_disposed || !Dirty) return;
+                var count = 0;
+                for (var index = 0;
+                     index < _registrations.Count;
+                     index++)
+                {
+                    var registration = _registrations[index];
+                    if (registration.Visible)
+                        count += registration.Count;
+                }
+                EnsureCapacity(count);
+                var destinationOffset = 0;
+                for (var index = 0;
+                     index < _registrations.Count;
+                     index++)
+                {
+                    var registration = _registrations[index];
+                    if (!registration.Visible || registration.Count <= 0)
+                        continue;
+                    var floatCount = registration.Count *
+                                     NodeFreeParticleBatch.BufferStride;
+                    Array.Copy(
+                        registration.Buffer,
+                        0,
+                        _buffer,
+                        destinationOffset,
+                        floatCount);
+                    destinationOffset += floatCount;
+                }
+                if (_visibleCount != count)
+                {
+                    _multiMesh.VisibleInstanceCount = count;
+                    _visibleCount = count;
+                }
+                if (count > 0)
+                {
+                    RenderingServer.MultimeshSetBuffer(
+                        _multiMesh.GetRid(), _buffer.AsSpan());
+                    _nodeFreeFrameBufferUploads++;
+                    _nodeFreeFrameUploadedBytes +=
+                        _buffer.Length * sizeof(float);
+                }
+                Dirty = false;
+            }
+
+            private void EnsureCapacity(int required)
+            {
+                if (required <= 0) return;
+                const int instanceGranularity = 64;
+                // A power-of-two capacity made a few large shared groups upload
+                // almost twice their live particle data forever after a peak.
+                // Keep a small hysteresis bucket instead: it avoids per-frame
+                // GPU resizing while bounding wasted uploads.
+                if (required <= _capacity)
+                {
+                    if (required > _capacity - instanceGranularity)
+                    {
+                        _underutilizedFrames = 0;
+                        return;
+                    }
+                    // Particle populations decay gradually. Waiting before a
+                    // shrink prevents Array.Resize/MultiMesh reallocation from
+                    // chasing that count down every rendered frame.
+                    if (++_underutilizedFrames < 30) return;
+                }
+                _underutilizedFrames = 0;
+                var capacity = Math.Max(
+                    instanceGranularity,
+                    (required + instanceGranularity - 1) /
+                    instanceGranularity * instanceGranularity);
+                var oldCapacity = _capacity;
+                Array.Resize(
+                    ref _buffer,
+                    capacity * NodeFreeParticleBatch.BufferStride);
+                for (var index = oldCapacity; index < capacity; index++)
+                {
+                    NodeFreeParticleBatch.WriteTransform(
+                        _buffer,
+                        index * NodeFreeParticleBatch.BufferStride,
+                        new Transform3D(
+                            Basis.FromScale(
+                                Vector3.One *
+                                NodeFreeParticleBatch.HiddenScale),
+                            Vector3.Zero));
+                }
+                _capacity = capacity;
+                _multiMesh.InstanceCount = capacity;
+                _multiMesh.VisibleInstanceCount = Math.Min(
+                    capacity, Math.Max(0, _visibleCount));
+            }
+
+            public void Dispose()
+            {
+                if (_disposed) return;
+                _disposed = true;
+                if (_instance.IsValid)
+                    RenderingServer.FreeRid(_instance);
+                _instance = default;
+                _registrations.Clear();
+                _buffer = [];
+            }
+        }
+
+        internal readonly record struct GroupKey(
+            ulong TextureInstanceId,
+            EffectBlendMode BlendMode);
+    }
+
+    /// <summary>
     /// Node-free particle geometry is a stable quad MultiMesh. Particle state
     /// is uploaded as one contiguous transform/color/UV buffer, avoiding an
     /// ArrayMesh surface teardown plus three packed-array marshals per emitter.
     /// </summary>
     private sealed class NodeFreeParticleBatch : IDisposable
     {
-        private const int BufferStride = 20;
-        private const float HiddenScale = 0.000001f;
+        internal const int BufferStride = 20;
+        internal const float HiddenScale = 0.000001f;
         private static readonly Dictionary<EffectBlendMode, Shader> Shaders = [];
-        private readonly MultiMesh _multiMesh;
-        private readonly ShaderMaterial _material;
+        private readonly MultiMesh? _multiMesh;
+        private readonly ShaderMaterial? _material;
+        private readonly NodeFreeParticleBatchHub.Registration? _shared;
+        private ArrayMesh? _mesh;
+        private Rid _instance;
         private float[] _buffer = [];
         private int _capacity;
         private int _writeIndex;
@@ -1315,35 +1707,45 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         public NodeFreeParticleBatch(
             Rid scenario,
             StandardMaterial3D source,
-            EffectBlendMode blendMode)
+            EffectBlendMode blendMode,
+            NodeFreeParticleBatchHub? sharedHub = null)
         {
-            _material = new ShaderMaterial
+            if (sharedHub is not null)
             {
-                Shader = ResolveShader(blendMode)
-            };
+                _shared = sharedHub.Register(
+                    source.AlbedoTexture, blendMode);
+                return;
+            }
+            _material = CreateMaterial(source.AlbedoTexture, blendMode);
             SetTexture(source.AlbedoTexture);
-            Mesh = CreateQuadMesh(_material);
+            _mesh = CreateQuadMesh(_material);
             _multiMesh = new MultiMesh
             {
                 TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
                 UseColors = true,
                 UseCustomData = true,
-                Mesh = Mesh,
+                Mesh = _mesh,
                 InstanceCount = 0
             };
-            Instance = RenderingServer.InstanceCreate2(
+            _instance = RenderingServer.InstanceCreate2(
                 _multiMesh.GetRid(), scenario);
             RenderingServer.InstanceGeometrySetCastShadowsSetting(
-                Instance, RenderingServer.ShadowCastingSetting.Off);
-            RenderingServer.InstanceSetIgnoreCulling(Instance, true);
+                _instance, RenderingServer.ShadowCastingSetting.Off);
+            RenderingServer.InstanceSetIgnoreCulling(_instance, true);
         }
 
-        public ArrayMesh Mesh { get; }
-        public Rid Instance { get; private set; }
+        public bool IsShared => _shared is not null;
+        public ArrayMesh Mesh => _shared?.Mesh ?? _mesh!;
+        public Rid Instance => _instance;
 
         public void SetTexture(Texture2D? texture)
         {
-            _material.SetShaderParameter(
+            if (_shared is not null)
+            {
+                _shared.SetTexture(texture);
+                return;
+            }
+            _material!.SetShaderParameter(
                 "has_albedo_texture", texture is not null);
             if (texture is not null)
                 _material.SetShaderParameter("albedo_texture", texture);
@@ -1377,22 +1779,40 @@ internal sealed class War3EffectRuntimeCore : IDisposable
 
         public void Commit()
         {
+            if (_shared is not null)
+            {
+                _shared.Update(_buffer, _writeIndex);
+                return;
+            }
             if (_writeIndex != _visibleCount)
             {
-                _multiMesh.VisibleInstanceCount = _writeIndex;
+                _multiMesh!.VisibleInstanceCount = _writeIndex;
                 _visibleCount = _writeIndex;
             }
             if (_writeIndex <= 0) return;
             RenderingServer.MultimeshSetBuffer(
-                _multiMesh.GetRid(), _buffer.AsSpan());
+                _multiMesh!.GetRid(), _buffer.AsSpan());
+            _nodeFreeFrameBufferUploads++;
+            _nodeFreeFrameUploadedBytes += _buffer.Length * sizeof(float);
         }
 
         public void Reset()
         {
             _writeIndex = 0;
+            if (_shared is not null)
+            {
+                _shared.Update(_buffer, 0);
+                return;
+            }
             if (_visibleCount == 0) return;
-            _multiMesh.VisibleInstanceCount = 0;
+            _multiMesh!.VisibleInstanceCount = 0;
             _visibleCount = 0;
+        }
+
+        public void SetVisible(bool visible)
+        {
+            if (_shared is not null)
+                _shared.SetVisible(visible);
         }
 
         private void EnsureCapacity(int required)
@@ -1409,12 +1829,15 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                     Vector3.Zero));
             }
             _capacity = capacity;
-            _multiMesh.InstanceCount = capacity;
-            _multiMesh.VisibleInstanceCount = Math.Max(0, _writeIndex);
+            if (_multiMesh is not null)
+            {
+                _multiMesh.InstanceCount = capacity;
+                _multiMesh.VisibleInstanceCount = Math.Max(0, _writeIndex);
+            }
             _visibleCount = _writeIndex;
         }
 
-        private static void WriteTransform(
+        internal static void WriteTransform(
             float[] buffer,
             int offset,
             Transform3D transform)
@@ -1435,7 +1858,22 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             buffer[offset + 11] = origin.Z;
         }
 
-        private static ArrayMesh CreateQuadMesh(ShaderMaterial material)
+        internal static ShaderMaterial CreateMaterial(
+            Texture2D? texture,
+            EffectBlendMode blendMode)
+        {
+            var material = new ShaderMaterial
+            {
+                Shader = ResolveShader(blendMode)
+            };
+            material.SetShaderParameter(
+                "has_albedo_texture", texture is not null);
+            if (texture is not null)
+                material.SetShaderParameter("albedo_texture", texture);
+            return material;
+        }
+
+        internal static ArrayMesh CreateQuadMesh(ShaderMaterial material)
         {
             var arrays = new Godot.Collections.Array();
             arrays.Resize((int)Godot.Mesh.ArrayType.Max);
@@ -1533,8 +1971,9 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         {
             if (_disposed) return;
             _disposed = true;
-            if (Instance.IsValid) RenderingServer.FreeRid(Instance);
-            Instance = default;
+            _shared?.Dispose();
+            if (_instance.IsValid) RenderingServer.FreeRid(_instance);
+            _instance = default;
             _buffer = [];
         }
     }
@@ -1556,6 +1995,10 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         public EffectGeometryBuffer Geometry { get; } = new();
         public StandardMaterial3D Material { get; } = material;
         public NodeFreeParticleBatch? Batch { get; } = batch;
+        public Vector2[] UvStarts { get; } =
+            BuildParticleUvs(definition, ends: false);
+        public Vector2[] UvEnds { get; } =
+            BuildParticleUvs(definition, ends: true);
         public List<Particle> Particles { get; } = [];
         public double SpawnRemainder { get; set; }
         public double? LastSquirtFrame { get; set; }

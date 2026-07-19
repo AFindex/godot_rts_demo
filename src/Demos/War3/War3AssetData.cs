@@ -541,6 +541,8 @@ public sealed class War3ModelMetadata
 public sealed class War3ScalarTrack
 {
     public sealed record Key(double Frame, double Value, double? InTangent, double? OutTangent);
+    private readonly Dictionary<(double Start, double End), KeyRange>
+        _sequenceKeyRanges = [];
 
     public double Constant { get; }
     public int LineType { get; }
@@ -601,16 +603,34 @@ public sealed class War3ScalarTrack
             localFrame = ((frame % duration) + duration) % duration;
         }
 
-        var firstIndex = -1;
-        var lastIndex = -1;
-        for (var index = 0; index < Keys.Count; index++)
+        int firstIndex;
+        int lastIndex;
+        if (global)
         {
-            var key = Keys[index];
-            if (!global && (key.Frame < sequence.StartFrame ||
-                            key.Frame > sequence.EndFrame))
-                continue;
-            if (firstIndex < 0) firstIndex = index;
-            lastIndex = index;
+            firstIndex = 0;
+            lastIndex = Keys.Count - 1;
+        }
+        else
+        {
+            var rangeKey = (sequence.StartFrame, sequence.EndFrame);
+            if (!_sequenceKeyRanges.TryGetValue(rangeKey, out var range))
+            {
+                firstIndex = -1;
+                lastIndex = -1;
+                for (var index = 0; index < Keys.Count; index++)
+                {
+                    var key = Keys[index];
+                    if (key.Frame < sequence.StartFrame ||
+                        key.Frame > sequence.EndFrame)
+                        continue;
+                    if (firstIndex < 0) firstIndex = index;
+                    lastIndex = index;
+                }
+                range = new KeyRange(firstIndex, lastIndex);
+                _sequenceKeyRanges.Add(rangeKey, range);
+            }
+            firstIndex = range.First;
+            lastIndex = range.Last;
         }
         // Warcraft scopes non-global tracks to a sequence. Missing keys do not
         // inherit a value from Birth, Upgrade, Death, or Decay. Keep the exact
@@ -653,6 +673,8 @@ public sealed class War3ScalarTrack
             _ => left.Value + (right.Value - left.Value) * t
         };
     }
+
+    private readonly record struct KeyRange(int First, int Last);
 
     public IReadOnlyList<Key> KeysFor(War3Sequence sequence) => Keys
         .Where(key => key.Frame >= sequence.StartFrame && key.Frame <= sequence.EndFrame)

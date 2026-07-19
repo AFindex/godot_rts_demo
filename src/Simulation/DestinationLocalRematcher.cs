@@ -45,9 +45,9 @@ public sealed class DestinationLocalRematcher
 
         rematchedCount = 0;
         Span<int> candidates = stackalloc int[MaximumUnits];
-        for (var anchor = 0; anchor < units.Count; anchor++)
+        foreach (var anchor in units.AliveUnits)
         {
-            if (!units.Alive[anchor] || !IsAnchor(units, anchor, tick))
+            if (!IsAnchor(units, anchor, tick))
             {
                 continue;
             }
@@ -87,10 +87,9 @@ public sealed class DestinationLocalRematcher
         {
             var bestUnit = -1;
             var bestScore = float.PositiveInfinity;
-            for (var unit = 0; unit < units.Count; unit++)
+            foreach (var unit in units.AliveUnits)
             {
-                if (!units.Alive[unit] ||
-                    units.MovementGroupIds[unit] != groupId ||
+                if (units.MovementGroupIds[unit] != groupId ||
                     Contains(candidates[..count], unit) ||
                     !IsCandidate(units, unit, tick) ||
                     (units.Modes[unit] == UnitMoveMode.Arrived &&
@@ -356,10 +355,9 @@ public sealed class DestinationLocalRematcher
         var groupId = units.MovementGroupIds[anchor];
         var required = Math.Max(MinimumUnits, units.MovementGroupSizes[anchor] / 5);
         var moving = 0;
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
-            if (units.Alive[unit] &&
-                units.MovementGroupIds[unit] == groupId &&
+            if (units.MovementGroupIds[unit] == groupId &&
                 units.Modes[unit] == UnitMoveMode.Moving &&
                 !units.DestinationOverflowed[unit] &&
                 units.DestinationYieldPhases[unit] == DestinationYieldPhase.None &&

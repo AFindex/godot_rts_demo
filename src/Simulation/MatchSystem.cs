@@ -120,37 +120,55 @@ public sealed class MatchSystem
                 player.DefeatedTick = tick;
             }
         }
-        if (_players.Any(value => !value.EstablishedPresence))
-            return;
-        var active = _players.Where(value =>
-            value.Status == MatchPlayerStatus.Active).ToArray();
-        var activeAlliances = active
-            .Select(value => diplomacy.AllianceIdFor(value.PlayerId))
-            .Distinct()
-            .ToArray();
-        if (activeAlliances.Length > 1)
-            return;
+        var activeCount = 0;
+        var activeAlliance = -1;
+        PlayerState? soleActive = null;
+        for (var index = 0; index < _players.Count; index++)
+        {
+            var player = _players[index];
+            if (!player.EstablishedPresence) return;
+            if (player.Status != MatchPlayerStatus.Active) continue;
+            var alliance = diplomacy.AllianceIdFor(player.PlayerId);
+            if (activeAlliance >= 0 && activeAlliance != alliance)
+                return;
+            activeAlliance = alliance;
+            activeCount++;
+            soleActive = player;
+        }
         Phase = MatchPhase.Completed;
         CompletedTick = tick;
-        WinnerPlayerId = active.Length == 1 ? active[0].PlayerId : -1;
-        WinnerAllianceId = activeAlliances.Length == 1
-            ? activeAlliances[0]
-            : -1;
-        for (var index = 0; index < active.Length; index++)
-            active[index].Status = MatchPlayerStatus.Victorious;
+        WinnerPlayerId = activeCount == 1 ? soleActive!.PlayerId : -1;
+        WinnerAllianceId = activeCount > 0 ? activeAlliance : -1;
+        for (var index = 0; index < _players.Count; index++)
+            if (_players[index].Status == MatchPlayerStatus.Active)
+                _players[index].Status = MatchPlayerStatus.Victorious;
     }
 
-    public bool CanIssueCommands(int playerId) =>
-        Phase != MatchPhase.Completed &&
-        (Phase == MatchPhase.Setup || _players.Any(value =>
-            value.PlayerId == playerId && value.Status == MatchPlayerStatus.Active));
+    public bool CanIssueCommands(int playerId)
+    {
+        if (Phase == MatchPhase.Completed) return false;
+        if (Phase == MatchPhase.Setup) return true;
+        for (var index = 0; index < _players.Count; index++)
+            if (_players[index].PlayerId == playerId)
+                return _players[index].Status == MatchPlayerStatus.Active;
+        return false;
+    }
 
-    public bool IsDefeated(int playerId) =>
-        _players.Any(value => value.PlayerId == playerId &&
-            value.Status == MatchPlayerStatus.Defeated);
+    public bool IsDefeated(int playerId)
+    {
+        for (var index = 0; index < _players.Count; index++)
+            if (_players[index].PlayerId == playerId)
+                return _players[index].Status == MatchPlayerStatus.Defeated;
+        return false;
+    }
 
-    public bool IsParticipant(int playerId) =>
-        _players.Any(value => value.PlayerId == playerId);
+    public bool IsParticipant(int playerId)
+    {
+        for (var index = 0; index < _players.Count; index++)
+            if (_players[index].PlayerId == playerId)
+                return true;
+        return false;
+    }
 
     public MatchSnapshot CreateSnapshot(
         ConstructionSystem construction,
@@ -165,9 +183,9 @@ public sealed class MatchSystem
             var buildings = construction.CountPlayerCapabilities(state.PlayerId);
             var workers = 0;
             var combatUnits = 0;
-            for (var unit = 0; unit < units.Count; unit++)
+            foreach (var unit in units.AliveUnits)
             {
-                if (!units.Alive[unit] || combat.Teams[unit] != state.PlayerId)
+                if (combat.Teams[unit] != state.PlayerId)
                     continue;
                 if (economy.IsWorker(unit)) workers++;
                 else if (!economy.IsGatherer(unit)) combatUnits++;

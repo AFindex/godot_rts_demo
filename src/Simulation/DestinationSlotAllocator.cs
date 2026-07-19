@@ -171,12 +171,8 @@ public sealed class DestinationSlotAllocator
         Vector2 candidate,
         float candidateRadius)
     {
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
-            if (!units.Alive[unit])
-            {
-                continue;
-            }
             if (selectedMembership[unit])
             {
                 continue;

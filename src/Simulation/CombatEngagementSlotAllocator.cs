@@ -47,9 +47,9 @@ public sealed class CombatEngagementSlotAllocator
             _targetActive[target] = false;
         }
         _activeTargetCount = 0;
-        for (var unit = 0; unit < _units.Count; unit++)
+        foreach (var unit in _units.AliveUnits)
         {
-            if (!_units.Alive[unit] || !_combat.HasAttackSlots[unit]) continue;
+            if (!_combat.HasAttackSlots[unit]) continue;
             var target = _combat.TargetUnits[unit];
             if ((uint)target >= (uint)_units.Count) continue;
             AddToTargetIndex(unit, target);
@@ -231,9 +231,9 @@ public sealed class CombatEngagementSlotAllocator
         var target = _combat.TargetUnits[unit];
         var bestOther = -1;
         var bestImprovement = 4f * 4f;
-        for (var other = 0; other < _units.Count; other++)
+        foreach (var other in _units.AliveUnits)
         {
-            if (other == unit || !_units.Alive[other] ||
+            if (other == unit ||
                 _combat.TargetUnits[other] != target ||
                 !_combat.HasAttackSlots[other] ||
                 _combat.Phases[other] == CombatPhase.Attacking)

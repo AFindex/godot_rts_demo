@@ -119,10 +119,9 @@ public static class ProductionExitResolver
         ref bool hasFriendly,
         ref bool hasEnemy)
     {
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
-            if (!units.Alive[unit] ||
-                !Overlaps(position, radius, units.Positions[unit], units.Radii[unit]))
+            if (!Overlaps(position, radius, units.Positions[unit], units.Radii[unit]))
             {
                 continue;
             }
@@ -142,11 +141,10 @@ public static class ProductionExitResolver
         Span<int> output)
     {
         var count = 0;
-        for (var unit = 0;
-             unit < units.Count && count < MaximumReportedFriendlyBlockers;
-             unit++)
+        foreach (var unit in units.AliveUnits)
         {
-            if (!units.Alive[unit] || combat.Teams[unit] != playerId ||
+            if (count >= MaximumReportedFriendlyBlockers) break;
+            if (combat.Teams[unit] != playerId ||
                 !Overlaps(position, radius, units.Positions[unit], units.Radii[unit]))
             {
                 continue;

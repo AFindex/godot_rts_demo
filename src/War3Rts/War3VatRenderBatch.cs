@@ -10,6 +10,8 @@ namespace War3Rts;
 /// </summary>
 internal sealed class War3VatAnimationData
 {
+    private const int CacheMagic = 0x54415657; // WVAT
+    private const int CacheVersion = 1;
     private const int MaximumAtlasWidth = 8_192;
     private readonly Dictionary<War3NodeFreePose, int> _poseIndexes;
 
@@ -30,14 +32,99 @@ internal sealed class War3VatAnimationData
     public int PoseIndex(War3NodeFreePose pose) =>
         _poseIndexes.TryGetValue(pose, out var index) ? index : 0;
 
+    public static bool HasValidCacheHeader(War3NodeFreeModelAsset asset)
+    {
+        var path = CachePath(asset);
+        if (!File.Exists(path)) return false;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream);
+            return ReadAndValidateHeader(reader, asset);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static bool TryLoadCache(
+        War3NodeFreeModelAsset asset,
+        out War3VatAnimationData? animation)
+    {
+        animation = null;
+        var path = CachePath(asset);
+        if (!File.Exists(path)) return false;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream);
+            RequireCache(ReadAndValidateHeader(reader, asset), "header");
+            var poseIndexes = CreatePoseIndexes(asset);
+            RequireCache(reader.ReadInt32() == poseIndexes.Count, "pose count");
+            var skeletonCount = reader.ReadInt32();
+            RequireCache(
+                skeletonCount == asset.SkeletonSlotCount,
+                "skeleton slot count");
+            var skeletons = new War3VatSkeletonAtlas?[skeletonCount];
+            for (var slot = 0; slot < skeletonCount; slot++)
+            {
+                if (!reader.ReadBoolean()) continue;
+                var boneCount = reader.ReadInt32();
+                var poseColumns = reader.ReadInt32();
+                var width = reader.ReadInt32();
+                var height = reader.ReadInt32();
+                RequireCache(
+                    boneCount > 0 && boneCount <= 1024,
+                    "skeleton bone count");
+                var bytes = ReadPixels(reader, width, height);
+                skeletons[slot] = new War3VatSkeletonAtlas(
+                    CreateTexture(
+                        bytes,
+                        width,
+                        height,
+                        $"VAT_{Path.GetFileNameWithoutExtension(asset.Source)}_S{slot}"),
+                    boneCount,
+                    poseColumns,
+                    width,
+                    height);
+            }
+
+            var partCount = reader.ReadInt32();
+            var partPoseColumns = reader.ReadInt32();
+            var partWidth = reader.ReadInt32();
+            var partHeight = reader.ReadInt32();
+            RequireCache(partCount == asset.Parts.Count, "part count");
+            var partBytes = ReadPixels(reader, partWidth, partHeight);
+            RequireCache(stream.Position == stream.Length, "trailing data");
+            var parts = new War3VatPartAtlas(
+                CreateTexture(
+                    partBytes,
+                    partWidth,
+                    partHeight,
+                    $"VATParts_{Path.GetFileNameWithoutExtension(asset.Source)}"),
+                partCount,
+                partPoseColumns,
+                partWidth,
+                partHeight);
+            animation = new War3VatAnimationData(
+                poseIndexes, skeletons, parts);
+            GD.Print(
+                $"WAR3_VAT_CACHE source={asset.Source} state=hit " +
+                $"poses={poseIndexes.Count} bytes={stream.Length}");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            GD.PushWarning(
+                $"VAT cache ignored ({asset.Source}): {exception.Message}");
+            return false;
+        }
+    }
+
     public static War3VatAnimationData Build(War3NodeFreeModelAsset asset)
     {
-        var poseIndexes = new Dictionary<War3NodeFreePose, int>(
-            ReferenceEqualityComparer.Instance);
-        foreach (var sequence in asset.Sequences)
-        foreach (var pose in sequence.Poses)
-            if (!poseIndexes.ContainsKey(pose))
-                poseIndexes.Add(pose, poseIndexes.Count);
+        var poseIndexes = CreatePoseIndexes(asset);
 
         if (poseIndexes.Count == 0)
             throw new InvalidOperationException(
@@ -46,14 +133,25 @@ internal sealed class War3VatAnimationData
         var orderedPoses = new War3NodeFreePose[poseIndexes.Count];
         foreach (var pair in poseIndexes) orderedPoses[pair.Value] = pair.Key;
         var skeletons = new War3VatSkeletonAtlas?[asset.SkeletonSlotCount];
+        var skeletonPixels = new Half[]?[asset.SkeletonSlotCount];
         for (var slot = 0; slot < skeletons.Length; slot++)
         {
             var boneCount = ResolveBoneCount(asset, orderedPoses, slot);
             if (boneCount <= 0) continue;
-            skeletons[slot] = BuildAtlas(
+            var built = BuildAtlas(
                 asset, orderedPoses, slot, boneCount);
+            skeletons[slot] = built.Atlas;
+            skeletonPixels[slot] = built.Pixels;
         }
-        var parts = BuildPartAtlas(asset, orderedPoses);
+        var partBuild = BuildPartAtlas(asset, orderedPoses);
+        var parts = partBuild.Atlas;
+        TrySaveCache(
+            asset,
+            poseIndexes.Count,
+            skeletons,
+            skeletonPixels,
+            parts,
+            partBuild.Pixels);
         GD.Print(
             $"WAR3_VAT_ATLAS source={asset.Source} poses={orderedPoses.Length} " +
             $"slots={skeletons.Count(value => value is not null)} " +
@@ -61,7 +159,7 @@ internal sealed class War3VatAnimationData
         return new War3VatAnimationData(poseIndexes, skeletons, parts);
     }
 
-    private static War3VatPartAtlas BuildPartAtlas(
+    private static PartAtlasBuild BuildPartAtlas(
         War3NodeFreeModelAsset asset,
         IReadOnlyList<War3NodeFreePose> poses)
     {
@@ -107,8 +205,10 @@ internal sealed class War3VatAnimationData
         var texture = ImageTexture.CreateFromImage(image);
         texture.ResourceName =
             $"VATParts_{Path.GetFileNameWithoutExtension(asset.Source)}";
-        return new War3VatPartAtlas(
-            texture, partCount, poseColumns, width, height);
+        return new PartAtlasBuild(
+            new War3VatPartAtlas(
+                texture, partCount, poseColumns, width, height),
+            pixels);
     }
 
     private static int ResolveBoneCount(
@@ -125,7 +225,7 @@ internal sealed class War3VatAnimationData
         return 0;
     }
 
-    private static War3VatSkeletonAtlas BuildAtlas(
+    private static SkeletonAtlasBuild BuildAtlas(
         War3NodeFreeModelAsset asset,
         IReadOnlyList<War3NodeFreePose> poses,
         int slot,
@@ -167,9 +267,178 @@ internal sealed class War3VatAnimationData
         var texture = ImageTexture.CreateFromImage(image);
         texture.ResourceName =
             $"VAT_{Path.GetFileNameWithoutExtension(asset.Source)}_S{slot}";
-        return new War3VatSkeletonAtlas(
-            texture, boneCount, poseColumns, width, height);
+        return new SkeletonAtlasBuild(
+            new War3VatSkeletonAtlas(
+                texture, boneCount, poseColumns, width, height),
+            pixels);
     }
+
+    private static Dictionary<War3NodeFreePose, int> CreatePoseIndexes(
+        War3NodeFreeModelAsset asset)
+    {
+        var poseIndexes = new Dictionary<War3NodeFreePose, int>(
+            ReferenceEqualityComparer.Instance);
+        foreach (var sequence in asset.Sequences)
+        foreach (var pose in sequence.Poses)
+            if (!poseIndexes.ContainsKey(pose))
+                poseIndexes.Add(pose, poseIndexes.Count);
+        return poseIndexes;
+    }
+
+    private static void TrySaveCache(
+        War3NodeFreeModelAsset asset,
+        int poseCount,
+        IReadOnlyList<War3VatSkeletonAtlas?> skeletons,
+        IReadOnlyList<Half[]?> skeletonPixels,
+        War3VatPartAtlas parts,
+        Half[] partPixels)
+    {
+        // A headless RenderingServer does not contain authoritative animation
+        // matrices. Never overwrite a cache generated by the rendered backend.
+        if (DisplayServer.GetName().Equals(
+                "headless", StringComparison.OrdinalIgnoreCase))
+            return;
+        var path = CachePath(asset);
+        var temporary = path + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            using (var stream = File.Create(temporary))
+            using (var writer = new BinaryWriter(stream))
+            {
+                WriteHeader(writer, asset);
+                writer.Write(poseCount);
+                writer.Write(skeletons.Count);
+                for (var slot = 0; slot < skeletons.Count; slot++)
+                {
+                    var atlas = skeletons[slot];
+                    var pixels = skeletonPixels[slot];
+                    writer.Write(atlas is not null && pixels is not null);
+                    if (atlas is null || pixels is null) continue;
+                    writer.Write(atlas.BoneCount);
+                    writer.Write(atlas.PoseColumns);
+                    writer.Write(atlas.Width);
+                    writer.Write(atlas.Height);
+                    WritePixels(writer, pixels);
+                }
+                writer.Write(parts.PartCount);
+                writer.Write(parts.PoseColumns);
+                writer.Write(parts.Width);
+                writer.Write(parts.Height);
+                WritePixels(writer, partPixels);
+            }
+            File.Move(temporary, path, overwrite: true);
+            GD.Print(
+                $"WAR3_VAT_CACHE source={asset.Source} state=built " +
+                $"poses={poseCount} bytes={new FileInfo(path).Length}");
+        }
+        catch (Exception exception)
+        {
+            GD.PushWarning(
+                $"VAT cache save failed ({asset.Source}): {exception.Message}");
+            try
+            {
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
+            catch
+            {
+                // Best effort cleanup only.
+            }
+        }
+    }
+
+    private static bool ReadAndValidateHeader(
+        BinaryReader reader,
+        War3NodeFreeModelAsset asset)
+    {
+        if (reader.ReadInt32() != CacheMagic ||
+            reader.ReadInt32() != CacheVersion ||
+            !reader.ReadString().Equals(
+                asset.Source, StringComparison.OrdinalIgnoreCase))
+            return false;
+        var fingerprint = asset.CacheFingerprint;
+        return reader.ReadInt64() == fingerprint.Length &&
+               reader.ReadInt64() == fingerprint.LastWriteTicks &&
+               reader.ReadInt32() == asset.Parts.Count &&
+               reader.ReadInt32() == asset.SkeletonSlotCount &&
+               reader.ReadInt32() == asset.Metadata.Sequences.Count;
+    }
+
+    private static void WriteHeader(
+        BinaryWriter writer,
+        War3NodeFreeModelAsset asset)
+    {
+        writer.Write(CacheMagic);
+        writer.Write(CacheVersion);
+        writer.Write(asset.Source);
+        var fingerprint = asset.CacheFingerprint;
+        writer.Write(fingerprint.Length);
+        writer.Write(fingerprint.LastWriteTicks);
+        writer.Write(asset.Parts.Count);
+        writer.Write(asset.SkeletonSlotCount);
+        writer.Write(asset.Metadata.Sequences.Count);
+    }
+
+    private static byte[] ReadPixels(
+        BinaryReader reader,
+        int width,
+        int height)
+    {
+        RequireCache(
+            width > 0 && width <= MaximumAtlasWidth &&
+            height > 0 && height <= 16_384,
+            "texture dimensions");
+        var expected = checked(width * height * 4 * sizeof(ushort));
+        RequireCache(reader.ReadInt32() == expected, "pixel byte count");
+        var bytes = reader.ReadBytes(expected);
+        RequireCache(bytes.Length == expected, "pixel payload");
+        return bytes;
+    }
+
+    private static void WritePixels(BinaryWriter writer, Half[] pixels)
+    {
+        var bytes = MemoryMarshal.AsBytes(pixels.AsSpan());
+        writer.Write(bytes.Length);
+        writer.Write(bytes);
+    }
+
+    private static ImageTexture CreateTexture(
+        byte[] bytes,
+        int width,
+        int height,
+        string resourceName)
+    {
+        var image = Image.CreateFromData(
+            width, height, false, Image.Format.Rgbah, bytes);
+        var texture = ImageTexture.CreateFromImage(image);
+        texture.ResourceName = resourceName;
+        return texture;
+    }
+
+    private static string CachePath(War3NodeFreeModelAsset asset)
+    {
+        var key = $"{asset.Source}|vat|{CacheVersion}";
+        var hash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(key)))[..24];
+        return Path.Combine(
+            ProjectSettings.GlobalizePath("user://war3_node_free_model_cache"),
+            $"{hash}.w3vat");
+    }
+
+    private static void RequireCache(bool condition, string field)
+    {
+        if (!condition)
+            throw new InvalidDataException($"Invalid VAT cache {field}.");
+    }
+
+    private readonly record struct SkeletonAtlasBuild(
+        War3VatSkeletonAtlas Atlas,
+        Half[] Pixels);
+
+    private readonly record struct PartAtlasBuild(
+        War3VatPartAtlas Atlas,
+        Half[] Pixels);
 
     private static Rid ResolveSkeleton(
         War3NodeFreeModelAsset asset,

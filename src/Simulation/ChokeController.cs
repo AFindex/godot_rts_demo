@@ -172,14 +172,14 @@ public sealed class ChokeController
     public void ApplyPreferredVelocities(UnitStore units)
     {
         AssignUpcomingChokes(units);
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
             UpdatePhase(units, unit);
         }
 
         _trafficCoordinator.Update(units, _definitions);
 
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
             var chokeId = units.ActiveChokeIds[unit];
             var direction = units.ChokeDirections[unit];
@@ -250,10 +250,9 @@ public sealed class ChokeController
             _negativeCandidates.Clear();
             var choke = _definitions[chokeId];
             var axis = choke.Axis;
-            for (var unit = 0; unit < units.Count; unit++)
+            foreach (var unit in units.AliveUnits)
             {
-                if (!units.Alive[unit] ||
-                    units.Modes[unit] != UnitMoveMode.Moving ||
+                if (units.Modes[unit] != UnitMoveMode.Moving ||
                     units.ActiveChokeIds[unit] >= 0)
                 {
                     continue;
@@ -420,7 +419,7 @@ public sealed class ChokeController
 
     public void ConstrainSolvedVelocities(UnitStore units)
     {
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
             if (units.ChokePhases[unit] == ChokePhase.Approaching &&
                 !units.ChokeAdmitted[unit])
@@ -465,7 +464,7 @@ public sealed class ChokeController
 
     public void ConstrainPositions(UnitStore units)
     {
-        for (var unit = 0; unit < units.Count; unit++)
+        foreach (var unit in units.AliveUnits)
         {
             if (units.ChokeAdmitted[unit] ||
                 units.ChokePhases[unit] != ChokePhase.Approaching)

@@ -377,6 +377,7 @@ internal static class RuntimeHotSnapshotCodec
             }
             units.RouteWaypoints[unit] = ReadVectors(reader);
         }
+        units.RebuildAliveIndex();
         return units;
     }
 

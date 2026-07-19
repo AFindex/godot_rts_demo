@@ -16,6 +16,7 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
     private readonly Node3D _host;
     private readonly Camera3D _camera;
     private readonly Rid _scenario;
+    private readonly War3EffectRuntimeCore.NodeFreeParticleBatchHub _particleBatchHub;
     private readonly Dictionary<ModelAssetKey, War3NodeFreeModelAsset> _assets = [];
     private readonly HashSet<War3RidModelActor> _actors = [];
     private readonly HashSet<War3RidModelActor> _effectActors = [];
@@ -28,6 +29,8 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
         _host = host;
         _camera = camera;
         _scenario = host.GetWorld3D().Scenario;
+        _particleBatchHub = new War3EffectRuntimeCore.NodeFreeParticleBatchHub(
+            _scenario);
         _lastAdvanceMicroseconds = Time.GetTicksUsec();
     }
 
@@ -52,10 +55,25 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         var asset = Asset(source, playerId);
         var actor = new War3RidModelActor(
-            this, asset, _camera, _scenario, includeEffects);
+            this,
+            asset,
+            _camera,
+            _scenario,
+            includeEffects,
+            _particleBatchHub);
         _actors.Add(actor);
         if (actor.HasEffects) _effectActors.Add(actor);
         return actor;
+    }
+
+    public bool PrewarmAsset(string source, int playerId)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var key = AssetKey(source, playerId);
+        var created = !_assets.ContainsKey(key);
+        var asset = Asset(source, playerId);
+        _ = asset.Batch(_scenario);
+        return created;
     }
 
     public War3RidGeometryInstance CreateGeometry(
@@ -108,7 +126,11 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
         var effectsAllocationStart = ProfilingEnabled
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
+        War3EffectRuntimeCore.BeginNodeFreeFrameMetrics();
         foreach (var actor in _effectActors) actor.AdvanceEffects();
+        _particleBatchHub.Flush();
+        var effectBatchMetrics =
+            War3EffectRuntimeCore.NodeFreeFrameMetrics();
         var effectsEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
@@ -116,8 +138,8 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
         foreach (var actor in _actors) actor.FlushPresentation();
-        LastBatchBufferUploads = 0;
-        LastBatchUploadedBytes = 0;
+        LastBatchBufferUploads = effectBatchMetrics.Uploads;
+        LastBatchUploadedBytes = effectBatchMetrics.Bytes;
         foreach (var asset in _assets.Values)
         {
             asset.FlushPresentation();
@@ -151,9 +173,7 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
 
     private War3NodeFreeModelAsset Asset(string source, int playerId)
     {
-        var key = new ModelAssetKey(
-            source.Replace('/', '\\').TrimStart('\\').ToLowerInvariant(),
-            TeamColorIndex(playerId));
+        var key = AssetKey(source, playerId);
         if (_assets.TryGetValue(key, out var asset)) return asset;
         var sharedPoseSource = _assets
             .Where(pair => pair.Key.Source.Equals(
@@ -166,6 +186,10 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
         return asset;
     }
 
+    private static ModelAssetKey AssetKey(string source, int playerId) => new(
+        source.Replace('/', '\\').TrimStart('\\').ToLowerInvariant(),
+        TeamColorIndex(playerId));
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -173,6 +197,7 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
         foreach (var actor in _actors.ToArray()) actor.Dispose();
         _actors.Clear();
         _effectActors.Clear();
+        _particleBatchHub.Dispose();
         foreach (var geometry in _geometry.ToArray()) geometry.Dispose();
         _geometry.Clear();
         foreach (var asset in _assets.Values) asset.Dispose();
@@ -258,7 +283,8 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
         War3NodeFreeModelAsset asset,
         Camera3D camera,
         Rid scenario,
-        bool includeEffects)
+        bool includeEffects,
+        War3EffectRuntimeCore.NodeFreeParticleBatchHub particleBatchHub)
     {
         _owner = owner;
         _asset = asset;
@@ -274,7 +300,9 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
                 camera,
                 asset.Metadata,
                 scenario,
-                ResolveEmitterTransform);
+                asset.ResolveEmitterIndex,
+                ResolveEmitterTransform,
+                particleBatchHub);
             _effects.SetTeamColor(asset.TeamColor);
             _effects.PrepareWorldTransform(_effectWorldTransform);
         }
@@ -719,19 +747,17 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
     }
 
     private Transform3D ResolveEmitterTransform(
-        int objectId,
-        string name,
+        int emitterIndex,
         double milliseconds)
     {
         var target = _asset.ResolveEmitterLocalTransform(
             _sequenceIndex,
             milliseconds,
-            objectId,
-            name);
+            emitterIndex);
         if (BlendActive && _blendSourcePose is not null)
         {
             var source = _asset.ResolveEmitterLocalTransform(
-                _blendSourcePose, objectId, name);
+                _blendSourcePose, emitterIndex);
             target = source.InterpolateWith(target, BlendWeight);
         }
         return _effectWorldTransform * target;
@@ -907,11 +933,19 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
         double previous,
         double current)
     {
-        foreach (var value in _asset.Metadata.EventObjects)
+        var eventObjects = _asset.Metadata.EventObjects;
+        for (var eventIndex = 0;
+             eventIndex < eventObjects.Count;
+             eventIndex++)
         {
+            var value = eventObjects[eventIndex];
             if (!value.TryGetSoundEventCode(out var eventCode)) continue;
-            foreach (var frame in value.EventTrack)
+            var track = value.EventTrack;
+            for (var frameIndex = 0;
+                 frameIndex < track.Count;
+                 frameIndex++)
             {
+                var frame = track[frameIndex];
                 var localMilliseconds = frame - sequence.StartFrame;
                 if (localMilliseconds < 0d ||
                     localMilliseconds > sequence.DurationMilliseconds ||
@@ -1075,6 +1109,8 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
     public int SkeletonSlotCount { get; }
     public int TeamColor { get; }
     public IReadOnlyList<War3NodeFreeEmitterKey> EmitterKeys { get; }
+    internal (long Length, long LastWriteTicks) CacheFingerprint =>
+        ModelFingerprint();
     public War3VatAnimationData VatAnimation =>
         _vatAnimation ?? throw new InvalidOperationException(
             $"VAT animation data is not initialized: {Source}");
@@ -1203,14 +1239,19 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
                 sharedPoseSource);
             var sequences = (List<War3NodeFreeSequence>)output.Sequences;
             var cacheState = "shared";
+            var vatCacheState = "shared";
             if (sharedPoseSource is not null)
             {
                 sequences.AddRange(sharedPoseSource.Sequences);
             }
             else
             {
+                var vatCacheCandidate =
+                    War3VatAnimationData.HasValidCacheHeader(output);
                 var cacheHit = output.TryLoadPoseCache(
-                    parts.Count, sequences);
+                    parts.Count,
+                    sequences,
+                    createSkeletonResources: !vatCacheCandidate);
                 cacheState = cacheHit ? "hit" : "built";
                 if (!cacheHit)
                 {
@@ -1230,9 +1271,53 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
                     }
                     output.TrySavePoseCache();
                 }
+
+                if (vatCacheCandidate &&
+                    War3VatAnimationData.TryLoadCache(
+                        output, out var cachedVat) &&
+                    cachedVat is not null)
+                {
+                    output._vatAnimation = cachedVat;
+                    vatCacheState = "hit";
+                }
+                else
+                {
+                    // A valid-looking VAT cache may still be truncated. The
+                    // lightweight pose load intentionally skipped Skeleton RIDs,
+                    // so reload the pose cache with authoritative matrices before
+                    // rebuilding the atlas.
+                    if (vatCacheCandidate && cacheHit)
+                    {
+                        sequences.Clear();
+                        cacheHit = output.TryLoadPoseCache(
+                            parts.Count,
+                            sequences,
+                            createSkeletonResources: true);
+                        cacheState = cacheHit ? "hit" : "built";
+                        if (!cacheHit)
+                        {
+                            for (var sequenceIndex = 0;
+                                 sequenceIndex < metadata.Sequences.Count;
+                                 sequenceIndex++)
+                            {
+                                sequences.Add(output.SampleSequence(
+                                    animation,
+                                    skeletons,
+                                    meshNodes,
+                                    skinBindings,
+                                    emitterBindings,
+                                    model,
+                                    actorInverse,
+                                    sequenceIndex));
+                            }
+                            output.TrySavePoseCache();
+                        }
+                    }
+                    output._vatAnimation = War3VatAnimationData.Build(output);
+                    vatCacheState = "built";
+                }
             }
-            output._vatAnimation = sharedPoseSource?._vatAnimation ??
-                                   War3VatAnimationData.Build(output);
+            output._vatAnimation ??= sharedPoseSource?._vatAnimation;
             // The immutable bone/part textures are authoritative from here on.
             // Pose Skeleton RIDs existed only to bake those textures; keeping
             // thousands of sampled skeletons alive would defeat the node-free
@@ -1241,7 +1326,8 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
                 output.ReleaseBakedSkeletonResources();
             GD.Print(
                 $"WAR3_NODE_FREE_ASSET source={source} team={teamColor} " +
-                $"cache={cacheState} parts={parts.Count} " +
+                $"cache={cacheState} vat_cache={vatCacheState} " +
+                $"parts={parts.Count} " +
                 $"sequences={sequences.Count} " +
                 $"frames={sequences.Sum(value => value.PoseCount)} " +
                 $"unique_poses={sequences.Sum(value => value.UniquePoseCount)}");
@@ -1405,6 +1491,34 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
         var pose = sequence.Poses[sequence.PoseIndex(localMilliseconds)];
         return ResolveEmitterLocalTransform(pose, objectId, name);
     }
+
+    public int ResolveEmitterIndex(int objectId, string name)
+    {
+        if (_emitterByObjectId.TryGetValue(objectId, out var emitterIndex) ||
+            _emitterByName.TryGetValue(name, out emitterIndex))
+            return emitterIndex;
+        return -1;
+    }
+
+    public Transform3D ResolveEmitterLocalTransform(
+        int sequenceIndex,
+        double localMilliseconds,
+        int emitterIndex)
+    {
+        if ((uint)sequenceIndex >= (uint)Sequences.Count || emitterIndex < 0)
+            return Transform3D.Identity;
+        var sequence = Sequences[sequenceIndex];
+        if (sequence.PoseCount == 0) return Transform3D.Identity;
+        var pose = sequence.Poses[sequence.PoseIndex(localMilliseconds)];
+        return ResolveEmitterLocalTransform(pose, emitterIndex);
+    }
+
+    public Transform3D ResolveEmitterLocalTransform(
+        War3NodeFreePose pose,
+        int emitterIndex) =>
+        (uint)emitterIndex < (uint)pose.Emitters.Length
+            ? pose.Emitters[emitterIndex]
+            : Transform3D.Identity;
 
     public Transform3D ResolveEmitterLocalTransform(
         War3NodeFreePose pose,
@@ -1612,7 +1726,8 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
 
     private bool TryLoadPoseCache(
         int expectedPartCount,
-        ICollection<War3NodeFreeSequence> output)
+        ICollection<War3NodeFreeSequence> output,
+        bool createSkeletonResources = true)
     {
         var path = PoseCachePath();
         if (!File.Exists(path)) return false;
@@ -1671,13 +1786,22 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
                         RequireCache(
                             boneCount > 0 && boneCount <= 1024,
                             "bone count");
-                        var skeleton = RenderingServer.SkeletonCreate();
-                        RenderingServer.SkeletonAllocateData(skeleton, boneCount);
+                        var skeleton = createSkeletonResources
+                            ? RenderingServer.SkeletonCreate()
+                            : default;
+                        if (createSkeletonResources)
+                            RenderingServer.SkeletonAllocateData(
+                                skeleton, boneCount);
                         for (var bone = 0; bone < boneCount; bone++)
-                            RenderingServer.SkeletonBoneSetTransform(
-                                skeleton, bone, ReadTransform(reader));
+                        {
+                            var transform = ReadTransform(reader);
+                            if (createSkeletonResources)
+                                RenderingServer.SkeletonBoneSetTransform(
+                                    skeleton, bone, transform);
+                        }
                         skeletons[skeletonIndex] = skeleton;
-                        createdSkeletons.Add(skeleton);
+                        if (createSkeletonResources)
+                            createdSkeletons.Add(skeleton);
                     }
 
                     var partCount = reader.ReadInt32();

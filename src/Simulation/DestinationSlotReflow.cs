@@ -33,7 +33,7 @@ public sealed class DestinationSlotReflow
         secondUnit = -1;
         var bestImprovement = MinimumSquaredCostImprovement;
 
-        for (var first = 0; first < units.Count; first++)
+        foreach (var first in units.AliveUnits)
         {
             if (!IsCandidate(
                     units, combatTargets, first, tick,
@@ -43,9 +43,10 @@ public sealed class DestinationSlotReflow
             }
 
             var groupId = units.MovementGroupIds[first];
-            for (var second = first + 1; second < units.Count; second++)
+            foreach (var second in units.AliveUnits)
             {
-                if (units.MovementGroupIds[second] != groupId ||
+                if (second <= first ||
+                    units.MovementGroupIds[second] != groupId ||
                     !IsCandidate(
                         units, combatTargets, second, tick,
                         out var secondDistanceSquared))
@@ -120,10 +121,9 @@ public sealed class DestinationSlotReflow
     private static bool HasMovingCohort(UnitStore units, int unit)
     {
         var groupId = units.MovementGroupIds[unit];
-        for (var candidate = 0; candidate < units.Count; candidate++)
+        foreach (var candidate in units.AliveUnits)
         {
-            if (units.Alive[candidate] &&
-                units.MovementGroupIds[candidate] == groupId &&
+            if (units.MovementGroupIds[candidate] == groupId &&
                 units.Modes[candidate] == UnitMoveMode.Moving)
                 return true;
         }
