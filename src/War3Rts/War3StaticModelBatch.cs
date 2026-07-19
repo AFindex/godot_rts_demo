@@ -8,18 +8,34 @@ namespace War3Rts;
 /// source skeleton, animation player and per-instance material overrides are
 /// not duplicated for every tree.
 /// </summary>
-internal sealed partial class War3StaticModelBatch : Node3D
+internal sealed class War3StaticModelBatch : IDisposable
 {
+    private readonly Node3D _host;
     private MultiMesh? _multiMesh;
+    private Rid _instance;
     private Transform3D[] _transforms = [];
     private bool[] _visible = [];
     private float[] _buffer = [];
     private int _instanceCount;
     private bool _dynamic;
     private bool _bufferDirty;
+    private bool _batchVisible = true;
+
+    public War3StaticModelBatch(Node3D host) => _host = host;
 
     public int InstanceCount => _instanceCount;
     public int SurfaceCount { get; private set; }
+    public bool Visible
+    {
+        get => _batchVisible;
+        set
+        {
+            if (_batchVisible == value) return;
+            _batchVisible = value;
+            if (_instance.IsValid)
+                RenderingServer.InstanceSetVisible(_instance, value);
+        }
+    }
 
     public void Initialize(
         string source,
@@ -31,11 +47,11 @@ internal sealed partial class War3StaticModelBatch : Node3D
             throw new ArgumentOutOfRangeException(nameof(instanceCount));
 
         var probe = new War3ModelActor { Name = "StaticModelProbe" };
-        AddChild(probe);
+        _host.AddChild(probe);
         probe.Load(source, camera: null, team, includeEffects: false);
         probe.PlayPreferred(true, "Stand");
         var mesh = BakeVisibleGeometry(probe);
-        RemoveChild(probe);
+        _host.RemoveChild(probe);
         probe.Free();
 
         SurfaceCount = mesh.GetSurfaceCount();
@@ -48,14 +64,13 @@ internal sealed partial class War3StaticModelBatch : Node3D
             Mesh = mesh,
             InstanceCount = instanceCount
         };
-        AddChild(new MultiMeshInstance3D
-        {
-            Name = "Instances",
-            Multimesh = _multiMesh,
-            CastShadow = castShadows
-                ? GeometryInstance3D.ShadowCastingSetting.On
-                : GeometryInstance3D.ShadowCastingSetting.Off
-        });
+        _instance = RenderingServer.InstanceCreate2(
+            _multiMesh.GetRid(), _host.GetWorld3D().Scenario);
+        RenderingServer.InstanceGeometrySetCastShadowsSetting(
+            _instance,
+            castShadows
+                ? RenderingServer.ShadowCastingSetting.On
+                : RenderingServer.ShadowCastingSetting.Off);
     }
 
     public void InitializeDynamic(
@@ -281,5 +296,20 @@ internal sealed partial class War3StaticModelBatch : Node3D
         }
         foreach (var child in node.GetChildren())
             BakeNode(child, actorInverse, visible, output);
+    }
+
+    public void Dispose()
+    {
+        if (_instance.IsValid)
+        {
+            RenderingServer.FreeRid(_instance);
+            _instance = default;
+        }
+        _multiMesh = null;
+        _transforms = [];
+        _visible = [];
+        _batchVisible = false;
+        _buffer = [];
+        _instanceCount = 0;
     }
 }

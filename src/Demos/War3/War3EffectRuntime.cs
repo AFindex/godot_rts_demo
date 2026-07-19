@@ -7,7 +7,7 @@ namespace RtsDemo.Demos.War3;
 /// cannot represent. The simulation is intentionally CPU based so seeking and
 /// frame-by-frame inspection stay deterministic in the asset lab.
 /// </summary>
-public sealed partial class War3EffectRuntime : Node3D
+internal sealed class War3EffectRuntimeCore : IDisposable
 {
     private const double FixedStepMilliseconds = 1000d / 30d;
     private const float WarcraftUnitScale = 0.01f;
@@ -22,6 +22,7 @@ public sealed partial class War3EffectRuntime : Node3D
     private Camera3D? _camera;
     private War3Sequence? _sequence;
     private double _simulatedMilliseconds;
+    private double _lastSyncMilliseconds;
     private double _accumulatorMilliseconds;
     private int _teamColor;
     private uint _randomState = 0x9E3779B9u ^
@@ -30,6 +31,10 @@ public sealed partial class War3EffectRuntime : Node3D
     private Transform3D _preparedWorldInverse;
     private bool _hasPreparedWorldBasis;
     private bool _externalWorldTransformPrepared;
+    private bool _nodeFree;
+    private bool _nodeFreeVisible = true;
+    private Node3D? _legacyHost;
+    private bool _disposed;
 
     public int LiveParticleCount
     {
@@ -75,11 +80,35 @@ public sealed partial class War3EffectRuntime : Node3D
         _preparedWorldInverse = transform.AffineInverse();
         _hasPreparedWorldBasis = true;
         _externalWorldTransformPrepared = true;
+        if (_nodeFree)
+        {
+            foreach (var emitter in _particles)
+                RenderingServer.InstanceSetTransform(
+                    emitter.Instance, transform);
+            foreach (var emitter in _ribbons)
+                RenderingServer.InstanceSetTransform(
+                    emitter.Instance, transform);
+        }
     }
 
-    public void Initialize(Node modelRoot, Camera3D camera, War3ModelMetadata metadata)
+    public void SetNodeFreeVisible(bool visible)
+    {
+        _nodeFreeVisible = visible;
+        if (!_nodeFree) return;
+        foreach (var emitter in _particles)
+            RenderingServer.InstanceSetVisible(emitter.Instance, visible);
+        foreach (var emitter in _ribbons)
+            RenderingServer.InstanceSetVisible(emitter.Instance, visible);
+    }
+
+    public void Initialize(
+        Node modelRoot,
+        Camera3D camera,
+        War3ModelMetadata metadata,
+        Node3D legacyHost)
     {
         ClearRuntime();
+        _legacyHost = legacyHost;
         _metadata = metadata;
         _camera = camera;
 
@@ -89,10 +118,11 @@ public sealed partial class War3EffectRuntime : Node3D
                 definition,
                 FindEmitterBinding(modelRoot, definition.ObjectId, definition.Name),
                 CreateMeshVisual(definition.Name),
+                default,
                 CreateParticleMaterial(metadata, definition));
-            runtime.Visual.Mesh = runtime.Mesh;
-            runtime.Visual.MaterialOverride = runtime.Material;
-            AddChild(runtime.Visual);
+            runtime.NodeVisual!.Mesh = runtime.Mesh;
+            runtime.NodeVisual.MaterialOverride = runtime.Material;
+            legacyHost.AddChild(runtime.NodeVisual);
             _particles.Add(runtime);
         }
 
@@ -102,13 +132,77 @@ public sealed partial class War3EffectRuntime : Node3D
                 definition,
                 FindEmitterBinding(modelRoot, definition.ObjectId, definition.Name),
                 CreateMeshVisual(definition.Name),
+                default,
                 CreateRibbonMaterial(metadata, definition));
-            runtime.Visual.Mesh = runtime.Mesh;
-            runtime.Visual.MaterialOverride = runtime.Material;
-            AddChild(runtime.Visual);
+            runtime.NodeVisual!.Mesh = runtime.Mesh;
+            runtime.NodeVisual.MaterialOverride = runtime.Material;
+            legacyHost.AddChild(runtime.NodeVisual);
             _ribbons.Add(runtime);
         }
 
+        if (metadata.Sequences.Count > 0) SetSequence(0);
+    }
+
+    /// <summary>
+    /// Initializes the deterministic effect simulation without adding emitter
+    /// or mesh Nodes to the SceneTree. A centralized owner supplies sampled
+    /// emitter transforms for the current model pose.
+    /// </summary>
+    public void InitializeNodeFree(
+        Camera3D camera,
+        War3ModelMetadata metadata,
+        Rid scenario,
+        Func<int, string, double, Transform3D> resolveEmitter)
+    {
+        ClearRuntime();
+        _legacyHost = null;
+        _nodeFree = true;
+        _metadata = metadata;
+        _camera = camera;
+        foreach (var definition in metadata.Particles)
+        {
+            var mesh = new ArrayMesh();
+            var material = CreateParticleMaterial(metadata, definition);
+            var instance = RenderingServer.InstanceCreate2(
+                mesh.GetRid(), scenario);
+            RenderingServer.InstanceSetSurfaceOverrideMaterial(
+                instance, 0, material.GetRid());
+            RenderingServer.InstanceGeometrySetCastShadowsSetting(
+                instance, RenderingServer.ShadowCastingSetting.Off);
+            RenderingServer.InstanceSetVisible(instance, _nodeFreeVisible);
+            _particles.Add(new ParticleEmitterRuntime(
+                definition,
+                new EmitterBinding(() => resolveEmitter(
+                    definition.ObjectId,
+                    definition.Name,
+                    _simulatedMilliseconds)),
+                null,
+                instance,
+                material,
+                mesh));
+        }
+        foreach (var definition in metadata.Ribbons)
+        {
+            var mesh = new ArrayMesh();
+            var material = CreateRibbonMaterial(metadata, definition);
+            var instance = RenderingServer.InstanceCreate2(
+                mesh.GetRid(), scenario);
+            RenderingServer.InstanceSetSurfaceOverrideMaterial(
+                instance, 0, material.GetRid());
+            RenderingServer.InstanceGeometrySetCastShadowsSetting(
+                instance, RenderingServer.ShadowCastingSetting.Off);
+            RenderingServer.InstanceSetVisible(instance, _nodeFreeVisible);
+            _ribbons.Add(new RibbonEmitterRuntime(
+                definition,
+                new EmitterBinding(() => resolveEmitter(
+                    definition.ObjectId,
+                    definition.Name,
+                    _simulatedMilliseconds)),
+                null,
+                instance,
+                material,
+                mesh));
+        }
         if (metadata.Sequences.Count > 0) SetSequence(0);
     }
 
@@ -131,6 +225,7 @@ public sealed partial class War3EffectRuntime : Node3D
     public void Reset()
     {
         _simulatedMilliseconds = 0d;
+        _lastSyncMilliseconds = 0d;
         _accumulatorMilliseconds = 0d;
         foreach (var emitter in _particles)
         {
@@ -156,10 +251,12 @@ public sealed partial class War3EffectRuntime : Node3D
         if (_sequence is null || _metadata is null || _camera is null) return;
         PrepareWorldTransformForSync();
         localMilliseconds = Math.Clamp(localMilliseconds, 0d, _sequence.DurationMilliseconds);
-        if (localMilliseconds + 0.5d < _simulatedMilliseconds) Reset();
-        var delta = localMilliseconds - _simulatedMilliseconds;
+        if (localMilliseconds + 0.5d < _lastSyncMilliseconds) Reset();
+        var delta = localMilliseconds - _lastSyncMilliseconds;
         if (delta <= 0d)
         {
+            _lastSyncMilliseconds = localMilliseconds;
+            sampleAnimation?.Invoke(localMilliseconds);
             RebuildMeshes();
             return;
         }
@@ -172,7 +269,7 @@ public sealed partial class War3EffectRuntime : Node3D
             SimulateStep(FixedStepMilliseconds / 1000d);
             _accumulatorMilliseconds -= FixedStepMilliseconds;
         }
-        _simulatedMilliseconds = localMilliseconds;
+        _lastSyncMilliseconds = localMilliseconds;
         sampleAnimation?.Invoke(localMilliseconds);
         RebuildMeshes();
     }
@@ -189,7 +286,8 @@ public sealed partial class War3EffectRuntime : Node3D
             sampleAnimation?.Invoke(_simulatedMilliseconds);
             SimulateStep(FixedStepMilliseconds / 1000d);
         }
-        _simulatedMilliseconds = target;
+        _lastSyncMilliseconds = target;
+        _accumulatorMilliseconds = target - _simulatedMilliseconds;
         sampleAnimation?.Invoke(target);
         RebuildMeshes();
     }
@@ -382,13 +480,13 @@ public sealed partial class War3EffectRuntime : Node3D
     private Vector3 ToEffectLocal(Vector3 globalPosition) =>
         _hasPreparedWorldBasis
             ? _preparedWorldInverse * globalPosition
-            : ToLocal(globalPosition);
+            : _legacyHost?.ToLocal(globalPosition) ?? globalPosition;
 
     private void PrepareWorldTransformForSync()
     {
         if (!_externalWorldTransformPrepared)
         {
-            var transform = GlobalTransform;
+            var transform = _legacyHost?.GlobalTransform ?? Transform3D.Identity;
             _preparedWorldBasis = transform.Basis;
             _preparedWorldInverse = transform.AffineInverse();
             _hasPreparedWorldBasis = true;
@@ -404,7 +502,7 @@ public sealed partial class War3EffectRuntime : Node3D
             : _camera.GlobalBasis;
         var worldBasis = _hasPreparedWorldBasis
             ? _preparedWorldBasis
-            : GlobalBasis;
+            : _legacyHost?.GlobalBasis ?? Basis.Identity;
         var inverseBasis = worldBasis.Inverse();
         var right = inverseBasis * cameraBasis.X.Normalized();
         var up = inverseBasis * cameraBasis.Y.Normalized();
@@ -795,11 +893,27 @@ public sealed partial class War3EffectRuntime : Node3D
 
     private void ClearRuntime()
     {
-        foreach (var child in GetChildren()) child.QueueFree();
+        foreach (var emitter in _particles)
+            if (emitter.Instance.IsValid)
+                RenderingServer.FreeRid(emitter.Instance);
+        foreach (var emitter in _ribbons)
+            if (emitter.Instance.IsValid)
+                RenderingServer.FreeRid(emitter.Instance);
+        if (_legacyHost is not null)
+            foreach (var child in _legacyHost.GetChildren()) child.QueueFree();
         _particles.Clear();
         _ribbons.Clear();
         _metadata = null;
         _sequence = null;
+        _nodeFree = false;
+        _legacyHost = null;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        ClearRuntime();
     }
 
     private double RandomRange(double minimum, double maximum)
@@ -822,10 +936,12 @@ public sealed partial class War3EffectRuntime : Node3D
     /// </summary>
     private sealed class EffectGeometryBuffer
     {
+        private const int MaximumPooledSetsPerVertexCount = 4;
+        private static readonly Lock PoolLock = new();
+        private static readonly Dictionary<int, Stack<EffectGeometryArrays>>
+            ArrayPool = [];
         private readonly Godot.Collections.Array _surfaceArrays = [];
-        private Vector3[] _vertices = [];
-        private Color[] _colors = [];
-        private Vector2[] _uvs = [];
+        private EffectGeometryArrays? _arrays;
         private int _writeIndex;
 
         public EffectGeometryBuffer() =>
@@ -833,46 +949,92 @@ public sealed partial class War3EffectRuntime : Node3D
 
         public void Prepare(int vertexCount)
         {
-            if (_vertices.Length != vertexCount)
-            {
-                _vertices = new Vector3[vertexCount];
-                _colors = new Color[vertexCount];
-                _uvs = new Vector2[vertexCount];
-            }
+            if (_arrays is not null)
+                throw new InvalidOperationException(
+                    "Effect geometry buffer was prepared twice.");
+            _arrays = Rent(vertexCount);
             _writeIndex = 0;
         }
 
         public void Add(Vector3 vertex, Color color, Vector2 uv)
         {
-            _vertices[_writeIndex] = vertex;
-            _colors[_writeIndex] = color;
-            _uvs[_writeIndex] = uv;
+            var arrays = _arrays ?? throw new InvalidOperationException(
+                "Effect geometry buffer was not prepared.");
+            arrays.Vertices[_writeIndex] = vertex;
+            arrays.Colors[_writeIndex] = color;
+            arrays.Uvs[_writeIndex] = uv;
             _writeIndex++;
         }
 
         public void Commit(ArrayMesh mesh)
         {
-            if (_writeIndex != _vertices.Length)
+            var arrays = _arrays ?? throw new InvalidOperationException(
+                "Effect geometry buffer was not prepared.");
+            if (_writeIndex != arrays.Vertices.Length)
                 throw new InvalidOperationException(
                     "Effect geometry vertex count changed during rebuild.");
-            _surfaceArrays[(int)Mesh.ArrayType.Vertex] = _vertices;
-            _surfaceArrays[(int)Mesh.ArrayType.Color] = _colors;
-            _surfaceArrays[(int)Mesh.ArrayType.TexUV] = _uvs;
-            mesh.AddSurfaceFromArrays(
-                Mesh.PrimitiveType.Triangles, _surfaceArrays);
+            _surfaceArrays[(int)Mesh.ArrayType.Vertex] = arrays.Vertices;
+            _surfaceArrays[(int)Mesh.ArrayType.Color] = arrays.Colors;
+            _surfaceArrays[(int)Mesh.ArrayType.TexUV] = arrays.Uvs;
+            try
+            {
+                mesh.AddSurfaceFromArrays(
+                    Mesh.PrimitiveType.Triangles, _surfaceArrays);
+            }
+            finally
+            {
+                _arrays = null;
+                Return(arrays);
+            }
+        }
+
+        private static EffectGeometryArrays Rent(int vertexCount)
+        {
+            lock (PoolLock)
+            {
+                if (ArrayPool.TryGetValue(vertexCount, out var available) &&
+                    available.TryPop(out var arrays))
+                    return arrays;
+            }
+            return new EffectGeometryArrays(vertexCount);
+        }
+
+        private static void Return(EffectGeometryArrays arrays)
+        {
+            lock (PoolLock)
+            {
+                if (!ArrayPool.TryGetValue(
+                        arrays.Vertices.Length, out var available))
+                {
+                    available = [];
+                    ArrayPool.Add(arrays.Vertices.Length, available);
+                }
+                if (available.Count < MaximumPooledSetsPerVertexCount)
+                    available.Push(arrays);
+            }
+        }
+
+        private sealed class EffectGeometryArrays(int vertexCount)
+        {
+            public Vector3[] Vertices { get; } = new Vector3[vertexCount];
+            public Color[] Colors { get; } = new Color[vertexCount];
+            public Vector2[] Uvs { get; } = new Vector2[vertexCount];
         }
     }
 
     private sealed class ParticleEmitterRuntime(
         War3ParticleEmitterDefinition definition,
         EmitterBinding? binding,
-        MeshInstance3D visual,
-        StandardMaterial3D material)
+        MeshInstance3D? nodeVisual,
+        Rid instance,
+        StandardMaterial3D material,
+        ArrayMesh? mesh = null)
     {
         public War3ParticleEmitterDefinition Definition { get; } = definition;
         public EmitterBinding? Binding { get; } = binding;
-        public MeshInstance3D Visual { get; } = visual;
-        public ArrayMesh Mesh { get; } = new();
+        public MeshInstance3D? NodeVisual { get; } = nodeVisual;
+        public Rid Instance { get; } = instance;
+        public ArrayMesh Mesh { get; } = mesh ?? new ArrayMesh();
         public EffectGeometryBuffer Geometry { get; } = new();
         public StandardMaterial3D Material { get; } = material;
         public List<Particle> Particles { get; } = [];
@@ -884,13 +1046,16 @@ public sealed partial class War3EffectRuntime : Node3D
     private sealed class RibbonEmitterRuntime(
         War3RibbonEmitterDefinition definition,
         EmitterBinding? binding,
-        MeshInstance3D visual,
-        StandardMaterial3D material)
+        MeshInstance3D? nodeVisual,
+        Rid instance,
+        StandardMaterial3D material,
+        ArrayMesh? mesh = null)
     {
         public War3RibbonEmitterDefinition Definition { get; } = definition;
         public EmitterBinding? Binding { get; } = binding;
-        public MeshInstance3D Visual { get; } = visual;
-        public ArrayMesh Mesh { get; } = new();
+        public MeshInstance3D? NodeVisual { get; } = nodeVisual;
+        public Rid Instance { get; } = instance;
+        public ArrayMesh Mesh { get; } = mesh ?? new ArrayMesh();
         public EffectGeometryBuffer Geometry { get; } = new();
         public StandardMaterial3D Material { get; } = material;
         public List<RibbonPoint> Points { get; } = [];
@@ -902,9 +1067,13 @@ public sealed partial class War3EffectRuntime : Node3D
     {
         private readonly Node3D? _node;
         private readonly Skeleton3D? _skeleton;
+        private readonly Func<Transform3D>? _external;
         private readonly int _boneIndex = -1;
 
         public EmitterBinding(Node3D node) => _node = node;
+
+        public EmitterBinding(Func<Transform3D> external) =>
+            _external = external;
 
         public EmitterBinding(Skeleton3D skeleton, int boneIndex)
         {
@@ -916,6 +1085,7 @@ public sealed partial class War3EffectRuntime : Node3D
             ref Skeleton3D? cachedSkeleton,
             ref Transform3D cachedSkeletonTransform)
         {
+            if (_external is not null) return _external();
             if (_node is not null) return _node.GlobalTransform;
             if (!ReferenceEquals(cachedSkeleton, _skeleton))
             {
@@ -945,4 +1115,55 @@ public sealed partial class War3EffectRuntime : Node3D
         public float Alpha { get; set; }
         public double Age { get; set; }
     }
+}
+
+/// <summary>
+/// SceneTree adapter used only by the asset lab, portraits, and other singular
+/// preview surfaces. Battlefield actors own <see cref="War3EffectRuntimeCore"/>
+/// directly and therefore do not allocate a Godot Object or Node per entity.
+/// </summary>
+public sealed partial class War3EffectRuntime : Node3D
+{
+    private readonly War3EffectRuntimeCore _core = new();
+
+    public int LiveParticleCount => _core.LiveParticleCount;
+    public int LiveRibbonPointCount => _core.LiveRibbonPointCount;
+    public int ActiveParticleEmitterCount => _core.ActiveParticleEmitterCount;
+    public int ActiveRibbonEmitterCount => _core.ActiveRibbonEmitterCount;
+    public int ResolvedEmitterCount => _core.ResolvedEmitterCount;
+
+    public static void PrepareCameraFrame(Camera3D camera, Basis basis) =>
+        War3EffectRuntimeCore.PrepareCameraFrame(camera, basis);
+
+    public void Initialize(
+        Node modelRoot,
+        Camera3D camera,
+        War3ModelMetadata metadata) =>
+        _core.Initialize(modelRoot, camera, metadata, this);
+
+    public void PrepareWorldBasis(Basis basis) =>
+        _core.PrepareWorldBasis(basis);
+
+    public void PrepareWorldTransform(Transform3D transform) =>
+        _core.PrepareWorldTransform(transform);
+
+    public void SetTeamColor(int teamColor) =>
+        _core.SetTeamColor(teamColor);
+
+    public void SetSequence(int sequenceIndex) =>
+        _core.SetSequence(sequenceIndex);
+
+    public void Reset() => _core.Reset();
+
+    public void Sync(
+        double localMilliseconds,
+        Action<double>? sampleAnimation = null) =>
+        _core.Sync(localMilliseconds, sampleAnimation);
+
+    public void Seek(
+        double localMilliseconds,
+        Action<double>? sampleAnimation = null) =>
+        _core.Seek(localMilliseconds, sampleAnimation);
+
+    public override void _ExitTree() => _core.Dispose();
 }

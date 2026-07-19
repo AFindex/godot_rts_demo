@@ -31,6 +31,7 @@ public static class War3LaunchRequest
         "--war3-stress-test",
         "--war3-stress-units-per-team=400",
         "--war3-stress-army-inset=1050",
+        "--war3-stress-contact-seconds=5",
         "--war3-stress-quality-report=300",
         "--war3-stress-builders=48",
         "--war3-stress-build-slots=96",

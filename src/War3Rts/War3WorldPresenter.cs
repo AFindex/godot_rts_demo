@@ -8,6 +8,8 @@ using NVector2 = System.Numerics.Vector2;
 namespace War3Rts;
 
 public readonly record struct War3PresenterSyncProfile(
+    double NodeFreeAdvanceMilliseconds,
+    long NodeFreeAdvanceAllocatedBytes,
     double UnitsMilliseconds,
     long UnitsAllocatedBytes,
     double UnitAnimationMilliseconds,
@@ -17,7 +19,7 @@ public readonly record struct War3PresenterSyncProfile(
     int UnitActorsCreated,
     long UnitResolveAllocatedBytes,
     long UnitFrustumAllocatedBytes,
-    long UnitLodAllocatedBytes,
+    long UnitTransformAllocatedBytes,
     long UnitAnimationAllocatedBytes,
     double BuildingsMilliseconds,
     long BuildingsAllocatedBytes,
@@ -30,7 +32,11 @@ public readonly record struct War3PresenterSyncProfile(
     double ProjectilesMilliseconds,
     long ProjectilesAllocatedBytes,
     double TransientsMilliseconds,
-    long TransientsAllocatedBytes);
+    long TransientsAllocatedBytes,
+    double NodeFreeEffectsMilliseconds,
+    long NodeFreeEffectsAllocatedBytes,
+    double NodeFreeCommitMilliseconds,
+    long NodeFreeCommitAllocatedBytes);
 
 public readonly record struct War3AnimationAudioEvent(
     string EventCode,
@@ -62,15 +68,12 @@ public sealed partial class War3WorldPresenter : Node3D
     private const int MaximumProjectileVisualCreationsPerSync = 4;
     private const int MaximumProjectileImpactVisualsPerSync = 4;
     private const int MaximumNonCommandTransientVisuals = 256;
-    private const int DenseUnitLodThreshold = 240;
-    private const int MaximumFullDetailUnitSurfaceBudget = 384;
+    private const int DenseCombatUnitThreshold = 240;
     private readonly Dictionary<int, UnitVisual> _units = [];
     private readonly Dictionary<UnitPoolKey, Stack<UnitVisual>> _unitPool = [];
     private readonly Dictionary<int, BuildingVisual> _buildings = [];
     private readonly Dictionary<int, ResourceVisual> _resources = [];
     private readonly List<War3StaticModelBatch> _resourceBatches = [];
-    private readonly Dictionary<(string Source, int Team), War3StaticModelBatch>
-        _unitLodBatches = [];
     private readonly Dictionary<int, ProjectileVisual> _projectiles = [];
     private readonly Dictionary<int, BuildingProjectileVisual>
         _buildingProjectiles = [];
@@ -86,9 +89,6 @@ public sealed partial class War3WorldPresenter : Node3D
     private CombatProjectileSnapshot[] _combatProjectileScratch = [];
     private MultiMesh? _denseCombatProjectileMultiMesh;
     private float[] _denseCombatProjectileBuffer = [];
-    private UnitDetailCandidate[] _unitDetailCandidates = [];
-    private bool[] _unitFullDetailScratch = [];
-    private bool[] _unitInFrustumScratch = [];
     private readonly Plane[] _cameraFrustumPlanes = new Plane[6];
     private readonly float[] _cameraFrustumInsideSigns = new float[6];
     private int _cameraFrustumPlaneCount;
@@ -96,12 +96,17 @@ public sealed partial class War3WorldPresenter : Node3D
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
     private CylinderMesh? _unitShadowProxyMesh;
+    private readonly Dictionary<float, TorusMesh> _selectionRingMeshes = [];
+    private readonly Dictionary<Color, StandardMaterial3D>
+        _selectionRingMaterials = [];
+    private readonly Dictionary<Vector3, BoxMesh> _buildingShadowMeshes = [];
     private readonly Dictionary<string, War3TreeHarvestFeedbackProfile>
         _treeHarvestProfiles = new(StringComparer.Ordinal);
     private RtsSimulation? _simulation;
     private ProductionCatalogSnapshot? _production;
     private ITerrainMapQuery? _terrain;
     private Camera3D? _camera;
+    private War3NodeFreeRenderWorld? _ridWorld;
     private MeshInstance3D? _pointerPreview;
     private War3ModelActor? _pointerGhost;
     private string _pointerGhostSource = string.Empty;
@@ -128,6 +133,10 @@ public sealed partial class War3WorldPresenter : Node3D
     private bool _sawGoldMinerHidden;
     private bool _completedBuildingUsedLifecycleAnimation;
     private bool _sawBlendedTransition;
+    private bool _sawUnitDeathAnimation;
+    private bool _sawUnitDecayFlesh;
+    private bool _sawUnitDecayBone;
+    private bool _sawUnitDeathCompleted;
     private bool _sawConstructionEffect;
     private bool _idleTownHallEffectLeak;
     private bool _sawAttackTargetFacing;
@@ -150,7 +159,7 @@ public sealed partial class War3WorldPresenter : Node3D
     private int _profileUnitActorsCreated;
     private long _profileUnitResolveAllocatedBytes;
     private long _profileUnitFrustumAllocatedBytes;
-    private long _profileUnitLodAllocatedBytes;
+    private long _profileUnitTransformAllocatedBytes;
     private long _profileUnitAnimationAllocatedBytes;
     private int _profileBuildingActorsVisited;
     private int _profileBuildingActorsInFrustum;
@@ -186,6 +195,10 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool CompletedBuildingUsedLifecycleAnimation =>
         _completedBuildingUsedLifecycleAnimation;
     public bool SawBlendedTransition => _sawBlendedTransition;
+    public bool SawUnitDeathAnimation => _sawUnitDeathAnimation;
+    public bool SawUnitDecayFlesh => _sawUnitDecayFlesh;
+    public bool SawUnitDecayBone => _sawUnitDecayBone;
+    public bool SawUnitDeathCompleted => _sawUnitDeathCompleted;
     public bool SawConstructionEffect => _sawConstructionEffect;
     public bool IdleTownHallEffectLeak => _idleTownHallEffectLeak;
     public bool SawAttackTargetFacing => _sawAttackTargetFacing;
@@ -197,6 +210,12 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool SawTreeTargetConfirmation => _sawTreeTargetConfirmation;
     public bool SawTreeHitAnimation => _sawTreeHitAnimation;
     public int TreeHarvestFeedbackCount => _treeHarvestFeedbackCount;
+    public int NodeFreeActorCount => _ridWorld?.ActorCount ?? 0;
+    public int NodeFreeEffectActorCount => _ridWorld?.EffectActorCount ?? 0;
+    public int NodeFreeGeometryCount => _ridWorld?.GeometryCount ?? 0;
+    public int ImportedModelProbeNodeCount =>
+        _ridWorld?.ImportedProbeNodeCount ?? 0;
+    public int BattlefieldEntityNodeCount => 0;
     public int ActiveCommandConfirmationCount =>
         _transients.Count(value => value.CommandConfirmation);
     public bool PointerPreviewUsesWar3Model => _pointerGhost?.Loaded == true;
@@ -209,12 +228,6 @@ public sealed partial class War3WorldPresenter : Node3D
             "UI\\Feedback\\RallyPoint\\RallyPoint.mdx",
             StringComparison.OrdinalIgnoreCase);
     public bool ProfilingEnabled { get; set; }
-    /// <summary>
-    /// Test-only presentation override. It keeps every unit actor processing so
-    /// animation players and model effect emitters participate in the 800-unit
-    /// visual stress scenario instead of being replaced by static LOD meshes.
-    /// </summary>
-    public bool ForceFullUnitPresentation { get; set; }
     /// <summary>
     /// Test-only presentation override for detailed projectile actors and all
     /// impact visuals. Authoritative combat is unchanged either way.
@@ -233,11 +246,11 @@ public sealed partial class War3WorldPresenter : Node3D
                 break;
             case "units-hidden":
                 foreach (var visual in _units.Values)
-                    visual.Root.Visible = false;
+                    visual.Actor.Visible = false;
                 break;
             case "buildings-hidden":
                 foreach (var visual in _buildings.Values)
-                    visual.Root.Visible = false;
+                    visual.Actor.Visible = false;
                 break;
             case "models-no-shadow":
                 foreach (var visual in _units.Values)
@@ -277,11 +290,17 @@ public sealed partial class War3WorldPresenter : Node3D
             $"instances={_resourceBatches.Sum(value => value.InstanceCount)} " +
             $"surfaces={_resourceBatches.Sum(value => value.SurfaceCount)} " +
             "shadow_surfaces=0");
+        GD.Print(
+            $"WAR3_NODE_FREE_LAYOUT actors={NodeFreeActorCount} " +
+            $"effect_actors={NodeFreeEffectActorCount} " +
+            $"geometry={NodeFreeGeometryCount} " +
+            $"entity_nodes={BattlefieldEntityNodeCount} " +
+            $"imported_probe_nodes={ImportedModelProbeNodeCount}");
     }
 
     private static void PrintCategoryRenderLayout(
         string category,
-        IEnumerable<War3ModelActor> actors)
+        IEnumerable<War3RidModelActor> actors)
     {
         var actorCount = 0;
         var meshCount = 0;
@@ -309,6 +328,10 @@ public sealed partial class War3WorldPresenter : Node3D
         _production = production;
         _terrain = simulation.World.Terrain;
         _camera = camera;
+        _ridWorld = new War3NodeFreeRenderWorld(this, camera)
+        {
+            ProfilingEnabled = ProfilingEnabled
+        };
         EnsurePointerPreview();
         EnsureAbilityPointerPreview();
         EnsureRallyMarker();
@@ -336,7 +359,15 @@ public sealed partial class War3WorldPresenter : Node3D
         }
         foreach (var pair in _buildings)
             pair.Value.Selection.Visible = _selectedBuildings.Contains(pair.Key) &&
-                                           !pair.Value.Dying;
+                                            !pair.Value.Dying;
+    }
+
+    public override void _ExitTree()
+    {
+        foreach (var batch in _resourceBatches) batch.Dispose();
+        _resourceBatches.Clear();
+        _ridWorld?.Dispose();
+        _ridWorld = null;
     }
 
     public void SetPointerPreview(
@@ -428,7 +459,7 @@ public sealed partial class War3WorldPresenter : Node3D
         _profileUnitActorsCreated = 0;
         _profileUnitResolveAllocatedBytes = 0;
         _profileUnitFrustumAllocatedBytes = 0;
-        _profileUnitLodAllocatedBytes = 0;
+        _profileUnitTransformAllocatedBytes = 0;
         _profileUnitAnimationAllocatedBytes = 0;
         _profileBuildingActorsVisited = 0;
         _profileBuildingActorsInFrustum = 0;
@@ -445,6 +476,13 @@ public sealed partial class War3WorldPresenter : Node3D
         var cameraTransform = _camera.GlobalTransform;
         War3EffectRuntime.PrepareCameraFrame(_camera, cameraTransform.Basis);
         PrepareCameraFrustum(_camera, cameraTransform);
+        _ridWorld?.Advance();
+        var advanceEnd = ProfilingEnabled
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
+        var advanceAllocationEnd = ProfilingEnabled
+            ? GC.GetAllocatedBytesForCurrentThread()
+            : 0L;
         SyncUnits(
             _simulation, _production, _camera, presenterTransform,
             interpolation);
@@ -487,11 +525,20 @@ public sealed partial class War3WorldPresenter : Node3D
         var transientsAllocationEnd = ProfilingEnabled
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
+        _ridWorld?.Flush();
+        var commitEnd = ProfilingEnabled
+            ? System.Diagnostics.Stopwatch.GetTimestamp()
+            : 0L;
+        var commitAllocationEnd = ProfilingEnabled
+            ? GC.GetAllocatedBytesForCurrentThread()
+            : 0L;
         if (ProfilingEnabled)
         {
             LastSyncProfile = new War3PresenterSyncProfile(
-                ElapsedMilliseconds(stageStart, unitsEnd),
-                unitsAllocationEnd - allocationStart,
+                ElapsedMilliseconds(stageStart, advanceEnd),
+                advanceAllocationEnd - allocationStart,
+                ElapsedMilliseconds(advanceEnd, unitsEnd),
+                unitsAllocationEnd - advanceAllocationEnd,
                 _profileUnitAnimationMilliseconds,
                 _profileUnitActorsVisited,
                 _profileUnitActorsAlive,
@@ -499,7 +546,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 _profileUnitActorsCreated,
                 _profileUnitResolveAllocatedBytes,
                 _profileUnitFrustumAllocatedBytes,
-                _profileUnitLodAllocatedBytes,
+                _profileUnitTransformAllocatedBytes,
                 _profileUnitAnimationAllocatedBytes,
                 ElapsedMilliseconds(unitsEnd, buildingsEnd),
                 buildingsAllocationEnd - unitsAllocationEnd,
@@ -512,7 +559,13 @@ public sealed partial class War3WorldPresenter : Node3D
                 ElapsedMilliseconds(resourcesEnd, projectilesEnd),
                 projectilesAllocationEnd - resourcesAllocationEnd,
                 ElapsedMilliseconds(projectilesEnd, transientsEnd),
-                transientsAllocationEnd - projectilesAllocationEnd);
+                transientsAllocationEnd - projectilesAllocationEnd,
+                _ridWorld?.LastEffectsMilliseconds ?? 0d,
+                _ridWorld?.LastEffectsAllocatedBytes ?? 0L,
+                _ridWorld?.LastCommitMilliseconds ??
+                ElapsedMilliseconds(transientsEnd, commitEnd),
+                _ridWorld?.LastCommitAllocatedBytes ??
+                commitAllocationEnd - transientsAllocationEnd);
         }
         _peakEffectCount = Math.Max(_peakEffectCount, ActiveEffectCount);
     }
@@ -531,10 +584,6 @@ public sealed partial class War3WorldPresenter : Node3D
         var creationProgressStart = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
-        var denseUnitLod = !ForceFullUnitPresentation &&
-                           simulation.Units.Count >= DenseUnitLodThreshold;
-        if (denseUnitLod)
-            PrepareFullDetailUnitBudget(simulation, camera);
         for (var unit = 0; unit < simulation.Units.Count; unit++)
         {
             if (ProfilingEnabled) _profileUnitActorsVisited++;
@@ -542,9 +591,8 @@ public sealed partial class War3WorldPresenter : Node3D
             {
                 if (_units.TryGetValue(unit, out var dead) && !dead.Dying)
                 {
-                    dead.LodBatch?.SetInstanceVisible(dead.LodIndex, false);
                     dead.Dying = true;
-                    dead.RemoveAt = Time.GetTicksMsec() + 3_400;
+                    dead.ShadowProxy.Visible = false;
                     if (dead.SelectionVisible)
                     {
                         dead.Selection.Visible = false;
@@ -560,6 +608,15 @@ public sealed partial class War3WorldPresenter : Node3D
                             camera,
                             1_600,
                             simulation.Combat.Teams[unit]);
+                }
+                if (_units.TryGetValue(unit, out dead))
+                {
+                    _sawUnitDeathAnimation |= dead.Actor.DeathPhase ==
+                                              War3DeathPresentationPhase.Death;
+                    _sawUnitDecayFlesh |= dead.Actor.DeathPhase ==
+                                          War3DeathPresentationPhase.DecayFlesh;
+                    _sawUnitDecayBone |= dead.Actor.DeathPhase ==
+                                         War3DeathPresentationPhase.DecayBone;
                 }
                 continue;
             }
@@ -592,7 +649,6 @@ public sealed partial class War3WorldPresenter : Node3D
             }
             else if (definitionChanged)
             {
-                visual.LodBatch?.SetInstanceVisible(visual.LodIndex, false);
                 PoolUnitVisual(visual);
                 visual = CreateUnit(
                     unit, resolvedDefinition,
@@ -608,7 +664,6 @@ public sealed partial class War3WorldPresenter : Node3D
             else if (visual.Dying)
             {
                 visual.Dying = false;
-                visual.RemoveAt = 0;
                 visual.Actor.Revive();
             }
             var definition = visual.Definition;
@@ -621,9 +676,7 @@ public sealed partial class War3WorldPresenter : Node3D
             var frustumAllocationStart = ProfilingEnabled
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
-            var inFrustum = denseUnitLod
-                ? _unitInFrustumScratch[unit]
-                : IsPositionInPreparedFrustum(camera, world);
+            var inFrustum = IsPositionInPreparedFrustum(camera, world);
             if (ProfilingEnabled)
                 _profileUnitFrustumAllocatedBytes +=
                     GC.GetAllocatedBytesForCurrentThread() -
@@ -638,173 +691,83 @@ public sealed partial class War3WorldPresenter : Node3D
             var lodAllocationStart = ProfilingEnabled
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
-            if (denseUnitLod && visual.LodBatch is null)
-                AssignUnitLod(visual, simulation.Combat.Teams[unit]);
             var selected = _selectedUnits.Contains(unit);
-            var fullDetail = !denseUnitLod ||
-                             _unitFullDetailScratch[unit];
             var hiddenInsideGoldMine = IsGatheringGold(simulation, unit);
-            var lodTransform = new Transform3D(
+            var actorTransform = new Transform3D(
                 new Basis(Vector3.Up, angle), world);
-            visual.LodBatch?.SetInstanceTransform(
-                visual.LodIndex,
-                lodTransform,
-                denseUnitLod && !fullDetail && !hiddenInsideGoldMine);
-            if (visual.FullDetail != fullDetail)
-            {
-                visual.FullDetail = fullDetail;
-                visual.Actor.ProcessMode = fullDetail
-                    ? ProcessModeEnum.Inherit
-                    : ProcessModeEnum.Disabled;
-            }
-            var actorVisible = fullDetail && !hiddenInsideGoldMine;
+            visual.Actor.Processing = inFrustum;
+            var actorVisible = inFrustum && !hiddenInsideGoldMine;
             if (visual.ActorVisible != actorVisible)
             {
                 visual.Actor.Visible = actorVisible;
+                visual.ShadowProxy.Visible = actorVisible && !visual.Dying;
                 visual.ActorVisible = actorVisible;
             }
-            if (fullDetail)
-            {
+            if (inFrustum)
                 visual.Actor.PrepareEffectWorldTransform(
-                    presenterTransform * lodTransform);
-                if (!visual.TransformInitialized ||
-                    visual.LastActorPosition != world ||
-                    visual.LastActorAngle != angle)
-                {
-                    // Position and facing usually change together while a
-                    // unit moves. Send one transform through the Godot/C#
-                    // boundary so Node3D only invalidates it once.
-                    visual.Actor.Transform = lodTransform;
-                    visual.LastActorPosition = world;
-                    visual.LastActorAngle = angle;
-                }
-                visual.TransformInitialized = true;
+                    presenterTransform * actorTransform);
+            if (!visual.TransformInitialized ||
+                visual.LastActorPosition != world ||
+                visual.LastActorAngle != angle)
+            {
+                visual.Actor.Transform = actorTransform;
+                visual.LastActorPosition = world;
+                visual.LastActorAngle = angle;
             }
+            visual.TransformInitialized = true;
+            if (actorVisible)
+                visual.ShadowProxy.Transform = new Transform3D(
+                    actorTransform.Basis,
+                    world + Vector3.Up * 0.55f);
             if (simulation.Combat.TargetKinds[unit] != CombatTargetKind.None)
             {
                 _sawAttackTargetFacing = true;
-                if (fullDetail)
-                    _attackTargetFacingMismatch |= MathF.Abs(
-                        Mathf.AngleDifference(
-                            visual.LastActorAngle, angle)) > 0.001f;
+                _attackTargetFacingMismatch |= MathF.Abs(
+                    Mathf.AngleDifference(
+                        visual.LastActorAngle, angle)) > 0.001f;
             }
             _sawGoldMinerHidden |= hiddenInsideGoldMine;
             if (selected)
                 visual.Selection.Position = new Vector3(
                     world.X, world.Y + SelectionHeight, world.Z);
-            var selectionVisible = selected && !hiddenInsideGoldMine;
+            var selectionVisible = selected && actorVisible;
             if (visual.SelectionVisible != selectionVisible)
             {
                 visual.Selection.Visible = selectionVisible;
                 visual.SelectionVisible = selectionVisible;
             }
             if (ProfilingEnabled)
-                _profileUnitLodAllocatedBytes +=
+                _profileUnitTransformAllocatedBytes +=
                     GC.GetAllocatedBytesForCurrentThread() -
                     lodAllocationStart;
-            if (fullDetail)
+            var animationAllocationStart = ProfilingEnabled
+                ? GC.GetAllocatedBytesForCurrentThread()
+                : 0L;
+            var animationStart = ProfilingEnabled
+                ? System.Diagnostics.Stopwatch.GetTimestamp()
+                : 0L;
+            UpdateUnitAnimation(simulation, unit, visual);
+            if (ProfilingEnabled)
             {
-                var animationAllocationStart = ProfilingEnabled
-                    ? GC.GetAllocatedBytesForCurrentThread()
-                    : 0L;
-                var animationStart = ProfilingEnabled
-                    ? System.Diagnostics.Stopwatch.GetTimestamp()
-                    : 0L;
-                UpdateUnitAnimation(simulation, unit, visual);
-                if (ProfilingEnabled)
-                {
-                    _profileUnitAnimationMilliseconds += ElapsedMilliseconds(
-                        animationStart,
-                        System.Diagnostics.Stopwatch.GetTimestamp());
-                    _profileUnitAnimationAllocatedBytes +=
-                        GC.GetAllocatedBytesForCurrentThread() -
-                        animationAllocationStart;
-                }
-                _sawBlendedTransition |=
-                    visual.Actor.LastTransitionBlendSeconds > 0d;
+                _profileUnitAnimationMilliseconds += ElapsedMilliseconds(
+                    animationStart,
+                    System.Diagnostics.Stopwatch.GetTimestamp());
+                _profileUnitAnimationAllocatedBytes +=
+                    GC.GetAllocatedBytesForCurrentThread() -
+                    animationAllocationStart;
             }
+            _sawBlendedTransition |=
+                visual.Actor.BlendedPoseCommitCount > 0;
         }
 
         foreach (var id in _units.Where(pair => pair.Value.Dying &&
-                                                Time.GetTicksMsec() >= pair.Value.RemoveAt)
+                                                pair.Value.Actor.DeathPresentationComplete)
                      .Select(pair => pair.Key).ToArray())
         {
-            _units[id].LodBatch?.SetInstanceVisible(
-                _units[id].LodIndex, false);
+            _sawUnitDeathCompleted = true;
             PoolUnitVisual(_units[id]);
             _units.Remove(id);
         }
-        foreach (var batch in _unitLodBatches.Values)
-            batch.FlushDynamicBuffer();
-    }
-
-    private void PrepareFullDetailUnitBudget(
-        RtsSimulation simulation,
-        Camera3D camera)
-    {
-        var unitCount = simulation.Units.Count;
-        if (_unitDetailCandidates.Length < unitCount)
-            Array.Resize(ref _unitDetailCandidates, unitCount);
-        if (_unitFullDetailScratch.Length < unitCount)
-        {
-            Array.Resize(ref _unitFullDetailScratch, unitCount);
-            Array.Resize(ref _unitInFrustumScratch, unitCount);
-        }
-        Array.Clear(_unitFullDetailScratch, 0, unitCount);
-        Array.Clear(_unitInFrustumScratch, 0, unitCount);
-
-        var candidateCount = 0;
-        var cameraPosition = camera.GlobalPosition;
-        for (var unit = 0; unit < unitCount; unit++)
-        {
-            if (!simulation.Units.Alive[unit]) continue;
-            var world = ToWorldAtGround(simulation.Units.Positions[unit]);
-            var inFrustum = IsPositionInPreparedFrustum(camera, world);
-            _unitInFrustumScratch[unit] = inFrustum;
-            if (!inFrustum) continue;
-            var surfaceCost = _units.TryGetValue(unit, out var visual)
-                ? Math.Max(1, visual.Actor.RenderSurfaceCount)
-                : 8;
-            _unitDetailCandidates[candidateCount++] = new UnitDetailCandidate(
-                unit,
-                _selectedUnits.Contains(unit),
-                cameraPosition.DistanceSquaredTo(world),
-                surfaceCost);
-        }
-
-        Array.Sort(
-            _unitDetailCandidates,
-            0,
-            candidateCount,
-            UnitDetailCandidateComparer.Instance);
-        var surfaceBudgetUsed = 0;
-        for (var index = 0; index < candidateCount; index++)
-        {
-            var candidate = _unitDetailCandidates[index];
-            if (!candidate.Selected &&
-                surfaceBudgetUsed + candidate.SurfaceCost >
-                MaximumFullDetailUnitSurfaceBudget)
-                continue;
-            _unitFullDetailScratch[candidate.Unit] = true;
-            surfaceBudgetUsed += candidate.SurfaceCost;
-        }
-    }
-
-    private void AssignUnitLod(UnitVisual visual, int team)
-    {
-        var key = (visual.Definition.ModelSource, team);
-        if (!_unitLodBatches.TryGetValue(key, out var batch))
-        {
-            batch = new War3StaticModelBatch
-            {
-                Name = $"UnitLod{_unitLodBatches.Count}"
-            };
-            AddChild(batch);
-            batch.InitializeDynamic(key.ModelSource, 64, team);
-            _unitLodBatches.Add(key, batch);
-        }
-        visual.LodBatch = batch;
-        visual.LodIndex = batch.AddInstance();
     }
 
     private static bool UnitDefinitionMatches(
@@ -998,7 +961,7 @@ public sealed partial class War3WorldPresenter : Node3D
                     : -1;
             if (value.Kind == AbilityEventKind.Started)
             {
-                War3ModelActor? casterActor = null;
+                War3RidModelActor? casterActor = null;
                 if (_units.TryGetValue(value.CasterUnit, out var caster))
                 {
                     casterActor = caster.Actor;
@@ -1039,7 +1002,7 @@ public sealed partial class War3WorldPresenter : Node3D
         IReadOnlyList<string> attachments,
         int declaredAttachmentCount,
         NVector2 position,
-        War3ModelActor? hostActor,
+        War3RidModelActor? hostActor,
         Camera3D camera,
         int sourcePlayerId)
     {
@@ -1075,18 +1038,16 @@ public sealed partial class War3WorldPresenter : Node3D
                              definition.BuffAttachments,
                              definition.BuffAttachmentCount))
                 {
-                    var actor = new War3ModelActor
-                    {
-                        Name = $"AbilityBuff{buff.InstanceId}_{parts.Count}"
-                    };
-                    AddChild(actor);
+                    var actor = _ridWorld!.CreateActor(
+                        instance.Model,
+                        targetPlayerId,
+                        includeEffects: true);
                     var emitterId = _nextTransientAudioEmitterId++;
                     actor.SoundTimelineEvent += value => PublishAnimationAudio(
                         value,
                         simulation.Units.Positions[buff.TargetUnit],
                         emitterId,
                         sourcePlayerId);
-                    actor.Load(instance.Model, camera, targetPlayerId);
                     actor.PlayPreferred(true, "Stand", "Birth");
                     parts.Add(new AbilityBuffPart(actor, instance.Attachment));
                 }
@@ -1109,12 +1070,12 @@ public sealed partial class War3WorldPresenter : Node3D
                      .ToArray())
         {
             foreach (var part in _abilityBuffs[id].Parts)
-                part.Actor.QueueFree();
+                part.Actor.Dispose();
             _abilityBuffs.Remove(id);
         }
     }
 
-    private War3ModelActor? AbilityTargetActor(in AbilityEvent value)
+    private War3RidModelActor? AbilityTargetActor(in AbilityEvent value)
     {
         if (value.TargetKind is AbilityTargetKind.Unit or AbilityTargetKind.Self &&
             _units.TryGetValue(value.TargetId, out var unit))
@@ -1148,7 +1109,7 @@ public sealed partial class War3WorldPresenter : Node3D
 
     private static Vector3 AbilityAttachmentOffset(
         string attachment,
-        War3ModelActor? hostActor)
+        War3RidModelActor? hostActor)
     {
         var height = hostActor?.ApproximateWorldHeight() ?? 1.5f;
         var tokens = attachment.Split(',',
@@ -1282,8 +1243,14 @@ public sealed partial class War3WorldPresenter : Node3D
                         definition.ModelSource,
                         StringComparison.OrdinalIgnoreCase))
                 {
-                    visual.Actor.Load(
-                        definition.ModelSource, camera, building.PlayerId);
+                    visual.Actor.SoundTimelineEvent -= visual.SoundHandler;
+                    visual.Actor.Dispose();
+                    visual.Actor = _ridWorld!.CreateActor(
+                        definition.ModelSource,
+                        building.PlayerId,
+                        includeEffects: true);
+                    visual.Actor.SoundTimelineEvent += visual.SoundHandler;
+                    visual.Actor.Position = visual.WorldPosition;
                     visual.Actor.SetShadowCastingEnabled(false);
                 }
                 visual.SetDefinition(definition);
@@ -1318,9 +1285,8 @@ public sealed partial class War3WorldPresenter : Node3D
             var ghost = !foundationStarted;
             visual.ShadowProxy.Visible = foundationStarted && !visual.Dying;
             var inFrustum = BuildingIntersectsFrustum(camera, visual);
-            visual.Actor.ProcessMode = inFrustum
-                ? ProcessModeEnum.Inherit
-                : ProcessModeEnum.Disabled;
+            visual.Actor.Processing = inFrustum;
+            visual.Actor.Visible = inFrustum;
             visual.Selection.Visible = foundationStarted &&
                                        inFrustum &&
                                        _selectedBuildings.Contains(id);
@@ -1329,16 +1295,6 @@ public sealed partial class War3WorldPresenter : Node3D
             var animationAllocationStart = ProfilingEnabled
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
-            if (!visual.ModelLoaded)
-            {
-                visual.Actor.Load(
-                    visual.Definition.ModelSource,
-                    camera,
-                    building.PlayerId);
-                visual.Actor.SetShadowCastingEnabled(false);
-                visual.ModelLoaded = true;
-                visual.GhostInitialized = false;
-            }
             visual.Actor.PrepareEffectWorldTransform(
                 presenterTransform * new Transform3D(
                     Basis.Identity, visual.WorldPosition));
@@ -1430,7 +1386,6 @@ public sealed partial class War3WorldPresenter : Node3D
                                                        !pair.Value.Dying).ToArray())
         {
             pair.Value.Dying = true;
-            pair.Value.RemoveAt = Time.GetTicksMsec() + 4_000;
             pair.Value.Selection.Visible = false;
             pair.Value.ShadowProxy.Visible = false;
             pair.Value.Actor.PlayDeath();
@@ -1444,10 +1399,12 @@ public sealed partial class War3WorldPresenter : Node3D
                     1_600);
         }
         foreach (var id in _buildings.Where(pair => pair.Value.Dying &&
-                                                    Time.GetTicksMsec() >= pair.Value.RemoveAt)
+                                                    pair.Value.Actor.DeathPresentationComplete)
                      .Select(pair => pair.Key).ToArray())
         {
-            _buildings[id].Root.QueueFree();
+            _buildings[id].Actor.Dispose();
+            _buildings[id].Selection.Dispose();
+            _buildings[id].ShadowProxy.Dispose();
             _buildings.Remove(id);
         }
     }
@@ -1593,7 +1550,7 @@ public sealed partial class War3WorldPresenter : Node3D
         Camera3D camera)
     {
         if (!ForceFullCombatEffects &&
-            simulation.Units.Count >= DenseUnitLodThreshold)
+            simulation.Units.Count >= DenseCombatUnitThreshold)
         {
             SyncDenseCombatProjectiles(simulation);
             return;
@@ -1632,19 +1589,20 @@ public sealed partial class War3WorldPresenter : Node3D
                 visualCreations++;
             }
             var displacement = projectile.Position - visual.LastPosition;
-            if (visual.HasPosition && displacement.LengthSquared() > 0.0001f)
-                visual.Root.Rotation = new Vector3(
-                    0f, MathF.Atan2(displacement.X, displacement.Y), 0f);
             visual.LastPosition = projectile.Position;
-            visual.HasPosition = true;
             var height = MathF.Max(0.7f, definition.FlyingHeight * 0.55f + 0.55f);
-            visual.Root.Position = ToWorldAtGround(projectile.Position, height);
+            UpdateProjectileTransform(
+                visual.Root,
+                ToWorldAtGround(projectile.Position, height),
+                displacement,
+                visual.HasPosition);
+            visual.HasPosition = true;
         }
         var impactVisuals = 0;
         foreach (var id in _projectiles.Keys.Where(id => !_seenProjectiles.Contains(id)).ToArray())
         {
             var visual = _projectiles[id];
-            visual.Root.QueueFree();
+            visual.Root.Dispose();
             _projectiles.Remove(id);
             if (visual.Definition.ImpactSource.Length > 0 &&
                 War3RuntimeAssets.Contains(visual.Definition.ImpactSource) &&
@@ -1664,18 +1622,29 @@ public sealed partial class War3WorldPresenter : Node3D
         }
     }
 
+    private static void UpdateProjectileTransform(
+        IWar3RidSpatial root,
+        Vector3 position,
+        NVector2 displacement,
+        bool hasPreviousPosition)
+    {
+        var basis = root.Transform.Basis;
+        if (hasPreviousPosition && displacement.LengthSquared() > 0.0001f)
+            basis = new Basis(
+                Vector3.Up,
+                MathF.Atan2(displacement.X, displacement.Y));
+        root.Transform = new Transform3D(basis, position);
+    }
+
     private void SyncDenseCombatProjectiles(RtsSimulation simulation)
     {
-        // Detailed projectile actors contain their own scene trees, animation
-        // players and effect callbacks. In a large battle their short lifetime
-        // turns model construction/destruction into recurring 50-100 ms
-        // presenter spikes. Dense mode keeps the authoritative projectile
-        // simulation untouched and renders all missiles through one low-cost
-        // MultiMesh draw instead.
+        // Dense combat can create and retire hundreds of short-lived missile
+        // handles per second. Keep the authoritative projectile simulation
+        // untouched while using one fixed presentation buffer for this case.
         if (_projectiles.Count > 0)
         {
             foreach (var visual in _projectiles.Values)
-                visual.Root.QueueFree();
+                visual.Root.Dispose();
             _projectiles.Clear();
         }
 
@@ -1801,12 +1770,13 @@ public sealed partial class War3WorldPresenter : Node3D
                 creations++;
             }
             var displacement = projectile.Position - visual.LastPosition;
-            if (visual.HasPosition && displacement.LengthSquared() > 0.0001f)
-                visual.Root.Rotation = new Vector3(
-                    0f, MathF.Atan2(displacement.X, displacement.Y), 0f);
             visual.LastPosition = projectile.Position;
+            UpdateProjectileTransform(
+                visual.Root,
+                ToWorldAtGround(projectile.Position, 1.05f),
+                displacement,
+                visual.HasPosition);
             visual.HasPosition = true;
-            visual.Root.Position = ToWorldAtGround(projectile.Position, 1.05f);
         }
 
         var impacts = 0;
@@ -1815,7 +1785,7 @@ public sealed partial class War3WorldPresenter : Node3D
                      .ToArray())
         {
             var visual = _buildingProjectiles[id];
-            visual.Root.QueueFree();
+            visual.Root.Dispose();
             _buildingProjectiles.Remove(id);
             if (visual.Definition.ImpactSource.Length == 0 ||
                 !War3RuntimeAssets.Contains(visual.Definition.ImpactSource) ||
@@ -1863,11 +1833,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 creations++;
             }
             var displacement = projectile.Position - visual.LastPosition;
-            if (visual.HasPosition && displacement.LengthSquared() > 0.0001f)
-                visual.Root.Rotation = new Vector3(
-                    0f, MathF.Atan2(displacement.X, displacement.Y), 0f);
             visual.LastPosition = projectile.Position;
-            visual.HasPosition = true;
             var profile = simulation.Abilities.Catalog
                 .Ability(projectile.AbilityId).Projectile;
             var total = NVector2.Distance(
@@ -1879,15 +1845,21 @@ public sealed partial class War3WorldPresenter : Node3D
                 : Math.Clamp(traveled / total, 0f, 1f);
             var arcHeight = MathF.Sin(progress * MathF.PI) *
                             total * profile.Arc;
-            visual.Root.Position = ToWorldAtGround(
-                projectile.Position, MathF.Max(0.7f, 0.7f + arcHeight));
+            UpdateProjectileTransform(
+                visual.Root,
+                ToWorldAtGround(
+                    projectile.Position,
+                    MathF.Max(0.7f, 0.7f + arcHeight)),
+                displacement,
+                visual.HasPosition);
+            visual.HasPosition = true;
         }
 
         foreach (var id in _abilityProjectiles.Keys
                      .Where(id => !_seenAbilityProjectiles.Contains(id))
                      .ToArray())
         {
-            _abilityProjectiles[id].Root.QueueFree();
+            _abilityProjectiles[id].Root.Dispose();
             _abilityProjectiles.Remove(id);
         }
     }
@@ -1907,40 +1879,31 @@ public sealed partial class War3WorldPresenter : Node3D
             RebindUnitVisual(reused, id, team);
             return reused;
         }
-        var root = new Node3D { Name = $"Unit{id}_{definition.ObjectId}" };
-        var actor = new War3ModelActor { Name = "Actor" };
-        var selection = SelectionRing($"UnitSelection{id}", 0.075f,
+        var actor = _ridWorld!.CreateActor(
+            definition.ModelSource, team, includeEffects: true);
+        var selection = SelectionRingRid(0.075f,
             team == War3HumanScenario.PlayerId ? new Color("46d8ff") : new Color("ff5c58"));
-        AddChild(root);
-        root.AddChild(actor);
-        root.AddChild(selection);
         Action<War3ModelSoundTimelineEvent> soundHandler = value =>
             PublishUnitAnimationAudio(id, team, value);
         actor.SoundTimelineEvent += soundHandler;
-        actor.Load(definition.ModelSource, camera, team);
-        // Animated Warcraft units commonly expand to 6-8 source surfaces.
-        // Keep their color pass intact, but replace all source shadow surfaces
-        // with one shared low-poly proxy per unit.
         actor.SetShadowCastingEnabled(false);
-        actor.AddChild(new MeshInstance3D
-        {
-            Name = "ShadowProxy",
-            Mesh = _unitShadowProxyMesh ??= new CylinderMesh
+        _unitShadowProxyMesh ??= new CylinderMesh
             {
                 Height = 1.1f,
                 TopRadius = 0.24f,
                 BottomRadius = 0.28f,
                 RadialSegments = 8,
                 Rings = 1
-            },
-            Position = new Vector3(0f, 0.55f, 0f),
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.ShadowsOnly
-        });
+            };
+        var shadow = _ridWorld.CreateGeometry(
+            _unitShadowProxyMesh,
+            material: null,
+            RenderingServer.ShadowCastingSetting.ShadowsOnly);
         selection.Scale = Vector3.One * UnitSelectionWorldRadius(
             _simulation!.Units.NavigationRadii[id]);
         selection.Visible = _selectedUnits.Contains(id);
         var visual = new UnitVisual(
-            root, actor, selection, definition,
+            actor, selection, shadow, definition,
             boundUnitTypeId, team)
         {
             SoundHandler = soundHandler
@@ -1956,24 +1919,20 @@ public sealed partial class War3WorldPresenter : Node3D
         visual.SoundHandler = value =>
             PublishUnitAnimationAudio(id, team, value);
         visual.Actor.SoundTimelineEvent += visual.SoundHandler;
-        visual.Root.Name = $"Unit{id}_{visual.Definition.ObjectId}";
-        visual.Selection.Name = $"UnitSelection{id}";
-        visual.Root.Visible = true;
         visual.Actor.Visible = true;
-        visual.Actor.ProcessMode = ProcessModeEnum.Inherit;
+        visual.Actor.Processing = true;
         visual.Actor.ResetForReuse();
         visual.Selection.Scale = Vector3.One * UnitSelectionWorldRadius(
             _simulation!.Units.NavigationRadii[id]);
         visual.Selection.Visible = _selectedUnits.Contains(id);
+        visual.ShadowProxy.Visible = true;
         visual.LastWindup = 0f;
         visual.LastCooldown = 0f;
         visual.LastPosition = default;
         visual.Dying = false;
-        visual.RemoveAt = 0;
         visual.AbilityAnimationUntil = 0;
         visual.TreeHarvestResourceNode = -1;
         visual.LastTreeHarvestStrike = -1;
-        visual.FullDetail = true;
         visual.ActorVisible = true;
         visual.SelectionVisible = visual.Selection.Visible;
         visual.TransformInitialized = false;
@@ -1985,8 +1944,8 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         visual.Selection.Visible = false;
         visual.SelectionVisible = false;
-        visual.Actor.ProcessMode = ProcessModeEnum.Disabled;
-        visual.Root.Visible = false;
+        visual.Actor.Processing = false;
+        visual.ShadowProxy.Visible = false;
         visual.ActorVisible = false;
         var team = visual.PoolTeam;
         var key = new UnitPoolKey(
@@ -2004,50 +1963,41 @@ public sealed partial class War3WorldPresenter : Node3D
         War3BuildingDefinition definition,
         Camera3D camera)
     {
-        var root = new Node3D { Name = $"Building{building.Id.Value}_{definition.ObjectId}" };
-        var actor = new War3ModelActor { Name = "Actor" };
-        var selection = SelectionRing($"BuildingSelection{building.Id.Value}", 0.034f,
+        var actor = _ridWorld!.CreateActor(
+            definition.ModelSource,
+            building.PlayerId,
+            includeEffects: true);
+        var selection = SelectionRingRid(0.034f,
             building.PlayerId == War3HumanScenario.PlayerId
                 ? new Color("46d8ff")
                 : new Color("ff5c58"));
-        AddChild(root);
-        root.AddChild(actor);
-        root.AddChild(selection);
-        actor.SoundTimelineEvent += value => PublishBuildingAnimationAudio(
+        Action<War3ModelSoundTimelineEvent> soundHandler = value =>
+            PublishBuildingAnimationAudio(
             building.Id.Value, building.PlayerId, value);
+        actor.SoundTimelineEvent += soundHandler;
         var footprint = SimPlane3DTransform.ToWorldSize(
             building.Bounds.Max - building.Bounds.Min);
         var frustumRadius = MathF.Max(footprint.X, footprint.Y) * 0.7f;
         var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
         var world = ToWorldAtGround(center);
-        var modelLoaded = BuildingIntersectsFrustum(
-            camera, world, frustumRadius);
-        if (modelLoaded)
-        {
-            actor.Load(definition.ModelSource, camera, building.PlayerId);
-            // Imported buildings can contain dozens of geoset surfaces.
-            // Replace their source shadow surfaces with one cheap proxy.
-            actor.SetShadowCastingEnabled(false);
-        }
+        const bool modelLoaded = true;
+        actor.SetShadowCastingEnabled(false);
         var proxyHeight = MathF.Max(0.8f, MathF.Max(footprint.X, footprint.Y) * 0.72f);
-        var shadowProxy = new MeshInstance3D
-        {
-            Name = "ShadowProxy",
-            Mesh = new BoxMesh
-            {
-                Size = new Vector3(
-                    MathF.Max(0.55f, footprint.X * 0.72f),
-                    proxyHeight,
-                    MathF.Max(0.55f, footprint.Y * 0.72f))
-            },
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.ShadowsOnly,
-            Visible = false
-        };
-        root.AddChild(shadowProxy);
+        var shadowProxy = _ridWorld.CreateGeometry(
+            BuildingShadowMesh(new Vector3(
+                MathF.Max(0.55f, footprint.X * 0.72f),
+                proxyHeight,
+                MathF.Max(0.55f, footprint.Y * 0.72f))),
+            material: null,
+            RenderingServer.ShadowCastingSetting.ShadowsOnly);
+        shadowProxy.Visible = false;
         return new BuildingVisual(
-            root, actor, selection, shadowProxy, proxyHeight, frustumRadius,
+            actor, selection, shadowProxy, proxyHeight, frustumRadius,
             definition, modelLoaded,
-            building.Type.Id);
+            building.Type.Id)
+        {
+            SoundHandler = soundHandler
+        };
     }
 
     private void PrepareCameraFrustum(
@@ -2131,21 +2081,19 @@ public sealed partial class War3WorldPresenter : Node3D
         };
     }
 
-    private War3ModelActor CreateResourceActor(
+    private War3RidModelActor CreateResourceActor(
         int id,
         EconomyResourceKind kind,
         string source,
         Camera3D camera)
     {
-        var actor = new War3ModelActor { Name = $"Resource{id}" };
-        AddChild(actor);
-        actor.Load(
-            source, camera, 0,
+        return _ridWorld!.CreateActor(
+            source,
+            team: 0,
             includeEffects: kind == EconomyResourceKind.Minerals);
-        return actor;
     }
 
-    private War3ModelActor PromoteResourceActor(
+    private War3RidModelActor PromoteResourceActor(
         int id,
         ResourceVisual visual,
         NVector2 position,
@@ -2165,7 +2113,7 @@ public sealed partial class War3WorldPresenter : Node3D
     private static void DemoteResourceActor(ResourceVisual visual)
     {
         if (visual.Actor is null || visual.StaticBatch is null) return;
-        visual.Actor.QueueFree();
+        visual.Actor.Dispose();
         visual.Actor = null;
         visual.StaticBatch.SetInstanceVisible(visual.StaticBatchIndex, true);
         visual.AnimationInitialized = true;
@@ -2186,11 +2134,7 @@ public sealed partial class War3WorldPresenter : Node3D
                      .OrderBy(value => value.Key, StringComparer.OrdinalIgnoreCase))
         {
             var values = group.OrderBy(value => value.Id).ToArray();
-            var batch = new War3StaticModelBatch
-            {
-                Name = $"StaticTrees{_resourceBatches.Count}"
-            };
-            AddChild(batch);
+            var batch = new War3StaticModelBatch(this);
             batch.Initialize(group.Key, values.Length);
             _resourceBatches.Add(batch);
             for (var index = 0; index < values.Length; index++)
@@ -2223,27 +2167,27 @@ public sealed partial class War3WorldPresenter : Node3D
         int sourcePlayerId,
         Camera3D camera)
     {
-        var root = new Node3D { Name = $"Projectile{id}" };
-        AddChild(root);
+        IWar3RidSpatial root;
         if (definition.ProjectileSource.Length > 0 &&
             War3RuntimeAssets.Contains(definition.ProjectileSource))
         {
-            var actor = new War3ModelActor { Name = "ProjectileActor" };
-            root.AddChild(actor);
+            var actor = _ridWorld!.CreateActor(
+                definition.ProjectileSource,
+                team: 0,
+                includeEffects: true);
             actor.SoundTimelineEvent += value => PublishProjectileAnimationAudio(
                 id, sourcePlayerId, value);
-            actor.Load(definition.ProjectileSource, camera, 0);
             actor.PlayPreferred(true, "Stand", "Birth");
+            root = actor;
         }
         else
         {
-            var mesh = new MeshInstance3D
-            {
-                Mesh = new SphereMesh { Radius = 0.075f, Height = 0.15f },
-                MaterialOverride = Emissive(new Color("ffd46a")),
-                Scale = Vector3.One * 1.2f
-            };
-            root.AddChild(mesh);
+            root = _ridWorld!.CreateGeometry(
+                new SphereMesh { Radius = 0.075f, Height = 0.15f },
+                Emissive(new Color("ffd46a")),
+                castShadows: false);
+            root.Transform = new Transform3D(
+                Basis.FromScale(Vector3.One * 1.2f), Vector3.Zero);
         }
         return new ProjectileVisual(
             root, definition, NVector2.Zero, sourcePlayerId);
@@ -2255,29 +2199,30 @@ public sealed partial class War3WorldPresenter : Node3D
         int sourcePlayerId,
         Camera3D camera)
     {
-        var root = new Node3D { Name = $"BuildingProjectile{id}" };
-        AddChild(root);
+        IWar3RidSpatial root;
         if (definition.ProjectileSource.Length > 0 &&
             War3RuntimeAssets.Contains(definition.ProjectileSource))
         {
-            var actor = new War3ModelActor { Name = "ProjectileActor" };
-            root.AddChild(actor);
+            var actor = _ridWorld!.CreateActor(
+                definition.ProjectileSource,
+                team: 0,
+                includeEffects: true);
             actor.SoundTimelineEvent += value => PublishAnimationAudio(
                 value,
                 NVector2.Zero,
                 ProjectileAudioEmitterBase + 100_000_000 + id,
                 sourcePlayerId);
-            actor.Load(definition.ProjectileSource, camera, 0);
             actor.PlayPreferred(true, "Stand", "Birth");
+            root = actor;
         }
         else
         {
-            root.AddChild(new MeshInstance3D
-            {
-                Mesh = new SphereMesh { Radius = 0.075f, Height = 0.15f },
-                MaterialOverride = Emissive(new Color("ffd46a")),
-                Scale = Vector3.One * 1.2f
-            });
+            root = _ridWorld!.CreateGeometry(
+                new SphereMesh { Radius = 0.075f, Height = 0.15f },
+                Emissive(new Color("ffd46a")),
+                castShadows: false);
+            root.Transform = new Transform3D(
+                Basis.FromScale(Vector3.One * 1.2f), Vector3.Zero);
         }
         return new BuildingProjectileVisual(
             root, definition, NVector2.Zero, sourcePlayerId);
@@ -2289,30 +2234,31 @@ public sealed partial class War3WorldPresenter : Node3D
         int sourcePlayerId,
         Camera3D camera)
     {
-        var root = new Node3D { Name = $"AbilityProjectile{id}" };
-        AddChild(root);
+        IWar3RidSpatial root;
         var source = definition.MissileModels
             .FirstOrDefault(War3RuntimeAssets.Contains);
         if (source is not null)
         {
-            var actor = new War3ModelActor { Name = "ProjectileActor" };
-            root.AddChild(actor);
+            var actor = _ridWorld!.CreateActor(
+                source,
+                team: 0,
+                includeEffects: true);
             actor.SoundTimelineEvent += value => PublishAnimationAudio(
                 value,
-                new NVector2(root.Position.X, root.Position.Z),
+                new NVector2(actor.Position.X, actor.Position.Z),
                 ProjectileAudioEmitterBase + 200_000_000 + id,
                 sourcePlayerId);
-            actor.Load(source, camera, 0);
             actor.PlayPreferred(true, "Stand", "Birth");
+            root = actor;
         }
         else
         {
-            root.AddChild(new MeshInstance3D
-            {
-                Mesh = new SphereMesh { Radius = 0.075f, Height = 0.15f },
-                MaterialOverride = Emissive(new Color("70dfff")),
-                Scale = Vector3.One * 1.2f
-            });
+            root = _ridWorld!.CreateGeometry(
+                new SphereMesh { Radius = 0.075f, Height = 0.15f },
+                Emissive(new Color("70dfff")),
+                castShadows: false);
+            root.Transform = new Transform3D(
+                Basis.FromScale(Vector3.One * 1.2f), Vector3.Zero);
         }
         return new AbilityProjectileVisual(
             root, definition, NVector2.Zero, sourcePlayerId);
@@ -2326,16 +2272,17 @@ public sealed partial class War3WorldPresenter : Node3D
         int sourcePlayerId = -1,
         Vector3 attachmentOffset = default)
     {
-        var actor = new War3ModelActor { Name = "Impact" };
+        var actor = _ridWorld!.CreateActor(
+            source,
+            team: 0,
+            includeEffects: true);
         var emitterId = _nextTransientAudioEmitterId++;
-        AddChild(actor);
         actor.Position = ToWorldAtGround(position) +
                          (attachmentOffset == default
                              ? new Vector3(0f, 0.18f, 0f)
                              : attachmentOffset);
         actor.SoundTimelineEvent += value => PublishAnimationAudio(
             value, position, emitterId, sourcePlayerId);
-        actor.Load(source, camera, 0);
         actor.PlayPreferred(false, "Birth", "Stand", "Death");
         _transients.Add(new TransientVisual(actor, Time.GetTicksMsec() + lifetime));
     }
@@ -2349,19 +2296,11 @@ public sealed partial class War3WorldPresenter : Node3D
             return false;
 
         RetireOldestCommandConfirmationAtCapacity();
-        var actor = new War3ModelActor
-        {
-            Name = kind == War3CommandFeedbackKind.Attack
-                ? "AttackCommandConfirmation"
-                : "MoveCommandConfirmation"
-        };
-        AddChild(actor);
-        actor.Position = ToWorldAtGround(position, 0.08f);
-        actor.Load(
+        var actor = _ridWorld!.CreateActor(
             War3CommandFeedbackCatalog.ConfirmationSource,
-            _camera,
             War3HumanScenario.PlayerId,
             includeEffects: false);
+        actor.Position = ToWorldAtGround(position, 0.08f);
         actor.SetSurfaceTint(War3CommandFeedbackCatalog.Tint(kind));
         actor.SetShadowCastingEnabled(false);
         actor.ReplayPreferred("Stand");
@@ -2388,8 +2327,7 @@ public sealed partial class War3WorldPresenter : Node3D
             return false;
 
         RetireOldestCommandConfirmationAtCapacity();
-        var ring = SelectionRing(
-            $"TreeTargetConfirmation{resourceNode.Value}",
+        var ring = SelectionRingRid(
             0.075f,
             War3CommandFeedbackCatalog.ResourceTargetTint);
         var radius = SimPlane3DTransform.ToWorldLength(
@@ -2398,7 +2336,6 @@ public sealed partial class War3WorldPresenter : Node3D
         ring.Position = ToWorldAtGround(snapshot.Position, SelectionHeight);
         ring.Scale = Vector3.One * MathF.Max(0.55f, radius);
         ring.Visible = true;
-        AddChild(ring);
         _transients.Add(new TransientVisual(
             ring,
             Time.GetTicksMsec() +
@@ -2418,7 +2355,7 @@ public sealed partial class War3WorldPresenter : Node3D
         for (var index = 0; index < _transients.Count; index++)
         {
             if (!_transients[index].CommandConfirmation) continue;
-            _transients[index].Root.QueueFree();
+            _transients[index].Root.Dispose();
             _transients.RemoveAt(index);
             return;
         }
@@ -2478,7 +2415,7 @@ public sealed partial class War3WorldPresenter : Node3D
         for (var index = _transients.Count - 1; index >= 0; index--)
         {
             if (Time.GetTicksMsec() < _transients[index].RemoveAt) continue;
-            _transients[index].Root.QueueFree();
+            _transients[index].Root.Dispose();
             _transients.RemoveAt(index);
         }
     }
@@ -2567,25 +2504,41 @@ public sealed partial class War3WorldPresenter : Node3D
             position,
             GroundWorldHeight(position) + localHeight);
 
-    private static MeshInstance3D SelectionRing(string name, float width, Color color)
+    private War3RidGeometryInstance SelectionRingRid(float width, Color color)
     {
-        var material = Emissive(color);
-        material.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
-        material.NoDepthTest = false;
-        return new MeshInstance3D
+        if (!_selectionRingMeshes.TryGetValue(width, out var mesh))
         {
-            Name = name,
-            Mesh = new TorusMesh
+            mesh = new TorusMesh
             {
                 InnerRadius = MathF.Max(0.1f, 1f - width),
                 OuterRadius = 1f,
                 Rings = 32,
                 RingSegments = 8
-            },
-            MaterialOverride = material,
-            Visible = false,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
-        };
+            };
+            _selectionRingMeshes.Add(width, mesh);
+        }
+        if (!_selectionRingMaterials.TryGetValue(color, out var material))
+        {
+            material = Emissive(color);
+            material.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+            material.NoDepthTest = false;
+            _selectionRingMaterials.Add(color, material);
+        }
+        var ring = _ridWorld!.CreateGeometry(
+            mesh,
+            material,
+            castShadows: false);
+        ring.Visible = false;
+        return ring;
+    }
+
+    private BoxMesh BuildingShadowMesh(Vector3 size)
+    {
+        if (_buildingShadowMeshes.TryGetValue(size, out var mesh))
+            return mesh;
+        mesh = new BoxMesh { Size = size };
+        _buildingShadowMeshes.Add(size, mesh);
+        return mesh;
     }
 
     private static float UnitSelectionWorldRadius(float navigationRadius) =>
@@ -2638,16 +2591,16 @@ public sealed partial class War3WorldPresenter : Node3D
     };
 
     private sealed class UnitVisual(
-        Node3D root,
-        War3ModelActor actor,
-        MeshInstance3D selection,
+        War3RidModelActor actor,
+        War3RidGeometryInstance selection,
+        War3RidGeometryInstance shadowProxy,
         War3UnitDefinition definition,
         int boundUnitTypeId,
         int poolTeam)
     {
-        public Node3D Root { get; } = root;
-        public War3ModelActor Actor { get; } = actor;
-        public MeshInstance3D Selection { get; } = selection;
+        public War3RidModelActor Actor { get; } = actor;
+        public War3RidGeometryInstance Selection { get; } = selection;
+        public War3RidGeometryInstance ShadowProxy { get; } = shadowProxy;
         public War3UnitDefinition Definition { get; } = definition;
         public int BoundUnitTypeId { get; } = boundUnitTypeId;
         public int PoolTeam { get; } = poolTeam;
@@ -2656,13 +2609,9 @@ public sealed partial class War3WorldPresenter : Node3D
         public float LastCooldown { get; set; }
         public NVector2 LastPosition { get; set; }
         public bool Dying { get; set; }
-        public ulong RemoveAt { get; set; }
         public ulong AbilityAnimationUntil { get; set; }
         public int TreeHarvestResourceNode { get; set; } = -1;
         public int LastTreeHarvestStrike { get; set; } = -1;
-        public War3StaticModelBatch? LodBatch { get; set; }
-        public int LodIndex { get; set; } = -1;
-        public bool FullDetail { get; set; } = true;
         public bool ActorVisible { get; set; } = true;
         public bool SelectionVisible { get; set; }
         public bool TransformInitialized { get; set; }
@@ -2676,20 +2625,19 @@ public sealed partial class War3WorldPresenter : Node3D
         int BoundUnitTypeId);
 
     private sealed class BuildingVisual(
-        Node3D root,
-        War3ModelActor actor,
-        MeshInstance3D selection,
-        MeshInstance3D shadowProxy,
+        War3RidModelActor actor,
+        War3RidGeometryInstance selection,
+        War3RidGeometryInstance shadowProxy,
         float shadowProxyHeight,
         float frustumRadius,
         War3BuildingDefinition definition,
         bool modelLoaded,
         int typeId)
     {
-        public Node3D Root { get; } = root;
-        public War3ModelActor Actor { get; } = actor;
-        public MeshInstance3D Selection { get; } = selection;
-        public MeshInstance3D ShadowProxy { get; } = shadowProxy;
+        public War3RidModelActor Actor { get; set; } = actor;
+        public War3RidGeometryInstance Selection { get; } = selection;
+        public War3RidGeometryInstance ShadowProxy { get; } = shadowProxy;
+        public Action<War3ModelSoundTimelineEvent> SoundHandler { get; set; } = null!;
         public float ShadowProxyHeight { get; } = shadowProxyHeight;
         public float FrustumRadius { get; } = frustumRadius;
         public bool ModelLoaded { get; set; } = modelLoaded;
@@ -2709,7 +2657,6 @@ public sealed partial class War3WorldPresenter : Node3D
         public Vector3 WorldPosition { get; set; }
         public bool WasGhost { get; set; }
         public bool Dying { get; set; }
-        public ulong RemoveAt { get; set; }
         public bool LayoutInitialized { get; set; }
         public bool GhostInitialized { get; set; }
         public bool IsGhost { get; set; }
@@ -2729,13 +2676,13 @@ public sealed partial class War3WorldPresenter : Node3D
     }
 
     private sealed class ResourceVisual(
-        War3ModelActor? actor,
+        War3RidModelActor? actor,
         EconomyResourceKind kind,
         string source,
         War3StaticModelBatch? staticBatch = null,
         int staticBatchIndex = -1)
     {
-        public War3ModelActor? Actor { get; set; } = actor;
+        public War3RidModelActor? Actor { get; set; } = actor;
         public EconomyResourceKind Kind { get; } = kind;
         public string Source { get; } = source;
         public War3StaticModelBatch? StaticBatch { get; } = staticBatch;
@@ -2748,7 +2695,7 @@ public sealed partial class War3WorldPresenter : Node3D
     }
 
     private sealed record ProjectileVisual(
-        Node3D Root,
+        IWar3RidSpatial Root,
         War3UnitDefinition Definition,
         NVector2 LastPosition,
         int SourcePlayerId)
@@ -2758,7 +2705,7 @@ public sealed partial class War3WorldPresenter : Node3D
     }
 
     private sealed record BuildingProjectileVisual(
-        Node3D Root,
+        IWar3RidSpatial Root,
         War3BuildingDefinition Definition,
         NVector2 LastPosition,
         int SourcePlayerId)
@@ -2768,7 +2715,7 @@ public sealed partial class War3WorldPresenter : Node3D
     }
 
     private sealed record AbilityProjectileVisual(
-        Node3D Root,
+        IWar3RidSpatial Root,
         War3AbilityDefinition Definition,
         NVector2 LastPosition,
         int SourcePlayerId)
@@ -2778,33 +2725,14 @@ public sealed partial class War3WorldPresenter : Node3D
     }
 
     private sealed record TransientVisual(
-        Node3D Root,
+        IWar3RidSpatial Root,
         ulong RemoveAt,
         bool CommandConfirmation = false);
-    private readonly record struct UnitDetailCandidate(
-        int Unit,
-        bool Selected,
-        float DistanceSquared,
-        int SurfaceCost);
-    private sealed class UnitDetailCandidateComparer :
-        IComparer<UnitDetailCandidate>
-    {
-        public static UnitDetailCandidateComparer Instance { get; } = new();
-
-        public int Compare(UnitDetailCandidate left, UnitDetailCandidate right)
-        {
-            var selected = right.Selected.CompareTo(left.Selected);
-            if (selected != 0) return selected;
-            var distance = left.DistanceSquared.CompareTo(
-                right.DistanceSquared);
-            return distance != 0 ? distance : left.Unit.CompareTo(right.Unit);
-        }
-    }
     private readonly record struct AbilityVisualInstance(
         string Model,
         string Attachment);
     private sealed record AbilityBuffPart(
-        War3ModelActor Actor,
+        War3RidModelActor Actor,
         string Attachment);
     private sealed record AbilityBuffVisual(
         AbilityBuffPart[] Parts,

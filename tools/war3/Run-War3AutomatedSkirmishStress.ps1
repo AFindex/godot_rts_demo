@@ -40,6 +40,7 @@ $godotArguments += @(
     "--war3-auto-skirmish-ticks-per-frame=$TicksPerPhysicsFrame",
     "--war3-stress-test",
     "--war3-stress-units-per-team=$unitsPerTeam",
+    "--war3-stress-contact-seconds=5",
     "--war3-stress-builders=$Builders",
     "--war3-stress-build-slots=$BuildSlots",
     "--war3-stress-build-interval=$BuildIntervalTicks",

@@ -53,6 +53,8 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _buildPreview = new();
     private readonly Series _physicsAllocated = new();
     private readonly Series _presenterAllocated = new();
+    private readonly Series _presenterNodeFreeAdvance = new();
+    private readonly Series _presenterNodeFreeAdvanceAllocated = new();
     private readonly Series _presenterUnits = new();
     private readonly Series _presenterUnitAnimation = new();
     private readonly Series _presenterUnitActorsVisited = new();
@@ -61,7 +63,7 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _presenterUnitActorsCreated = new();
     private readonly Series _presenterUnitResolveAllocated = new();
     private readonly Series _presenterUnitFrustumAllocated = new();
-    private readonly Series _presenterUnitLodAllocated = new();
+    private readonly Series _presenterUnitTransformAllocated = new();
     private readonly Series _presenterUnitAnimationAllocated = new();
     private readonly Series _presenterBuildings = new();
     private readonly Series _presenterBuildingActorsVisited = new();
@@ -76,6 +78,10 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _presenterResourcesAllocated = new();
     private readonly Series _presenterProjectilesAllocated = new();
     private readonly Series _presenterTransientsAllocated = new();
+    private readonly Series _presenterNodeFreeEffects = new();
+    private readonly Series _presenterNodeFreeEffectsAllocated = new();
+    private readonly Series _presenterNodeFreeCommit = new();
+    private readonly Series _presenterNodeFreeCommitAllocated = new();
     private readonly Series _objects = new();
     private readonly Series _drawCalls = new();
     private readonly Series _primitives = new();
@@ -711,6 +717,10 @@ internal sealed class War3RuntimeProfiler
             _presenter.Add(presenterMilliseconds);
             _buildPreview.Add(buildPreviewMilliseconds);
             _presenterAllocated.Add(presenterAllocatedBytes);
+            _presenterNodeFreeAdvance.Add(
+                presenterProfile.NodeFreeAdvanceMilliseconds);
+            _presenterNodeFreeAdvanceAllocated.Add(
+                presenterProfile.NodeFreeAdvanceAllocatedBytes);
             _presenterUnits.Add(presenterProfile.UnitsMilliseconds);
             _presenterUnitAnimation.Add(
                 presenterProfile.UnitAnimationMilliseconds);
@@ -725,8 +735,8 @@ internal sealed class War3RuntimeProfiler
                 presenterProfile.UnitResolveAllocatedBytes);
             _presenterUnitFrustumAllocated.Add(
                 presenterProfile.UnitFrustumAllocatedBytes);
-            _presenterUnitLodAllocated.Add(
-                presenterProfile.UnitLodAllocatedBytes);
+            _presenterUnitTransformAllocated.Add(
+                presenterProfile.UnitTransformAllocatedBytes);
             _presenterUnitAnimationAllocated.Add(
                 presenterProfile.UnitAnimationAllocatedBytes);
             _presenterBuildings.Add(presenterProfile.BuildingsMilliseconds);
@@ -750,6 +760,14 @@ internal sealed class War3RuntimeProfiler
                 presenterProfile.ProjectilesAllocatedBytes);
             _presenterTransientsAllocated.Add(
                 presenterProfile.TransientsAllocatedBytes);
+            _presenterNodeFreeEffects.Add(
+                presenterProfile.NodeFreeEffectsMilliseconds);
+            _presenterNodeFreeEffectsAllocated.Add(
+                presenterProfile.NodeFreeEffectsAllocatedBytes);
+            _presenterNodeFreeCommit.Add(
+                presenterProfile.NodeFreeCommitMilliseconds);
+            _presenterNodeFreeCommitAllocated.Add(
+                presenterProfile.NodeFreeCommitAllocatedBytes);
             _objects.Add(RenderingServer.GetRenderingInfo(
                 RenderingServer.RenderingInfo.TotalObjectsInFrame));
             _drawCalls.Add(RenderingServer.GetRenderingInfo(
@@ -830,7 +848,10 @@ internal sealed class War3RuntimeProfiler
             $"physics_ms={_lastPhysicsMilliseconds:0.###} " +
             $"simulation_ms={_lastSimulationMilliseconds:0.###} " +
             $"presenter_ms={presenterMilliseconds:0.###} " +
+            $"node_free_advance_ms={presenterProfile.NodeFreeAdvanceMilliseconds:0.###} " +
             $"presenter_units_ms={presenterProfile.UnitsMilliseconds:0.###} " +
+            $"node_free_effects_ms={presenterProfile.NodeFreeEffectsMilliseconds:0.###} " +
+            $"node_free_commit_ms={presenterProfile.NodeFreeCommitMilliseconds:0.###} " +
             $"unit_animation_ms={presenterProfile.UnitAnimationMilliseconds:0.###} " +
             $"units_seen={presenterProfile.UnitActorsVisited}/" +
             $"{presenterProfile.UnitActorsAlive}/" +
@@ -975,6 +996,10 @@ internal sealed class War3RuntimeProfiler
         Print("build_preview_ms", _buildPreview);
         Print("physics_alloc_bytes", _physicsAllocated);
         Print("presenter_alloc_bytes", _presenterAllocated);
+        Print("presenter_node_free_advance_ms", _presenterNodeFreeAdvance);
+        Print(
+            "presenter_node_free_advance_alloc_bytes",
+            _presenterNodeFreeAdvanceAllocated);
         Print("presenter_units_ms", _presenterUnits);
         Print("presenter_unit_animation_ms", _presenterUnitAnimation);
         Print("presenter_unit_actors_visited", _presenterUnitActorsVisited);
@@ -986,7 +1011,9 @@ internal sealed class War3RuntimeProfiler
             _presenterUnitResolveAllocated);
         Print("presenter_unit_frustum_alloc_bytes",
             _presenterUnitFrustumAllocated);
-        Print("presenter_unit_lod_alloc_bytes", _presenterUnitLodAllocated);
+        Print(
+            "presenter_unit_transform_alloc_bytes",
+            _presenterUnitTransformAllocated);
         Print("presenter_unit_animation_alloc_bytes",
             _presenterUnitAnimationAllocated);
         Print("presenter_buildings_ms", _presenterBuildings);
@@ -1007,6 +1034,14 @@ internal sealed class War3RuntimeProfiler
         Print("presenter_projectiles_alloc_bytes",
             _presenterProjectilesAllocated);
         Print("presenter_transients_alloc_bytes", _presenterTransientsAllocated);
+        Print("presenter_node_free_effects_ms", _presenterNodeFreeEffects);
+        Print(
+            "presenter_node_free_effects_alloc_bytes",
+            _presenterNodeFreeEffectsAllocated);
+        Print("presenter_node_free_commit_ms", _presenterNodeFreeCommit);
+        Print(
+            "presenter_node_free_commit_alloc_bytes",
+            _presenterNodeFreeCommitAllocated);
         Print("render_objects", _objects);
         Print("render_draw_calls", _drawCalls);
         Print("render_primitives", _primitives);

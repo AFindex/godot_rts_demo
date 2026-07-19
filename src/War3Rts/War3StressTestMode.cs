@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
 using RtsDemo.Simulation;
 using GD = Godot.GD;
@@ -30,6 +31,7 @@ internal sealed class War3StressTestMode
     private readonly int _combatRefreshTicks;
     private readonly int _respawnTicks;
     private readonly int _armyInset;
+    private readonly float _targetContactSeconds;
     private readonly int _qualityReportTicks;
     private readonly List<int> _playerCombatUnits = [];
     private readonly List<int> _enemyCombatUnits = [];
@@ -102,6 +104,12 @@ internal sealed class War3StressTestMode
             arguments, "--war3-stress-respawn=", 60, 15, 1_800);
         _armyInset = IntegerArgument(
             arguments, "--war3-stress-army-inset=", 1_050, 400, 2_400);
+        _targetContactSeconds = FloatArgument(
+            arguments,
+            "--war3-stress-contact-seconds=",
+            _unitsPerTeam >= 400 ? 5f : 0f,
+            0f,
+            30f);
         _qualityReportTicks = IntegerArgument(
             arguments, "--war3-stress-quality-report=", 300, 60, 3_600);
     }
@@ -131,6 +139,16 @@ internal sealed class War3StressTestMode
                              new Vector2(playerToEnemy * _armyInset, 0f);
         _enemyCombatSpawn = runtime.EnemyHome -
                             new Vector2(playerToEnemy * _armyInset, 0f);
+        if (_targetContactSeconds > 0f)
+        {
+            var midpoint = (runtime.PlayerHome + runtime.EnemyHome) * 0.5f;
+            var expectedContactDistance = ExpectedContactDistance(
+                production, _targetContactSeconds);
+            _playerCombatSpawn = midpoint -
+                new Vector2(playerToEnemy * expectedContactDistance * 0.5f, 0f);
+            _enemyCombatSpawn = midpoint +
+                new Vector2(playerToEnemy * expectedContactDistance * 0.5f, 0f);
+        }
         _playerCombatTarget = _enemyCombatSpawn;
         _enemyCombatTarget = _playerCombatSpawn;
         _initialArmySeparation = Vector2.Distance(
@@ -164,6 +182,7 @@ internal sealed class War3StressTestMode
             $"army_centers={_playerCombatSpawn.X:0},{_playerCombatSpawn.Y:0}/" +
             $"{_enemyCombatSpawn.X:0},{_enemyCombatSpawn.Y:0} " +
             $"army_separation={_initialArmySeparation:0} " +
+            $"target_contact_seconds={_targetContactSeconds:0.##} " +
             $"build_interval_ticks={_buildIntervalTicks} " +
             $"building_lifetime_ticks={_buildingLifetimeTicks} " +
             "construction_cost=free auto_respawn=true auto_destroy=true");
@@ -849,6 +868,51 @@ internal sealed class War3StressTestMode
                int.TryParse(value[prefix.Length..], out var parsed)
             ? Math.Clamp(parsed, minimum, maximum)
             : fallback;
+    }
+
+    private static float FloatArgument(
+        string[] arguments,
+        string prefix,
+        float fallback,
+        float minimum,
+        float maximum)
+    {
+        var value = arguments.FirstOrDefault(argument => argument.StartsWith(
+            prefix, StringComparison.OrdinalIgnoreCase));
+        return value is not null &&
+               float.TryParse(
+                   value[prefix.Length..],
+                   NumberStyles.Float,
+                   CultureInfo.InvariantCulture,
+                   out var parsed)
+            ? Math.Clamp(parsed, minimum, maximum)
+            : fallback;
+    }
+
+    private static float ExpectedContactDistance(
+        ProductionCatalogSnapshot production,
+        float seconds)
+    {
+        int[] unitTypes =
+        [
+            War3HumanContent.Footman,
+            War3HumanContent.Rifleman,
+            War3HumanContent.Priest,
+            War3HumanContent.MortarTeam
+        ];
+        var totalSpeed = 0f;
+        var totalAcquisition = 0f;
+        foreach (var unitType in unitTypes)
+        {
+            var profile = production.UnitType(unitType);
+            totalSpeed += profile.Movement.MaximumSpeed;
+            totalAcquisition += profile.Combat.AcquisitionRange;
+        }
+        var averageSpeed = totalSpeed / unitTypes.Length;
+        var averageAcquisition = totalAcquisition / unitTypes.Length;
+        return MathF.Max(
+            320f,
+            averageSpeed * 2f * seconds + averageAcquisition);
     }
 
     private static double ElapsedMilliseconds(long start, long end) =>

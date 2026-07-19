@@ -5446,41 +5446,56 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
             if (!Units.Alive[unit]) continue;
 
             var desired = Vector2.Zero;
-            switch (Combat.TargetKinds[unit])
+            var navigationOwnsFacing = TryNavigationFacing(unit, out desired);
+            if (!navigationOwnsFacing &&
+                Construction.TryObserveAssignedBuilding(
+                    unit, out var construction) &&
+                construction.State == BuildingLifecycleState.Constructing)
             {
-                case CombatTargetKind.Unit:
+                desired = (construction.Bounds.Min + construction.Bounds.Max) *
+                          0.5f - Units.Positions[unit];
+            }
+            else if (!navigationOwnsFacing)
+            {
+                switch (Combat.TargetKinds[unit])
                 {
-                    var target = Combat.TargetUnits[unit];
-                    if ((uint)target < (uint)Units.Count && Units.Alive[target])
-                        desired = Units.Positions[target] - Units.Positions[unit];
-                    break;
-                }
-                case CombatTargetKind.Building:
-                {
-                    var target = new GameplayBuildingId(
-                        Combat.TargetBuildings[unit]);
-                    if (Construction.IsAlive(target))
+                    case CombatTargetKind.Unit:
                     {
-                        var bounds = Construction.Observe(target).Bounds;
-                        desired = (bounds.Min + bounds.Max) * 0.5f -
-                                  Units.Positions[unit];
+                        var target = Combat.TargetUnits[unit];
+                        if ((uint)target < (uint)Units.Count &&
+                            Units.Alive[target])
+                            desired = Units.Positions[target] -
+                                      Units.Positions[unit];
+                        break;
                     }
-                    break;
-                }
-                case CombatTargetKind.Object:
-                {
-                    var target = new CombatObjectId(
-                        Combat.TargetBuildings[unit]);
-                    if (CombatObjects.IsAlive(target))
+                    case CombatTargetKind.Building:
                     {
-                        desired = CombatObjects.Observe(target).Position -
-                                  Units.Positions[unit];
+                        var target = new GameplayBuildingId(
+                            Combat.TargetBuildings[unit]);
+                        if (Construction.IsAlive(target))
+                        {
+                            var bounds = Construction.Observe(target).Bounds;
+                            desired = (bounds.Min + bounds.Max) * 0.5f -
+                                      Units.Positions[unit];
+                        }
+                        break;
                     }
-                    break;
+                    case CombatTargetKind.Object:
+                    {
+                        var target = new CombatObjectId(
+                            Combat.TargetBuildings[unit]);
+                        if (CombatObjects.IsAlive(target))
+                        {
+                            desired = CombatObjects.Observe(target).Position -
+                                      Units.Positions[unit];
+                        }
+                        break;
+                    }
                 }
             }
 
-            if (desired.LengthSquared() <= 0.000001f)
+            if (!navigationOwnsFacing &&
+                desired.LengthSquared() <= 0.000001f)
             {
                 desired = Units.Velocities[unit].LengthSquared() > 0.000001f
                     ? Units.Velocities[unit]
@@ -5491,6 +5506,43 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
                 Units.Facings[unit], desired,
                 Units.TurnRatesRadiansPerSecond[unit] * delta);
         }
+    }
+
+    /// <summary>
+    /// A live movement leg owns facing even while combat has a target.  This
+    /// keeps attack/chase navigation aligned with the path tangent instead of
+    /// making units stare through obstacles at the final interaction target.
+    /// Returning true with no direction intentionally preserves the current
+    /// facing while an asynchronous path is still pending.
+    /// </summary>
+    private bool TryNavigationFacing(int unit, out Vector2 desired)
+    {
+        desired = Vector2.Zero;
+        var navigating =
+            Units.MovementLegResults[unit] ==
+            UnitMovementLegResult.InProgress &&
+            Units.Modes[unit] is
+                UnitMoveMode.Moving or UnitMoveMode.WaitingForPath;
+        if (!navigating) return false;
+
+        if (Units.PreferredVelocities[unit].LengthSquared() > 0.000001f)
+        {
+            desired = Units.PreferredVelocities[unit];
+            return true;
+        }
+
+        var path = Units.Paths[unit];
+        if (path is not null &&
+            path.CommandVersion == Units.CommandVersions[unit] &&
+            (uint)path.Cursor < (uint)path.Points.Length)
+        {
+            desired = path.Points[path.Cursor] - Units.Positions[unit];
+            if (desired.LengthSquared() > 0.000001f) return true;
+        }
+
+        if (Units.Velocities[unit].LengthSquared() > 0.000001f)
+            desired = Units.Velocities[unit];
+        return true;
     }
 
     private void Integrate(float delta)

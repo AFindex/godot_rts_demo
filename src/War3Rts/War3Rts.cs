@@ -410,14 +410,12 @@ public sealed partial class War3Rts : Node3D
         {
             Name = "War3World",
             ProfilingEnabled = _runtimeProfiler is not null,
-            ForceFullUnitPresentation = _stressTest is not null &&
-                                        !profileProductionPresentation,
             ForceFullCombatEffects = _stressTest is not null &&
                                      !profileProductionPresentation
         };
         if (profileProductionPresentation)
             GD.Print(
-                "WAR3_PROFILE_PRESENTATION production_lod=true " +
+                "WAR3_PROFILE_PRESENTATION production_effect_budget=true " +
                 "stress_default_unchanged=true");
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
@@ -1003,6 +1001,14 @@ public sealed partial class War3Rts : Node3D
                 _presenter?.LastSyncProfile ?? default,
                 modelActorProfile) == true)
         {
+            if (_stressTest is not null && _presenter is not null)
+                GD.Print(
+                    "WAR3_STRESS_PRESENTATION_RESULT " +
+                    $"blend={_presenter.SawBlendedTransition} " +
+                    $"death={_presenter.SawUnitDeathAnimation}/" +
+                    $"{_presenter.SawUnitDecayFlesh}/" +
+                    $"{_presenter.SawUnitDecayBone}/" +
+                    $"{_presenter.SawUnitDeathCompleted}");
             _stressTest?.PrintSummary();
             _automatedSkirmish?.PrintSummary();
             GetTree().Quit(0);
@@ -4527,6 +4533,12 @@ public sealed partial class War3Rts : Node3D
                               _loadingReachedCompletion &&
                               _lastLoadingProgress >= 1d &&
                               _loadingStageUpdateCount >= 11;
+        var nodeFreeBattlefieldValid =
+            _presenter.BattlefieldEntityNodeCount == 0 &&
+            _presenter.ImportedModelProbeNodeCount == 0 &&
+            _presenter.NodeFreeActorCount >=
+            _presenter.PresentedUnitCount +
+            _presenter.PresentedBuildingCount;
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
@@ -4551,7 +4563,8 @@ public sealed partial class War3Rts : Node3D
                        _presenter.SawAttackCommandConfirmation &&
                        _presenter.SawTreeTargetConfirmation &&
                       constructionPresentationValid && terrainReady &&
-                      dataIntegrationReady && mapLoadingValid &&
+                       dataIntegrationReady && mapLoadingValid &&
+                       nodeFreeBattlefieldValid &&
                       abilityIntegrationReady &&
                       _smokeSelectionGroupUiValid &&
                       _smokeConstructionProgressUiValid &&
@@ -4567,6 +4580,10 @@ public sealed partial class War3Rts : Node3D
             $"WAR3_RTS_SMOKE success={success} units={_presenter.PresentedUnitCount} " +
              $"buildings={_presenter.PresentedBuildingCount} resources={_presenter.PresentedResourceCount} " +
              $"effects={_presenter.ActiveEffectCount} peak_effects={_presenter.PeakEffectCount} " +
+             $"node_free={nodeFreeBattlefieldValid}/" +
+             $"{_presenter.NodeFreeActorCount}/" +
+             $"{_presenter.BattlefieldEntityNodeCount}/" +
+             $"{_presenter.ImportedModelProbeNodeCount} " +
              $"projectile_next={_simulation.CombatProjectiles.NextId} " +
             $"portrait={_hud.PortraitReady} hud_layout={_hud.ConsoleLayoutReady} " +
             $"inventory_layout={_hud.InventoryLayoutReady} " +
