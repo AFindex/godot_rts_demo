@@ -929,6 +929,19 @@ public sealed class ConstructionSystem
         return building.Snapshot();
     }
 
+    public bool TryObserve(
+        GameplayBuildingId id,
+        out GameplayBuildingSnapshot snapshot)
+    {
+        if (TryGet(id, out var building))
+        {
+            snapshot = building.Snapshot();
+            return true;
+        }
+        snapshot = default;
+        return false;
+    }
+
     public bool TryObserveFootprint(
         DynamicFootprintId footprintId,
         out GameplayBuildingSnapshot snapshot)

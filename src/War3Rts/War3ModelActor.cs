@@ -39,6 +39,7 @@ public sealed partial class War3ModelActor : Node3D
     private War3ModelMetadata? _metadata;
     private StringName?[] _sequenceAnimationNames = [];
     private Animation?[] _sequenceAnimations = [];
+    private sbyte[] _sequenceLoopModes = [];
     private int _sequenceIndex;
     private string _requestedSequence = string.Empty;
     private IReadOnlyList<string>? _requestedCandidatesReference;
@@ -803,9 +804,16 @@ public sealed partial class War3ModelActor : Node3D
             {
                 _sequencePlaybackDurationMilliseconds =
                     Math.Max(1d, animation.Length * 1000d);
-                animation.LoopMode = loop
+                var loopMode = loop
                     ? Animation.LoopModeEnum.Linear
                     : Animation.LoopModeEnum.None;
+                if ((uint)index >= (uint)_sequenceLoopModes.Length ||
+                    _sequenceLoopModes[index] != (sbyte)loopMode)
+                {
+                    animation.LoopMode = loopMode;
+                    if ((uint)index < (uint)_sequenceLoopModes.Length)
+                        _sequenceLoopModes[index] = (sbyte)loopMode;
+                }
                 var transition = allowBlend && previousIndex >= 0 &&
                                  previousIndex != index
                     ? Math.Clamp(_metadata.BlendTimeMilliseconds / 1000d, 0d, 0.5d)
@@ -866,6 +874,7 @@ public sealed partial class War3ModelActor : Node3D
         _sequencePlaybackDurationMilliseconds = 1d;
         _sequenceAnimationNames = [];
         _sequenceAnimations = [];
+        _sequenceLoopModes = [];
         _requestedCandidatesReference = null;
         _geosets.Clear();
         _geosetVisibility.Clear();
@@ -906,11 +915,14 @@ public sealed partial class War3ModelActor : Node3D
         {
             _sequenceAnimationNames = [];
             _sequenceAnimations = [];
+            _sequenceLoopModes = [];
             return;
         }
         var animations = _animation.GetAnimationList();
         _sequenceAnimationNames = new StringName?[_metadata.Sequences.Count];
         _sequenceAnimations = new Animation?[_metadata.Sequences.Count];
+        _sequenceLoopModes = new sbyte[_metadata.Sequences.Count];
+        Array.Fill(_sequenceLoopModes, (sbyte)-1);
         for (var index = 0; index < _metadata.Sequences.Count; index++)
         {
             var sequenceName = _metadata.Sequences[index].Name;

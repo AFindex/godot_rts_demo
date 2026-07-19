@@ -1902,9 +1902,15 @@ public sealed class RtsSimulation : ICombatMovementDriver, IAbilityRuntimeWorld
         return succeeded;
     }
 
-    public bool DamageBuilding(GameplayBuildingId buildingId, float damage) =>
-        Construction.ApplyDamage(
+    public bool DamageBuilding(GameplayBuildingId buildingId, float damage)
+    {
+        if (!Construction.TryObserve(buildingId, out var building) ||
+            Abilities.IsBuildingInvulnerable(
+                buildingId, building.Type.Id))
+            return false;
+        return Construction.ApplyDamage(
             buildingId, damage, Economy, RemoveGameplayBuildingFootprint);
+    }
 
     public bool DamageUnit(int unit, float damage)
     {

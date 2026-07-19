@@ -404,13 +404,21 @@ public sealed partial class War3Rts : Node3D
         await AdvanceMapLoadingAsync(
             7, 0.88d,
             "创建单位/建筑表现器、War3 HUD、肖像视口与生产研究队列。");
+        var profileProductionPresentation = arguments.Contains(
+            "--war3-profile-production-presentation");
         _presenter = new War3WorldPresenter
         {
             Name = "War3World",
             ProfilingEnabled = _runtimeProfiler is not null,
-            ForceFullUnitPresentation = _stressTest is not null,
-            ForceFullCombatEffects = _stressTest is not null
+            ForceFullUnitPresentation = _stressTest is not null &&
+                                        !profileProductionPresentation,
+            ForceFullCombatEffects = _stressTest is not null &&
+                                     !profileProductionPresentation
         };
+        if (profileProductionPresentation)
+            GD.Print(
+                "WAR3_PROFILE_PRESENTATION production_lod=true " +
+                "stress_default_unchanged=true");
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
         var externalDotnetProfiling = arguments.Contains(

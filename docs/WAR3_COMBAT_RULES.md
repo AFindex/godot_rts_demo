@@ -23,10 +23,16 @@
 
 1. 基础平均攻击加当前武器科技等级乘攻击升级增量。
 2. 若命中原有 `BonusVs` 标签，再加标签伤害与对应升级增量。
-3. 乘攻击类型对目标护甲类型的矩阵倍率。
-4. 除 `Spells` 外，正护甲使用 `damage / (1 + armor × 0.06)`；负护甲使用
+3. 对普通武器攻击按独立 salt 抽取 Critical、攻击者 Miss 和目标 Evasion。Miss 或
+   Evasion 命中时本次为 0；只有实际触发且配置 Never Miss 的 Critical 能绕过。闪避
+   不复用 Pierce/Magic 的 Deflect，多个闪避来源取最高概率。
+4. Critical 触发时乘配置伤害倍率并加入配置附伤；Pierce/Magic 再按 Deflect 概率与
+   对应倍率修正。所有概率都由 Ability level Data 编译，并以 tick、攻击者、目标和
+   弹道 ID 确定性取样。
+5. 乘攻击类型对目标护甲类型的矩阵倍率。
+6. 除 `Spells` 外，正护甲使用 `damage / (1 + armor × 0.06)`；负护甲使用
    `damage × (2 - 0.94 ^ -armor)`；`Spells` 只消费类型倍率，不消费数值护甲。
-5. 多次攻击按稳定顺序逐次扣血，并以当前可用生命截断事件中的实际伤害。
+7. 多次攻击按稳定顺序逐次扣血，并以当前可用生命截断事件中的实际伤害。
 
 矩阵列顺序为 Small、Medium、Large、Fortified、Normal、Hero、Divine、None：
 

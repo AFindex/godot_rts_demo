@@ -26,7 +26,6 @@ public sealed class DynamicOccupancyGrid
     private int[] _constraintCandidates = new int[16];
     private int[] _constraintCandidateMarks = new int[16];
     private int _constraintQueryStamp;
-    private float _maximumFootprintSpan;
     private int _nextId = 1;
     private int _lastChangedRevision = -1;
     private SimRect _lastChangedBounds;
@@ -85,14 +84,12 @@ public sealed class DynamicOccupancyGrid
             _footprintsByCell[cell]?.Clear();
         }
         _footprints.Clear();
-        _maximumFootprintSpan = 0f;
         for (var index = 0; index < snapshot.Footprints.Length; index++)
         {
             var footprint = snapshot.Footprints[index];
             ValidateFootprint(footprint.Bounds);
             var cells = CollectCells(footprint.Bounds);
             _footprints.Add(footprint.Id.Value, new FootprintEntry(footprint, cells));
-            TrackMaximumFootprintSpan(footprint.Bounds);
             for (var cellIndex = 0; cellIndex < cells.Length; cellIndex++)
             {
                 var cell = cells[cellIndex];
@@ -118,7 +115,6 @@ public sealed class DynamicOccupancyGrid
         var cells = CollectCells(footprint);
         var value = new DynamicFootprint(id, footprint, Revision);
         _footprints.Add(id.Value, new FootprintEntry(value, cells));
-        TrackMaximumFootprintSpan(footprint);
 
         for (var index = 0; index < cells.Length; index++)
         {
@@ -169,7 +165,6 @@ public sealed class DynamicOccupancyGrid
             var cells = CollectCells(bounds);
             var value = new DynamicFootprint(id, bounds, Revision);
             _footprints.Add(id.Value, new FootprintEntry(value, cells));
-            TrackMaximumFootprintSpan(bounds);
             for (var cellIndex = 0; cellIndex < cells.Length; cellIndex++)
             {
                 var cell = cells[cellIndex];
@@ -362,11 +357,10 @@ public sealed class DynamicOccupancyGrid
         ConstraintCalls++;
         if (_footprints.Count == 0) return proposed;
 
-        var queryPadding = MathF.Max(0f, radius) +
-                           _maximumFootprintSpan;
+        var queryPadding = MathF.Max(0f, radius);
         var query = new SimRect(
-            Vector2.Min(previous, proposed),
-            Vector2.Max(previous, proposed)).Expanded(queryPadding);
+            proposed - new Vector2(queryPadding),
+            proposed + new Vector2(queryPadding));
         var candidateCount = CollectConstraintCandidates(query);
         ConstraintCandidateChecks += candidateCount;
         for (var index = 0; index < candidateCount; index++)
@@ -429,11 +423,6 @@ public sealed class DynamicOccupancyGrid
         while (capacity <= id) capacity *= 2;
         Array.Resize(ref _constraintCandidateMarks, capacity);
     }
-
-    private void TrackMaximumFootprintSpan(SimRect footprint) =>
-        _maximumFootprintSpan = MathF.Max(
-            _maximumFootprintSpan,
-            MathF.Max(footprint.Width, footprint.Height));
 
     private int[] CollectCells(SimRect footprint)
     {

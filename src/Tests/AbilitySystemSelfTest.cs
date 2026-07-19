@@ -724,12 +724,63 @@ public static class AbilitySystemSelfTest
                     Status: AbilityStatusFlags.Revealed,
                     Modifier: new AbilityStatModifier(ArmorAdd: -6f),
                     BuffId: "BFAE",
+                     BuffPolarity: AbilityBuffPolarity.Harmful,
+                     BuffDispelKind: AbilityBuffDispelKind.Magic)])]);
+        var nonHeroOnlySpell = new AbilityProfile(
+            6, "TNHR", "Non-Hero Only Spell", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Alive | AbilityTargetFlags.NonHero,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 120f, 0f, 10f, 3f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy,
+                    Status: AbilityStatusFlags.MovementDisabled,
+                    BuffId: "BNHR",
                     BuffPolarity: AbilityBuffPolarity.Harmful,
                     BuffDispelKind: AbilityBuffDispelKind.Magic)])]);
+        var resistantDurationSpell = new AbilityProfile(
+            7, "TRSK", "Resistant Duration Spell", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.TargetUnit,
+            AbilityTargetFlags.Unit | AbilityTargetFlags.Enemy |
+            AbilityTargetFlags.Alive,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 120f, 0f, 10f, 3f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Impact,
+                    AbilityEffectSelector.Primary,
+                    AbilityRelationFilter.Enemy,
+                    Status: AbilityStatusFlags.AttackDisabled,
+                    BuffId: "BRSK",
+                    BuffPolarity: AbilityBuffPolarity.Harmful,
+                    BuffDispelKind: AbilityBuffDispelKind.Magic)])]);
+        var resistantSkin = new AbilityProfile(
+            8, "TPSK", "Configured Resistant Skin", string.Empty,
+            string.Empty, string.Empty,
+            AbilityActivationKind.Passive,
+            AbilityTargetFlags.None,
+            false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus,
+                    AbilityEffectTiming.Aura,
+                    AbilityEffectSelector.Caster,
+                    AbilityRelationFilter.Self,
+                    Status: AbilityStatusFlags.Resistant)])]);
         var catalog = new AbilityCatalogSnapshot(
             [
                 regeneration, feedback, controlMagic, polymorph,
-                ensnare, faerieFire
+                ensnare, faerieFire, nonHeroOnlySpell,
+                resistantDurationSpell, resistantSkin
             ],
             [new UnitAbilityBindingProfile(
                 0, false, new UnitManaProfile(100f, 100f, 0f),
@@ -738,13 +789,18 @@ public static class AbilitySystemSelfTest
                     new UnitAbilityEntryProfile(1, 1),
                     new UnitAbilityEntryProfile(2, 1),
                     new UnitAbilityEntryProfile(3, 1),
-                    new UnitAbilityEntryProfile(4, 1),
-                    new UnitAbilityEntryProfile(5, 1)
+                     new UnitAbilityEntryProfile(4, 1),
+                     new UnitAbilityEntryProfile(5, 1),
+                     new UnitAbilityEntryProfile(6, 1),
+                     new UnitAbilityEntryProfile(7, 1)
                 ]),
              new UnitAbilityBindingProfile(
                  1, false, UnitManaProfile.None, [], UnitLevel: 1),
              new UnitAbilityBindingProfile(
-                 2, false, UnitManaProfile.None, [], UnitLevel: 6)]);
+                 2, false, UnitManaProfile.None, [], UnitLevel: 6),
+             new UnitAbilityBindingProfile(
+                 3, false, UnitManaProfile.None,
+                 [new UnitAbilityEntryProfile(8, 1)], UnitLevel: 3)]);
         simulation.Abilities.ConfigureCatalog(catalog);
         var movement = new UnitMovementProfileSnapshot(
             0, "configured-scalar", 7.5f, 90f, 400f,
@@ -761,6 +817,9 @@ public static class AbilitySystemSelfTest
         var highLevelType = new UnitTypeProfile(
             2, "configured-high-level", movement with { Id = 2 },
             combat, false);
+        var resistantType = new UnitTypeProfile(
+            3, "configured-resistant", movement with { Id = 3 },
+            combat, false);
         var caster = simulation.AddUnit(new Vector2(60f, 60f), casterType, 1);
         var nearby = simulation.AddUnit(new Vector2(90f, 60f), targetType, 1);
         var outsideAutoCast = simulation.AddUnit(
@@ -771,6 +830,8 @@ public static class AbilitySystemSelfTest
             new Vector2(85f, 80f), targetType, 2);
         var highLevel = simulation.AddUnit(
             new Vector2(95f, 80f), highLevelType, 2);
+        var resistantTarget = simulation.AddUnit(
+            new Vector2(115f, 80f), resistantType, 2);
         var airTarget = simulation.AddUnit(
             new Vector2(105f, 90f),
             targetType with
@@ -815,6 +876,23 @@ public static class AbilitySystemSelfTest
             simulation.Abilities.HasStatus(
                 notSummoned, AbilityStatusFlags.Revealed) &&
             Nearly(simulation.Combat.Armor[notSummoned], -6f);
+        var resistedNonHeroSpell = simulation.IssueAbility(
+            1, caster, 6,
+            AbilityCastTarget.Unit(
+                resistantTarget,
+                simulation.Units.Positions[resistantTarget]));
+        var resistantDurationCast = simulation.IssueAbility(
+            1, caster, 7,
+            AbilityCastTarget.Unit(
+                resistantTarget,
+                simulation.Units.Positions[resistantTarget]));
+        rig.Step();
+        var resistantBuff = simulation.Abilities.ObserveBuffs(resistantTarget)
+            .SingleOrDefault(value => value.AbilityId == 7);
+        var resistantSkinWorked =
+            resistedNonHeroSpell.Code == AbilityCommandCode.InvalidTarget &&
+            resistantDurationCast.Succeeded &&
+            resistantBuff.RemainingSeconds is > 2.9f and <= 3f;
         var invalidControl = simulation.IssueAbility(
             1, caster, 2,
             AbilityCastTarget.Unit(
@@ -861,6 +939,8 @@ public static class AbilitySystemSelfTest
                 .AutoCastRange == 30f &&
             parsed.State.Abilities.Catalog.Ability(1).Levels[0].Effects[0]
                 .SummonedValue == 12f &&
+            (parsed.State.Abilities.Catalog.Ability(8).Levels[0].Effects[0]
+                 .Status & AbilityStatusFlags.Resistant) != 0 &&
             parsed.State.Abilities.Buffs.Any(value =>
                 value.AbilityId == 0 &&
                 value.Modifier.HealthRegenerationAdd == 12f) &&
@@ -869,7 +949,10 @@ public static class AbilitySystemSelfTest
                 (value.Status & AbilityStatusFlags.Grounded) != 0) &&
             parsed.State.Abilities.Buffs.Any(value =>
                 value.AbilityId == 5 &&
-                value.Modifier.ArmorAdd == -6f);
+                value.Modifier.ArmorAdd == -6f) &&
+            parsed.State.Abilities.Buffs.Any(value =>
+                value.AbilityId == 7 &&
+                value.RemainingSeconds is > 2.8f and <= 3f);
         var restoredRig = MovementTestRig.CreateOpenField(
             new Vector2(220f), 22);
         if (parsed is not null)
@@ -884,8 +967,9 @@ public static class AbilitySystemSelfTest
                             restoredRig.RenderSimulation.ComputeStateHash();
         var passed = selectedByConfiguredRange && regenerated &&
                      summonedDamage && controlMagicWorked &&
-                     polymorphWorked && configuredStatusesWorked &&
-                     binaryRoundTrip && restoredExact;
+                      polymorphWorked && configuredStatusesWorked &&
+                      resistantSkinWorked &&
+                      binaryRoundTrip && restoredExact;
         return new SelfTestResult(
             passed,
             $"range={selectedByConfiguredRange}, regen={regenerated}/" +
@@ -905,6 +989,9 @@ public static class AbilitySystemSelfTest
             $"{ensnareCast.Code}/{faerieCast.Code}/" +
             $"air={wasAir}->{abilityWorld.AbilityUnitIsAir(airTarget)}/" +
             $"armor={simulation.Combat.Armor[notSummoned]:F2}, " +
+            $"resistant={resistantSkinWorked}/" +
+            $"{resistedNonHeroSpell.Code}/{resistantDurationCast.Code}/" +
+            $"{resistantBuff.RemainingSeconds:F2}, " +
             $"binary={binaryRoundTrip}/{validation}, exact={restoredExact}");
     }
 

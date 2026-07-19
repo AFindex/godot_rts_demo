@@ -198,6 +198,8 @@ public sealed partial class War3EffectRuntime : Node3D
     {
         if (_metadata is null || _sequence is null) return;
         var frame = _sequence.StartFrame + _simulatedMilliseconds;
+        Skeleton3D? cachedSkeleton = null;
+        var cachedSkeletonTransform = Transform3D.Identity;
 
         foreach (var runtime in _particles)
         {
@@ -224,7 +226,8 @@ public sealed partial class War3EffectRuntime : Node3D
                     runtime.SpawnRemainder = desired - spawnCount;
                 }
                 spawnCount = Math.Min(spawnCount, 96);
-                var emitterTransform = runtime.Binding.GlobalTransform;
+                var emitterTransform = runtime.Binding.ResolveGlobalTransform(
+                    ref cachedSkeleton, ref cachedSkeletonTransform);
                 for (var index = 0; index < spawnCount; index++)
                     SpawnParticle(runtime, frame, emitterTransform);
             }
@@ -255,7 +258,8 @@ public sealed partial class War3EffectRuntime : Node3D
                               runtime.SpawnRemainder;
                 var count = (int)Math.Floor(desired);
                 runtime.SpawnRemainder = desired - count;
-                var emitterTransform = runtime.Binding.GlobalTransform;
+                var emitterTransform = runtime.Binding.ResolveGlobalTransform(
+                    ref cachedSkeleton, ref cachedSkeletonTransform);
                 for (var index = 0; index < Math.Min(count, 8); index++)
                     SpawnRibbonPoint(runtime, frame, emitterTransform);
                 if (runtime.Points.Count > 512)
@@ -404,14 +408,24 @@ public sealed partial class War3EffectRuntime : Node3D
         var inverseBasis = worldBasis.Inverse();
         var right = inverseBasis * cameraBasis.X.Normalized();
         var up = inverseBasis * cameraBasis.Y.Normalized();
-        foreach (var runtime in _particles) RebuildParticleMesh(runtime, right, up);
+        Skeleton3D? cachedSkeleton = null;
+        var cachedSkeletonTransform = Transform3D.Identity;
+        foreach (var runtime in _particles)
+        {
+            var emitterWorldScale = runtime.Binding is null
+                ? WarcraftUnitScale
+                : WorldScale(runtime.Binding.ResolveGlobalTransform(
+                    ref cachedSkeleton, ref cachedSkeletonTransform).Basis);
+            RebuildParticleMesh(runtime, right, up, emitterWorldScale);
+        }
         foreach (var runtime in _ribbons) RebuildRibbonMesh(runtime);
     }
 
     private static void RebuildParticleMesh(
         ParticleEmitterRuntime runtime,
         Vector3 cameraRight,
-        Vector3 cameraUp)
+        Vector3 cameraUp,
+        float emitterWorldScale)
     {
         if (runtime.Particles.Count == 0)
         {
@@ -452,7 +466,6 @@ public sealed partial class War3EffectRuntime : Node3D
         }
         runtime.Mesh.ClearSurfaces();
         runtime.Geometry.Prepare(vertexCount);
-        var emitterWorldScale = WorldScale(runtime.Binding);
         foreach (var particle in runtime.Particles)
         {
             var progress = (float)Math.Clamp(particle.Age / particle.Life, 0d, 1d);
@@ -775,12 +788,6 @@ public sealed partial class War3EffectRuntime : Node3D
         return null;
     }
 
-    private static float WorldScale(EmitterBinding? binding)
-    {
-        if (binding is null) return WarcraftUnitScale;
-        return WorldScale(binding.GlobalBasis);
-    }
-
     private static float WorldScale(Basis basis)
     {
         return (basis.X.Length() + basis.Y.Length() + basis.Z.Length()) / 3f;
@@ -905,14 +912,22 @@ public sealed partial class War3EffectRuntime : Node3D
             _boneIndex = boneIndex;
         }
 
-        public Transform3D GlobalTransform => _node is not null
-            ? _node.GlobalTransform
-            : _skeleton!.GlobalTransform * _skeleton.GetBoneGlobalPose(_boneIndex);
-
-        public Basis GlobalBasis => GlobalTransform.Basis;
+        public Transform3D ResolveGlobalTransform(
+            ref Skeleton3D? cachedSkeleton,
+            ref Transform3D cachedSkeletonTransform)
+        {
+            if (_node is not null) return _node.GlobalTransform;
+            if (!ReferenceEquals(cachedSkeleton, _skeleton))
+            {
+                cachedSkeleton = _skeleton;
+                cachedSkeletonTransform = _skeleton!.GlobalTransform;
+            }
+            return cachedSkeletonTransform *
+                   _skeleton!.GetBoneGlobalPose(_boneIndex);
+        }
     }
 
-    private sealed class Particle
+    private struct Particle
     {
         public Vector3 Position { get; set; }
         public Vector3 Velocity { get; set; }
@@ -922,12 +937,12 @@ public sealed partial class War3EffectRuntime : Node3D
         public float Rotation { get; set; }
     }
 
-    private sealed class RibbonPoint
+    private struct RibbonPoint
     {
         public Vector3 Center { get; set; }
         public Vector3 Above { get; set; }
         public Vector3 Below { get; set; }
-        public float Alpha { get; set; } = 1f;
+        public float Alpha { get; set; }
         public double Age { get; set; }
     }
 }

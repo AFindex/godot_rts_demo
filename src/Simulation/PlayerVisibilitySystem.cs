@@ -137,6 +137,7 @@ public sealed class PlayerVisibilitySystem
     private readonly Dictionary<StaticVisionSourceKey, int[]>
         _staticVisionCells = [];
     private readonly List<int> _visionCellScratch = new(512);
+    private List<int> _unitVisionCellScratch = new(512);
     private readonly Action<int, Vector2, BuildingTypeProfile>
         _revealBuildingProfile;
     private readonly Action<int, Vector2, BuildingTypeProfile>
@@ -480,27 +481,52 @@ public sealed class PlayerVisibilitySystem
             if (ProfilingEnabled) _profileUnitCacheHits++;
             return;
         }
-        if (cache.Applied && cache.Cells is not null)
+        var previousCells = cache.Cells;
+        var previousApplied = cache.Applied;
+        if (previousApplied && previousCells is not null &&
+            cache.SourcePlayerId != sourcePlayerId)
+        {
             RemoveUnitVisionCells(
                 cache.SourcePlayerId,
-                CollectionsMarshal.AsSpan(cache.Cells));
+                CollectionsMarshal.AsSpan(previousCells));
+        }
         cache.Applied = false;
         if (!active)
         {
+            if (previousApplied && previousCells is not null &&
+                cache.SourcePlayerId == sourcePlayerId)
+            {
+                RemoveUnitVisionCells(
+                    cache.SourcePlayerId,
+                    CollectionsMarshal.AsSpan(previousCells));
+            }
             cache.Valid = false;
             return;
         }
         if (ProfilingEnabled) _profileUnitCacheRebuilds++;
-        cache.Cells ??= new List<int>(512);
-        cache.Cells.Clear();
+        var nextCells = _unitVisionCellScratch;
+        nextCells.Clear();
         CollectVisionCells(
             VisionUpdateCellCenter(sourceCell),
             radius,
             observationHeight,
             terrainVisionMode,
-            cache.Cells);
-        AddUnitVisionCells(
-            sourcePlayerId, CollectionsMarshal.AsSpan(cache.Cells));
+            nextCells);
+        if (previousApplied && previousCells is not null &&
+            cache.SourcePlayerId == sourcePlayerId)
+        {
+            ApplyUnitVisionCellDelta(
+                sourcePlayerId,
+                CollectionsMarshal.AsSpan(previousCells),
+                CollectionsMarshal.AsSpan(nextCells));
+        }
+        else
+        {
+            AddUnitVisionCells(
+                sourcePlayerId, CollectionsMarshal.AsSpan(nextCells));
+        }
+        _unitVisionCellScratch = previousCells ?? new List<int>(512);
+        cache.Cells = nextCells;
         cache.Applied = true;
         cache.Valid = true;
         cache.SourcePlayerId = sourcePlayerId;
@@ -550,6 +576,71 @@ public sealed class PlayerVisibilitySystem
                 var cell = cells[index];
                 if (grid.UnitVisibleCounts[cell] > 0)
                     grid.UnitVisibleCounts[cell]--;
+            }
+        }
+    }
+
+    private void ApplyUnitVisionCellDelta(
+        int sourcePlayerId,
+        ReadOnlySpan<int> previousCells,
+        ReadOnlySpan<int> nextCells)
+    {
+        var viewers = (uint)_sharedVisionMasks[sourcePlayerId];
+        while (viewers != 0)
+        {
+            var viewer = System.Numerics.BitOperations.TrailingZeroCount(viewers);
+            viewers &= viewers - 1;
+            if (!_players.TryGetValue(viewer, out var grid))
+            {
+                grid = new VisibilityGrid(Columns * Rows);
+                _players.Add(viewer, grid);
+                for (var index = 0; index < nextCells.Length; index++)
+                {
+                    var cell = nextCells[index];
+                    grid.UnitVisibleCounts[cell]++;
+                    grid.Explored[cell] = true;
+                }
+                continue;
+            }
+
+            var previousIndex = 0;
+            var nextIndex = 0;
+            while (previousIndex < previousCells.Length &&
+                   nextIndex < nextCells.Length)
+            {
+                var previous = previousCells[previousIndex];
+                var next = nextCells[nextIndex];
+                if (previous < next)
+                {
+                    if (grid.UnitVisibleCounts[previous] > 0)
+                        grid.UnitVisibleCounts[previous]--;
+                    previousIndex++;
+                }
+                else if (next < previous)
+                {
+                    if (grid.UnitVisibleCounts[next] < ushort.MaxValue)
+                        grid.UnitVisibleCounts[next]++;
+                    grid.Explored[next] = true;
+                    nextIndex++;
+                }
+                else
+                {
+                    previousIndex++;
+                    nextIndex++;
+                }
+            }
+            while (previousIndex < previousCells.Length)
+            {
+                var cell = previousCells[previousIndex++];
+                if (grid.UnitVisibleCounts[cell] > 0)
+                    grid.UnitVisibleCounts[cell]--;
+            }
+            while (nextIndex < nextCells.Length)
+            {
+                var cell = nextCells[nextIndex++];
+                if (grid.UnitVisibleCounts[cell] < ushort.MaxValue)
+                    grid.UnitVisibleCounts[cell]++;
+                grid.Explored[cell] = true;
             }
         }
     }

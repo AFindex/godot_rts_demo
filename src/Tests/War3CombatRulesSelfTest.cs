@@ -153,6 +153,9 @@ public static class War3CombatRulesSelfTest
             var buildingReveal = VerifyBuildingReveal(arcaneTower);
             var buildingCloud = VerifyBuildingCloud(guardTower);
             var repair = VerifyRepair(guardTower, production);
+            var hitModifiers = VerifyAbilityHitModifiers();
+            var passiveInvulnerability =
+                VerifyPassiveBuildingInvulnerability();
             var matrix = Nearly(normalMedium, 15f) &&
                          Nearly(pierceSmall, 20f) &&
                          Nearly(siegeFort, 15f / 1.3f) &&
@@ -168,6 +171,8 @@ public static class War3CombatRulesSelfTest
                          buildingFeedback.Passed && buildingReveal.Passed;
             passed &= buildingCloud.Passed;
             passed &= repair.Passed;
+            passed &= hitModifiers.Passed;
+            passed &= passiveInvulnerability.Passed;
             passed &= hotRoundTrip;
             return new SelfTestResult(
                 passed,
@@ -199,6 +204,8 @@ public static class War3CombatRulesSelfTest
                 $"reveal={buildingReveal.Summary}, " +
                 $"cloud={buildingCloud.Summary}, " +
                 $"repair={repair.Summary}, " +
+                $"hitModifiers={hitModifiers.Summary}, " +
+                $"passiveInvulnerability={passiveInvulnerability.Summary}, " +
                 $"hot={hotRoundTrip}");
         }
         catch (Exception exception)
@@ -1276,6 +1283,144 @@ public static class War3CombatRulesSelfTest
         simulation.Economy.Players.RegisterPlayer(1, 0, 0, 200);
         simulation.Economy.Players.RegisterPlayer(2, 0, 0, 200);
         return simulation;
+    }
+
+    private static (bool Passed, string Summary) VerifyAbilityHitModifiers()
+    {
+        var simulation = CreateSimulation();
+        var critical = new AbilityProfile(
+            0, "TCRT", "Configured Critical", string.Empty,
+            string.Empty, string.Empty, AbilityActivationKind.Passive,
+            AbilityTargetFlags.None, false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus, AbilityEffectTiming.Aura,
+                    AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
+                    CombatModifier: new AbilityCombatModifier(
+                        AttackMissChancePercent: 100f,
+                        CriticalStrikeChancePercent: 100f,
+                        CriticalStrikeDamageMultiplier: 2f,
+                        CriticalStrikeBonusDamage: 4f,
+                        CriticalStrikeNeverMiss: true))])]);
+        var evasion = new AbilityProfile(
+            1, "TEVA", "Configured Evasion", string.Empty,
+            string.Empty, string.Empty, AbilityActivationKind.Passive,
+            AbilityTargetFlags.None, false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus, AbilityEffectTiming.Aura,
+                    AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
+                    CombatModifier: new AbilityCombatModifier(
+                        EvasionChancePercent: 100f))])]);
+        simulation.Abilities.ConfigureCatalog(new AbilityCatalogSnapshot(
+            [critical, evasion],
+            [
+                new UnitAbilityBindingProfile(
+                    0, false, UnitManaProfile.None,
+                    [new UnitAbilityEntryProfile(0, 1)]),
+                new UnitAbilityBindingProfile(
+                    1, false, UnitManaProfile.None, []),
+                new UnitAbilityBindingProfile(
+                    2, false, UnitManaProfile.None,
+                    [new UnitAbilityEntryProfile(1, 1)]),
+                new UnitAbilityBindingProfile(
+                    3, false, UnitManaProfile.None, [])
+            ]));
+        var movement = new UnitMovementProfileSnapshot(
+            0, "ability-hit", 2f, 90f, 720f,
+            MovementClass.Small, 2f);
+        var attackerCombat = ActiveProfile(0f, default, 0f);
+        var targetCombat = PassiveProfile() with
+        {
+            Armor = 0f,
+            ArmorType = CombatArmorType.Normal
+        };
+        var criticalAttacker = simulation.AddUnit(
+            new Vector2(100f, 100f),
+            new UnitTypeProfile(
+                0, "critical-attacker", movement, attackerCombat, false), 1);
+        var criticalTarget = simulation.AddUnit(
+            new Vector2(200f, 100f),
+            new UnitTypeProfile(
+                3, "critical-target", movement with { Id = 3 },
+                targetCombat, false), 2);
+        var plainAttacker = simulation.AddUnit(
+            new Vector2(100f, 300f),
+            new UnitTypeProfile(
+                1, "plain-attacker", movement with { Id = 1 },
+                attackerCombat, false), 1);
+        var evasionTarget = simulation.AddUnit(
+            new Vector2(200f, 300f),
+            new UnitTypeProfile(
+                2, "evasion-target", movement with { Id = 2 },
+                targetCombat, false), 2);
+        simulation.Tick(Delta);
+        var sourceModifier = simulation.Abilities.CombatModifier(
+            criticalAttacker);
+        var targetModifier = simulation.Abilities.CombatModifier(evasionTarget);
+        simulation.IssueAttackTarget([criticalAttacker], criticalTarget);
+        simulation.IssueAttackTarget([plainAttacker], evasionTarget);
+        var criticalHit = TickUntil(simulation, 30,
+            () => simulation.Combat.Health[criticalTarget] < 100f);
+        for (var tick = 0; tick < 30; tick++) simulation.Tick(Delta);
+        var passed = criticalHit &&
+                     Nearly(simulation.Combat.Health[criticalTarget], 56f) &&
+                     Nearly(simulation.Combat.Health[evasionTarget], 100f) &&
+                     sourceModifier.CriticalStrikeNeverMiss &&
+                     Nearly(sourceModifier.CriticalStrikeChancePercent, 100f) &&
+                     Nearly(targetModifier.EvasionChancePercent, 100f);
+        return (passed,
+            $"critical={criticalHit}/" +
+            $"{simulation.Combat.Health[criticalTarget]:0.###}, " +
+            $"evasion={simulation.Combat.Health[evasionTarget]:0.###}, " +
+            $"modifier={sourceModifier.CriticalStrikeChancePercent:0.###}/" +
+            $"{targetModifier.EvasionChancePercent:0.###}/" +
+            $"{sourceModifier.CriticalStrikeNeverMiss}");
+    }
+
+    private static (bool Passed, string Summary)
+        VerifyPassiveBuildingInvulnerability()
+    {
+        var simulation = CreateSimulation();
+        var invulnerable = new AbilityProfile(
+            0, "TVUL", "Configured Invulnerable", string.Empty,
+            string.Empty, string.Empty, AbilityActivationKind.Passive,
+            AbilityTargetFlags.None, false, false,
+            [new AbilityLevelProfile(
+                1, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                [new AbilityEffectProfile(
+                    AbilityEffectKind.ApplyStatus, AbilityEffectTiming.Aura,
+                    AbilityEffectSelector.Caster, AbilityRelationFilter.Self,
+                    Status: AbilityStatusFlags.Invulnerable)])]);
+        const int buildingTypeId = 77;
+        simulation.Abilities.ConfigureCatalog(new AbilityCatalogSnapshot(
+            [invulnerable], [],
+            [new BuildingAbilityBindingProfile(buildingTypeId, [0])]));
+        var type = new BuildingTypeProfile(
+            buildingTypeId, "invulnerable-building",
+            BuildingFunctionKind.Production,
+            new Vector2(32f, 32f), MovementClass.Small,
+            new EconomyCost(0, 0), 1f, 100f, 0, 0f,
+            ConstructionMethodKind.ContinuousWorker);
+        var bounds = new SimRect(
+            new Vector2(240f, 240f), new Vector2(272f, 272f));
+        var footprint = simulation.PlaceBuilding(bounds);
+        var building = new GameplayBuildingId(0);
+        simulation.Construction.RestoreRuntimeState(
+            new ConstructionRuntimeSnapshot(
+            [
+                new ConstructionRuntimeEntry(
+                    building, 1, type, bounds, default, footprint,
+                    BuildingLifecycleState.Completed, -1, bounds.Min, 1f,
+                    100f, new EconomyResourceNodeId(-1))
+            ],
+            new ConstructionReservationRuntimeSnapshot(1, [])));
+        var damaged = simulation.DamageBuilding(building, 25f);
+        var health = simulation.Construction.Observe(building).Health;
+        return (!damaged && Nearly(health, 100f),
+            $"damage={damaged}, health={health:0.###}");
     }
 
     private static int Add(

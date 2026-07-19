@@ -144,7 +144,8 @@ public enum AbilityStatusFlags : ushort
     AttackDisabled = 1 << 6,
     MovementDisabled = 1 << 7,
     Revealed = 1 << 8,
-    Grounded = 1 << 9
+    Grounded = 1 << 9,
+    Resistant = 1 << 10
 }
 
 public readonly record struct AbilityStatModifier(
@@ -188,10 +189,15 @@ public readonly record struct AbilityCombatModifier(
     float DeflectChancePercent = 0f,
     float DeflectedPiercingDamageMultiplier = 1f,
     float DeflectedMagicDamageMultiplier = 1f,
-    float AttackMissChancePercent = 0f)
+    float AttackMissChancePercent = 0f,
+    float EvasionChancePercent = 0f,
+    float CriticalStrikeChancePercent = 0f,
+    float CriticalStrikeDamageMultiplier = 1f,
+    float CriticalStrikeBonusDamage = 0f,
+    bool CriticalStrikeNeverMiss = false)
 {
     public static AbilityCombatModifier Identity =>
-        new(1f, 1f, 1f, 0f, 1f, 1f, 0f);
+        new(1f, 1f, 1f, 0f, 1f, 1f, 0f, 0f, 0f, 1f, 0f, false);
     public AbilityCombatModifier Normalized =>
         this == default ? Identity : this;
     public bool IsIdentity => Normalized == Identity;
@@ -201,7 +207,10 @@ public readonly record struct AbilityCombatModifier(
         $"{MagicDamageTakenMultiplier}, Deflect={DeflectChancePercent}, " +
         $"PierceDeflect={DeflectedPiercingDamageMultiplier}, " +
         $"MagicDeflect={DeflectedMagicDamageMultiplier}, " +
-        $"Miss={AttackMissChancePercent} }}";
+        $"Miss={AttackMissChancePercent}, Evade={EvasionChancePercent}, " +
+        $"Critical={CriticalStrikeChancePercent}x" +
+        $"{CriticalStrikeDamageMultiplier}+{CriticalStrikeBonusDamage}, " +
+        $"CriticalNeverMiss={CriticalStrikeNeverMiss} }}";
     public bool IsValid => this == default ||
         float.IsFinite(DamageTakenMultiplier) &&
         DamageTakenMultiplier is >= 0f and <= 10f &&
@@ -216,7 +225,15 @@ public readonly record struct AbilityCombatModifier(
         float.IsFinite(DeflectedMagicDamageMultiplier) &&
         DeflectedMagicDamageMultiplier is >= 0f and <= 10f &&
         float.IsFinite(AttackMissChancePercent) &&
-        AttackMissChancePercent is >= 0f and <= 100f;
+        AttackMissChancePercent is >= 0f and <= 100f &&
+        float.IsFinite(EvasionChancePercent) &&
+        EvasionChancePercent is >= 0f and <= 100f &&
+        float.IsFinite(CriticalStrikeChancePercent) &&
+        CriticalStrikeChancePercent is >= 0f and <= 100f &&
+        float.IsFinite(CriticalStrikeDamageMultiplier) &&
+        CriticalStrikeDamageMultiplier is >= 0f and <= 100f &&
+        float.IsFinite(CriticalStrikeBonusDamage) &&
+        CriticalStrikeBonusDamage is >= -1_000_000f and <= 1_000_000f;
 }
 
 public readonly record struct AbilityReplacementProfile(
@@ -374,9 +391,10 @@ public readonly record struct AbilityEffectProfile(
                     AbilityStatusFlags.Polymorphed |
                     AbilityStatusFlags.Banished |
                     AbilityStatusFlags.AttackDisabled |
-                    AbilityStatusFlags.MovementDisabled |
-                    AbilityStatusFlags.Revealed |
-                    AbilityStatusFlags.Grounded)) == 0 &&
+                     AbilityStatusFlags.MovementDisabled |
+                     AbilityStatusFlags.Revealed |
+                     AbilityStatusFlags.Grounded |
+                     AbilityStatusFlags.Resistant)) == 0 &&
         Modifier.IsValid &&
         (Kind != AbilityEffectKind.Summon || Summon.IsValid) &&
         Enum.IsDefined(DamageKind) &&
@@ -618,7 +636,7 @@ public readonly record struct BuildingAbilityBindingProfile(
 /// </summary>
 public sealed class AbilityCatalogSnapshot
 {
-    public const int CurrentFormatVersion = 24;
+    public const int CurrentFormatVersion = 25;
     private readonly Dictionary<string, int> _rawIds;
     private readonly Dictionary<int, UnitAbilityBindingProfile> _bindings;
     private readonly Dictionary<int, BuildingAbilityBindingProfile>
@@ -1256,13 +1274,19 @@ internal static partial class AbilitySerialization
         writer.Write(value.DeflectedPiercingDamageMultiplier);
         writer.Write(value.DeflectedMagicDamageMultiplier);
         writer.Write(value.AttackMissChancePercent);
+        writer.Write(value.EvasionChancePercent);
+        writer.Write(value.CriticalStrikeChancePercent);
+        writer.Write(value.CriticalStrikeDamageMultiplier);
+        writer.Write(value.CriticalStrikeBonusDamage);
+        writer.Write(value.CriticalStrikeNeverMiss);
     }
 
     private static AbilityCombatModifier ReadCombatModifier(
         BinaryReader reader) => new(
         reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
         reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-        reader.ReadSingle());
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadBoolean());
 
     private static void WriteBuildingBinding(
         BinaryWriter writer,

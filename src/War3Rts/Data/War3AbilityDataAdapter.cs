@@ -227,7 +227,8 @@ public sealed class War3AbilityDataAdapter(
             War3AbilityCompilerKind.BuildingMilitiaCall or
             War3AbilityCompilerKind.DetectionAura or
             War3AbilityCompilerKind.Feedback or
-            War3AbilityCompilerKind.Flare;
+            War3AbilityCompilerKind.Flare or
+            War3AbilityCompilerKind.Invulnerable;
     }
 
     internal bool DefaultAutoCastEnabled(
@@ -770,6 +771,38 @@ public sealed class War3AbilityDataAdapter(
                         ? RequiredIntegerData(level, "B", 0, 1, compiler)
                         : 0f
                 }),
+            War3AbilityCompilerKind.Invulnerable => One(Aura(
+                AbilityEffectSelector.Caster,
+                AbilityRelationFilter.Self,
+                status: AbilityStatusFlags.Invulnerable)),
+            War3AbilityCompilerKind.ResistantSkin => One(Aura(
+                AbilityEffectSelector.Caster,
+                AbilityRelationFilter.Self,
+                status: AbilityStatusFlags.Resistant)),
+            War3AbilityCompilerKind.Evasion => One(Aura(
+                AbilityEffectSelector.Caster,
+                AbilityRelationFilter.Self) with
+                {
+                    CombatModifier = new AbilityCombatModifier(
+                        EvasionChancePercent:
+                            RequiredFractionData(level, "A", compiler) * 100f)
+                }),
+            War3AbilityCompilerKind.CriticalStrike => One(Aura(
+                AbilityEffectSelector.Caster,
+                AbilityRelationFilter.Self) with
+                {
+                    CombatModifier = new AbilityCombatModifier(
+                        EvasionChancePercent:
+                            RequiredFractionData(level, "D", compiler) * 100f,
+                        CriticalStrikeChancePercent:
+                            RequiredPercentData(level, "A", compiler),
+                        CriticalStrikeDamageMultiplier:
+                            RequiredNonNegativeData(level, "B", compiler),
+                        CriticalStrikeBonusDamage:
+                            RequiredFiniteData(level, "C", compiler),
+                        CriticalStrikeNeverMiss:
+                            RequiredIntegerData(level, "E", 0, 1, compiler) > 0f)
+                }),
             _ => ImmutableArray<AbilityEffectProfile>.Empty
         };
     }
@@ -1204,6 +1237,33 @@ public sealed class War3AbilityDataAdapter(
         string key,
         War3AbilityCompilerKind compiler) => RequiredPositive(
         Data(level, key), $"Data{key}", compiler, level.Level);
+
+    private static float RequiredFiniteData(
+        War3ObjectLevel level,
+        string key,
+        War3AbilityCompilerKind compiler)
+    {
+        if (!HasDataText(level, key) ||
+            !float.TryParse(
+                level.Data[key], NumberStyles.Float,
+                CultureInfo.InvariantCulture, out var value) ||
+            !float.IsFinite(value))
+            throw new InvalidDataException(
+                $"{compiler} level {level.Level} requires finite JSON Data{key}.");
+        return value;
+    }
+
+    private static float RequiredPercentData(
+        War3ObjectLevel level,
+        string key,
+        War3AbilityCompilerKind compiler)
+    {
+        var value = RequiredNonNegativeData(level, key, compiler);
+        if (value <= 100f) return value;
+        throw new InvalidOperationException(
+            $"{compiler} level {level.Level} requires Data{key} in [0,100], " +
+            $"got {value.ToString(CultureInfo.InvariantCulture)}.");
+    }
 
     private static float RequiredFractionData(
         War3ObjectLevel level,

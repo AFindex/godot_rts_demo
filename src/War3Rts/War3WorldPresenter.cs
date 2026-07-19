@@ -89,6 +89,9 @@ public sealed partial class War3WorldPresenter : Node3D
     private UnitDetailCandidate[] _unitDetailCandidates = [];
     private bool[] _unitFullDetailScratch = [];
     private bool[] _unitInFrustumScratch = [];
+    private readonly Plane[] _cameraFrustumPlanes = new Plane[6];
+    private readonly float[] _cameraFrustumInsideSigns = new float[6];
+    private int _cameraFrustumPlaneCount;
     private GameplayBuildingSnapshot[] _buildingOverviewScratch = [];
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
@@ -439,7 +442,9 @@ public sealed partial class War3WorldPresenter : Node3D
             : 0L;
         var presenterTransform = GlobalTransform;
         var presenterBasis = presenterTransform.Basis;
-        War3EffectRuntime.PrepareCameraFrame(_camera, _camera.GlobalBasis);
+        var cameraTransform = _camera.GlobalTransform;
+        War3EffectRuntime.PrepareCameraFrame(_camera, cameraTransform.Basis);
+        PrepareCameraFrustum(_camera, cameraTransform);
         SyncUnits(
             _simulation, _production, _camera, presenterTransform,
             interpolation);
@@ -618,7 +623,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 : 0L;
             var inFrustum = denseUnitLod
                 ? _unitInFrustumScratch[unit]
-                : camera.IsPositionInFrustum(world);
+                : IsPositionInPreparedFrustum(camera, world);
             if (ProfilingEnabled)
                 _profileUnitFrustumAllocatedBytes +=
                     GC.GetAllocatedBytesForCurrentThread() -
@@ -663,15 +668,14 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual.Actor.PrepareEffectWorldTransform(
                     presenterTransform * lodTransform);
                 if (!visual.TransformInitialized ||
-                    visual.LastActorPosition != world)
-                {
-                    visual.Actor.Position = world;
-                    visual.LastActorPosition = world;
-                }
-                if (!visual.TransformInitialized ||
+                    visual.LastActorPosition != world ||
                     visual.LastActorAngle != angle)
                 {
-                    visual.Actor.Rotation = new Vector3(0f, angle, 0f);
+                    // Position and facing usually change together while a
+                    // unit moves. Send one transform through the Godot/C#
+                    // boundary so Node3D only invalidates it once.
+                    visual.Actor.Transform = lodTransform;
+                    visual.LastActorPosition = world;
                     visual.LastActorAngle = angle;
                 }
                 visual.TransformInitialized = true;
@@ -682,7 +686,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 if (fullDetail)
                     _attackTargetFacingMismatch |= MathF.Abs(
                         Mathf.AngleDifference(
-                            visual.Actor.Rotation.Y, angle)) > 0.001f;
+                            visual.LastActorAngle, angle)) > 0.001f;
             }
             _sawGoldMinerHidden |= hiddenInsideGoldMine;
             if (selected)
@@ -755,7 +759,7 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             if (!simulation.Units.Alive[unit]) continue;
             var world = ToWorldAtGround(simulation.Units.Positions[unit]);
-            var inFrustum = camera.IsPositionInFrustum(world);
+            var inFrustum = IsPositionInPreparedFrustum(camera, world);
             _unitInFrustumScratch[unit] = inFrustum;
             if (!inFrustum) continue;
             var surfaceCost = _units.TryGetValue(unit, out var visual)
@@ -1291,6 +1295,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual.LastPosition = center;
                 var world = ToWorldAtGround(center);
                 visual.Actor.Position = world;
+                visual.WorldPosition = world;
                 var footprintRadius = MathF.Max(
                     SimPlane3DTransform.ToWorldLength(building.Type.Size.X),
                     SimPlane3DTransform.ToWorldLength(building.Type.Size.Y)) * 0.62f;
@@ -1336,7 +1341,7 @@ public sealed partial class War3WorldPresenter : Node3D
             }
             visual.Actor.PrepareEffectWorldTransform(
                 presenterTransform * new Transform3D(
-                    Basis.Identity, visual.Actor.Position));
+                    Basis.Identity, visual.WorldPosition));
             if (!visual.GhostInitialized || visual.IsGhost != ghost)
             {
                 visual.Actor.SetGhostAppearance(ghost);
@@ -2045,22 +2050,71 @@ public sealed partial class War3WorldPresenter : Node3D
             building.Type.Id);
     }
 
-    private static bool BuildingIntersectsFrustum(
+    private void PrepareCameraFrustum(
+        Camera3D camera,
+        Transform3D cameraTransform)
+    {
+        _cameraFrustumPlaneCount = 0;
+        foreach (var plane in camera.GetFrustum())
+        {
+            if (_cameraFrustumPlaneCount >= _cameraFrustumPlanes.Length)
+                break;
+            _cameraFrustumPlanes[_cameraFrustumPlaneCount++] = plane;
+        }
+        if (_cameraFrustumPlaneCount != _cameraFrustumPlanes.Length)
+            return;
+
+        // Godot's frustum planes may point toward either half-space. A point
+        // one world unit down the camera's forward axis is inside this RTS
+        // camera, so use it to normalize every plane to "positive is out".
+        var insideProbe = cameraTransform.Origin -
+                          cameraTransform.Basis.Z.Normalized();
+        for (var index = 0; index < _cameraFrustumPlaneCount; index++)
+        {
+            _cameraFrustumInsideSigns[index] =
+                _cameraFrustumPlanes[index].DistanceTo(insideProbe) <= 0f
+                    ? 1f
+                    : -1f;
+        }
+    }
+
+    private bool IsPositionInPreparedFrustum(
+        Camera3D camera,
+        Vector3 position)
+    {
+        if (_cameraFrustumPlaneCount != _cameraFrustumPlanes.Length)
+            return camera.IsPositionInFrustum(position);
+        for (var index = 0; index < _cameraFrustumPlaneCount; index++)
+        {
+            if (_cameraFrustumPlanes[index].DistanceTo(position) *
+                _cameraFrustumInsideSigns[index] > 0f)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private bool BuildingIntersectsFrustum(
         Camera3D camera,
         BuildingVisual visual)
         => BuildingIntersectsFrustum(
-            camera, visual.Actor.Position, visual.FrustumRadius);
+            camera, visual.WorldPosition, visual.FrustumRadius);
 
-    private static bool BuildingIntersectsFrustum(
+    private bool BuildingIntersectsFrustum(
         Camera3D camera,
         Vector3 center,
         float radius)
     {
-        if (camera.IsPositionInFrustum(center)) return true;
-        return camera.IsPositionInFrustum(center + Vector3.Right * radius) ||
-               camera.IsPositionInFrustum(center + Vector3.Left * radius) ||
-               camera.IsPositionInFrustum(center + Vector3.Forward * radius) ||
-               camera.IsPositionInFrustum(center + Vector3.Back * radius);
+        if (IsPositionInPreparedFrustum(camera, center)) return true;
+        return IsPositionInPreparedFrustum(
+                   camera, center + Vector3.Right * radius) ||
+               IsPositionInPreparedFrustum(
+                   camera, center + Vector3.Left * radius) ||
+               IsPositionInPreparedFrustum(
+                   camera, center + Vector3.Forward * radius) ||
+               IsPositionInPreparedFrustum(
+                   camera, center + Vector3.Back * radius);
     }
 
     private ResourceVisual CreateResource(
@@ -2652,6 +2706,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 definition.AnimationProperties);
         public int TypeId { get; set; } = typeId;
         public NVector2 LastPosition { get; set; }
+        public Vector3 WorldPosition { get; set; }
         public bool WasGhost { get; set; }
         public bool Dying { get; set; }
         public ulong RemoveAt { get; set; }

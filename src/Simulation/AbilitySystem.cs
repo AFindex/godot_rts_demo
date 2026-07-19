@@ -489,6 +489,29 @@ public sealed class AbilitySystem
         _buildingStatuses.Any(value =>
             value.Building == building.Value &&
             (value.Status & AbilityStatusFlags.AttackDisabled) != 0);
+
+    public bool IsBuildingInvulnerable(
+        GameplayBuildingId building,
+        int buildingTypeId)
+    {
+        if (_buildingStatuses.Any(value =>
+                value.Building == building.Value &&
+                (value.Status & AbilityStatusFlags.Invulnerable) != 0))
+            return true;
+        if (!_catalog.TryBuildingBinding(buildingTypeId, out var binding))
+            return false;
+        foreach (var abilityId in binding.Abilities)
+        {
+            var ability = _catalog.Ability(abilityId);
+            if (!ability.IsPassive || ability.Levels.IsDefaultOrEmpty)
+                continue;
+            if (ability.Levels[0].Effects.Any(effect =>
+                    effect.Timing == AbilityEffectTiming.Aura &&
+                    (effect.Status & AbilityStatusFlags.Invulnerable) != 0))
+                return true;
+        }
+        return false;
+    }
     public int ActiveProjectileCount => _projectiles.Count;
 
     internal void EnsureCapacity(int capacity)
@@ -2533,6 +2556,10 @@ public sealed class AbilitySystem
                 !_heroes[target.Id] ||
                 (ability.Targets & AbilityTargetFlags.NonHero) != 0 &&
                 _heroes[target.Id] ||
+                HasStatus(target.Id, AbilityStatusFlags.Resistant) &&
+                !_heroes[target.Id] &&
+                (ability.Targets & AbilityTargetFlags.NonHero) != 0 &&
+                (ability.Targets & AbilityTargetFlags.Hero) == 0 ||
                 (ability.Targets & AbilityTargetFlags.Ground) != 0 &&
                 (ability.Targets & AbilityTargetFlags.Air) == 0 && isAir ||
                 (ability.Targets & AbilityTargetFlags.Air) != 0 &&
@@ -2793,7 +2820,7 @@ public sealed class AbilitySystem
         if (effect.Kind != AbilityEffectKind.ApplyStatus)
             throw new InvalidOperationException(
                 "Only status effects can currently target buildings.");
-        var duration = EffectDuration(effect, level, false);
+        var duration = EffectDuration(effect, level, false, false);
         var abilityId = ability.Id;
         foreach (var building in SelectBuildings(
                      caster, level, effect, target, world))
@@ -3014,7 +3041,9 @@ public sealed class AbilitySystem
                     caster, ability, target,
                     toggle
                         ? float.PositiveInfinity
-                        : EffectDuration(effect, level, _heroes[target]),
+                        : EffectDuration(
+                            effect, level, _heroes[target],
+                            HasStatus(target, AbilityStatusFlags.Resistant)),
                     relation is AbilityRelationFilter.Self or
                         AbilityRelationFilter.Friendly,
                     appliedEffect);
@@ -3291,11 +3320,12 @@ public sealed class AbilitySystem
     private static float EffectDuration(
         in AbilityEffectProfile effect,
         in AbilityLevelProfile level,
-        bool targetHero) =>
+        bool targetHero,
+        bool targetResistant) =>
         MathF.Max(0.05f,
             effect.Duration > 0f
                 ? effect.Duration
-                : targetHero && level.HeroDuration > 0f
+                : (targetHero || targetResistant) && level.HeroDuration > 0f
                     ? level.HeroDuration
                     : level.Duration > 0f
                         ? level.Duration
@@ -3613,6 +3643,11 @@ public sealed class AbilitySystem
                MathF.Abs(combat.MagicDamageTakenMultiplier - 1f) +
                combat.DeflectChancePercent +
                combat.AttackMissChancePercent +
+               combat.EvasionChancePercent +
+               combat.CriticalStrikeChancePercent +
+               MathF.Abs(combat.CriticalStrikeDamageMultiplier - 1f) +
+               MathF.Abs(combat.CriticalStrikeBonusDamage) +
+               (combat.CriticalStrikeNeverMiss ? 1f : 0f) +
                (ushort)effect.Status;
     }
 
@@ -3674,7 +3709,15 @@ public sealed class AbilitySystem
             left.DeflectedMagicDamageMultiplier *
             right.DeflectedMagicDamageMultiplier,
             MathF.Max(left.AttackMissChancePercent,
-                right.AttackMissChancePercent));
+                right.AttackMissChancePercent),
+            MathF.Max(left.EvasionChancePercent,
+                right.EvasionChancePercent),
+            MathF.Max(left.CriticalStrikeChancePercent,
+                right.CriticalStrikeChancePercent),
+            MathF.Max(left.CriticalStrikeDamageMultiplier,
+                right.CriticalStrikeDamageMultiplier),
+            left.CriticalStrikeBonusDamage + right.CriticalStrikeBonusDamage,
+            left.CriticalStrikeNeverMiss || right.CriticalStrikeNeverMiss);
     }
 
     private static bool DeterministicRoll(
@@ -4116,6 +4159,11 @@ public sealed class AbilitySystem
         hash.Add(modifier.DeflectedPiercingDamageMultiplier);
         hash.Add(modifier.DeflectedMagicDamageMultiplier);
         hash.Add(modifier.AttackMissChancePercent);
+        hash.Add(modifier.EvasionChancePercent);
+        hash.Add(modifier.CriticalStrikeChancePercent);
+        hash.Add(modifier.CriticalStrikeDamageMultiplier);
+        hash.Add(modifier.CriticalStrikeBonusDamage);
+        hash.Add(modifier.CriticalStrikeNeverMiss);
     }
 
     private static long StableStringHash(string value)
@@ -4741,13 +4789,19 @@ internal static partial class AbilitySerialization
         writer.Write(value.DeflectedPiercingDamageMultiplier);
         writer.Write(value.DeflectedMagicDamageMultiplier);
         writer.Write(value.AttackMissChancePercent);
+        writer.Write(value.EvasionChancePercent);
+        writer.Write(value.CriticalStrikeChancePercent);
+        writer.Write(value.CriticalStrikeDamageMultiplier);
+        writer.Write(value.CriticalStrikeBonusDamage);
+        writer.Write(value.CriticalStrikeNeverMiss);
     }
 
     private static AbilityCombatModifier ReadRuntimeCombatModifier(
         BinaryReader reader) => new(
         reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
         reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
-        reader.ReadSingle());
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(),
+        reader.ReadSingle(), reader.ReadSingle(), reader.ReadBoolean());
 
     private static void WriteRuntimeString(BinaryWriter writer, string value)
     {

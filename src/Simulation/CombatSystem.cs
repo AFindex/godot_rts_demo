@@ -518,9 +518,9 @@ public sealed class CombatSystem
         Vector2? impactPosition = null)
     {
         if (!IsDamageableTarget(attacker, target)) return;
-        var factor = AbilityDamageFactor(
+        var adjustment = AbilityAttackAdjustmentFor(
             attacker, target, weapon.AttackType, tick, projectileId);
-        if (factor <= 0f)
+        if (adjustment.Multiplier <= 0f)
         {
             _events.Publish(tick, CombatEventKind.Impact, attacker,
                 CombatTargetKind.Unit, target, 0f, _combat.Health[target],
@@ -528,7 +528,7 @@ public sealed class CombatSystem
                 worldPosition: impactPosition ?? _units.Positions[target]);
             return;
         }
-        weapon = Scale(weapon, factor);
+        weapon = ApplyAbilityAdjustment(weapon, adjustment);
         var result = CombatDamageResolver.Resolve(
             weapon,
             UnitDefense(target),
@@ -1395,10 +1395,10 @@ public sealed class CombatSystem
         long tick,
         int projectileId)
     {
-        var factor = AbilityDamageFactor(
+        var adjustment = AbilityAttackAdjustmentFor(
             attacker, target, weapon.AttackType, tick, projectileId);
-        if (factor <= 0f) return;
-        weapon = Scale(weapon, factor);
+        if (adjustment.Multiplier <= 0f) return;
+        weapon = ApplyAbilityAdjustment(weapon, adjustment);
         var result = CombatDamageResolver.Resolve(
             weapon, UnitDefense(target), _combat.Health[target]);
         _combat.Health[target] = result.RemainingHealth;
@@ -1715,7 +1715,24 @@ public sealed class CombatSystem
         BonusUpgradeDamage = weapon.BonusUpgradeDamage * fraction
     };
 
-    private float AbilityDamageFactor(
+    private static CombatWeaponDamageSnapshot ApplyAbilityAdjustment(
+        CombatWeaponDamageSnapshot weapon,
+        in AbilityAttackAdjustment adjustment)
+    {
+        weapon = Scale(weapon, adjustment.Multiplier);
+        if (adjustment.BonusDamage == 0f) return weapon;
+        return weapon with
+        {
+            BaseDamage = MathF.Max(0f, weapon.BaseDamage +
+                adjustment.BonusDamage)
+        };
+    }
+
+    private readonly record struct AbilityAttackAdjustment(
+        float Multiplier,
+        float BonusDamage);
+
+    private AbilityAttackAdjustment AbilityAttackAdjustmentFor(
         int attacker,
         int target,
         CombatAttackType attackType,
@@ -1728,10 +1745,29 @@ public sealed class CombatSystem
                      defense.DamageTakenMultiplier;
         if (attackType is CombatAttackType.Magic or CombatAttackType.Spells)
             factor *= defense.MagicDamageTakenMultiplier;
-        if (Roll(
-                source.AttackMissChancePercent, tick, attacker, target,
-                projectileId, 0x51))
-            return 0f;
+        var weaponAttack = attackType != CombatAttackType.Spells;
+        var critical = weaponAttack && Roll(
+            source.CriticalStrikeChancePercent, tick, attacker, target,
+            projectileId, 0xC3);
+        var neverMiss = critical && source.CriticalStrikeNeverMiss;
+        var missed = weaponAttack && Roll(
+            source.AttackMissChancePercent, tick, attacker, target,
+            projectileId, 0x51);
+        var evaded = weaponAttack && Roll(
+            defense.EvasionChancePercent, tick, attacker, target,
+            projectileId, 0xE5);
+        if ((missed || evaded) && !neverMiss)
+            return default;
+        var criticalBonus = 0f;
+        if (critical)
+        {
+            factor *= source.CriticalStrikeDamageMultiplier <= 0f
+                ? 1f
+                : source.CriticalStrikeDamageMultiplier;
+            criticalBonus = source.CriticalStrikeBonusDamage *
+                            defense.DamageTakenMultiplier *
+                            defense.MagicDamageTakenMultiplier;
+        }
         if ((attackType is CombatAttackType.Pierce or CombatAttackType.Magic) &&
             Roll(defense.DeflectChancePercent, tick, attacker, target,
                 projectileId, 0xA7))
@@ -1740,7 +1776,8 @@ public sealed class CombatSystem
                 ? defense.DeflectedPiercingDamageMultiplier
                 : defense.DeflectedMagicDamageMultiplier;
         }
-        return MathF.Max(0f, factor);
+        return new AbilityAttackAdjustment(
+            MathF.Max(0f, factor), criticalBonus);
     }
 
     private static bool Roll(

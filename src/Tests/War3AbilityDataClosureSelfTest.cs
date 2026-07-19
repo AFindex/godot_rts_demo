@@ -730,7 +730,7 @@ public static class War3AbilityDataClosureSelfTest
                     .Combat.Weapons.AsSpan().SequenceEqual(
                         flyingMachine.Weapons.AsSpan());
             var behaviorRegistryValid =
-                War3AbilityBehaviorRegistry.All.Count == 58 &&
+                War3AbilityBehaviorRegistry.All.Count == 62 &&
                 War3AbilityBehaviorRegistry.Resolve("Ahea").Status ==
                     War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
                 !War3AbilityBehaviorRegistry.Resolve("Ahea").AutoCastDefault &&
@@ -767,6 +767,16 @@ public static class War3AbilityDataClosureSelfTest
                     War3AbilityCompilerKind.Rejuvenation &&
                 War3AbilityBehaviorRegistry.Resolve("Afae").Compiler ==
                     War3AbilityCompilerKind.FaerieFire &&
+                War3AbilityBehaviorRegistry.Resolve("Avul").Compiler ==
+                    War3AbilityCompilerKind.Invulnerable &&
+                War3AbilityBehaviorRegistry.Resolve("Arsk").Status ==
+                    War3AbilityRuntimeSupportStatus.ImplementedGameplay &&
+                War3AbilityBehaviorRegistry.Resolve("Arsk").Compiler ==
+                    War3AbilityCompilerKind.ResistantSkin &&
+                War3AbilityBehaviorRegistry.Resolve("AEev").Compiler ==
+                    War3AbilityCompilerKind.Evasion &&
+                War3AbilityBehaviorRegistry.Resolve("AOcr").Compiler ==
+                    War3AbilityCompilerKind.CriticalStrike &&
                 abilities.TryGet("Asth", out var stormHammersAbility) &&
                 stormHammersAbility.Summary.Levels.All(level =>
                     level.Requirements.Contains("Rhhb",
@@ -776,11 +786,11 @@ public static class War3AbilityDataClosureSelfTest
                 runtimeImport.PrototypeCount == 40 &&
                 runtimeImport.UnclassifiedBaseCodes.Length == 0 &&
                 runtimeImport.UnresolvedRequirementIds.Length == 0 &&
-                runtimeCoverage.RegistryBaseFamilyCount == 58 &&
+                runtimeCoverage.RegistryBaseFamilyCount == 62 &&
                 runtimeCoverage.All.AbilityCount == 801 &&
                 runtimeCoverage.All.BaseFamilyCount == 415 &&
-                runtimeCoverage.All.ClassifiedAbilityCount == 152 &&
-                runtimeCoverage.All.ClassifiedBaseFamilyCount == 58 &&
+                runtimeCoverage.All.ClassifiedAbilityCount == 163 &&
+                runtimeCoverage.All.ClassifiedBaseFamilyCount == 62 &&
                 runtimeCoverage.UnitReferenced.AbilityCount == 461 &&
                 runtimeCoverage.UnitReferenced.BaseFamilyCount == 285 &&
                 runtimeCoverage.Items.AbilityCount == 234 &&
@@ -921,15 +931,39 @@ public static class War3AbilityDataClosureSelfTest
             ["Acri"] = War3AbilityCompilerKind.Cripple,
             ["Ablo"] = War3AbilityCompilerKind.Bloodlust,
             ["Arej"] = War3AbilityCompilerKind.Rejuvenation,
-            ["Afae"] = War3AbilityCompilerKind.FaerieFire
+            ["Afae"] = War3AbilityCompilerKind.FaerieFire,
+            ["Avul"] = War3AbilityCompilerKind.Invulnerable,
+            ["Arsk"] = War3AbilityCompilerKind.ResistantSkin,
+            ["AEev"] = War3AbilityCompilerKind.Evasion,
+            ["AOcr"] = War3AbilityCompilerKind.CriticalStrike
         };
         var policy = War3GameplayImportPolicy.Default;
+        var requirementIds = abilities.Entries
+            .Select(entry => abilities.TryGet(entry.Id, out var source)
+                ? source
+                : null)
+            .Where(source => source is not null)
+            .Where(source =>
+            {
+                var baseCode = string.IsNullOrWhiteSpace(
+                    source!.Identity.BaseCode)
+                    ? source.Id
+                    : source.Identity.BaseCode;
+                return expected.ContainsKey(baseCode);
+            })
+            .SelectMany(source => source!.Summary.Levels)
+            .SelectMany(level => level.Requirements)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .Select((rawId, index) => (rawId, index))
+            .ToDictionary(value => value.rawId, value => value.index,
+                StringComparer.Ordinal);
         var adapter = new War3AbilityDataAdapter(
             abilities,
             buffEffects,
             units,
             policy,
-            new Dictionary<string, int>(StringComparer.Ordinal),
+            requirementIds,
             new Dictionary<string, int>(StringComparer.Ordinal),
             new Dictionary<string, UnitTypeProfile>(StringComparer.Ordinal));
         var familyCounts = expected.Keys.ToDictionary(
@@ -959,7 +993,36 @@ public static class War3AbilityDataClosureSelfTest
             }
             compiled++;
         }
-        var countsValid = familyCounts.Values.All(value => value == 3);
+        var expectedCounts = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["Aens"] = 3,
+            ["Acri"] = 3,
+            ["Ablo"] = 3,
+            ["Arej"] = 3,
+            ["Afae"] = 3,
+            ["Avul"] = 1,
+            ["Arsk"] = 3,
+            ["AEev"] = 4,
+            ["AOcr"] = 3
+        };
+        var countsValid = familyCounts.All(value =>
+            value.Value == expectedCounts[value.Key]);
+        var resistantUnits = 0;
+        foreach (var entry in units.Entries)
+        {
+            if (!units.TryGet(entry.Id, out var unit)) continue;
+            if (unit.Summary.Abilities.Concat(unit.Summary.HeroAbilities)
+                .Any(rawId =>
+                {
+                    if (!abilities.TryGet(rawId, out var source)) return false;
+                    var baseCode = string.IsNullOrWhiteSpace(
+                        source.Identity.BaseCode)
+                        ? source.Id
+                        : source.Identity.BaseCode;
+                    return baseCode.Equals("Arsk", StringComparison.Ordinal);
+                }))
+                resistantUnits++;
+        }
         var variantAutoCastValid =
             adapter.DefaultAutoCastEnabled("ACbb", "Ablo") &&
             adapter.DefaultAutoCastEnabled("Afa2", "Afae") &&
@@ -967,8 +1030,12 @@ public static class War3AbilityDataClosureSelfTest
         summary = $"compiled={compiled}, families=" +
                   string.Join('|', familyCounts.OrderBy(value => value.Key)
                       .Select(value => $"{value.Key}:{value.Value}")) +
-                  $", variant_auto={variantAutoCastValid}";
-        return compiled == 15 && countsValid && variantAutoCastValid;
+                  $", resistant=3/{resistantUnits}, " +
+                  $"requirements={requirementIds.Count}, " +
+                  $"variant_auto={variantAutoCastValid}";
+        return compiled == 26 && countsValid &&
+               resistantUnits == 20 &&
+               variantAutoCastValid;
     }
 
     private static bool ExtendedFamilyLevelMatches(
@@ -978,9 +1045,17 @@ public static class War3AbilityDataClosureSelfTest
         float distanceScale)
     {
         if (runtime.Effects.Length != 1 ||
-            !TryData(source, "A", out var a))
+            runtime.Requirements.Length != source.Requirements
+                .Distinct(StringComparer.Ordinal).Count())
             return false;
         var effect = runtime.Effects[0];
+        if (compiler == War3AbilityCompilerKind.Invulnerable)
+            return effect.Timing == AbilityEffectTiming.Aura &&
+                   (effect.Status & AbilityStatusFlags.Invulnerable) != 0;
+        if (compiler == War3AbilityCompilerKind.ResistantSkin)
+            return effect.Timing == AbilityEffectTiming.Aura &&
+                   (effect.Status & AbilityStatusFlags.Resistant) != 0;
+        if (!TryData(source, "A", out var a)) return false;
         return compiler switch
         {
             War3AbilityCompilerKind.Ensnare =>
@@ -1030,6 +1105,24 @@ public static class War3AbilityDataClosureSelfTest
                     TryData(source, "B", out var alwaysAuto)
                         ? alwaysAuto
                         : 0f),
+            War3AbilityCompilerKind.Evasion =>
+                effect.Timing == AbilityEffectTiming.Aura &&
+                Nearly(effect.CombatModifier.EvasionChancePercent, a * 100f),
+            War3AbilityCompilerKind.CriticalStrike =>
+                TryData(source, "B", out var criticalMultiplier) &&
+                TryData(source, "C", out var criticalBonus) &&
+                TryData(source, "D", out var criticalEvasion) &&
+                TryData(source, "E", out var criticalNeverMiss) &&
+                effect.Timing == AbilityEffectTiming.Aura &&
+                Nearly(effect.CombatModifier.CriticalStrikeChancePercent, a) &&
+                Nearly(effect.CombatModifier.CriticalStrikeDamageMultiplier,
+                    criticalMultiplier) &&
+                Nearly(effect.CombatModifier.CriticalStrikeBonusDamage,
+                    criticalBonus) &&
+                Nearly(effect.CombatModifier.EvasionChancePercent,
+                    criticalEvasion * 100f) &&
+                effect.CombatModifier.CriticalStrikeNeverMiss ==
+                (criticalNeverMiss > 0f),
             _ => false
         };
     }

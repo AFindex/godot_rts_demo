@@ -57,7 +57,11 @@ public enum War3AbilityCompilerKind : byte
     Cripple,
     Bloodlust,
     Rejuvenation,
-    FaerieFire
+    FaerieFire,
+    Invulnerable,
+    ResistantSkin,
+    Evasion,
+    CriticalStrike
 }
 
 public sealed record War3AbilityBehaviorDescriptor(
@@ -216,6 +220,18 @@ public static class War3AbilityBehaviorRegistry
         Gameplay("Afae", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.FaerieFire,
             "护甲削减、持续时间、始终自动施法标志、目标层、消耗冷却、科技前置与 Bfae 表现均由 JSON 编译；负护甲和跟随目标的共享视野已落地。");
+        Gameplay("Avul", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.Invulnerable,
+            "单位和建筑的常驻无敌状态由 Avul 的 JSON 能力绑定编译；伤害入口统一查询被动状态，不依赖单位 rawcode 白名单。");
+        Gameplay("Arsk", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.ResistantSkin,
+            "抗性皮肤是无数值字段的类别能力：受科技 requirement 控制的被动 Aura 生成 Resistant 状态，负面效果改用 JSON 英雄持续时间，并拒绝仅允许非英雄的法术。");
+        Gameplay("AEev", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.Evasion,
+            "DataA 闪避概率独立于投射偏转编译；多来源取最高概率，并进入确定性普通攻击命中链。");
+        Gameplay("AOcr", AbilityActivationKind.Passive,
+            War3AbilityCompilerKind.CriticalStrike,
+            "DataA-E 的致命概率、伤害倍率、附加伤害、闪避概率和致命一击不失手标志全部编译到确定性攻击结算。");
         Gameplay("Ahea", AbilityActivationKind.TargetUnit,
             War3AbilityCompilerKind.Heal,
             "生命恢复量、目标规则、魔法/冷却、自动施法和表现事件均由 Ability JSON 编译并通过运行时治疗验收。");
