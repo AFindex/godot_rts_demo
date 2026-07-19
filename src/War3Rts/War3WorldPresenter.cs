@@ -36,7 +36,9 @@ public readonly record struct War3PresenterSyncProfile(
     double NodeFreeEffectsMilliseconds,
     long NodeFreeEffectsAllocatedBytes,
     double NodeFreeCommitMilliseconds,
-    long NodeFreeCommitAllocatedBytes);
+    long NodeFreeCommitAllocatedBytes,
+    int NodeFreeBatchBufferUploads,
+    long NodeFreeBatchUploadedBytes);
 
 public readonly record struct War3AnimationAudioEvent(
     string EventCode,
@@ -565,7 +567,9 @@ public sealed partial class War3WorldPresenter : Node3D
                 _ridWorld?.LastCommitMilliseconds ??
                 ElapsedMilliseconds(transientsEnd, commitEnd),
                 _ridWorld?.LastCommitAllocatedBytes ??
-                commitAllocationEnd - transientsAllocationEnd);
+                commitAllocationEnd - transientsAllocationEnd,
+                _ridWorld?.LastBatchBufferUploads ?? 0,
+                _ridWorld?.LastBatchUploadedBytes ?? 0L);
         }
         _peakEffectCount = Math.Max(_peakEffectCount, ActiveEffectCount);
     }
@@ -580,12 +584,19 @@ public sealed partial class War3WorldPresenter : Node3D
         Transform3D presenterTransform,
         float interpolation)
     {
+        const int detailedProfileSampleStride = 64;
         var presenterBasis = presenterTransform.Basis;
         var creationProgressStart = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
         for (var unit = 0; unit < simulation.Units.Count; unit++)
         {
+            // Per-unit timestamp/GC probes materially perturb an 800-unit
+            // profile. Sample a stable 1/64 subset and scale aggregate-only
+            // timings; actor counts remain exact.
+            var detailedProfileSample = ProfilingEnabled &&
+                                        (unit &
+                                         (detailedProfileSampleStride - 1)) == 0;
             if (ProfilingEnabled) _profileUnitActorsVisited++;
             if (!simulation.Units.Alive[unit])
             {
@@ -620,7 +631,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 }
                 continue;
             }
-            var resolveAllocationStart = ProfilingEnabled
+            var resolveAllocationStart = detailedProfileSample
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
             var hasVisual = _units.TryGetValue(unit, out var visual);
@@ -630,10 +641,10 @@ public sealed partial class War3WorldPresenter : Node3D
                 ? War3HumanContent.ResolveUnit(
                     simulation, production, unit)
                 : visual!.Definition;
-            if (ProfilingEnabled)
+            if (detailedProfileSample)
                 _profileUnitResolveAllocatedBytes +=
-                    GC.GetAllocatedBytesForCurrentThread() -
-                    resolveAllocationStart;
+                    (GC.GetAllocatedBytesForCurrentThread() -
+                     resolveAllocationStart) * detailedProfileSampleStride;
             if (!hasVisual || visual is null)
             {
                 visual = CreateUnit(
@@ -673,14 +684,14 @@ public sealed partial class War3WorldPresenter : Node3D
                 simulation.Units.Positions[unit], interpolation);
             visual.LastPosition = position;
             var world = ToWorldAtGround(position, definition.FlyingHeight);
-            var frustumAllocationStart = ProfilingEnabled
+            var frustumAllocationStart = detailedProfileSample
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
             var inFrustum = IsPositionInPreparedFrustum(camera, world);
-            if (ProfilingEnabled)
+            if (detailedProfileSample)
                 _profileUnitFrustumAllocatedBytes +=
-                    GC.GetAllocatedBytesForCurrentThread() -
-                    frustumAllocationStart;
+                    (GC.GetAllocatedBytesForCurrentThread() -
+                     frustumAllocationStart) * detailedProfileSampleStride;
             if (ProfilingEnabled && inFrustum)
                 _profileUnitActorsInFrustum++;
             var facing = UnitFacing.Interpolate(
@@ -688,7 +699,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 simulation.Units.Facings[unit], interpolation);
             var facingDirection = UnitFacing.Direction(facing);
             var angle = MathF.Atan2(facingDirection.X, facingDirection.Y);
-            var lodAllocationStart = ProfilingEnabled
+            var lodAllocationStart = detailedProfileSample
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
             var selected = _selectedUnits.Contains(unit);
@@ -736,25 +747,26 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual.Selection.Visible = selectionVisible;
                 visual.SelectionVisible = selectionVisible;
             }
-            if (ProfilingEnabled)
+            if (detailedProfileSample)
                 _profileUnitTransformAllocatedBytes +=
-                    GC.GetAllocatedBytesForCurrentThread() -
-                    lodAllocationStart;
-            var animationAllocationStart = ProfilingEnabled
+                    (GC.GetAllocatedBytesForCurrentThread() -
+                     lodAllocationStart) * detailedProfileSampleStride;
+            var animationAllocationStart = detailedProfileSample
                 ? GC.GetAllocatedBytesForCurrentThread()
                 : 0L;
-            var animationStart = ProfilingEnabled
+            var animationStart = detailedProfileSample
                 ? System.Diagnostics.Stopwatch.GetTimestamp()
                 : 0L;
             UpdateUnitAnimation(simulation, unit, visual);
-            if (ProfilingEnabled)
+            if (detailedProfileSample)
             {
                 _profileUnitAnimationMilliseconds += ElapsedMilliseconds(
                     animationStart,
-                    System.Diagnostics.Stopwatch.GetTimestamp());
+                    System.Diagnostics.Stopwatch.GetTimestamp()) *
+                    detailedProfileSampleStride;
                 _profileUnitAnimationAllocatedBytes +=
-                    GC.GetAllocatedBytesForCurrentThread() -
-                    animationAllocationStart;
+                    (GC.GetAllocatedBytesForCurrentThread() -
+                     animationAllocationStart) * detailedProfileSampleStride;
             }
             _sawBlendedTransition |=
                 visual.Actor.BlendedPoseCommitCount > 0;
@@ -1945,6 +1957,7 @@ public sealed partial class War3WorldPresenter : Node3D
         visual.Selection.Visible = false;
         visual.SelectionVisible = false;
         visual.Actor.Processing = false;
+        visual.Actor.Visible = false;
         visual.ShadowProxy.Visible = false;
         visual.ActorVisible = false;
         var team = visual.PoolTeam;

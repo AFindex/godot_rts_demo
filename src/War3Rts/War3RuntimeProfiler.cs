@@ -82,6 +82,8 @@ internal sealed class War3RuntimeProfiler
     private readonly Series _presenterNodeFreeEffectsAllocated = new();
     private readonly Series _presenterNodeFreeCommit = new();
     private readonly Series _presenterNodeFreeCommitAllocated = new();
+    private readonly Series _presenterNodeFreeBatchUploads = new();
+    private readonly Series _presenterNodeFreeBatchBytes = new();
     private readonly Series _objects = new();
     private readonly Series _drawCalls = new();
     private readonly Series _primitives = new();
@@ -768,6 +770,10 @@ internal sealed class War3RuntimeProfiler
                 presenterProfile.NodeFreeCommitMilliseconds);
             _presenterNodeFreeCommitAllocated.Add(
                 presenterProfile.NodeFreeCommitAllocatedBytes);
+            _presenterNodeFreeBatchUploads.Add(
+                presenterProfile.NodeFreeBatchBufferUploads);
+            _presenterNodeFreeBatchBytes.Add(
+                presenterProfile.NodeFreeBatchUploadedBytes);
             _objects.Add(RenderingServer.GetRenderingInfo(
                 RenderingServer.RenderingInfo.TotalObjectsInFrame));
             _drawCalls.Add(RenderingServer.GetRenderingInfo(
@@ -852,6 +858,8 @@ internal sealed class War3RuntimeProfiler
             $"presenter_units_ms={presenterProfile.UnitsMilliseconds:0.###} " +
             $"node_free_effects_ms={presenterProfile.NodeFreeEffectsMilliseconds:0.###} " +
             $"node_free_commit_ms={presenterProfile.NodeFreeCommitMilliseconds:0.###} " +
+            $"node_free_batch={presenterProfile.NodeFreeBatchBufferUploads}/" +
+            $"{presenterProfile.NodeFreeBatchUploadedBytes} " +
             $"unit_animation_ms={presenterProfile.UnitAnimationMilliseconds:0.###} " +
             $"units_seen={presenterProfile.UnitActorsVisited}/" +
             $"{presenterProfile.UnitActorsAlive}/" +
@@ -1042,6 +1050,10 @@ internal sealed class War3RuntimeProfiler
         Print(
             "presenter_node_free_commit_alloc_bytes",
             _presenterNodeFreeCommitAllocated);
+        Print("presenter_node_free_batch_uploads",
+            _presenterNodeFreeBatchUploads);
+        Print("presenter_node_free_batch_bytes",
+            _presenterNodeFreeBatchBytes);
         Print("render_objects", _objects);
         Print("render_draw_calls", _drawCalls);
         Print("render_primitives", _primitives);

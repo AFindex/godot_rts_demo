@@ -41,6 +41,8 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
     public long LastEffectsAllocatedBytes { get; private set; }
     public double LastCommitMilliseconds { get; private set; }
     public long LastCommitAllocatedBytes { get; private set; }
+    public int LastBatchBufferUploads { get; private set; }
+    public long LastBatchUploadedBytes { get; private set; }
 
     public War3RidModelActor CreateActor(
         string source,
@@ -114,6 +116,14 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
         foreach (var actor in _actors) actor.FlushPresentation();
+        LastBatchBufferUploads = 0;
+        LastBatchUploadedBytes = 0;
+        foreach (var asset in _assets.Values)
+        {
+            asset.FlushPresentation();
+            LastBatchBufferUploads += asset.LastBatchBufferUploads;
+            LastBatchUploadedBytes += asset.LastBatchUploadedBytes;
+        }
         if (!ProfilingEnabled) return;
         var commitEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         var commitAllocationEnd = GC.GetAllocatedBytesForCurrentThread();
@@ -206,7 +216,8 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
     private const double DecayBonePresentationMilliseconds = 5_000d;
     private readonly War3NodeFreeRenderWorld _owner;
     private readonly War3NodeFreeModelAsset _asset;
-    private readonly Rid[] _instances;
+    private readonly War3VatModelBatch _batch;
+    private readonly int _batchSlot;
     private readonly bool _includeEffects;
     private readonly War3EffectRuntimeCore? _effects;
     private int _sequenceIndex = -1;
@@ -218,6 +229,8 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
     private bool _visible = true;
     private bool _processing = true;
     private bool _shadowCasting = true;
+    private bool _ghostAppearance;
+    private bool _ghostValid = true;
     private bool _effectsHiddenByGhost;
     private double _sequenceMilliseconds;
     private double _drivenMilliseconds;
@@ -236,6 +249,8 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
     private bool _transformDirty = true;
     private bool _poseDirty = true;
     private bool _visibilityDirty = true;
+    private bool _materialDirty = true;
+    private Color _surfaceTint = Colors.White;
     private bool _hasExplicitEffectWorldTransform;
 
     internal War3RidModelActor(
@@ -248,21 +263,8 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
         _owner = owner;
         _asset = asset;
         _includeEffects = includeEffects;
-        _instances = new Rid[asset.Parts.Count];
-        for (var partIndex = 0; partIndex < asset.Parts.Count; partIndex++)
-        {
-            var part = asset.Parts[partIndex];
-            var instance = RenderingServer.InstanceCreate2(
-                part.Mesh.GetRid(), scenario);
-            _instances[partIndex] = instance;
-            for (var surface = 0; surface < part.Materials.Length; surface++)
-            {
-                var material = part.Materials[surface];
-                if (material is not null)
-                    RenderingServer.InstanceSetSurfaceOverrideMaterial(
-                        instance, surface, material.GetRid());
-            }
-        }
+        _batch = asset.Batch(scenario);
+        _batchSlot = _batch.AcquireSlot();
         if (includeEffects &&
             (asset.Metadata.Particles.Count > 0 ||
              asset.Metadata.Ribbons.Count > 0))
@@ -365,13 +367,9 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
 
     public void SetShadowCastingEnabled(bool enabled)
     {
+        if (_shadowCasting == enabled) return;
         _shadowCasting = enabled;
-        var setting = enabled
-            ? RenderingServer.ShadowCastingSetting.On
-            : RenderingServer.ShadowCastingSetting.Off;
-        foreach (var instance in _instances)
-            RenderingServer.InstanceGeometrySetCastShadowsSetting(
-                instance, setting);
+        _materialDirty = true;
     }
 
     public bool PlayPreferred(bool loop, params string[] candidates) =>
@@ -515,36 +513,18 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
     {
         _effectsHiddenByGhost = enabled;
         _effects?.SetNodeFreeVisible(_visible && !enabled);
-        var material = enabled
-            ? _asset.GhostMaterial(valid)
-            : null;
-        for (var partIndex = 0; partIndex < _instances.Length; partIndex++)
-        {
-            var part = _asset.Parts[partIndex];
-            for (var surface = 0; surface < part.Materials.Length; surface++)
-            {
-                var source = material ?? part.Materials[surface];
-                RenderingServer.InstanceSetSurfaceOverrideMaterial(
-                    _instances[partIndex], surface,
-                    source?.GetRid() ?? default);
-            }
-        }
+        if (_ghostAppearance == enabled && _ghostValid == valid) return;
+        _ghostAppearance = enabled;
+        _ghostValid = valid;
+        _materialDirty = true;
+        _visibilityDirty = true;
     }
 
     public void SetSurfaceTint(Color tint)
     {
-        for (var partIndex = 0; partIndex < _instances.Length; partIndex++)
-        {
-            var part = _asset.Parts[partIndex];
-            for (var surface = 0; surface < part.Materials.Length; surface++)
-            {
-                var material = _asset.TintedMaterial(
-                    partIndex, surface, tint);
-                if (material is not null)
-                    RenderingServer.InstanceSetSurfaceOverrideMaterial(
-                        _instances[partIndex], surface, material.GetRid());
-            }
-        }
+        if (_surfaceTint == tint) return;
+        _surfaceTint = tint;
+        _materialDirty = true;
     }
 
     internal void AdvanceTimeline(double deltaSeconds)
@@ -680,12 +660,11 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
         if (_disposed) return;
         if (!_visible)
         {
-            if (_visibilityDirty)
-                foreach (var instance in _instances)
-                    RenderingServer.InstanceSetVisible(instance, false);
+            if (_visibilityDirty) _batch.HideSlot(_batchSlot);
             _visibilityDirty = false;
             _transformDirty = false;
             _poseDirty = false;
+            _materialDirty = false;
             return;
         }
         if (_sequenceIndex < 0 ||
@@ -696,43 +675,40 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
             return;
         var pose = sequence.Poses[_appliedPose];
         var poseChanged = !ReferenceEquals(_committedPose, pose);
-        if (!_transformDirty && !_visibilityDirty &&
-            !_poseDirty && !poseChanged)
+        if (!_transformDirty && !_visibilityDirty && !_materialDirty &&
+            !_poseDirty && !poseChanged && !BlendActive)
             return;
         if (BlendActive) BlendedPoseCommitCount++;
-        for (var partIndex = 0; partIndex < _instances.Length; partIndex++)
-        {
-            var instance = _instances[partIndex];
-            var partPose = pose.Parts[partIndex];
-            var displayedTransform = partPose.LocalTransform;
-            var displayedSkeleton = partPose.Skeleton;
-            var displayedVisible = partPose.Visible;
-            if (BlendActive && _blendSourcePose is not null)
-            {
-                var sourcePart = _blendSourcePose.Parts[partIndex];
-                var blend = BlendWeight;
-                displayedTransform = sourcePart.LocalTransform.InterpolateWith(
-                    partPose.LocalTransform, blend);
-                displayedSkeleton = _asset.ResolveBlendedSkeleton(
-                    _blendSourcePose, pose, partIndex, blend);
-                displayedVisible = blend < 0.5f
-                    ? sourcePart.Visible
-                    : partPose.Visible;
-            }
-            if (_transformDirty || _poseDirty || poseChanged)
-                RenderingServer.InstanceSetTransform(
-                    instance, _transform * displayedTransform);
-            if (_poseDirty || poseChanged || BlendActive)
-                RenderingServer.InstanceAttachSkeleton(
-                    instance, displayedSkeleton);
-            if (_visibilityDirty || _poseDirty || poseChanged || BlendActive)
-                RenderingServer.InstanceSetVisible(
-                    instance, displayedVisible);
-        }
+        var targetPoseIndex = _asset.VatAnimation.PoseIndex(pose);
+        var sourcePose = BlendActive && _blendSourcePose is not null
+            ? _blendSourcePose
+            : pose;
+        var sourcePoseIndex = _asset.VatAnimation.PoseIndex(sourcePose);
+        var blendWeight = BlendActive ? BlendWeight : 1f;
+        var appearance = _ghostAppearance
+            ? War3VatAppearance.Ghost
+            : War3VatAppearance.Normal;
+        var tint = _ghostAppearance
+            ? (_ghostValid
+                ? new Color("55e6b06e")
+                : new Color("ef666676"))
+            : _surfaceTint;
+        _batch.BeginSlot(
+            _batchSlot,
+            new War3VatBatchLaneKey(appearance, _shadowCasting));
+        _batch.WriteActor(
+            _batchSlot,
+            _transform,
+            true,
+            targetPoseIndex,
+            sourcePoseIndex,
+            blendWeight,
+            tint);
         _committedPose = pose;
         _transformDirty = false;
         _visibilityDirty = false;
         _poseDirty = false;
+        _materialDirty = false;
     }
 
     private Transform3D ResolveEmitterTransform(
@@ -950,8 +926,7 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
         {
             _effects.Dispose();
         }
-        foreach (var instance in _instances)
-            if (instance.IsValid) RenderingServer.FreeRid(instance);
+        _batch.ReleaseSlot(_batchSlot);
     }
 }
 
@@ -1051,6 +1026,8 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
     private readonly War3NodeFreeModelAsset? _sharedBlendSource;
     private StandardMaterial3D? _validGhostMaterial;
     private StandardMaterial3D? _invalidGhostMaterial;
+    private War3VatAnimationData? _vatAnimation;
+    private War3VatModelBatch? _vatBatch;
     private bool _disposed;
 
     private War3NodeFreeModelAsset(
@@ -1091,6 +1068,20 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
     public int SkeletonSlotCount { get; }
     public int TeamColor { get; }
     public IReadOnlyList<War3NodeFreeEmitterKey> EmitterKeys { get; }
+    public War3VatAnimationData VatAnimation =>
+        _vatAnimation ?? throw new InvalidOperationException(
+            $"VAT animation data is not initialized: {Source}");
+
+    public War3VatModelBatch Batch(Rid scenario)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _vatBatch ??= new War3VatModelBatch(
+            this, VatAnimation, scenario);
+    }
+
+    public void FlushPresentation() => _vatBatch?.Flush();
+    public int LastBatchBufferUploads => _vatBatch?.BufferUploads ?? 0;
+    public long LastBatchUploadedBytes => _vatBatch?.UploadedBytes ?? 0L;
 
     public static War3NodeFreeModelAsset Build(
         Node3D host,
@@ -1233,6 +1224,14 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
                     output.TrySavePoseCache();
                 }
             }
+            output._vatAnimation = sharedPoseSource?._vatAnimation ??
+                                   War3VatAnimationData.Build(output);
+            // The immutable bone/part textures are authoritative from here on.
+            // Pose Skeleton RIDs existed only to bake those textures; keeping
+            // thousands of sampled skeletons alive would defeat the node-free
+            // runtime even though no actor attaches them anymore.
+            if (sharedPoseSource is null)
+                output.ReleaseBakedSkeletonResources();
             GD.Print(
                 $"WAR3_NODE_FREE_ASSET source={source} team={teamColor} " +
                 $"cache={cacheState} parts={parts.Count} " +
@@ -1254,6 +1253,39 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
                 probeRoot.Free();
             }
         }
+    }
+
+    private void ReleaseBakedSkeletonResources()
+    {
+        var released = 0;
+        foreach (var skeleton in _ownedSkeletons)
+        {
+            if (!skeleton.IsValid) continue;
+            RenderingServer.FreeRid(skeleton);
+            released++;
+        }
+        _ownedSkeletons.Clear();
+        foreach (var skeleton in _blendedSkeletons.Values)
+            if (skeleton.IsValid) RenderingServer.FreeRid(skeleton);
+        _blendedSkeletons.Clear();
+
+        var visited = new HashSet<War3NodeFreePose>(
+            ReferenceEqualityComparer.Instance);
+        foreach (var sequence in Sequences)
+        foreach (var pose in sequence.Poses)
+        {
+            if (!visited.Add(pose)) continue;
+            for (var part = 0; part < pose.Parts.Length; part++)
+            {
+                var value = pose.Parts[part];
+                if (!value.Skeleton.IsValid) continue;
+                pose.Parts[part] = new War3NodeFreePartPose(
+                    value.LocalTransform, default, value.Visible);
+            }
+        }
+        GD.Print(
+            $"WAR3_VAT_CPU_SKELETONS_RELEASED source={Source} " +
+            $"count={released}");
     }
 
     public int FindSequence(IReadOnlyList<string> candidates)
@@ -2286,6 +2318,9 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _vatBatch?.Dispose();
+        _vatBatch = null;
+        _vatAnimation = null;
         foreach (var skeleton in _ownedSkeletons)
             if (skeleton.IsValid) RenderingServer.FreeRid(skeleton);
         _ownedSkeletons.Clear();
