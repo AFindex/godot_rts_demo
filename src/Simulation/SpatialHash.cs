@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace RtsDemo.Simulation;
 
@@ -56,7 +57,7 @@ public sealed class SpatialHash
         foreach (var i in units.AliveUnits)
         {
             _maximumRadius = MathF.Max(_maximumRadius, units.Radii[i]);
-            var (x, y) = Cell(units.Positions[i]);
+            Cell(units.Positions[i], out var x, out var y);
             var bucket = GetOrCreateBucket(x, y);
             bucket.Add(i);
         }
@@ -64,13 +65,19 @@ public sealed class SpatialHash
 
     public int Query(Vector2 center, float radius, int exclude, Span<int> output)
     {
-        var minimum = Cell(center - new Vector2(radius));
-        var maximum = Cell(center + new Vector2(radius));
+        Cell(
+            center - new Vector2(radius),
+            out var minimumX,
+            out var minimumY);
+        Cell(
+            center + new Vector2(radius),
+            out var maximumX,
+            out var maximumY);
         var count = 0;
 
-        for (var y = minimum.Y; y <= maximum.Y; y++)
+        for (var y = minimumY; y <= maximumY; y++)
         {
-            for (var x = minimum.X; x <= maximum.X; x++)
+            for (var x = minimumX; x <= maximumX; x++)
             {
                 var bucket = GetBucket(x, y);
                 if (bucket is null)
@@ -182,6 +189,7 @@ public sealed class SpatialHash
         return overflow;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private List<int>? GetBucket(int x, int y)
     {
         if (TryDenseIndex(x, y, out var index))
@@ -195,6 +203,7 @@ public sealed class SpatialHash
             : null;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool TryDenseIndex(int x, int y, out int index)
     {
         var column = x - _minimumCellX;
@@ -270,9 +279,12 @@ public sealed class SpatialHash
         output[count++] = ((long)left << 32) | (uint)right;
     }
 
-    private (int X, int Y) Cell(Vector2 position) =>
-        ((int)MathF.Floor(position.X / _cellSize),
-         (int)MathF.Floor(position.Y / _cellSize));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Cell(Vector2 position, out int x, out int y)
+    {
+        x = (int)MathF.Floor(position.X / _cellSize);
+        y = (int)MathF.Floor(position.Y / _cellSize);
+    }
 
     private static long Key(int x, int y) => ((long)x << 32) ^ (uint)y;
 }

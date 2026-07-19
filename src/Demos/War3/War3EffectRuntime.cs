@@ -15,6 +15,10 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     private const int ParticleEmitterXyQuadFlag = 1048576;
     private static readonly Dictionary<string, Texture2D?> TextureCache =
         new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<
+        War3ParticleEmitterDefinition,
+        ParticleAppearanceSample[]> ParticleAppearanceCache =
+        new(ReferenceEqualityComparer.Instance);
     private static Camera3D? _preparedCamera;
     private static Basis _preparedCameraBasis;
     private static int _nextRandomSeed;
@@ -420,6 +424,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             {
                 var particle = runtime.Particles[index];
                 particle.Age += deltaSeconds;
+                particle.AgeStep++;
                 if (particle.Age >= particle.Life) continue;
                 particle.Velocity += particle.Gravity * (float)deltaSeconds;
                 particle.Position += particle.Velocity * (float)deltaSeconds;
@@ -630,7 +635,11 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         var cachedSkeletonTransform = Transform3D.Identity;
         foreach (var runtime in _particles)
         {
-            var emitterWorldScale = runtime.Binding is null
+            // Empty emitters only need their previously visible surface reset.
+            // Resolving an animated bone transform and its three-axis scale for
+            // them was pure per-actor/per-frame work.
+            var emitterWorldScale = runtime.Particles.Count == 0 ||
+                                    runtime.Binding is null
                 ? WarcraftUnitScale
                 : WorldScale(runtime.Binding.ResolveGlobalTransform(
                     ref cachedSkeleton, ref cachedSkeletonTransform).Basis);
@@ -718,8 +727,10 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                 ? particle.Velocity
                 : ToEffectLocalVector(particle.Velocity);
             var progress = (float)Math.Clamp(particle.Age / particle.Life, 0d, 1d);
-            var color = ParticleColor(runtime.Definition, progress);
-            var size = ParticleScale(runtime.Definition, progress) *
+            var appearance = runtime.Appearance(
+                particle.AgeStep, progress);
+            var color = appearance.Color;
+            var size = appearance.Scale *
                        emitterWorldScale;
             ParticleUv(runtime, progress, out var uv0, out var uv1);
             if ((runtime.Definition.FrameFlags & 1) != 0 || runtime.Definition.FrameFlags == 0)
@@ -780,8 +791,10 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             var velocity = particle.Velocity;
             var progress = (float)Math.Clamp(
                 particle.Age / particle.Life, 0d, 1d);
-            var color = ParticleColor(runtime.Definition, progress);
-            var size = ParticleScale(runtime.Definition, progress) *
+            var appearance = runtime.Appearance(
+                particle.AgeStep, progress);
+            var color = appearance.Color;
+            var size = appearance.Scale *
                        emitterWorldScale;
             ParticleUv(runtime, progress, out var uv0, out var uv1);
             if (rendersHead)
@@ -1036,6 +1049,31 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         var t2 = (float)Math.Clamp((progress - definition.Time) /
                                    Math.Max(0.001d, 1d - definition.Time), 0d, 1d);
         return Mathf.Lerp(scaling[1], scaling[2], t2);
+    }
+
+    private static ParticleAppearanceSample[] ParticleAppearanceSamples(
+        War3ParticleEmitterDefinition definition)
+    {
+        if (ParticleAppearanceCache.TryGetValue(definition, out var cached))
+            return cached;
+        var deltaSeconds = FixedStepMilliseconds / 1000d;
+        var count = Math.Max(
+            2,
+            (int)Math.Ceiling(
+                Math.Max(0.03d, definition.LifeSpan) / deltaSeconds) + 1);
+        var result = new ParticleAppearanceSample[count];
+        var age = 0d;
+        for (var index = 0; index < count; index++)
+        {
+            var progress = (float)Math.Clamp(
+                age / Math.Max(0.03d, definition.LifeSpan), 0d, 1d);
+            result[index] = new ParticleAppearanceSample(
+                ParticleColor(definition, progress),
+                ParticleScale(definition, progress));
+            age += deltaSeconds;
+        }
+        ParticleAppearanceCache.Add(definition, result);
+        return result;
     }
 
     private static void ParticleUv(
@@ -1999,10 +2037,21 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             BuildParticleUvs(definition, ends: false);
         public Vector2[] UvEnds { get; } =
             BuildParticleUvs(definition, ends: true);
+        public ParticleAppearanceSample[] AppearanceSamples { get; } =
+            ParticleAppearanceSamples(definition);
         public List<Particle> Particles { get; } = [];
         public double SpawnRemainder { get; set; }
         public double? LastSquirtFrame { get; set; }
         public bool HasSurface { get; set; }
+
+        public ParticleAppearanceSample Appearance(
+            int ageStep,
+            float fallbackProgress) =>
+            (uint)ageStep < (uint)AppearanceSamples.Length
+                ? AppearanceSamples[ageStep]
+                : new ParticleAppearanceSample(
+                    ParticleColor(Definition, fallbackProgress),
+                    ParticleScale(Definition, fallbackProgress));
     }
 
     private sealed class RibbonEmitterRuntime(
@@ -2067,7 +2116,12 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         public double Life { get; set; }
         public double Age { get; set; }
         public float Rotation { get; set; }
+        public int AgeStep { get; set; }
     }
+
+    private readonly record struct ParticleAppearanceSample(
+        Color Color,
+        float Scale);
 
     private struct RibbonPoint
     {

@@ -260,9 +260,10 @@ public sealed class SteeringSolver
 
             var combinedRadius = units.Radii[unit] +
                                  units.Radii[neighbor] + 1.5f;
+            var neighborVelocity = units.Velocities[neighbor];
             _neighborIds[prepared] = neighbor;
             _neighborOffsets[prepared] = offset;
-            _neighborVelocities[prepared] = units.Velocities[neighbor];
+            _neighborVelocities[prepared] = neighborVelocity;
             _neighborDistancesSquared[prepared] = distanceSquared;
             _neighborCombinedRadiiSquared[prepared] =
                 combinedRadius * combinedRadius;
