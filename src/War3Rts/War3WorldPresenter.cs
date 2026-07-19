@@ -91,6 +91,11 @@ public sealed partial class War3WorldPresenter : Node3D
     private CombatProjectileSnapshot[] _combatProjectileScratch = [];
     private MultiMesh? _denseCombatProjectileMultiMesh;
     private float[] _denseCombatProjectileBuffer = [];
+    private MultiMesh? _contactShadowMultiMesh;
+    private float[] _contactShadowBuffer = [];
+    private int _contactShadowCount;
+    private int _unitContactShadowCount;
+    private int _buildingContactShadowCount;
     private readonly Plane[] _cameraFrustumPlanes = new Plane[6];
     private readonly float[] _cameraFrustumInsideSigns = new float[6];
     private int _cameraFrustumPlaneCount;
@@ -178,6 +183,10 @@ public sealed partial class War3WorldPresenter : Node3D
                     _simulation.Units.NavigationRadii[pair.Key])) < 0.001f);
     public int PresentedBuildingCount => _buildings.Values.Count(value => !value.Dying);
     public int PresentedResourceCount => _resources.Count;
+    public int PresentedContactShadowCount => _contactShadowCount;
+    public int PresentedUnitContactShadowCount => _unitContactShadowCount;
+    public int PresentedBuildingContactShadowCount =>
+        _buildingContactShadowCount;
     public int ActiveEffectCount =>
         _projectiles.Count + _buildingProjectiles.Count +
         _abilityProjectiles.Count + _transients.Count + _abilityBuffs.Count;
@@ -478,6 +487,12 @@ public sealed partial class War3WorldPresenter : Node3D
         War3EffectRuntime.PrepareCameraFrame(_camera, cameraTransform.Basis);
         PrepareCameraFrustum(_camera, cameraTransform);
         _ridWorld?.Advance();
+        EnsureContactShadowCapacity(
+            _simulation.Units.Count +
+            _simulation.GameplayBuildingSlotCount);
+        _contactShadowCount = 0;
+        _unitContactShadowCount = 0;
+        _buildingContactShadowCount = 0;
         var advanceEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
@@ -494,6 +509,7 @@ public sealed partial class War3WorldPresenter : Node3D
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
         SyncBuildings(_simulation, _camera, presenterTransform);
+        FlushContactShadows();
         SyncRallyMarker(_simulation);
         var buildingsEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
@@ -712,6 +728,11 @@ public sealed partial class War3WorldPresenter : Node3D
             visual.Actor.Processing = inFrustum && visibleToPlayer;
             var actorVisible = inFrustum && visibleToPlayer &&
                                !hiddenInsideGoldMine;
+            if (actorVisible)
+                WriteUnitContactShadow(
+                    position,
+                    angle,
+                    simulation.Units.NavigationRadii[unit]);
             if (visual.ActorVisible != actorVisible)
             {
                 visual.Actor.Visible = actorVisible;
@@ -1297,6 +1318,8 @@ public sealed partial class War3WorldPresenter : Node3D
                     War3HumanScenario.PlayerId,
                     visual.LastPosition);
             var actorVisible = inFrustum && visibleToPlayer;
+            if (actorVisible && foundationStarted)
+                WriteBuildingContactShadow(building.Bounds);
             visual.Actor.Processing = actorVisible;
             if (visual.ActorVisible != actorVisible)
             {
@@ -1703,6 +1726,148 @@ public sealed partial class War3WorldPresenter : Node3D
         _denseCombatProjectileMultiMesh.VisibleInstanceCount = count;
     }
 
+    private void EnsureContactShadowCapacity(int required)
+    {
+        var currentCapacity = _contactShadowBuffer.Length / 12;
+        var capacity = Math.Max(32, currentCapacity);
+        while (capacity < required) capacity *= 2;
+        if (_contactShadowMultiMesh is null)
+        {
+            var shader = new Shader
+            {
+                Code = """
+                    shader_type spatial;
+                    render_mode blend_mix, depth_draw_never,
+                        cull_disabled, unshaded;
+
+                    void fragment() {
+                        vec2 point = UV * 2.0 - vec2(1.0);
+                        float distance_squared = dot(point, point);
+                        float opacity =
+                            (1.0 - smoothstep(0.12, 1.0, distance_squared)) *
+                            0.72;
+                        if (opacity < 0.006) discard;
+                        ALBEDO = vec3(0.012, 0.016, 0.021);
+                        ALPHA = opacity;
+                    }
+                    """
+            };
+            var material = new ShaderMaterial { Shader = shader };
+            var mesh = new PlaneMesh
+            {
+                Size = new Vector2(2f, 2f),
+                Material = material
+            };
+            _contactShadowMultiMesh = new MultiMesh
+            {
+                TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+                Mesh = mesh,
+                InstanceCount = capacity,
+                VisibleInstanceCount = 0
+            };
+            AddChild(new MultiMeshInstance3D
+            {
+                Name = "War3ContactShadows",
+                Multimesh = _contactShadowMultiMesh,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                ExtraCullMargin = 10_000f
+            });
+            _contactShadowBuffer = new float[capacity * 12];
+            return;
+        }
+
+        if (capacity <= currentCapacity) return;
+        _contactShadowMultiMesh.VisibleInstanceCount = 0;
+        _contactShadowMultiMesh.InstanceCount = capacity;
+        Array.Resize(ref _contactShadowBuffer, capacity * 12);
+    }
+
+    private void WriteUnitContactShadow(
+        NVector2 position,
+        float angle,
+        float navigationRadius)
+    {
+        var radius = MathF.Max(
+            0.26f,
+            UnitSelectionWorldRadius(navigationRadius) * 1.65f);
+        var transform = new Transform3D(
+            new Basis(Vector3.Up, angle).Scaled(new Vector3(
+                radius * 1.18f,
+                1f,
+                radius * 0.82f)),
+            ToWorldAtGround(position, 0.028f));
+        WriteTransformBuffer(
+            _contactShadowBuffer,
+            _contactShadowCount * 12,
+            transform);
+        _contactShadowCount++;
+        _unitContactShadowCount++;
+    }
+
+    private void WriteBuildingContactShadow(SimRect bounds)
+    {
+        var center = (bounds.Min + bounds.Max) * 0.5f;
+        var footprint = SimPlane3DTransform.ToWorldSize(
+            bounds.Max - bounds.Min);
+        var castDistance = Math.Clamp(
+            MathF.Max(footprint.X, footprint.Y) * 0.2f,
+            0.32f,
+            0.95f);
+        var world = ToWorldAtGround(center, 0.026f) +
+                    new Vector3(
+                        castDistance * 0.72f,
+                        0f,
+                        castDistance);
+        var transform = new Transform3D(
+            Basis.FromScale(new Vector3(
+                MathF.Max(0.48f, footprint.X * 0.68f),
+                1f,
+                MathF.Max(0.48f, footprint.Y * 0.68f))),
+            world);
+        WriteTransformBuffer(
+            _contactShadowBuffer,
+            _contactShadowCount * 12,
+            transform);
+        _contactShadowCount++;
+        _buildingContactShadowCount++;
+    }
+
+    private void FlushContactShadows()
+    {
+        if (_contactShadowMultiMesh is null) return;
+        if (_contactShadowCount == 0)
+        {
+            _contactShadowMultiMesh.VisibleInstanceCount = 0;
+            return;
+        }
+        RenderingServer.MultimeshSetBuffer(
+            _contactShadowMultiMesh.GetRid(),
+            _contactShadowBuffer.AsSpan());
+        _contactShadowMultiMesh.VisibleInstanceCount =
+            _contactShadowCount;
+    }
+
+    private static void WriteTransformBuffer(
+        float[] buffer,
+        int offset,
+        Transform3D transform)
+    {
+        var basis = transform.Basis;
+        var origin = transform.Origin;
+        buffer[offset] = basis.X.X;
+        buffer[offset + 1] = basis.Y.X;
+        buffer[offset + 2] = basis.Z.X;
+        buffer[offset + 3] = origin.X;
+        buffer[offset + 4] = basis.X.Y;
+        buffer[offset + 5] = basis.Y.Y;
+        buffer[offset + 6] = basis.Z.Y;
+        buffer[offset + 7] = origin.Y;
+        buffer[offset + 8] = basis.X.Z;
+        buffer[offset + 9] = basis.Y.Z;
+        buffer[offset + 10] = basis.Z.Z;
+        buffer[offset + 11] = origin.Z;
+    }
+
     private void EnsureDenseCombatProjectileCapacity(int required)
     {
         var capacity = Math.Max(32, _denseCombatProjectileBuffer.Length / 12);
@@ -2095,7 +2260,7 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         return _ridWorld!.CreateActor(
             source,
-            team: 0,
+            playerId: 0,
             includeEffects: kind == EconomyResourceKind.Minerals);
     }
 
@@ -2182,8 +2347,9 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             var actor = _ridWorld!.CreateActor(
                 definition.ProjectileSource,
-                team: 0,
+                playerId: sourcePlayerId,
                 includeEffects: true);
+            actor.SetShadowCastingEnabled(false);
             actor.SoundTimelineEvent += value => PublishProjectileAnimationAudio(
                 id, sourcePlayerId, value);
             actor.PlayPreferred(true, "Stand", "Birth");
@@ -2214,8 +2380,9 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             var actor = _ridWorld!.CreateActor(
                 definition.ProjectileSource,
-                team: 0,
+                playerId: sourcePlayerId,
                 includeEffects: true);
+            actor.SetShadowCastingEnabled(false);
             actor.SoundTimelineEvent += value => PublishAnimationAudio(
                 value,
                 NVector2.Zero,
@@ -2250,8 +2417,9 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             var actor = _ridWorld!.CreateActor(
                 source,
-                team: 0,
+                playerId: sourcePlayerId,
                 includeEffects: true);
+            actor.SetShadowCastingEnabled(false);
             actor.SoundTimelineEvent += value => PublishAnimationAudio(
                 value,
                 new NVector2(actor.Position.X, actor.Position.Z),
@@ -2283,8 +2451,9 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         var actor = _ridWorld!.CreateActor(
             source,
-            team: 0,
+            playerId: sourcePlayerId,
             includeEffects: true);
+        actor.SetShadowCastingEnabled(false);
         var emitterId = _nextTransientAudioEmitterId++;
         actor.Position = ToWorldAtGround(position) +
                          (attachmentOffset == default

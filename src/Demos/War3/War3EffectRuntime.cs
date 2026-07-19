@@ -11,6 +11,8 @@ internal sealed class War3EffectRuntimeCore : IDisposable
 {
     private const double FixedStepMilliseconds = 1000d / 30d;
     private const float WarcraftUnitScale = 0.01f;
+    private const int ParticleEmitterModelSpaceFlag = 524288;
+    private const int ParticleEmitterXyQuadFlag = 1048576;
     private static readonly Dictionary<string, Texture2D?> TextureCache =
         new(StringComparer.OrdinalIgnoreCase);
     private static Camera3D? _preparedCamera;
@@ -93,6 +95,23 @@ internal sealed class War3EffectRuntimeCore : IDisposable
 
     public void PrepareWorldTransform(Transform3D transform)
     {
+        if (_hasPreparedWorldBasis &&
+            transform.Origin != _preparedWorldTransform.Origin)
+        {
+            for (var index = 0; index < _particles.Count; index++)
+            {
+                var emitter = _particles[index];
+                if (emitter.Particles.Count == 0 ||
+                    (emitter.Definition.Flags &
+                     ParticleEmitterModelSpaceFlag) != 0)
+                    continue;
+                // World-space particles are uploaded relative to their
+                // current actor instance. A moving actor therefore needs new
+                // local positions even between fixed particle steps.
+                _geometryDirty = true;
+                break;
+            }
+        }
         _preparedWorldTransform = transform;
         _preparedWorldBasis = transform.Basis;
         _preparedWorldInverse = transform.AffineInverse();
@@ -489,17 +508,30 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             (float)RandomRange(-width, width),
             (float)RandomRange(-length, length),
             0f);
-        var origin = ToEffectLocal(emitterTransform * localOffset);
+        var worldOrigin = emitterTransform * localOffset;
         var worldScale = WorldScale(emitterTransform.Basis);
+        var worldVelocity = direction * (float)speed * worldScale;
+        var worldGravity = Vector3.Down *
+                           (float)definition.Gravity.Sample(
+                               frame, _sequence!, _metadata.GlobalSequences) *
+                           worldScale;
+        var modelSpace =
+            (definition.Flags & ParticleEmitterModelSpaceFlag) != 0;
         runtime.Particles.Add(new Particle
         {
-            Position = origin,
-            Velocity = direction * (float)speed * worldScale,
-            Gravity = Vector3.Down *
-                      (float)definition.Gravity.Sample(frame, _sequence!, _metadata.GlobalSequences) *
-                      worldScale,
+            // Warcraft PE2 particles are world-space unless the emitter has
+            // the explicit ModelSpace flag. Keeping ordinary smoke in the
+            // actor's local space drags every old particle along with a moving
+            // missile and collapses the trail into one opaque clump.
+            Position = modelSpace ? ToEffectLocal(worldOrigin) : worldOrigin,
+            Velocity = modelSpace
+                ? ToEffectLocalVector(worldVelocity)
+                : worldVelocity,
+            Gravity = modelSpace
+                ? ToEffectLocalVector(worldGravity)
+                : worldGravity,
             Life = Math.Max(0.03d, definition.LifeSpan),
-            Rotation = (float)RandomRange(-Math.PI, Math.PI)
+            Rotation = yaw
         });
     }
 
@@ -529,6 +561,12 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         _hasPreparedWorldBasis
             ? _preparedWorldInverse * globalPosition
             : _legacyHost?.ToLocal(globalPosition) ?? globalPosition;
+
+    private Vector3 ToEffectLocalVector(Vector3 globalVector) =>
+        _hasPreparedWorldBasis
+            ? _preparedWorldBasis.Inverse() * globalVector
+            : _legacyHost?.GlobalTransform.Basis.Inverse() * globalVector ??
+              globalVector;
 
     private void PrepareWorldTransformForSync()
     {
@@ -646,6 +684,14 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         runtime.Geometry.Prepare(vertexCount);
         foreach (var particle in runtime.Particles)
         {
+            var modelSpace =
+                (runtime.Definition.Flags & ParticleEmitterModelSpaceFlag) != 0;
+            var position = modelSpace
+                ? particle.Position
+                : ToEffectLocal(particle.Position);
+            var velocity = modelSpace
+                ? particle.Velocity
+                : ToEffectLocalVector(particle.Velocity);
             var progress = (float)Math.Clamp(particle.Age / particle.Life, 0d, 1d);
             var color = ParticleColor(runtime.Definition, progress);
             var size = ParticleScale(runtime.Definition, progress) *
@@ -653,24 +699,26 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             var (uv0, uv1) = ParticleUv(runtime.Definition, progress);
             if ((runtime.Definition.FrameFlags & 1) != 0 || runtime.Definition.FrameFlags == 0)
             {
-                var cos = MathF.Cos(particle.Rotation);
-                var sin = MathF.Sin(particle.Rotation);
-                var baseRight = (runtime.Definition.Flags & 1048576) != 0
+                var rotatesInPlane =
+                    (runtime.Definition.Flags & ParticleEmitterXyQuadFlag) != 0;
+                var cos = rotatesInPlane ? MathF.Cos(particle.Rotation) : 1f;
+                var sin = rotatesInPlane ? MathF.Sin(particle.Rotation) : 0f;
+                var baseRight = rotatesInPlane
                     ? Vector3.Right
                     : cameraRight;
-                var baseUp = (runtime.Definition.Flags & 1048576) != 0
+                var baseUp = rotatesInPlane
                     ? Vector3.Up
                     : cameraUp;
                 var rotatedRight = baseRight * cos + baseUp * sin;
                 var rotatedUp = -baseRight * sin + baseUp * cos;
-                AppendQuad(runtime.Geometry, particle.Position, rotatedRight * size,
+                AppendQuad(runtime.Geometry, position, rotatedRight * size,
                     rotatedUp * size, color, uv0, uv1);
             }
-            if ((runtime.Definition.FrameFlags & 2) != 0 && particle.Velocity.LengthSquared() > 0.00001f)
+            if ((runtime.Definition.FrameFlags & 2) != 0 && velocity.LengthSquared() > 0.00001f)
             {
-                var tail = particle.Velocity * (float)runtime.Definition.TailLength;
+                var tail = velocity * (float)runtime.Definition.TailLength;
                 var side = tail.Cross(cameraUp).Normalized() * Math.Max(0.004f, size * 0.45f);
-                AppendTrailQuad(runtime.Geometry, particle.Position, particle.Position - tail,
+                AppendTrailQuad(runtime.Geometry, position, position - tail,
                     side, color, uv0, uv1);
             }
         }
@@ -698,6 +746,14 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         batch.Prepare(instanceCount);
         foreach (var particle in runtime.Particles)
         {
+            var modelSpace =
+                (runtime.Definition.Flags & ParticleEmitterModelSpaceFlag) != 0;
+            var position = modelSpace
+                ? particle.Position
+                : ToEffectLocal(particle.Position);
+            var velocity = modelSpace
+                ? particle.Velocity
+                : ToEffectLocalVector(particle.Velocity);
             var progress = (float)Math.Clamp(
                 particle.Age / particle.Life, 0d, 1d);
             var color = ParticleColor(runtime.Definition, progress);
@@ -706,29 +762,31 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             var (uv0, uv1) = ParticleUv(runtime.Definition, progress);
             if (rendersHead)
             {
-                var cos = MathF.Cos(particle.Rotation);
-                var sin = MathF.Sin(particle.Rotation);
-                var baseRight = (runtime.Definition.Flags & 1048576) != 0
+                var rotatesInPlane =
+                    (runtime.Definition.Flags & ParticleEmitterXyQuadFlag) != 0;
+                var cos = rotatesInPlane ? MathF.Cos(particle.Rotation) : 1f;
+                var sin = rotatesInPlane ? MathF.Sin(particle.Rotation) : 0f;
+                var baseRight = rotatesInPlane
                     ? Vector3.Right
                     : cameraRight;
-                var baseUp = (runtime.Definition.Flags & 1048576) != 0
+                var baseUp = rotatesInPlane
                     ? Vector3.Up
                     : cameraUp;
                 var right = (baseRight * cos + baseUp * sin) * size;
                 var up = (-baseRight * sin + baseUp * cos) * size;
                 batch.Add(QuadTransform(
-                    particle.Position, right, up), color, uv0, uv1);
+                    position, right, up), color, uv0, uv1);
             }
             if (rendersTail &&
-                particle.Velocity.LengthSquared() > 0.00001f)
+                velocity.LengthSquared() > 0.00001f)
             {
-                var tail = particle.Velocity *
+                var tail = velocity *
                            (float)runtime.Definition.TailLength;
                 var side = tail.Cross(cameraUp).Normalized() *
                            Math.Max(0.004f, size * 0.45f);
                 batch.Add(
                     QuadTransform(
-                        particle.Position - tail * 0.5f,
+                        position - tail * 0.5f,
                         side,
                         tail * 0.5f),
                     color,
@@ -917,13 +975,20 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         War3ParticleEmitterDefinition definition,
         float progress)
     {
-        var animation = progress <= definition.Time
+        var firstHalf = progress <= definition.Time;
+        var animation = firstHalf
             ? definition.LifeSpanUv
             : definition.DecayUv;
         var start = animation.Length > 0 ? animation[0] : 0;
         var end = animation.Length > 1 ? animation[1] : 0;
-        var repeat = Math.Max(1, animation.Length > 2 ? animation[2] : 0);
-        var frame = start + (int)Math.Floor((end - start + 1) * repeat * progress);
+        var phaseProgress = firstHalf
+            ? definition.Time <= 0d
+                ? 1f
+                : progress / (float)definition.Time
+            : (float)Math.Clamp(
+                (progress - definition.Time) /
+                Math.Max(0.001d, 1d - definition.Time), 0d, 1d);
+        var frame = (int)MathF.Round(Mathf.Lerp(start, end, phaseProgress));
         frame = Math.Clamp(frame, Math.Min(start, end), Math.Max(start, end));
         var column = frame % definition.Columns;
         var row = frame / definition.Columns;
@@ -1409,20 +1474,30 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             var renderBlend = blendMode switch
             {
                 EffectBlendMode.Additive => "blend_add",
-                EffectBlendMode.Modulate or EffectBlendMode.Modulate2X =>
-                    "blend_mul",
+                EffectBlendMode.Modulate => "blend_mix",
+                EffectBlendMode.Modulate2X => "blend_mul",
                 _ => "blend_mix"
             };
             var fragmentOutput = blendMode switch
             {
                 EffectBlendMode.Modulate =>
-                    "if (color.a < 0.02) discard;\n                        ALBEDO = color.rgb;",
+                    "float modulation = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));\n                        float coverage = clamp(color.a * (1.0 - modulation), 0.0, 1.0);\n                        if (coverage < 0.002) discard;\n                        ALBEDO = vec3(0.0);\n                        ALPHA = coverage;",
                 EffectBlendMode.Modulate2X =>
-                    "if (color.a < 0.02) discard;\n                        ALBEDO = color.rgb * 2.0;",
+                    "ALBEDO = mix(vec3(1.0), color.rgb * 2.0, color.a);",
                 EffectBlendMode.AlphaKey =>
                     "if (color.a < 0.83) discard;\n                        ALBEDO = color.rgb;",
                 _ => "ALBEDO = color.rgb;\n                        ALPHA = color.a;"
             };
+            // Warcraft's Modulate textures were authored for a fixed-function
+            // gamma-space path. Keep their encoded attenuation values; the
+            // Modulate branch above converts grayscale darkening plus the PNG
+            // mask into ordinary alpha coverage. Godot's blend_mul does not
+            // use alpha as coverage, so feeding the mask to it directly makes
+            // overlapping particles expose their whole quad silhouettes.
+            var textureHints = blendMode is
+                EffectBlendMode.Modulate or EffectBlendMode.Modulate2X
+                    ? "filter_linear_mipmap, repeat_enable"
+                    : "source_color, filter_linear_mipmap, repeat_enable";
             var shader = new Shader
             {
                 Code = $$"""
@@ -1430,8 +1505,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                     render_mode {{renderBlend}}, depth_draw_never,
                         cull_disabled, unshaded;
 
-                    uniform sampler2D albedo_texture : source_color,
-                        filter_linear_mipmap, repeat_enable;
+                    uniform sampler2D albedo_texture : {{textureHints}};
                     uniform bool has_albedo_texture = false;
                     varying vec2 effect_uv;
 

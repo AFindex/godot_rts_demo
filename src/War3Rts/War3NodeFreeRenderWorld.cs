@@ -46,11 +46,11 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
 
     public War3RidModelActor CreateActor(
         string source,
-        int team,
+        int playerId,
         bool includeEffects = true)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var asset = Asset(source, team);
+        var asset = Asset(source, playerId);
         var actor = new War3RidModelActor(
             this, asset, _camera, _scenario, includeEffects);
         _actors.Add(actor);
@@ -149,11 +149,11 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
     internal void Retire(War3RidGeometryInstance geometry) =>
         _geometry.Remove(geometry);
 
-    private War3NodeFreeModelAsset Asset(string source, int team)
+    private War3NodeFreeModelAsset Asset(string source, int playerId)
     {
         var key = new ModelAssetKey(
             source.Replace('/', '\\').TrimStart('\\').ToLowerInvariant(),
-            TeamColorIndex(team));
+            TeamColorIndex(playerId));
         if (_assets.TryGetValue(key, out var asset)) return asset;
         var sharedPoseSource = _assets
             .Where(pair => pair.Key.Source.Equals(
@@ -179,7 +179,7 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
         _assets.Clear();
     }
 
-    private static int TeamColorIndex(int team) => team switch
+    private static int TeamColorIndex(int playerId) => playerId switch
     {
         War3HumanScenario.PlayerId => 0,
         War3HumanScenario.EnemyId => 1,

@@ -12,6 +12,8 @@ public static class War3LaunchRequest
 {
     public const string InteractiveStressArgument =
         "--war3-interactive-stress";
+    public const string MortarProjectileRegressionArgument =
+        "--war3-mortar-projectile-regression";
 
     private static string[]? _pendingArguments;
 
@@ -41,10 +43,20 @@ public static class War3LaunchRequest
         "--war3-stress-respawn=60"
     ];
 
+    private static readonly string[] MortarProjectileRegressionArguments =
+    [
+        MortarProjectileRegressionArgument
+    ];
+
     public static void RequestInteractiveStress() =>
         Interlocked.Exchange(
             ref _pendingArguments,
             InteractiveStressArguments.ToArray());
+
+    public static void RequestMortarProjectileRegression() =>
+        Interlocked.Exchange(
+            ref _pendingArguments,
+            MortarProjectileRegressionArguments.ToArray());
 
     public static void Clear() =>
         Interlocked.Exchange(ref _pendingArguments, null);

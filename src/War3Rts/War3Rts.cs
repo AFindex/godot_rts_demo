@@ -81,6 +81,8 @@ public sealed partial class War3Rts : Node3D
     private int _earlyExitCode;
     private War3RuntimeProfiler? _runtimeProfiler;
     private War3StressTestMode? _stressTest;
+    private War3MortarProjectileRegressionMode? _mortarRegression;
+    private bool _mortarRegressionRequested;
     private War3AutomatedSkirmishStressMode? _automatedSkirmish;
     private bool _automatedSkirmishRequested;
     private War3NavigationDebugger? _navigationDebugger;
@@ -139,6 +141,8 @@ public sealed partial class War3Rts : Node3D
             "--war3-right-click-input-smoke");
         _automatedSkirmishRequested =
             War3AutomatedSkirmishStressMode.IsRequested(arguments);
+        _mortarRegressionRequested =
+            War3MortarProjectileRegressionMode.IsRequested(arguments);
         var navigationAuditRequested =
             arguments.Contains(War3NavigationMapAudit.EnableArgument);
         if (navigationAuditRequested)
@@ -175,6 +179,7 @@ public sealed partial class War3Rts : Node3D
         if (_smoke || _capture || _offlineBakeRequested ||
             _rightClickInputSmoke ||
             navigationAuditRequested || _stressTest is not null ||
+            _mortarRegressionRequested ||
             _automatedSkirmishRequested ||
             !string.IsNullOrWhiteSpace(requestedId))
         {
@@ -412,8 +417,10 @@ public sealed partial class War3Rts : Node3D
         {
             Name = "War3World",
             ProfilingEnabled = _runtimeProfiler is not null,
-            ForceFullCombatEffects = _stressTest is not null &&
-                                     !profileProductionPresentation
+            ForceFullCombatEffects =
+                (_stressTest is not null &&
+                 !profileProductionPresentation) ||
+                _mortarRegressionRequested
         };
         if (profileProductionPresentation)
             GD.Print(
@@ -539,6 +546,32 @@ public sealed partial class War3Rts : Node3D
             _cameraController!.FocusAt(
                 _automatedSkirmish!.FocusPoint, immediate: true);
             _status = "War3 自动运营压测：双边采集、建造、科技、生产与交战";
+        }
+        if (_mortarRegressionRequested)
+        {
+            _mortarRegression = new War3MortarProjectileRegressionMode
+            {
+                Name = "War3MortarProjectileRegressionMode"
+            };
+            AddChild(_mortarRegression);
+            _mortarRegression.Initialize(
+                this,
+                _simulation,
+                _production,
+                _runtime,
+                arguments);
+            _selectedUnits.Clear();
+            _selectedBuildings.Clear();
+            _selectedUnits.Add(_mortarRegression.MortarUnit);
+            RefreshSelection();
+            _hud!.Visible = false;
+            _cameraController!.MaximumDistance = 40f;
+            _cameraController.SetAutomationTarget(
+                _mortarRegression.FocusPoint,
+                distance: 10f,
+                yaw: 0f,
+                pitch: Mathf.DegToRad(48f));
+            _status = "迫击炮黑块最小回归：真实地形、1v1 右键攻击";
         }
         if (_capture) _ = CaptureAsync();
         UpdateHud();
@@ -893,7 +926,8 @@ public sealed partial class War3Rts : Node3D
         var allocationStart = GC.GetAllocatedBytesForCurrentThread();
         var frame = (float)Math.Min(delta, 0.05d);
         var advanceSimulation =
-            _navigationDebugger?.ConsumeAdvanceSimulation() ?? true;
+            (_navigationDebugger?.ConsumeAdvanceSimulation() ?? true) &&
+            (_mortarRegression?.ConsumeAdvanceSimulation() ?? true);
         var simulationSteps = advanceSimulation
             ? _automatedSkirmish?.TicksPerPhysicsFrame ?? 1
             : 0;
@@ -926,7 +960,7 @@ public sealed partial class War3Rts : Node3D
                         automationProfile.AiMilliseconds);
                     aiMilliseconds += automationProfile.AiMilliseconds;
                 }
-                else if (_stressTest is null)
+                else if (_stressTest is null && _mortarRegression is null)
                 {
                     _runtime.AiDirector.Update(_simulation.Metrics.Tick);
                     var aiEnd = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -938,6 +972,7 @@ public sealed partial class War3Rts : Node3D
                 var simulationStart =
                     System.Diagnostics.Stopwatch.GetTimestamp();
                 _simulation.Tick(frame);
+                _mortarRegression?.UpdateAfterSimulationTick();
                 UpdateGroundItemLifecycle();
                 _stressTest?.ObserveAfterSimulation();
                 _itemShops?.Update(frame);
@@ -4996,7 +5031,10 @@ public sealed partial class War3Rts : Node3D
             RenderingServer.ViewportRenderInfo.PrimitivesInFrame);
         GD.Print(
             $"WAR3_RTS_CAPTURE {result}: {path} " +
-            $"shadow={shadowObjects}/{shadowDrawCalls}/{shadowPrimitives}");
+            $"shadow={shadowObjects}/{shadowDrawCalls}/{shadowPrimitives} " +
+            $"contact_shadows={_presenter?.PresentedContactShadowCount ?? 0}/" +
+            $"u{_presenter?.PresentedUnitContactShadowCount ?? 0}/" +
+            $"b{_presenter?.PresentedBuildingContactShadowCount ?? 0}");
         if (!_smoke) GetTree().Quit(result == Error.Ok ? 0 : 1);
     }
 

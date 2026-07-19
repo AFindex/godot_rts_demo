@@ -266,14 +266,16 @@ public sealed partial class War3EffectValidation : Node3D
         _renderWorld.Flush();
     }
 
-    private void AddMortar(bool includeEffects)
+    private void AddMortar(
+        bool includeEffects,
+        bool castShadow = false)
     {
         var actor = _renderWorld!.CreateActor(
             MortarSource,
-            team: 0,
+            playerId: War3HumanScenario.PlayerId,
             includeEffects: includeEffects);
         actor.PlayPreferred(true, "Stand", "Birth");
-        actor.SetShadowCastingEnabled(false);
+        actor.SetShadowCastingEnabled(castShadow);
         _mortars.Add(actor);
     }
 
@@ -281,7 +283,7 @@ public sealed partial class War3EffectValidation : Node3D
     {
         var actor = _renderWorld!.CreateActor(
             PeasantSource,
-            team: War3HumanScenario.PlayerId,
+            playerId: War3HumanScenario.PlayerId,
             includeEffects: false);
         actor.PlayPreferred(true, "Stand", "Stand Ready");
         actor.SetShadowCastingEnabled(true);
@@ -302,7 +304,8 @@ public sealed partial class War3EffectValidation : Node3D
         SetMortarTransform(
             _mortars[1],
             new Vector3(-1.75f, 1.35f, -0.75f),
-            0f);
+            0f,
+            2.4f);
         SetMortarTransform(
             _mortars[2],
             new Vector3(2.1f, 1.35f, -0.75f),
@@ -320,10 +323,11 @@ public sealed partial class War3EffectValidation : Node3D
     private static void SetMortarTransform(
         War3RidModelActor actor,
         Vector3 position,
-        float yaw)
+        float yaw,
+        float scale = 1f)
     {
         actor.Transform = new Transform3D(
-            new Basis(Vector3.Up, yaw),
+            new Basis(Vector3.Up, yaw).Scaled(Vector3.One * scale),
             position);
         actor.PrepareEffectWorldTransform(actor.Transform);
     }
@@ -361,7 +365,7 @@ public sealed partial class War3EffectValidation : Node3D
             Text = "WAR3 EFFECT VALIDATION\n" +
                    "Left: StandardMaterial shadow receiver   |   " +
                    "Right: gameplay War3 dual-grid receiver\n" +
-                   "WHITE: upper=model layers only, lower=full PE2   |   " +
+                   "WHITE: upper=model only, lower=2.4x full PE2 + SHADOW OFF   |   " +
                    "BLACK: full PE2   |   moving=full PE2"
         };
         label.AddThemeFontSizeOverride("font_size", 13);
