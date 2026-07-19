@@ -50,6 +50,7 @@ public sealed class War3TerrainMaterialSet :
         ShaderRoot + "War3CliffReveal.gdshader",
         ShaderRoot + "War3CliffTransition.gdshader",
         ShaderRoot + "War3Water.gdshader",
+        ShaderRoot + "War3Fog.gdshaderinc",
         .. SurfaceTextures.Values.Distinct(StringComparer.OrdinalIgnoreCase),
         TextureRoot + "replaceabletextures/cliff/cliff0.png",
         TextureRoot + "replaceabletextures/cliff/cliff1.png",
@@ -76,6 +77,7 @@ public sealed class War3TerrainMaterialSet :
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Material> _classicRampMaterials =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<ShaderMaterial> _shaderMaterials = [];
     private readonly War3ClassicCliffMeshCatalog _classicCliffs;
     private readonly War3ClassicRampMeshCatalog _classicRamps;
     private Material? _blendedSurfaceMaterial;
@@ -86,6 +88,10 @@ public sealed class War3TerrainMaterialSet :
     private Vector2 _fineHeightMapSize = Vector2.One;
     private float _fineHeightCellWorldSize = 1f;
     private bool _useFineHeight;
+    private bool _fogEnabled;
+    private Texture2D? _fogTexture;
+    private Vector2 _fogWorldOrigin;
+    private Vector2 _fogWorldSize = Vector2.One;
 
     public War3TerrainMaterialSet(
         War3TerrainBlendStyle blendStyle = War3TerrainBlendStyle.DualGrid,
@@ -129,6 +135,22 @@ public sealed class War3TerrainMaterialSet :
     public int ClassicCliffAssetCount => _classicCliffs.AssetCount;
     public int ClassicRampAssetCount => _classicRamps.AssetCount;
     public byte DefaultClassicCliffStyle => 0;
+
+    public void ConfigureFogOfWar(
+        Texture2D texture,
+        Vector2 worldOrigin,
+        Vector2 worldSize)
+    {
+        ArgumentNullException.ThrowIfNull(texture);
+        if (worldSize.X <= 0f || worldSize.Y <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(worldSize));
+        _fogEnabled = true;
+        _fogTexture = texture;
+        _fogWorldOrigin = worldOrigin;
+        _fogWorldSize = worldSize;
+        foreach (var material in _shaderMaterials)
+            ConfigureFogMaterial(material);
+    }
 
     public void ConfigureClassicHeightField(TerrainMapSnapshot terrain)
     {
@@ -236,10 +258,10 @@ public sealed class War3TerrainMaterialSet :
         {
             return material;
         }
-        material = new ShaderMaterial
+        material = Track(new ShaderMaterial
         {
             Shader = _cliffRevealShader
-        }.WithParameter(
+        }).WithParameter(
             "cliff_atlas",
             LoadTexture(
                 TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
@@ -254,10 +276,10 @@ public sealed class War3TerrainMaterialSet :
         var cliffName = CliffName(cliffStyle);
         if (_classicRampMaterials.TryGetValue(cliffName, out var material))
             return material;
-        material = new ShaderMaterial
+        material = Track(new ShaderMaterial
         {
             Shader = _cliffTransitionShader
-        }.WithParameter(
+        }).WithParameter(
             "cliff_atlas",
             LoadTexture(
                 TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"));
@@ -293,10 +315,10 @@ public sealed class War3TerrainMaterialSet :
             : _cliffMaterials;
         if (cache.TryGetValue(cliffName, out var material))
             return material;
-        material = new ShaderMaterial
+        material = Track(new ShaderMaterial
         {
             Shader = _cliffShader
-        }.WithParameter(
+        }).WithParameter(
             "cliff_atlas",
             LoadTexture(
                 TextureRoot + $"replaceabletextures/cliff/{cliffName}.png"))
@@ -320,6 +342,22 @@ public sealed class War3TerrainMaterialSet :
         }
     }
 
+    private ShaderMaterial Track(ShaderMaterial material)
+    {
+        _shaderMaterials.Add(material);
+        ConfigureFogMaterial(material);
+        return material;
+    }
+
+    private void ConfigureFogMaterial(ShaderMaterial material)
+    {
+        material.SetShaderParameter("war3_fog_enabled", _fogEnabled);
+        material.SetShaderParameter("war3_fog_world_origin", _fogWorldOrigin);
+        material.SetShaderParameter("war3_fog_world_size", _fogWorldSize);
+        if (_fogTexture is not null)
+            material.SetShaderParameter("war3_fog_texture", _fogTexture);
+    }
+
     private static string CliffName(byte cliffStyle) => cliffStyle switch
     {
         0 => "cliff0",
@@ -340,7 +378,7 @@ public sealed class War3TerrainMaterialSet :
 
     private Material CreateLayeredSurfaceMaterial(Shader shader)
     {
-        var material = new ShaderMaterial { Shader = shader };
+        var material = Track(new ShaderMaterial { Shader = shader });
         foreach (var (key, channel) in BlendChannels)
         {
             var uniform = channel switch
@@ -362,15 +400,15 @@ public sealed class War3TerrainMaterialSet :
         var path = SurfaceTextures.TryGetValue(key, out var mapped)
             ? mapped
             : LordaeronRoot + "lords_grass.png";
-        return new ShaderMaterial
+        return Track(new ShaderMaterial
         {
             Shader = _groundShader
-        }.WithParameter("terrain_atlas", LoadTexture(path));
+        }).WithParameter("terrain_atlas", LoadTexture(path));
     }
 
     private Material CreateWaterMaterial(bool deep)
     {
-        var material = new ShaderMaterial { Shader = _waterShader };
+        var material = Track(new ShaderMaterial { Shader = _waterShader });
         material.SetShaderParameter("water_texture", _waterTexture);
         material.SetShaderParameter("depth_tint", deep ? 0.72f : 0.08f);
         return material;

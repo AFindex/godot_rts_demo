@@ -1,6 +1,8 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_lambert, specular_disabled;
 
+#include "res://war3_rts/terrain/shaders/War3Fog.gdshaderinc"
+
 uniform sampler2D cliff_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform vec3 color_tint : source_color = vec3(0.93, 0.93, 0.93);
 uniform float terrain_reveal_inner_height = 17.0;
@@ -24,6 +26,7 @@ void vertex() {
 		VERTEX += (inverse(MODEL_MATRIX) *
 			vec4(0.0, world_offset, 0.0, 0.0)).xyz;
 	}
+	war3_fog_world_xz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
 	terrain_reveal_alpha = smoothstep(
 		0.0, terrain_reveal_inner_height, VERTEX.z);
 	cliff_footprint = clamp(
@@ -50,7 +53,7 @@ void fragment() {
 	if (cliff_footprint.y < edge_distance) {
 		can_reveal = terrain_reveal_edges.a;
 	}
-	ALBEDO = sampled.rgb * color_tint;
+	ALBEDO = sampled.rgb * color_tint * war3_fog_light();
 	ROUGHNESS = 0.92;
 	ALPHA = sampled.a * mix(1.0, terrain_reveal_alpha, can_reveal);
 }

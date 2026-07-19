@@ -389,19 +389,34 @@ public sealed class PlayerVisibilitySystem
     public byte[] CreateCells(int playerId)
     {
         var result = new byte[Columns * Rows];
+        CopyCells(playerId, result);
+        return result;
+    }
+
+    /// <summary>
+    /// Copies the current player-visible fog grid without allocating. This is
+    /// intended for presentation textures; visibility authority remains here.
+    /// </summary>
+    public void CopyCells(int playerId, Span<byte> destination)
+    {
+        var cellCount = Columns * Rows;
+        if (destination.Length < cellCount)
+            throw new ArgumentException(
+                "Visibility destination is smaller than the grid.",
+                nameof(destination));
+        destination[..cellCount].Clear();
         if (!_players.TryGetValue(playerId, out var grid))
-            return result;
-        for (var index = 0; index < result.Length; index++)
+            return;
+        for (var index = 0; index < cellCount; index++)
         {
-            result[index] = grid.UnitVisibleCounts[index] > 0 ||
-                            grid.BuildingVisible[index] ||
-                            grid.TemporaryVisible[index]
+            destination[index] = grid.UnitVisibleCounts[index] > 0 ||
+                                 grid.BuildingVisible[index] ||
+                                 grid.TemporaryVisible[index]
                 ? (byte)MapVisibility.Visible
                 : grid.Explored[index]
                     ? (byte)MapVisibility.Explored
                     : (byte)MapVisibility.Hidden;
         }
-        return result;
     }
 
     public PlayerVisibilityRuntimeSnapshot CaptureRuntimeState() => new(

@@ -1,6 +1,8 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_lambert, specular_disabled;
 
+#include "res://war3_rts/terrain/shaders/War3Fog.gdshaderinc"
+
 uniform sampler2D cliff_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform vec3 color_tint : source_color = vec3(0.93, 0.93, 0.93);
 uniform bool use_fine_height = false;
@@ -19,11 +21,12 @@ void vertex() {
 		VERTEX += (inverse(MODEL_MATRIX) *
 			vec4(0.0, world_offset, 0.0, 0.0)).xyz;
 	}
+	war3_fog_world_xz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
 }
 
 void fragment() {
 	vec2 atlas_uv = clamp(UV, vec2(0.002), vec2(0.998));
 	vec4 sampled = texture(cliff_atlas, atlas_uv);
-	ALBEDO = sampled.rgb * color_tint;
+	ALBEDO = sampled.rgb * color_tint * war3_fog_light();
 	ROUGHNESS = 0.92;
 }

@@ -26,6 +26,8 @@ public sealed partial class War3Rts : Node3D
     private BuildingUpgradeCatalogSnapshot? _buildingUpgrades;
     private War3WorldPresenter? _presenter;
     private Rts3DTerrainPresenter? _terrainPresenter;
+    private War3TerrainMaterialSet? _terrainMaterials;
+    private War3FogOfWarPresentation? _fogOfWar;
     private Camera3D? _camera;
     private Rts3DCameraController? _cameraController;
     private War3RtsHud? _hud;
@@ -874,6 +876,8 @@ public sealed partial class War3Rts : Node3D
 
     public override void _ExitTree()
     {
+        _fogOfWar?.Dispose();
+        _fogOfWar = null;
         if (_previousMaximumPhysicsStepsPerFrame > 0)
         {
             Engine.MaxPhysicsStepsPerFrame =
@@ -987,6 +991,7 @@ public sealed partial class War3Rts : Node3D
     public override void _Process(double delta)
     {
         if (_mapLoadInProgress || _simulation is null) return;
+        _fogOfWar?.Sync();
         var modelActorProfile = War3ModelActor.CaptureRuntimeProfile();
         var allocationStart = GC.GetAllocatedBytesForCurrentThread();
         var previewStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -4173,6 +4178,11 @@ public sealed partial class War3Rts : Node3D
 
     private void CreateLighting()
     {
+        // Compatibility does not guarantee that the project default shadow
+        // atlas is large enough for the RTS camera. Keep the real battlefield
+        // on the same explicit atlas configuration as the rendered shadow
+        // validation scene instead of relying on an editor/global default.
+        RenderingServer.DirectionalShadowAtlasSetSize(4096, true);
         AddChild(new WorldEnvironment
         {
             Environment = new Godot.Environment
@@ -4181,7 +4191,10 @@ public sealed partial class War3Rts : Node3D
                 BackgroundColor = new Color("18262d"),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color("9aafbd"),
-                AmbientLightEnergy = 0.5f,
+                // A bright ambient fill kept noisy terrain almost equally lit
+                // inside and outside a valid shadow. Preserve fill light while
+                // restoring enough contrast for model shadows to be readable.
+                AmbientLightEnergy = 0.28f,
                 TonemapMode = Godot.Environment.ToneMapper.Filmic,
                 TonemapExposure = 1.05f,
                 SsaoEnabled = true,
@@ -4194,20 +4207,27 @@ public sealed partial class War3Rts : Node3D
                 GlowBloom = 0.06f
             }
         });
-        AddChild(new DirectionalLight3D
+        var keyLight = new DirectionalLight3D
         {
-            RotationDegrees = new Vector3(-56f, -32f, 0f),
+            Position = new Vector3(-4f, 6f, -5f),
             LightColor = new Color("fff0cf"),
-            LightEnergy = 1.7f,
+            LightEnergy = 1.65f,
             ShadowEnabled = true,
-            ShadowBias = 0.06f,
-            ShadowNormalBias = 1.1f,
+            ShadowOpacity = 1f,
+            ShadowBias = 0.005f,
+            ShadowNormalBias = 0.02f,
+            ShadowBlur = 0f,
             DirectionalShadowMode =
-                DirectionalLight3D.ShadowMode.Parallel4Splits,
-            DirectionalShadowMaxDistance = 160f,
-            DirectionalShadowBlendSplits = true,
-            DirectionalShadowFadeStart = 0.88f
-        });
+                DirectionalLight3D.ShadowMode.Orthogonal,
+            DirectionalShadowMaxDistance = 80f,
+            DirectionalShadowBlendSplits = false,
+            DirectionalShadowFadeStart = 0.8f
+        };
+        AddChild(keyLight);
+        // LookAt produces the exact, renderer-tested light basis. A hand-authored
+        // Euler rotation was visually lit but its Compatibility shadow camera
+        // did not cover the battlefield consistently.
+        keyLight.LookAt(Vector3.Zero, Vector3.Up);
     }
 
     private static NVector2 BuildingCenter(SimRect bounds) =>
@@ -4220,12 +4240,18 @@ public sealed partial class War3Rts : Node3D
             Name = "War3BattlefieldTerrain"
         };
         AddChild(_terrainPresenter);
+        _terrainMaterials = new War3TerrainMaterialSet(
+            War3TerrainBlendStyle.DualGrid,
+            classicCliffMeshesEnabled: true);
         _terrainPresenter.Initialize(
             terrain,
-            new War3TerrainMaterialSet(
-                War3TerrainBlendStyle.DualGrid,
-                classicCliffMeshesEnabled: true),
+            _terrainMaterials,
             cliffStyleMap: TerrainClassicCliffStyleMap.Uniform(terrain, 1));
+        if (_simulation is not null)
+            _fogOfWar = new War3FogOfWarPresentation(
+                _simulation,
+                War3HumanScenario.PlayerId,
+                _terrainMaterials);
     }
 
     private void ApplyRuntimeProfileVariant()
@@ -4938,7 +4964,12 @@ public sealed partial class War3Rts : Node3D
             if (!_smoke) GetTree().Quit(0);
             return;
         }
-        for (var frame = 0; frame < 180; frame++)
+        // The rendered stress armies are authored to make contact after about
+        // five seconds. A normal capture only needs the settled opening frame;
+        // a stress capture must wait through first contact so real missile
+        // trails, impacts, animation and fog visibility are present.
+        var captureFrames = _stressTest is null ? 180 : 420;
+        for (var frame = 0; frame < captureFrames; frame++)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var image = GetViewport().GetTexture().GetImage();
         var path = ProjectSettings.GlobalizePath(
@@ -4950,7 +4981,22 @@ public sealed partial class War3Rts : Node3D
                         ? "user://war3_rts_hero_capture.png"
                         : "user://war3_rts_capture.png");
         var result = image.SavePng(path);
-        GD.Print($"WAR3_RTS_CAPTURE {result}: {path}");
+        var viewportRid = GetViewport().GetViewportRid();
+        var shadowObjects = RenderingServer.ViewportGetRenderInfo(
+            viewportRid,
+            RenderingServer.ViewportRenderInfoType.Shadow,
+            RenderingServer.ViewportRenderInfo.ObjectsInFrame);
+        var shadowDrawCalls = RenderingServer.ViewportGetRenderInfo(
+            viewportRid,
+            RenderingServer.ViewportRenderInfoType.Shadow,
+            RenderingServer.ViewportRenderInfo.DrawCallsInFrame);
+        var shadowPrimitives = RenderingServer.ViewportGetRenderInfo(
+            viewportRid,
+            RenderingServer.ViewportRenderInfoType.Shadow,
+            RenderingServer.ViewportRenderInfo.PrimitivesInFrame);
+        GD.Print(
+            $"WAR3_RTS_CAPTURE {result}: {path} " +
+            $"shadow={shadowObjects}/{shadowDrawCalls}/{shadowPrimitives}");
         if (!_smoke) GetTree().Quit(result == Error.Ok ? 0 : 1);
     }
 

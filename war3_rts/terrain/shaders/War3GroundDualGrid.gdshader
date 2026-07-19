@@ -1,6 +1,8 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_lambert, specular_disabled;
 
+#include "res://war3_rts/terrain/shaders/War3Fog.gdshaderinc"
+
 // UV2.x packs four 4-bit atlas masks (R/G/B/A layers). UV2.y stores the
 // deterministic full-tile variation. The visual control grid is independent
 // from gameplay cells and contributes one material identity at each corner.
@@ -44,6 +46,10 @@ vec4 alpha_over(vec4 under, vec4 over) {
 	return vec4(rgb, alpha);
 }
 
+void vertex() {
+	war3_fog_world_xz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+}
+
 void fragment() {
 	float packed = floor(UV2.x + 0.5);
 	float variation = floor(UV2.y + 0.5);
@@ -72,6 +78,6 @@ void fragment() {
 		result = alpha_over(
 			result, atlas_sample(terrain_a, local_uv, mask_a, variation));
 	}
-	ALBEDO = result.rgb;
+	ALBEDO = result.rgb * war3_fog_light();
 	ROUGHNESS = 0.95;
 }

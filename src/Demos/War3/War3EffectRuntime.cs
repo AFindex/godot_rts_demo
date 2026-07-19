@@ -41,6 +41,18 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     private Node3D? _legacyHost;
     private bool _disposed;
 
+    // ParticleEmitter2 and material layers use two different Warcraft filter
+    // mode enums. Keep their resolved blend semantics explicit instead of
+    // passing the raw integer through one shared, ambiguous switch.
+    private enum EffectBlendMode
+    {
+        AlphaBlend,
+        Additive,
+        Modulate,
+        Modulate2X,
+        AlphaKey
+    }
+
     public int LiveParticleCount
     {
         get
@@ -182,7 +194,10 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         foreach (var definition in metadata.Particles)
         {
             var material = CreateParticleMaterial(metadata, definition);
-            var batch = new NodeFreeParticleBatch(scenario, material);
+            var batch = new NodeFreeParticleBatch(
+                scenario,
+                material,
+                ParticleBlendMode(definition.FilterMode));
             var instance = batch.Instance;
             // Empty emitters stay out of the RenderingServer visible set.
             // They become visible lazily when their first surface is built.
@@ -921,7 +936,8 @@ internal sealed class War3EffectRuntimeCore : IDisposable
         War3ModelMetadata metadata,
         War3ParticleEmitterDefinition definition)
     {
-        var material = CreateEffectMaterial(definition.FilterMode);
+        var material = CreateEffectMaterial(
+            ParticleBlendMode(definition.FilterMode));
         material.AlbedoTexture = ResolveParticleTexture(metadata, definition);
         return material;
     }
@@ -942,26 +958,52 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                 texture = ResolveTexture(metadata, textureId, 0);
             }
         }
-        var material = CreateEffectMaterial(filterMode);
+        var material = CreateEffectMaterial(LayerBlendMode(filterMode));
         material.AlbedoTexture = texture;
         return material;
     }
 
-    private static StandardMaterial3D CreateEffectMaterial(int filterMode) => new()
-    {
-        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-        BlendMode = filterMode switch
+    private static EffectBlendMode ParticleBlendMode(int filterMode) =>
+        filterMode switch
         {
-            1 or 3 or 4 or 5 => BaseMaterial3D.BlendModeEnum.Add,
-            2 or 6 => BaseMaterial3D.BlendModeEnum.Mul,
-            _ => BaseMaterial3D.BlendModeEnum.Mix
-        },
-        CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-        DepthDrawMode = BaseMaterial3D.DepthDrawModeEnum.Disabled,
-        VertexColorUseAsAlbedo = true,
-        AlbedoColor = Colors.White
-    };
+            1 => EffectBlendMode.Additive,
+            2 => EffectBlendMode.Modulate,
+            3 => EffectBlendMode.Modulate2X,
+            4 => EffectBlendMode.AlphaKey,
+            _ => EffectBlendMode.AlphaBlend
+        };
+
+    private static EffectBlendMode LayerBlendMode(int filterMode) =>
+        filterMode switch
+        {
+            3 or 4 => EffectBlendMode.Additive,
+            5 => EffectBlendMode.Modulate,
+            6 => EffectBlendMode.Modulate2X,
+            _ => EffectBlendMode.AlphaBlend
+        };
+
+    private static StandardMaterial3D CreateEffectMaterial(
+        EffectBlendMode blendMode) => new()
+        {
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = blendMode == EffectBlendMode.AlphaKey
+                ? BaseMaterial3D.TransparencyEnum.AlphaScissor
+                : BaseMaterial3D.TransparencyEnum.Alpha,
+            AlphaScissorThreshold = blendMode == EffectBlendMode.AlphaKey
+                ? 0.83f
+                : 0.5f,
+            BlendMode = blendMode switch
+            {
+                EffectBlendMode.Additive => BaseMaterial3D.BlendModeEnum.Add,
+                EffectBlendMode.Modulate or EffectBlendMode.Modulate2X =>
+                    BaseMaterial3D.BlendModeEnum.Mul,
+                _ => BaseMaterial3D.BlendModeEnum.Mix
+            },
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+            DepthDrawMode = BaseMaterial3D.DepthDrawModeEnum.Disabled,
+            VertexColorUseAsAlbedo = true,
+            AlbedoColor = Colors.White
+        };
 
     private Texture2D? ResolveParticleTexture(
         War3ModelMetadata metadata,
@@ -1196,8 +1238,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
     {
         private const int BufferStride = 20;
         private const float HiddenScale = 0.000001f;
-        private static readonly Dictionary<BaseMaterial3D.BlendModeEnum, Shader>
-            Shaders = [];
+        private static readonly Dictionary<EffectBlendMode, Shader> Shaders = [];
         private readonly MultiMesh _multiMesh;
         private readonly ShaderMaterial _material;
         private float[] _buffer = [];
@@ -1208,11 +1249,12 @@ internal sealed class War3EffectRuntimeCore : IDisposable
 
         public NodeFreeParticleBatch(
             Rid scenario,
-            StandardMaterial3D source)
+            StandardMaterial3D source,
+            EffectBlendMode blendMode)
         {
             _material = new ShaderMaterial
             {
-                Shader = ResolveShader(source.BlendMode)
+                Shader = ResolveShader(blendMode)
             };
             SetTexture(source.AlbedoTexture);
             Mesh = CreateQuadMesh(_material);
@@ -1361,16 +1403,25 @@ internal sealed class War3EffectRuntimeCore : IDisposable
             return mesh;
         }
 
-        private static Shader ResolveShader(
-            BaseMaterial3D.BlendModeEnum blendMode)
+        private static Shader ResolveShader(EffectBlendMode blendMode)
         {
             if (Shaders.TryGetValue(blendMode, out var cached)) return cached;
             var renderBlend = blendMode switch
             {
-                BaseMaterial3D.BlendModeEnum.Add => "blend_add",
-                BaseMaterial3D.BlendModeEnum.Sub => "blend_sub",
-                BaseMaterial3D.BlendModeEnum.Mul => "blend_mul",
+                EffectBlendMode.Additive => "blend_add",
+                EffectBlendMode.Modulate or EffectBlendMode.Modulate2X =>
+                    "blend_mul",
                 _ => "blend_mix"
+            };
+            var fragmentOutput = blendMode switch
+            {
+                EffectBlendMode.Modulate =>
+                    "if (color.a < 0.02) discard;\n                        ALBEDO = color.rgb;",
+                EffectBlendMode.Modulate2X =>
+                    "if (color.a < 0.02) discard;\n                        ALBEDO = color.rgb * 2.0;",
+                EffectBlendMode.AlphaKey =>
+                    "if (color.a < 0.83) discard;\n                        ALBEDO = color.rgb;",
+                _ => "ALBEDO = color.rgb;\n                        ALPHA = color.a;"
             };
             var shader = new Shader
             {
@@ -1396,8 +1447,7 @@ internal sealed class War3EffectRuntimeCore : IDisposable
                             ? texture(albedo_texture, effect_uv)
                             : vec4(1.0);
                         vec4 color = texel * COLOR;
-                        ALBEDO = color.rgb;
-                        ALPHA = color.a;
+                        {{fragmentOutput}}
                     }
                     """
             };

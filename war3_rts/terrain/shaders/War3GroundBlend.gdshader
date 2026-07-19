@@ -1,6 +1,8 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_lambert, specular_disabled;
 
+#include "res://war3_rts/terrain/shaders/War3Fog.gdshaderinc"
+
 // Vertex COLOR stores presentation-only weights generated from neighbouring
 // semantic cells. R/G/B/A are dirt, rough dirt, rock and grass respectively.
 uniform sampler2D terrain_r : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
@@ -77,6 +79,10 @@ vec3 atlas_sample(
 	return texture(terrain_atlas, atlas_uv).rgb;
 }
 
+void vertex() {
+	war3_fog_world_xz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+}
+
 void fragment() {
 	vec4 source_weights = max(COLOR, vec4(0.0));
 	vec4 active = step(vec4(0.0005), source_weights);
@@ -101,6 +107,6 @@ void fragment() {
 		1.0 + macro_tint,
 		blend_noise(UV * 0.11, 101.7));
 	ALBEDO = (dirt * weights.r + rough_dirt * weights.g +
-		rock * weights.b + grass * weights.a) * tint;
+		rock * weights.b + grass * weights.a) * tint * war3_fog_light();
 	ROUGHNESS = dot(weights, vec4(0.97, 0.96, 0.91, 0.95));
 }

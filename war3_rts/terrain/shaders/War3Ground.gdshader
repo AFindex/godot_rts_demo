@@ -1,6 +1,8 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_lambert, specular_disabled;
 
+#include "res://war3_rts/terrain/shaders/War3Fog.gdshaderinc"
+
 uniform sampler2D terrain_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform vec3 color_tint : source_color = vec3(1.0);
 uniform float macro_uv_warp : hint_range(0.0, 0.12) = 0.035;
@@ -43,6 +45,10 @@ float weighted_variation(vec2 cell) {
 	return 15.0;
 }
 
+void vertex() {
+	war3_fog_world_xz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+}
+
 void fragment() {
 	vec2 cell = floor(UV + vec2(0.0001));
 	float variation = weighted_variation(cell);
@@ -64,6 +70,6 @@ void fragment() {
 		1.0 - macro_tint,
 		1.0 + macro_tint,
 		value_noise(UV * 0.11, 101.7));
-	ALBEDO = sampled.rgb * color_tint * tint;
+	ALBEDO = sampled.rgb * color_tint * tint * war3_fog_light();
 	ROUGHNESS = 0.96;
 }

@@ -97,11 +97,9 @@ public sealed partial class War3WorldPresenter : Node3D
     private GameplayBuildingSnapshot[] _buildingOverviewScratch = [];
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
-    private CylinderMesh? _unitShadowProxyMesh;
     private readonly Dictionary<float, TorusMesh> _selectionRingMeshes = [];
     private readonly Dictionary<Color, StandardMaterial3D>
         _selectionRingMaterials = [];
-    private readonly Dictionary<Vector3, BoxMesh> _buildingShadowMeshes = [];
     private readonly Dictionary<string, War3TreeHarvestFeedbackProfile>
         _treeHarvestProfiles = new(StringComparer.Ordinal);
     private RtsSimulation? _simulation;
@@ -361,7 +359,8 @@ public sealed partial class War3WorldPresenter : Node3D
         }
         foreach (var pair in _buildings)
             pair.Value.Selection.Visible = _selectedBuildings.Contains(pair.Key) &&
-                                            !pair.Value.Dying;
+                                            !pair.Value.Dying &&
+                                            pair.Value.ActorVisible;
     }
 
     public override void _ExitTree()
@@ -603,7 +602,6 @@ public sealed partial class War3WorldPresenter : Node3D
                 if (_units.TryGetValue(unit, out var dead) && !dead.Dying)
                 {
                     dead.Dying = true;
-                    dead.ShadowProxy.Visible = false;
                     if (dead.SelectionVisible)
                     {
                         dead.Selection.Visible = false;
@@ -704,17 +702,22 @@ public sealed partial class War3WorldPresenter : Node3D
                 : 0L;
             var selected = _selectedUnits.Contains(unit);
             var hiddenInsideGoldMine = IsGatheringGold(simulation, unit);
+            var visibleToPlayer = simulation.Visibility.IsUnitVisible(
+                War3HumanScenario.PlayerId,
+                unit,
+                simulation.Units,
+                simulation.Combat);
             var actorTransform = new Transform3D(
                 new Basis(Vector3.Up, angle), world);
-            visual.Actor.Processing = inFrustum;
-            var actorVisible = inFrustum && !hiddenInsideGoldMine;
+            visual.Actor.Processing = inFrustum && visibleToPlayer;
+            var actorVisible = inFrustum && visibleToPlayer &&
+                               !hiddenInsideGoldMine;
             if (visual.ActorVisible != actorVisible)
             {
                 visual.Actor.Visible = actorVisible;
-                visual.ShadowProxy.Visible = actorVisible && !visual.Dying;
                 visual.ActorVisible = actorVisible;
             }
-            if (inFrustum)
+            if (inFrustum && visibleToPlayer)
                 visual.Actor.PrepareEffectWorldTransform(
                     presenterTransform * actorTransform);
             if (!visual.TransformInitialized ||
@@ -726,10 +729,6 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual.LastActorAngle = angle;
             }
             visual.TransformInitialized = true;
-            if (actorVisible)
-                visual.ShadowProxy.Transform = new Transform3D(
-                    actorTransform.Basis,
-                    world + Vector3.Up * 0.55f);
             if (simulation.Combat.TargetKinds[unit] != CombatTargetKind.None)
             {
                 _sawAttackTargetFacing = true;
@@ -1263,7 +1262,7 @@ public sealed partial class War3WorldPresenter : Node3D
                         includeEffects: true);
                     visual.Actor.SoundTimelineEvent += visual.SoundHandler;
                     visual.Actor.Position = visual.WorldPosition;
-                    visual.Actor.SetShadowCastingEnabled(false);
+                    visual.Actor.SetShadowCastingEnabled(true);
                 }
                 visual.SetDefinition(definition);
                 visual.TypeId = building.Type.Id;
@@ -1285,24 +1284,29 @@ public sealed partial class War3WorldPresenter : Node3D
                       WarcraftSelectionCircleWorldRadius
                     : MathF.Max(0.85f, footprintRadius);
                 visual.Selection.Scale = Vector3.One * selectionRadius;
-                visual.ShadowProxy.Position = new Vector3(
-                    world.X,
-                    world.Y + visual.ShadowProxyHeight * 0.5f,
-                    world.Z);
                 visual.LayoutInitialized = true;
             }
             var foundationStarted = building.FootprintId.Value > 0 ||
                                     building.State is BuildingLifecycleState.Constructing or
                                         BuildingLifecycleState.Completed;
             var ghost = !foundationStarted;
-            visual.ShadowProxy.Visible = foundationStarted && !visual.Dying;
             var inFrustum = BuildingIntersectsFrustum(camera, visual);
-            visual.Actor.Processing = inFrustum;
-            visual.Actor.Visible = inFrustum;
+            var visibleToPlayer =
+                building.PlayerId == War3HumanScenario.PlayerId ||
+                simulation.Visibility.IsVisible(
+                    War3HumanScenario.PlayerId,
+                    visual.LastPosition);
+            var actorVisible = inFrustum && visibleToPlayer;
+            visual.Actor.Processing = actorVisible;
+            if (visual.ActorVisible != actorVisible)
+            {
+                visual.Actor.Visible = actorVisible;
+                visual.ActorVisible = actorVisible;
+            }
             visual.Selection.Visible = foundationStarted &&
-                                       inFrustum &&
+                                       actorVisible &&
                                        _selectedBuildings.Contains(id);
-            if (!inFrustum) continue;
+            if (!actorVisible) continue;
             if (ProfilingEnabled) _profileBuildingActorsInFrustum++;
             var animationAllocationStart = ProfilingEnabled
                 ? GC.GetAllocatedBytesForCurrentThread()
@@ -1399,7 +1403,6 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             pair.Value.Dying = true;
             pair.Value.Selection.Visible = false;
-            pair.Value.ShadowProxy.Visible = false;
             pair.Value.Actor.PlayDeath();
             if (pair.Value.Definition.SpecialEffectSource.Length > 0 &&
                 War3RuntimeAssets.Contains(
@@ -1416,7 +1419,6 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             _buildings[id].Actor.Dispose();
             _buildings[id].Selection.Dispose();
-            _buildings[id].ShadowProxy.Dispose();
             _buildings.Remove(id);
         }
     }
@@ -1442,6 +1444,19 @@ public sealed partial class War3WorldPresenter : Node3D
                     visual.Actor.Position = ToWorldAtGround(snapshot.Position);
                 visual.Positioned = true;
             }
+            var fogVisible = simulation.Visibility.At(
+                War3HumanScenario.PlayerId,
+                snapshot.Position) != MapVisibility.Hidden;
+            if (visual.FogVisible != fogVisible)
+            {
+                visual.FogVisible = fogVisible;
+                if (visual.Actor is not null)
+                    visual.Actor.Visible = fogVisible;
+                else if (visual.StaticBatch is not null && !visual.Depleted)
+                    visual.StaticBatch.SetInstanceVisible(
+                        visual.StaticBatchIndex,
+                        fogVisible);
+            }
             if (snapshot.Remaining <= 0)
             {
                 if (!visual.Depleted)
@@ -1454,6 +1469,7 @@ public sealed partial class War3WorldPresenter : Node3D
                         visual.Actor = CreateResourceActor(
                             id, visual.Kind, visual.Source, camera);
                         visual.Actor.Position = ToWorldAtGround(snapshot.Position);
+                        visual.Actor.Visible = fogVisible;
                     }
                     visual.Actor?.PlayDeath();
                 }
@@ -1898,24 +1914,12 @@ public sealed partial class War3WorldPresenter : Node3D
         Action<War3ModelSoundTimelineEvent> soundHandler = value =>
             PublishUnitAnimationAudio(id, team, value);
         actor.SoundTimelineEvent += soundHandler;
-        actor.SetShadowCastingEnabled(false);
-        _unitShadowProxyMesh ??= new CylinderMesh
-            {
-                Height = 1.1f,
-                TopRadius = 0.24f,
-                BottomRadius = 0.28f,
-                RadialSegments = 8,
-                Rings = 1
-            };
-        var shadow = _ridWorld.CreateGeometry(
-            _unitShadowProxyMesh,
-            material: null,
-            RenderingServer.ShadowCastingSetting.ShadowsOnly);
+        actor.SetShadowCastingEnabled(true);
         selection.Scale = Vector3.One * UnitSelectionWorldRadius(
             _simulation!.Units.NavigationRadii[id]);
         selection.Visible = _selectedUnits.Contains(id);
         var visual = new UnitVisual(
-            actor, selection, shadow, definition,
+            actor, selection, definition,
             boundUnitTypeId, team)
         {
             SoundHandler = soundHandler
@@ -1937,7 +1941,6 @@ public sealed partial class War3WorldPresenter : Node3D
         visual.Selection.Scale = Vector3.One * UnitSelectionWorldRadius(
             _simulation!.Units.NavigationRadii[id]);
         visual.Selection.Visible = _selectedUnits.Contains(id);
-        visual.ShadowProxy.Visible = true;
         visual.LastWindup = 0f;
         visual.LastCooldown = 0f;
         visual.LastPosition = default;
@@ -1958,7 +1961,6 @@ public sealed partial class War3WorldPresenter : Node3D
         visual.SelectionVisible = false;
         visual.Actor.Processing = false;
         visual.Actor.Visible = false;
-        visual.ShadowProxy.Visible = false;
         visual.ActorVisible = false;
         var team = visual.PoolTeam;
         var key = new UnitPoolKey(
@@ -1994,18 +1996,9 @@ public sealed partial class War3WorldPresenter : Node3D
         var center = (building.Bounds.Min + building.Bounds.Max) * 0.5f;
         var world = ToWorldAtGround(center);
         const bool modelLoaded = true;
-        actor.SetShadowCastingEnabled(false);
-        var proxyHeight = MathF.Max(0.8f, MathF.Max(footprint.X, footprint.Y) * 0.72f);
-        var shadowProxy = _ridWorld.CreateGeometry(
-            BuildingShadowMesh(new Vector3(
-                MathF.Max(0.55f, footprint.X * 0.72f),
-                proxyHeight,
-                MathF.Max(0.55f, footprint.Y * 0.72f))),
-            material: null,
-            RenderingServer.ShadowCastingSetting.ShadowsOnly);
-        shadowProxy.Visible = false;
+        actor.SetShadowCastingEnabled(true);
         return new BuildingVisual(
-            actor, selection, shadowProxy, proxyHeight, frustumRadius,
+            actor, selection, frustumRadius,
             definition, modelLoaded,
             building.Type.Id)
         {
@@ -2116,6 +2109,7 @@ public sealed partial class War3WorldPresenter : Node3D
         visual.StaticBatch?.SetInstanceVisible(visual.StaticBatchIndex, false);
         var actor = CreateResourceActor(id, visual.Kind, visual.Source, camera);
         actor.Position = ToWorldAtGround(position);
+        actor.Visible = visual.FogVisible;
         actor.PlayPreferred(true, "Stand");
         visual.Actor = actor;
         visual.Positioned = true;
@@ -2128,7 +2122,9 @@ public sealed partial class War3WorldPresenter : Node3D
         if (visual.Actor is null || visual.StaticBatch is null) return;
         visual.Actor.Dispose();
         visual.Actor = null;
-        visual.StaticBatch.SetInstanceVisible(visual.StaticBatchIndex, true);
+        visual.StaticBatch.SetInstanceVisible(
+            visual.StaticBatchIndex,
+            visual.FogVisible && !visual.Depleted);
         visual.AnimationInitialized = true;
         visual.Working = false;
     }
@@ -2545,15 +2541,6 @@ public sealed partial class War3WorldPresenter : Node3D
         return ring;
     }
 
-    private BoxMesh BuildingShadowMesh(Vector3 size)
-    {
-        if (_buildingShadowMeshes.TryGetValue(size, out var mesh))
-            return mesh;
-        mesh = new BoxMesh { Size = size };
-        _buildingShadowMeshes.Add(size, mesh);
-        return mesh;
-    }
-
     private static float UnitSelectionWorldRadius(float navigationRadius) =>
         SimPlane3DTransform.ToWorldLength(navigationRadius);
 
@@ -2606,14 +2593,12 @@ public sealed partial class War3WorldPresenter : Node3D
     private sealed class UnitVisual(
         War3RidModelActor actor,
         War3RidGeometryInstance selection,
-        War3RidGeometryInstance shadowProxy,
         War3UnitDefinition definition,
         int boundUnitTypeId,
         int poolTeam)
     {
         public War3RidModelActor Actor { get; } = actor;
         public War3RidGeometryInstance Selection { get; } = selection;
-        public War3RidGeometryInstance ShadowProxy { get; } = shadowProxy;
         public War3UnitDefinition Definition { get; } = definition;
         public int BoundUnitTypeId { get; } = boundUnitTypeId;
         public int PoolTeam { get; } = poolTeam;
@@ -2640,8 +2625,6 @@ public sealed partial class War3WorldPresenter : Node3D
     private sealed class BuildingVisual(
         War3RidModelActor actor,
         War3RidGeometryInstance selection,
-        War3RidGeometryInstance shadowProxy,
-        float shadowProxyHeight,
         float frustumRadius,
         War3BuildingDefinition definition,
         bool modelLoaded,
@@ -2649,9 +2632,7 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         public War3RidModelActor Actor { get; set; } = actor;
         public War3RidGeometryInstance Selection { get; } = selection;
-        public War3RidGeometryInstance ShadowProxy { get; } = shadowProxy;
         public Action<War3ModelSoundTimelineEvent> SoundHandler { get; set; } = null!;
-        public float ShadowProxyHeight { get; } = shadowProxyHeight;
         public float FrustumRadius { get; } = frustumRadius;
         public bool ModelLoaded { get; set; } = modelLoaded;
         public War3BuildingDefinition Definition { get; private set; } =
@@ -2675,6 +2656,7 @@ public sealed partial class War3WorldPresenter : Node3D
         public bool IsGhost { get; set; }
         public BuildingCombatPhase LastCombatPhase { get; set; } =
             BuildingCombatPhase.Idle;
+        public bool ActorVisible { get; set; } = true;
 
         public void SetDefinition(War3BuildingDefinition value)
         {
@@ -2705,6 +2687,7 @@ public sealed partial class War3WorldPresenter : Node3D
         public bool Working { get; set; }
         public bool AnimationInitialized { get; set; }
         public ulong LastHitAt { get; set; }
+        public bool FogVisible { get; set; } = true;
     }
 
     private sealed record ProjectileVisual(

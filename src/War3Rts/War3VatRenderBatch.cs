@@ -272,6 +272,11 @@ internal readonly record struct War3VatBatchLaneKey(
 internal sealed class War3VatModelBatch : IDisposable
 {
     private const int BufferStride = 20;
+    // Compatibility stores MultiMesh color/custom-data components as half
+    // floats. Integers above 2048 therefore lose their least-significant
+    // bits (TownHall Stand starts at VAT pose 3601 and was read as Birth pose
+    // 3600). Split every pose index into two exactly representable channels.
+    private const int PoseIndexRadix = 1024;
     private const float HiddenScale = 0.000001f;
     private readonly War3NodeFreeModelAsset _asset;
     private readonly War3VatAnimationData _animation;
@@ -601,12 +606,23 @@ internal sealed class War3VatModelBatch : IDisposable
             _buffer[offset + 12] = tint.R;
             _buffer[offset + 13] = tint.G;
             _buffer[offset + 14] = tint.B;
-            _buffer[offset + 15] = tint.A;
-            _buffer[offset + 16] = targetPose;
-            _buffer[offset + 17] = sourcePose;
-            _buffer[offset + 18] = Math.Clamp(blend, 0f, 1f);
-            _buffer[offset + 19] = 0f;
+            // COLOR.a carries the blend weight. Normal actors are opaque and
+            // ghost alpha is owned by the ghost material, so tint alpha does
+            // not need to consume a per-instance channel.
+            _buffer[offset + 15] = Math.Clamp(blend, 0f, 1f);
+            WritePoseIndex(_buffer, offset + 16, targetPose);
+            WritePoseIndex(_buffer, offset + 18, sourcePose);
             _dirty = true;
+        }
+
+        private static void WritePoseIndex(
+            float[] buffer,
+            int offset,
+            int pose)
+        {
+            pose = Math.Max(0, pose);
+            buffer[offset] = pose % PoseIndexRadix;
+            buffer[offset + 1] = pose / PoseIndexRadix;
         }
 
         public void Hide(int slot)
@@ -708,6 +724,11 @@ internal static class War3VatMaterialFactory
         uniform int vat_part_index = 0;
         varying float vat_part_visible;
 
+        float vat_pose_index(vec2 encoded) {
+            return floor(encoded.x + 0.5) +
+                floor(encoded.y + 0.5) * 1024.0;
+        }
+
         vec4 vat_row(float pose_value, int bone, int row_index) {
             int pose = max(0, int(pose_value + 0.5));
             int pose_column = pose % vat_pose_columns;
@@ -786,9 +807,9 @@ internal static class War3VatMaterialFactory
         }
 
         void vertex() {
-            float target_pose = INSTANCE_CUSTOM.x;
-            float source_pose = INSTANCE_CUSTOM.y;
-            float blend = clamp(INSTANCE_CUSTOM.z, 0.0, 1.0);
+            float target_pose = vat_pose_index(INSTANCE_CUSTOM.xy);
+            float source_pose = vat_pose_index(INSTANCE_CUSTOM.zw);
+            float blend = clamp(COLOR.a, 0.0, 1.0);
             vec3 target_vertex = VERTEX;
             vec3 source_vertex = VERTEX;
             vec3 target_normal = NORMAL;
@@ -919,7 +940,8 @@ internal static class War3VatMaterialFactory
                     vec4 texel = has_albedo_texture
                         ? texture(albedo_texture, UV)
                         : vec4(1.0);
-                    vec4 color = texel * albedo_color * COLOR;
+                    vec4 color = texel * albedo_color *
+                        vec4(COLOR.rgb, 1.0);
                     ALBEDO = color.rgb;
                     ROUGHNESS = material_roughness;
                     METALLIC = material_metallic;
@@ -1036,7 +1058,7 @@ internal static class War3VatMaterialFactory
                 void fragment() {
                     if (vat_part_visible < 0.5) discard;
                     ALBEDO = COLOR.rgb;
-                    ALPHA = COLOR.a;
+                    ALPHA = 0.44;
                     EMISSION = COLOR.rgb * 0.85;
                 }
                 """

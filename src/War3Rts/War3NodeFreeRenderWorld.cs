@@ -457,15 +457,22 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
         if (_deathLocked) return false;
         if (index < 0) return false;
         var progress = Math.Clamp(normalizedProgress, 0f, 1f);
+        var sequence = _asset.Sequences[index];
+        var drivenMilliseconds = sequence.DurationMilliseconds * progress;
+        if (_progressDriven && _sequenceIndex == index &&
+            Math.Abs(_drivenMilliseconds - drivenMilliseconds) < 0.001d)
+        {
+            DrivenProgress = progress;
+            return true;
+        }
         if (!_progressDriven || _sequenceIndex != index)
             StartSequence(index, loop: false, allowBlend: false);
-        var sequence = _asset.Sequences[index];
         _requestedLoop = false;
         _requestedRepeat = false;
         _progressDriven = true;
         _animationPlaying = false;
         DrivenProgress = progress;
-        _drivenMilliseconds = sequence.DurationMilliseconds * progress;
+        _drivenMilliseconds = drivenMilliseconds;
         _sequenceMilliseconds = _drivenMilliseconds;
         _lastSoundTimelineMilliseconds = _drivenMilliseconds;
         ApplyPose(force: true);
