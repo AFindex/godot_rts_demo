@@ -132,6 +132,7 @@ public sealed partial class War3RtsHud : Control
     private Control? _bottomConsole;
     private Control? _consoleChrome;
     private War3MinimapControl? _minimap;
+    private Texture2D? _minimapFogTexture;
     private Control? _portraitSlot;
     private SubViewport? _portraitViewport;
     private SubViewportContainer? _portraitOpening;
@@ -202,6 +203,9 @@ public sealed partial class War3RtsHud : Control
         _minimap?.Position.IsEqualApprox(MinimapSlotPosition) == true &&
         _minimap.Size.IsEqualApprox(MinimapSlotSize) &&
         _minimap.AspectFitReady;
+    public bool MinimapFogReady =>
+        _minimapFogTexture is not null &&
+        _minimap?.FogTextureReady == true;
     public bool QueueLayoutReady =>
         _queuePanel is not null && _queueBackdrop is not null &&
         _queueProgress is not null &&
@@ -403,6 +407,13 @@ public sealed partial class War3RtsHud : Control
         return true;
     }
 
+    public void ConfigureMinimapFog(Texture2D texture)
+    {
+        ArgumentNullException.ThrowIfNull(texture);
+        _minimapFogTexture = texture;
+        _minimap?.SetFogTexture(texture);
+    }
+
     public bool TryInvokeQueueSlot(int slot)
     {
         if ((uint)slot >= (uint)_queueSlotItems.Length ||
@@ -560,6 +571,8 @@ public sealed partial class War3RtsHud : Control
             MouseFilter = MouseFilterEnum.Stop,
             ZIndex = 5
         };
+        if (_minimapFogTexture is not null)
+            _minimap.SetFogTexture(_minimapFogTexture);
         _minimap.FocusRequested += point => MinimapFocusRequested?.Invoke(point);
         parent.AddChild(_minimap);
     }
@@ -1882,6 +1895,7 @@ public sealed partial class War3RtsHud : Control
         private SimRect _cameraBounds;
         private War3MinimapEntity[] _entities = [];
         private War3MinimapResource[] _resources = [];
+        private Texture2D? _fogTexture;
         private ArrayMesh? _circleMarkerMesh;
         private ArrayMesh? _squareMarkerMesh;
         private MultiMesh? _circleMarkers;
@@ -1890,6 +1904,8 @@ public sealed partial class War3RtsHud : Control
         private float[] _squareMarkerBuffer = [];
 
         public event Action<System.Numerics.Vector2>? FocusRequested;
+
+        public bool FogTextureReady => _fogTexture is not null;
 
         public bool AspectFitReady
         {
@@ -1941,6 +1957,12 @@ public sealed partial class War3RtsHud : Control
             QueueRedraw();
         }
 
+        public void SetFogTexture(Texture2D texture)
+        {
+            _fogTexture = texture;
+            QueueRedraw();
+        }
+
         public override void _GuiInput(InputEvent inputEvent)
         {
             if (inputEvent is not InputEventMouseButton
@@ -1971,6 +1993,15 @@ public sealed partial class War3RtsHud : Control
             DrawRect(new Rect2(Vector2.Zero, Size), new Color("050a09"), true);
             var mapRect = MapRect();
             DrawRect(mapRect, new Color("0b1914"), true);
+            if (_fogTexture is not null)
+            {
+                DrawTextureRect(
+                    _fogTexture,
+                    mapRect,
+                    tile: false,
+                    modulate: Colors.White,
+                    transpose: false);
+            }
             for (var x = 0; x <= 4; x++)
                 DrawLine(
                     new Vector2(

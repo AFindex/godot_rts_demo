@@ -73,6 +73,7 @@ public sealed partial class War3Rts : Node3D
     private bool _smoke;
     private long _smokeEndTick;
     private bool _capture;
+    private bool _captureCompleted;
     private bool _terrainCapture;
     private bool _pcgCapture;
     private bool _heroCapture;
@@ -4143,13 +4144,28 @@ public sealed partial class War3Rts : Node3D
         var values = new List<War3MinimapEntity>();
         for (var unit = 0; unit < _simulation.Units.Count; unit++)
         {
-            if (_simulation.Units.Alive[unit])
-                values.Add(new War3MinimapEntity(
-                    _simulation.Units.Positions[unit],
-                    _simulation.Combat.Teams[unit], false));
+            if (!_simulation.Units.Alive[unit] ||
+                !_simulation.Visibility.IsUnitVisible(
+                    War3HumanScenario.PlayerId,
+                    unit,
+                    _simulation.Units,
+                    _simulation.Combat))
+            {
+                continue;
+            }
+            values.Add(new War3MinimapEntity(
+                _simulation.Units.Positions[unit],
+                _simulation.Combat.Teams[unit], false));
         }
         values.AddRange(_simulation.CreateGameplayBuildingOverview()
-            .Where(value => !value.IsTerminal)
+            .Where(value =>
+            {
+                if (value.IsTerminal) return false;
+                var center = (value.Bounds.Min + value.Bounds.Max) * 0.5f;
+                return value.PlayerId == War3HumanScenario.PlayerId ||
+                       _simulation.Visibility.IsVisible(
+                           War3HumanScenario.PlayerId, center);
+            })
             .Select(value => new War3MinimapEntity(
                 (value.Bounds.Min + value.Bounds.Max) * 0.5f,
                 value.PlayerId, true)));
@@ -4159,15 +4175,22 @@ public sealed partial class War3Rts : Node3D
     private War3MinimapResource[] CreateMinimapResources()
     {
         if (_simulation is null) return [];
-        var values = new War3MinimapResource[_simulation.Economy.ResourceNodeCount];
-        for (var id = 0; id < values.Length; id++)
+        var values = new List<War3MinimapResource>(
+            _simulation.Economy.ResourceNodeCount);
+        for (var id = 0; id < _simulation.Economy.ResourceNodeCount; id++)
         {
             var node = _simulation.Economy.ObserveResourceNode(
                 new EconomyResourceNodeId(id));
-            values[id] = new War3MinimapResource(
-                node.Position, node.Kind, node.Remaining <= 0);
+            if (_simulation.Visibility.At(
+                    War3HumanScenario.PlayerId,
+                    node.Position) == MapVisibility.Hidden)
+            {
+                continue;
+            }
+            values.Add(new War3MinimapResource(
+                node.Position, node.Kind, node.Remaining <= 0));
         }
-        return values;
+        return values.ToArray();
     }
 
     private void CancelMode()
@@ -4428,6 +4451,8 @@ public sealed partial class War3Rts : Node3D
             GetTree().ChangeSceneToFile(DemoSceneCatalog.CompatibilityEntry);
         _hud.MinimapFocusRequested += point => _cameraController?.FocusAt(point);
         layer.AddChild(_hud);
+        if (_fogOfWar is not null)
+            _hud.ConfigureMinimapFog(_fogOfWar.MinimapTexture);
     }
 
     private void FinishSmoke()
@@ -4678,6 +4703,10 @@ public sealed partial class War3Rts : Node3D
             _presenter.NodeFreeActorCount >=
             _presenter.PresentedUnitCount +
             _presenter.PresentedBuildingCount;
+        _fogOfWar?.Sync(force: true);
+        var fogThreeStateReady =
+            _fogOfWar?.HasAllThreeStates == true &&
+            _hud.MinimapFogReady;
         var success = _presenter.PresentedUnitCount >= 14 &&
                       _presenter.PresentedBuildingCount >= 18 &&
                       _presenter.PresentedResourceCount >= 30 &&
@@ -4685,6 +4714,7 @@ public sealed partial class War3Rts : Node3D
                       _hud.ConsoleLayoutReady &&
                       _hud.InventoryLayoutReady &&
                       _hud.MinimapAspectFitReady &&
+                      fogThreeStateReady &&
                       _presenter.UnitSelectionAgentFitReady &&
                       player.Minerals + (_smokeShopValid ? 100 : 0) > 1_250 &&
                       player.VespeneGas > 700 &&
@@ -4727,6 +4757,11 @@ public sealed partial class War3Rts : Node3D
             $"portrait={_hud.PortraitReady} hud_layout={_hud.ConsoleLayoutReady} " +
             $"inventory_layout={_hud.InventoryLayoutReady} " +
             $"minimap_fit={_hud.MinimapAspectFitReady} " +
+            $"fog_three_state={fogThreeStateReady}/" +
+            $"{_fogOfWar?.HiddenCellCount ?? 0}/" +
+            $"{_fogOfWar?.ExploredCellCount ?? 0}/" +
+            $"{_fogOfWar?.VisibleCellCount ?? 0}/" +
+            $"minimap:{_hud.MinimapFogReady} " +
             $"selection_agent_fit={_presenter.UnitSelectionAgentFitReady} " +
             $"gold={player.Minerals} lumber={player.VespeneGas} enemy_army={enemyArmy} " +
             $"gold_anim={_presenter.SawGoldGatherAnimation}/{_presenter.SawCarriedGoldAnimation} " +
@@ -4774,7 +4809,8 @@ public sealed partial class War3Rts : Node3D
              $"pcg_dense={War3HumanScenario.DensePcgTreeCount} " +
              $"pcg_sparse={War3HumanScenario.SparsePcgTreeCount} " +
              $"pcg_hash={War3HumanScenario.PcgHashText}");
-        if (!_capture) GetTree().Quit(success ? 0 : 1);
+        if (!_capture || _captureCompleted)
+            GetTree().Quit(success ? 0 : 1);
     }
 
     private void PrepareSmokeCombat()
@@ -5081,7 +5117,14 @@ public sealed partial class War3Rts : Node3D
         // five seconds. A normal capture only needs the settled opening frame;
         // a stress capture must wait through first contact so real missile
         // trails, impacts, animation and fog visibility are present.
-        var captureFrames = _stressTest is null ? 180 : 420;
+        var captureFrames = _stressTest is not null
+            ? 420
+            : _smoke
+                // Full encounter smoke moves workers and combat units through
+                // real visibility sources. Capture after those sources have
+                // left a readable Explored trail on terrain and minimap.
+                ? 720
+                : 180;
         for (var frame = 0; frame < captureFrames; frame++)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var image = GetViewport().GetTexture().GetImage();
@@ -5107,6 +5150,7 @@ public sealed partial class War3Rts : Node3D
             viewportRid,
             RenderingServer.ViewportRenderInfoType.Shadow,
             RenderingServer.ViewportRenderInfo.PrimitivesInFrame);
+        _fogOfWar?.Sync(force: true);
         GD.Print(
             $"WAR3_RTS_CAPTURE {result}: {path} " +
             $"shadow={shadowObjects}/{shadowDrawCalls}/{shadowPrimitives} " +
@@ -5118,7 +5162,13 @@ public sealed partial class War3Rts : Node3D
             $"{_presenter?.PresentedBuildingFoundationCount ?? 0}/" +
             $"neutral{_presenter?.PresentedNeutralFoundationCount ?? 0} " +
             $"ground_batches=" +
-            $"{_presenter?.PresentedGroundOverlayBatchCount ?? 0}");
+            $"{_presenter?.PresentedGroundOverlayBatchCount ?? 0} " +
+            $"fog=" +
+            $"{_fogOfWar?.HiddenCellCount ?? 0}/" +
+            $"{_fogOfWar?.ExploredCellCount ?? 0}/" +
+            $"{_fogOfWar?.VisibleCellCount ?? 0} " +
+            $"minimap_fog={_hud?.MinimapFogReady == true}");
+        _captureCompleted = true;
         if (!_smoke) GetTree().Quit(result == Error.Ok ? 0 : 1);
     }
 
