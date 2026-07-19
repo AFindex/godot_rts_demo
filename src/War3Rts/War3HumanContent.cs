@@ -41,6 +41,12 @@ public sealed record War3BuildingDefinition(
     /// tokens to select their correct geoset/animation variant.
     /// </summary>
     public string[] AnimationProperties { get; init; } = [];
+
+    /// <summary>
+    /// Original UnitUI uber-splat and building-shadow presentation. This is
+    /// visual metadata only; authoritative placement still uses pathTex.
+    /// </summary>
+    public War3BuildingGroundVisualDefinition GroundVisual { get; init; }
 }
 
 /// <summary>

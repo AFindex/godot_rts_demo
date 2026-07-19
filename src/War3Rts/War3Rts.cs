@@ -555,15 +555,28 @@ public sealed partial class War3Rts : Node3D
         if (_smoke)
         {
             PrepareSmokeCombat();
+            // The construction probe is intentionally placed north-west of
+            // the opening base. Keep it and the normal base actors inside the
+            // real camera frustum; otherwise presentation culling correctly
+            // skips the animation and the smoke test reports a false failure.
+            var smokePresentationFocus = map.PlayerSpawn +
+                new NVector2(-170f, 165f);
+            _cameraController!.SetAutomationTarget(
+                smokePresentationFocus,
+                distance: 38f,
+                yaw: 0f,
+                pitch: Mathf.DegToRad(60f));
             if (_capture && _smokeRallyBuilding >= 0)
             {
                 _selectedUnits.Clear();
                 _selectedBuildings.Clear();
                 _selectedBuildings.Add(_smokeRallyBuilding);
                 RefreshSelection();
-                _cameraController!.FocusAt(
-                    map.PlayerSpawn + new NVector2(165f, 105f),
-                    immediate: true);
+                _cameraController!.SetAutomationTarget(
+                    smokePresentationFocus,
+                    distance: 38f,
+                    yaw: 0f,
+                    pitch: Mathf.DegToRad(60f));
             }
             // Warcraft's exported peasant speed is lower than the former demo
             // tuning. Keep the deposit assertion and allow a complete lumber
@@ -5099,7 +5112,13 @@ public sealed partial class War3Rts : Node3D
             $"shadow={shadowObjects}/{shadowDrawCalls}/{shadowPrimitives} " +
             $"contact_shadows={_presenter?.PresentedContactShadowCount ?? 0}/" +
             $"u{_presenter?.PresentedUnitContactShadowCount ?? 0}/" +
-            $"b{_presenter?.PresentedBuildingContactShadowCount ?? 0}");
+            $"b{_presenter?.PresentedBuildingContactShadowCount ?? 0}/" +
+            $"t{_presenter?.PresentedTreeContactShadowCount ?? 0} " +
+            $"ground_foundations=" +
+            $"{_presenter?.PresentedBuildingFoundationCount ?? 0}/" +
+            $"neutral{_presenter?.PresentedNeutralFoundationCount ?? 0} " +
+            $"ground_batches=" +
+            $"{_presenter?.PresentedGroundOverlayBatchCount ?? 0}");
         if (!_smoke) GetTree().Quit(result == Error.Ok ? 0 : 1);
     }
 

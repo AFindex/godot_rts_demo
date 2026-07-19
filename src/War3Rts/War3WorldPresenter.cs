@@ -96,6 +96,16 @@ public sealed partial class War3WorldPresenter : Node3D
     private int _contactShadowCount;
     private int _unitContactShadowCount;
     private int _buildingContactShadowCount;
+    private int _treeContactShadowCount;
+    private int _buildingFoundationCount;
+    private int _neutralFoundationCount;
+    private bool _buildingGroundOverlaysHidden;
+    private bool _resourceGroundOverlaysHidden;
+    private bool _buildingAuthoredShadowsHidden;
+    private bool _resourceAuthoredShadowsHidden;
+    private readonly Dictionary<War3GroundOverlayKey, War3GroundOverlayBatch>
+        _groundOverlayBatches = [];
+    private War3BuildingGroundVisualDefinition _goldMineGroundVisual;
     private readonly Plane[] _cameraFrustumPlanes = new Plane[6];
     private readonly float[] _cameraFrustumInsideSigns = new float[6];
     private int _cameraFrustumPlaneCount;
@@ -187,10 +197,17 @@ public sealed partial class War3WorldPresenter : Node3D
                     _simulation.Units.NavigationRadii[pair.Key])) < 0.001f);
     public int PresentedBuildingCount => _buildings.Values.Count(value => !value.Dying);
     public int PresentedResourceCount => _resources.Count;
-    public int PresentedContactShadowCount => _contactShadowCount;
+    public int PresentedContactShadowCount =>
+        _unitContactShadowCount + _buildingContactShadowCount +
+        _treeContactShadowCount;
     public int PresentedUnitContactShadowCount => _unitContactShadowCount;
     public int PresentedBuildingContactShadowCount =>
         _buildingContactShadowCount;
+    public int PresentedTreeContactShadowCount => _treeContactShadowCount;
+    public int PresentedBuildingFoundationCount => _buildingFoundationCount;
+    public int PresentedNeutralFoundationCount => _neutralFoundationCount;
+    public int PresentedGroundOverlayBatchCount =>
+        _groundOverlayBatches.Count(value => value.Value.VisibleCount > 0);
     public int ActiveEffectCount =>
         _projectiles.Count + _buildingProjectiles.Count +
         _abilityProjectiles.Count + _transients.Count + _abilityBuffs.Count;
@@ -253,6 +270,7 @@ public sealed partial class War3WorldPresenter : Node3D
         switch (variant.ToLowerInvariant())
         {
             case "resources-hidden":
+                _resourceGroundOverlaysHidden = true;
                 foreach (var visual in _resources.Values)
                     if (visual.Actor is not null) visual.Actor.Visible = false;
                 foreach (var batch in _resourceBatches) batch.Visible = false;
@@ -262,6 +280,7 @@ public sealed partial class War3WorldPresenter : Node3D
                     visual.Actor.Visible = false;
                 break;
             case "buildings-hidden":
+                _buildingGroundOverlaysHidden = true;
                 foreach (var visual in _buildings.Values)
                     visual.Actor.Visible = false;
                 break;
@@ -274,6 +293,7 @@ public sealed partial class War3WorldPresenter : Node3D
                     visual.Actor?.SetShadowCastingEnabled(false);
                 break;
             case "resources-no-shadow":
+                _resourceAuthoredShadowsHidden = true;
                 foreach (var visual in _resources.Values)
                     visual.Actor?.SetShadowCastingEnabled(false);
                 break;
@@ -282,6 +302,7 @@ public sealed partial class War3WorldPresenter : Node3D
                     visual.Actor.SetShadowCastingEnabled(false);
                 break;
             case "buildings-no-shadow":
+                _buildingAuthoredShadowsHidden = true;
                 foreach (var visual in _buildings.Values)
                     visual.Actor.SetShadowCastingEnabled(false);
                 break;
@@ -302,7 +323,7 @@ public sealed partial class War3WorldPresenter : Node3D
             $"batches={_resourceBatches.Count} " +
             $"instances={_resourceBatches.Sum(value => value.InstanceCount)} " +
             $"surfaces={_resourceBatches.Sum(value => value.SurfaceCount)} " +
-            "shadow_surfaces=0");
+            $"shadow_surfaces={_resourceBatches.Sum(value => value.SurfaceCount)}");
         GD.Print(
             $"WAR3_NODE_FREE_LAYOUT actors={NodeFreeActorCount} " +
             $"effect_actors={NodeFreeEffectActorCount} " +
@@ -345,6 +366,9 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             ProfilingEnabled = ProfilingEnabled
         };
+        _goldMineGroundVisual = War3BuildingGroundVisualCatalog.Resolve(
+            War3HumanContent.DataCatalog, "ngol");
+        PrewarmGroundOverlays();
         EnsurePointerPreview();
         EnsureAbilityPointerPreview();
         EnsureRallyMarker();
@@ -395,6 +419,8 @@ public sealed partial class War3WorldPresenter : Node3D
     {
         foreach (var batch in _resourceBatches) batch.Dispose();
         _resourceBatches.Clear();
+        foreach (var batch in _groundOverlayBatches.Values) batch.Dispose();
+        _groundOverlayBatches.Clear();
         _ridWorld?.Dispose();
         _ridWorld = null;
     }
@@ -512,12 +538,15 @@ public sealed partial class War3WorldPresenter : Node3D
         War3EffectRuntime.PrepareCameraFrame(_camera, cameraTransform.Basis);
         PrepareCameraFrustum(_camera, cameraTransform);
         _ridWorld?.Advance();
-        EnsureContactShadowCapacity(
-            _simulation.Units.Count +
-            _simulation.GameplayBuildingSlotCount);
+        EnsureContactShadowCapacity(_simulation.Units.Count);
         _contactShadowCount = 0;
         _unitContactShadowCount = 0;
         _buildingContactShadowCount = 0;
+        _treeContactShadowCount = 0;
+        _buildingFoundationCount = 0;
+        _neutralFoundationCount = 0;
+        foreach (var batch in _groundOverlayBatches.Values)
+            batch.BeginFrame();
         var advanceEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
@@ -543,6 +572,7 @@ public sealed partial class War3WorldPresenter : Node3D
             ? GC.GetAllocatedBytesForCurrentThread()
             : 0L;
         SyncResources(_simulation, _camera);
+        FlushGroundOverlays();
         var resourcesEnd = ProfilingEnabled
             ? System.Diagnostics.Stopwatch.GetTimestamp()
             : 0L;
@@ -1437,8 +1467,14 @@ public sealed partial class War3WorldPresenter : Node3D
                     War3HumanScenario.PlayerId,
                     visual.LastPosition);
             var actorVisible = inFrustum && visibleToPlayer;
+            if (actorVisible && foundationStarted && visual.WasGhost)
+                _foundationAppearedAfterApproach = true;
             if (actorVisible && foundationStarted)
-                WriteBuildingContactShadow(building.Bounds);
+                WriteBuildingGroundVisual(
+                    definition.GroundVisual, visual.WorldPosition,
+                    neutralFoundation: false,
+                    shadowsHidden: _buildingAuthoredShadowsHidden,
+                    overlaysHidden: _buildingGroundOverlaysHidden);
             visual.Actor.Processing = actorVisible;
             if (visual.ActorVisible != actorVisible)
             {
@@ -1470,7 +1506,6 @@ public sealed partial class War3WorldPresenter : Node3D
             }
             else if (building.State != BuildingLifecycleState.Completed)
             {
-                _foundationAppearedAfterApproach |= visual.WasGhost;
                 var synchronized = visual.Actor.SetSequenceProgress(
                     building.Progress, "Birth", "Stand");
                 _sawConstructionProgressAnimation |= building.Progress is > 0.001f and < 0.999f;
@@ -1616,6 +1651,31 @@ public sealed partial class War3WorldPresenter : Node3D
                     visual.Actor?.PlayDeath();
                 }
                 continue;
+            }
+            var resourceWorld = ToWorldAtGround(snapshot.Position);
+            var resourceGroundArtVisible = fogVisible &&
+                BuildingIntersectsFrustum(
+                    camera, resourceWorld,
+                    snapshot.Kind == EconomyResourceKind.Minerals ? 3f : 2.25f);
+            if (resourceGroundArtVisible)
+            {
+                if (snapshot.Kind == EconomyResourceKind.Minerals)
+                {
+                    WriteBuildingGroundVisual(
+                        _goldMineGroundVisual, resourceWorld,
+                        neutralFoundation: true,
+                        shadowsHidden: _resourceAuthoredShadowsHidden,
+                        overlaysHidden: _resourceGroundOverlaysHidden);
+                }
+                else if (!_resourceGroundOverlaysHidden &&
+                         !_resourceAuthoredShadowsHidden)
+                {
+                    WriteAuthoredShadow(
+                        War3BuildingGroundVisualCatalog
+                            .CityTreeShadowTexturePath,
+                        resourceWorld + Vector3.Up * 0.023f);
+                    _treeContactShadowCount++;
+                }
             }
             var isTree = snapshot.Kind == EconomyResourceKind.VespeneGas;
             if (isTree && snapshot.ActiveHarvesters > 0)
@@ -1923,32 +1983,97 @@ public sealed partial class War3WorldPresenter : Node3D
         _unitContactShadowCount++;
     }
 
-    private void WriteBuildingContactShadow(SimRect bounds)
+    private void WriteBuildingGroundVisual(
+        War3BuildingGroundVisualDefinition visual,
+        Vector3 modelOrigin,
+        bool neutralFoundation,
+        bool shadowsHidden,
+        bool overlaysHidden)
     {
-        var center = (bounds.Min + bounds.Max) * 0.5f;
-        var footprint = SimPlane3DTransform.ToWorldSize(
-            bounds.Max - bounds.Min);
-        var castDistance = Math.Clamp(
-            MathF.Max(footprint.X, footprint.Y) * 0.2f,
-            0.32f,
-            0.95f);
-        var world = ToWorldAtGround(center, 0.026f) +
-                    new Vector3(
-                        castDistance * 0.72f,
-                        0f,
-                        castDistance);
-        var transform = new Transform3D(
-            Basis.FromScale(new Vector3(
-                MathF.Max(0.48f, footprint.X * 0.68f),
-                1f,
-                MathF.Max(0.48f, footprint.Y * 0.68f))),
-            world);
-        WriteTransformBuffer(
-            _contactShadowBuffer,
-            _contactShadowCount * 12,
-            transform);
-        _contactShadowCount++;
+        if (overlaysHidden) return;
+        if (visual.HasFoundation)
+        {
+            var path = War3BuildingGroundVisualCatalog
+                .ResolveLordaeronFoundationTexturePath(
+                    visual.FoundationTexturePath);
+            // UberSplatData.Scale is the distance from the building origin to
+            // each edge, so the rendered quad spans twice that source value.
+            var diameter = War3GroundOverlayBatch.FoundationWorldDiameter(
+                visual.FoundationSourceHalfExtent);
+            GroundOverlayBatch(
+                    path,
+                    War3GroundOverlayKind.Foundation,
+                    visual.FoundationBlendMode)
+                .AddCentered(
+                    modelOrigin + Vector3.Up * 0.012f,
+                    new Vector2(diameter, diameter));
+            if (neutralFoundation) _neutralFoundationCount++;
+            else _buildingFoundationCount++;
+        }
+        if (!visual.HasBuildingShadow || shadowsHidden) return;
+        WriteAuthoredShadow(
+            visual.BuildingShadowTexturePath,
+            modelOrigin + Vector3.Up * 0.023f);
         _buildingContactShadowCount++;
+    }
+
+    private void WriteAuthoredShadow(string texturePath, Vector3 modelOrigin) =>
+        GroundOverlayBatch(
+                texturePath,
+                War3GroundOverlayKind.AuthoredShadow,
+                blendMode: 0)
+            .AddAuthoredShadow(modelOrigin);
+
+    private War3GroundOverlayBatch GroundOverlayBatch(
+        string texturePath,
+        War3GroundOverlayKind kind,
+        int blendMode)
+    {
+        var key = new War3GroundOverlayKey(
+            texturePath.Replace('\\', '/').ToLowerInvariant(),
+            kind,
+            blendMode);
+        if (_groundOverlayBatches.TryGetValue(key, out var batch))
+            return batch;
+        batch = new War3GroundOverlayBatch(
+            this, texturePath, kind, blendMode);
+        _groundOverlayBatches.Add(key, batch);
+        return batch;
+    }
+
+    private void FlushGroundOverlays()
+    {
+        foreach (var batch in _groundOverlayBatches.Values)
+            batch.Flush();
+    }
+
+    private void PrewarmGroundOverlays()
+    {
+        foreach (var visual in War3HumanContent.Buildings
+                     .Select(value => value.GroundVisual)
+                     .Append(_goldMineGroundVisual))
+        {
+            if (visual.HasFoundation)
+            {
+                GroundOverlayBatch(
+                    War3BuildingGroundVisualCatalog
+                        .ResolveLordaeronFoundationTexturePath(
+                            visual.FoundationTexturePath),
+                    War3GroundOverlayKind.Foundation,
+                    visual.FoundationBlendMode);
+            }
+            if (visual.HasBuildingShadow)
+            {
+                GroundOverlayBatch(
+                    visual.BuildingShadowTexturePath,
+                    War3GroundOverlayKind.AuthoredShadow,
+                    blendMode: 0);
+            }
+        }
+        GroundOverlayBatch(
+            War3BuildingGroundVisualCatalog.CityTreeShadowTexturePath,
+            War3GroundOverlayKind.AuthoredShadow,
+            blendMode: 0);
     }
 
     private void FlushContactShadows()
@@ -2939,6 +3064,11 @@ public sealed partial class War3WorldPresenter : Node3D
         string ObjectId,
         int Team,
         int BoundUnitTypeId);
+
+    private readonly record struct War3GroundOverlayKey(
+        string TexturePath,
+        War3GroundOverlayKind Kind,
+        int BlendMode);
 
     private sealed class BuildingVisual(
         War3RidModelActor actor,

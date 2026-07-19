@@ -121,7 +121,8 @@ public sealed class War3GameplayDataAdapter(
             SelectionCircleScale = Positive(EditorFloat(data, "scale"))
                 ? EditorFloat(data, "scale")!.Value
                 : fallback.SelectionCircleScale,
-            AnimationProperties = AnimationProperties(data)
+            AnimationProperties = AnimationProperties(data),
+            GroundVisual = War3BuildingGroundVisualCatalog.Resolve(data)
         };
     }
 
