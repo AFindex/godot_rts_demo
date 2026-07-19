@@ -428,6 +428,40 @@ public sealed partial class War3Rts : Node3D
                 "stress_default_unchanged=true");
         AddChild(_presenter);
         _presenter.Initialize(_simulation, _production, _camera!);
+        var prewarmBuildings = War3HumanContent.Buildings
+            .GroupBy(value => value.ModelSource, StringComparer.OrdinalIgnoreCase)
+            .Select(value => value.First())
+            .ToArray();
+        var buildingPrewarmStart =
+            System.Diagnostics.Stopwatch.GetTimestamp();
+        var prewarmedBuildingAssets = 0;
+        for (var index = 0; index < prewarmBuildings.Length; index++)
+        {
+            var definition = prewarmBuildings[index];
+            if (_presenter.PrewarmBuildingModelAsset(
+                    definition.ModelSource, War3HumanScenario.PlayerId))
+                prewarmedBuildingAssets++;
+            if (_presenter.PrewarmBuildingModelAsset(
+                    definition.ModelSource, War3HumanScenario.EnemyId))
+                prewarmedBuildingAssets++;
+            await AdvanceMapLoadingAsync(
+                7,
+                0.88d + 0.035d *
+                (index + 1) / prewarmBuildings.Length,
+                $"预热建筑表现 {index + 1}/{prewarmBuildings.Length}：" +
+                definition.Name);
+        }
+        // Each lane remained render-visible with a hidden instance buffer for
+        // at least one loading frame, allowing Godot to compile both the
+        // opaque and translucent VAT pipelines away from gameplay.
+        _presenter.FinishBuildingModelPrewarm();
+        GD.Print(
+            $"WAR3_BUILDING_PRESENTATION_PREWARM " +
+            $"models={prewarmBuildings.Length} " +
+            $"assets={prewarmedBuildingAssets} " +
+            $"lanes={prewarmBuildings.Length * 4} elapsed_ms=" +
+            $"{ElapsedMilliseconds(buildingPrewarmStart, System.Diagnostics.Stopwatch.GetTimestamp()):0.###}");
+
         var prewarmModels = War3HumanContent.Units
             .Where(value =>
                 (uint)value.TypeId < (uint)_production.UnitTypes.Length)
@@ -447,7 +481,7 @@ public sealed partial class War3Rts : Node3D
                 prewarmedAssets++;
             await AdvanceMapLoadingAsync(
                 7,
-                0.88d + 0.07d * (index + 1) / prewarmModels.Length,
+                0.915d + 0.035d * (index + 1) / prewarmModels.Length,
                 $"预热单位动画 {index + 1}/{prewarmModels.Length}：" +
                 definition.Name);
         }

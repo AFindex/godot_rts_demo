@@ -107,13 +107,17 @@ public sealed partial class War3WorldPresenter : Node3D
         _selectionRingMaterials = [];
     private readonly Dictionary<string, War3TreeHarvestFeedbackProfile>
         _treeHarvestProfiles = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _profiledPointerGhostSources =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _profiledBuildingActorSources =
+        new(StringComparer.OrdinalIgnoreCase);
     private RtsSimulation? _simulation;
     private ProductionCatalogSnapshot? _production;
     private ITerrainMapQuery? _terrain;
     private Camera3D? _camera;
     private War3NodeFreeRenderWorld? _ridWorld;
     private MeshInstance3D? _pointerPreview;
-    private War3ModelActor? _pointerGhost;
+    private War3RidModelActor? _pointerGhost;
     private string _pointerGhostSource = string.Empty;
     private MeshInstance3D? _abilityTargetPreview;
     private MeshInstance3D? _abilityRangePreview;
@@ -227,7 +231,7 @@ public sealed partial class War3WorldPresenter : Node3D
     public int BattlefieldEntityNodeCount => 0;
     public int ActiveCommandConfirmationCount =>
         _transients.Count(value => value.CommandConfirmation);
-    public bool PointerPreviewUsesWar3Model => _pointerGhost?.Loaded == true;
+    public bool PointerPreviewUsesWar3Model => _pointerGhost is not null;
     public bool AbilityPointerPreviewVisible =>
         _abilityTargetPreview?.Visible == true;
     public bool AbilityRangePreviewVisible =>
@@ -352,6 +356,18 @@ public sealed partial class War3WorldPresenter : Node3D
     public bool PrewarmModelAsset(string modelSource, int playerId) =>
         _ridWorld?.PrewarmAsset(modelSource, playerId) ?? false;
 
+    public bool PrewarmBuildingModelAsset(
+        string modelSource,
+        int playerId) =>
+        _ridWorld?.PrewarmAsset(
+            modelSource,
+            playerId,
+            prewarmBuildingLanes: true,
+            prewarmEffects: true) ?? false;
+
+    public void FinishBuildingModelPrewarm() =>
+        _ridWorld?.FinishRendererPrewarm();
+
     public void SetSelection(
         IEnumerable<int> units,
         IEnumerable<int> buildings)
@@ -395,17 +411,22 @@ public sealed partial class War3WorldPresenter : Node3D
         _pointerPreview.Scale = new Vector3(size.X, 0.06f, size.Y);
         _pointerPreview.MaterialOverride = valid ? _validPreview : _invalidPreview;
         _pointerPreview.Visible = true;
-        if (_camera is not null && !modelSource.Equals(
+        if (_ridWorld is not null && !modelSource.Equals(
                 _pointerGhostSource, StringComparison.OrdinalIgnoreCase))
         {
-            _pointerGhost?.QueueFree();
-            _pointerGhost = new War3ModelActor { Name = "BuildModelGhost" };
-            AddChild(_pointerGhost);
-            _pointerGhost.Load(
-                modelSource, _camera, War3HumanScenario.PlayerId,
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            _pointerGhost?.Dispose();
+            _pointerGhost = _ridWorld.CreateActor(
+                modelSource,
+                War3HumanScenario.PlayerId,
                 includeEffects: false);
             _pointerGhost.PlayPreferred(true, "Stand");
             _pointerGhostSource = modelSource;
+            if (_profiledPointerGhostSources.Add(modelSource))
+                GD.Print(
+                    $"WAR3_BUILDING_POINTER_FIRST_USE source={modelSource} " +
+                    $"elapsed_ms={ElapsedMilliseconds(started, System.Diagnostics.Stopwatch.GetTimestamp()):0.###} " +
+                    "renderer=rid-vat-prewarmed");
         }
         if (_pointerGhost is not null)
         {
@@ -2243,6 +2264,7 @@ public sealed partial class War3WorldPresenter : Node3D
         War3BuildingDefinition definition,
         Camera3D camera)
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var actor = _ridWorld!.CreateActor(
             definition.ModelSource,
             building.PlayerId,
@@ -2262,6 +2284,13 @@ public sealed partial class War3WorldPresenter : Node3D
         var world = ToWorldAtGround(center);
         const bool modelLoaded = true;
         actor.SetShadowCastingEnabled(true);
+        var profileKey = $"{building.PlayerId}:{definition.ModelSource}";
+        if (_profiledBuildingActorSources.Add(profileKey))
+            GD.Print(
+                $"WAR3_BUILDING_ACTOR_FIRST_USE source={definition.ModelSource} " +
+                $"player={building.PlayerId} elapsed_ms=" +
+                $"{ElapsedMilliseconds(started, System.Diagnostics.Stopwatch.GetTimestamp()):0.###} " +
+                "renderer=rid-vat");
         return new BuildingVisual(
             actor, selection, frustumRadius,
             definition, modelLoaded,

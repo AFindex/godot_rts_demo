@@ -658,6 +658,27 @@ internal sealed class War3VatModelBatch : IDisposable
         }
     }
 
+    /// <summary>
+    /// Builds the mesh/material lane while the map loading screen is active.
+    /// Lane construction combines every source surface and creates the VAT
+    /// shader materials, so leaving it lazy would charge that work to the
+    /// first frame in which a building changes between ghost and normal.
+    /// </summary>
+    public void PrewarmLane(
+        War3VatBatchLaneKey laneKey,
+        bool rendererWarmup = false)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var lane = EnsureLane(laneKey);
+        if (rendererWarmup) lane.BeginRendererWarmup();
+    }
+
+    public void FinishRendererWarmup()
+    {
+        if (_disposed) return;
+        foreach (var lane in _lanes.Values) lane.FinishRendererWarmup();
+    }
+
     private BatchLane EnsureLane(War3VatBatchLaneKey key)
     {
         if (_lanes.TryGetValue(key, out var lane)) return lane;
@@ -702,6 +723,7 @@ internal sealed class War3VatModelBatch : IDisposable
         private int _active;
         private int _capacity;
         private bool _renderVisible;
+        private bool _rendererWarmup;
         private bool _disposed;
 
         public BatchLane(
@@ -857,6 +879,33 @@ internal sealed class War3VatModelBatch : IDisposable
         public void Deactivate()
         {
             _active = Math.Max(0, _active - 1);
+            if (_active > 0 || _rendererWarmup || !_renderVisible) return;
+            _renderVisible = false;
+            RenderingServer.InstanceSetVisible(_instance, false);
+        }
+
+        public void BeginRendererWarmup()
+        {
+            if (_disposed) return;
+            // Upload a fully hidden instance buffer, but expose the render
+            // instance for the loading frames. Godot can then compile the
+            // actual normal/transparent VAT pipelines before gameplay.
+            if (_dirty)
+            {
+                RenderingServer.MultimeshSetBuffer(
+                    _multiMesh.GetRid(), _buffer.AsSpan());
+                _dirty = false;
+            }
+            _rendererWarmup = true;
+            if (_renderVisible) return;
+            _renderVisible = true;
+            RenderingServer.InstanceSetVisible(_instance, true);
+        }
+
+        public void FinishRendererWarmup()
+        {
+            if (_disposed || !_rendererWarmup) return;
+            _rendererWarmup = false;
             if (_active > 0 || !_renderVisible) return;
             _renderVisible = false;
             RenderingServer.InstanceSetVisible(_instance, false);

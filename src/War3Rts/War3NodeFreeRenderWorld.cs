@@ -66,14 +66,47 @@ internal sealed class War3NodeFreeRenderWorld : IDisposable
         return actor;
     }
 
-    public bool PrewarmAsset(string source, int playerId)
+    public bool PrewarmAsset(
+        string source,
+        int playerId,
+        bool prewarmBuildingLanes = false,
+        bool prewarmEffects = false)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var key = AssetKey(source, playerId);
         var created = !_assets.ContainsKey(key);
         var asset = Asset(source, playerId);
-        _ = asset.Batch(_scenario);
+        var batch = asset.Batch(_scenario);
+        if (prewarmBuildingLanes)
+        {
+            batch.PrewarmLane(new War3VatBatchLaneKey(
+                War3VatAppearance.Normal, CastShadows: true),
+                rendererWarmup: true);
+            batch.PrewarmLane(new War3VatBatchLaneKey(
+                War3VatAppearance.Ghost, CastShadows: true),
+                rendererWarmup: true);
+        }
+        if (prewarmEffects &&
+            (asset.Metadata.Particles.Count > 0 ||
+             asset.Metadata.Ribbons.Count > 0))
+        {
+            // Effect textures and shared particle groups are also otherwise
+            // initialized by the first live building actor. A short-lived,
+            // invisible actor warms those caches without adding idle actors
+            // to the runtime presentation loop.
+            var actor = CreateActor(source, playerId, includeEffects: true);
+            actor.Visible = false;
+            actor.Processing = false;
+            actor.Dispose();
+        }
         return created;
+    }
+
+    public void FinishRendererPrewarm()
+    {
+        if (_disposed) return;
+        foreach (var asset in _assets.Values)
+            asset.Batch(_scenario).FinishRendererWarmup();
     }
 
     public War3RidGeometryInstance CreateGeometry(
