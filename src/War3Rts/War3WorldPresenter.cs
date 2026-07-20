@@ -62,6 +62,7 @@ internal readonly record struct War3PointerVisual(
     Vector3 WorldOrigin,
     float WorldRadius,
     float WorldHeight,
+    War3RidModelActor Actor,
     Transform3D ActorTransform,
     Aabb LocalBounds);
 
@@ -439,6 +440,7 @@ public sealed partial class War3WorldPresenter : Node3D
             visual.LastActorPosition,
             visual.Selection.Scale.X,
             Math.Clamp(height, 0.3f, 4.5f),
+            visual.Actor,
             visual.Actor.Transform,
             visual.Actor.LocalBounds);
         return true;
@@ -459,6 +461,7 @@ public sealed partial class War3WorldPresenter : Node3D
                 visual.Actor.ApproximateWorldHeight(),
                 0.5f,
                 12f),
+            visual.Actor,
             visual.Actor.Transform,
             visual.Actor.LocalBounds);
         return true;

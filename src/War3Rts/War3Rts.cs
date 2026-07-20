@@ -5414,7 +5414,7 @@ public sealed partial class War3Rts : Node3D
             peasantData.Summary.Sight.Day is > 0f &&
             MathF.Abs(peasantProfile.Perception.VisionRange -
                       peasantData.Summary.Sight.Day.Value *
-                      War3GameplayImportPolicy.Runtime.WorldDistanceScale) < 0.01f &&
+                      War3GameplayImportPolicy.Default.WorldDistanceScale) < 0.01f &&
             flyingProfile.Perception.TerrainVisionMode ==
                 TerrainVisionMode.Elevated &&
             _simulation.CombatWeaponUpgradeTechnologyId == 0 &&
