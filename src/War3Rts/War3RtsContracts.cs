@@ -196,9 +196,143 @@ public sealed record War3HudSnapshot(
     };
 }
 
+internal enum War3PointerHitTier : byte
+{
+    Model,
+    Body,
+    Assistance
+}
+
 internal static class War3PointerTargeting
 {
     private const int TerrainRaySteps = 192;
+
+    /// <summary>
+    /// Returns the real squared pixel distance to a projected body segment.
+    /// Unlike a normalized model-sized score, this remains comparable between
+    /// a small unit, a tall unit and a building when their visuals overlap.
+    /// </summary>
+    public static float DistanceSquaredToSegment(
+        Vector2 pointer,
+        Vector2 start,
+        Vector2 end)
+    {
+        var segment = end - start;
+        var lengthSquared = segment.LengthSquared();
+        if (lengthSquared <= 0.0001f)
+            return pointer.DistanceSquaredTo(start);
+        var distanceAlong = Math.Clamp(
+            (pointer - start).Dot(segment) / lengthSquared,
+            0f,
+            1f);
+        return pointer.DistanceSquaredTo(start + segment * distanceAlong);
+    }
+
+    /// <summary>
+    /// Screen-space capsule pick score. Positive infinity means the pointer is
+    /// outside the deliberately bounded click tolerance.
+    /// </summary>
+    public static float CapsuleHitScore(
+        Vector2 pointer,
+        Vector2 start,
+        Vector2 end,
+        float radius)
+    {
+        if (radius <= 0f || !float.IsFinite(radius))
+            return float.PositiveInfinity;
+        var score = DistanceSquaredToSegment(pointer, start, end);
+        return score <= radius * radius ? score : float.PositiveInfinity;
+    }
+
+    /// <summary>
+    /// Resolves overlapping screen hits. An actual model-volume ray hit wins
+    /// over the projected body and click-assistance fallbacks. Only two actual
+    /// volume hits use front-most intersection depth; approximate fallbacks
+    /// stay ordered by real cursor distance.
+    /// </summary>
+    public static bool PreferLayeredScreenHit(
+        War3PointerHitTier candidateTier,
+        float candidateScore,
+        float candidateDepth,
+        int candidateId,
+        War3PointerHitTier bestTier,
+        float bestScore,
+        float bestDepth,
+        int bestId)
+    {
+        if (!float.IsFinite(candidateScore)) return false;
+        if (bestId < 0) return true;
+        if (candidateTier != bestTier) return candidateTier < bestTier;
+
+        const float scoreTieTolerance = 0.01f;
+        const float depthTieTolerance = 0.001f;
+        if (candidateTier == War3PointerHitTier.Model)
+        {
+            if (candidateDepth < bestDepth - depthTieTolerance) return true;
+            if (MathF.Abs(candidateDepth - bestDepth) > depthTieTolerance)
+                return false;
+            if (candidateScore < bestScore - scoreTieTolerance) return true;
+            if (MathF.Abs(candidateScore - bestScore) > scoreTieTolerance)
+                return false;
+        }
+        else
+        {
+            if (candidateScore < bestScore - scoreTieTolerance) return true;
+            if (MathF.Abs(candidateScore - bestScore) > scoreTieTolerance)
+                return false;
+            if (candidateDepth < bestDepth - depthTieTolerance) return true;
+            if (MathF.Abs(candidateDepth - bestDepth) > depthTieTolerance)
+                return false;
+        }
+        return candidateId < bestId;
+    }
+
+    public static bool TryIntersectRayAabb(
+        Vector3 origin,
+        Vector3 direction,
+        in Aabb bounds,
+        out float distance)
+    {
+        distance = float.PositiveInfinity;
+        if (direction.LengthSquared() <= 0.000001f ||
+            bounds.Size.X <= 0f || bounds.Size.Y <= 0f ||
+            bounds.Size.Z <= 0f)
+            return false;
+        var minimum = bounds.Position;
+        var maximum = bounds.Position + bounds.Size;
+        var near = 0f;
+        var far = float.PositiveInfinity;
+        if (!IntersectRaySlab(
+                origin.X, direction.X, minimum.X, maximum.X,
+                ref near, ref far) ||
+            !IntersectRaySlab(
+                origin.Y, direction.Y, minimum.Y, maximum.Y,
+                ref near, ref far) ||
+            !IntersectRaySlab(
+                origin.Z, direction.Z, minimum.Z, maximum.Z,
+                ref near, ref far))
+            return false;
+        distance = near;
+        return float.IsFinite(distance) && distance >= 0f;
+    }
+
+    private static bool IntersectRaySlab(
+        float origin,
+        float direction,
+        float minimum,
+        float maximum,
+        ref float near,
+        ref float far)
+    {
+        if (MathF.Abs(direction) <= 0.000001f)
+            return origin >= minimum && origin <= maximum;
+        var first = (minimum - origin) / direction;
+        var second = (maximum - origin) / direction;
+        if (first > second) (first, second) = (second, first);
+        near = MathF.Max(near, first);
+        far = MathF.Min(far, second);
+        return near <= far && far >= 0f;
+    }
 
     /// <summary>
     /// Buildings already expose their complete gameplay footprint. Unlike

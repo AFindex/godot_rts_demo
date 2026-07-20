@@ -51,10 +51,13 @@ public sealed partial class War3Rts : Node3D
     private int _loadingStageUpdateCount;
     private readonly HashSet<int> _selectedUnits = [];
     private readonly HashSet<int> _selectedBuildings = [];
+    private GameplayBuildingSnapshot[] _pointerBuildingScratch = [];
     private string _activeSelectionSubgroup = string.Empty;
     private Vector2 _dragStart;
     private bool _dragging;
     private bool _selectionAdditive;
+    private long _leftPointerSequence;
+    private long _activeLeftPointerSequence;
     private bool _movePending;
     private bool _attackMovePending;
     private bool _rallyPending;
@@ -79,6 +82,9 @@ public sealed partial class War3Rts : Node3D
     private bool _heroCapture;
     private bool _offlineBakeRequested;
     private bool _rightClickInputSmoke;
+    private Vector2? _leftClickInputProbe;
+    private Vector2I? _leftClickInputProbeViewport;
+    private Vector3? _leftClickInputProbeCamera;
     private int _earlyExitCode;
     private War3RuntimeProfiler? _runtimeProfiler;
     private War3StressTestMode? _stressTest;
@@ -140,6 +146,58 @@ public sealed partial class War3Rts : Node3D
         _offlineBakeRequested = arguments.Contains("--war3-bake-map-cache");
         _rightClickInputSmoke = arguments.Contains(
             "--war3-right-click-input-smoke");
+        var leftClickProbe = arguments.FirstOrDefault(value =>
+            value.StartsWith(
+                "--war3-left-click-input-probe=",
+                StringComparison.OrdinalIgnoreCase));
+        if (leftClickProbe is not null)
+        {
+            var coordinates = leftClickProbe[(leftClickProbe.IndexOf('=') + 1)..]
+                .Split(',', StringSplitOptions.TrimEntries);
+            if (coordinates.Length >= 2 &&
+                float.TryParse(
+                    coordinates[0],
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var probeX) &&
+                float.TryParse(
+                    coordinates[1],
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var probeY))
+            {
+                _leftClickInputProbe = new Vector2(probeX, probeY);
+                if (coordinates.Length >= 4 &&
+                    int.TryParse(coordinates[2], out var viewportWidth) &&
+                    int.TryParse(coordinates[3], out var viewportHeight) &&
+                    viewportWidth > 0 && viewportHeight > 0)
+                {
+                    _leftClickInputProbeViewport = new Vector2I(
+                        viewportWidth, viewportHeight);
+                    GetWindow().Size = _leftClickInputProbeViewport.Value;
+                    GetWindow().ContentScaleSize =
+                        _leftClickInputProbeViewport.Value;
+                }
+                if (coordinates.Length >= 7 &&
+                    float.TryParse(
+                        coordinates[4],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var cameraX) &&
+                    float.TryParse(
+                        coordinates[5],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var cameraY) &&
+                    float.TryParse(
+                        coordinates[6],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var cameraZ))
+                    _leftClickInputProbeCamera = new Vector3(
+                        cameraX, cameraY, cameraZ);
+            }
+        }
         _automatedSkirmishRequested =
             War3AutomatedSkirmishStressMode.IsRequested(arguments);
         _mortarRegressionRequested =
@@ -179,6 +237,7 @@ public sealed partial class War3Rts : Node3D
             .Split('=', 2)[1];
         if (_smoke || _capture || _offlineBakeRequested ||
             _rightClickInputSmoke ||
+            _leftClickInputProbe.HasValue ||
             navigationAuditRequested || _stressTest is not null ||
             _mortarRegressionRequested ||
             _automatedSkirmishRequested ||
@@ -677,7 +736,48 @@ public sealed partial class War3Rts : Node3D
                  $"terrain={map.Terrain.StableHashText} objects={map.Objects.Length}");
         _runtimeProfiler?.MapReady(GetViewport());
         if (_rightClickInputSmoke) _ = RunRightClickInputSmokeAsync();
+        if (_leftClickInputProbe is { } probe)
+            _ = RunLeftClickInputProbeAsync(probe);
         return false;
+    }
+
+    private async Task RunLeftClickInputProbeAsync(Vector2 screen)
+    {
+        while (_mapLoadInProgress)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (_leftClickInputProbeViewport is { } viewport)
+        {
+            GetWindow().Size = viewport;
+            GetWindow().ContentScaleSize = viewport;
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        if (_camera is not null && _leftClickInputProbeCamera is { } camera)
+            _camera.GlobalPosition = camera;
+        GetViewport().NotifyMouseEntered();
+        GetViewport().PushInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left,
+            Pressed = true,
+            Position = screen,
+            GlobalPosition = screen
+        }, inLocalCoords: true);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (_camera is not null && _leftClickInputProbeCamera is { } releaseCamera)
+            _camera.GlobalPosition = releaseCamera;
+        GetViewport().PushInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left,
+            Pressed = false,
+            Position = screen,
+            GlobalPosition = screen
+        }, inLocalCoords: true);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GD.Print(
+            $"WAR3_LEFT_CLICK_INPUT_PROBE screen={screen.X:0.###}," +
+            $"{screen.Y:0.###} units={FormatPointerEntityIds(_selectedUnits)} " +
+            $"buildings={FormatPointerEntityIds(_selectedBuildings)}");
+        GetTree().Quit(0);
     }
 
     private async Task RunRightClickInputSmokeAsync()
@@ -1141,6 +1241,11 @@ public sealed partial class War3Rts : Node3D
     /// </summary>
     public override void _Input(InputEvent inputEvent)
     {
+        if (inputEvent is InputEventMouseButton
+            {
+                ButtonIndex: MouseButton.Left
+            } leftMouse)
+            TraceRawLeftPointer(leftMouse);
         if (_mapLoadInProgress || _simulation is null || _camera is null ||
             inputEvent is not InputEventMouseButton
             {
@@ -1158,6 +1263,11 @@ public sealed partial class War3Rts : Node3D
         switch (inputEvent)
         {
             case InputEventMouseButton mouse:
+                if (mouse.ButtonIndex == MouseButton.Left)
+                    TraceLeftPointerRoute(
+                        mouse,
+                        ActiveLeftPointerSequence(),
+                        "unhandled-dispatch");
                 HandleMouse(mouse);
                 break;
             case InputEventMouseMotion motion when _dragging:
@@ -1171,32 +1281,100 @@ public sealed partial class War3Rts : Node3D
 
     private void HandleMouse(InputEventMouseButton mouse)
     {
+        var leftSequence = mouse.ButtonIndex == MouseButton.Left
+            ? ActiveLeftPointerSequence()
+            : 0;
         if (_navigationDebugger?.BlocksWorldPointer(mouse.Position) == true)
+        {
+            if (mouse.ButtonIndex == MouseButton.Left)
+                TraceLeftPointerRoute(
+                    mouse, leftSequence, "blocked-debug-ui");
             return;
+        }
         if (mouse.ButtonIndex == MouseButton.Left)
         {
             if (HasTargetMode())
             {
-                if (!mouse.Pressed && TryGroundPoint(mouse.Position, out var target))
+                if (mouse.Pressed)
+                {
+                    TraceLeftPointerRoute(
+                        mouse, leftSequence, "target-press-wait-release");
+                }
+                else if (TryGroundPoint(mouse.Position, out var target))
+                {
+                    TraceLeftPointerRoute(
+                        mouse,
+                        leftSequence,
+                        "target-complete",
+                        $"world={target.X:0.#},{target.Y:0.#}");
                     CompleteTarget(target, mouse.ShiftPressed);
+                    _activeLeftPointerSequence = 0;
+                }
+                else
+                {
+                    TraceLeftPointerRoute(
+                        mouse, leftSequence, "target-ground-miss");
+                    _activeLeftPointerSequence = 0;
+                }
                 return;
             }
             if (mouse.Pressed)
             {
-                if (_hud?.BlocksWorldPointer(mouse.Position) == true) return;
+                if (_hud?.BlocksWorldPointer(mouse.Position) == true)
+                {
+                    TraceLeftPointerRoute(
+                        mouse, leftSequence, "blocked-hud-ui");
+                    return;
+                }
                 _dragging = true;
                 _dragStart = mouse.Position;
                 _selectionAdditive = mouse.ShiftPressed;
                 _hud?.SetDragSelection(_dragStart, _dragStart, true);
+                TraceLeftPointerRoute(
+                    mouse,
+                    leftSequence,
+                    "drag-start",
+                    $"start={_dragStart.X:0.#},{_dragStart.Y:0.#}");
             }
             else if (_dragging)
             {
                 _dragging = false;
                 _hud?.SetDragSelection(_dragStart, mouse.Position, false);
-                if (_dragStart.DistanceTo(mouse.Position) >= MinimumDragPixels)
-                    SelectRectangle(_dragStart, mouse.Position, _selectionAdditive);
-                else if (TryGroundPoint(mouse.Position, out var point))
-                    SelectAt(point, _selectionAdditive);
+                var dragPixels = _dragStart.DistanceTo(mouse.Position);
+                if (dragPixels >= MinimumDragPixels)
+                {
+                    TraceLeftPointerRoute(
+                        mouse,
+                        leftSequence,
+                        "rectangle-release",
+                        $"start={_dragStart.X:0.#},{_dragStart.Y:0.#} " +
+                        $"distance={dragPixels:0.###} threshold={MinimumDragPixels:0.###}");
+                    SelectRectangle(
+                        _dragStart,
+                        mouse.Position,
+                        _selectionAdditive,
+                        leftSequence);
+                }
+                else
+                {
+                    TraceLeftPointerRoute(
+                        mouse,
+                        leftSequence,
+                        "click-release",
+                        $"start={_dragStart.X:0.#},{_dragStart.Y:0.#} " +
+                        $"distance={dragPixels:0.###} threshold={MinimumDragPixels:0.###}");
+                    SelectAt(
+                        mouse.Position,
+                        _selectionAdditive,
+                        leftSequence);
+                }
+                _activeLeftPointerSequence = 0;
+            }
+            else
+            {
+                TraceLeftPointerRoute(
+                    mouse, leftSequence, "release-without-drag-start");
+                _activeLeftPointerSequence = 0;
             }
             return;
         }
@@ -1252,6 +1430,68 @@ public sealed partial class War3Rts : Node3D
             $"route={route} queued={mouse.ShiftPressed} " +
             $"selected={_selectedUnits.Count}/{_selectedBuildings.Count} " +
             $"targetMode={HasTargetMode()} buildMenu={_buildMenu} mode={_mode}");
+    }
+
+    private void TraceRawLeftPointer(InputEventMouseButton mouse)
+    {
+        if (mouse.Pressed)
+            _activeLeftPointerSequence = ++_leftPointerSequence;
+        else if (_activeLeftPointerSequence <= 0)
+            _activeLeftPointerSequence = ++_leftPointerSequence;
+        TraceLeftPointerRoute(
+            mouse,
+            _activeLeftPointerSequence,
+            "raw-input",
+            $"mapLoading={_mapLoadInProgress} " +
+            $"simulationReady={_simulation is not null} " +
+            $"cameraReady={_camera is not null}");
+    }
+
+    private long ActiveLeftPointerSequence()
+    {
+        if (_activeLeftPointerSequence <= 0)
+            _activeLeftPointerSequence = ++_leftPointerSequence;
+        return _activeLeftPointerSequence;
+    }
+
+    private void TraceLeftPointerRoute(
+        InputEventMouseButton mouse,
+        long sequence,
+        string route,
+        string? detail = null)
+    {
+        var debugBlocked =
+            _navigationDebugger?.BlocksWorldPointer(mouse.Position) == true;
+        var hudBlocked = _hud?.BlocksWorldPointer(mouse.Position) == true;
+        GD.Print(
+            $"WAR3_POINTER_LEFT_GATE seq={sequence} " +
+            $"tick={_simulation?.Metrics.Tick ?? -1} " +
+            $"phase={(mouse.Pressed ? "press" : "release")} " +
+            $"screen={mouse.Position.X:0.###},{mouse.Position.Y:0.###} " +
+            $"global={mouse.GlobalPosition.X:0.###},{mouse.GlobalPosition.Y:0.###} " +
+            $"route={route} shift={mouse.ShiftPressed} " +
+            $"debugBlocked={debugBlocked} hudBlocked={hudBlocked} " +
+            $"dragging={_dragging} targetMode={HasTargetMode()} " +
+            $"move={_movePending} attackMove={_attackMovePending} " +
+            $"rally={_rallyPending} ability={_pendingAbilityId}/" +
+            $"{_pendingAbilityCaster}/{_pendingAbilityBuilding} " +
+            $"item={_pendingItemUnit}/{_pendingItemSlot} " +
+            $"building={_pendingBuilding} buildMenu={_buildMenu} " +
+            $"learnMenu={_learnMenu} mode={_mode} " +
+            $"selected={_selectedUnits.Count}/{_selectedBuildings.Count} " +
+            $"unitIds={FormatPointerEntityIds(_selectedUnits)} " +
+            $"buildingIds={FormatPointerEntityIds(_selectedBuildings)}" +
+            (string.IsNullOrWhiteSpace(detail) ? string.Empty : $" {detail}"));
+    }
+
+    private static string FormatPointerEntityIds(IEnumerable<int> ids)
+    {
+        const int limit = 24;
+        var values = ids.OrderBy(value => value).Take(limit + 1).ToArray();
+        if (values.Length == 0) return "-";
+        return values.Length <= limit
+            ? string.Join(',', values)
+            : $"{string.Join(',', values.Take(limit))},...";
     }
 
     private void HandleKey(InputEventKey input)
@@ -2344,31 +2584,27 @@ public sealed partial class War3Rts : Node3D
             _ => "商店或商品无效"
         };
 
-    private void SelectAt(NVector2 point, bool additive)
+    private void SelectAt(Vector2 screen, bool additive, long traceSequence)
     {
-        if (_simulation is null) return;
-        var best = -1;
-        var bestDistance = float.PositiveInfinity;
-        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        var beforeUnits = FormatPointerEntityIds(_selectedUnits);
+        var beforeBuildings = FormatPointerEntityIds(_selectedBuildings);
+        if (_simulation is null)
         {
-            if (!_simulation.Units.Alive[unit] ||
-                (_simulation.Combat.Teams[unit] != War3HumanScenario.PlayerId &&
-                 !_simulation.Visibility.IsUnitVisible(
-                     War3HumanScenario.PlayerId, unit,
-                     _simulation.Units, _simulation.Combat)))
-                continue;
-            var distance = NVector2.DistanceSquared(point, _simulation.Units.Positions[unit]);
-            var radius = _simulation.Units.Radii[unit] + 22f;
-            if (distance <= radius * radius && distance < bestDistance)
-            {
-                best = unit;
-                bestDistance = distance;
-            }
+            GD.Print(
+                $"WAR3_POINTER_LEFT_SELECT seq={traceSequence} " +
+                "stage=aborted reason=simulation-null");
+            return;
         }
-        var ownedUnit = best >= 0 &&
-                        _simulation.Combat.Teams[best] ==
+        GD.Print(
+            $"WAR3_POINTER_LEFT_SELECT seq={traceSequence} stage=begin " +
+            $"tick={_simulation.Metrics.Tick} " +
+            $"screen={screen.X:0.###},{screen.Y:0.###} additive={additive} " +
+            $"beforeUnits={beforeUnits} beforeBuildings={beforeBuildings}");
+        var hit = ResolveSelectionPointerHit(screen, traceSequence);
+        var ownedUnit = hit.Kind == SelectionPointerKind.Unit &&
+                        _simulation.Combat.Teams[hit.EntityId] ==
                         War3HumanScenario.PlayerId;
-        if (best >= 0)
+        if (hit.Kind == SelectionPointerKind.Unit)
         {
             if (!additive || !ownedUnit || SelectionContainsNonLocal() ||
                 _selectedBuildings.Count > 0)
@@ -2377,31 +2613,30 @@ public sealed partial class War3Rts : Node3D
                 _selectedBuildings.Clear();
             }
             var selected = true;
-            if (additive && _selectedUnits.Contains(best))
+            if (additive && _selectedUnits.Contains(hit.EntityId))
             {
-                _selectedUnits.Remove(best);
+                _selectedUnits.Remove(hit.EntityId);
                 selected = false;
             }
             else
             {
-                _selectedUnits.Add(best);
-                _activeSelectionSubgroup = UnitSubgroupKey(best);
+                _selectedUnits.Add(hit.EntityId);
+                _activeSelectionSubgroup = UnitSubgroupKey(hit.EntityId);
             }
             RefreshSelection();
             if (selected && ownedUnit) PlaySelectionAudio();
+            TraceLeftSelectionOutcome(
+                traceSequence,
+                hit,
+                additive,
+                beforeUnits,
+                beforeBuildings,
+                selected ? "unit-selected" : "unit-toggle-removed");
             return;
         }
-        var building = _simulation.CreateGameplayBuildingOverview()
-            .Where(value => !value.IsTerminal &&
-                            value.Bounds.Expanded(8f).Contains(point))
-            .Where(value => value.PlayerId == War3HumanScenario.PlayerId ||
-                            _simulation.Visibility.IsVisible(
-                                War3HumanScenario.PlayerId,
-                                BuildingCenter(value.Bounds)))
-            .OrderBy(value => value.Bounds.Width * value.Bounds.Height)
-            .FirstOrDefault();
-        if (building.Type.Name is not null)
+        if (hit.Kind == SelectionPointerKind.Building)
         {
+            var building = hit.Building;
             var ownedBuilding = building.PlayerId == War3HumanScenario.PlayerId;
             if (!additive || !ownedBuilding || SelectionContainsNonLocal() ||
                 _selectedUnits.Count > 0)
@@ -2423,6 +2658,471 @@ public sealed partial class War3Rts : Node3D
             _selectedBuildings.Clear();
         }
         RefreshSelection();
+        TraceLeftSelectionOutcome(
+            traceSequence,
+            hit,
+            additive,
+            beforeUnits,
+            beforeBuildings,
+            hit.Kind == SelectionPointerKind.Building
+                ? "building-selection-applied"
+                : additive
+                    ? "miss-kept-additive-selection"
+                    : "miss-cleared-selection");
+    }
+
+    private void TraceLeftSelectionOutcome(
+        long sequence,
+        in SelectionPointerHit hit,
+        bool additive,
+        string beforeUnits,
+        string beforeBuildings,
+        string result)
+    {
+        GD.Print(
+            $"WAR3_POINTER_LEFT_SELECT seq={sequence} stage=end " +
+            $"tick={_simulation?.Metrics.Tick ?? -1} result={result} " +
+            $"hit={hit.Kind}/{hit.EntityId} additive={additive} " +
+            $"beforeUnits={beforeUnits} beforeBuildings={beforeBuildings} " +
+            $"afterUnits={FormatPointerEntityIds(_selectedUnits)} " +
+            $"afterBuildings={FormatPointerEntityIds(_selectedBuildings)} " +
+            $"activeSubgroup={_activeSelectionSubgroup}");
+    }
+
+    private SelectionPointerHit ResolveSelectionPointerHit(
+        Vector2 screen,
+        long traceSequence = 0)
+    {
+        if (_simulation is null || _camera is null || _presenter is null)
+        {
+            TraceLeftResolve(
+                traceSequence,
+                $"stage=aborted simulation={_simulation is not null} " +
+                $"camera={_camera is not null} presenter={_presenter is not null}");
+            return default;
+        }
+        if (!TryGroundPoint(screen, out var groundPoint))
+        {
+            TraceLeftResolve(
+                traceSequence,
+                $"stage=ground-miss screen={screen.X:0.###},{screen.Y:0.###}");
+            return default;
+        }
+        TraceLeftResolve(
+            traceSequence,
+            $"stage=begin screen={screen.X:0.###},{screen.Y:0.###} " +
+            $"ground={groundPoint.X:0.###},{groundPoint.Y:0.###} " +
+            $"viewport={GetViewport().GetVisibleRect().Size.X:0.###}x" +
+            $"{GetViewport().GetVisibleRect().Size.Y:0.###} " +
+            $"camera={_camera.GlobalPosition.X:0.###}," +
+            $"{_camera.GlobalPosition.Y:0.###},{_camera.GlobalPosition.Z:0.###} " +
+            $"rotation={_camera.GlobalRotationDegrees.X:0.###}," +
+            $"{_camera.GlobalRotationDegrees.Y:0.###}," +
+            $"{_camera.GlobalRotationDegrees.Z:0.###} " +
+            $"projection={_camera.Projection} fov={_camera.Fov:0.###} " +
+            $"size={_camera.Size:0.###}");
+
+        var bestUnit = -1;
+        var bestTier = War3PointerHitTier.Assistance;
+        var bestScore = float.PositiveInfinity;
+        var bestDepth = float.PositiveInfinity;
+        var nearbyUnits = 0;
+        var projectedUnits = 0;
+        var modelUnitHits = 0;
+        var bodyUnitHits = 0;
+        var assistedUnitHits = 0;
+        for (var unit = 0; unit < _simulation.Units.Count; unit++)
+        {
+            if (!_simulation.Units.Alive[unit])
+                continue;
+            var unitPosition = _simulation.Units.Positions[unit];
+            var groundDistanceSquared = NVector2.DistanceSquared(
+                groundPoint, unitPosition);
+            if (groundDistanceSquared > 700f * 700f) continue;
+            nearbyUnits++;
+            if (!_presenter.TryGetUnitPointerVisual(unit, out var visual))
+            {
+                TraceLeftCandidate(
+                    traceSequence,
+                    "unit",
+                    unit,
+                    "visual-unavailable",
+                    $"team={_simulation.Combat.Teams[unit]} " +
+                    $"sim={unitPosition.X:0.###},{unitPosition.Y:0.###} " +
+                    $"groundDistance={MathF.Sqrt(groundDistanceSquared):0.###}");
+                continue;
+            }
+            // Project only nearby candidates. The padding accounts for the
+            // terrain-ray displacement caused by clicking a tall model body.
+            var broadphaseRadius =
+                (visual.WorldHeight + visual.WorldRadius + 0.65f) * 100f;
+            if (groundDistanceSquared > broadphaseRadius * broadphaseRadius)
+            {
+                TraceLeftCandidate(
+                    traceSequence,
+                    "unit",
+                    unit,
+                    "world-broadphase-miss",
+                    $"team={_simulation.Combat.Teams[unit]} " +
+                    $"sim={unitPosition.X:0.###},{unitPosition.Y:0.###} " +
+                    $"groundDistance={MathF.Sqrt(groundDistanceSquared):0.###} " +
+                    $"radius={broadphaseRadius:0.###}");
+                continue;
+            }
+            if (!TryProjectPointerCapsule(
+                    visual,
+                    bodyPaddingPixels: 2f,
+                    assistancePaddingPixels: 4f,
+                    minimumBodyRadiusPixels: 8f,
+                    maximumBodyRadiusPixels: 16f,
+                    out var bodyStart,
+                    out var bodyEnd,
+                    out var bodyRadiusPixels,
+                    out var assistanceRadiusPixels,
+                    out var depth))
+            {
+                TraceLeftCandidate(
+                    traceSequence,
+                    "unit",
+                    unit,
+                    "projection-failed",
+                    $"team={_simulation.Combat.Teams[unit]} " +
+                    $"world={visual.WorldOrigin.X:0.###}," +
+                    $"{visual.WorldOrigin.Y:0.###},{visual.WorldOrigin.Z:0.###} " +
+                    $"height={visual.WorldHeight:0.###}");
+                continue;
+            }
+            projectedUnits++;
+            var score = War3PointerTargeting.DistanceSquaredToSegment(
+                screen, bodyStart, bodyEnd);
+            var bodyHit = score <= bodyRadiusPixels * bodyRadiusPixels;
+            var assistedHit = !bodyHit &&
+                              score <= assistanceRadiusPixels *
+                              assistanceRadiusPixels;
+            var modelHit = TryIntersectPointerModel(
+                screen,
+                visual,
+                out var modelDepth,
+                out var modelPart,
+                out var modelPartHits);
+            var tier = modelHit
+                ? War3PointerHitTier.Model
+                : bodyHit
+                    ? War3PointerHitTier.Body
+                    : War3PointerHitTier.Assistance;
+            if (modelHit) modelUnitHits++;
+            if (bodyHit) bodyUnitHits++;
+            else if (assistedHit) assistedUnitHits++;
+            var previous = bestUnit < 0
+                ? "-"
+                : $"{bestUnit}/{bestTier.ToString().ToLowerInvariant()}/" +
+                  $"{MathF.Sqrt(bestScore):0.###}/{bestDepth:0.###}";
+            var eligible = modelHit || bodyHit || assistedHit;
+            var candidateDepth = modelHit ? modelDepth : depth;
+            var preferred = eligible &&
+                War3PointerTargeting.PreferLayeredScreenHit(
+                    tier, score, candidateDepth, unit,
+                    bestTier, bestScore, bestDepth, bestUnit);
+            TraceLeftCandidate(
+                traceSequence,
+                "unit",
+                unit,
+                modelHit ? "model-hit" :
+                bodyHit ? "body-hit" : assistedHit ? "assist-hit" : "screen-miss",
+                $"team={_simulation.Combat.Teams[unit]} " +
+                $"sim={unitPosition.X:0.###},{unitPosition.Y:0.###} " +
+                $"segment={bodyStart.X:0.###},{bodyStart.Y:0.###}->" +
+                $"{bodyEnd.X:0.###},{bodyEnd.Y:0.###} " +
+                $"pixelDistance={MathF.Sqrt(score):0.###} " +
+                $"bodyRadius={bodyRadiusPixels:0.###} " +
+                $"assistRadius={assistanceRadiusPixels:0.###} " +
+                $"depth={candidateDepth:0.###} modelDepth=" +
+                $"{(modelHit ? modelDepth.ToString("0.###") : "-")} " +
+                $"modelPart={(modelHit ? modelPart : -1)} " +
+                $"modelPartHits={modelPartHits} " +
+                $"localBounds={FormatPointerBounds(visual.LocalBounds)} " +
+                $"preferred={preferred} previous={previous}");
+            if (!preferred) continue;
+            bestUnit = unit;
+            bestTier = tier;
+            bestScore = score;
+            bestDepth = candidateDepth;
+        }
+        // A visible unit body always wins over a building behind it. This is
+        // what makes selecting units inside dense bases predictable.
+        if (bestUnit >= 0)
+        {
+            TraceLeftResolve(
+                traceSequence,
+                $"stage=result kind=unit id={bestUnit} " +
+                $"tier={bestTier.ToString().ToLowerInvariant()} " +
+                $"pixelDistance={MathF.Sqrt(bestScore):0.###} " +
+                $"depth={bestDepth:0.###} nearbyUnits={nearbyUnits} " +
+                $"projectedUnits={projectedUnits} modelHits={modelUnitHits} " +
+                $"bodyHits={bodyUnitHits} " +
+                $"assistHits={assistedUnitHits} buildingScan=skipped-unit-wins");
+            return new SelectionPointerHit(
+                SelectionPointerKind.Unit, bestUnit, default);
+        }
+        TraceLeftResolve(
+            traceSequence,
+            $"stage=unit-scan-none nearbyUnits={nearbyUnits} " +
+            $"projectedUnits={projectedUnits} modelHits={modelUnitHits} " +
+            $"bodyHits={bodyUnitHits} " +
+            $"assistHits={assistedUnitHits}");
+
+        var required = _simulation.GameplayBuildingSlotCount;
+        if (_pointerBuildingScratch.Length < required)
+            Array.Resize(
+                ref _pointerBuildingScratch,
+                Math.Max(required, Math.Max(16, _pointerBuildingScratch.Length * 2)));
+        var buildingCount = _simulation.CopyGameplayBuildingOverview(
+            _pointerBuildingScratch);
+        var bestBuilding = default(GameplayBuildingSnapshot);
+        bestTier = War3PointerHitTier.Assistance;
+        bestScore = float.PositiveInfinity;
+        bestDepth = float.PositiveInfinity;
+        var bestBuildingId = -1;
+        var liveBuildings = 0;
+        var projectedBuildings = 0;
+        var modelBuildingHits = 0;
+        var bodyBuildingHits = 0;
+        var assistedBuildingHits = 0;
+        for (var index = 0; index < buildingCount; index++)
+        {
+            var building = _pointerBuildingScratch[index];
+            if (building.IsTerminal) continue;
+            liveBuildings++;
+            var buildingCenter = BuildingCenter(building.Bounds);
+            if (!_presenter.TryGetBuildingPointerVisual(
+                    building.Id.Value, out var visual))
+            {
+                TraceLeftCandidate(
+                    traceSequence,
+                    "building",
+                    building.Id.Value,
+                    "visual-unavailable",
+                    $"player={building.PlayerId} type={building.Type.Id} " +
+                    $"sim={buildingCenter.X:0.###},{buildingCenter.Y:0.###}");
+                continue;
+            }
+            if (!TryProjectPointerCapsule(
+                    visual,
+                    bodyPaddingPixels: 0f,
+                    assistancePaddingPixels: 2f,
+                    minimumBodyRadiusPixels: 8f,
+                    maximumBodyRadiusPixels: float.PositiveInfinity,
+                    out var bodyStart,
+                    out var bodyEnd,
+                    out var bodyRadiusPixels,
+                    out var assistanceRadiusPixels,
+                    out var depth))
+            {
+                TraceLeftCandidate(
+                    traceSequence,
+                    "building",
+                    building.Id.Value,
+                    "projection-failed",
+                    $"player={building.PlayerId} type={building.Type.Id} " +
+                    $"world={visual.WorldOrigin.X:0.###}," +
+                    $"{visual.WorldOrigin.Y:0.###},{visual.WorldOrigin.Z:0.###} " +
+                    $"height={visual.WorldHeight:0.###}");
+                continue;
+            }
+            projectedBuildings++;
+            var score = War3PointerTargeting.DistanceSquaredToSegment(
+                screen, bodyStart, bodyEnd);
+            var bodyHit = score <= bodyRadiusPixels * bodyRadiusPixels;
+            var assistedHit = !bodyHit &&
+                              score <= assistanceRadiusPixels *
+                              assistanceRadiusPixels;
+            var modelHit = TryIntersectPointerModel(
+                screen,
+                visual,
+                out var modelDepth,
+                out var modelPart,
+                out var modelPartHits);
+            var tier = modelHit
+                ? War3PointerHitTier.Model
+                : bodyHit
+                    ? War3PointerHitTier.Body
+                    : War3PointerHitTier.Assistance;
+            if (modelHit) modelBuildingHits++;
+            if (bodyHit) bodyBuildingHits++;
+            else if (assistedHit) assistedBuildingHits++;
+            var previous = bestBuildingId < 0
+                ? "-"
+                : $"{bestBuildingId}/{bestTier.ToString().ToLowerInvariant()}/" +
+                  $"{MathF.Sqrt(bestScore):0.###}/{bestDepth:0.###}";
+            var eligible = modelHit || bodyHit || assistedHit;
+            var candidateDepth = modelHit ? modelDepth : depth;
+            var preferred = eligible &&
+                War3PointerTargeting.PreferLayeredScreenHit(
+                    tier, score, candidateDepth, building.Id.Value,
+                    bestTier, bestScore, bestDepth, bestBuildingId);
+            TraceLeftCandidate(
+                traceSequence,
+                "building",
+                building.Id.Value,
+                modelHit ? "model-hit" :
+                bodyHit ? "body-hit" : assistedHit ? "assist-hit" : "screen-miss",
+                $"player={building.PlayerId} type={building.Type.Id} " +
+                $"sim={buildingCenter.X:0.###},{buildingCenter.Y:0.###} " +
+                $"segment={bodyStart.X:0.###},{bodyStart.Y:0.###}->" +
+                $"{bodyEnd.X:0.###},{bodyEnd.Y:0.###} " +
+                $"pixelDistance={MathF.Sqrt(score):0.###} " +
+                $"bodyRadius={bodyRadiusPixels:0.###} " +
+                $"assistRadius={assistanceRadiusPixels:0.###} " +
+                $"depth={candidateDepth:0.###} modelDepth=" +
+                $"{(modelHit ? modelDepth.ToString("0.###") : "-")} " +
+                $"modelPart={(modelHit ? modelPart : -1)} " +
+                $"modelPartHits={modelPartHits} " +
+                $"localBounds={FormatPointerBounds(visual.LocalBounds)} " +
+                $"preferred={preferred} previous={previous}");
+            if (!preferred) continue;
+            bestBuilding = building;
+            bestBuildingId = building.Id.Value;
+            bestTier = tier;
+            bestScore = score;
+            bestDepth = candidateDepth;
+        }
+        if (bestBuildingId < 0)
+        {
+            TraceLeftResolve(
+                traceSequence,
+                $"stage=result kind=none liveBuildings={liveBuildings} " +
+                $"projectedBuildings={projectedBuildings} " +
+                $"modelHits={modelBuildingHits} " +
+                $"bodyHits={bodyBuildingHits} " +
+                $"assistHits={assistedBuildingHits}");
+            return default;
+        }
+        TraceLeftResolve(
+            traceSequence,
+            $"stage=result kind=building id={bestBuildingId} " +
+            $"tier={bestTier.ToString().ToLowerInvariant()} " +
+            $"pixelDistance={MathF.Sqrt(bestScore):0.###} " +
+            $"depth={bestDepth:0.###} liveBuildings={liveBuildings} " +
+            $"projectedBuildings={projectedBuildings} " +
+            $"modelHits={modelBuildingHits} " +
+            $"bodyHits={bodyBuildingHits} assistHits={assistedBuildingHits}");
+        return new SelectionPointerHit(
+                SelectionPointerKind.Building,
+                bestBuildingId,
+                bestBuilding);
+    }
+
+    private void TraceLeftResolve(long sequence, string detail)
+    {
+        if (sequence <= 0) return;
+        GD.Print(
+            $"WAR3_POINTER_LEFT_RESOLVE seq={sequence} " +
+            $"tick={_simulation?.Metrics.Tick ?? -1} {detail}");
+    }
+
+    private void TraceLeftCandidate(
+        long sequence,
+        string kind,
+        int id,
+        string stage,
+        string detail)
+    {
+        if (sequence <= 0) return;
+        GD.Print(
+            $"WAR3_POINTER_LEFT_CANDIDATE seq={sequence} " +
+            $"tick={_simulation?.Metrics.Tick ?? -1} " +
+            $"kind={kind} id={id} stage={stage} {detail}");
+    }
+
+    private static string FormatPointerBounds(in Aabb bounds) =>
+        $"{bounds.Position.X:0.###},{bounds.Position.Y:0.###}," +
+        $"{bounds.Position.Z:0.###}/" +
+        $"{bounds.Size.X:0.###},{bounds.Size.Y:0.###}," +
+        $"{bounds.Size.Z:0.###}";
+
+    private bool TryIntersectPointerModel(
+        Vector2 screen,
+        in War3PointerVisual visual,
+        out float worldDepth,
+        out int nearestPart,
+        out int partHits)
+    {
+        worldDepth = float.PositiveInfinity;
+        nearestPart = -1;
+        partHits = 0;
+        if (_camera is null) return false;
+        var rayOrigin = _camera.ProjectRayOrigin(screen);
+        var rayDirection = _camera.ProjectRayNormal(screen).Normalized();
+        for (var part = 0; part < visual.Actor.PointerPartCount; part++)
+        {
+            if (!visual.Actor.TryGetPointerPartBounds(
+                    part, out var partTransform, out var partBounds))
+                continue;
+            var inverse = partTransform.AffineInverse();
+            var localOrigin = inverse * rayOrigin;
+            var localDirection = inverse.Basis * rayDirection;
+            if (!War3PointerTargeting.TryIntersectRayAabb(
+                    localOrigin,
+                    localDirection,
+                    partBounds,
+                    out var localDistance))
+                continue;
+            var localHit = localOrigin + localDirection * localDistance;
+            var worldHit = partTransform * localHit;
+            var depth = (worldHit - rayOrigin).Dot(rayDirection);
+            if (!float.IsFinite(depth) || depth < 0f) continue;
+            partHits++;
+            if (depth >= worldDepth) continue;
+            worldDepth = depth;
+            nearestPart = part;
+        }
+        return nearestPart >= 0;
+    }
+
+    private bool TryProjectPointerCapsule(
+        in War3PointerVisual visual,
+        float bodyPaddingPixels,
+        float assistancePaddingPixels,
+        float minimumBodyRadiusPixels,
+        float maximumBodyRadiusPixels,
+        out Vector2 bodyStart,
+        out Vector2 bodyEnd,
+        out float bodyRadiusPixels,
+        out float assistanceRadiusPixels,
+        out float depth)
+    {
+        bodyStart = default;
+        bodyEnd = default;
+        bodyRadiusPixels = 0f;
+        assistanceRadiusPixels = 0f;
+        depth = float.PositiveInfinity;
+        if (_camera is null)
+            return false;
+        var bodyCenter = visual.WorldOrigin +
+                         Vector3.Up * (visual.WorldHeight * 0.5f);
+        if (_camera.IsPositionBehind(bodyCenter)) return false;
+        bodyStart = _camera.UnprojectPosition(visual.WorldOrigin);
+        bodyEnd = _camera.UnprojectPosition(
+            visual.WorldOrigin + Vector3.Up * visual.WorldHeight);
+        var cameraRight = _camera.GlobalBasis.X;
+        cameraRight.Y = 0f;
+        cameraRight = cameraRight.LengthSquared() > 0.0001f
+            ? cameraRight.Normalized()
+            : Vector3.Right;
+        var selectionEdge = _camera.UnprojectPosition(
+            visual.WorldOrigin + cameraRight * visual.WorldRadius);
+        bodyRadiusPixels = Math.Clamp(
+            bodyStart.DistanceTo(selectionEdge) + bodyPaddingPixels,
+            minimumBodyRadiusPixels,
+            maximumBodyRadiusPixels);
+        assistanceRadiusPixels =
+            bodyRadiusPixels + assistancePaddingPixels;
+        var cameraForward = -_camera.GlobalBasis.Z.Normalized();
+        depth = (bodyCenter - _camera.GlobalPosition).Dot(cameraForward);
+        return float.IsFinite(bodyRadiusPixels) &&
+               float.IsFinite(assistanceRadiusPixels) &&
+               float.IsFinite(bodyStart.X) && float.IsFinite(bodyStart.Y) &&
+               float.IsFinite(bodyEnd.X) && float.IsFinite(bodyEnd.Y);
     }
 
     private bool SelectionContainsNonLocal()
@@ -2441,9 +3141,21 @@ public sealed partial class War3Rts : Node3D
         });
     }
 
-    private void SelectRectangle(Vector2 from, Vector2 to, bool additive)
+    private void SelectRectangle(
+        Vector2 from,
+        Vector2 to,
+        bool additive,
+        long traceSequence)
     {
-        if (_simulation is null || _camera is null) return;
+        var beforeUnits = FormatPointerEntityIds(_selectedUnits);
+        var beforeBuildings = FormatPointerEntityIds(_selectedBuildings);
+        if (_simulation is null || _camera is null)
+        {
+            GD.Print(
+                $"WAR3_POINTER_LEFT_RECT seq={traceSequence} stage=aborted " +
+                $"simulation={_simulation is not null} camera={_camera is not null}");
+            return;
+        }
         var selectedNewUnit = false;
         if (!additive)
         {
@@ -2469,6 +3181,15 @@ public sealed partial class War3Rts : Node3D
         }
         RefreshSelection();
         if (selectedNewUnit) PlaySelectionAudio();
+        GD.Print(
+            $"WAR3_POINTER_LEFT_RECT seq={traceSequence} stage=end " +
+            $"tick={_simulation.Metrics.Tick} additive={additive} " +
+            $"rect={rect.Position.X:0.###},{rect.Position.Y:0.###}," +
+            $"{rect.Size.X:0.###},{rect.Size.Y:0.###} " +
+            $"beforeUnits={beforeUnits} beforeBuildings={beforeBuildings} " +
+            $"afterUnits={FormatPointerEntityIds(_selectedUnits)} " +
+            $"afterBuildings={FormatPointerEntityIds(_selectedBuildings)} " +
+            $"selectedNewUnit={selectedNewUnit}");
     }
 
     private void RefreshSelection()
@@ -2650,6 +3371,7 @@ public sealed partial class War3Rts : Node3D
         {
             _presenter?.HidePointerPreview();
             _presenter?.HideAbilityPointerPreview();
+            _presenter?.HideHoverOutline();
             _cursor?.SetMode(War3CursorMode.Normal);
             return;
         }
@@ -2659,6 +3381,7 @@ public sealed partial class War3Rts : Node3D
         {
             _presenter.HidePointerPreview();
             _presenter.HideAbilityPointerPreview();
+            _presenter.HideHoverOutline();
             _cursor?.SetMode(War3CursorMode.Normal);
             return;
         }
@@ -2668,6 +3391,7 @@ public sealed partial class War3Rts : Node3D
         {
             _presenter.HidePointerPreview();
             _presenter.HideAbilityPointerPreview();
+            _presenter.HideHoverOutline();
             _cursor?.SetMode(edgeMode);
             return;
         }
@@ -2676,6 +3400,7 @@ public sealed partial class War3Rts : Node3D
         {
             _presenter.HidePointerPreview();
             _presenter.HideAbilityPointerPreview();
+            _presenter.HideHoverOutline();
             _cursor?.SetMode(War3CursorMode.Normal);
             return;
         }
@@ -2684,6 +3409,7 @@ public sealed partial class War3Rts : Node3D
         {
             _presenter.HidePointerPreview();
             _presenter.HideAbilityPointerPreview();
+            _presenter.HideHoverOutline();
             _cursor?.SetMode(HasTargetMode()
                 ? War3CursorMode.InvalidTarget
                 : War3CursorMode.Normal);
@@ -2692,12 +3418,14 @@ public sealed partial class War3Rts : Node3D
 
         if (_pendingBuilding >= 0)
         {
+            _presenter.HideHoverOutline();
             UpdateBuildingPointer(point);
             return;
         }
 
         if (_pendingItemSlot >= 0)
         {
+            _presenter.HideHoverOutline();
             UpdateItemPointer(point);
             return;
         }
@@ -2705,6 +3433,7 @@ public sealed partial class War3Rts : Node3D
         _presenter.HidePointerPreview();
         if (_pendingAbilityId >= 0)
         {
+            _presenter.HideHoverOutline();
             UpdateAbilityPointer(point);
             return;
         }
@@ -2712,23 +3441,41 @@ public sealed partial class War3Rts : Node3D
         _presenter.HideAbilityPointerPreview();
         if (_movePending)
         {
+            _presenter.HideHoverOutline();
             _cursor?.SetMode(War3CursorMode.Target);
             return;
         }
         if (_attackMovePending || _rallyPending)
         {
+            _presenter.HideHoverOutline();
             _cursor?.SetMode(War3CursorMode.TargetSelect);
             return;
         }
         if (_dragging)
         {
+            _presenter.HideHoverOutline();
             _cursor?.SetMode(War3CursorMode.Select);
             return;
         }
-        _cursor?.SetMode(ResolveSmartTarget(point).Kind ==
+        var hover = ResolveSelectionPointerHit(screen);
+        switch (hover.Kind)
+        {
+            case SelectionPointerKind.Unit:
+                _presenter.ShowUnitHover(hover.EntityId);
+                break;
+            case SelectionPointerKind.Building:
+                _presenter.ShowBuildingHover(
+                    hover.EntityId, hover.Building.PlayerId);
+                break;
+            default:
+                _presenter.HideHoverOutline();
+                break;
+        }
+        _cursor?.SetMode(hover.Kind != SelectionPointerKind.None ||
+                         ResolveSmartTarget(point).Kind !=
                          SmartCommandTargetKind.Ground
-            ? War3CursorMode.Normal
-            : War3CursorMode.Select);
+            ? War3CursorMode.Select
+            : War3CursorMode.Normal);
     }
 
     private void UpdateBuildingPointer(NVector2 point)
@@ -4667,7 +5414,7 @@ public sealed partial class War3Rts : Node3D
             peasantData.Summary.Sight.Day is > 0f &&
             MathF.Abs(peasantProfile.Perception.VisionRange -
                       peasantData.Summary.Sight.Day.Value *
-                      War3GameplayImportPolicy.Default.WorldDistanceScale) < 0.01f &&
+                      War3GameplayImportPolicy.Runtime.WorldDistanceScale) < 0.01f &&
             flyingProfile.Perception.TerrainVisionMode ==
                 TerrainVisionMode.Elevated &&
             _simulation.CombatWeaponUpgradeTechnologyId == 0 &&
@@ -5205,6 +5952,18 @@ public sealed partial class War3Rts : Node3D
         int HeroLevel,
         int FirstEntity,
         int[] Entities);
+
+    private readonly record struct SelectionPointerHit(
+        SelectionPointerKind Kind,
+        int EntityId,
+        GameplayBuildingSnapshot Building);
+
+    private enum SelectionPointerKind : byte
+    {
+        None,
+        Unit,
+        Building
+    }
 
     private enum TargetMode : byte
     {

@@ -1,0 +1,313 @@
+{
+  "schema": "war3-content-hardcode-audit-baseline/v1",
+  "auditedAt": "2026-07-20",
+  "scope": [
+    "src/War3Rts",
+    "src/Simulation",
+    "assets/warcraft3/classic/data",
+    "reports/war3_ability_runtime_coverage.json"
+  ],
+  "objectData": {
+    "unitsAndBuildings": {
+      "total": 837,
+      "buildings": 210,
+      "nonBuildings": 627,
+      "heroes": 89,
+      "humanTotal": 108,
+      "humanBuildings": 46,
+      "humanUnits": 42,
+      "humanHeroes": 20,
+      "currentRuntimeBuildings": 16,
+      "currentRuntimeUnitsAndHeroes": 17
+    },
+    "abilities": 801,
+    "abilityBaseFamilies": 415,
+    "upgrades": 89,
+    "buffsAndEffects": 247,
+    "items": 273,
+    "currentRuntimeTechnologies": 21,
+    "currentRuntimeProductionRecipes": 16,
+    "currentRuntimeShopItems": 9
+  },
+  "abilityCoverage": {
+    "all": {
+      "classifiedRawcodes": 163,
+      "classifiedFamilies": 62,
+      "unclassifiedRawcodes": 638,
+      "blockedRawcodes": 8
+    },
+    "unitReferenced": {
+      "rawcodes": 461,
+      "families": 285,
+      "classifiedRawcodes": 99,
+      "classifiedFamilies": 54,
+      "unclassifiedRawcodes": 362,
+      "blockedRawcodes": 1
+    },
+    "items": {
+      "rawcodes": 234,
+      "families": 129,
+      "classifiedRawcodes": 47,
+      "classifiedFamilies": 22,
+      "unclassifiedRawcodes": 187,
+      "blockedRawcodes": 1
+    },
+    "currentRuntime": {
+      "rawcodes": 47,
+      "families": 45,
+      "implementedGameplay": 43,
+      "delegated": 3,
+      "presentationOnly": 1,
+      "blocked": 0,
+      "unclassified": 0
+    }
+  },
+  "staticObjectIdLiteralCandidates": {
+    "occurrences": 175,
+    "uniqueManifestIds": 126,
+    "sourceFiles": 16,
+    "byPrimaryFile": {
+      "src/War3Rts/War3HumanContent.cs": 65,
+      "src/War3Rts/Data/War3AbilityBehaviorRegistry.cs": 62,
+      "otherProductionSources": 48
+    },
+    "limitations": [
+      "This is a lower-bound candidate scan, not a semantic defect count.",
+      "It excludes non-four-character asset paths, localized strings, UI coordinates and numeric fallbacks.",
+      "It includes a small number of ordinary tokens that collide with manifest IDs and smoke fixtures stored in production files."
+    ]
+  },
+  "globalCompositionCoupling": {
+    "productionWar3HumanContentReferences": 141,
+    "primaryFiles": {
+      "src/War3Rts/War3Rts.cs": 84,
+      "src/War3Rts/War3WorldPresenter.cs": 20,
+      "src/War3Rts/War3HumanScenario.cs": 16,
+      "src/War3Rts/War3StressTestMode.cs": 10
+    }
+  },
+  "findingClusters": [
+    {
+      "id": "HC-001",
+      "severity": "critical",
+      "kind": "playable_allowlist",
+      "location": "src/War3Rts/War3HumanContent.cs:60",
+      "disposition": "eliminate"
+    },
+    {
+      "id": "HC-002",
+      "severity": "critical",
+      "kind": "presentation_fallbacks",
+      "location": "src/War3Rts/War3HumanContent.cs:619",
+      "disposition": "eliminate"
+    },
+    {
+      "id": "HC-003",
+      "severity": "critical",
+      "kind": "unit_profile_fallbacks_and_id_special_cases",
+      "location": "src/War3Rts/War3HumanContent.cs:747",
+      "disposition": "eliminate"
+    },
+    {
+      "id": "HC-004",
+      "severity": "critical",
+      "kind": "building_profile_and_capability_fallbacks",
+      "location": "src/War3Rts/War3HumanContent.cs:711",
+      "disposition": "eliminate"
+    },
+    {
+      "id": "HC-005",
+      "severity": "critical",
+      "kind": "production_recipe_allowlist",
+      "location": "src/War3Rts/War3HumanContent.cs:768",
+      "disposition": "derive_from_relationship_graph"
+    },
+    {
+      "id": "HC-006",
+      "severity": "critical",
+      "kind": "technology_allowlist_and_researcher_binding",
+      "location": "src/War3Rts/War3HumanContent.cs:284",
+      "disposition": "derive_from_relationship_graph"
+    },
+    {
+      "id": "HC-007",
+      "severity": "critical",
+      "kind": "weapon_and_armor_upgrade_rawcode_mapping",
+      "location": "src/War3Rts/Data/War3GameplayDataAdapter.cs:435",
+      "disposition": "compile_upgrade_effect_bindings"
+    },
+    {
+      "id": "HC-008",
+      "severity": "critical",
+      "kind": "silent_source_and_profile_fallback",
+      "location": "src/War3Rts/War3HumanContent.cs:270",
+      "disposition": "fail_fast_in_production"
+    },
+    {
+      "id": "HC-009",
+      "severity": "critical",
+      "kind": "summoned_unit_allowlist",
+      "location": "src/War3Rts/War3HumanContent.cs:503",
+      "disposition": "derive_transitive_content_closure"
+    },
+    {
+      "id": "HC-010",
+      "severity": "critical",
+      "kind": "ability_basecode_registry_and_incomplete_family_coverage",
+      "location": "src/War3Rts/Data/War3AbilityBehaviorRegistry.cs:85",
+      "disposition": "externalize_dispatch_metadata_keep_generic_handlers"
+    },
+    {
+      "id": "HC-011",
+      "severity": "high",
+      "kind": "per_rawcode_ability_override",
+      "location": "src/War3Rts/Data/War3AbilityBehaviorRegistry.cs:359",
+      "disposition": "replace_with_data_dispatch"
+    },
+    {
+      "id": "HC-012",
+      "severity": "critical",
+      "kind": "item_behavior_and_town_tier_switches",
+      "location": "src/War3Rts/Data/War3ItemDataAdapter.cs:94",
+      "disposition": "reuse_ability_and_requirement_compilers"
+    },
+    {
+      "id": "HC-013",
+      "severity": "critical",
+      "kind": "arcane_vault_specific_shop_runtime",
+      "location": "src/War3Rts/War3ItemShopRuntime.cs:534",
+      "disposition": "generic_shop_capability"
+    },
+    {
+      "id": "HC-014",
+      "severity": "high",
+      "kind": "item_state_outside_core_simulation",
+      "location": "src/War3Rts/War3Rts.cs:34",
+      "disposition": "move_to_simulation_snapshot_hash_replay"
+    },
+    {
+      "id": "HC-015",
+      "severity": "high",
+      "kind": "hardcoded_command_card_commands",
+      "location": "src/War3Rts/War3Rts.cs:4242",
+      "disposition": "compile_command_card_definitions"
+    },
+    {
+      "id": "HC-016",
+      "severity": "high",
+      "kind": "hud_direct_editor_json_queries",
+      "location": "src/War3Rts/War3Rts.cs:4441",
+      "disposition": "consume_compiled_ui_dtos_only"
+    },
+    {
+      "id": "HC-017",
+      "severity": "high",
+      "kind": "human_attack_and_armor_icon_guessing",
+      "location": "src/War3Rts/War3Rts.cs:3675",
+      "disposition": "compile_stat_presentation"
+    },
+    {
+      "id": "HC-018",
+      "severity": "high",
+      "kind": "command_count_truncation_and_slot_fallbacks",
+      "location": "src/War3Rts/War3Rts.cs:4441",
+      "disposition": "compile_pages_and_reject_slot_conflicts"
+    },
+    {
+      "id": "HC-019",
+      "severity": "medium",
+      "kind": "human_hud_skin_paths_and_coordinates",
+      "location": "src/War3Rts/War3RtsHud.cs:34",
+      "disposition": "externalize_skin_and_theme"
+    },
+    {
+      "id": "HC-020",
+      "severity": "medium",
+      "kind": "uber_splat_catalog_copied_to_code",
+      "location": "src/War3Rts/War3BuildingGroundVisualCatalog.cs:31",
+      "disposition": "export_splat_data"
+    },
+    {
+      "id": "HC-021",
+      "severity": "high",
+      "kind": "resource_object_and_feedback_asset_special_cases",
+      "location": "src/War3Rts/War3HumanContent.cs:262",
+      "disposition": "compile_resource_and_feedback_catalogs"
+    },
+    {
+      "id": "HC-022",
+      "severity": "high",
+      "kind": "tree_harvest_numeric_fallbacks",
+      "location": "src/War3Rts/War3TreeHarvestFeedbackCatalog.cs:16",
+      "disposition": "compile_destructable_and_harvest_data"
+    },
+    {
+      "id": "HC-023",
+      "severity": "medium",
+      "kind": "system_audio_cues_and_human_suffixes",
+      "location": "src/War3Rts/Audio/War3WorldAudioController.cs:30",
+      "disposition": "externalize_semantic_audio_policy"
+    },
+    {
+      "id": "HC-024",
+      "severity": "medium",
+      "kind": "import_policy_numeric_defaults",
+      "location": "src/War3Rts/Data/War3GameplayDataAdapter.cs:12",
+      "disposition": "version_and_hash_external_policy"
+    },
+    {
+      "id": "HC-025",
+      "severity": "high",
+      "kind": "pathing_mask_collapse_and_size_fallback",
+      "location": "src/War3Rts/Data/War3GameplayDataAdapter.cs:783",
+      "disposition": "compile_multichannel_pathing_masks"
+    },
+    {
+      "id": "HC-026",
+      "severity": "medium",
+      "kind": "scenario_named_content_ids",
+      "location": "src/War3Rts/War3HumanScenario.cs:108",
+      "disposition": "move_to_scenario_data"
+    },
+    {
+      "id": "HC-027",
+      "severity": "medium",
+      "kind": "localized_content_and_command_strings_in_code",
+      "location": "src/War3Rts/War3Rts.cs:4244",
+      "disposition": "use_exported_text_and_localization_keys"
+    },
+    {
+      "id": "HC-028",
+      "severity": "critical",
+      "kind": "global_human_content_composition_root",
+      "location": "src/War3Rts/War3HumanContent.cs:58",
+      "disposition": "replace_with_injected_content_session"
+    },
+    {
+      "id": "HC-029",
+      "severity": "high",
+      "kind": "unsupported_target_entity_layers",
+      "location": "reports/war3_ability_runtime_coverage.json",
+      "disposition": "extend_unified_target_query"
+    },
+    {
+      "id": "HC-030",
+      "severity": "critical",
+      "kind": "coverage_gate_scoped_to_curated_runtime_slice",
+      "location": "reports/war3_ability_runtime_coverage.json",
+      "disposition": "gate_on_all_playable_content_closure"
+    }
+  ],
+  "zeroCriteria": {
+    "unallowlistedProductionManifestIdLiterals": 0,
+    "createFallbackMethods": 0,
+    "namedWar3HumanContentTypeReferences": 0,
+    "unitObjectsWithExplicitCompileStatus": 837,
+    "unitReferencedAbilityRawcodesClassified": 461,
+    "unitReferencedAbilityFamiliesClassified": 285,
+    "allAbilityRawcodesClassified": 801,
+    "allAbilityFamiliesClassified": 415,
+    "unresolvedRelationshipEdges": 0,
+    "blockedPlayableObjects": 0
+  }
+}

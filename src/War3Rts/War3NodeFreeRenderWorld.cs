@@ -347,6 +347,7 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
 
     public string Source => _asset.Source;
     public War3ModelMetadata Metadata => _asset.Metadata;
+    public Aabb LocalBounds => _asset.LocalBounds;
     public bool IsAnimationPlaying => _animationPlaying;
     public bool IsProgressDriven => _progressDriven;
     public float DrivenProgress { get; private set; }
@@ -418,6 +419,32 @@ internal sealed class War3RidModelActor : IWar3RidSpatial
     }
 
     public float ApproximateWorldHeight() => _asset.ApproximateHeight;
+
+    public int PointerPartCount => _asset.Parts.Count;
+
+    public bool TryGetPointerPartBounds(
+        int part,
+        out Transform3D worldTransform,
+        out Aabb localBounds)
+    {
+        worldTransform = default;
+        localBounds = default;
+        if (_disposed || !_visible ||
+            (uint)part >= (uint)_asset.Parts.Count ||
+            (uint)_sequenceIndex >= (uint)_asset.Sequences.Count)
+            return false;
+        var sequence = _asset.Sequences[_sequenceIndex];
+        if ((uint)_appliedPose >= (uint)sequence.Poses.Length)
+            return false;
+        var pose = sequence.Poses[_appliedPose];
+        if ((uint)part >= (uint)pose.Parts.Length ||
+            !pose.Parts[part].Visible)
+            return false;
+        worldTransform = _transform * pose.Parts[part].LocalTransform;
+        localBounds = _asset.Parts[part].Mesh.GetAabb();
+        return localBounds.Size.X > 0f && localBounds.Size.Y > 0f &&
+               localBounds.Size.Z > 0f;
+    }
 
     public void PrepareEffectWorldTransform(Transform3D transform)
     {
@@ -1127,6 +1154,7 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
             _emitterByName.TryAdd(emitterKeys[index].Name, index);
         }
         ApproximateHeight = approximateHeight;
+        LocalBounds = CalculateLocalBounds(parts, approximateHeight);
         SurfaceCount = parts.Sum(value => value.Mesh.GetSurfaceCount());
         SkeletonSlotCount = parts.Count == 0
             ? 0
@@ -1138,6 +1166,7 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
     public IReadOnlyList<War3NodeFreeMeshPart> Parts { get; }
     public IReadOnlyList<War3NodeFreeSequence> Sequences { get; }
     public float ApproximateHeight { get; }
+    public Aabb LocalBounds { get; }
     public int SurfaceCount { get; }
     public int SkeletonSlotCount { get; }
     public int TeamColor { get; }
@@ -1158,6 +1187,45 @@ internal sealed class War3NodeFreeModelAsset : IDisposable
     public void FlushPresentation() => _vatBatch?.Flush();
     public int LastBatchBufferUploads => _vatBatch?.BufferUploads ?? 0;
     public long LastBatchUploadedBytes => _vatBatch?.UploadedBytes ?? 0L;
+
+    private static Aabb CalculateLocalBounds(
+        IReadOnlyList<War3NodeFreeMeshPart> parts,
+        float approximateHeight)
+    {
+        var minimum = new Vector3(
+            float.PositiveInfinity,
+            float.PositiveInfinity,
+            float.PositiveInfinity);
+        var maximum = new Vector3(
+            float.NegativeInfinity,
+            float.NegativeInfinity,
+            float.NegativeInfinity);
+        foreach (var part in parts)
+        {
+            var bounds = part.Mesh.GetAabb();
+            for (var x = 0; x <= 1; x++)
+            for (var y = 0; y <= 1; y++)
+            for (var z = 0; z <= 1; z++)
+            {
+                var point = part.RestTransform *
+                    (bounds.Position + new Vector3(
+                        bounds.Size.X * x,
+                        bounds.Size.Y * y,
+                        bounds.Size.Z * z));
+                minimum = minimum.Min(point);
+                maximum = maximum.Max(point);
+            }
+        }
+        if (float.IsFinite(minimum.X) && float.IsFinite(minimum.Y) &&
+            float.IsFinite(minimum.Z) && float.IsFinite(maximum.X) &&
+            float.IsFinite(maximum.Y) && float.IsFinite(maximum.Z) &&
+            maximum.X > minimum.X && maximum.Y > minimum.Y &&
+            maximum.Z > minimum.Z)
+            return new Aabb(minimum, maximum - minimum);
+        return new Aabb(
+            new Vector3(-0.25f, 0f, -0.25f),
+            new Vector3(0.5f, MathF.Max(0.25f, approximateHeight), 0.5f));
+    }
 
     public static War3NodeFreeModelAsset Build(
         Node3D host,

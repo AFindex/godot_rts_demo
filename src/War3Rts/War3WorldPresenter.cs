@@ -58,6 +58,13 @@ public readonly record struct War3TreeHarvestFeedbackEvent(
     int SourcePlayerId,
     ulong Sequence);
 
+internal readonly record struct War3PointerVisual(
+    Vector3 WorldOrigin,
+    float WorldRadius,
+    float WorldHeight,
+    Transform3D ActorTransform,
+    Aabb LocalBounds);
+
 /// <summary>Read-only Warcraft presentation of the authoritative RTS state.</summary>
 public sealed partial class War3WorldPresenter : Node3D
 {
@@ -115,6 +122,9 @@ public sealed partial class War3WorldPresenter : Node3D
     private readonly Dictionary<float, TorusMesh> _selectionRingMeshes = [];
     private readonly Dictionary<Color, StandardMaterial3D>
         _selectionRingMaterials = [];
+    private readonly Dictionary<float, ArrayMesh> _hoverRingMeshes = [];
+    private War3RidGeometryInstance? _unitHoverOutline;
+    private War3RidGeometryInstance? _buildingHoverOutline;
     private readonly Dictionary<string, War3TreeHarvestFeedbackProfile>
         _treeHarvestProfiles = new(StringComparer.Ordinal);
     private readonly HashSet<string> _profiledPointerGhostSources =
@@ -366,6 +376,7 @@ public sealed partial class War3WorldPresenter : Node3D
         {
             ProfilingEnabled = ProfilingEnabled
         };
+        EnsureHoverOutlines();
         _goldMineGroundVisual = War3BuildingGroundVisualCatalog.Resolve(
             War3HumanContent.DataCatalog, "ngol");
         PrewarmGroundOverlays();
@@ -415,6 +426,103 @@ public sealed partial class War3WorldPresenter : Node3D
                                             pair.Value.ActorVisible;
     }
 
+    internal bool TryGetUnitPointerVisual(
+        int unit,
+        out War3PointerVisual pointerVisual)
+    {
+        pointerVisual = default;
+        if (_simulation is null || !_units.TryGetValue(unit, out var visual) ||
+            visual.Dying || !visual.ActorVisible)
+            return false;
+        var height = visual.Actor.ApproximateWorldHeight();
+        pointerVisual = new War3PointerVisual(
+            visual.LastActorPosition,
+            visual.Selection.Scale.X,
+            Math.Clamp(height, 0.3f, 4.5f),
+            visual.Actor.Transform,
+            visual.Actor.LocalBounds);
+        return true;
+    }
+
+    internal bool TryGetBuildingPointerVisual(
+        int building,
+        out War3PointerVisual pointerVisual)
+    {
+        pointerVisual = default;
+        if (!_buildings.TryGetValue(building, out var visual) ||
+            visual.Dying || !visual.ActorVisible)
+            return false;
+        pointerVisual = new War3PointerVisual(
+            visual.WorldPosition,
+            visual.Selection.Scale.X,
+            Math.Clamp(
+                visual.Actor.ApproximateWorldHeight(),
+                0.5f,
+                12f),
+            visual.Actor.Transform,
+            visual.Actor.LocalBounds);
+        return true;
+    }
+
+    public void ShowUnitHover(int unit)
+    {
+        EnsureHoverOutlines();
+        if (!TryGetUnitPointerVisual(unit, out var visual))
+        {
+            HideHoverOutline();
+            return;
+        }
+        var unitVisual = _units[unit];
+        if (unitVisual.Selection.Visible)
+        {
+            HideHoverOutline();
+            return;
+        }
+        _buildingHoverOutline!.Visible = false;
+        _unitHoverOutline!.Position =
+            visual.WorldOrigin + Vector3.Up * SelectionHeight;
+        _unitHoverOutline.Scale = unitVisual.Selection.Scale;
+        var color = _simulation!.Combat.Teams[unit] ==
+                    War3HumanScenario.PlayerId
+            ? new Color("46d8ff")
+            : new Color("ff5c58");
+        _unitHoverOutline.SetMaterial(SelectionRingMaterial(color));
+        _unitHoverOutline.Visible = true;
+    }
+
+    public void ShowBuildingHover(int building, int playerId)
+    {
+        EnsureHoverOutlines();
+        if (!TryGetBuildingPointerVisual(building, out var visual))
+        {
+            HideHoverOutline();
+            return;
+        }
+        var buildingVisual = _buildings[building];
+        if (buildingVisual.Selection.Visible)
+        {
+            HideHoverOutline();
+            return;
+        }
+        _unitHoverOutline!.Visible = false;
+        _buildingHoverOutline!.Position =
+            visual.WorldOrigin + Vector3.Up * SelectionHeight;
+        _buildingHoverOutline.Scale = buildingVisual.Selection.Scale;
+        var color = playerId == War3HumanScenario.PlayerId
+            ? new Color("46d8ff")
+            : new Color("ff5c58");
+        _buildingHoverOutline.SetMaterial(SelectionRingMaterial(color));
+        _buildingHoverOutline.Visible = true;
+    }
+
+    public void HideHoverOutline()
+    {
+        if (_unitHoverOutline is not null)
+            _unitHoverOutline.Visible = false;
+        if (_buildingHoverOutline is not null)
+            _buildingHoverOutline.Visible = false;
+    }
+
     public override void _ExitTree()
     {
         foreach (var batch in _resourceBatches) batch.Dispose();
@@ -423,6 +531,10 @@ public sealed partial class War3WorldPresenter : Node3D
         _groundOverlayBatches.Clear();
         _ridWorld?.Dispose();
         _ridWorld = null;
+        _unitHoverOutline = null;
+        _buildingHoverOutline = null;
+        foreach (var mesh in _hoverRingMeshes.Values) mesh.Dispose();
+        _hoverRingMeshes.Clear();
     }
 
     public void SetPointerPreview(
@@ -2936,6 +3048,58 @@ public sealed partial class War3WorldPresenter : Node3D
             position,
             GroundWorldHeight(position) + localHeight);
 
+    private void EnsureHoverOutlines()
+    {
+        if (_unitHoverOutline is not null || _ridWorld is null) return;
+        var initialColor = new Color("46d8ff");
+        _unitHoverOutline = HoverRingRid(0.075f, initialColor);
+        _buildingHoverOutline = HoverRingRid(0.034f, initialColor);
+    }
+
+    private static ArrayMesh CreateDashedCircleMesh(float width)
+    {
+        const int dashCount = 24;
+        const float dashFill = 0.58f;
+        var innerRadius = MathF.Max(0.1f, 1f - width);
+        var tool = new SurfaceTool();
+        tool.Begin(Mesh.PrimitiveType.Triangles);
+        tool.SetNormal(Vector3.Up);
+        for (var dash = 0; dash < dashCount; dash++)
+        {
+            var start = Mathf.Tau * dash / dashCount;
+            var end = start + Mathf.Tau / dashCount * dashFill;
+            var innerStart = new Vector3(
+                MathF.Cos(start) * innerRadius,
+                0f,
+                MathF.Sin(start) * innerRadius);
+            var outerStart = new Vector3(
+                MathF.Cos(start), 0f, MathF.Sin(start));
+            var innerEnd = new Vector3(
+                MathF.Cos(end) * innerRadius,
+                0f,
+                MathF.Sin(end) * innerRadius);
+            var outerEnd = new Vector3(
+                MathF.Cos(end), 0f, MathF.Sin(end));
+            AddQuad(tool, innerStart, outerStart, outerEnd, innerEnd);
+        }
+        return tool.Commit();
+    }
+
+    private static void AddQuad(
+        SurfaceTool tool,
+        Vector3 first,
+        Vector3 second,
+        Vector3 third,
+        Vector3 fourth)
+    {
+        tool.AddVertex(first);
+        tool.AddVertex(second);
+        tool.AddVertex(third);
+        tool.AddVertex(first);
+        tool.AddVertex(third);
+        tool.AddVertex(fourth);
+    }
+
     private War3RidGeometryInstance SelectionRingRid(float width, Color color)
     {
         if (!_selectionRingMeshes.TryGetValue(width, out var mesh))
@@ -2949,6 +3113,31 @@ public sealed partial class War3WorldPresenter : Node3D
             };
             _selectionRingMeshes.Add(width, mesh);
         }
+        var ring = _ridWorld!.CreateGeometry(
+            mesh,
+            SelectionRingMaterial(color),
+            castShadows: false);
+        ring.Visible = false;
+        return ring;
+    }
+
+    private War3RidGeometryInstance HoverRingRid(float width, Color color)
+    {
+        if (!_hoverRingMeshes.TryGetValue(width, out var mesh))
+        {
+            mesh = CreateDashedCircleMesh(width);
+            _hoverRingMeshes.Add(width, mesh);
+        }
+        var ring = _ridWorld!.CreateGeometry(
+            mesh,
+            SelectionRingMaterial(color),
+            castShadows: false);
+        ring.Visible = false;
+        return ring;
+    }
+
+    private StandardMaterial3D SelectionRingMaterial(Color color)
+    {
         if (!_selectionRingMaterials.TryGetValue(color, out var material))
         {
             material = Emissive(color);
@@ -2956,12 +3145,7 @@ public sealed partial class War3WorldPresenter : Node3D
             material.NoDepthTest = false;
             _selectionRingMaterials.Add(color, material);
         }
-        var ring = _ridWorld!.CreateGeometry(
-            mesh,
-            material,
-            castShadows: false);
-        ring.Visible = false;
-        return ring;
+        return material;
     }
 
     private static float UnitSelectionWorldRadius(float navigationRadius) =>

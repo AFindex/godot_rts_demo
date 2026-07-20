@@ -23,6 +23,100 @@ public static class War3PointerTargetingSelfTest
             bounds, new NVector2(212.01f, 246f));
         var outsideFormerSnapRing = War3PointerTargeting.HitsBuilding(
             bounds, new NVector2(250f, 246f));
+        var bodyCenterScore = War3PointerTargeting.CapsuleHitScore(
+            new GVector2(100f, 100f),
+            new GVector2(100f, 82f),
+            new GVector2(100f, 118f),
+            12f);
+        var bodyEdgeScore = War3PointerTargeting.CapsuleHitScore(
+            new GVector2(111f, 112f),
+            new GVector2(100f, 82f),
+            new GVector2(100f, 118f),
+            12f);
+        var bodyMissScore = War3PointerTargeting.CapsuleHitScore(
+            new GVector2(113f, 112f),
+            new GVector2(100f, 82f),
+            new GVector2(100f, 118f),
+            12f);
+        var paddingUsesPixelDistance =
+            War3PointerTargeting.PreferLayeredScreenHit(
+            candidateTier: War3PointerHitTier.Assistance,
+            candidateScore: 25f,
+            candidateDepth: 30f,
+            candidateId: 9,
+            bestTier: War3PointerHitTier.Assistance,
+            bestScore: 64f,
+            bestDepth: 12f,
+            bestId: 2);
+        var bodyUsesPixelDistance =
+            !War3PointerTargeting.PreferLayeredScreenHit(
+            candidateTier: War3PointerHitTier.Body,
+            candidateScore: 100f,
+            candidateDepth: 12f,
+            candidateId: 7,
+            bestTier: War3PointerHitTier.Body,
+            bestScore: 4f,
+            bestDepth: 21f,
+            bestId: 3);
+        var foregroundModelWins =
+            War3PointerTargeting.PreferLayeredScreenHit(
+            candidateTier: War3PointerHitTier.Model,
+            candidateScore: 100f,
+            candidateDepth: 12f,
+            candidateId: 7,
+            bestTier: War3PointerHitTier.Model,
+            bestScore: 4f,
+            bestDepth: 21f,
+            bestId: 3);
+        var bodyBeatsPadding =
+            War3PointerTargeting.PreferLayeredScreenHit(
+            candidateTier: War3PointerHitTier.Body,
+            candidateScore: 100f,
+            candidateDepth: 30f,
+            candidateId: 7,
+            bestTier: War3PointerHitTier.Assistance,
+            bestScore: 1f,
+            bestDepth: 12f,
+            bestId: 3);
+        var loggedBuildingEdgeCase =
+            War3PointerTargeting.PreferLayeredScreenHit(
+            candidateTier: War3PointerHitTier.Body,
+            candidateScore: 6.814f * 6.814f,
+            candidateDepth: 26.316f,
+            candidateId: 6,
+            bestTier: War3PointerHitTier.Body,
+            bestScore: 13.505f * 13.505f,
+            bestDepth: 20.832f,
+            bestId: 5);
+        var stableIdTie = War3PointerTargeting.PreferLayeredScreenHit(
+            candidateTier: War3PointerHitTier.Body,
+            candidateScore: 16f,
+            candidateDepth: 18f,
+            candidateId: 2,
+            bestTier: War3PointerHitTier.Body,
+            bestScore: 16f,
+            bestDepth: 18f,
+            bestId: 7);
+        var rayBounds = new Aabb(
+            new Vector3(-1f, -1f, -1f),
+            new Vector3(2f, 2f, 2f));
+        var rayHitsBounds = War3PointerTargeting.TryIntersectRayAabb(
+            new Vector3(0f, 0f, -5f),
+            Vector3.Back,
+            rayBounds,
+            out var rayDepth) && MathF.Abs(rayDepth - 4f) < 0.001f;
+        var rayMissesBounds = !War3PointerTargeting.TryIntersectRayAabb(
+            new Vector3(3f, 0f, -5f),
+            Vector3.Back,
+            rayBounds,
+            out _);
+        var screenPicking = bodyCenterScore == 0f &&
+                            float.IsFinite(bodyEdgeScore) &&
+                            !float.IsFinite(bodyMissScore) &&
+                            paddingUsesPixelDistance &&
+                            bodyUsesPixelDistance && foregroundModelWins &&
+                            bodyBeatsPadding && loggedBuildingEdgeCase &&
+                            stableIdTie && rayHitsBounds && rayMissesBounds;
         var bottomHudAllowsEdgeScroll = !War3PointerTargeting.BlocksCameraEdgeScroll(
             hudBlocksWorldPointer: true,
             navigationDebuggerBlocksWorldPointer: false);
@@ -69,6 +163,7 @@ public static class War3PointerTargetingSelfTest
 
         var passed = center && insideEdge &&
                      !outsideNear && !outsideFormerSnapRing &&
+                     screenPicking &&
                      bottomHudAllowsEdgeScroll && debuggerBlocksEdgeScroll &&
                      belowZeroRay && highFineRay &&
                      dragPressed && dragMoved && dragReleased;
@@ -76,6 +171,7 @@ public static class War3PointerTargetingSelfTest
             passed,
             $"center={center}, edge={insideEdge}, " +
             $"outside={outsideNear}, formerSnap={outsideFormerSnapRing}, " +
+            $"screenPick={screenPicking}, " +
             $"bottomEdge={bottomHudAllowsEdgeScroll}, " +
             $"debugBlock={debuggerBlocksEdgeScroll}, " +
             $"terrainRay={belowZeroRay}/{highFineRay}, " +
